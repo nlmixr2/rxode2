@@ -4,7 +4,7 @@ rxodeTest({
     library(units)
 
     test_that("tad family works with ode", {
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01
@@ -186,7 +186,7 @@ rxodeTest({
     })
 
     test_that("test parsing of ode", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01
@@ -206,8 +206,8 @@ rxodeTest({
       }))
 
       ## now change the option
-      .rxWithOptions(list(RxODE.syntax.require.ode.first = FALSE), {
-        expect_error(RxODE({
+      .rxWithOptions(list(rxode2.syntax.require.ode.first = FALSE), {
+        expect_error(rxode2({
           KA <- 2.94E-01
           CL <- 1.86E+01
           V2 <- 4.02E+01
@@ -231,7 +231,7 @@ rxodeTest({
     context("tad family of functions with linCmt()")
 
     test_that("lincmt solution tad family", {
-      sol.1c.ka <- RxODE({
+      sol.1c.ka <- rxode2({
         KA <- 2
         V <- 20
         CL <- 25
@@ -254,7 +254,7 @@ rxodeTest({
 
       s1 <- rxSolve(sol.1c.ka, et)
 
-      sol.1c.ka <- RxODE({
+      sol.1c.ka <- rxode2({
         KA <- 2
         V <- 20
         CL <- 25
@@ -272,7 +272,7 @@ rxodeTest({
       expect_equal(s2$tadc, s1$tadc)
       expect_equal(s2$tafdc, s1$tafdc)
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         V <- 20
         CL <- 25
         C2 <- linCmt(V, CL)
@@ -284,7 +284,7 @@ rxodeTest({
         tafdc <- tafd(central)
       }))
 
-      one.cmt <- RxODE({
+      one.cmt <- rxode2({
         V <- 20
         CL <- 25
         C2 <- linCmt(V, CL)
@@ -307,7 +307,7 @@ rxodeTest({
     context("tad family of functions with linCmt()/ode mix")
 
     test_that("ode mixed", {
-      mod3 <- RxODE({
+      mod3 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01

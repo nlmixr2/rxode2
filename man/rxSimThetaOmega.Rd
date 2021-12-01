@@ -35,7 +35,7 @@ rxSimThetaOmega(
 )
 }
 \arguments{
-\item{params}{Named Vector of RxODE model parameters}
+\item{params}{Named Vector of rxode2 model parameters}
 
 \item{omega}{Estimate of Covariance matrix. When omega is a list,
 assume it is a block matrix and convert it to a full matrix
@@ -196,7 +196,7 @@ inverse Wishart distribution (scaled) or scaled inverse chi squared distribution
 \item{dfObs}{Degrees of freedom to sample the unexplained variability matrix from the
 inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.}
 
-\item{simSubjects}{boolean indicated RxODE should simulate subjects in studies (\code{TRUE},
+\item{simSubjects}{boolean indicated rxode2 should simulate subjects in studies (\code{TRUE},
 default) or studies (\code{FALSE})}
 }
 \value{

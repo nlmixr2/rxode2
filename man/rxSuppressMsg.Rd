@@ -16,22 +16,22 @@ they can be suppressed with \code{suppressMessages()}
 }
 \examples{
 
-# rxSupressMsg() is called with RxODE()
+# rxSupressMsg() is called with rxode2()
 
 # Note the errors are output to the console
 
-try(RxODE("d/dt(matt)=/3"), silent = TRUE)
+try(rxode2("d/dt(matt)=/3"), silent = TRUE)
 
 # When using suppressMessages, the output is suppressed
 
-suppressMessages(try(RxODE("d/dt(matt)=/3"), silent = TRUE))
+suppressMessages(try(rxode2("d/dt(matt)=/3"), silent = TRUE))
 
-# In RxODE, we use REprintf so that interrupted threads do not crash R
+# In rxode2, we use REprintf so that interrupted threads do not crash R
 # if there is a user interrupt. This isn't captured by R's messages, but
 # This interface allows the `suppressMessages()` to suppress the C printing
 # as well
 
-# If you  want to suppress messages from RxODE in other packages, you can use
+# If you  want to suppress messages from rxode2 in other packages, you can use
 # this function
 }
 \author{

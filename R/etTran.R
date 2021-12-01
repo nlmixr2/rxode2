@@ -1,6 +1,6 @@
 .expandPars <- function(object, params, events, control) {
-  .Call(`_RxODE_expandPars_`, object, params, events, control,
-    PACKAGE = "RxODE"
+  .Call(`_rxode2_expandPars_`, object, params, events, control,
+    PACKAGE = "rxode2"
   )
 }
 
@@ -51,7 +51,7 @@
 #' @param type Type can be "iCov" or "parameter"
 #'
 #' @param warnIdSort When `TRUE` warnings about merging the
-#'     parameter/id with RxODE event tables are issued.
+#'     parameter/id with rxode2 event tables are issued.
 #'
 #' @return A sorted parameter table that can be used directly in the
 #'     C-based routines.

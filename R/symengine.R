@@ -4,7 +4,7 @@ regEnd <- rex::rex(start, any_spaces, "}", any_spaces, end)
 regIfOrElse <- rex::rex(or(regIf, regElse))
 
 ## first.arg second.arg and type of function
-## RxODE->symengine
+## rxode2->symengine
 .rxSEsingle <- list(
   "gammafn" = c("gamma(", ")", "gamma"),
   "lgammafn" = c("lgamma(", ")", "lgamma"),
@@ -204,11 +204,11 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   return(invisible())
 }
 
-#' Add user function to RxODE
+#' Add user function to rxode2
 #'
-#' This adds a user function to RxODE that can be called.  If needed,
+#' This adds a user function to rxode2 that can be called.  If needed,
 #' these functions can be differentiated by numerical differences or
-#' by adding the derivatives to RxODE's internal derivative table
+#' by adding the derivatives to rxode2's internal derivative table
 #' with [rxD()]
 #'
 #' @param name This gives the name of the user function
@@ -218,14 +218,14 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' @author Matthew L. Fidler
 #' @examples
 #' \donttest{
-#' ## Right now RxODE is not aware of the function f
+#' ## Right now rxode2 is not aware of the function f
 #' ## Therefore it cannot translate it to symengine or
 #' ## Compile a model with it.
 #'
-#' try(RxODE("a=fun(a,b,c)"))
+#' try(rxode2("a=fun(a,b,c)"))
 #'
 #' ## Note for this approach to work, it cannot interfere with C
-#' ## function names or reserved RxODE specical terms.  Therefore
+#' ## function names or reserved rxode2 specical terms.  Therefore
 #' ## f(x) would not work since f is an alias for bioaviability.
 #'
 #' fun <- "
@@ -236,7 +236,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #'
 #' rxFun("fun", c("a", "b", "c"), fun) ## Added function
 #'
-#' ## Now RxODE knows how to translate this function to symengine
+#' ## Now rxode2 knows how to translate this function to symengine
 #'
 #' rxToSE("fun(a,b,c)")
 #'
@@ -268,7 +268,7 @@ rxFun <- function(name, args, cCode) {
   if (!is.character(name) || length(name) != 1L) {
     stop("name argument must be a length-one character vector", call. = FALSE)
   }
-  if (missing(cCode)) stop("a new function requires a C function so it can be used in RxODE", call. = FALSE)
+  if (missing(cCode)) stop("a new function requires a C function so it can be used in rxode2", call. = FALSE)
   if (any(name == names(.rxSEeqUsr))) {
     stop("already defined user function '", name, "', remove it fist ('rxRmFun')",
       call. = FALSE
@@ -364,7 +364,7 @@ rxRmFun <- function(name) {
 ##  fa translates the arguments to the derivative with respect to a
 ##  fb translates the arguments to the derivative with respect to b
 ##
-## If any of the list is NULL then RxODE won't know how to take a
+## If any of the list is NULL then rxode2 won't know how to take a
 ## derivative with respect to the argument.
 ##
 ## If the list is shorter than the length of the arguments then the
@@ -630,7 +630,7 @@ rxRmFun <- function(name) {
   lapply(1:15, .linCmtBgen)
 )
 
-#' Add to RxODE's derivative tables
+#' Add to rxode2's derivative tables
 #'
 #' @param name Function Name
 #' @param derivatives A list of functions. Each function takes the
@@ -669,7 +669,7 @@ rxD <- function(name, derivatives) {
 
 
 .promoteLinB <- FALSE
-#' RxODE to symengine environment
+#' rxode2 to symengine environment
 #'
 #' @param x expression
 #'
@@ -688,7 +688,7 @@ rxD <- function(name, derivatives) {
 #'     - `forward` for forward differences
 #'     - `central` for central differences
 #'     - `error` for throwing an error for unknown derivatives
-#' @return An rxode symengine environment
+#' @return An rxode2 symengine environment
 #' @author Matthew L. Fidler
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
@@ -1449,7 +1449,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
             )
           }
         } else {
-          stop(sprintf(gettext("function '%s' or its derivatives are not supported in RxODE"), .fun),
+          stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
             call. = FALSE
           )
         }
@@ -2158,7 +2158,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
             }
           } else {
             if (.rxFromNumDer == 0L) {
-              stop(sprintf(gettext("RxODE/symengine does not know how to take a derivative of '%s'"), .fun[1]),
+              stop(sprintf(gettext("rxode2/symengine does not know how to take a derivative of '%s'"), .fun[1]),
                 call. = FALSE
               )
             } else {
@@ -2206,7 +2206,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
         }
         stop(paste0(.ret0[[1]], "() takes 0-1 arguments"))
       } else {
-        stop(sprintf(gettext("'%s' not supported in symengine->RxODE"), paste(.ret0[[1]])),
+        stop(sprintf(gettext("'%s' not supported in symengine->rxode2"), paste(.ret0[[1]])),
           call. = FALSE
         )
       }
@@ -2226,10 +2226,10 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
 
 #' Load a model into a symengine environment
 #'
-#' @param x RxODE object
+#' @param x rxode2 object
 #' @param doConst Load constants into the environment as well.
 #' @inheritParams rxToSE
-#' @return RxODE/symengine environment
+#' @return rxode2/symengine environment
 #' @author Matthew Fidler
 #' @export
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
@@ -2332,7 +2332,7 @@ symengineC[["/"]] <- function(e1, e2) {
 unknownCsymengine <- function(op) {
   force(op)
   function(...) {
-    stop(sprintf("RxODE doesn't support '%s' translation for 'Omega' translation", op),
+    stop(sprintf("rxode2 doesn't support '%s' translation for 'Omega' translation", op),
       call. = FALSE
     )
   }
@@ -2442,7 +2442,7 @@ rxErrEnvF$"{" <- function(...) {
 rxErrEnvF$"(" <- unaryOp("(", ")")
 rxErrEnvF$"[" <- function(name, val) {
   n <- toupper(name)
-  err <- gettext("RxODE only supports THETA[#] and ETA[#] numbers")
+  err <- gettext("rxode2 only supports THETA[#] and ETA[#] numbers")
   if (any(n == c("THETA", "ETA")) && is.numeric(val)) {
     if (round(val) == val && val > 0) {
       if (n == "THETA" && as.numeric(val) <= length(rxErrEnv.init)) {
@@ -2927,22 +2927,22 @@ rxErrEnv <- function(expr) {
   return(symbol.env)
 }
 
-#' Parse PK function for inclusion in RxODE
+#' Parse PK function for inclusion in rxode2
 #'
 #' @param x PK function
 #' @inheritParams rxParseErr
-#' @return RxODE transformed text.
+#' @return rxode2 transformed text.
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
 rxParsePk <- function(x, init = NULL) {
   return(rxParseErr(x, init = init, ret = ""))
 }
-#' Prepare Pred function for inclusion in RxODE
+#' Prepare Pred function for inclusion in rxode2
 #'
 #' @param x pred function
 #' @inheritParams rxParseErr
-#' @return RxODE transformed text.
+#' @return rxode2 transformed text.
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
@@ -3007,13 +3007,13 @@ rxParsePred <- function(x, init = NULL, err = NULL, addProp = c("combined2", "co
     }
   }
 }
-#' Prepare Error function for inclusion in RxODE
+#' Prepare Error function for inclusion in rxode2
 #'
 #' @param x error function
 #' @param baseTheta Base theta to start numbering add(.) and prop(.) from.
 #' @param ret Internal return type.  Should not be changed by the user...
 #' @param init Initialization vector
-#' @return RxODE transformed text
+#' @return rxode2 transformed text
 #' @keywords internal
 #' @author Matthew L. Fidler
 #' @export
@@ -3041,7 +3041,7 @@ rxParseErr <- function(x, baseTheta, ret = "rx_r_", init = NULL,
     x <- rxAddReturn(x, ret != "")
   }
   if (is(substitute(x), "character")) {
-    ret <- eval(parse(text = sprintf("RxODE:::rxParseErr(quote({%s}),addProp=\"%s\")", x, addProp)))
+    ret <- eval(parse(text = sprintf("rxode2:::rxParseErr(quote({%s}),addProp=\"%s\")", x, addProp)))
     ret <- substring(ret, 3, nchar(ret) - 2)
     assignInMyNamespace("rxErrEnv.diag.est", NULL)
     assignInMyNamespace("rxErrEnv.theta", 1)
@@ -3049,7 +3049,7 @@ rxParseErr <- function(x, baseTheta, ret = "rx_r_", init = NULL,
     assignInMyNamespace("rxErrEnv.init", NULL)
     return(ret)
   } else if (is(substitute(x), "name")) {
-    ret <- eval(parse(text = sprintf("RxODE:::rxParseErr(%s, addProp=\"%s\")", deparse1(x), addProp)))
+    ret <- eval(parse(text = sprintf("rxode2:::rxParseErr(%s, addProp=\"%s\")", deparse1(x), addProp)))
     assignInMyNamespace("rxErrEnv.diag.est", NULL)
     assignInMyNamespace("rxErrEnv.theta", 1)
     assignInMyNamespace("rxErrEnv.ret", "rx_r_")
@@ -3058,7 +3058,7 @@ rxParseErr <- function(x, baseTheta, ret = "rx_r_", init = NULL,
   } else {
     ret <- NULL
     if (is(x, "character")) {
-      ret <- eval(parse(text = sprintf("RxODE:::rxParseErr(quote({%s}))", paste(x, collapse = "\n"))))
+      ret <- eval(parse(text = sprintf("rxode2:::rxParseErr(quote({%s}))", paste(x, collapse = "\n"))))
       ret <- substring(ret, 3, nchar(ret) - 2)
     } else {
       x <- .convStr(x)
@@ -3185,7 +3185,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 
 #' Get list of supported functions
 #'
-#' @return list of supported functions in RxODE
+#' @return list of supported functions in rxode2
 #' @examples
 #' rxSupportedFuns()
 #' @export

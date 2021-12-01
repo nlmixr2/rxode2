@@ -1,6 +1,6 @@
 #define USE_FC_LEN_T
 //#undef NDEBUG
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <Rcpp.h>
 using namespace Rcpp;
 // bool rxIs(const RObject &obj, std::string cls);

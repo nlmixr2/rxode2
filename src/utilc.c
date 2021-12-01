@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <sys/stat.h> 
 #include <fcntl.h>
 #include <stdio.h>
@@ -13,12 +13,12 @@
 #include <Rmath.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
 #endif
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 
 int _setSilentErr=0, _isRstudio2=0;
 extern void setSilentErr(int silent){

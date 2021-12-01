@@ -2,7 +2,7 @@
 rxodeTest(
   {
     if (requireNamespace("units", quietly = TRUE)) {
-      require(RxODE)
+      require(rxode2)
       context("Example 6")
       require(digest)
 
@@ -357,7 +357,7 @@ rxodeTest(
       ## https://cran.r-project.org/web/packages/diffEq/vignettes/ODEinR.pdf p11
 
       ## 6.1
-      mod <- RxODE("
+      mod <- rxode2("
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
@@ -411,7 +411,7 @@ d/dt(blood)     = a*intestine - b*blood
 
 
       ## Bolus 6.2
-      mod <- RxODE("
+      mod <- rxode2("
 b = 0.6
 d/dt(blood) = - b*blood
 ")

@@ -1,4 +1,4 @@
-#' RxODE progress bar functions
+#' rxode2 progress bar functions
 #'
 #' `rxProgress` sets up the progress bar
 #'

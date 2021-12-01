@@ -4,21 +4,21 @@ editor_options:
     wrap: 72
 ---
 
-You can install the released version of RxODE from
+You can install the released version of rxode2 from
 [CRAN](https://CRAN.R-project.org) with:
 
 ``` {.r}
-install.packages("RxODE")
+install.packages("rxode2")
 ```
 
-You can install the development version of RxODE with
+You can install the development version of rxode2 with
 
 ``` {.r}
-devtools::install_github("nlmixrdevelopment/RxODE")
+devtools::install_github("nlmixr2/rxode2")
 ```
 
-To build models with RxODE, you need a working c compiler. To use
-parallel threaded solving in RxODE, this c compiler needs to support
+To build models with rxode2, you need a working c compiler. To use
+parallel threaded solving in rxode2, this c compiler needs to support
 open-mp.
 
 You can check to see if R has working c compiler you can check with:
@@ -47,15 +47,15 @@ rtools directly.
 
 ### Mac OSX
 
-To get the most speed you need OpenMP enabled and compile RxODE with
+To get the most speed you need OpenMP enabled and compile rxode2 with
 that compiler. There are various options and the most up to date
 discussion about this is likely the [data.table installation faq for
 MacOS](https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac).
-The last thing to keep in mind is that `RxODE` uses the code very
+The last thing to keep in mind is that `rxode2` uses the code very
 similar to the original `lsoda` which requires the `gfortran` compiler
 to be setup as well as the `OpenMP` compilers.
 
-If you are going to be using `RxODE` and `nlmixr` together and have an
+If you are going to be using `rxode2` and `nlmixr` together and have an
 older mac computer, I would suggest trying the following:
 
 ```r
@@ -88,7 +88,7 @@ and `gfortran` using your distribution's package manager.
 
 ## Development Version
 
-Since the development version of RxODE uses StanHeaders, you will need
+Since the development version of rxode2 uses StanHeaders, you will need
 to make sure your compiler is setup to support C++14, as described in
 the [rstan setup
 page](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started#configuration-of-the-c-toolchain).
@@ -97,9 +97,9 @@ toolchain any longer (so it is much easier to setup).
 
 Once the C++ toolchain is setup appropriately, you can install the
 development version from
-[GitHub](https://github.com/nlmixrdevelopment/RxODE) with:
+[GitHub](https://github.com/nlmixr2/rxode2) with:
 
 ``` {.r}
 # install.packages("devtools")
-devtools::install_github("nlmixrdevelopment/RxODE")
+devtools::install_github("nlmixr2/rxode2")
 ```

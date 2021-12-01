@@ -13,7 +13,7 @@ rxodeTest(
     test_that("rnorm", {
       set.seed(1024)
 
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rnorm()
         x2 <- rxnorm(a)
         x3 <- rnorm(b, c)
@@ -45,7 +45,7 @@ rxodeTest(
       expect_equal(mean(f2$x3), 5, tol = 1e-2)
       expect_equal(sd(f2$x3), 2, tol = 1e-2)
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x4 <- rnorm(a, b, c, d)
       }))
 
@@ -76,14 +76,14 @@ rxodeTest(
     test_that("rnormV", {
       set.seed(1024)
 
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rnormV()
         x2 <- rxnormV(a)
         x3 <- rnormV(b, c)
         d / dt(x0) <- 0
       })
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x4 <- rnormV(a, b, c, d)
       }))
 
@@ -111,7 +111,7 @@ rxodeTest(
 
     context("binomial tests")
     test_that("rbinom", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rbinom(4, 0.5)
         x2 <- rxbinom(10, 0.75)
       })
@@ -150,15 +150,15 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rbinom()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rbinom(a)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rbinom(a, b, c)
       }))
     })
@@ -168,7 +168,7 @@ rxodeTest(
     test_that("rcauchy", {
       set.seed(1024)
 
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rcauchy()
         x2 <- rxcauchy(a)
         x3 <- rcauchy(b, c)
@@ -196,14 +196,14 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x4 <- rcauchy(a, b, c, d)
       }))
     })
 
     context("rchisq tests")
     test_that("rchisq", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rchisq(15)
         x2 <- rxchisq(20)
       })
@@ -238,11 +238,11 @@ rxodeTest(
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rchisq()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rchisq(a, b)
       }))
     })
@@ -250,7 +250,7 @@ rxodeTest(
     context("rexp tests")
 
     test_that("rexp tests", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rexp(0.5)
         x2 <- rxexp()
       })
@@ -284,7 +284,7 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rexp(a, b)
       }))
     })
@@ -292,7 +292,7 @@ rxodeTest(
     context("rf tests")
 
     test_that("rf tests", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rf(10, 20)
         x2 <- rxf(30, 40)
       })
@@ -334,15 +334,15 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rf(a, b, c)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rf(a)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rf()
       }))
     })
@@ -350,7 +350,7 @@ rxodeTest(
     context("rgamma tests")
 
     test_that("rgamma tests", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rgamma(9, 0.5)
         x2 <- rxgamma(7.5)
       })
@@ -386,11 +386,11 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rgamma(a, b, c)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rgamma()
       }))
     })
@@ -398,7 +398,7 @@ rxodeTest(
     context("rbeta tests")
 
     test_that("rbeta tests", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rbeta(2, 5)
         x2 <- rxbeta(2, 2)
       })
@@ -440,15 +440,15 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rbeta(a, b, c)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rbeta(a)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rbeta()
       }))
     })
@@ -456,7 +456,7 @@ rxodeTest(
     context("rgeom tests")
 
     test_that("rgeom tests", {
-      rx <- RxODE({
+      rx <- rxode2({
         # x1 <- rgeom(0.5)
         x2 <- rxgeom(0.1)
       })
@@ -484,11 +484,11 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rgeom()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rgeom(a, b)
       }))
     })
@@ -496,7 +496,7 @@ rxodeTest(
     context("rpois tests")
 
     test_that("rpois", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rpois(1)
         x2 <- rxpois(2)
       })
@@ -529,11 +529,11 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rpois()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rxpois(a, b)
       }))
     })
@@ -541,7 +541,7 @@ rxodeTest(
     context("rt tests")
 
     test_that("rt", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rt(15)
         x2 <- rxt(20)
       })
@@ -576,11 +576,11 @@ rxodeTest(
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rt()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rt(a, b)
       }))
     })
@@ -590,7 +590,7 @@ rxodeTest(
     test_that("runif", {
       set.seed(1024)
 
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- runif()
         x2 <- rxunif(a)
         x3 <- runif(b, c)
@@ -621,7 +621,7 @@ rxodeTest(
       expect_equal(mean(f2$x3), 0.5 * (0.25 + 0.75), tol = 1e-2)
       expect_equal(sd(f2$x3), sqrt((0.75 - 0.25)^2 / 12), tol = 1e-2)
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x4 <- runif(a, b, c, d)
       }))
 
@@ -646,7 +646,7 @@ rxodeTest(
     context("rweibull tests")
 
     test_that("rweibull tests", {
-      rx <- RxODE({
+      rx <- rxode2({
         x1 <- rweibull(9, 0.5)
         x2 <- rxweibull(7.5)
       })
@@ -693,11 +693,11 @@ rxodeTest(
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rweibull(a, b, c)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         x1 <- rweibull()
       }))
     })
@@ -705,7 +705,7 @@ rxodeTest(
     context("individual random number generation")
 
     test_that("individual random variable tests", {
-      rx <- RxODE({
+      rx <- rxode2({
         x0 <- rxnorm()
         x1 <- rinorm(a)
         x2 <- rinorm(b, c)
@@ -750,7 +750,7 @@ rxodeTest(
         expect_true(.s < 10)
       }
 
-      rx <- RxODE({
+      rx <- rxode2({
         x0 <- rxnorm()
         x1 <- rinorm(a)
         x2 <- rinorm(b, c)
@@ -797,7 +797,7 @@ rxodeTest(
 
     context("simeps()")
     test_that("simeps", {
-      rx1 <- RxODE({
+      rx1 <- rxode2({
         c <- 0 + err
         i <- 0
       })
@@ -809,7 +809,7 @@ rxodeTest(
 
       expect_true(f1$c[1] != 0)
 
-      rx <- RxODE({
+      rx <- rxode2({
         c <- 0 + err
         i <- 0
         while (c < 0) {
@@ -892,7 +892,7 @@ rxodeTest(
     context("simeta()")
 
     test_that("simeta", {
-      rx <- RxODE({
+      rx <- rxode2({
         wt <- 70 * exp(eta.wt)
         i <- 0
         while ((wt < 60) || (wt > 80)) {

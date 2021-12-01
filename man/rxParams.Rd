@@ -2,7 +2,7 @@
 % Please edit documentation in R/rxParams.R
 \name{rxParams}
 \alias{rxParams}
-\alias{rxParams.RxODE}
+\alias{rxParams.rxode2}
 \alias{rxParams.rxSolve}
 \alias{rxParams.rxEt}
 \alias{rxParam}
@@ -10,7 +10,7 @@
 \usage{
 rxParams(obj, ...)
 
-\method{rxParams}{RxODE}(
+\method{rxParams}{rxode2}(
   obj,
   constants = TRUE,
   ...,
@@ -63,7 +63,7 @@ rxParams(obj, ...)
 rxParam(obj, ...)
 }
 \arguments{
-\item{obj}{RxODE family of objects}
+\item{obj}{rxode2 family of objects}
 
 \item{...}{Other arguments including scaling factors for each
 compartment.  This includes S# = numeric will scale a compartment
@@ -71,9 +71,9 @@ compartment.  This includes S# = numeric will scale a compartment
 like NONMEM.}
 
 \item{constants}{is a boolean indicting if constants should be
-included in the list of parameters. Currently RxODE parses
+included in the list of parameters. Currently rxode2 parses
 constants into variables in case you wish to change them
-without recompiling the RxODE model.}
+without recompiling the rxode2 model.}
 
 \item{params}{a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
@@ -117,12 +117,12 @@ realization of the parameters.}
 parameters.}
 }
 \value{
-When extracting the parameters from an RxODE model, a
+When extracting the parameters from an rxode2 model, a
 character vector listing the parameters in the model.
 }
 \description{
 This returns the model's parameters that are required to solve the
-ODE system, and can be used to pipe parameters into an RxODE solve
+ODE system, and can be used to pipe parameters into an rxode2 solve
 }
 \author{
 Matthew L.Fidler

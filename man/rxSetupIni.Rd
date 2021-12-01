@@ -7,7 +7,7 @@
 rxSetupIni(obj, inits = NULL)
 }
 \arguments{
-\item{obj}{RxODE object}
+\item{obj}{rxode2 object}
 
 \item{inits}{A numeric vector of initial conditions.}
 }

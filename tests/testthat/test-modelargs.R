@@ -1,9 +1,9 @@
 rxodeTest(
   {
     context("Test that model specification can take string, file name or rxode expressions")
-    ode <- RxODE(model = "d/dt(y) = r * y * (1 - y/K);")
+    ode <- rxode2(model = "d/dt(y) = r * y * (1 - y/K);")
 
-    ode2 <- RxODE({
+    ode2 <- rxode2({
       d / dt(y) <- r * y * (1 - y / K)
     })
 
@@ -19,7 +19,7 @@ rxodeTest(
     while (!file.exists(tmp)) {
       Sys.sleep(1)
     }
-    ode3 <- RxODE(tmp)
+    ode3 <- rxode2(tmp)
     unlink(tmp)
 
     test_that("file and string returns the same result", {
@@ -28,7 +28,7 @@ rxodeTest(
     })
 
 
-    ode <- RxODE("
+    ode <- rxode2("
          C2 = centr/V2;
          C3 = peri/V3;
          d/dt(depot) =-KA*depot;
@@ -36,7 +36,7 @@ rxodeTest(
          d/dt(peri)  =                    Q*C2 - Q*C3;
          d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;")
 
-    ode2 <- RxODE({
+    ode2 <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
       d / dt(depot) <- -KA * depot
@@ -58,7 +58,7 @@ rxodeTest(
     while (!file.exists(tmp)) {
       Sys.sleep(1)
     }
-    ode3 <- RxODE(tmp)
+    ode3 <- rxode2(tmp)
     unlink(tmp)
 
     test_that("string and expression returns the same result", {

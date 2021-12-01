@@ -1,4 +1,4 @@
-More than one level of nesting is possible in RxODE; In this example
+More than one level of nesting is possible in rxode2; In this example
 we will be using the following uncertainties and sources of variability:
 
 |                     Level | Variable           | Matrix specified | Integrated Matrix |
@@ -22,7 +22,7 @@ This event table contains nesting variables:
  - occ: occasion
  
 ```{r}
-library(RxODE)
+library(rxode22)
 library(dplyr)
 
 et(amountUnits="mg", timeUnits="hours") %>%
@@ -40,14 +40,14 @@ et(amountUnits="mg", timeUnits="hours") %>%
   ev
 ```
 
-### RxODE model
+### rxode2 model
 
-This creates the `RxODE` model with multi-level nesting.  Note the
+This creates the `rxode2` model with multi-level nesting.  Note the
 variables `inv.Cl`, `inv.Ka`, `eta.Cl` etc; You only need one variable
 for each level of nesting.
 
 ```{r}
-mod <- RxODE({
+mod <- rxode2({
   ## Clearance with individuals
   eff(0) = 1
   C2 = centr/V2*(1+prop.sd);
@@ -82,7 +82,7 @@ To specify multiple levels of nesting, you can specify it as a nested
 `lotri` matrix; When using this approach you use the condition
 operator `|` to specify what variable nesting occurs on; For the
 Bayesian simulation we need to specify how much information we have
-for each parameter; For `RxODE` this is the `nu` parameter.
+for each parameter; For `rxode2` this is the `nu` parameter.
 
 In this case:
 - id, `nu=100` or the model came from 100 subjects
@@ -122,7 +122,7 @@ print(s)
 ```
 
 There are multiple investigators in a study; Each investigator has a
-number of individuals enrolled at their site. `RxODE` automatically
+number of individuals enrolled at their site. `rxode2` automatically
 determines the number of investigators and then will simulate an
 effect for each investigator. With the output, `inv.Cl(inv==1)` will
 be the `inv.Cl` for investigator 1, `inv.Cl(inv==2)` will be the

@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Logical expressons test")
 
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     transTo <- function(model, syntax, match = TRUE) {
       mod <- rxModelVars(model)

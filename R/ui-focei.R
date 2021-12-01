@@ -1,6 +1,6 @@
-#' Get the THETA/ETA lines from RxODE UI
+#' Get the THETA/ETA lines from rxode2 UI
 #'
-#' @param rxui This is the RxODE ui object
+#' @param rxui This is the rxode2 ui object
 #' @return The theta/eta lines
 #' @author Matthew L. Fidler
 #' @noRd
@@ -20,10 +20,10 @@
   }
   c(.thetas, .etas)
 }
-#' Get the THETA/ETA params from the RxODE UI
+#' Get the THETA/ETA params from the rxode2 UI
 #'
-#' @param rxui This is the RxODE ui object
-#' @return The params RxODE UI
+#' @param rxui This is the rxode2 ui object
+#' @return The params rxode2 UI
 #' @author Matthew L. Fidler
 #' @noRd
 .uiGetThetaEtaParams <- function(rxui) {
@@ -55,9 +55,9 @@
   .ret
 }
 
-#' This is a S3 method for getting the distribution lines for a RxODE simulation
+#' This is a S3 method for getting the distribution lines for a rxode2 simulation
 #'
-#' @param line Parsed RxODE model environment
+#' @param line Parsed rxode2 model environment
 #' @return Lines for the simulation of `ipred` and `dv`. This is based
 #'   on the idea that the focei parameters are defined
 #' @author Matthew Fidler

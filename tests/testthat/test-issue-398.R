@@ -4,7 +4,7 @@ rxodeTest(
       NM_data <- qs::qread("test-issue-398.qs")
 
       # Define and Compile model
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         CLH_int <- THETA[1]
         CLD <- THETA[2]
         V_centr <- THETA[3]

@@ -10,9 +10,9 @@
   .ret
 }
 
-#' This is a S3 method for getting the distribution lines for a RxODE simulation
+#' This is a S3 method for getting the distribution lines for a rxode2 simulation
 #'
-#' @param line Parsed RxODE model environment
+#' @param line Parsed rxode2 model environment
 #' @return Lines for the simulation of `ipred` and `dv`. This is based
 #'   on the idea that the focei parameters are defined
 #' @author Matthew Fidler
@@ -167,15 +167,15 @@ rxUiGet.simulationModel <- function(x, ...) {
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 
-#' Combine Error Lines and create RxODE expression
+#' Combine Error Lines and create rxode2 expression
 #'
 #' @param uiModel UI model
 #' @param errLines Error lines; If missing, get the error lines from
 #'   `rxGetDistributionSimulationLines()`
 #' @param prefixLines Prefix lines, after param statement
 #' @param paramsLine Params line, if not present.
-#' @param modelVars Return model vars instead of RxODE statement
-#' @return quoted extression that can be evaluated to compiled RxODE
+#' @param modelVars Return model vars instead of rxode2 statement
+#' @return quoted extression that can be evaluated to compiled rxode2
 #'   model
 #' @export
 #' @author Matthew L. Fidler
@@ -209,7 +209,7 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #'    })
 #' }
 #'
-#' f <- RxODE(one.cmt)
+#' f <- rxode2(one.cmt)
 #'
 #' # You can get the simulation model easily by
 #' rxCombineErrorLines(f)
@@ -272,10 +272,10 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #'   })
 #' }
 #'
-#' f <- RxODE(pk.turnover.emax)
+#' f <- rxode2(pk.turnover.emax)
 #' rxCombineErrorLines(f)
 #'
-#' # Note that in the parsed form, you can also get the compiled RxODE
+#' # Note that in the parsed form, you can also get the compiled rxode2
 #' # model with $simulationModel
 #'
 #' f$simulationModel
@@ -283,7 +283,7 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, paramsLine=NULL,
                                 modelVars=FALSE) {
   if(!inherits(uiModel, "rxUi")) {
-    stop("uiModel must be a evaluated UI model by RxODE(modelFunction) or modelFunction()",
+    stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
   }
   if (is.null(errLines)) {
@@ -344,6 +344,6 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   if (modelVars) {
     as.call(list(quote(`rxModelVars`), as.call(.ret)))
   } else {
-    as.call(list(quote(`RxODE`), as.call(.ret)))
+    as.call(list(quote(`rxode2`), as.call(.ret)))
   }
 }

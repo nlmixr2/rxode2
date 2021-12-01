@@ -4,7 +4,7 @@
 \alias{getRxThreads}
 \alias{setRxThreads}
 \alias{rxCores}
-\title{Get/Set the number of threads that RxODE uses}
+\title{Get/Set the number of threads that rxode2 uses}
 \usage{
 getRxThreads(verbose = FALSE)
 
@@ -30,14 +30,14 @@ overhead of managing multiple threads.
 
 The throttle will also suppress sorting which ID will be solved first
 when there are (nsubject solved)*throttle <= nthreads.  In
-\code{RxODE} this sorting occurs to minimize the time for waiting for
+\code{rxode2} this sorting occurs to minimize the time for waiting for
 another thread to finish. If the last item solved is has a long
 solving time, all the other solving have to wait for that last
 costly solving to occur. If the items which are likely to take
 more time are solved first, this wait is less likely to have an
 impact on the overall solving time.
 
-In RxODE the IDs are sorted by the individual number of solving
+In rxode2 the IDs are sorted by the individual number of solving
 points (largest first). It also has a C interface that allows
 these IDs to be resorted by total time spent solving the
 equation.  This allows packages like nlmixr to sort by solving
@@ -47,8 +47,8 @@ Overall the the number of threads is throttled (restricted) for
 small tasks and sorting for IDs are suppressed.}
 }
 \value{
-number of threads that RxODE uses
+number of threads that rxode2 uses
 }
 \description{
-Get/Set the number of threads that RxODE uses
+Get/Set the number of threads that rxode2 uses
 }

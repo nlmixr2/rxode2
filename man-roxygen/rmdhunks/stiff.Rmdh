@@ -9,19 +9,19 @@ way to tackle this is to choose a stiff-solver, or hybrid stiff solver
 (like the default LSODA).  Typically this is enough. However exact
 Jacobian solutions may increase the stability of the ODE.  (Note the
 Jacobian is the derivative of the ODE specification with respect to
-each variable). In RxODE you can specify the Jacobian with the
+each variable). In rxode2 you can specify the Jacobian with the
 `df(state)/dy(variable)=` statement.  A classic ODE that has stiff
 properties under various conditions is
 the
 [Van der Pol](http://www.ece.northwestern.edu/local-apps/matlabhelp/techdoc/math_anal/diffeq6.html) differential
 equations.
 
-In RxODE these can be specified by the following:
+In rxode2 these can be specified by the following:
 
 ```{r}
-library(RxODE)
+library(rxode2)
 
-Vtpol2 <- RxODE({
+Vtpol2 <- rxode2({
     d/dt(y)  = dy
     d/dt(dy) = mu*(1-y^2)*dy - y
     ## Jacobian
@@ -51,7 +51,7 @@ print(s2)
 ```
 
 While this is easy enough to do, it is a bit tedious.  If you have
-RxODE setup appropriately, that is you have:
+rxode2 setup appropriately, that is you have:
 
 - **Python** installed in your system
 - **sympy** installed in your system
@@ -60,10 +60,10 @@ RxODE setup appropriately, that is you have:
 You can use the computer algebra system sympy to calculate the
 Jacobian automatically.
 
-This is done by the RxODE option `calcJac` option:
+This is done by the rxode2 option `calcJac` option:
 
 ```
-Vtpol <- RxODE({
+Vtpol <- rxode2({
     d/dt(y)  = dy
     d/dt(dy) = mu*(1-y^2)*dy - y
     ## Initial conditions

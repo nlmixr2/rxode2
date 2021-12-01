@@ -1,16 +1,16 @@
 //#undef NDEBUG
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <RcppArmadillo.h>
 #include <algorithm>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include "timsort.h"
 #include "needSortDefines.h"
 #define SORT gfx::timsort
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -19,13 +19,13 @@
 #define rxModelVars(a) rxModelVars_(a)
 using namespace Rcpp;
 #include "checkmate.h"
-#include "../inst/include/RxODE_as.h"
+#include "../inst/include/rxode2_as.h"
 
 void RSprintf(const char *format, ...);
 
 List rxModelVars_(const RObject &obj);
 bool rxIs(const RObject &obj, std::string cls);
-Environment RxODEenv();
+Environment rxode2env();
 
 Environment dataTable;
 bool getForder_b=false;
@@ -33,9 +33,9 @@ Function getRxFn(std::string name);
 bool dtForder = false;
 bool forderForceBase_ = false;
 
-//' Force using base order for RxODE radix sorting
+//' Force using base order for rxode2 radix sorting
 //'
-//' @param forceBase boolean indicating if RxODE should use R's
+//' @param forceBase boolean indicating if rxode2 should use R's
 //'   [order()] for radix sorting instead of
 //'   `data.table`'s parallel radix sorting.
 //'
@@ -43,8 +43,8 @@ bool forderForceBase_ = false;
 //'
 //' @examples
 //' \donttest{
-//' forderForceBase(TRUE) # Use base `order` for RxODE sorts
-//' forderForceBase(FALSE) # Use `data.table` for RxODE sorts
+//' forderForceBase(TRUE) # Use base `order` for rxode2 sorts
+//' forderForceBase(FALSE) # Use `data.table` for rxode2 sorts
 //' }
 //' @export
 //' @keywords internal
@@ -172,7 +172,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
     } else {
       if (isDvid){
 	// This converts DVID to cmt; Things that don't match become -9999
-	Environment rx = RxODEenv();
+	Environment rx = rxode2env();
 	IntegerVector in = convertDvid_(inCmt, curDvid.length());
 	IntegerVector out(in.size());
 	IntegerVector conv = curDvid;
@@ -332,7 +332,7 @@ IntegerVector convertMethod(RObject method);
 
 SEXP convertId_(SEXP x);
 bool warnedNeg=false;
-//' Event translation for RxODE
+//' Event translation for rxode2
 //'
 //' @param inData Data frame to translate
 //' 
@@ -347,15 +347,15 @@ bool warnedNeg=false;
 //' @param keepDosingOnly keep the individuals who only have dosing records and any
 //'   trailing dosing records after the last observation.
 //' 
-//' @param combineDvid is a boolean indicating if RxODE will use `DVID` on observation
+//' @param combineDvid is a boolean indicating if rxode2 will use `DVID` on observation
 //'     records to change the `cmt` value; Useful for multiple-endpoint nlmixr models.  By default
-//'     this is determined by `option("RxODE.combine.dvid")` and if the option has not been set,
-//'     this is `TRUE`. This typically does not affect RxODE simulations.
+//'     this is determined by `option("rxode2.combine.dvid")` and if the option has not been set,
+//'     this is `TRUE`. This typically does not affect rxode2 simulations.
 //' 
-//' @param keep This is a named vector of items you want to keep in the final RxODE dataset.
-//'     For added RxODE event records (if seen), last observation carried forward will be used.
+//' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
+//'     For added rxode2 event records (if seen), last observation carried forward will be used.
 //' 
-//' @return Object for solving in RxODE
+//' @return Object for solving in rxode2
 //' 
 //' @keywords internal
 //' 
@@ -368,14 +368,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
-  Environment rx = RxODEenv();
+  Environment rx = rxode2env();
   bool combineDvidB = false, rateModeled=false, durModeled = false;
   Environment b=Rcpp::Environment::base_namespace();
   if (!combineDvid.isNull()){
     combineDvidB = (as<LogicalVector>(combineDvid))[1];
   } else {
     Function getOption = b["getOption"];
-    combineDvidB = as<bool>(getOption("RxODE.combine.dvid", true));
+    combineDvidB = as<bool>(getOption("rxode2.combine.dvid", true));
   }
   List mv = rxModelVars_(obj);
   int needSort = mv[RxMv_needSort];
@@ -383,7 +383,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   CharacterVector trans = mv[RxMv_trans];
   if (rxIs(inData,"rxEtTran")){
     CharacterVector cls = Rf_getAttrib(inData, R_ClassSymbol);
-    List e0 = cls.attr(".RxODE.lst");
+    List e0 = cls.attr(".rxode2.lst");
     if (as<std::string>(trans[RxMvTrans_lib_name]) ==
 	as<std::string>(e0[RxTrans_lib_name])){
       if (asBool(e0[RxTrans_allTimeVar], "allTimeVar") && !allTimeVar){
@@ -399,7 +399,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 	e[RxTrans_nme] = R_NilValue;	
 	e[RxTrans_sub0] = R_NilValue;
 	e[RxTrans_allTimeVar] = false;
-	cls.attr(".RxODE.lst") = e;
+	cls.attr(".rxode2.lst") = e;
 	List lstF = List(baseSize+nTv);
 	CharacterVector nmeF = CharacterVector(baseSize+nTv);
 	int j=0;
@@ -1338,11 +1338,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 	continue;
       }
       if (rateI != 0 && hasEvid){
-	Rf_warningcall(R_NilValue, _("'rate' or 'dur' is ignored with classic RxODE 'EVID's"));
+	Rf_warningcall(R_NilValue, _("'rate' or 'dur' is ignored with classic rxode2 'EVID's"));
 	rateI = 0;
       }
       if (flg!=1 && hasEvid){ // ss=1 is the same as ss=0 for NONMEM
-	Rf_warningcall(R_NilValue, _("'ss' is ignored with classic RxODE 'EVID's"));
+	Rf_warningcall(R_NilValue, _("'ss' is ignored with classic rxode2 'EVID's"));
 	flg=1;
       }
     }
@@ -1412,7 +1412,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 	}
       } else {
 	if (cevid != 0 && cevid != 2 && cevid != 9 && flg != 30 && ISNA(camt)) {
- 	  stop(_("'amt' value NA for dose event; (id: %s, amt: %f, evid: %d RxODE evid: %d, row: %d)"), CHAR(idLvl[cid-1]), camt, inEvid[i], cevid, (int)i+1);
+ 	  stop(_("'amt' value NA for dose event; (id: %s, amt: %f, evid: %d rxode2 evid: %d, row: %d)"), CHAR(idLvl[cid-1]), camt, inEvid[i], cevid, (int)i+1);
 	}
 	amt.push_back(camt);
       }
@@ -2004,7 +2004,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(keepL, Rf_install("keepCov"), wrap(keepLc));
   e[RxTrans_keepL] = keepL;
   Rf_setAttrib(e, R_ClassSymbol, wrap("rxHidden"));
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   tmp = lstF[0];
   if (redoId){
     Rf_setAttrib(tmp, R_ClassSymbol, wrap("factor"));

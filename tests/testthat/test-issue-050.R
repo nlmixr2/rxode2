@@ -14,8 +14,8 @@ d/dt(eff) = Kin - Kout(1-C2/(EC50+C2))*eff;")
       sink()
 
       expect_true(file.exists(.file))
-      m1 <- try(RxODE(filename = .file, modName = test_path("m1")))
-      expect_false(is(class(m1), "RxODE"))
+      m1 <- try(rxode2(filename = .file, modName = test_path("m1")))
+      expect_false(is(class(m1), "rxode2"))
       expect_true(file.exists(.file))
 
       sink(.file)
@@ -28,8 +28,8 @@ d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;")
       sink()
 
       expect_true(file.exists(.file))
-      m1 <- RxODE(filename = .file, modName = test_path("m1"))
-      expect_true(is(m1, "RxODE"))
+      m1 <- rxode2(filename = .file, modName = test_path("m1"))
+      expect_true(is(m1, "rxode2"))
       expect_true(file.exists(test_path("rxodedemo_ode.txt")))
 
       rxDelete(m1)

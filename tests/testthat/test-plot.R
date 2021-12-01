@@ -5,8 +5,8 @@ rxodeTest(
       test_that("plot tests", {
         skip_if(utils::packageVersion("ggplot2") < "3.3.5")
 
-        ## Model from RxODE tutorial
-        m1 <- RxODE({
+        ## Model from rxode2 tutorial
+        m1 <- rxode2({
           KA <- 2.94E-01
           CL <- 1.86E+01
           V2 <- 4.02E+01
@@ -67,7 +67,7 @@ rxodeTest(
         set.seed(32)
         s20R <- rxSolve(m1, evR4, params = data.frame(KA = 0.294 * exp(rnorm(20)), 18.6 * exp(rnorm(20))))
 
-        m2 <- RxODE({
+        m2 <- rxode2({
           KA <- 2.94E-01
           CL <- 1.86E+01 * exp(eta.Cl)
           V2 <- 4.02E+01
@@ -129,11 +129,11 @@ rxodeTest(
 
         vdiffr::expect_doppelganger("sim.id-unitless", plot(sim3, C2))
 
-        .rxWithOptions(list(RxODE.theme = FALSE), {
+        .rxWithOptions(list(rxode2.theme = FALSE), {
           vdiffr::expect_doppelganger("sim.id-unitless-notheme", plot(sim3, C2))
         })
 
-        .rxWithOptions(list(RxODE.theme = TRUE), {
+        .rxWithOptions(list(rxode2.theme = TRUE), {
           ci1.C2 <- confint(sim, "C2")
 
           ci1.C2.eff <- confint(sim, c("C2", "eff"))
@@ -148,10 +148,10 @@ rxodeTest(
           f <- function(xgxr = FALSE, repel = FALSE) {
             if (xgxr) {
               .xgxtxt <- "xgxr-"
-              .xgxOp <- list(RxODE.xgxr = TRUE)
+              .xgxOp <- list(rxode2.xgxr = TRUE)
             } else {
               .xgxtxt <- ""
-              .xgxOp <- list(RxODE.xgxr = FALSE)
+              .xgxOp <- list(rxode2.xgxr = FALSE)
             }
             .rxWithOptions(.xgxOp, {
               vdiffr::expect_doppelganger(paste0("plot-", .xgxtxt, "C2"), suppressWarnings(s %>% plot(C2)))
@@ -226,10 +226,10 @@ rxodeTest(
               for (repel in c(TRUE, FALSE)) {
                 if (repel) {
                   .repel <- "repel-"
-                  .repelOp <- list(RxODE.ggrepel = TRUE)
+                  .repelOp <- list(rxode2.ggrepel = TRUE)
                 } else {
                   .repel <- ""
-                  .repelOp <- list(RxODE.ggrepel = FALSE)
+                  .repelOp <- list(rxode2.ggrepel = FALSE)
                 }
                 .rxWithOptions(.repelOp, {
                   vdiffr::expect_doppelganger(paste0("plot-multi-", .repel, .xgxtxt, "C2"), s2 %>% plot(C2))

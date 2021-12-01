@@ -15,7 +15,7 @@ d/dt(y3) = a3*y1*y2
 
     rigid0 <- rxGetModel(rigid.txt)
 
-    rigid <- RxODE(rigid.txt)
+    rigid <- rxode2(rigid.txt)
 
     et <- eventTable()
     et$add.sampling(seq(0, 20, by = 0.01))

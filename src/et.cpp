@@ -1,6 +1,6 @@
 //#undef NDEBUG
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <Rcpp.h>
 #include <R.h>
 #include "timsort.h"
@@ -9,10 +9,10 @@
 using namespace Rcpp;
 
 #include "checkmate.h"
-#include "../inst/include/RxODE_as.h"
+#include "../inst/include/rxode2_as.h"
 
 bool rxIs(const RObject &obj, std::string cls);
-Environment RxODEenv();
+Environment rxode2env();
 
 Function getForder();
 bool useForder();
@@ -69,7 +69,7 @@ NumericVector setUnits(NumericVector obj, std::string unit){
 CharacterVector etDollarNames(RObject obj){
   if (rxIs(obj,"rxEt")){
     CharacterVector cls = asCv(obj.attr("class"), "class");
-    List e = asList((cls.attr(".RxODE.lst")), ".RxODE.lst");
+    List e = asList((cls.attr(".rxode2.lst")), ".rxode2.lst");
     CharacterVector c1 = e.attr("names");
     CharacterVector c2 = obj.attr("names");
     int j = 0;
@@ -96,7 +96,7 @@ RObject etUpdate(RObject obj,
     evCur = obj;
     if (rxIs(value, "NULL")){
       CharacterVector cls = clone(asCv(obj.attr("class"), "class"));
-      List e = clone(asList(cls.attr(".RxODE.lst"), ".RxODE.lst"));
+      List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
       if (rxIsChar(arg)){
 	CharacterVector carg = asCv(arg, "arg");
 	std::string sarg = as<std::string>(carg[0]);
@@ -158,7 +158,7 @@ List etEmpty(CharacterVector units){
   Function parse2("parse", R_BaseNamespace);
   Function eval2("eval", R_BaseNamespace);
   // eventTable style methods
-  std::string getUnits= "function() .Call(RxODE:::`_RxODE_et_`, list(getUnits=TRUE) ,list('last'))";
+  std::string getUnits= "function() .Call(rxode2:::`_rxode2_et_`, list(getUnits=TRUE) ,list('last'))";
   e["get.units"] = eval2(_["expr"]   = parse2(_["text"]=getUnits),
 			 _["envir"]  = e);
   
@@ -167,7 +167,7 @@ List etEmpty(CharacterVector units){
   e["get_units"] = eval2(_["expr"]   = parse2(_["text"]=getUnits),
 			 _["envir"]  = e);
 
-  std::string addDosing= "function (dose, nbr.doses = 1L, dosing.interval = 24, \n    dosing.to = 1L, rate = NULL, amount.units = NA_character_, \n    start.time = 0, do.sampling = FALSE, time.units = NA_character_, \n    ...) \n{\n    .lst <- list(dose = dose, nbr.doses = nbr.doses, start.time = start.time, \n        do.sampling = do.sampling, ...)\n    if (!is.na(amount.units)) \n        .lst$amount.units <- amount.units\n    if (!is.na(time.units)) \n        .lst$time.units <- time.units\n    if (dosing.to != 1) \n        .lst$dosing.to <- dosing.to\n    if (!is.null(rate)) \n        .lst$rate <- rate\n    .lst$dosing.interval <- dosing.interval\n    invisible(.Call(RxODE:::`_RxODE_et_`, .lst, list('last')))\n}";
+  std::string addDosing= "function (dose, nbr.doses = 1L, dosing.interval = 24, \n    dosing.to = 1L, rate = NULL, amount.units = NA_character_, \n    start.time = 0, do.sampling = FALSE, time.units = NA_character_, \n    ...) \n{\n    .lst <- list(dose = dose, nbr.doses = nbr.doses, start.time = start.time, \n        do.sampling = do.sampling, ...)\n    if (!is.na(amount.units)) \n        .lst$amount.units <- amount.units\n    if (!is.na(time.units)) \n        .lst$time.units <- time.units\n    if (dosing.to != 1) \n        .lst$dosing.to <- dosing.to\n    if (!is.null(rate)) \n        .lst$rate <- rate\n    .lst$dosing.interval <- dosing.interval\n    invisible(.Call(rxode2:::`_rxode2_et_`, .lst, list('last')))\n}";
 
   e["add.dosing"] = eval2(_["expr"] = parse2(_["text"] = addDosing),
 			  _["envir"]  = e);
@@ -176,7 +176,7 @@ List etEmpty(CharacterVector units){
   e["addDosing"] = eval2(_["expr"] = parse2(_["text"] = addDosing),
 			 _["envir"]  = e);
 
-  std::string addSampling="function(time, time.units = NA) {\n  .lst <- list();\n  .lst$time<-time;\n  if(!is.na(time.units)) .lst$time.units<- time.units\n  invisible(.Call(RxODE:::`_RxODE_et_`, .lst, list('last')));\n}";
+  std::string addSampling="function(time, time.units = NA) {\n  .lst <- list();\n  .lst$time<-time;\n  if(!is.na(time.units)) .lst$time.units<- time.units\n  invisible(.Call(rxode2:::`_rxode2_et_`, .lst, list('last')));\n}";
 
   e["add.sampling"] = eval2(_["expr"] = parse2(_["text"] = addSampling),
 			    _["envir"]  = e);
@@ -185,28 +185,28 @@ List etEmpty(CharacterVector units){
   e["addSampling"] = eval2(_["expr"] = parse2(_["text"] = addSampling),
 			   _["envir"]  = e);
   
-  e["clear.sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(RxODE:::`_RxODE_et_`, list(clearSampling=TRUE),list('last')))"),
+  e["clear.sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearSampling=TRUE),list('last')))"),
 			      _["envir"]  = e);
 
-  e["clear_sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(RxODE:::`_RxODE_et_`, list(clearSampling=TRUE),list('last')))"),
+  e["clear_sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearSampling=TRUE),list('last')))"),
 			      _["envir"]  = e);
 
-  e["clearSampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(RxODE:::`_RxODE_et_`, list(clearSampling=TRUE),list('last')))"),
+  e["clearSampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearSampling=TRUE),list('last')))"),
 			     _["envir"]  = e);
 
 
-  e["clear.dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(RxODE:::`_RxODE_et_`, list(clearDosing=TRUE),list('last')))"),
+  e["clear.dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearDosing=TRUE),list('last')))"),
 			    _["envir"]  = e);
 
-  e["clear_dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(RxODE:::`_RxODE_et_`, list(clearDosing=TRUE),list('last')))"),
+  e["clear_dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearDosing=TRUE),list('last')))"),
 			    _["envir"]  = e);
 
-  e["clearDosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(RxODE:::`_RxODE_et_`, list(clearDosing=TRUE),list('last')))"),
+  e["clearDosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearDosing=TRUE),list('last')))"),
 			   _["envir"]  = e);
 
-  e["simulate"] = eval2(_["expr"] = parse2(_["text"] = "function(object, nsim = 1, seed = NULL, ...){if (!missing(nsim)) Rf_warningcall(R_NilValue, \"'nsim' is ignored when simulating event tables\");if(!is.null(seed)) set.seed(seed); invisible(.Call(RxODE:::`_RxODE_et_`, list(simulate=TRUE),list('last')))}"));
+  e["simulate"] = eval2(_["expr"] = parse2(_["text"] = "function(object, nsim = 1, seed = NULL, ...){if (!missing(nsim)) Rf_warningcall(R_NilValue, \"'nsim' is ignored when simulating event tables\");if(!is.null(seed)) set.seed(seed); invisible(.Call(rxode2:::`_rxode2_et_`, list(simulate=TRUE),list('last')))}"));
 
-  std::string importET = "function(data) invisible(.Call(RxODE:::`_RxODE_et_`, list(data=data),list('import')))";
+  std::string importET = "function(data) invisible(.Call(rxode2:::`_rxode2_et_`, list(data=data),list('import')))";
 
   e["import.EventTable"] = eval2(_["expr"] = parse2(_["text"] = importET),
 				 _["envir"]  = e);
@@ -214,32 +214,32 @@ List etEmpty(CharacterVector units){
   e["importEventTable"] = eval2(_["expr"] = parse2(_["text"] = importET),
 				_["envir"]  = e);
 
-  e["copy"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(copy=TRUE),list('last'))"),
+  e["copy"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(copy=TRUE),list('last'))"),
 		    _["envir"]  = e);
   
-  e["get.EventTable"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.EventTable=TRUE),list('last'))"),
+  e["get.EventTable"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.EventTable=TRUE),list('last'))"),
 			      _["envir"]  = e);
-  e["getEventTable"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.EventTable=TRUE),list('last'))"),
+  e["getEventTable"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.EventTable=TRUE),list('last'))"),
 			     _["envir"]  = e);
-  e["get.obs.rec"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.obs.rec=TRUE),list('last'))"),
+  e["get.obs.rec"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.obs.rec=TRUE),list('last'))"),
 			   _["envir"]  = e);
 
-  e["get.nobs"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.nobs=TRUE),list('last'))"),
+  e["get.nobs"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.nobs=TRUE),list('last'))"),
 			_["envir"]  = e);
 
 
-  e["get.dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.dosing=TRUE),list('last'))"),
+  e["get.dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.dosing=TRUE),list('last'))"),
 			  _["envir"]  = e);
-  e["getDosing"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.dosing=TRUE),list('last'))"),
+  e["getDosing"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.dosing=TRUE),list('last'))"),
 			 _["envir"]  = e);
   
-  e["get.sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.sampling=TRUE),list('last'))"),
+  e["get.sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.sampling=TRUE),list('last'))"),
 			    _["envir"]  = e);
 
-  e["getSampling"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(RxODE:::`_RxODE_et_`, list(get.sampling=TRUE),list('last'))"),
+  e["getSampling"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.sampling=TRUE),list('last'))"),
 			   _["envir"]  = e);
 
-  e["expand"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(RxODE:::`_RxODE_et_`, list(expand=TRUE) ,list('last')))"),
+  e["expand"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(expand=TRUE) ,list('last')))"),
 		      _["envir"]  = e);
   e["nobs"] = 0;
   e["ndose"] = 0;
@@ -294,7 +294,7 @@ List etEmpty(CharacterVector units){
 
   e.attr("class") = "rxHidden";
 
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
 
   lst.attr("names") = nme;
   lst.attr("class") = cls;
@@ -463,7 +463,7 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
   std::copy(curEvid.begin(), curEvid.end(), std::back_inserter(evid));
   double c = 0;
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-  List eOld = cls.attr(".RxODE.lst");
+  List eOld = cls.attr(".rxode2.lst");
   List e = clone(eOld);
   CharacterVector units = e["units"];
   int nobs=0;
@@ -631,7 +631,7 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
   e["show"] = show;
   
   e.attr("class") = "rxHidden";
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   int len = asInt(e["nobs"], "e[\"nobs\"]") +
     asInt(e["ndose"], "e[\"ndose\"]");
@@ -641,7 +641,7 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
 
 List etAddTimes(NumericVector newTimes, IntegerVector IDs, RObject cmt, bool turnOnShowCmt, List curEt){
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-  List eOld = cls.attr(".RxODE.lst");
+  List eOld = cls.attr(".rxode2.lst");
   List e = clone(eOld);
 
   std::vector<double> time;
@@ -835,7 +835,7 @@ List etAddTimes(NumericVector newTimes, IntegerVector IDs, RObject cmt, bool tur
   e["show"] = show;
   e.attr("names") = eOld.attr("names");
   e.attr("class") = "rxHidden";//eOld.attr("class");
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   int len = asInt(e["nobs"], "e[\"nobs\"]") +
     asInt(e["ndose"], "e[\"ndose\"]");
@@ -1088,7 +1088,7 @@ List etImportEventTable(List inData, bool warnings = true){
 						  _["time"]=NA_STRING);
   List lst = etEmpty(units);
   CharacterVector cls = lst.attr("class");
-  List e = cls.attr(".RxODE.lst");
+  List e = cls.attr(".rxode2.lst");
   LogicalVector show = e["show"];
   show["id"] = true;
   show["amt"] = true;
@@ -1166,7 +1166,7 @@ List etImportEventTable(List inData, bool warnings = true){
       ndose++;
     } else {
       // Convert evid
-      if (cmtC) stop(_("old RxODE 'evid' values are not supported with string compartments"));
+      if (cmtC) stop(_("old rxode2 'evid' values are not supported with string compartments"));
       getWh(curevid, &wh, &cmtI, &wh100, &whI, &wh0);
       cmtI++;
       if (cmtI != 1) show["cmt"] = true;
@@ -1417,7 +1417,7 @@ List etImportEventTable(List inData, bool warnings = true){
   e["canResize"] = false;
   e["IDs"] = wrap(uIds);
   lst = etSort(lst);
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   lst.attr("row.names") = IntegerVector::create(NA_INTEGER, -(nobs+ndose));  
   return lst;
@@ -1578,7 +1578,7 @@ List etExpandAddl(List curEt){
     }
   }
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-  List eOld = cls.attr(".RxODE.lst");
+  List eOld = cls.attr(".rxode2.lst");
   List e = clone(eOld);
   LogicalVector show = e["show"];
   e["ndose"] = asInt(e["ndose"], "e[\"ndose\"]")+ndose;
@@ -1586,7 +1586,7 @@ List etExpandAddl(List curEt){
   show["addl"] = false;
   e["show"] = show;
   e.attr("names") = eOld.attr("names");
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   int len = asInt(e["nobs"], "e[\"nobs\"]") +
     asInt(e["ndose"], "e[\"ndose\"]");
@@ -1803,7 +1803,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
     }
   }
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-  List eOld = cls.attr(".RxODE.lst");
+  List eOld = cls.attr(".rxode2.lst");
   List e = clone(eOld);
   LogicalVector show = e["show"];
   if (turnOnShowCmt){
@@ -1837,7 +1837,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
   }
   e["show"] = show;
   e.attr("names") = eOld.attr("names");
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   int len = asInt(e["nobs"], "e[\"nobs\"]") +
     asInt(e["ndose"], "e[\"ndose\"]");
@@ -1848,7 +1848,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
 RObject etUpdateObj(List curEt, bool& update, bool& rxSolve, const bool& turnOnId){
   List lst = clone(curEt);
   CharacterVector cls=clone(asCv(curEt.attr("class"), "class"));
-  List e = clone(asList(cls.attr(".RxODE.lst"), ".RxODE.lst"));
+  List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
   CharacterVector units = e["units"];
   if (!CharacterVector::is_na(units[1])){
     lst["ii"]  = setUnits(lst["ii"],  as<std::string>(units[1]));
@@ -1887,7 +1887,7 @@ RObject etUpdateObj(List curEt, bool& update, bool& rxSolve, const bool& turnOnI
     LogicalVector show = asLv(e["show"], "e[\"show\"]");
     show["id"] = true;
   }
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   int len = asInt(e["nobs"], "e[\"nobs\"]") +
     asInt(e["ndose"], "e[\"ndose\"]");
@@ -1903,7 +1903,7 @@ RObject etUpdateObj(List curEt, bool& update, bool& rxSolve, const bool& turnOnI
     cmp.attr("row.names") = IntegerVector::create(NA_INTEGER, -len);
   }
   if (rxSolve){
-    Function rxs("rxSolve.default", RxODEenv());
+    Function rxs("rxSolve.default", rxode2env());
     return rxs(_["object"]=curSolve, _["events"]=lst);
   } else {
     return as<RObject>(lst);  
@@ -1931,7 +1931,7 @@ RObject etCmtInt(RObject et){
 
 RObject etSetUnit(List curEt, CharacterVector units){
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-  List eOld = cls.attr(".RxODE.lst");
+  List eOld = cls.attr(".rxode2.lst");
   List e = clone(eOld);
   CharacterVector oldUnits = clone(asCv(e["units"], "e[\"units\"]"));
   e["units"] = units;
@@ -1970,7 +1970,7 @@ RObject etSetUnit(List curEt, CharacterVector units){
   } else {
     lst["rate"] = setUnits(lst["rate"], "");
   }
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   return as<RObject>(lst);
 }
@@ -1978,7 +1978,7 @@ RObject etSetUnit(List curEt, CharacterVector units){
 List etResizeId(List curEt, IntegerVector IDs){
   // Calculate size
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-  List eOld = cls.attr(".RxODE.lst");
+  List eOld = cls.attr(".rxode2.lst");
   List e = clone(eOld);
   LogicalVector show = asLv(e["show"], "e[\"show\"]");
   bool showId = asBool(show["id"], "show[\"id\"]");
@@ -2084,11 +2084,11 @@ List etResizeId(List curEt, IntegerVector IDs){
       }
     }
     CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-    List e = asList(cls.attr(".RxODE.lst"), ".RxODE.lst");
+    List e = asList(cls.attr(".rxode2.lst"), ".rxode2.lst");
     e["nobs"] = nobs;
     e["ndose"] = ndose;
     e["IDs"] = wrap(finalIds);
-    cls.attr(".RxODE.lst") = e;
+    cls.attr(".rxode2.lst") = e;
     newEt.attr("class") = cls;
     newEt.attr("names") = curEt.attr("names");
     newEt.attr("row.names") = IntegerVector::create(NA_INTEGER,-(nobs+ndose));
@@ -2175,7 +2175,7 @@ List etResizeId(List curEt, IntegerVector IDs){
       e["show"] = show;
       e["IDs"] = wrap(oldIDs);
       e.attr("class")         = "rxHidden";
-      cls.attr(".RxODE.lst")  = e;
+      cls.attr(".rxode2.lst")  = e;
       newEt.attr("class")     = cls;
       int len = asInt(e["nobs"], "e[\"nobs\"]") +
 	asInt(e["ndose"], "e[\"ndose\"]");
@@ -2193,7 +2193,7 @@ List etResizeId(List curEt, IntegerVector IDs){
 
 RObject getEtSolve(List et__){
   CharacterVector classattr = et__.attr("class");
-  Environment e = asEnv(classattr.attr(".RxODE.env"), ".RxODE.env");
+  Environment e = asEnv(classattr.attr(".rxode2.env"), ".rxode2.env");
   return as<RObject>(getEtRxsolve(e));
 }
 //[[Rcpp::export]]
@@ -2387,7 +2387,7 @@ RObject et_(List input, List et__){
   }
   if (rxIs(curEt, "rxEt")){
     CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-    List e = cls.attr(".RxODE.lst");
+    List e = cls.attr(".rxode2.lst");
     CharacterVector oldUnits = e["units"];
     CharacterVector units(2);
     bool foundUnits = false;
@@ -2438,7 +2438,7 @@ RObject et_(List input, List et__){
 	    return R_NilValue;
 	  } else {
 	    CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-	    List e = clone(asList(cls.attr(".RxODE.lst"), ".RxODE.lst"));
+	    List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
 	    LogicalVector show = e["show"];
 	    List cur = clone(asList(curEt, "curEt"));
 	    CharacterVector curN = cur.attr("names");
@@ -2546,7 +2546,7 @@ RObject et_(List input, List et__){
 	      } else {
 		e["ndose"] = 0;
 	      }
-	      cls.attr(".RxODE.lst") = e;
+	      cls.attr(".rxode2.lst") = e;
 	      for (j = cmp.size(); j--;){
 		cmp[j] = ret[j];
 	      }
@@ -2578,7 +2578,7 @@ RObject et_(List input, List et__){
       	id = asIv(e["IDs"], "e[\"IDs\"]");
       }
       CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-      List e = cls.attr(".RxODE.lst");      
+      List e = cls.attr(".rxode2.lst");      
       CharacterVector cmtS;
       IntegerVector cmtI;
       RObject cmt;
@@ -2624,7 +2624,7 @@ RObject et_(List input, List et__){
 	  if (cmtI.size() == 1){
 	    curEt=etCmtInt(curEt);
 	    cls = clone(asCv(curEt.attr("class"), "class"));
-	    e = cls.attr(".RxODE.lst");
+	    e = cls.attr(".rxode2.lst");
 	    if (cmtI[0] < 0){
 	      cmtNeg = true;
 	    }
@@ -2653,7 +2653,7 @@ RObject et_(List input, List et__){
 	amt[0] = tmpNV[0];
 	if (rxIs(tmpNV, "units")){
 	  CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-	  List e = clone(asList(cls.attr(".RxODE.lst"), ".RxODE.lst"));
+	  List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
 	  CharacterVector units = e["units"];
 	  if (!CharacterVector::is_na(units["dosing"])){
 	    amt = setUnits(tmpNV, as<std::string>(units["dosing"]));
@@ -2775,7 +2775,7 @@ RObject et_(List input, List et__){
 	    NumericVector time = clone(as<NumericVector>(input[timeIx]));
 	    if (rxIs(time, "units")){
 	      CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
-	      List e = clone(as<List>(cls.attr(".RxODE.lst")));
+	      List e = clone(as<List>(cls.attr(".rxode2.lst")));
 	      CharacterVector units = e["units"];
 	      if (!CharacterVector::is_na(units["time"])){
 		time = setUnits(time, as<std::string>(units["time"]));
@@ -2832,7 +2832,7 @@ RObject et_(List input, List et__){
 	  if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), rateChar);
 	  if (rxIs(tmpNV, "units")){
 	    CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
-	    List e = clone(as<List>(cls.attr(".RxODE.lst")));
+	    List e = clone(as<List>(cls.attr(".rxode2.lst")));
 	    CharacterVector units = e["units"];
 	    if (!CharacterVector::is_na(units[1]) && !CharacterVector::is_na(units[0])){
 	      if (rate[0] < 0){
@@ -2860,7 +2860,7 @@ RObject et_(List input, List et__){
 	    if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), durChar);
 	    if (rxIs(tmpNV, "units")){
 	      CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
-	      List e = clone(as<List>(cls.attr(".RxODE.lst")));
+	      List e = clone(as<List>(cls.attr(".rxode2.lst")));
 	      CharacterVector units = e["units"];
 	      if (!CharacterVector::is_na(units[1])){
 		std::string durUnit = as<std::string>(units[0]) + "/" + as<std::string>(units[1]);
@@ -3161,7 +3161,7 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
       maxTime = 0;
       List et = ets[i];
       cls = as<CharacterVector>(et.attr("class"));
-      e = cls.attr(".RxODE.lst");
+      e = cls.attr(".rxode2.lst");
       if (!gotUnits){
 	units = e["units"];
 	show = e["show"];
@@ -3444,7 +3444,7 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
     tmpN[i] = tmpN2[j];
   }
   cls = lst.attr("class");
-  e = cls.attr(".RxODE.lst");
+  e = cls.attr(".rxode2.lst");
   e["ndose"] = ndose;
   e["nobs"]  = nobs;
   e["show"]  = show;
@@ -3455,7 +3455,7 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
     show["id"] = false;
     e["IDs"] = wrap(IDs);
   }
-  cls.attr(".RxODE.lst") = e;
+  cls.attr(".rxode2.lst") = e;
   lst.attr("class") = cls;
   lst.attr("row.names") = IntegerVector::create(NA_INTEGER, -(nobs+ndose));
   return lst;
@@ -3469,7 +3469,7 @@ List etRep_(RObject curEt, int times, NumericVector wait, IntegerVector ids, int
     stop(_("'wait' cannot be a vector"));
   }
   CharacterVector cls = as<CharacterVector>(curEt.attr("class"));
-  List e = cls.attr(".RxODE.lst");
+  List e = cls.attr(".rxode2.lst");
   CharacterVector units = e["units"];
   if (rxIs(wait, "units")){
     wait = setUnits(wait, as<std::string>(units["time"]));

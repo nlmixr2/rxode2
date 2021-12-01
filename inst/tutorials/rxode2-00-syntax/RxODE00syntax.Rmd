@@ -1,16 +1,16 @@
 ---
-title: "RxODE syntax"
+title: "rxode2 syntax"
 output: 
   learnr::tutorial:
     progressive: true
 runtime: shiny_prerendered
 description: >
-  This covers the basic syntax supported for `RxODE` models and how to compile the models using `RxODE`
+  This covers the basic syntax supported for `rxode2` models and how to compile the models using `rxode2`
 ---
 
 ```{r setup, include=FALSE}
 library(learnr)
-library(RxODE)
+library(rxode2)
 library(ggplot2)
 knitr::opts_chunk$set(echo = FALSE)
 ```
@@ -20,59 +20,59 @@ From Rstudio 1.3+ tutorial pane you can use the expand button
 
 ## Creating Compiled models
 
-`RxODE` currently supports differential equations using Leibniz
+`rxode2` currently supports differential equations using Leibniz
 notation, that is `d/dt(x)`. These differential equations can be in
 one of the following locations:
 
 1. In a separate model definition file
 2. Inline in a string
-3. In an R expression passed to `RxODE` in brackets `{}`
+3. In an R expression passed to `rxode2` in brackets `{}`
 
-Each of these can be directly passed into the `RxODE` function.  This
+Each of these can be directly passed into the `rxode2` function.  This
 translates the input into compiled C code that can be used to quickly
 run ODE solutions.
 
-### Creating an RxODE model in 3 ways
+### Creating an rxode2 model in 3 ways
 
-*This is a simple exercise to create a RxODE model from more than one model definition*
+*This is a simple exercise to create a rxode2 model from more than one model definition*
 
 Change the below R code to:
 
 - Move the model definition to an inline string `ode`
-- Once the inline string method is complete, use the `RxODE({})`
+- Once the inline string method is complete, use the `rxode2({})`
   method to specify the ODE inline.
 
-```{r RxODE_model, exercise=TRUE}
-## This example creates an ODE with a file tmp.rxode
+```{r rxode2_model, exercise=TRUE}
+## This example creates an ODE with a file tmp.rxode2
 ## The learnr won't create the file, so change this to be an inline
 ## string
-sink("tmp.rxode")
+sink("tmp.rxode2")
 cat("d/dt(center)=-kel*center\n")
 sink()
-model <- RxODE("tmp.rxode")
+model <- rxode2("tmp.rxode2")
 print(model)
 ```
 
 
-<div id="RxODE_model-hint">
+<div id="rxode2_model-hint">
 You may wish to take out the `sink` statements and change the `cat` to `ode=`
 </div>
 
-### Create an RxODE model inline 
+### Create an rxode2 model inline 
 
-Now change the string-based model to an inline `RxODE` model:
+Now change the string-based model to an inline `rxode2` model:
 
-```{r RxODE_inline, exercise=TRUE}
+```{r rxode2_inline, exercise=TRUE}
 ## This is an ode model defined by a string; 
-## Change it to be defined inline, that is RxODE({})
+## Change it to be defined inline, that is rxode2({})
 out = "d/dt(center)=-kel*center"
-model <- RxODE(out)
+model <- rxode2(out)
 print(model)
 ```
 
 
-```{r RxODE_inline-solution}
-model <- RxODE({
+```{r rxode2_inline-solution}
+model <- rxode2({
   d/dt(center) <- -kel*center
 })
 print(model)
@@ -80,20 +80,20 @@ print(model)
 
 ## Pre-Quiz - ODE syntax
 
-We briefly touched on the ODE syntax in `RxODE`.  Based on what you
-know so far, What is the way you specify ODE equations in `RxODE`?
+We briefly touched on the ODE syntax in `rxode2`.  Based on what you
+know so far, What is the way you specify ODE equations in `rxode2`?
 
 ```{r odeQuiz}
 quiz(
-  question("What is the syntax for ODEs in RxODE",
+  question("What is the syntax for ODEs in rxode2",
     answer("`DXDT_state = -k*state`"),
     answer("`ddt_state = -k*state`"),
     answer("`DADT(1)=-K*A(1)`"),
     answer("`d/dt(state)=-k*state`", correct = TRUE),
     answer("`d/dy(state)=-m*state`")
   ),
-  question("Do you have to use `=` for RxODE ODE assignments?",
-    answer("Yes, RxODE requires `=` for ODE assignment"),
+  question("Do you have to use `=` for rxode2 ODE assignments?",
+    answer("Yes, rxode2 requires `=` for ODE assignment"),
     answer("No, You may use `=` or `<-` to assign ODE equations", correct=TRUE)
   )
 )
@@ -101,7 +101,7 @@ quiz(
 
 ## Simple and time derivative statements
 
-The most fundamental part of an `RxODE` model are simple assignments
+The most fundamental part of an `rxode2` model are simple assignments
 and time-derivative assignments:
 
 - **simple** assignments, where the left hand is an identifier (i.e.,
@@ -110,7 +110,7 @@ and time-derivative assignments:
   specifies the change of the amount in the corresponding state
   variable (compartment) with respect to time e.g., `d/dt(depot)`. 
   
-Once these variables are assigned in the RxODE model, RxODE parses the
+Once these variables are assigned in the rxode2 model, rxode2 parses the
 model and separates the following types of variables:
 
 - `state` - This gives a list of names the ODE state variables. These
@@ -118,26 +118,26 @@ model and separates the following types of variables:
   is the first compartment listed.
 - `params` - This gives a list of names of parameters that need to be
   specified (as a defined parameter, supplied parameter, or
-  covariate).  If you use `summary(rxodeModel)` it will show you what
+  covariate).  If you use `summary(rxode2Model)` it will show you what
   parameters still need to be defined.
 - `lhs` - This gives a parameter that is calculated instead of
   supplied or used as a ODE `state`.
 
 Each of these properties can be accessed with the `$` R operator. For
-example if you have an `RxODE` compiled model `mod`, you can access
+example if you have an `rxode2` compiled model `mod`, you can access
 the state names by `mod$state`
 
-### Exercise - Fix RxODE model and solve
+### Exercise - Fix rxode2 model and solve
 
 With the knowledge of how simple statements are defined, you can
-figure out what is going wrong with a simple `RxODE` model.
+figure out what is going wrong with a simple `rxode2` model.
 
 In this exercise, fix the model by adding a parameter value to the
 following code assign the missing parameter value to 1
 
 ```{r rxParams, exercise=TRUE}
 ## 
-mod1 <-RxODE({
+mod1 <-rxode2({
     KA <- .294
     CL=18.6
     V2=40.2 # central 
@@ -164,7 +164,7 @@ rxSolve(mod1,et(amt=10000, ii=12, until=24) %>% et(0,24,length.out=24)) %>%
 
 ```{r rxParams-solution}
 ## 
-mod1 <-RxODE({
+mod1 <-rxode2({
     KA <- .294
     CL=18.6
     V2=40.2 # central 
@@ -218,8 +218,8 @@ that can be added to each state:
   duration of the infusion: `dur(depot) = `
 
 More information about the event specification for the duration/rate
-  items can be found in the [RxODE events
-  vignette](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-event-types.html).
+  items can be found in the [rxode2 events
+  vignette](https://nlmixrdevelopment.github.io/rxode2/articles/rxode2-event-types.html).
   
 **Important:** By default, these special properties can only be defined after a state has been defined by `d/dt(state)=`.  
 
@@ -231,7 +231,7 @@ With the old model:
 - Set the initial `eff` compartment value to `1`.
 
 ```{r rxF, exercise=TRUE}
-mod1 <-RxODE({
+mod1 <-rxode2({
     KA <- .294
     CL=18.6
     V2=40.2 # central 
@@ -260,7 +260,7 @@ rxSolve(mod1,et(amt=10000, ii=12, until=24) %>% et(0,24,length.out=24)) %>%
 
 ```{r rxF-solution}
 ## 
-mod1 <-RxODE({
+mod1 <-rxode2({
     KA <- .294
     CL=18.6
     V2=40.2 # central 
@@ -297,10 +297,10 @@ you can add to your model to change the compartment behavior
 
 - **Compartment declaration statements** `cmt(compartmentName)`. This
   can change the compartment order.  The order of states in the
-  `RxODE` model is determined by the order you see `cmt()` statements
+  `rxode2` model is determined by the order you see `cmt()` statements
   and `d/dt()=` statements. Therefore, to adjust the default dose (ie
   `cmt=1`) you simply need to specify right `cmt()`at the top of the
-  `RxODE` model. This is useful for matching event table compartments
+  `rxode2` model. This is useful for matching event table compartments
   to what you want them to be.
 
 - **modeled times**.  These model times are specified by
@@ -321,7 +321,7 @@ first compartment to `centr`
 
 
 ```{r cmt,exercise=TRUE}
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(depot) # the first compartment/default dose is depot
   KA <- .294
   CL=18.6
@@ -348,7 +348,7 @@ rxSolve(mod1,et(amt=10000, ii=12, until=24) %>% et(0,24,length.out=24)) %>%
 
 
 ```{r cmt-solution}
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(centr) # the first compartment/default dose is depot
   KA <- .294
   CL=18.6
@@ -384,7 +384,7 @@ an observation you wrap it in the `mtime()` function, ie
 `mtime(var)=X`
 
 ```{r mtime, exercise=TRUE}
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(centr) # the first compartment/default dose is depot
   KA <- .294
   CL=18.6
@@ -413,7 +413,7 @@ rxSolve(mod1,et(amt=10000, ii=12, until=24) %>%
 
 
 ```{r mtime-solution}
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(centr) # the first compartment/default dose is depot
   KA <- .294
   CL=18.6
@@ -448,11 +448,11 @@ hour time-points.
 
 ## If/else clauses
 
-`RxODE` also supports the standard `if`/`else` clauses; A more common
+`rxode2` also supports the standard `if`/`else` clauses; A more common
 use of `mtime()=` variables is to make sure that a time-point is
-captured when a key variable changes. The `RxODE` `if` and `else`
+captured when a key variable changes. The `rxode2` `if` and `else`
 allow time-changes to occur in a model like you would use in a
-standard `RxODE` block.  Using the internal variable `t` for time you
+standard `rxode2` block.  Using the internal variable `t` for time you
 can adjust parameters and make sure they show up in the model.
 
 ### Exercise 2 -- Make sure that the change point is observed
@@ -462,7 +462,7 @@ a modeling time-point.
 
 ```{r if-else, exercise=TRUE}
 library(ggplot2)
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(centr) # the first compartment/default dose is depot
   KA <- .294
   V2=40.2 # central 
@@ -495,7 +495,7 @@ rxSolve(mod1,et(amt=10000, ii=12, until=24) %>%
 ```
 
 ```{r if-else-solution}
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(centr) # the first compartment/default dose is depot
   KA <- .294
   V2=40.2 # central 
@@ -530,8 +530,8 @@ rxSolve(mod1,et(amt=10000, ii=12, until=24) %>%
 
 ## Suppressing output
 
-One last note about `RxODE`, you can suppress columns in the solved
-output (by default `RxODE` outputs all `$state` values and `$lhs`
+One last note about `rxode2`, you can suppress columns in the solved
+output (by default `rxode2` outputs all `$state` values and `$lhs`
 values).  This is done by modifing either the simple assigment or
 time-derivative assignment `d/dt(state)=...` to use `~` instead of the
 standard assignment operators `<-` or `=`
@@ -542,7 +542,7 @@ Instead of creating a large matrix of output, change the output to
 include only `C2`
 
 ```{r suppress, exercise=TRUE}
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(centr) # the first compartment/default dose is depot
   KA <- .294
   V2=40.2 # central 
@@ -578,7 +578,7 @@ rxSolve(mod1,et(amt=10000, ii=12, until=24) %>%
 
 
 ```{r suppress-solution}
-mod1 <-RxODE({
+mod1 <-rxode2({
   cmt(centr) # the first compartment/default dose is depot
   KA ~ .294
   V2~40.2 # central 
@@ -624,7 +624,7 @@ and clearances. Clearances are specified by NONMEM-style names of
 `CLD2`. Volumes are specified by Central (`VC` or `V`),
 Peripheral/Tissue (`VP`, `VT`). 
 
-Another popular parameterization is in terms of micro-constants. RxODE
+Another popular parameterization is in terms of micro-constants. rxode2
 assumes compartment `1` is the central compartment.  The elimination
 constant would be specified by `K`, `Ke` or `Kel`. 
 
@@ -633,7 +633,7 @@ The last parameterization possible is using `alpha` and `V` and/or
 
 To see some tables of tested parameters for `linCmt()` you can go to
 the [`linCmt()`
-vignette](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-model-types.html#solved-compartment-models)
+vignette](https://nlmixrdevelopment.github.io/rxode2/articles/rxode2-model-types.html#solved-compartment-models)
 
 Once the `linCmt()` sleuthing is complete, the `1`, `2` or `3`
 compartment model solution is used as the value of `linCmt()`.
@@ -656,7 +656,7 @@ The model below is a 2 compartment IV model; Change the model to be a 2-compartm
 oral absorption model by adding a `Ka` parameter.
 
 ```{r lincmt, exercise=TRUE}
-mod1 <-RxODE({
+mod1 <-rxode2({
   V2~40.2 # central 
   Q ~10.5
   V3~297.0 # peripheral
@@ -680,14 +680,14 @@ Put in the `KA = .294` parameter to change the model
 
 ### Exercise 2: Mixing ODE and PK solved systems
 
-One of the nice features of `RxODE` is it can also mix `linCmt()`
+One of the nice features of `rxode2` is it can also mix `linCmt()`
 solutions and ODE solutions.
 
 As an exercise change the below model to drop the `depot` and
 `central` ODE definitions:
 
 ```{r linCmt-mix, exercise=TRUE}
-mod1 <-RxODE({
+mod1 <-rxode2({
   KA ~ .294
   V2~40.2 # central 
   Q ~10.5
@@ -729,7 +729,7 @@ In this exercise use `print(mod1)` to get an idea of what the
 compartment numbers are for the model.
 
 ```{r linCmt-cmt, exercise=TRUE}
-mod1 <-RxODE({
+mod1 <-rxode2({
   KA ~ .294
   V2~40.2 # central 
   Q ~10.5
@@ -752,14 +752,14 @@ lists the extra states.  In this case the `depot` compartment is the
 extra states always are numbered after the ODE states have been
 specified.
 
-**Note:** `RxODE` cannot currently use `cmt()` on the `depot` and
+**Note:** `rxode2` cannot currently use `cmt()` on the `depot` and
 `central` compartments for solved systems to change their compartment
 number.
 
 
 ## Jacobian-derivatives
 
-There is one more type of syntax that you may see in `RxODE` models, the **Jacobain** syntax; ie:
+There is one more type of syntax that you may see in `rxode2` models, the **Jacobain** syntax; ie:
 
 - special **Jacobian-derivative** assignments, where the left hand
   specifies the change in the compartment ode with respect to a
@@ -771,12 +771,12 @@ There is one more type of syntax that you may see in `RxODE` models, the **Jacob
 The Following code is an example of Jacobain syntax:
 
 ```{r jac, exercise=TRUE}
-van <- RxODE({
+van <- rxode2({
   d/dt(dy)=y
   d/dt(y)=mu*(1-dy^2)*y-dy
 })
 
-van <- RxODE({
+van <- rxode2({
     d/dt(dy) = y
     d/dt(y) = -dy + y * mu * (1 - dy^2)
     df(dy)/dy(dy) = 0
@@ -791,12 +791,12 @@ van <- RxODE({
 ## uses the Jacobian specification currently
 ```
 
-Note if `RxODE` is setup completely, you can automatically calculate
-the Jacoabian by `RxODE({}, calcJac=TRUE)`
+Note if `rxode2` is setup completely, you can automatically calculate
+the Jacoabian by `rxode2({}, calcJac=TRUE)`
 
 ## Summary
 
-`RxODE` model syntax comprises of:
+`rxode2` model syntax comprises of:
 
 - **simple** assignments, where the left hand is an identifier (i.e.,
   variable)
@@ -810,8 +810,8 @@ the Jacoabian by `RxODE({}, calcJac=TRUE)`
   (`f(depot)=1`), **lag time** (`lag(depot)=0`), **modeled rate**
   (`rate(depot)=2`) and **modeled duration** (`dur(depot)=2`). An
   example of these model features and the event specification for the
-  modeled infusions the RxODE data specification is found in [RxODE
-  events vignette](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-event-types.html).
+  modeled infusions the rxode2 data specification is found in [rxode2
+  events vignette](https://nlmixrdevelopment.github.io/rxode2/articles/rxode2-event-types.html).
 - **Compartment declaration statements**, which can change the default
   dosing compartment and the assumed compartment number(s) as well as
   add extra compartment names at the end (useful for multiple-endpoint
@@ -829,7 +829,7 @@ the Jacoabian by `RxODE({}, calcJac=TRUE)`
 Note that assignment can be done by `=` or `<-`.
 
 Additionally, assignment can be done with the `~` operator, which
-causes RxODE to use the variable/expression while solving but suppress
+causes rxode2 to use the variable/expression while solving but suppress
 output to either the matrix or data-frame returned in R.
 
 Also note `linCmt()` can be used to specify linear compartmental models.

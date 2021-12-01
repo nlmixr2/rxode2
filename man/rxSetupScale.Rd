@@ -7,7 +7,7 @@
 rxSetupScale(obj, scale = NULL, extraArgs = NULL)
 }
 \arguments{
-\item{obj}{RxODE object}
+\item{obj}{rxode2 object}
 
 \item{extraArgs}{A list of extra args to parse for initial conditions.}
 

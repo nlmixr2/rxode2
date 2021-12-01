@@ -12,7 +12,7 @@ rxodeTest({
 
     # zero-order absorption with lag time 2-compartment
 
-    mod <- RxODE({
+    mod <- rxode2({
       CL <- CLr + CLnr
       C2 <- central / Vc * 1000
       d / dt(central) <- -CL / Vc * central - Q / Vc * central + Q / Vp * periph
@@ -36,7 +36,7 @@ rxodeTest({
     theta2 <- c(D = TV_D * 10, CLr = TV_CLr, CLnr = TV_CLnr, Vc = TV_Vc, Vp = TV_Vp, Q = TV_Q, alag = TV_alag)
     sim2 <- expect_warning(rxSolve(mod, theta2, ev2), NA)
 
-    mod <- RxODE({
+    mod <- rxode2({
       CL <- CLr + CLnr
       C2 <- central / Vc * 1000
       d / dt(central) <- -CL / Vc * central - Q / Vc * central + Q / Vp * periph

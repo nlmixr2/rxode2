@@ -26,11 +26,11 @@ g.y.log10 <- function(breaks = g.log.breaks.major, minor_breaks = g.log.breaks.m
   ggplot2::scale_y_log10(..., labels = labels, breaks = breaks, minor_breaks = minor_breaks)
 }
 
-#' Use Shiny to help develop an RxODE model
+#' Use Shiny to help develop an rxode2 model
 #'
-#' @param object A RxODE family of objects. If not supplied a
+#' @param object A rxode2 family of objects. If not supplied a
 #'     2-compartment indirect effect model is used.  If it is
-#'     supplied, use the model associated with the RxODE object for
+#'     supplied, use the model associated with the rxode2 object for
 #'     the model exploration.
 #' @param params Initial parameters for model
 #' @param events Event information (currently ignored)
@@ -39,7 +39,7 @@ g.y.log10 <- function(breaks = g.log.breaks.major, minor_breaks = g.log.breaks.m
 #'     do anything.
 #' @param data Any data that you would like to plot.  If the data has
 #'     a `time` variable as well as a compartment or calculated
-#'     variable that matches the RxODE model, the data will be added
+#'     variable that matches the rxode2 model, the data will be added
 #'     to the plot of a specific compartment or calculated variable.
 #' @return Nothing; Starts a shiny server
 #' @author Zufar Mulyukov and Matthew L. Fidler
@@ -163,7 +163,7 @@ $(document).on("keyup", function(e) {
       values$msg <- capture.output(
         tryCatch(
           {
-            values$m1 <- RxODE(model = input$ode, wd = tmp)
+            values$m1 <- rxode2(model = input$ode, wd = tmp)
             values$cmts <- rxState(values$m1)
             values$pars <- .rxParams(values$m1)
           },

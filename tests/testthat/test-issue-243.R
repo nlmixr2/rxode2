@@ -24,7 +24,7 @@ rxodeTest(
       e0 <- exp(te0)
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       tless <- 0
       if (t < Tmax) {
         tless <- 1

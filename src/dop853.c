@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h> /* dj: malloc.h */
@@ -12,7 +12,7 @@
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -771,16 +771,16 @@ int dop853
   else if (nrdens)
     {
       /* is there enough memory to allocate rcont12345678&indir ? */
-      rcont1 = Calloc(nrdens,double);
-      rcont2 = Calloc(nrdens,double);
-      rcont3 = Calloc(nrdens,double);
-      rcont4 = Calloc(nrdens,double);
-      rcont5 = Calloc(nrdens,double);
-      rcont6 = Calloc(nrdens,double);
-      rcont7 = Calloc(nrdens,double);
-      rcont8 = Calloc(nrdens,double);
+      rcont1 = R_Calloc(nrdens,double);
+      rcont2 = R_Calloc(nrdens,double);
+      rcont3 = R_Calloc(nrdens,double);
+      rcont4 = R_Calloc(nrdens,double);
+      rcont5 = R_Calloc(nrdens,double);
+      rcont6 = R_Calloc(nrdens,double);
+      rcont7 = R_Calloc(nrdens,double);
+      rcont8 = R_Calloc(nrdens,double);
       if (nrdens < n)
-        indir = Calloc(n,int);
+        indir = R_Calloc(n,int);
 
       if (!rcont1 || !rcont2 || !rcont3 || !rcont4 || !rcont5 ||
           !rcont6 || !rcont7 || !rcont8 || (!indir && (nrdens < n)))
@@ -858,17 +858,17 @@ int dop853
     hmax = xend - x;
 
   /* is there enough free memory for the method ? */
-  yy1 =Calloc(n,double);
-  k1 = Calloc(n,double);
-  k2 = Calloc(n,double);
-  k3 = Calloc(n,double);
-  k4 = Calloc(n,double);
-  k5 = Calloc(n,double);
-  k6 = Calloc(n,double);
-  k7 = Calloc(n,double);
-  k8 = Calloc(n,double);
-  k9 = Calloc(n,double);
-  k10 = Calloc(n,double);
+  yy1 =R_Calloc(n,double);
+  k1 = R_Calloc(n,double);
+  k2 = R_Calloc(n,double);
+  k3 = R_Calloc(n,double);
+  k4 = R_Calloc(n,double);
+  k5 = R_Calloc(n,double);
+  k6 = R_Calloc(n,double);
+  k7 = R_Calloc(n,double);
+  k8 = R_Calloc(n,double);
+  k9 = R_Calloc(n,double);
+  k10 = R_Calloc(n,double);
 
   if (!yy1 || !k1 || !k2 || !k3 || !k4 || !k5 || !k6 || !k7 || !k8 || !k9 || !k10)
     {
@@ -881,45 +881,45 @@ int dop853
   if (arret)
     {
       if (k10)
-        Free (k10);
+        R_Free (k10);
       if (k9)
-        Free (k9);
+        R_Free (k9);
       if (k8)
-        Free (k8);
+        R_Free (k8);
       if (k7)
-        Free (k7);
+        R_Free (k7);
       if (k6)
-        Free (k6);
+        R_Free (k6);
       if (k5)
-        Free (k5);
+        R_Free (k5);
       if (k4)
-        Free (k4);
+        R_Free (k4);
       if (k3)
-        Free (k3);
+        R_Free (k3);
       if (k2)
-        Free (k2);
+        R_Free (k2);
       if (k1)
-        Free (k1);
+        R_Free (k1);
       if (yy1)
-        Free (yy1);
+        R_Free (yy1);
       if (indir)
-        Free (indir);
+        R_Free (indir);
       if (rcont8)
-        Free (rcont8);
+        R_Free (rcont8);
       if (rcont7)
-        Free (rcont7);
+        R_Free (rcont7);
       if (rcont6)
-        Free (rcont6);
+        R_Free (rcont6);
       if (rcont5)
-        Free (rcont5);
+        R_Free (rcont5);
       if (rcont4)
-        Free (rcont4);
+        R_Free (rcont4);
       if (rcont3)
-        Free (rcont3);
+        R_Free (rcont3);
       if (rcont2)
-        Free (rcont2);
+        R_Free (rcont2);
       if (rcont1)
-        Free (rcont1);
+        R_Free (rcont1);
 
       return -1;
     }
@@ -927,29 +927,29 @@ int dop853
     {
       idid = dopcor (nptr, fcn, x, y, xend, hmax, h, rtoler, atoler, itoler, fileout,
                      solout, iout, nmax, uround, meth, nstiff, safe, beta, fac1, fac2, icont);
-      Free (k10);
-      Free (k9);
-      Free (k8);
-      Free (k7);
-      Free (k6);
-      Free (k5);    /* reverse order Freeing too increase chances */
-      Free (k4);    /* of efficient dynamic memory managing       */
-      Free (k3);
-      Free (k2);
-      Free (k1);
-      Free (yy1);
+      R_Free (k10);
+      R_Free (k9);
+      R_Free (k8);
+      R_Free (k7);
+      R_Free (k6);
+      R_Free (k5);    /* reverse order R_Freeing too increase chances */
+      R_Free (k4);    /* of efficient dynamic memory managing       */
+      R_Free (k3);
+      R_Free (k2);
+      R_Free (k1);
+      R_Free (yy1);
       if (indir)
-        Free (indir);
+        R_Free (indir);
       if (rcont8)
         {
-          Free (rcont8);
-          Free (rcont7);
-          Free (rcont6);
-          Free (rcont5);
-          Free (rcont4);
-          Free (rcont3);
-          Free (rcont2);
-          Free (rcont1);
+          R_Free (rcont8);
+          R_Free (rcont7);
+          R_Free (rcont6);
+          R_Free (rcont5);
+          R_Free (rcont4);
+          R_Free (rcont3);
+          R_Free (rcont2);
+          R_Free (rcont1);
         }
 
       return idid;

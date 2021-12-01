@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 // [[Rcpp::interfaces(r, cpp)]]
 //#undef NDEBUG
 #include <Rcpp.h>
@@ -7,7 +7,7 @@ using namespace Rcpp;
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -397,8 +397,8 @@ List rxExpandNesting(const RObject& obj, List& nestingInfo,
   List ret(3);
   retS += as<std::string>(mod[0]);
   if (compile){
-    Function rxode = getRxFn("RxODE");
-    RObject retO = rxode(retS);
+    Function rxode2 = getRxFn("rxode2");
+    RObject retO = rxode2(retS);
     ret[0] = retO;
   } else {
     ret[0] = retS;

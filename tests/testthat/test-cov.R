@@ -5,7 +5,7 @@ rxodeTest(
 
         context(sprintf("Simple test for time-varying covariates (%s)", meth))
 
-        ode <- RxODE({
+        ode <- rxode2({
           b <- -1
           d / dt(X) <- a * X + Y * Z
           d / dt(Y) <- b * (Y - Z)
@@ -239,7 +239,7 @@ rxodeTest(
         .Names = c("TIME", "AMT", "V2I", "V1I", "CLI", "EVID")
         )
 
-        mod1 <- RxODE({
+        mod1 <- rxode2({
           d / dt(A_centr) <- -A_centr * (CLI / V1I + 204 / V1I) + 204 * A_periph / V2I
           d / dt(A_periph) <- 204 * A_centr / V1I - 204 * A_periph / V2I
           d / dt(A_circ) <- -4 * A_circ * exp(-ETA[2] - THETA[2]) + 4 * A_tr3 * exp(-ETA[2] - THETA[2])
@@ -391,14 +391,14 @@ rxodeTest(
         row.names = c(NA, -52L), class = "data.frame"
         )
 
-        mod <- RxODE({
+        mod <- rxode2({
           CLpop <- 2 # clearance
           Vpop <- 10 # central volume of distribution
           CL <- CLpop * (CLCR / 100)
           V <- Vpop
         })
 
-        mod2 <- RxODE({
+        mod2 <- rxode2({
           CLpop <- 2 # clearance
           Vpop <- 10 # central volume of distribution
           CL <- CLpop * (CLCR / 100)

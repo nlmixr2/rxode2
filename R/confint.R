@@ -1,10 +1,10 @@
 #' @export
 confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   sim.id <- id <- NULL # rcheck nonsense
-  RxODE::rxReq("data.table")
+  rxode2::rxReq("data.table")
   ## p1 <-eff <-Percentile <-sim.id <-id <-p2 <-p50 <-p05 <- p95 <- . <- time <- trt <- NULL
-  ## RxODE::rxReq("dplyr")
-  ## RxODE::rxReq("tidyr")
+  ## rxode2::rxReq("dplyr")
+  ## rxode2::rxReq("tidyr")
   if (level <= 0 || level >= 1) {
     stop("simulation summaries must be between 0 and 1", call. = FALSE)
   }

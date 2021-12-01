@@ -3,7 +3,7 @@
 \name{rxValidate}
 \alias{rxValidate}
 \alias{rxTest}
-\title{Validate RxODE
+\title{Validate rxode2
 This allows easy validation/qualification of nlmixr by running the
 testing suite on your system.}
 \usage{
@@ -18,7 +18,7 @@ rxTest(type = NULL)
 nothing
 }
 \description{
-Validate RxODE
+Validate rxode2
 This allows easy validation/qualification of nlmixr by running the
 testing suite on your system.
 }

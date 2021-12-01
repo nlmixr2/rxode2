@@ -29,7 +29,7 @@
 #' }
 #' @export
 rxExpandGrid <- function(x, y, type = 0L) {
-  .Call(`_RxODE_rxExpandGrid_`, x, y, type)
+  .Call(`_rxode2_rxExpandGrid_`, x, y, type)
 }
 
 ## Assumes model is loaded.
@@ -128,7 +128,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 
 
 ## Check for good functions for predfn and pkpars and error functions
-.goodFns <- c(".GlobalEnv", "package:RxODE", "package:nlmixr")
+.goodFns <- c(".GlobalEnv", "package:rxode2", "package:nlmixr")
 .checkGood <- function(x) {
   .tmp <- suppressWarnings({
     find(deparse1(substitute(x)))
@@ -144,10 +144,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
 
 #' Get the state information for the current model
 #'
-#' @param obj RxODE model that can take rxModelVars
+#' @param obj rxode2 model that can take rxModelVars
 #' @return character vector of initial preserved states (state),
 #'     extra states (statef) and dvid translation information
-#'     (dvid). This is used in generating the final RxODE model.
+#'     (dvid). This is used in generating the final rxode2 model.
 #' @author Matthew Fidler
 #' @noRd
 .rxGenFunState <- function(obj) {
@@ -176,7 +176,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   return(c(state = .state0, statef = .statef, dvid = .dvidF))
 }
 
-#' Generate a RxODE block augmented by a pkpars function
+#' Generate a rxode2 block augmented by a pkpars function
 #'
 #' @inheritParams rxSEinner
 #' @return New model augmented by pred function
@@ -219,10 +219,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
     return(rx)
   }
 }
-#' Generate Augmented pred/err RxODE model
+#' Generate Augmented pred/err rxode2 model
 #'
 #' @inheritParams rxSEinner
-#' @return A list of (1) RxODE model variables augmented with
+#' @return A list of (1) rxode2 model variables augmented with
 #'     pred/error information and (2) extra error variables created.
 #' @author Matthew L Fidler
 #' @noRd
@@ -301,10 +301,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
   return(.newmod)
 }
 
-#' Generate and load RxODE function into sympy environment
+#' Generate and load rxode2 function into sympy environment
 #'
 #' @inheritParams rxSEinner
-#' @param full A boolean indicating if RxODE is creating a full model
+#' @param full A boolean indicating if rxode2 is creating a full model
 #'   or a SAEM model
 #' @return Sympy environment
 #' @author Matthew Fidler
@@ -424,9 +424,9 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .ret <- .ret[-c(1, length(.ret))]
   paste(.ret, collapse = "\n")
 }
-#' Generate pred-only SAEM RxODE model
+#' Generate pred-only SAEM rxode2 model
 #'
-#' @param obj RxODE model (text or actual model)
+#' @param obj rxode2 model (text or actual model)
 #' @param predfn prediction function
 #' @param pkpars PKpars function
 #' @param sum.prod Change addition and deletion to sum() and prod()
@@ -437,7 +437,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #'   loaded into symengine.  This cause all the ODEs to be collapsed
 #'   into one expression that is eventually optimized if
 #'   `optExpression` is `TRUE`.
-#' @return RxODE text
+#' @return rxode2 text
 #' @author Matthew Fidler
 #' @keywords internal
 #' @export
@@ -546,7 +546,7 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
 #' Generate the ETA sensitivities for FO related methods
 #'
 #' @inheritParams rxSEinner
-#' @return RxODE/symengine environment
+#' @return rxode2/symengine environment
 #' @author Matthew L. Fidler
 #' @noRd
 .rxGenEtaS <- function(obj, predfn, pkpars = NULL, errfn = NULL,
@@ -577,7 +577,7 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
 #' Generate the d(err)/d(eta) values for FO related methods
 #'
 #' @inheritParams rxSEinner
-#' @return RxODE/symengine environment
+#' @return rxode2/symengine environment
 #' @author Matthew L. Fidler
 #' @noRd
 .rxGenHdEta <- function(obj, predfn, pkpars = NULL, errfn = NULL,
@@ -629,9 +629,9 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
   rxProgressStop()
   return(.s)
 }
-#' Finalize RxODE pred based on symengine saved info
+#' Finalize rxode2 pred based on symengine saved info
 #'
-#' @param .s Symengine/RxODE object
+#' @param .s Symengine/rxode2 object
 #' @inheritParams rxSEinner
 #' @return Nothing
 #' @author Matthew L Fidler
@@ -696,9 +696,9 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
     .s$..pred <- rxOptExpr(.s$..pred, "EBE model")
   }
 }
-#' Finalize inner RxODE based on symengine saved info
+#' Finalize inner rxode2 based on symengine saved info
 #'
-#' @param .s Symengine/RxODE object
+#' @param .s Symengine/rxode2 object
 #' @inheritParams rxSEinner
 #' @return Nothing
 #' @author Matthew L Fidler
@@ -750,7 +750,7 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
 #' Generate FOCE without interaction
 #'
 #' @inheritParams rxSEinner
-#' @return RxODE/symengine environment
+#' @return rxode2/symengine environment
 #' @author Matthew Fidler
 .rxGenFoce <- function(obj, predfn, pkpars = NULL, errfn = NULL,
                        init = NULL, pred.minus.dv = TRUE,
@@ -775,7 +775,7 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
 #' Generate pieces for FOCEi inner problem
 #'
 #' @inheritParams rxSEinner
-#' @return RxODE/symengine environment
+#' @return rxode2/symengine environment
 #' @author Matthew L. Fidler
 #' @noRd
 .rxGenFocei <- function(obj, predfn, pkpars = NULL, errfn = NULL,
@@ -817,7 +817,7 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
 #' Generate pieces for EBE only problem
 #'
 #' @inheritParams rxSEinner
-#' @return RxODE/symengine environment
+#' @return rxode2/symengine environment
 #' @author Matthew L. Fidler
 #' @noRd
 .rxGenEBE <- function(obj, predfn, pkpars = NULL, errfn = NULL,
@@ -838,23 +838,23 @@ rxSymPyExpThetas <- NULL
 rxSymPyExpEtas <- NULL
 
 
-#' Setup Pred function based on RxODE object.
+#' Setup Pred function based on rxode2 object.
 #'
 #' This is for the so-called inner problem.
 #'
-#' @param obj RxODE object
+#' @param obj rxode2 object
 #' @param predfn Prediction function
 #' @param pkpars Pk Pars function
 #' @param errfn Error function
 #' @param init Initialization parameters for scaling.
 #' @param grad Boolaen indicated if the the equations for the
 #'     gradient be calculated
-#' @param sum.prod A boolean determining if RxODE should use more
+#' @param sum.prod A boolean determining if rxode2 should use more
 #'     numerically stable sums/products.
 #' @param pred.minus.dv Boolean stating if the FOCEi objective
 #'     function is based on PRED-DV (like NONMEM).  Default TRUE.
 #' @param only.numeric Instead of setting up the sensitivities for
-#'     the inner problem, modify the RxODE to use numeric
+#'     the inner problem, modify the rxode2 to use numeric
 #'     differentiation for the numeric inner problem only.
 #' @param optExpression Optimize the model text for computer
 #'     evaluation.
@@ -870,7 +870,7 @@ rxSymPyExpEtas <- NULL
 #'
 #' combined2: transform(y)=transform(f)+(a^2+b^2*f^(2c))*eps
 #'
-#' @return RxODE object expanded with predfn and with calculated
+#' @return rxode2 object expanded with predfn and with calculated
 #'     sensitivities.
 #' @inheritParams rxS
 #' @author Matthew L. Fidler
@@ -929,7 +929,7 @@ rxSEinner <- function(obj, predfn, pkpars = NULL, errfn = NULL, init = NULL,
       return(NULL)
     }
     .malert(msg)
-    .ret <- RxODE(x)
+    .ret <- rxode2(x)
     .msuccess("done")
     return(.ret)
   }
@@ -977,7 +977,7 @@ rxSEinner <- function(obj, predfn, pkpars = NULL, errfn = NULL, init = NULL,
     pred.opt <- .s$..pred.nolhs
   }
   .nullInt <- function(x) {
-    if (RxODE::rxIs(x, "integer") || RxODE::rxIs(x, "numeric")) {
+    if (rxode2::rxIs(x, "integer") || rxode2::rxIs(x, "numeric")) {
       return(as.integer(x))
     } else {
       return(integer(0))
@@ -1009,7 +1009,7 @@ rxSEinner <- function(obj, predfn, pkpars = NULL, errfn = NULL, init = NULL,
 #' @export
 rxSymPySetupPred <- rxSEinner
 
-## norm <- RxODE("
+## norm <- rxode2("
 ## d/dt(y)  = dy
 ## d/dt(dy) = mu*(1-y^2)*dy - y
 ## ## Initial conditions

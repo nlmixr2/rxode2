@@ -9,7 +9,7 @@ rxodeTest(
       et(seq(0, 48, length.out = 200), cmt = "peri")
 
 
-    ode.2c.ka <- RxODE({
+    ode.2c.ka <- rxode2({
       C2 <- centr / V
       C3 <- peri / V2
       d / dt(depot) <- -KA * depot

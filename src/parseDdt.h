@@ -19,10 +19,10 @@ static inline int new_de(const char *s) {
   }
   if (tb.de.n + 1 > tb.allocD){
     tb.allocD+=MXDER;
-    tb.di=Realloc(tb.di, tb.allocD, int);
-    tb.idi=Realloc(tb.idi, tb.allocD, int);
-    tb.idu=Realloc(tb.idu, tb.allocD, int);
-    tb.dvid=Realloc(tb.dvid, tb.allocD, int);
+    tb.di=R_Realloc(tb.di, tb.allocD, int);
+    tb.idi=R_Realloc(tb.idi, tb.allocD, int);
+    tb.idu=R_Realloc(tb.idu, tb.allocD, int);
+    tb.dvid=R_Realloc(tb.dvid, tb.allocD, int);
   }
   return 1;
 }
@@ -70,7 +70,7 @@ static inline int add_deState(nodeInfo ni, char *name, char *v, int hasLhs, int 
       ((tb.ini[tb.ix] == 1 && tb.ini0[tb.ix] == 0) ||
        (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam))){
     updateSyntaxCol();
-    sPrint(&_gbuf,_("cannot assign state variable %s; For initial condition assignment use '%s(0) = #'.\n  Changing states can break sensitivity analysis (for nlmixr glmm/focei).\n  To override this behavior set 'options(RxODE.syntax.assign.state = TRUE)'"),v,v);
+    sPrint(&_gbuf,_("cannot assign state variable %s; For initial condition assignment use '%s(0) = #'.\n  Changing states can break sensitivity analysis (for nlmixr glmm/focei).\n  To override this behavior set 'options(rxode2.syntax.assign.state = TRUE)'"),v,v);
     trans_syntax_error_report_fn0(_gbuf.s);
   }
   tb.lh[tb.ix] = isState;

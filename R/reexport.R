@@ -73,7 +73,7 @@ ggplot2::waiver
 
 #' Empty Guide
 #'
-#' This empty guide draws nothing; It is included in RxODE for
+#' This empty guide draws nothing; It is included in rxode2 for
 #' compatibility with ggplot 3.2
 #'
 #' @inheritParams ggplot2::guide_none

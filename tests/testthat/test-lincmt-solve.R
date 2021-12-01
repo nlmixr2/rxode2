@@ -39,7 +39,7 @@ rxodeTest(
 
       etSsR <- et(amt = 0, ss = 1, rate = 10000 / 8)
 
-      ode.1c <- RxODE(
+      ode.1c <- rxode2(
         {
           C2 <- center / V
           d / dt(center) <- -CL * C2
@@ -47,7 +47,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.1c <- RxODE(
+      sol.1c <- rxode2(
         {
           C2 <- linCmt(CL, V)
         },
@@ -76,7 +76,7 @@ rxodeTest(
 
       context(sprintf("Test steady state solutions 2 cmt (%s)", .txt))
 
-      ode.2c <- RxODE(
+      ode.2c <- rxode2(
         {
           C2 <- centr / V
           C3 <- peri / V2
@@ -86,7 +86,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.2c <- RxODE(
+      sol.2c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q1)
         },
@@ -113,7 +113,7 @@ rxodeTest(
 
       context(sprintf("Test steady state solutions 3 cmt (%s)", .txt))
 
-      ode.3c <- RxODE(
+      ode.3c <- rxode2(
         {
           C2 <- centr / V
           C3 <- peri / V2
@@ -125,7 +125,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.3c <- RxODE(
+      sol.3c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3)
         },
@@ -152,7 +152,7 @@ rxodeTest(
 
       context(sprintf("Test steady state solutions 1 cmt ka (%s)", .txt))
 
-      ode.1c.ka <- RxODE(
+      ode.1c.ka <- rxode2(
         {
           C2 <- center / V
           d / dt(depot) <- -KA * depot
@@ -161,7 +161,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.1c.ka <- RxODE(
+      sol.1c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, KA)
         },
@@ -220,7 +220,7 @@ rxodeTest(
 
       context(sprintf("Test steady state solutions 2 cmt ka (%s)", .txt))
 
-      ode.2c.ka <- RxODE(
+      ode.2c.ka <- rxode2(
         {
           C2 <- centr / V
           C3 <- peri / V2
@@ -231,7 +231,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.2c.ka <- RxODE(
+      sol.2c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, KA)
         },
@@ -278,7 +278,7 @@ rxodeTest(
 
       context(sprintf("Test steady state solutions 3 cmt ka (%s)", .txt))
 
-      ode.3c.ka <- RxODE({
+      ode.3c.ka <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -288,7 +288,7 @@ rxodeTest(
         d / dt(peri2) <- Q2 * C2 - Q2 * C4
       })
 
-      sol.3c.ka <- RxODE(
+      sol.3c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
         },
@@ -338,7 +338,7 @@ rxodeTest(
         add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
         add.sampling(seq(0, 48, length.out = 200))
 
-      ode.1c <- RxODE({
+      ode.1c <- rxode2({
         C2 <- center / V
         d / dt(center) <- -CL * C2
       })
@@ -355,9 +355,9 @@ rxodeTest(
         })
       }
 
-      ## Solved systems can check the variables in the RxODE statement
+      ## Solved systems can check the variables in the rxode2 statement
       ## to figure out what type of solved system is being requested
-      ode.1cs <- RxODE(
+      ode.1cs <- rxode2(
         {
           V <- theta[1]
           CL <- theta[2]
@@ -370,7 +370,7 @@ rxodeTest(
 
       context(sprintf("Test the solved equations 2 cmt (%s)", .txt))
 
-      ode.2cK <- RxODE(
+      ode.2cK <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -382,7 +382,7 @@ rxodeTest(
 
       goodP(ode.2cK)
 
-      ode.2cA1 <- RxODE(
+      ode.2cA1 <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -394,7 +394,7 @@ rxodeTest(
 
       goodP(ode.2cA1)
 
-      ode.2cA2 <- RxODE(
+      ode.2cA2 <- rxode2(
         {
           A <- 1 / theta[1]
           CLx <- theta[2]
@@ -408,7 +408,7 @@ rxodeTest(
 
       ## Instead of specifying parameters in the solved system, you can
       ## specify them in the linCmt variable.
-      ode.1cs2 <- RxODE(
+      ode.1cs2 <- rxode2(
         {
           C2 <- linCmt(CL, V)
         },
@@ -470,13 +470,13 @@ rxodeTest(
         expect_equal(o.1c$C2, s.2c$C2, tolerance = tol)
       })
 
-      ode.1c.ka <- RxODE({
+      ode.1c.ka <- rxode2({
         C2 <- center / V
         d / dt(depot) <- -KA * depot
         d / dt(center) <- KA * depot - CL * C2
       })
 
-      sol.1c.ka <- RxODE(
+      sol.1c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, KA)
         },
@@ -485,7 +485,7 @@ rxodeTest(
 
       goodP(sol.1c.ka, ka = 1L)
 
-      ode.2cK <- RxODE(
+      ode.2cK <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -498,7 +498,7 @@ rxodeTest(
 
       goodP(ode.2cK, ka = 1L)
 
-      ode.2cA1 <- RxODE(
+      ode.2cA1 <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -511,7 +511,7 @@ rxodeTest(
 
       goodP(ode.2cA1, ka = 1L)
 
-      ode.2cA2 <- RxODE(
+      ode.2cA2 <- rxode2(
         {
           A <- 1 / theta[1]
           CLx <- theta[2]
@@ -552,14 +552,14 @@ rxodeTest(
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
       })
 
-      ode.2c <- RxODE({
+      ode.2c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
         d / dt(peri) <- Q * C2 - Q * C3
       })
 
-      sol.2c <- RxODE(
+      sol.2c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q1)
         },
@@ -568,7 +568,7 @@ rxodeTest(
 
       goodP(sol.2c, cmt = 2L)
 
-      sol.2cK <- RxODE(
+      sol.2cK <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -586,7 +586,7 @@ rxodeTest(
 
       ## A1 in terms of A, alpha, B, beta
 
-      sol.2cA1 <- RxODE(
+      sol.2cA1 <- rxode2(
         {
           Vx <- theta[1]
           CLx <- theta[2]
@@ -610,7 +610,7 @@ rxodeTest(
       goodP(sol.2cA1, cmt = 2L)
 
       ## A2 V, alpha, beta, k21
-      sol.2cA2 <- RxODE(
+      sol.2cA2 <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -632,7 +632,7 @@ rxodeTest(
       goodP(sol.2cA2, cmt = 2L)
 
       ## A3 alpha, beta, aob
-      sol.2cA3 <- RxODE(
+      sol.2cA3 <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -676,7 +676,7 @@ rxodeTest(
         expect_equal(o.2c$C2, s.2cA3$C2, tolerance = tol)
       })
 
-      ode.2c.ka <- RxODE({
+      ode.2c.ka <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         d / dt(depot) <- -KA * depot
@@ -684,7 +684,7 @@ rxodeTest(
         d / dt(peri) <- Q * C2 - Q * C3
       })
 
-      sol.2c.ka <- RxODE(
+      sol.2c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, KA)
         },
@@ -693,7 +693,7 @@ rxodeTest(
 
       goodP(sol.2c.ka, cmt = 2, ka = 1)
 
-      sol.2cK <- RxODE(
+      sol.2cK <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -712,7 +712,7 @@ rxodeTest(
 
       ## A1 in terms of A, alpha, B, beta
 
-      sol.2cA1 <- RxODE(
+      sol.2cA1 <- rxode2(
         {
           Vx <- theta[1]
           CLx <- theta[2]
@@ -737,7 +737,7 @@ rxodeTest(
       goodP(sol.2cA1, cmt = 2, ka = 1)
 
       ## A2 V, alpha, beta, k21
-      sol.2cA2 <- RxODE(
+      sol.2cA2 <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -760,7 +760,7 @@ rxodeTest(
       goodP(sol.2cA2, cmt = 2, ka = 1)
 
       ## A3 alpha, beta, aob
-      sol.2cA3 <- RxODE(
+      sol.2cA3 <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -785,7 +785,7 @@ rxodeTest(
 
       goodP(sol.2cA3, cmt = 2, ka = 1)
 
-      sol.2cSS <- RxODE(
+      sol.2cSS <- rxode2(
         {
           V <- theta[1]
           CL <- theta[2]
@@ -800,7 +800,7 @@ rxodeTest(
 
       goodP(sol.2cSS, cmt = 2, ka = 1)
 
-      sol.2cT <- RxODE(
+      sol.2cT <- rxode2(
         {
           V <- theta[1]
           CL <- theta[2]
@@ -843,7 +843,7 @@ rxodeTest(
 
       context(sprintf("Test the solved equations 3 cmt (%s)", .txt))
 
-      ode.3c <- RxODE({
+      ode.3c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -852,7 +852,7 @@ rxodeTest(
         d / dt(peri2) <- Q2 * C2 - Q2 * C4
       })
 
-      sol.3c <- RxODE(
+      sol.3c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3)
         },
@@ -861,7 +861,7 @@ rxodeTest(
 
       goodP(sol.3c, 3)
 
-      sol.3cK <- RxODE(
+      sol.3cK <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -881,7 +881,7 @@ rxodeTest(
 
       goodP(sol.3cK, 3)
 
-      sol.3cA1 <- RxODE(
+      sol.3cA1 <- rxode2(
         {
           Vx <- theta[1]
           CLx <- theta[2]
@@ -916,7 +916,7 @@ rxodeTest(
 
       goodP(sol.3cA1, 3)
 
-      sol.3cVp <- RxODE(
+      sol.3cVp <- rxode2(
         {
           V <- theta[1]
           CL <- theta[2]
@@ -931,7 +931,7 @@ rxodeTest(
 
       goodP(sol.3cVp, 3)
 
-      sol.3cVt <- RxODE(
+      sol.3cVt <- rxode2(
         {
           V <- theta[1]
           CL <- theta[2]
@@ -979,7 +979,7 @@ rxodeTest(
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
-      ode.3c.ka <- RxODE({
+      ode.3c.ka <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -989,7 +989,7 @@ rxodeTest(
         d / dt(peri2) <- Q2 * C2 - Q2 * C4
       })
 
-      sol.3c.ka <- RxODE(
+      sol.3c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
         },
@@ -998,7 +998,7 @@ rxodeTest(
 
       goodP(sol.3c.ka, 3, 1)
 
-      sol.3cK <- RxODE(
+      sol.3cK <- rxode2(
         {
           V <- theta[1]
           CLx <- theta[2]
@@ -1019,7 +1019,7 @@ rxodeTest(
 
       goodP(sol.3cK, 3, 1)
 
-      sol.3cA1 <- RxODE(
+      sol.3cA1 <- rxode2(
         {
           Vx <- theta[1]
           CLx <- theta[2]
@@ -1092,14 +1092,14 @@ rxodeTest(
         et(time = 8, amt = 3, rate = 1.5, ss = 2, ii = 24) %>%
         et(seq(0, 24, length.out = 200))
 
-      ode.1c <- RxODE({
+      ode.1c <- rxode2({
         C2 <- center / V
         d / dt(center) <- -CL * C2
       })
 
-      ## Solved systems can check the variables in the RxODE statement
+      ## Solved systems can check the variables in the rxode2 statement
       ## to figure out what type of solved system is being requested
-      ode.1cs <- RxODE(
+      ode.1cs <- rxode2(
         {
           V <- theta[1]
           CL <- theta[2]
@@ -1112,7 +1112,7 @@ rxodeTest(
 
       ## Instead of specifying parameters in the solved system, you can
       ## specify them in the linCmt variable.
-      ode.1cs2 <- RxODE(
+      ode.1cs2 <- rxode2(
         {
           C2 <- linCmt(CL, V)
         },
@@ -1150,14 +1150,14 @@ rxodeTest(
 
       context(sprintf("Infusion Models 2 cmt (%s)", .txt))
 
-      ode.2c <- RxODE({
+      ode.2c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
         d / dt(peri) <- Q * C2 - Q * C3
       })
 
-      sol.2c <- RxODE(
+      sol.2c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q)
         },
@@ -1186,7 +1186,7 @@ rxodeTest(
 
       context(sprintf("Infusion Models 3 cmt (%s)", .txt))
 
-      ode.3c <- RxODE({
+      ode.3c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -1195,7 +1195,7 @@ rxodeTest(
         d / dt(peri2) <- Q2 * C2 - Q2 * C4
       })
 
-      sol.3c <- RxODE(
+      sol.3c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3)
         },
@@ -1229,14 +1229,14 @@ rxodeTest(
         add.dosing(dose = 1.5, nbr.doses = 6, dosing.interval = 8) %>%
         add.sampling(seq(0, 48, length.out = 200))
 
-      ode.1c <- RxODE({
+      ode.1c <- rxode2({
         C2 <- center / V
         d / dt(center) <- -CL * C2
       })
 
-      ## Solved systems can check the variables in the RxODE statement
+      ## Solved systems can check the variables in the rxode2 statement
       ## to figure out what type of solved system is being requested
-      ode.1cs <- RxODE(
+      ode.1cs <- rxode2(
         {
           V <- theta[1]
           CL <- theta[2]
@@ -1249,7 +1249,7 @@ rxodeTest(
 
       ## Instead of specifying parameters in the solved system, you can
       ## specify them in the linCmt variable.
-      ode.1cs2 <- RxODE(
+      ode.1cs2 <- rxode2(
         {
           C2 <- linCmt(CL, V)
         },
@@ -1274,14 +1274,14 @@ rxodeTest(
 
       context(sprintf("Infusion + Bolus 2 cmt (%s)", .txt))
 
-      ode.2c <- RxODE({
+      ode.2c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
         d / dt(peri) <- Q * C2 - Q * C3
       })
 
-      sol.2c <- RxODE(
+      sol.2c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q)
         },
@@ -1301,7 +1301,7 @@ rxodeTest(
 
       context(sprintf("Infusion + Bolus 3 cmt (%s)", .txt))
 
-      ode.3c <- RxODE({
+      ode.3c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -1310,7 +1310,7 @@ rxodeTest(
         d / dt(peri2) <- Q2 * C2 - Q2 * C4
       })
 
-      sol.3c <- RxODE(
+      sol.3c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3)
         },
@@ -1336,13 +1336,13 @@ rxodeTest(
         add.dosing(dose = 1.5, nbr.doses = 3, dosing.interval = 16, cmt = 1, start.time = 8) %>%
         add.sampling(seq(0, 48, length.out = 200))
 
-      ode.1c.ka <- RxODE({
+      ode.1c.ka <- rxode2({
         C2 <- center / V
         d / dt(depot) <- -KA * depot
         d / dt(center) <- KA * depot - CL * C2
       })
 
-      sol.1c.ka <- RxODE(
+      sol.1c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, KA)
         },
@@ -1360,7 +1360,7 @@ rxodeTest(
 
       context(sprintf("Oral + Infusion + Bolus Models 2 cmt (%s)", .txt))
 
-      ode.2c.ka <- RxODE({
+      ode.2c.ka <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         d / dt(depot) <- -KA * depot
@@ -1368,7 +1368,7 @@ rxodeTest(
         d / dt(peri) <- Q * C2 - Q * C3
       })
 
-      sol.2c.ka <- RxODE(
+      sol.2c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, KA)
         },
@@ -1388,7 +1388,7 @@ rxodeTest(
 
       context(sprintf("Oral + Infusion + Bolus Models 3 cmt (%s)", .txt))
 
-      ode.3c.ka <- RxODE({
+      ode.3c.ka <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -1398,7 +1398,7 @@ rxodeTest(
         d / dt(peri2) <- Q2 * C2 - Q2 * C4
       })
 
-      sol.3c.ka <- RxODE(
+      sol.3c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
         },
@@ -1424,7 +1424,7 @@ rxodeTest(
         add.dosing(dose = 1.5, nbr.doses = 3, dosing.interval = 16, cmt = 1, start.time = 8) %>%
         add.sampling(seq(0, 48, length.out = 200))
 
-      ode.1c.ka <- RxODE({
+      ode.1c.ka <- rxode2({
         C2 <- center / V
         d / dt(depot) <- -KA * depot
         d / dt(center) <- KA * depot - CL * C2
@@ -1432,7 +1432,7 @@ rxodeTest(
         f(center) <- fCenter
       })
 
-      sol.1c.ka <- RxODE(
+      sol.1c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, KA)
           f(depot) <- fDepot
@@ -1457,7 +1457,7 @@ rxodeTest(
 
       context(sprintf("Modeled bio-availability 2 cmt (%s)", .txt))
 
-      ode.2c.ka <- RxODE(
+      ode.2c.ka <- rxode2(
         {
           C2 <- centr / V
           C3 <- peri / V2
@@ -1472,7 +1472,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.2c.ka <- RxODE(
+      sol.2c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, KA)
           f(depot) <- fDepot
@@ -1495,7 +1495,7 @@ rxodeTest(
 
       context(sprintf("Modeled bio-availability 3 cmt (%s)", .txt))
 
-      ode.3c.ka <- RxODE({
+      ode.3c.ka <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -1507,7 +1507,7 @@ rxodeTest(
         f(centr) <- fCenter
       })
 
-      sol.3c.ka <- RxODE(
+      sol.3c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
           f(depot) <- fDepot
@@ -1544,7 +1544,7 @@ rxodeTest(
         add.dosing(dose = 1.5, nbr.doses = 3, dosing.interval = 16, cmt = 1, start.time = 8) %>%
         add.sampling(seq(0, 48, length.out = 200))
 
-      ode.1c.ka <- RxODE(
+      ode.1c.ka <- rxode2(
         {
           C2 <- center / V
           d / dt(depot) <- -KA * depot
@@ -1555,7 +1555,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.1c.ka <- RxODE(
+      sol.1c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, KA)
           alag(depot) <- lagDepot
@@ -1578,7 +1578,7 @@ rxodeTest(
 
       context(sprintf("Modeled lag time 2 cmt (%s)", .txt))
 
-      ode.2c.ka <- RxODE({
+      ode.2c.ka <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         d / dt(depot) <- -KA * depot
@@ -1588,7 +1588,7 @@ rxodeTest(
         alag(centr) <- lagCenter
       })
 
-      sol.2c.ka <- RxODE(
+      sol.2c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, KA)
           alag(depot) <- lagDepot
@@ -1613,7 +1613,7 @@ rxodeTest(
 
       context(sprintf("Modeled lag time 3 cmt (%s)", .txt))
 
-      ode.3c.ka <- RxODE(
+      ode.3c.ka <- rxode2(
         {
           C2 <- centr / V
           C3 <- peri / V2
@@ -1628,7 +1628,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.3c.ka <- RxODE(
+      sol.3c.ka <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
           alag(depot) <- lagDepot
@@ -1657,13 +1657,13 @@ rxodeTest(
 
       context(sprintf("Modeled rate 1 cmt (%s)", .txt))
 
-      ode.1c <- RxODE({
+      ode.1c <- rxode2({
         C2 <- center / V
         d / dt(center) <- -CL * C2
         rate(center) <- rt
       })
 
-      sol.1c <- RxODE(
+      sol.1c <- rxode2(
         {
           C2 <- linCmt(CL, V)
           rate(central) <- rt
@@ -1687,7 +1687,7 @@ rxodeTest(
 
       context(sprintf("Modeled rate 2 cmt (%s)", .txt))
 
-      ode.2c <- RxODE(
+      ode.2c <- rxode2(
         {
           C2 <- centr / V
           C3 <- peri / V2
@@ -1698,7 +1698,7 @@ rxodeTest(
         linCmtSens = sens
       )
 
-      sol.2c <- RxODE(
+      sol.2c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q)
           rate(central) <- rt
@@ -1718,7 +1718,7 @@ rxodeTest(
 
       context(sprintf("Modeled rate 3 cmt (%s)", .txt))
 
-      ode.3c <- RxODE({
+      ode.3c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -1728,7 +1728,7 @@ rxodeTest(
         rate(centr) <- rt
       })
 
-      sol.3c <- RxODE(
+      sol.3c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3)
           rate(central) <- rt
@@ -1750,13 +1750,13 @@ rxodeTest(
 
       context(sprintf("Modeled duration 1 cmt (%s)", .txt))
 
-      ode.1c <- RxODE({
+      ode.1c <- rxode2({
         C2 <- center / V
         d / dt(center) <- -CL * C2
         dur(center) <- dr
       })
 
-      sol.1c <- RxODE(
+      sol.1c <- rxode2(
         {
           C2 <- linCmt(CL, V)
           dur(central) <- dr
@@ -1780,7 +1780,7 @@ rxodeTest(
 
       context(sprintf("Modeled duration 2 cmt (%s)", .txt))
 
-      ode.2c <- RxODE({
+      ode.2c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
@@ -1788,7 +1788,7 @@ rxodeTest(
         dur(centr) <- dr
       })
 
-      sol.2c <- RxODE(
+      sol.2c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q)
           dur(central) <- dr
@@ -1808,7 +1808,7 @@ rxodeTest(
 
       context(sprintf("Modeled duration 3 cmt (%s)", .txt))
 
-      ode.3c <- RxODE({
+      ode.3c <- rxode2({
         C2 <- centr / V
         C3 <- peri / V2
         C4 <- peri2 / V3
@@ -1818,7 +1818,7 @@ rxodeTest(
         dur(centr) <- dr
       })
 
-      sol.3c <- RxODE(
+      sol.3c <- rxode2(
         {
           C2 <- linCmt(V, CL, V2, Q, Q2, V3)
           dur(central) <- dr
@@ -1837,7 +1837,7 @@ rxodeTest(
       }
 
       test_that("central should throw error", {
-        expect_error(RxODE({
+        expect_error(rxode2({
           C2 <- centr / V
           C3 <- peri / V2
           d / dt(depot) <- -KA * depot
@@ -1850,7 +1850,7 @@ rxodeTest(
       })
 
       test_that("depot should throw error", {
-        expect_error(RxODE({
+        expect_error(rxode2({
           C2 <- centr / V
           C3 <- peri / V2
           d / dt(dep) <- -KA * dep
@@ -1862,7 +1862,7 @@ rxodeTest(
         }))
       })
 
-      ode.1cs2 <- RxODE(
+      ode.1cs2 <- rxode2(
         {
           C2 <- linCmt(CL, V)
           mtime(t1) <- mt1
@@ -1889,7 +1889,7 @@ rxodeTest(
       context(sprintf("evid=3 (%s)", .txt))
 
       test_that(sprintf("evid==3 (%s)", .txt), {
-        ode.1c <- RxODE(
+        ode.1c <- rxode2(
           {
             C2 <- center / V
             d / dt(center) <- -CL * C2
@@ -1897,7 +1897,7 @@ rxodeTest(
           linCmtSens = sens
         )
 
-        sol.1c <- RxODE(
+        sol.1c <- rxode2(
           {
             C2 <- linCmt(CL, V)
           },
@@ -1918,7 +1918,7 @@ rxodeTest(
     if (length(types) > 1) {
       test_that(
         "double linCmt has error",
-        expect_error(RxODE({
+        expect_error(rxode2({
           C2 <- linCmt(CL, V)
           C2 <- linCmt(CL, V)
         }))
@@ -1929,12 +1929,12 @@ rxodeTest(
       test_that("Steady state IV infusion", {
         ev <- et(amt = 0, ss = 1, rate = 10000 / 8)
 
-        ode.1c <- RxODE({
+        ode.1c <- rxode2({
           C2 <- center / V
           d / dt(center) <- -CL * C2
         })
 
-        ode.1cs2 <- RxODE({
+        ode.1cs2 <- rxode2({
           C2 <- linCmt(CL, V)
         })
 
@@ -1946,14 +1946,14 @@ rxodeTest(
 
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
 
-        ode.2c <- RxODE({
+        ode.2c <- rxode2({
           C2 <- centr / V
           C3 <- peri / V2
           d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
           d / dt(peri) <- Q * C2 - Q * C3
         })
 
-        sol.2c <- RxODE({
+        sol.2c <- rxode2({
           C2 <- linCmt(V, CL, V2, Q1)
         })
 
@@ -1965,7 +1965,7 @@ rxodeTest(
 
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
 
-        ode.3c <- RxODE({
+        ode.3c <- rxode2({
           C2 <- centr / V
           C3 <- peri / V2
           C4 <- peri2 / V3
@@ -1974,7 +1974,7 @@ rxodeTest(
           d / dt(peri2) <- Q2 * C2 - Q2 * C4
         })
 
-        sol.3c <- RxODE({
+        sol.3c <- rxode2({
           C2 <- linCmt(V, CL, V2, Q, Q2, V3)
         })
 
@@ -1990,7 +1990,7 @@ rxodeTest(
       context("Issue #258")
 
       test_that("Issue #258", {
-        m258 <- RxODE(
+        m258 <- rxode2(
           {
             ka <- 1
             cl <- 3.5
@@ -2001,7 +2001,7 @@ rxodeTest(
           linCmtSens = sens
         )
 
-        m258o <- RxODE({
+        m258o <- rxode2({
           ka <- 1
           cl <- 3.5
           vc <- 40
@@ -2058,13 +2058,13 @@ rxodeTest(
             return(prop(prop.err))
           }
 
-          mod <- RxODE({
+          mod <- rxode2({
             Central <- linCmt(Vc, Cl)
           })
 
           pk1s <- rxSymPySetupPred(mod, predfn = pred, pkpars = pk, err = err)
 
-          mod2 <- RxODE({
+          mod2 <- rxode2({
             Central <- center / Vc
             d / dt(center) <- -Cl * Central
           })
@@ -2168,13 +2168,13 @@ rxodeTest(
             return(prop(prop.err))
           }
 
-          mod <- RxODE({
+          mod <- rxode2({
             Central <- linCmt(Vc, Cl, Ka)
           })
 
           pk1s <- rxSymPySetupPred(mod, predfn = pred, pkpars = pk, err = err)
 
-          mod2 <- RxODE({
+          mod2 <- rxode2({
             Central <- center / Vc
             d / dt(depot) <- -Ka * depot
             d / dt(center) <- Ka * depot - Cl * Central
@@ -2324,11 +2324,11 @@ rxodeTest(
             return(prop(prop.err))
           }
 
-          mod <- RxODE({
+          mod <- rxode2({
             Central <- linCmt(Vc, Cl, Vp, Q)
           })
 
-          modK <- RxODE({
+          modK <- rxode2({
             Central <- linCmt(Vc, k10, k12, k21)
           })
 
@@ -2336,14 +2336,14 @@ rxodeTest(
 
           pk2sK <- rxSymPySetupPred(modK, predfn = pred, pkpars = pk2, err = err)
 
-          mod2 <- RxODE({
+          mod2 <- rxode2({
             Central <- centr / Vc
             C3 <- peri / Vp
             d / dt(centr) <- -Cl * Central - Q * Central + Q * C3
             d / dt(peri) <- Q * Central - Q * C3
           })
 
-          modK2 <- RxODE({
+          modK2 <- rxode2({
             Central <- centr / Vc
             d / dt(centr) <- -k10 * centr - k12 * centr + k21 * peri
             d / dt(peri) <- k12 * centr - k21 * peri
@@ -2478,13 +2478,13 @@ rxodeTest(
             return(prop(prop.err))
           }
 
-          mod <- RxODE({
+          mod <- rxode2({
             Central <- linCmt(Vc, Cl, Vp, Q, Ka)
           })
 
           pk2s <- rxSymPySetupPred(mod, predfn = pred, pkpars = pk, err = err)
 
-          mod2 <- RxODE({
+          mod2 <- rxode2({
             Central <- centr / Vc
             C3 <- peri / Vp
             d / dt(depot) <- -Ka * depot
@@ -2688,13 +2688,13 @@ rxodeTest(
             return(prop(prop.err))
           }
 
-          mod <- RxODE({
+          mod <- rxode2({
             Central <- linCmt(Vc, Cl, Vp, Q, Vp2, Q2)
           })
 
           pk3s <- rxSymPySetupPred(mod, predfn = pred, pkpars = pk, err = err)
 
-          mod2 <- RxODE({
+          mod2 <- rxode2({
             Central <- centr / Vc
             C3 <- peri / Vp
             C4 <- peri2 / Vp2
@@ -2842,13 +2842,13 @@ rxodeTest(
             return(prop(prop.err))
           }
 
-          mod <- RxODE({
+          mod <- rxode2({
             Central <- linCmt(Vc, Cl, Vp, Q, Vp2, Q2, Ka)
           })
 
           pk2s <- rxSymPySetupPred(mod, predfn = pred, pkpars = pk, err = err)
 
-          mod2 <- RxODE({
+          mod2 <- rxode2({
             Central <- centr / Vc
             C3 <- peri / Vp
             C4 <- peri2 / Vp2
@@ -3079,7 +3079,7 @@ rxodeTest(
           return(prop(prop.err))
         }
 
-        mod <- RxODE({
+        mod <- rxode2({
           Central <- linCmt(Vc, Cl)
           f(central) <- fc
           alag(central) <- lagc
@@ -3140,7 +3140,7 @@ rxodeTest(
           return(prop(prop.err))
         }
 
-        mod <- RxODE({
+        mod <- rxode2({
           Central <- linCmt(Vc, Cl, Vp, Q, Ka)
           f(depot) <- F
           alag(depot) <- lag

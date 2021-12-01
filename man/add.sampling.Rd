@@ -28,11 +28,11 @@ piping syntax through magrittr.  It can also be accessed by
 
 \donttest{
 
-library(RxODE)
+library(rxode2)
 library(units)
 
-## Model from RxODE tutorial
-mod1 <-RxODE({
+## Model from rxode2 tutorial
+mod1 <-rxode2({
     KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
@@ -49,7 +49,7 @@ mod1 <-RxODE({
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
 });
 
-## These are making the more complex regimens of the RxODE tutorial
+## These are making the more complex regimens of the rxode2 tutorial
 
 ## bid for 5 days
 bid <- et(timeUnits="hr") \%>\%
@@ -108,7 +108,7 @@ plot(repCycle4, C2)
 }
 }
 \references{
-Wang W, Hallow K, James D (2015). "A Tutorial on RxODE: Simulating
+Wang W, Hallow K, James D (2015). "A Tutorial on rxode2: Simulating
 Differential Equation Pharmacometric Models in R." CPT:
 Pharmacometrics \& Systems Pharmacology, 5(1), 3-10. ISSN 2163-8306,
 <URL: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4728294/>.
@@ -117,7 +117,7 @@ Pharmacometrics \& Systems Pharmacology, 5(1), 3-10. ISSN 2163-8306,
 \code{\link{eventTable}}, \code{\link{add.sampling}},
 \code{\link{add.dosing}}, \code{\link{et}},
 \code{\link{etRep}}, \code{\link{etRbind}},
-\code{\link{RxODE}}
+\code{\link{rxode2}}
 }
 \author{
 Matthew L Fidler, Wenping Wang

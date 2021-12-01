@@ -8,7 +8,7 @@ str.rxHidden <- function(object, ...) {
 #' @export
 str.rxSolve <- function(object, ..., nchar.max = 128) {
   if (rxIs(object, "rxSolve")) {
-    .dn <- .Call(`_RxODE_rxSolveDollarNames`, object)
+    .dn <- .Call(`_rxode2_rxSolveDollarNames`, object)
     .max <- max(sapply(.dn, nchar))
     cat(sprintf(
       "Classes 'rxSolve' and 'data.frame':\t%s rows of  %s variables:\n",
@@ -164,22 +164,22 @@ str.rxSymInvCholEnv <- function(object, ...) {
 }
 
 #' @export
-str.RxODE <- function(object, ...) {
-  cat("RxODE object methods and properties:\n")
+str.rxode2 <- function(object, ...) {
+  cat("rxode2 object methods and properties:\n")
   cat(" $ assignPtr()    : Assign C pointers\n")
-  cat(" $ compile()      : compile RxODE model\n")
-  cat(" $ delete()       : delete RxODE dll\n")
-  cat(" $ dynLoad()      : load dll for RxODE model\n")
-  cat(" $ dynUnload()    : unload dll for RxODE model\n")
+  cat(" $ compile()      : compile rxode2 model\n")
+  cat(" $ delete()       : delete rxode2 dll\n")
+  cat(" $ dynLoad()      : load dll for rxode2 model\n")
+  cat(" $ dynUnload()    : unload dll for rxode2 model\n")
   cat(" $ get.index(...) : Get compartment number\n")
   cat(" $ get.modelVars(): Get model variables\n")
-  cat(" $ isLoaded()     : Is RxODE model dll loaded\n")
-  cat(" $ isValid()      : Is RxODE model dll valid\n")
-  cat(" $ load()         : Load RxODE model\n")
+  cat(" $ isLoaded()     : Is rxode2 model dll loaded\n")
+  cat(" $ isValid()      : Is rxode2 model dll valid\n")
+  cat(" $ load()         : Load rxode2 model\n")
   cat(" $ parse()        : Parse model (doesn't do anything anymore)\n")
   cat(" $ run(...)       : Run ODE model\n")
   cat(" $ solve(...)     : Solve ODE model\n")
-  cat(" $ unload()       : Unload DLL for RxODE model\n")
+  cat(" $ unload()       : Unload DLL for rxode2 model\n")
   .out <- utils::capture.output(utils::str(list(
     calcJac = object$calcJac,
     calcSens = object$calcSens,

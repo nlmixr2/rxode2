@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include "print_node.h"
 #include "tran.h"
 

@@ -3,7 +3,7 @@
 \name{rxFun}
 \alias{rxFun}
 \alias{rxRmFun}
-\title{Add user function to RxODE}
+\title{Add user function to rxode2}
 \usage{
 rxFun(name, args, cCode)
 
@@ -20,21 +20,21 @@ rxRmFun(name)
 nothing
 }
 \description{
-This adds a user function to RxODE that can be called.  If needed,
+This adds a user function to rxode2 that can be called.  If needed,
 these functions can be differentiated by numerical differences or
-by adding the derivatives to RxODE's internal derivative table
+by adding the derivatives to rxode2's internal derivative table
 with \code{\link[=rxD]{rxD()}}
 }
 \examples{
 \donttest{
-## Right now RxODE is not aware of the function f
+## Right now rxode2 is not aware of the function f
 ## Therefore it cannot translate it to symengine or
 ## Compile a model with it.
 
-try(RxODE("a=fun(a,b,c)"))
+try(rxode2("a=fun(a,b,c)"))
 
 ## Note for this approach to work, it cannot interfere with C
-## function names or reserved RxODE specical terms.  Therefore
+## function names or reserved rxode2 specical terms.  Therefore
 ## f(x) would not work since f is an alias for bioaviability.
 
 fun <- "
@@ -45,7 +45,7 @@ double fun(double a, double b, double c) {
 
 rxFun("fun", c("a", "b", "c"), fun) ## Added function
 
-## Now RxODE knows how to translate this function to symengine
+## Now rxode2 knows how to translate this function to symengine
 
 rxToSE("fun(a,b,c)")
 

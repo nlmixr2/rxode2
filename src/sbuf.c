@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include "sbuf.h"
 #include "tran.h"
 
@@ -15,7 +15,7 @@ int rc_buf_read(const char *pathname, char **buf, int *len) {
   memset(&sb, 0, sizeof(sb));
   fstat(fd, &sb);
   *len = sb.st_size;
-  *buf = Calloc(*len + 3,char);
+  *buf = R_Calloc(*len + 3,char);
   // MINGW likes to convert cr lf => lf which messes with the size
   size_t real_size = read(fd, *buf, *len);
   (*buf)[real_size] = 0;
@@ -37,8 +37,8 @@ char * rc_sbuf_read(const char *pathname) {
 
 
 void sIniTo(sbuf *sbb, int to) {
-  if (sbb->s != NULL) Free(sbb->s);
-  sbb->s    = Calloc(to, char);
+  if (sbb->s != NULL) R_Free(sbb->s);
+  sbb->s    = R_Calloc(to, char);
   sbb->sN   = to;
   sbb->s[0] = '\0';
   sbb->o    = 0;
@@ -49,7 +49,7 @@ void sIni(sbuf *sbb) {
 }
 
 void sFree(sbuf *sbb) {
-  if (sbb->s != NULL) Free(sbb->s);
+  if (sbb->s != NULL) R_Free(sbb->s);
   sNull(sbb);
 }
 
@@ -62,7 +62,7 @@ void sAppendN(sbuf *sbb, const char *what, int n) {
   if (sbb->sN == 0) sIni(sbb);
   if (sbb->sN <= 2 + n + sbb->o){
     int mx = sbb->o + 2 + n + SBUF_MXBUF;
-    sbb->s = Realloc(sbb->s, mx, char);
+    sbb->s = R_Realloc(sbb->s, mx, char);
     sbb->sN = mx;
   }
   sprintf(sbb->s+sbb->o, "%s", what);
@@ -85,7 +85,7 @@ void sAppend(sbuf *sbb, const char *format, ...) {
   va_end(copy);
   if (sbb->sN <= sbb->o + n + 1) {
     int mx = sbb->o + n + 1 + SBUF_MXBUF;
-    sbb->s = Realloc(sbb->s, mx, char);
+    sbb->s = R_Realloc(sbb->s, mx, char);
     sbb->sN = mx;
   }
   vsnprintf(sbb->s+ sbb->o, sbb->sN - sbb->o, format, argptr);
@@ -110,7 +110,7 @@ void sPrint(sbuf *sbb, const char *format, ...) {
   va_end(copy);
   if (sbb->sN <= sbb->o + n + 1){
     int mx = sbb->o + n + 1 + SBUF_MXBUF;
-    sbb->s = Realloc(sbb->s, mx, char);
+    sbb->s = R_Realloc(sbb->s, mx, char);
     sbb->sN = mx;
   }
   vsnprintf(sbb->s+ sbb->o, sbb->sN - sbb->o, format, argptr);
@@ -119,19 +119,19 @@ void sPrint(sbuf *sbb, const char *format, ...) {
 }
 
 void lineIni(vLines *sbb) {
-  if (sbb->s != NULL) Free(sbb->s);
-  sbb->s = Calloc(SBUF_MXBUF, char);
+  if (sbb->s != NULL) R_Free(sbb->s);
+  sbb->s = R_Calloc(SBUF_MXBUF, char);
   sbb->sN = SBUF_MXBUF;
   sbb->s[0]='\0';
   sbb->o = 0;
-  if (sbb->lProp != NULL) Free(sbb->lProp);
-  if (sbb->line != NULL) Free(sbb->line);
-  if (sbb->lType != NULL) Free(sbb->lType);
-  if (sbb->os != NULL) Free(sbb->os);
-  sbb->lProp = Calloc(SBUF_MXLINE, int);
-  sbb->lType = Calloc(SBUF_MXLINE, int);
-  sbb->line = Calloc(SBUF_MXLINE, char*);
-  sbb->os = Calloc(SBUF_MXLINE, int);
+  if (sbb->lProp != NULL) R_Free(sbb->lProp);
+  if (sbb->line != NULL) R_Free(sbb->line);
+  if (sbb->lType != NULL) R_Free(sbb->lType);
+  if (sbb->os != NULL) R_Free(sbb->os);
+  sbb->lProp = R_Calloc(SBUF_MXLINE, int);
+  sbb->lType = R_Calloc(SBUF_MXLINE, int);
+  sbb->line = R_Calloc(SBUF_MXLINE, char*);
+  sbb->os = R_Calloc(SBUF_MXLINE, int);
   sbb->nL=SBUF_MXLINE;
   sbb->lProp[0] = -1;
   sbb->lType[0] = 0;
@@ -139,11 +139,11 @@ void lineIni(vLines *sbb) {
 }
 
 void lineFree(vLines *sbb) {
-  if (sbb->s != NULL) Free(sbb->s);
-  if (sbb->lProp != NULL) Free(sbb->lProp);
-  if (sbb->line != NULL) Free(sbb->line);
-  if (sbb->lType != NULL) Free(sbb->lType);
-  if (sbb->os != NULL) Free(sbb->os);
+  if (sbb->s != NULL) R_Free(sbb->s);
+  if (sbb->lProp != NULL) R_Free(sbb->lProp);
+  if (sbb->line != NULL) R_Free(sbb->line);
+  if (sbb->lType != NULL) R_Free(sbb->lType);
+  if (sbb->os != NULL) R_Free(sbb->os);
   lineNull(sbb);
 }
 
@@ -169,7 +169,7 @@ void addLine(vLines *sbb, const char *format, ...) {
   va_end(copy);
   if (sbb->sN <= sbb->o + n){
     int mx = sbb->sN + n + 2 + SBUF_MXBUF;
-    sbb->s = Realloc(sbb->s, mx, char);
+    sbb->s = R_Realloc(sbb->s, mx, char);
     // The sbb->line are not correct any longer because the pointer for sbb->s has been updated;
     // Fix them
     for (int i = sbb->n; i--;){
@@ -181,10 +181,10 @@ void addLine(vLines *sbb, const char *format, ...) {
   va_end(argptr);
   if (sbb->n + 2 >= sbb->nL){
     int mx = sbb->nL + n + 2 + SBUF_MXLINE;
-    sbb->lProp = Realloc(sbb->lProp, mx, int);
-    sbb->lType = Realloc(sbb->lType, mx, int);
-    sbb->line = Realloc(sbb->line, mx, char*);
-    sbb->os = Realloc(sbb->os, mx, int);
+    sbb->lProp = R_Realloc(sbb->lProp, mx, int);
+    sbb->lType = R_Realloc(sbb->lType, mx, int);
+    sbb->line = R_Realloc(sbb->line, mx, char*);
+    sbb->os = R_Realloc(sbb->os, mx, int);
     sbb->nL = mx;
   }
   sbb->line[sbb->n]=&(sbb->s[sbb->o]);

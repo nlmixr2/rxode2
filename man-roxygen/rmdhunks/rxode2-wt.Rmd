@@ -12,17 +12,17 @@ daptomycin. Daptomycin is a cyclic lipopeptide antibiotic from
 fermented *Streptomyces roseosporus*.
 
 There are 3 stages for weight-based dosing simulations:
-- Create RxODE model
+- Create rxode2 model
 - Simulate Covariates
 - Create event table with weight-based dosing (merged back to covariates)
 
-# Creating a 2-compartment model in RxODE
+# Creating a 2-compartment model in rxode2
 
 ```{r}
-library(RxODE)
+library(rxode2)
 
 ## Note the time covariate is not included in the simulation
-m1 <- RxODE({
+m1 <- rxode2({
   CL ~ (1-0.2*SEX)*(0.807+0.00514*(CRCL-91.2))*exp(eta.cl)
   V1 ~ 4.8*exp(eta.v1)
   Q ~ (3.46+0.0593*(WT-75.1))*exp(eta.q);
@@ -66,7 +66,7 @@ s <- lapply(s, function(x){.x <- 0.1 * x; c(x - .x, x + .x)})
 
 e <- et() %>%
     ## Specify the id and weight based dosing from covariate data.frame
-    ## This requires RxODE XXX 
+    ## This requires rxode2 XXX 
     et(id=cov.df$id, amt=6*cov.df$WT, rate=6 * cov.df$WT) %>%
     ## Sampling is added for each ID
     et(s) %>%

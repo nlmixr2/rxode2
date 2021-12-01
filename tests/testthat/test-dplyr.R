@@ -1,14 +1,14 @@
 rxodeTest(
   {
-    library(RxODE)
+    library(rxode2)
     library(dplyr)
     library(digest)
 
     context("Make sure solved rxSolve work with dplyr objects")
 
-    ## RxODE instance 1
+    ## rxode2 instance 1
     m1 <-
-      RxODE(
+      rxode2(
         model = "
          C2 = centr/V2;
          C3 = peri/V3;
@@ -18,8 +18,8 @@ rxodeTest(
          d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;"
       )
 
-    test_that("RxODE instance 1 is created", {
-      expect_equal(class(m1), "RxODE")
+    test_that("rxode2 instance 1 is created", {
+      expect_equal(class(m1), "rxode2")
     })
 
     ## et1 <- eventTable(amount.units="ug", time.units = "hours")
@@ -30,7 +30,7 @@ rxodeTest(
     et1$add.sampling(seq(from = 24 + 8, to = 5 * 24, by = 8))
 
 
-    test_that("RxODE event table 1 was created", {
+    test_that("rxode2 event table 1 was created", {
       expect_true(inherits(et1, "rxEt"))
       expect_equal(et1$get.nobs(), 38)
       expect_equal(length(et1$get.dosing()[, 1]), 1)

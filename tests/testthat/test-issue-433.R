@@ -5,7 +5,7 @@ rxodeTest(
 
       lst <- qs::qread(test_path("433.qs"))
 
-      rx <- RxODE({
+      rx <- rxode2({
         cmt(parent)
         cmt(m1)
         parent(0) <- ETA[1] + THETA[1]

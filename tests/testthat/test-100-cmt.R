@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Use of initial conditions works")
 
-    mod <- RxODE(paste(sprintf("d/dt(amt%s) = -k1*amt%s", 1:105, 1:105), collapse = ";"))
+    mod <- rxode2(paste(sprintf("d/dt(amt%s) = -k1*amt%s", 1:105, 1:105), collapse = ";"))
 
     et <- eventTable() %>% add.sampling(0:180)
 

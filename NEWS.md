@@ -1,6 +1,7 @@
-# RxODE mu
+# RxODE 
 
-* The UI functions of `nlmixr` have been ported to work in `RxODE`
+
+* The UI functions of `nlmixr` have been ported to work in `rxode2`
   directly.
 
 * `rxModelVars({})` is now supported. 
@@ -9,6 +10,14 @@
   The sigma values are assumed to be standard normal, and uncorrelated
   between endpoints.  Simulation with uncertainty will still draw from
   this identity diagonal matrix
+  
+* Strict R headers are enforced more places
+
+* Since this change names, `rxode2`, `rxode` and `RxODE` all perform
+  the same function.
+  
+* Since there are many changes that could be incompatible, this
+  version has been renamed to `rxode2`
 
 # RxODE 1.1.3
 

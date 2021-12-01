@@ -2,13 +2,13 @@
 % Please edit documentation in R/rxode-options.R
 \name{rxTempDir}
 \alias{rxTempDir}
-\title{Get the RxODE temporary directory}
+\title{Get the rxode2 temporary directory}
 \usage{
 rxTempDir()
 }
 \value{
-RxODE temporary directory.
+rxode2 temporary directory.
 }
 \description{
-Get the RxODE temporary directory
+Get the rxode2 temporary directory
 }

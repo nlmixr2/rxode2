@@ -1,14 +1,14 @@
-#' Print expanded information about the RxODE object.
+#' Print expanded information about the rxode2 object.
 #'
-#' This prints the expanded information about the RxODE object.
+#' This prints the expanded information about the rxode2 object.
 #'
-#' @param object RxODE object
+#' @param object rxode2 object
 #' @param ... Ignored parameters
 #' @return object is returned
 #' @author Matthew L.Fidler
 #' @export
-summary.RxODE <- function(object, ...) {
-  print.RxODE(object, rxSuppress = TRUE)
+summary.rxode2 <- function(object, ...) {
+  print.rxode2(object, rxSuppress = TRUE)
   summary.rxDll(object$cmpMgr$rxDll(), noprint = TRUE)
   invisible(object)
 }
@@ -45,17 +45,17 @@ summary.rxDll <- function(object, ...) {
   if (!.noprint) {
     print(object)
   }
-  cat(sprintf("DLL: %s\n", getOption("RxODE.dll.print", RxODE::rxDll(object))))
+  cat(sprintf("DLL: %s\n", getOption("rxode2.dll.print", rxode2::rxDll(object))))
   cat(sprintf(
     "Jacobian: %s\n",
-    ifelse(RxODE::rxModelVars(object)$jac == "fulluser", "Full User Specified",
+    ifelse(rxode2::rxModelVars(object)$jac == "fulluser", "Full User Specified",
       "Full Internally Calculated"
     )
   ))
   print(coef(object))
-  if (length(RxODE::rxLhs(object)) > 0) {
+  if (length(rxode2::rxLhs(object)) > 0) {
     cat("\nCalculated Variables:\n")
-    print(RxODE::rxLhs(object))
+    print(rxode2::rxLhs(object))
   }
   .mv <- rxModelVars(object)
   if (length(.mv$indLin) > 0) {
@@ -67,7 +67,7 @@ summary.rxDll <- function(object, ...) {
   if (!is.na(object$linCmtM)) {
     .tmp <- object$linCmtM
   } else {
-    .tmp <- setNames(RxODE::rxModelVars(object)$model["normModel"], NULL)
+    .tmp <- setNames(rxode2::rxModelVars(object)$model["normModel"], NULL)
   }
   class(.tmp) <- "rxModelText"
   print(.tmp)
@@ -82,7 +82,7 @@ summary.rxSolve <- function(object, ...) {
       d <- cli::cli_div(theme = list(rule = list(
         "line-type" = "bar2"
       )))
-      cli::cli_rule(center = crayon::bold("Summary of Solved RxODE object"))
+      cli::cli_rule(center = crayon::bold("Summary of Solved rxode2 object"))
       cli::cli_end(d)
     }), sep = "\n")
     .model <- object$model

@@ -1,13 +1,13 @@
 ## rxodeTest(
 ##   {
-##     options(RxODE.unload.unused = TRUE)
-##     library(RxODE)
+##     options(rxode2.unload.unused = TRUE)
+##     library(rxode2)
 ##     library(testthat)
 ##     context("Garbage collection")
 ##     test_that("Check garbage collection unloads DLLs", {
-##       options(RxODE.unload.unused = TRUE)
+##       options(rxode2.unload.unused = TRUE)
 
-##       ode <- RxODE({
+##       ode <- rxode2({
 ##         b <- -1
 ##         d / dt(X) <- a * X + Y * Z
 ##         d / dt(Y) <- b * (Y - Z)
@@ -28,9 +28,9 @@
 ##       Sys.sleep(0.5)
 ##       expect_true(is.null(getLoadedDLLs()[[name]]))
 
-##       options(RxODE.unload.unused = FALSE)
+##       options(rxode2.unload.unused = FALSE)
 ##     })
-##     options(RxODE.unload.unused = FALSE)
+##     options(rxode2.unload.unused = FALSE)
 ##   },
 ##   test = "lvl2"
 ## )

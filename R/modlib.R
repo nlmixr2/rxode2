@@ -5,12 +5,12 @@
 }
 
 .norm2 <- function(obj) {
-  if (inherits(obj, "RxODE")) {
+  if (inherits(obj, "rxode2")) {
     if (exists(".linCmtM", obj)) {
       return(get(".linCmtM", obj))
     }
   }
-  setNames(RxODE::rxModelVars(obj)$model["normModel"], NULL)
+  setNames(rxode2::rxModelVars(obj)$model["normModel"], NULL)
 }
 
 .isWritable <- function(...) {
@@ -114,7 +114,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       load(.f, envir = .env)
       .f2 <- basename(.f)
       .f2 <- substr(.f2, 0, nchar(.f2) - 4)
-      if (is(.env[[.f2]], "RxODE")) {
+      if (is(.env[[.f2]], "rxode2")) {
         .env[[.f2]]$package <- NULL
         .minfo(sprintf("recompile '%s'", .f2))
         .models <- c(.models, .f2)
@@ -127,10 +127,10 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
           sink(.docFile)
           .tmp <- .env[[.f2]]
           .mv <- rxModelVars(.tmp)
-          cat(sprintf("#' %s RxODE model\n", .f2))
+          cat(sprintf("#' %s rxode2 model\n", .f2))
           cat("#'\n")
           cat(sprintf(
-            "#' @format An \\emph{RxODE} model with %s parameters, %s ODE states, and %s calc vars.\n",
+            "#' @format An \\emph{rxode2} model with %s parameters, %s ODE states, and %s calc vars.\n",
             length(.tmp$params), length(.tmp$state) + .mv$extraCmt, length(.tmp$lhs)
           ))
           cat("#'\n")
@@ -170,11 +170,11 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
           cat("#' \\emph{Model Code}\n") # sprintf(,.f2)
           cat("#'\n")
           .code <- deparse(body(eval(parse(text = paste("function(){", .norm2(.tmp), "}")))))
-          .code[1] <- "RxODE({"
+          .code[1] <- "rxode2({"
           .code[length(.code)] <- "})"
           cat(paste(paste0("#' ", .code, "\n"), collapse = ""))
           cat("#'\n")
-          cat(paste(paste0("#' @seealso \\code{\\link[RxODE]{eventTable}}, \\code{\\link[RxODE]{et}}, \\code{\\link[RxODE]{rxSolve}}, \\code{\\link[RxODE]{RxODE}}\n")))
+          cat(paste(paste0("#' @seealso \\code{\\link[rxode2]{eventTable}}, \\code{\\link[rxode2]{et}}, \\code{\\link[rxode2]{rxSolve}}, \\code{\\link[rxode2]{rxode2}}\n")))
           cat("#' \n")
           cat("#' @examples\n")
           cat("#' ## Showing the model code\n")
@@ -189,7 +189,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       dir.create(devtools::package_file("src"), recursive = TRUE)
     }
     .pkg <- basename(usethis::proj_get())
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
     sapply(
       list.files(.rxUseCdir, pattern = "[.]c", full.names = TRUE),
       function(x) {
@@ -201,7 +201,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
           paste0("#define \\1 _rxp", .rxUseI, "\\2"), readLines(x)
         )
         assign("i", .rxUseI + 1, envir = .env)
-        .f0 <- c("#include <RxODE.h>\n#include <RxODE_model_shared.h>", .f0)
+        .f0 <- c("#include <rxode2.h>\n#include <rxode2_model_shared.h>", .f0)
         .w <- which(.f0 == "#include \"extraC.h\"")
         if (length(.w) > 0) .f0 <- .f0[-.w[1]]
         writeLines(text = .f0, con = file.path(devtools::package_file("src"), basename(x)))
@@ -215,30 +215,30 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       .tmp,
       paste0("SEXP ", .pkg, "_", .models, "_model_vars();"),
       paste0("void ", .inits, "();"),
-      paste0("void R_init0_", .pkg, "_RxODE_models(){"),
+      paste0("void R_init0_", .pkg, "_rxode2_models(){"),
       paste0("  ", .inits, "();"),
       "}"
     )
     sink(file.path(devtools::package_file("src"), paste0(.pkg, "_compiled.h")))
-    if (.pkg == "RxODE") {
-      cat("#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include \"../inst/include/RxODE.h\"\n#include \"../inst/include/RxODE_model_shared.h\"\n")
+    if (.pkg == "rxode2") {
+      cat("#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include \"../inst/include/rxode2.h\"\n#include \"../inst/include/rxode2_model_shared.h\"\n")
     } else {
-      cat("#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include <RxODE.h>\n#include <RxODE_model_shared.h>\n")
+      cat("#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n#include <rxode2.h>\n#include <rxode2_model_shared.h>\n")
     }
     cat(paste(.extraC, collapse = "\n"))
     cat("\n")
     sink()
     .files <- list.files(devtools::package_file("src"))
-    .files <- .files[regexpr("RxODE_model_shared", .files) == -1]
+    .files <- .files[regexpr("rxode2_model_shared", .files) == -1]
     if (all(regexpr(paste0("^", .pkg), .files) != -1)) {
       .minfo(sprintf("only compiled models in this package, creating '%s_init.c'", .pkg))
       sink(file.path(devtools::package_file("src"), paste0(.pkg, "_init.c")))
       cat("#include <R.h>\n#include <Rinternals.h>\n#include <stdlib.h> // for NULL\n#include <R_ext/Rdynload.h>\n")
-      cat("#include <RxODE.h>\n")
-      cat("#include <RxODE_model_shared.h>\n")
+      cat("#include <rxode2.h>\n")
+      cat("#include <rxode2_model_shared.h>\n")
       cat(paste0('#include "', .pkg, '_compiled.h"\n'))
       cat(sprintf("void R_init_%s(DllInfo *info){\n", .pkg))
-      cat(sprintf("  R_init0_%s_RxODE_models();\n", .pkg))
+      cat(sprintf("  R_init0_%s_rxode2_models();\n", .pkg))
       cat("  static const R_CallMethodDef callMethods[]  = {\n  compiledModelCall\n  {NULL, NULL, 0}\n  };\n")
       cat("  R_registerRoutines(info, NULL, callMethods, NULL, NULL);\n")
       cat("  R_useDynamicSymbols(info,FALSE);\n")
@@ -249,7 +249,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       cat("}\n")
       sink()
     }
-    if (!file.exists(devtools::package_file("R/rxUpdated.R")) && .pkg != "RxODE") {
+    if (!file.exists(devtools::package_file("R/rxUpdated.R")) && .pkg != "rxode2") {
       sink(devtools::package_file("R/rxUpdated.R"))
       cat(".rxUpdated <- new.env(parent=emptyenv())\n")
       sink()
@@ -263,7 +263,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
     .modName <- as.character(substitute(obj))
     .pkg <- basename(usethis::proj_get())
     .env <- new.env(parent = baseenv())
-    assign(.modName, RxODE(.norm2(obj), package = .pkg, modName = .modName), .env)
+    assign(.modName, rxode2(.norm2(obj), package = .pkg, modName = .modName), .env)
     assignInMyNamespace(".rxUseCdir", dirname(rxC(.env[[.modName]])))
     assign("internal", internal, .env)
     assign("overwrite", overwrite, .env)
@@ -272,7 +272,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
   }
 }
 
-#' Creates a package from compiled RxODE models
+#' Creates a package from compiled rxode2 models
 #'
 #' @param ... Models to build a package from
 #' @param package String of the package name to create
@@ -280,7 +280,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
 #' @param name Full name of author
 #' @param license is the type of license for the package.
 #' @inheritParams usethis::create_package
-#' @inheritParams RxODE
+#' @inheritParams rxode2
 #' @author Matthew Fidler
 #' @return this function returns nothing and is used for its side effects
 #' @export
@@ -307,7 +307,7 @@ rxPkg <- function(..., package,
   }
   setwd(.dir)
   options(
-    usethis.description = list(`Title` = "This is generated from RxODE"),
+    usethis.description = list(`Title` = "This is generated from rxode2"),
     usethis.full_name = ifelse(missing(name), getOption("usethis.full_name", "Firstname Lastname"), name)
   )
   .dir2 <- file.path(.dir, package)
@@ -319,8 +319,8 @@ rxPkg <- function(..., package,
     open = FALSE
   )
   setwd(.dir2)
-  usethis::use_package("RxODE", "LinkingTo")
-  usethis::use_package("RxODE", "Depends")
+  usethis::use_package("rxode2", "LinkingTo")
+  usethis::use_package("rxode2", "Depends")
   if (license == "gpl3") {
     usethis::use_gpl3_license()
   } else if (license == "lgpl") {
@@ -359,7 +359,7 @@ rxPkg <- function(..., package,
   if (length(.w) == 0) {
     .f <- c(
       paste0("#' @useDynLib ", package, ", .registration=TRUE"),
-      "#' @import RxODE",
+      "#' @import rxode2",
       .f
     )
     writeLines(.f, .p)
@@ -368,7 +368,7 @@ rxPkg <- function(..., package,
   if (!file.exists("configure.win")) {
     writeLines(c(
       "#!/bin/sh",
-      "echo \"unlink('src', recursive=TRUE);RxODE::rxUse()\" > build.R",
+      "echo \"unlink('src', recursive=TRUE);rxode2::rxUse()\" > build.R",
       "${R_HOME}/bin/Rscript build.R",
       "rm build.R"
     ), "configure.win")
@@ -376,7 +376,7 @@ rxPkg <- function(..., package,
   if (!file.exists("configure")) {
     writeLines(c(
       "#!/bin/sh",
-      "echo \"unlink('src', recursive=TRUE);RxODE::rxUse()\" > build.R",
+      "echo \"unlink('src', recursive=TRUE);rxode2::rxUse()\" > build.R",
       "${R_HOME}/bin/Rscript build.R",
       "rm build.R"
     ), "configure")

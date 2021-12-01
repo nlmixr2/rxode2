@@ -1,15 +1,15 @@
 //#undef NDEBUG
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <stan/math.hpp>
 #include <Rcpp.h>
 #include <RcppEigen.h>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include "handle_evid.h"
 #include "getTime.h"
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)

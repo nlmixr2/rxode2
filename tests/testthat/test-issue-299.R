@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Issue 299")
     test_that("issue #229", {
-      model <- RxODE({
+      model <- rxode2({
         cmt(SC_AKR)
         cmt(Cent_AKR)
         rx_expr_0 ~ exp(THETA[1])

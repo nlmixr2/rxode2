@@ -1,7 +1,7 @@
 rxodeTest({
   context("test id==\"item\"")
 
-  f1 <- RxODE({
+  f1 <- rxode2({
     a <- 1
     if (id == "matt") {
       a <- 2
@@ -30,7 +30,7 @@ rxodeTest({
     expect_equal(ref$a, c(1, 2))
   })
 
-  f2 <- RxODE({
+  f2 <- rxode2({
     a <- 1
     if ("matt" == ID) {
       a <- 2
@@ -59,7 +59,7 @@ rxodeTest({
     expect_equal(ref$a, c(1, 2))
   })
 
-  f1 <- RxODE({
+  f1 <- rxode2({
     a <- 1
     if (id != "matt") {
       a <- 2
@@ -88,7 +88,7 @@ rxodeTest({
     expect_equal(ref$a, c(2, 1))
   })
 
-  f1 <- RxODE({
+  f1 <- rxode2({
     a <- 1
     if (id == "100") {
       a <- 2
@@ -106,7 +106,7 @@ rxodeTest({
     expect_equal(ref$a, c(2, 1))
   })
 
-  expect_error(RxODE({
+  expect_error(rxode2({
     a <- 1
     if (id == 100) {
       a <- 2
@@ -114,7 +114,7 @@ rxodeTest({
   }))
 
 
-  f1 <- RxODE({
+  f1 <- rxode2({
     a <- 1 + (id == "100") * 2
   })
 
@@ -124,7 +124,7 @@ rxodeTest({
     expect_equal(ref$a, c(3, 1))
   })
 
-  f1 <- RxODE({
+  f1 <- rxode2({
     a <- 1 + (id == "100") * 2
   })
 
@@ -136,7 +136,7 @@ rxodeTest({
 
   context("test cmt==\"item\"/no.")
 
-  f3 <- RxODE({
+  f3 <- rxode2({
     a <- 3
     if (cmt == "depot") {
       a <- 2
@@ -155,7 +155,7 @@ rxodeTest({
     expect_equal(tmp$a, c(2, 3))
   })
 
-  f3 <- RxODE({
+  f3 <- rxode2({
     a <- 3
     if (cmt == 1) {
       a <- 2
@@ -168,7 +168,7 @@ rxodeTest({
     expect_equal(tmp$a, c(2, 3))
   })
 
-  f3 <- RxODE({
+  f3 <- rxode2({
     a <- 3
     if (cmt != "depot") {
       a <- 2
@@ -181,7 +181,7 @@ rxodeTest({
     expect_equal(tmp$a, c(3, 2))
   })
 
-  f3 <- RxODE({
+  f3 <- rxode2({
     a <- 3
     if (cmt != 1) {
       a <- 2
@@ -192,7 +192,7 @@ rxodeTest({
     expect_equal(tmp$a, c(3, 2))
   })
 
-  f3 <- RxODE({
+  f3 <- rxode2({
     a <- 1
     if ("depot" == cmt) {
       a <- 2
@@ -205,7 +205,7 @@ rxodeTest({
     expect_equal(tmp$a, c(2, 1))
   })
 
-  f3 <- RxODE({
+  f3 <- rxode2({
     a <- 1
     if ("depot" != cmt) {
       a <- 2

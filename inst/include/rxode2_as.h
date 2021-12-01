@@ -1,10 +1,10 @@
-#ifndef RxODE_as
-#define RxODE_as
+#ifndef rxode2_as
+#define rxode2_as
 //#define asError
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)

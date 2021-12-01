@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 
 double powerDi(double x, double lambda, int yj){
   return _powerDi(x, lambda, yj, 0, 1);

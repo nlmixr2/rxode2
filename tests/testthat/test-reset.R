@@ -6,7 +6,7 @@ rxodeTest(
       ## 6.1
       library(dplyr)
 
-      mod <- RxODE({
+      mod <- rxode2({
         a <- 6
         b <- 0.6
         d / dt(intestine) <- -a * intestine
@@ -51,7 +51,7 @@ rxodeTest(
         add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
         add.sampling(seq(0, 48, length.out = 200))
 
-      sol.1c <- RxODE({
+      sol.1c <- rxode2({
         V <- 20
         Cl <- 2
         blood <- linCmt()

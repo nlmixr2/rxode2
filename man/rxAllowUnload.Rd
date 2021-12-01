@@ -7,7 +7,7 @@
 rxAllowUnload(allow)
 }
 \arguments{
-\item{allow}{boolean indicating if garbage collection will unload of RxODE dlls.}
+\item{allow}{boolean indicating if garbage collection will unload of rxode2 dlls.}
 }
 \value{
 Boolean allow; called for side effects
@@ -17,10 +17,10 @@ Allow unloading of dlls
 }
 \examples{
 
-# Garbage collection will not unload un-used RxODE dlls
+# Garbage collection will not unload un-used rxode2 dlls
 rxAllowUnload(FALSE);
 
-# Garbage collection will unload unused RxODE dlls
+# Garbage collection will unload unused rxode2 dlls
 rxAllowUnload(TRUE);
 }
 \author{

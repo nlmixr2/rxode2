@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("tests the internal df repetition routines")
 
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     expect_equal(
       .rx$.vecDf(c(a = 1, b = 1, c = 3), 3),

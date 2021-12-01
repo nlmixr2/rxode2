@@ -1,5 +1,5 @@
 
-An `RxODE` model specification consists of one or more 
+An `rxode2` model specification consists of one or more 
 statements optionally terminated by semi-colons `;` and
 optional comments (comments are delimited by `#` and an 
 end-of-line). 
@@ -28,8 +28,8 @@ Assignment statements can be:
   (`f(depot)=1`), **lag time** (`alag(depot)=0`), **modeled rate**
   (`rate(depot)=2`) and **modeled duration** (`dur(depot)=2`). An
   example of these model features and the event specification for the
-  modeled infusions the RxODE data specification is found in [RxODE
-  events vignette](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-event-types.html).
+  modeled infusions the rxode2 data specification is found in [rxode2
+  events vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
   
 - special **change point syntax, or model times**.  These model times are
   specified by `mtime(var)=time`
@@ -82,7 +82,7 @@ You may also access the R's functions in the [R math
 libraries](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines),
 like `lgammafn` for the log gamma function.
 
-The `RxODE` syntax is case-sensitive, i.e., `ABC` is different 
+The `rxode2` syntax is case-sensitive, i.e., `ABC` is different 
 than `abc`, `Abc`, `ABc`, etc.
 
 ### Identifiers
@@ -104,15 +104,15 @@ Identifiers in a model specification can refer to:
 * Others, as created by assignments as part of the model specification;
   these are referred as *LHS* (left-hand side) variable.
 
-Currently, the `RxODE` modeling language only recognizes system state
+Currently, the `rxode2` modeling language only recognizes system state
 variables and "parameters", thus, any values that need to be passed
 from R to the ODE model (e.g., `age`) should be either passed in the
 `params` argument of the integrator function `rxSolve()` or be in the
 supplied event data-set.
 
-There are certain variable names that are in the `RxODE` event tables.
+There are certain variable names that are in the `rxode2` event tables.
 To avoid confusion, the following event table-related items cannot be
-assigned, or used as a state but can be accessed in the RxODE code:
+assigned, or used as a state but can be accessed in the rxode2 code:
 
  - `cmt`
  - `dvid`
@@ -126,7 +126,7 @@ However the following variables are cannot be used in a model specification:
  - `evid`
  - `ii`
 
-Sometimes RxODE generates variables that are fed back to RxODE.
+Sometimes rxode2 generates variables that are fed back to rxode2.
 Similarly, nlmixr generates some variables that are used in nlmixr
 estimation and simulation.  These variables start with the either the
 `rx` or `nlmixr` prefixes.  To avoid any problems, it is suggested to

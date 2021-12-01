@@ -1,6 +1,6 @@
 rxodeTest({
 
-  .rx <- loadNamespace("RxODE")
+  .rx <- loadNamespace("rxode2")
 
   test_that("Multiple endpoint parsing", {
 
@@ -62,7 +62,7 @@ rxodeTest({
       })
     }
 
-    f <- RxODE(pk.turnover.emax)
+    f <- rxode2(pk.turnover.emax)
 
     expect_equal(f$paramsLine,
                  quote(params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50,
@@ -128,7 +128,7 @@ rxodeTest({
       })
     }
 
-    ui2 <- RxODE(pk.turnover.emax2)
+    ui2 <- rxode2(pk.turnover.emax2)
 
     expect_equal(ui2$paramsLine,
                  quote(params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50,
@@ -194,7 +194,7 @@ rxodeTest({
       })
     }
 
-    ui3 <- RxODE(pk.turnover.emax3)
+    ui3 <- rxode2(pk.turnover.emax3)
 
 
     expect_equal(ui3$paramsLine,
@@ -262,7 +262,7 @@ rxodeTest({
       })
     }
 
-    ui4 <- RxODE(pk.turnover.emax4)
+    ui4 <- rxode2(pk.turnover.emax4)
 
 
     expect_equal(ui4$paramsLine,

@@ -2,7 +2,7 @@
 % Please edit documentation in R/rxode-options.R
 \name{rxForget}
 \alias{rxForget}
-\title{Clear memoise cache for RxODE}
+\title{Clear memoise cache for rxode2}
 \usage{
 rxForget()
 }
@@ -10,7 +10,7 @@ rxForget()
 nothing; called for side effects
 }
 \description{
-Clear memoise cache for RxODE
+Clear memoise cache for rxode2
 }
 \author{
 Matthew L. Fidler

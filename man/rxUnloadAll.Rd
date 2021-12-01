@@ -2,17 +2,17 @@
 % Please edit documentation in R/utils.R
 \name{rxUnloadAll}
 \alias{rxUnloadAll}
-\title{Unloads all RxODE compiled DLLs}
+\title{Unloads all rxode2 compiled DLLs}
 \usage{
 rxUnloadAll()
 }
 \value{
-List of RxODE dlls still loaded
+List of rxode2 dlls still loaded
 
-boolean of if all RxODE dlls have been unloaded
+boolean of if all rxode2 dlls have been unloaded
 }
 \description{
-Unloads all RxODE compiled DLLs
+Unloads all rxode2 compiled DLLs
 }
 \examples{
 

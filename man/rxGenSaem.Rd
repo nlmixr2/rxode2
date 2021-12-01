@@ -2,7 +2,7 @@
 % Please edit documentation in R/rxJacobian.R
 \name{rxGenSaem}
 \alias{rxGenSaem}
-\title{Generate pred-only SAEM RxODE model}
+\title{Generate pred-only SAEM rxode2 model}
 \usage{
 rxGenSaem(
   obj,
@@ -14,7 +14,7 @@ rxGenSaem(
 )
 }
 \arguments{
-\item{obj}{RxODE model (text or actual model)}
+\item{obj}{rxode2 model (text or actual model)}
 
 \item{predfn}{prediction function}
 
@@ -32,10 +32,10 @@ into one expression that is eventually optimized if
 \code{optExpression} is \code{TRUE}.}
 }
 \value{
-RxODE text
+rxode2 text
 }
 \description{
-Generate pred-only SAEM RxODE model
+Generate pred-only SAEM rxode2 model
 }
 \author{
 Matthew Fidler

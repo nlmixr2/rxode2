@@ -1,25 +1,25 @@
 #define USE_FC_LEN_T
 // [[Rcpp::interfaces(r, cpp)]]
 //#undef NDEBUG
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include "rxomp.h"
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 #include <RcppArmadillo.h>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include <threefry.h>
 #include "seed.h"
 #include <R.h>
 #include "checkmate.h"
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
 #endif
 using namespace Rcpp;
 using namespace arma;
-#include "../inst/include/RxODE_as.h"
+#include "../inst/include/rxode2_as.h"
 #include "threefry.h"
 
 extern rx_solving_options op_global;

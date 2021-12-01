@@ -14,7 +14,7 @@ a matrix or a data frame}
 \item{individualParameters}{A data frame of individual parameters}
 }
 \value{
-Data frame that can be used in RxODE simulations
+Data frame that can be used in rxode2 simulations
 }
 \description{
 Bind the study parameters and individual parameters

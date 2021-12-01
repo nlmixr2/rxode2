@@ -76,7 +76,7 @@
 #'
 #' This not only determines if the lhs of the line is independent of
 #' any prior declarations (by `.rxMuRefIsClean()`), but it makes sure
-#' that the rhs is not a special RxODE expression like `d/dt(depot)`
+#' that the rhs is not a special rxode2 expression like `d/dt(depot)`
 #' or `rate(depot)` `depot(0)` etc.
 #'
 #' This also assigns the line status in the enviroment `env` to
@@ -771,7 +771,7 @@
 #' The rxMuRef is the core of the nlmixr ui functions
 #'
 #' This function takes the initialization values from `lotri()` the
-#' parsed RxODE model to generate mu-referenced models adding
+#' parsed rxode2 model to generate mu-referenced models adding
 #' mu-references for etas that do not have them to allow saem to
 #' support non mu-referenced models by a parsing trick.
 #'

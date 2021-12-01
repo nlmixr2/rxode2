@@ -1,7 +1,7 @@
 static inline int assertForbiddenVariables(const char *s) {
   if (!strcmp("printf", s)){
     updateSyntaxCol();
-    trans_syntax_error_report_fn(_("'printf' cannot be a variable in an RxODE model"));
+    trans_syntax_error_report_fn(_("'printf' cannot be a variable in an rxode2 model"));
     tb.ix=-2;
     return 0;
   }
@@ -14,38 +14,38 @@ static inline int assertForbiddenVariables(const char *s) {
   }
   if (!strcmp("Rprintf", s)){
     updateSyntaxCol();
-    trans_syntax_error_report_fn(_("'Rprintf' cannot be a variable in an RxODE model"));
+    trans_syntax_error_report_fn(_("'Rprintf' cannot be a variable in an rxode2 model"));
     tb.ix=-2;
     return 0;
   }
   if (!strcmp("print", s)){
     updateSyntaxCol();
-    trans_syntax_error_report_fn(_("'print' cannot be a variable in an RxODE model"));
+    trans_syntax_error_report_fn(_("'print' cannot be a variable in an rxode2 model"));
     tb.ix=-2;
     return 0;
   }
   if (!strcmp("ifelse", s)){
     updateSyntaxCol();
-    err_trans("'ifelse' cannot be a state in an RxODE model");
+    err_trans("'ifelse' cannot be a state in an rxode2 model");
     tb.ix=-2;
     return 0;
   }
   if (!strcmp("if", s)){
     updateSyntaxCol();
-    err_trans("'if' cannot be a variable/state in an RxODE model");
+    err_trans("'if' cannot be a variable/state in an rxode2 model");
     tb.ix=-2;
     return 0;
   }
-  if (!strcmp("evid", s)){ // This is mangled by RxODE so don't use it.
+  if (!strcmp("evid", s)){ // This is mangled by rxode2 so don't use it.
     updateSyntaxCol();
-    trans_syntax_error_report_fn(_("'evid' cannot be a variable in an RxODE model"));
+    trans_syntax_error_report_fn(_("'evid' cannot be a variable in an rxode2 model"));
     tb.ix=-2;
     return 0;
   }
   if (!strcmp("ii", s)){ // This is internally driven and not in the
   			 // covariate table so don't use it.
     updateSyntaxCol();
-    trans_syntax_error_report_fn(_("'ii' cannot be a variable in an RxODE model"));
+    trans_syntax_error_report_fn(_("'ii' cannot be a variable in an rxode2 model"));
     tb.ix=-2;
     return 0;
   }
@@ -126,15 +126,15 @@ static inline int new_or_ith(const char *s) {
   }
   if (NV+1 > tb.allocS){
     tb.allocS += MXSYM;
-    tb.lh = Realloc(tb.lh, tb.allocS, int);
-    tb.lag = Realloc(tb.lag, tb.allocS, int);
-    tb.ini= Realloc(tb.ini, tb.allocS, int);
-    tb.mtime=Realloc(tb.mtime, tb.allocS, int);
-    tb.iniv=Realloc(tb.iniv, tb.allocS, double);
-    tb.ini0=Realloc(tb.ini0, tb.allocS, int);
-    tb.df=Realloc(tb.df, tb.allocS, int);
-    tb.dy=Realloc(tb.dy, tb.allocS, int);
-    tb.sdfdy=Realloc(tb.sdfdy, tb.allocS, int);
+    tb.lh = R_Realloc(tb.lh, tb.allocS, int);
+    tb.lag = R_Realloc(tb.lag, tb.allocS, int);
+    tb.ini= R_Realloc(tb.ini, tb.allocS, int);
+    tb.mtime=R_Realloc(tb.mtime, tb.allocS, int);
+    tb.iniv=R_Realloc(tb.iniv, tb.allocS, double);
+    tb.ini0=R_Realloc(tb.ini0, tb.allocS, int);
+    tb.df=R_Realloc(tb.df, tb.allocS, int);
+    tb.dy=R_Realloc(tb.dy, tb.allocS, int);
+    tb.sdfdy=R_Realloc(tb.sdfdy, tb.allocS, int);
   }
   return 1;
 }

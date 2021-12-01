@@ -1,7 +1,7 @@
 ## test ODE parsing for syntax errors
 rxodeTest(
   {
-    library(RxODE)
+    library(rxode2)
 
     context("Test errors with non-symmetric matrices")
     set.seed(42)
@@ -53,7 +53,7 @@ rxodeTest(
 
 "
 
-    mod <- RxODE(model = ode)
+    mod <- rxode2(model = ode)
 
     theta <- c(
       tVg = 9.33, Vp = 8.56, tQ = 0.442,

@@ -5,7 +5,7 @@ rxodeTest(
       et <- eventTable() %>%
         add.sampling(0)
 
-      rx <- RxODE({
+      rx <- rxode2({
         s1 <- sum(1e100, 1.0, -1e100, 1e-100, 1e50, -1.0, -1e50)
         s2 <- sum(2.0^53, -0.5, -2.0^-54)
         s3 <- sum(2.0^53, 1.0, 2.0^-100)

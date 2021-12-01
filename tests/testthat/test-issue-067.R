@@ -6,7 +6,7 @@ BASE=TVBASE*exp(EBASE);
 SLD(0)=BASE;
 d/dt(SLD)=-0.5*SLD;
 "
-    m1 <- RxODE(modelCode)
+    m1 <- rxode2(modelCode)
     ev <- eventTable() %>% add.sampling(c(0, 1))
     e <- rxSolve(m1, ev, params = c(EBASE = 0.3))
     context("Make sure initial conditions work, Issue #67")

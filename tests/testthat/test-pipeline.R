@@ -1,9 +1,9 @@
 rxodeTest(
   {
-    library(RxODE)
-    context("Test pipeline style of interacting with RxODE")
+    library(rxode2)
+    context("Test pipeline style of interacting with rxode2")
 
-    mod <- RxODE({
+    mod <- rxode2({
       eff(0) <- 1
       C2 <- centr / V2
       C3 <- peri / V3

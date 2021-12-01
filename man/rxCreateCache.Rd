@@ -2,7 +2,7 @@
 % Please edit documentation in R/rxode-options.R
 \name{rxCreateCache}
 \alias{rxCreateCache}
-\title{This will create the cache directory for RxODE to save between sessions}
+\title{This will create the cache directory for rxode2 to save between sessions}
 \usage{
 rxCreateCache()
 }
@@ -10,7 +10,7 @@ rxCreateCache()
 nothing
 }
 \description{
-When run, if the \code{R_user_dir} for RxODE's cache isn't present,
+When run, if the \code{R_user_dir} for rxode2's cache isn't present,
 create the cache
 }
 \author{

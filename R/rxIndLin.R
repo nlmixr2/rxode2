@@ -46,7 +46,7 @@ rxIndLinState <- function(preferred = NULL) {
 
 .rxIndLinLine <- function(line, states, state0) {
   .tmp <- symengine::expand(line) ## Expand line
-  .tmp <- rxFromSE(.tmp) ## Convert SE->RxODE; Changes things like X^1 -> X
+  .tmp <- rxFromSE(.tmp) ## Convert SE->rxode2; Changes things like X^1 -> X
 
   .ret <- eval(parse(text = paste0("rxSplitPlusQ(quote(", .tmp, "))")))
   .lst <- list()
@@ -167,9 +167,9 @@ rxIndLinState <- function(preferred = NULL) {
 .indLinInfo <- list()
 
 #' This creates the inductive linearization pieces to integrate into
-#' a RxODE model.
+#' a rxode2 model.
 #'
-#' @param model RxODE model type of object
+#' @param model rxode2 model type of object
 #'
 #' @param doConst Replace constants with values; By default this is
 #'     `FALSE`.
@@ -180,7 +180,7 @@ rxIndLinState <- function(preferred = NULL) {
 #'
 #' * Inductive Linerization vector for F
 #'
-#' * Extra RxODE code for model generation
+#' * Extra rxode2 code for model generation
 #'
 #' * Generated C code for model variables; With ME only this will
 #' be a list of size 1, otherwise it is a list of size 2.

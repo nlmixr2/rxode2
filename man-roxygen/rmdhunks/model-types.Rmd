@@ -1,17 +1,17 @@
 ## Prediction only models
 
-Prediction only models are simple to create.  You use the RxODE syntax
+Prediction only models are simple to create.  You use the rxode2 syntax
 without any ODE systems in them.  A very simple example is a one-compartment model.
 
 ```{r}
-library(RxODE)
-mod <- RxODE({
+library(rxode2)
+mod <- rxode2({
     ipre <- 10 * exp(-ke * t);
 })
 mod
 ```
 
-Solving the RxODE models are the same as saving the simple ODE system, but faster of course.
+Solving the rxode2 models are the same as saving the simple ODE system, but faster of course.
 
 ```{r}
 et  <- et(seq(0,24,length.out=50))
@@ -46,7 +46,7 @@ if (knitr::is_latex_output()) {
 ```
 
 
-Another popular parameterization is in terms of micro-constants. RxODE
+Another popular parameterization is in terms of micro-constants. rxode2
 assumes compartment `1` is the central compartment.  The elimination
 constant would be specified by `K`, `Ke` or `Kel`. Some example translations are below:
 
@@ -87,11 +87,11 @@ When the absorption constant `ka` is missing, you may only dose to the
 number is `central=1`.
 
 These compartments take the same sort of events that a ODE model can
-take, and are discussed in the [RxODE events
-vignette](RxODE-events.html). 
+take, and are discussed in the [rxode2 events
+vignette](rxode2-events.html). 
 
 ```{r}
-mod <- RxODE({
+mod <- rxode2({
     ke <- 0.5
     V <- 1
     ipre <- linCmt();
@@ -118,9 +118,9 @@ prior 2-compartment indirect response model can be simplified with a
 `linCmt()` function:
 
 ```{r}
-library(RxODE)
+library(rxode2)
 ## Setup example model
-mod1 <-RxODE({
+mod1 <-rxode2({
     C2 = centr/V2;
     C3 = peri/V3;
     d/dt(depot) =-KA*depot;
@@ -145,7 +145,7 @@ ev <- eventTable(amount.units="mg", time.units="hours") %>%
     add.sampling(0:240);
 
 ## Setup a mixed solved/ode system:
-mod2 <- RxODE({
+mod2 <- rxode2({
     ## the order of variables do not matter, the type of compartmental
     ## model is determined by the parameters specified.
     C2   = linCmt(KA, CL, V2, Q, V3);
@@ -196,14 +196,14 @@ x <- mod2 %>%  solve(theta, ev,c(eff=2))
 print(x)
 ```
 
-The RxODE detective also does not require you to specify the variables
+The rxode2 detective also does not require you to specify the variables
 in the `linCmt()` function if they are already defined in the block.
 Therefore, the following function will also work to solve the same
 system.
 
 
 ```{r}
-mod3 <- RxODE({
+mod3 <- rxode2({
     KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;

@@ -4,7 +4,7 @@ rxodeTest(
 
     set.seed(100)
 
-    mod <- RxODE({
+    mod <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
       KA <- TKA * exp(eta.ka + scale_rad + 0.5 * SEX)

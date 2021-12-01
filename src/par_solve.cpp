@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include "rxomp.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 #include <Rinternals.h>
 #include <Rmath.h> //Rmath includes math.
 #include <R_ext/Rdynload.h>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include "strncmp.h"
 #include "handle_evid.h"
 #include "getTime.h"
@@ -35,7 +35,7 @@ extern "C" {
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -371,8 +371,8 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
 t_set_solve set_solve = NULL;
 
 extern "C" void rxOptionsIniEnsure(int mx){
-  Free(inds_global);
-  inds_global = Calloc(mx, rx_solving_options_ind);
+  R_Free(inds_global);
+  inds_global = R_Calloc(mx, rx_solving_options_ind);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx->keys = NULL;
@@ -513,7 +513,7 @@ unsigned int global_rworki = 0;
 double *global_rwork(unsigned int mx){ 
   if (mx >= global_rworki){
     global_rworki = mx+1024;
-    global_rworkp = Realloc(global_rworkp, global_rworki, double);
+    global_rworkp = R_Realloc(global_rworkp, global_rworki, double);
   }
   return global_rworkp;
 }
@@ -671,7 +671,7 @@ extern "C" void sortRadix(rx_solving_options_ind *ind){
 	key[b][i] = (uint8_t)(elem & 0xff);
 	elem >>= 8;
       }
-      // RxODE uses key[0][i] = 0 | (uint8_t)(elem & 0xff) instead of
+      // rxode2 uses key[0][i] = 0 | (uint8_t)(elem & 0xff) instead of
       //  key[0][i] |= (uint8_t)(elem & 0xff)
       // because unlike data.table, key[0][i] is not necessarily zero. 
       key[0][i] = 0 | (uint8_t)(elem & 0xff);
@@ -1559,7 +1559,7 @@ unsigned int global_iworki = 0;
 int *global_iwork(unsigned int mx){
   if (mx >= global_iworki){
     global_iworki = mx+1024;
-    global_iworkp = Realloc(global_iworkp, global_iworki, int);
+    global_iworkp = R_Realloc(global_iworkp, global_iworki, int);
   }
   return global_iworkp;
 }
@@ -1569,7 +1569,7 @@ unsigned int global_InfusionRatei = 0;
 double *global_InfusionRate(unsigned int mx){
   if (mx >= global_InfusionRatei){
     global_InfusionRatei = mx+1024;
-    global_InfusionRatep = Realloc(global_InfusionRatep, global_InfusionRatei, double);
+    global_InfusionRatep = R_Realloc(global_InfusionRatep, global_InfusionRatei, double);
   }
   return global_InfusionRatep;
 }
@@ -1579,7 +1579,7 @@ unsigned int global_scalei = 0;
 double *global_scale(unsigned int mx){
   if (mx >= global_scalei){
     global_scalei = mx+1024;
-    global_scalep = Realloc(global_scalep, global_scalei, double);
+    global_scalep = R_Realloc(global_scalep, global_scalei, double);
   }
   return global_scalep;
 }
@@ -1590,26 +1590,26 @@ unsigned int global_BadDosei = 0;
 int *global_BadDose(unsigned int mx){
   if (mx >= global_BadDosei){
     global_BadDosei = mx+1024;
-    global_BadDosep = Realloc(global_BadDosep, global_BadDosei, int);
+    global_BadDosep = R_Realloc(global_BadDosep, global_BadDosei, int);
   }
   return global_BadDosep;
 }
 
 extern "C" void rxOptionsIni(){
   global_iworki = 1024*4;
-  global_iworkp=Calloc(1024*4, int);
+  global_iworkp=R_Calloc(1024*4, int);
   
   global_rworki=4*1024;
-  global_rworkp=Calloc(1024*4, double);
+  global_rworkp=R_Calloc(1024*4, double);
   
   global_InfusionRatei = 1024;
-  global_InfusionRatep=Calloc(1024, double);
+  global_InfusionRatep=R_Calloc(1024, double);
 
   global_BadDosei = 1024;
-  global_BadDosep=Calloc(1024, int);
+  global_BadDosep=R_Calloc(1024, int);
 
   global_scalei = 1024;
-  global_scalep=Calloc(1024, double);
+  global_scalep=R_Calloc(1024, double);
 
   rx_solve *rx=(&rx_global);
 
@@ -1618,25 +1618,25 @@ extern "C" void rxOptionsIni(){
 }
 
 extern "C" void rxOptionsFree(){
-  if (global_iworki != 0) Free(global_iworkp);
+  if (global_iworki != 0) R_Free(global_iworkp);
 
 
-  if (global_rworki != 0) Free(global_rworkp);
+  if (global_rworki != 0) R_Free(global_rworkp);
   global_rworki = 0;
-  Free(global_rworkp);
+  R_Free(global_rworkp);
 
   global_InfusionRatei = 0;
-  Free(global_InfusionRatep);
+  R_Free(global_InfusionRatep);
 
   global_BadDosei = 0;
-  Free(global_BadDosep);
+  R_Free(global_BadDosep);
 
   global_scalei = 0;
-  Free(global_scalep);
+  R_Free(global_scalep);
 }
 
 extern "C" void rxFreeLast(){
-  Free(inds_global);
+  R_Free(inds_global);
   inds_global=NULL;
 }
 
@@ -2018,7 +2018,7 @@ extern "C" void par_solve(rx_solve *rx){
 
 rx_solve *_globalRx = NULL;
 
-extern "C" void rxode_assign_rx(rx_solve *rx){
+extern "C" void rxode2_assign_rx(rx_solve *rx){
   _globalRx=rx;
 }
 
@@ -2103,7 +2103,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
   di = 0;
 }
 
-extern "C" SEXP RxODE_df(int doDose0, int doTBS) {
+extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   rx_solve *rx;
   rx = &rx_global;
   rx_solving_options *op = &op_global;

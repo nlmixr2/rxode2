@@ -10,9 +10,9 @@ static inline int handleFunctionPnorm(transFunctions *tf) {
       if (allSpace){
 	updateSyntaxCol();
 	if (tf->isPnorm){
-	  trans_syntax_error_report_fn(_("'pnorm' in RxODE takes 1-3 arguments pnorm(q, mean, sd)"));
+	  trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
 	} else {
-	  trans_syntax_error_report_fn(_("'qnorm' in RxODE takes 1-3 arguments pnorm(p, mean, sd)"));
+	  trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments pnorm(p, mean, sd)"));
 	}
       } else {
 	sAppend(&sb, "_%s1(", tf->v);
@@ -30,9 +30,9 @@ static inline int handleFunctionPnorm(transFunctions *tf) {
     } else {
       updateSyntaxCol();
       if (tf->isPnorm){
-	trans_syntax_error_report_fn(_("'pnorm' in RxODE takes 1-3 arguments pnorm(q, mean, sd)"));
+	trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
       } else {
-	trans_syntax_error_report_fn(_("'qnorm' in RxODE takes 1-3 arguments pnorm(p, mean, sd)"));
+	trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments pnorm(p, mean, sd)"));
       }
     }
     tf->i[0] = 1;// Parse next arguments

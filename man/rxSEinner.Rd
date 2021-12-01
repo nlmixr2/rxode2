@@ -3,7 +3,7 @@
 \name{rxSEinner}
 \alias{rxSEinner}
 \alias{rxSymPySetupPred}
-\title{Setup Pred function based on RxODE object.}
+\title{Setup Pred function based on rxode2 object.}
 \usage{
 rxSEinner(
   obj,
@@ -42,7 +42,7 @@ rxSymPySetupPred(
 )
 }
 \arguments{
-\item{obj}{RxODE object}
+\item{obj}{rxode2 object}
 
 \item{predfn}{Prediction function}
 
@@ -55,14 +55,14 @@ rxSymPySetupPred(
 \item{grad}{Boolaen indicated if the the equations for the
 gradient be calculated}
 
-\item{sum.prod}{A boolean determining if RxODE should use more
+\item{sum.prod}{A boolean determining if rxode2 should use more
 numerically stable sums/products.}
 
 \item{pred.minus.dv}{Boolean stating if the FOCEi objective
 function is based on PRED-DV (like NONMEM).  Default TRUE.}
 
 \item{only.numeric}{Instead of setting up the sensitivities for
-the inner problem, modify the RxODE to use numeric
+the inner problem, modify the rxode2 to use numeric
 differentiation for the numeric inner problem only.}
 
 \item{optExpression}{Optimize the model text for computer
@@ -86,7 +86,7 @@ combined1: transform(y)=transform(f)+(a+b*f^c)*eps
 combined2: transform(y)=transform(f)+(a^2+b^2*f^(2c))*eps}
 }
 \value{
-RxODE object expanded with predfn and with calculated
+rxode2 object expanded with predfn and with calculated
 sensitivities.
 }
 \description{

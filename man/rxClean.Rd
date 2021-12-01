@@ -10,13 +10,13 @@ rxClean(wd)
 \item{wd}{What directory should be cleaned; (DEPRECIATED), this no
 longer does anything.
 
-This unloads all RxODE anonymous dlls.}
+This unloads all rxode2 anonymous dlls.}
 }
 \value{
 TRUE if successful
 }
 \description{
-This cleans up any RxODE loaded DLLs
+This cleans up any rxode2 loaded DLLs
 }
 \author{
 Matthew L. Fidler

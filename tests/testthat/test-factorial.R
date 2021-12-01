@@ -1,6 +1,6 @@
 rxodeTest(
   {
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     context("Test Factorial operator")
     transTo <- function(model, syntax, match = TRUE) {

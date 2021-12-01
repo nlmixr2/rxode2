@@ -1,12 +1,12 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <stdio.h>
 #include <stdarg.h>
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
 #include <R_ext/Rdynload.h>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include "handle_evid.h"
 #include "getTime.h"
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
@@ -15,7 +15,7 @@
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -98,7 +98,7 @@ extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
 /* Taken directly from https://github.com/wch/r-source/blob/922777f2a0363fd6fe07e926971547dd8315fc24/src/library/stats/src/approx.c*/
 /* Changed as follows:
    - Different Name
-   - Use RxODE structure
+   - Use rxode2 structure
    - Use getTime(to allow model-based changes to dose timing
    - Use getValue to ignore NA values for time-varying covariates
 */
@@ -302,14 +302,14 @@ void sortRadix(rx_solving_options_ind *ind);
 
 
 /*
-rxOptExpr(rxNorm(RxODE({
+rxOptExpr(rxNorm(rxode2({
   A1=r1/ka-((r1+(-b1-A1last)*ka)*exp(-ka*t))/ka;
   A2=((r1+(-b1-A1last)*ka)*exp(-ka*t))/(ka-k20)-(((ka-k20)*r2+ka*r1+(-b2-b1-A2last-A1last)*k20*ka+(b2+A2last)*k20^2)*exp(-k20*t))/(k20*ka-k20^2)+(r2+r1)/k20}))) = 
 */
 
 ////////////////////////////////////////////////////////////////////////////////
 // 1-3 oral absorption with rates
-// From Richard Upton with RxODE Expression optimization (and some manual edits)
+// From Richard Upton with rxode2 Expression optimization (and some manual edits)
 ////////////////////////////////////////////////////////////////////////////////
 
 #define A1 A[0]

@@ -11,7 +11,7 @@ rxodeTest(
 
       d <- rbind(d, d2)
 
-      mod <- RxODE({
+      mod <- rxode2({
         tka <- 1
         tcl <- 2
         tv <- 3

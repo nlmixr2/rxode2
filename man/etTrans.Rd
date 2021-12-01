@@ -2,7 +2,7 @@
 % Please edit documentation in R/RcppExports.R
 \name{etTrans}
 \alias{etTrans}
-\title{Event translation for RxODE}
+\title{Event translation for rxode2}
 \usage{
 etTrans(
   inData,
@@ -29,18 +29,18 @@ etTrans(
 \item{keepDosingOnly}{keep the individuals who only have dosing records and any
 trailing dosing records after the last observation.}
 
-\item{combineDvid}{is a boolean indicating if RxODE will use \code{DVID} on observation
+\item{combineDvid}{is a boolean indicating if rxode2 will use \code{DVID} on observation
 records to change the \code{cmt} value; Useful for multiple-endpoint nlmixr models.  By default
-this is determined by \code{option("RxODE.combine.dvid")} and if the option has not been set,
-this is \code{TRUE}. This typically does not affect RxODE simulations.}
+this is determined by \code{option("rxode2.combine.dvid")} and if the option has not been set,
+this is \code{TRUE}. This typically does not affect rxode2 simulations.}
 
-\item{keep}{This is a named vector of items you want to keep in the final RxODE dataset.
-For added RxODE event records (if seen), last observation carried forward will be used.}
+\item{keep}{This is a named vector of items you want to keep in the final rxode2 dataset.
+For added rxode2 event records (if seen), last observation carried forward will be used.}
 }
 \value{
-Object for solving in RxODE
+Object for solving in rxode2
 }
 \description{
-Event translation for RxODE
+Event translation for rxode2
 }
 \keyword{internal}

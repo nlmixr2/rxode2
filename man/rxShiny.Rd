@@ -4,7 +4,7 @@
 \alias{rxShiny}
 \alias{rxShiny.rxSolve}
 \alias{rxShiny.default}
-\title{Use Shiny to help develop an RxODE model}
+\title{Use Shiny to help develop an rxode2 model}
 \usage{
 rxShiny(
   object,
@@ -34,9 +34,9 @@ rxShiny(
 )
 }
 \arguments{
-\item{object}{A RxODE family of objects. If not supplied a
+\item{object}{A rxode2 family of objects. If not supplied a
 2-compartment indirect effect model is used.  If it is
-supplied, use the model associated with the RxODE object for
+supplied, use the model associated with the rxode2 object for
 the model exploration.}
 
 \item{params}{Initial parameters for model}
@@ -50,14 +50,14 @@ do anything.}
 
 \item{data}{Any data that you would like to plot.  If the data has
 a \code{time} variable as well as a compartment or calculated
-variable that matches the RxODE model, the data will be added
+variable that matches the rxode2 model, the data will be added
 to the plot of a specific compartment or calculated variable.}
 }
 \value{
 Nothing; Starts a shiny server
 }
 \description{
-Use Shiny to help develop an RxODE model
+Use Shiny to help develop an rxode2 model
 }
 \author{
 Zufar Mulyukov and Matthew L. Fidler

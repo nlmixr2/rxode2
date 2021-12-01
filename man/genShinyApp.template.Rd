@@ -29,7 +29,7 @@ shiny app is generated. Defaults to \code{TRUE}.}
 
 \item{statevars}{List of statevars passed to to the \code{\link[=write.template.ui]{write.template.ui()}} function.  This usually isn't called directly.
 
-A PK/PD model is defined using \code{\link[=RxODE]{RxODE()}}, and
+A PK/PD model is defined using \code{\link[=rxode2]{rxode2()}}, and
 a set of parameters and initial values are defined.  Then
 the appropriate R scripts for the shiny's user interface \code{ui.R}
 and the server logic \code{server.R} are created in the
@@ -61,7 +61,7 @@ given a (hardcoded) PK/PD model.
 These functions create a simple, but working example of a
 dosing regimen simulation web application. Users may want to
 modify the code to experiment creating shiny applications for
-their specific \code{RxODE} models.
+their specific \code{rxode2} models.
 }
 \examples{
 \donttest{
@@ -74,7 +74,7 @@ unlink("myapp", recursive = TRUE, force = TRUE) # remove myapp
 }
 }
 \seealso{
-\code{\link[=RxODE]{RxODE()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.rstudio.com}).
+\code{\link[=rxode2]{rxode2()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.rstudio.com}).
 }
 \concept{PK/PD}
 \concept{pharmacometrics}

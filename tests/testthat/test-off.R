@@ -6,7 +6,7 @@ rxodeTest(
 
     for (m in ms) {
       context(sprintf("Test turning compartment off (%s)", m))
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01

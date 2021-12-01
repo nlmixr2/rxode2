@@ -15,7 +15,7 @@
 #' S3 for getting information from UI model
 #'
 #' @param x list of (UIenvironment, exact).  UI environment is the
-#'   parsed function for RxODE.  `exact` is a boolean that says if an
+#'   parsed function for rxode2.  `exact` is a boolean that says if an
 #'   exact match is required.
 #' @param ... Other arguments
 #' @return value that was requested from the UI object
@@ -97,7 +97,7 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
   .exact <- x[[2]]
   .info <- get("predDf", .x)
   if (length(.info$cond) == 1) return(NULL)
-  if (getOption("RxODE.combine.dvid", TRUE)) {
+  if (getOption("rxode2.combine.dvid", TRUE)) {
     .info <- .info[order(.info$dvid), ]
   }
   .info <- with(.info, data.frame(
@@ -107,7 +107,7 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
                      paste0("dvid='", cond, "' or dvid=", dvid)),
     check.names = FALSE,
     stringsAsFactors=FALSE))
-  if (!getOption("RxODE.combine.dvid", TRUE)) {
+  if (!getOption("rxode2.combine.dvid", TRUE)) {
     .info <- .info[, names(.info) != "dvid*"]
   }
   if (requireNamespace("huxtable", quietly = TRUE)) {
@@ -116,7 +116,7 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
       huxtable::set_bold(row = 1, col = huxtable::everywhere, value = TRUE) %>%
       huxtable::set_position("center") %>%
       huxtable::set_all_borders(TRUE)
-    if (getOption("RxODE.combine.dvid", TRUE)) {
+    if (getOption("rxode2.combine.dvid", TRUE)) {
       .hux <- .hux %>%
         huxtable::add_footnote("* If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc")
     }
@@ -185,16 +185,16 @@ rxUiGet.modelDesc <- function(x, ...) {
   .mvL <- get("mvL", x[[1]])
   if (!is.null(.mvL)){
     return(sprintf(
-      "RxODE-based solved PK %s-compartment model%s%s", .mvL$flags["ncmt"],
+      "rxode2-based solved PK %s-compartment model%s%s", .mvL$flags["ncmt"],
       ifelse(.mv$extraCmt == 2, " with first-order absorption", ""),
       ifelse(length(.mvL$state) == 0L, "",
              sprintf(" mixed with free from %d-cmt ODE model",
                      length(.mvL$state)))
     ))
   } else if (length(.mv$state) > 0) {
-    return(sprintf("RxODE-based free-form %d-cmt ODE model", length(.mv$state)))
+    return(sprintf("rxode2-based free-form %d-cmt ODE model", length(.mv$state)))
   } else {
-    return("RxODE-based Pred model")
+    return("rxode2-based Pred model")
   }
 }
 attr(rxUiGet.modelDesc, "desc") <- "Model description (ie linear compartment, pred, ode etc)"
@@ -222,10 +222,10 @@ attr(rxUiGet.thetaUpper, "desc") -> "thetaUpper"
 
 # Get the state information for the current model
 #
-# @param obj RxODE model that can take rxModelVars
+# @param obj rxode2 model that can take rxModelVars
 # @return character vector of initial preserved states (state),
 #     extra states (statef) and dvid translation information
-#     (dvid). This is used in generating the final RxODE model.
+#     (dvid). This is used in generating the final rxode2 model.
 # @author Matthew Fidler
 
 #' @export
@@ -289,7 +289,7 @@ rxUiGet.default <- function(x, ...) {
 
 #' @export
 str.rxUi <- function(object, ...) {
-  cat("RxODE model function\n")
+  cat("rxode2 model function\n")
   .s <- .rxUiGetSupportedDollars()
   cat(paste(strtrim(paste(vapply(names(.s), function(x){
     .nchar <- nchar(x)

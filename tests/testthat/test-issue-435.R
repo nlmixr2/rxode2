@@ -1,7 +1,7 @@
 rxodeTest(
   {
     test_that("mixed oral iv etc model", {
-      rx1 <- RxODE({
+      rx1 <- rxode2({
         K20 <- CL / VC
         S2 <- VC
         d / dt(A1) <- -KA * A1
@@ -11,7 +11,7 @@ rxodeTest(
         CP <- A2 / S2
       })
 
-      rx2 <- RxODE({
+      rx2 <- rxode2({
         K20 <- CL / VC
         S2 <- VC
         d / dt(A1) <- -KA * A1

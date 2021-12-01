@@ -22,7 +22,7 @@ rxodeTest(
     tabtot <- dat %>%
       dplyr::left_join(., par.tab, by = c("NMID", "id"))
 
-    mod1 <- RxODE({
+    mod1 <- rxode2({
       ## PK parameters
       CL <- exp(ThetaCl)
       KA <- exp(ThetaKa)

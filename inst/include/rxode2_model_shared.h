@@ -1,6 +1,6 @@
-#ifndef __RxODE_model_shared_H__
-#define __RxODE_model_shared_H__
-#include <RxODE.h>
+#ifndef __rxode2_model_shared_H__
+#define __rxode2_model_shared_H__
+#include <rxode2.h>
 #include <float.h>
 
 #ifdef _OPENMP
@@ -118,31 +118,31 @@
 #define _cmp1(cmpStr, type, val, valStr) (type ? _compareFactorVal(val, valStr, cmpStr) : !_compareFactorVal(val, valStr, cmpStr))
 
 // Types for par pointers.r
-typedef int (*RxODE_compareFactorVal_fn)(int val, const char *factor, const char *value);
-typedef double (*RxODE_fn) (double x);
-typedef int (*RxODE_ifn) (double x);
-typedef double (*RxODE_fn2) (double x, double y);
-typedef double (*RxODE_fn3) (double x, double y, double z);
-typedef double (*RxODE_fn3i) (double x, double y, int i);
-typedef double (*RxODE_fn2i) (double x, int i);
-typedef int (*RxODE_fn0i) ();
-typedef double (*RxODEi_fn) (rx_solving_options_ind* ind, double x);
-typedef int (*RxODEi_ifn) (rx_solving_options_ind* ind, double x);
-typedef double (*RxODEi_fn2) (rx_solving_options_ind* ind, double x, double y);
-typedef double (*RxODEi_fn3i) (rx_solving_options_ind* ind, double x, double y, int i);
-typedef double (*RxODEi_fn2i) (rx_solving_options_ind* ind, double x, int i);
+typedef int (*rxode2_compareFactorVal_fn)(int val, const char *factor, const char *value);
+typedef double (*rxode2_fn) (double x);
+typedef int (*rxode2_ifn) (double x);
+typedef double (*rxode2_fn2) (double x, double y);
+typedef double (*rxode2_fn3) (double x, double y, double z);
+typedef double (*rxode2_fn3i) (double x, double y, int i);
+typedef double (*rxode2_fn2i) (double x, int i);
+typedef int (*rxode2_fn0i) ();
+typedef double (*rxode2i_fn) (rx_solving_options_ind* ind, double x);
+typedef int (*rxode2i_ifn) (rx_solving_options_ind* ind, double x);
+typedef double (*rxode2i_fn2) (rx_solving_options_ind* ind, double x, double y);
+typedef double (*rxode2i_fn3i) (rx_solving_options_ind* ind, double x, double y, int i);
+typedef double (*rxode2i_fn2i) (rx_solving_options_ind* ind, double x, int i);
 
-typedef int (*RxODEi2_fn0i) (rx_solving_options_ind* ind, int id);
-typedef double (*RxODEi2_fn) (rx_solving_options_ind* ind, int id, double x);
-typedef int (*RxODEi2_ifn) (rx_solving_options_ind* ind, int id, double x);
-typedef double (*RxODEi2_fn2) (rx_solving_options_ind* ind, int id, double x, double y);
-typedef double (*RxODEi2_fn3i) (rx_solving_options_ind* ind, int id, double x, double y, int i);
-typedef double (*RxODEi2_fn2i) (rx_solving_options_ind* ind, int id, double x, int i);
+typedef int (*rxode2i2_fn0i) (rx_solving_options_ind* ind, int id);
+typedef double (*rxode2i2_fn) (rx_solving_options_ind* ind, int id, double x);
+typedef int (*rxode2i2_ifn) (rx_solving_options_ind* ind, int id, double x);
+typedef double (*rxode2i2_fn2) (rx_solving_options_ind* ind, int id, double x, double y);
+typedef double (*rxode2i2_fn3i) (rx_solving_options_ind* ind, int id, double x, double y, int i);
+typedef double (*rxode2i2_fn2i) (rx_solving_options_ind* ind, int id, double x, int i);
 
-typedef double (*RxODE_vec) (int val, rx_solve *rx, unsigned int id);
-typedef double (*RxODE_val) (rx_solve *rx, unsigned int id);
-typedef void (*RxODE_assign_ptr)(SEXP);
-typedef void (*RxODE_ode_solver_old_c)(int *neq,double *theta,double *time,int *evid,int *ntime,double *inits,double *dose,double *ret,double *atol,double *rtol,int *stiff,int *transit_abs,int *nlhs,double *lhs,int *rc);
+typedef double (*rxode2_vec) (int val, rx_solve *rx, unsigned int id);
+typedef double (*rxode2_val) (rx_solve *rx, unsigned int id);
+typedef void (*rxode2_assign_ptr)(SEXP);
+typedef void (*rxode2_ode_solver_old_c)(int *neq,double *theta,double *time,int *evid,int *ntime,double *inits,double *dose,double *ret,double *atol,double *rtol,int *stiff,int *transit_abs,int *nlhs,double *lhs,int *rc);
 
 typedef void (*_rxRmModelLibType)(const char *inp);
 typedef SEXP (*_rxGetModelLibType)(const char *s);
@@ -182,7 +182,7 @@ typedef double (*_getParCov_p)(unsigned int id, rx_solve *rx, int parNo, int idx
 
 typedef rx_solve *(*_getRxSolve_t)();
 
-typedef int (*RxODEi_rxbinom) (rx_solving_options_ind* ind, int n, double prob);
-typedef int (*RxODEi2_ribinom) (rx_solving_options_ind* ind, int id, int n, double prob);
+typedef int (*rxode2i_rxbinom) (rx_solving_options_ind* ind, int n, double prob);
+typedef int (*rxode2i2_ribinom) (rx_solving_options_ind* ind, int id, int n, double prob);
 
-#endif // __RxODE_model_shared_H__
+#endif // __rxode2_model_shared_H__

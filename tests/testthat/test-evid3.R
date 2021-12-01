@@ -3,7 +3,7 @@ rxodeTest(
     context("evid=3 solves")
 
     test_that("evid=3 reset time", {
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01
@@ -52,7 +52,7 @@ rxodeTest(
 
 
     test_that("evid=3 reset time mixed", {
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01
@@ -99,7 +99,7 @@ rxodeTest(
 
 
     test_that("evid=3 reset time linCmt", {
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01
@@ -144,7 +144,7 @@ rxodeTest(
     })
 
     test_that("warning for unsorted data with evid=3", {
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01

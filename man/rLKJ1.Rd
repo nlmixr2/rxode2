@@ -25,3 +25,4 @@ One correlation sample from the LKJ distribution
 \author{
 Matthew Fidler (translated to RcppArmadillo) and Emma Schwager
 }
+\keyword{internal}

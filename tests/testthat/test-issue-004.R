@@ -11,7 +11,7 @@ rxodeTest(
   d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
   "
     modName <- paste(sample(LETTERS, 5), collapse = "")
-    model <- RxODE::RxODE(model = model_text, modName = modName, wd = "mytempdir")
+    model <- rxode2::rxode2(model = model_text, modName = modName, wd = "mytempdir")
 
     test_that("Model has the correct states", {
       expect_equal(

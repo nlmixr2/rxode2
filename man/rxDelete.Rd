@@ -7,7 +7,7 @@
 rxDelete(obj)
 }
 \arguments{
-\item{obj}{RxODE family of objects}
+\item{obj}{rxode2 family of objects}
 }
 \value{
 A boolean stating if the operation was successful.

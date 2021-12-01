@@ -1,6 +1,6 @@
 rxodeTest(
   {
-    library(RxODE)
+    library(rxode2)
     library(dplyr)
     library(digest)
 
@@ -8,7 +8,7 @@ rxodeTest(
 
     rxSetIni0(FALSE)
 
-    orhs <- RxODE("
+    orhs <- rxode2("
 x(0)    = 1
 a       = 1.0E4
 d/dt(x) = a*y*z - 0.04*x

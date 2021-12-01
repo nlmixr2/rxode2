@@ -3,18 +3,18 @@
 \name{rxLock}
 \alias{rxLock}
 \alias{rxUnlock}
-\title{Lock/unlocking of RxODE dll file}
+\title{Lock/unlocking of rxode2 dll file}
 \usage{
 rxLock(obj)
 
 rxUnlock(obj)
 }
 \arguments{
-\item{obj}{A RxODE family of objects}
+\item{obj}{A rxode2 family of objects}
 }
 \value{
 nothing; called for side effects
 }
 \description{
-Lock/unlocking of RxODE dll file
+Lock/unlocking of rxode2 dll file
 }

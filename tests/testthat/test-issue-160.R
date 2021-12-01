@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Issue #160; F w/ other compartments")
     test_that("Bioavailability doesn't impact other cmts", {
-      rx <- RxODE({
+      rx <- rxode2({
         ka <- .2
         BA <- 0.9
         cl <- 0.3 # fixed at value for model1/base_2comp_iv

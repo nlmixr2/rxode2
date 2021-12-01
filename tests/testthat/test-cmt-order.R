@@ -2,11 +2,11 @@ rxodeTest(
   {
     context("Compartment order & extra CMTs with cmt()")
 
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     load(test_path("warfarin.rda"))
     test_that("cmt() syntax makes sense", {
-      mod <- RxODE({
+      mod <- rxode2({
         a <- 6
         b <- 0.6
         cmt(blood) # cmt = 1 now
@@ -16,7 +16,7 @@ rxodeTest(
 
       expect_equal(c("blood", "intestine"), rxState(mod))
 
-      mod <- RxODE({
+      mod <- rxode2({
         a <- 6
         b <- 0.6
         d / dt(intestine) <- -a * intestine
@@ -25,7 +25,7 @@ rxodeTest(
 
       expect_equal(c("intestine", "blood"), rxState(mod))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- 6
         b <- 0.6
         cmt(matt) # cmt = 1 now
@@ -33,7 +33,7 @@ rxodeTest(
         d / dt(blood) <- a * intestine - b * blood
       }))
 
-      tmp <- RxODE({
+      tmp <- rxode2({
         a <- 6
         b <- 0.6
         cmt(blood) # cmt = 1 now
@@ -46,7 +46,7 @@ rxodeTest(
 
       context("Compartment melding with dvid")
 
-      w <- RxODE({
+      w <- rxode2({
         ktr <- exp(tktr + eta.ktr)
         ka <- exp(tka + eta.ka)
         cl <- exp(tcl + eta.cl)
@@ -84,7 +84,7 @@ rxodeTest(
         )
       )
 
-      w <- RxODE({
+      w <- rxode2({
         ktr <- exp(tktr + eta.ktr)
         ka <- exp(tka + eta.ka)
         cl <- exp(tcl + eta.cl)
@@ -153,7 +153,7 @@ rxodeTest(
         )
       )
 
-      w <- RxODE({
+      w <- rxode2({
         ktr <- exp(tktr + eta.ktr)
         ka <- exp(tka + eta.ka)
         cl <- exp(tcl + eta.cl)
@@ -182,7 +182,7 @@ rxodeTest(
 
       w2 <- warfarin
       w2$dvid <- as.integer(w2$dvid) * 10
-      tmp <- expect_warning(RxODE::etTrans(w2, w, addCmt = TRUE))
+      tmp <- expect_warning(rxode2::etTrans(w2, w, addCmt = TRUE))
       expect_equal(
         tmp$CMT[tmp$ID == 1],
         c(
@@ -191,7 +191,7 @@ rxodeTest(
         )
       )
 
-      w <- RxODE({
+      w <- rxode2({
         ktr <- exp(tktr + eta.ktr)
         ka <- exp(tka + eta.ka)
         cl <- exp(tcl + eta.cl)
@@ -230,7 +230,7 @@ rxodeTest(
       )
 
       ## Warfarin model
-      inner <- RxODE({
+      inner <- rxode2({
         cmt(depot)
         cmt(gut)
         cmt(center)
@@ -485,7 +485,7 @@ rxodeTest(
 
 
 
-      tmp <- RxODE({
+      tmp <- rxode2({
         d / dt(depot) <- -ka * depot
         d / dt(center) <- ka * depot - cl / v * center
         cp <- center / v
@@ -494,64 +494,64 @@ rxodeTest(
         cmt(c20)
       })
 
-      expect_equal(class(tmp), "RxODE")
+      expect_equal(class(tmp), "rxode2")
 
       context("Check lhs allowed stateExtra while preserving lhs properties.")
 
-      tmp <- RxODE({
+      tmp <- rxode2({
         d / dt(depot) <- -ka * depot
         d / dt(center) <- ka * depot - cl / v * center
         cp <- center / v
         cmt(cp)
       })
 
-      expect_equal(class(tmp), "RxODE")
+      expect_equal(class(tmp), "rxode2")
       expect_equal(tmp$lhs, "cp")
       expect_equal(tmp$stateExtra, "cp")
 
-      tmp <- RxODE({
+      tmp <- rxode2({
         d / dt(depot) <- -ka * depot
         d / dt(center) <- ka * depot - cl / v * center
         cmt(cp)
         cp <- center / v
       })
 
-      expect_equal(class(tmp), "RxODE")
+      expect_equal(class(tmp), "rxode2")
       expect_equal(tmp$lhs, "cp")
       expect_equal(tmp$stateExtra, "cp")
 
-      tmp <- RxODE({
+      tmp <- rxode2({
         d / dt(depot) <- -ka * depot
         d / dt(center) <- ka * depot - cl / v * center
         cmt(cp)
         cp <- 3
       })
 
-      expect_equal(class(tmp), "RxODE")
+      expect_equal(class(tmp), "rxode2")
       expect_equal(tmp$lhs, "cp")
       expect_equal(tmp$stateExtra, "cp")
 
-      tmp <- RxODE({
+      tmp <- rxode2({
         d / dt(depot) <- -ka * depot
         d / dt(center) <- ka * depot - cl / v * center
         cp <- 3
         cmt(cp)
       })
 
-      expect_equal(class(tmp), "RxODE")
+      expect_equal(class(tmp), "rxode2")
       expect_equal(tmp$lhs, "cp")
       expect_equal(tmp$stateExtra, "cp")
     })
 
     test_that("cmt() and hidden lhs variables", {
-      tmp <- RxODE({
+      tmp <- rxode2({
         d / dt(depot) ~ -ka * depot
         d / dt(center) ~ ka * depot - cl / v * center
         cp ~ 3
         cmt(cp)
       })
 
-      expect_equal(class(tmp), "RxODE")
+      expect_equal(class(tmp), "rxode2")
       expect_equal(tmp$lhs, character(0))
       expect_equal(tmp$stateExtra, "cp")
     })

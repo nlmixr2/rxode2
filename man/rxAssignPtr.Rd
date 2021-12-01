@@ -7,7 +7,7 @@
 rxAssignPtr(object = NULL)
 }
 \arguments{
-\item{object}{RxODE family of objects}
+\item{object}{rxode2 family of objects}
 }
 \value{
 nothing, called for side effects

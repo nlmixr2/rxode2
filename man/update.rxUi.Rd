@@ -7,7 +7,7 @@
 \method{update}{rxUi}(object, ..., envir = parent.frame())
 }
 \arguments{
-\item{object}{RxODE UI object}
+\item{object}{rxode2 UI object}
 
 \item{...}{Lines to update}
 

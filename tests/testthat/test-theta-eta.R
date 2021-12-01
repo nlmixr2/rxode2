@@ -1,9 +1,9 @@
 rxodeTest(
   {
-    context("Test RxODE THETA/ETA support")
+    context("Test rxode2 THETA/ETA support")
     library(digest)
 
-    rigid <- RxODE({
+    rigid <- rxode2({
       y1(0) <- 1
       y2(0) <- 0
       y3(0) <- 0.9
@@ -76,17 +76,17 @@ rxodeTest(
       )
     })
 
-    theta <- RxODE({
+    theta <- rxode2({
       a <- cos(theta)
     })
 
-    eta <- RxODE({
+    eta <- rxode2({
       a <- cos(eta)
     })
 
     test_that("theta/eta only parsing works", {
-      expect_equal(class(theta), "RxODE")
-      expect_equal(class(eta), "RxODE")
+      expect_equal(class(theta), "rxode2")
+      expect_equal(class(eta), "rxode2")
     })
   },
   silent = TRUE,

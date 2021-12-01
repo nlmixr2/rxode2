@@ -2,7 +2,7 @@
 % Please edit documentation in R/symengine.R
 \name{rxParseErr}
 \alias{rxParseErr}
-\title{Prepare Error function for inclusion in RxODE}
+\title{Prepare Error function for inclusion in rxode2}
 \usage{
 rxParseErr(
   x,
@@ -22,10 +22,10 @@ rxParseErr(
 \item{init}{Initialization vector}
 }
 \value{
-RxODE transformed text
+rxode2 transformed text
 }
 \description{
-Prepare Error function for inclusion in RxODE
+Prepare Error function for inclusion in rxode2
 }
 \author{
 Matthew L. Fidler

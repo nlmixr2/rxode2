@@ -1,7 +1,7 @@
 require(dplyr)
 rxodeTest(
   {
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
     for (radi in c(1, 2)) {
       .rx$forderForceBase(switch(radi,
         TRUE,
@@ -592,7 +592,7 @@ rxodeTest(
       expect_error(et(time = list(1, 2, 3)))
     })
 
-    test_that("'is' for RxODE event tables are 'rxEt'", {
+    test_that("'is' for rxode2 event tables are 'rxEt'", {
       ev <- et()
       expect_true(is(ev, "rxEt"))
     })

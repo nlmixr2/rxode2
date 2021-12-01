@@ -3,7 +3,7 @@ rxodeTest(
     if (requireNamespace("units", quietly = TRUE) &
       requireNamespace("devtools", quietly = TRUE)) {
       test_that("build package", {
-        mod <- RxODE({
+        mod <- rxode2({
           a <- 6
           b <- 0.6
           d / dt(intestine) <- -a * intestine
@@ -28,7 +28,7 @@ rxodeTest(
         ## unlink(dir, recursive=TRUE)
 
         # when load_all is used, you get
-        ## Error: package ‘RxODE’ required by ‘rxm’ could not be found
+        ## Error: package ‘rxode2’ required by ‘rxm’ could not be found
         ## rm(list=c("mod", "mod2"))
 
         ## expect_error(library(rxm), NA)
@@ -36,9 +36,9 @@ rxodeTest(
         ## expect_error(mod, NA)
         ## expect_error(mod2, NA)
 
-        ## expect_true(inherits(mod, "RxODE"))
+        ## expect_true(inherits(mod, "rxode2"))
 
-        ## expect_true(inherits(mod2, "RxODE"))
+        ## expect_true(inherits(mod2, "rxode2"))
 
         ## solve2 <- rxSolve(mod, et, returnType = "data.frame")
 

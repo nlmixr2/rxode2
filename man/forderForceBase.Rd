@@ -2,12 +2,12 @@
 % Please edit documentation in R/RcppExports.R
 \name{forderForceBase}
 \alias{forderForceBase}
-\title{Force using base order for RxODE radix sorting}
+\title{Force using base order for rxode2 radix sorting}
 \usage{
 forderForceBase(forceBase = FALSE)
 }
 \arguments{
-\item{forceBase}{boolean indicating if RxODE should use R's
+\item{forceBase}{boolean indicating if rxode2 should use R's
 \code{\link[=order]{order()}} for radix sorting instead of
 \code{data.table}'s parallel radix sorting.}
 }
@@ -15,11 +15,12 @@ forderForceBase(forceBase = FALSE)
 NILL; called for side effects
 }
 \description{
-Force using base order for RxODE radix sorting
+Force using base order for rxode2 radix sorting
 }
 \examples{
 \donttest{
-forderForceBase(TRUE) # Use base `order` for RxODE sorts
-forderForceBase(FALSE) # Use `data.table` for RxODE sorts
+forderForceBase(TRUE) # Use base `order` for rxode2 sorts
+forderForceBase(FALSE) # Use `data.table` for rxode2 sorts
 }
 }
+\keyword{internal}

@@ -7,7 +7,7 @@
 rxVersion(
   extra = "",
   echo = FALSE,
-  version = sessionInfo()$otherPkgs$RxODE$Version
+  version = sessionInfo()$otherPkgs$rxode2$Version
 )
 }
 \arguments{

@@ -23,7 +23,7 @@ phi(3)
 # See
 pnorm(3)
 
-# This is provided for NONMEM-like compatibility in RxODE models
+# This is provided for NONMEM-like compatibility in rxode2 models
 }
 \author{
 Matthew Fidler

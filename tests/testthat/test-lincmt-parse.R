@@ -3,22 +3,22 @@ rxodeTest(
     context("duplicate central/depot #246")
 
     test_that("error with ambiguous central/depot", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         C2 <- linCmt(V, CL, KA)
         d / dt(central) <- ka2 * depot - kel * central
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         C2 <- linCmt(V, CL, KA)
         d / dt(central) <- ka2 * depot - kel * central
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         C2 <- linCmt(V, CL, KA)
         d / dt(depot) <- -ka2 * depot
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         C2 <- linCmt(V, CL)
         d / dt(depot) <- -ka2 * depot
       }), NA)
@@ -57,7 +57,7 @@ rxodeTest(
         if (length(.v1) == 0) {
           test_that(sprintf("linCmt() should error without parameters"), {
             assign(".rx", .rx, globalenv())
-            expect_error(RxODE(.rx))
+            expect_error(rxode2(.rx))
           })
           .good <- NA
         } else {
@@ -116,8 +116,8 @@ rxodeTest(
       } else if (.good) {
         test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(x), collapse = ", ")), {
           assign(".rx", .rx, globalenv())
-          .rx <- RxODE(.rx)
-          expect_true(inherits(.rx, "RxODE"))
+          .rx <- rxode2(.rx)
+          expect_true(inherits(.rx, "rxode2"))
           .tmp <- na.omit(c(x["Ka"], sort(c(.v1, .v2))))
           .tmp <- c(.tmp, rep("", 7 - length(.tmp)))
           names(.tmp) <- paste0("par", seq_along(.tmp))
@@ -128,7 +128,7 @@ rxodeTest(
       } else {
         test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
           assign(".rx", .rx, globalenv())
-          expect_error(RxODE(.rx))
+          expect_error(rxode2(.rx))
         })
       }
     }
@@ -206,8 +206,8 @@ rxodeTest(
         }
         if (.good) {
           test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
-            .rx <- RxODE(.rx)
-            expect_true(inherits(.rx, "RxODE"))
+            .rx <- rxode2(.rx)
+            expect_true(inherits(.rx, "rxode2"))
             .tmp <- c(.v1, rep("", 7 - length(.v1)))
             names(.tmp) <- paste0("par", seq_along(.tmp))
             .tmp["ncmt"] <- .ncmt
@@ -217,7 +217,7 @@ rxodeTest(
         } else {
           test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
             assign(".rx", .rx, globalenv())
-            expect_error(RxODE(.rx))
+            expect_error(rxode2(.rx))
           })
         }
       }
@@ -271,8 +271,8 @@ rxodeTest(
         }
         if (.good) {
           test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
-            .rx <- RxODE(.rx)
-            expect_true(inherits(.rx, "RxODE"))
+            .rx <- rxode2(.rx)
+            expect_true(inherits(.rx, "rxode2"))
             .tmp <- c(.v1, rep("", 7 - length(.v1)))
             names(.tmp) <- paste0("par", seq_along(.tmp))
             .tmp["ncmt"] <- .ncmt
@@ -282,7 +282,7 @@ rxodeTest(
         } else {
           test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
             assign(".rx", .rx, globalenv())
-            expect_error(RxODE(.rx))
+            expect_error(rxode2(.rx))
           })
         }
       }
@@ -346,8 +346,8 @@ rxodeTest(
         }
         if (.good) {
           test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
-            .rx <- RxODE(.rx)
-            expect_true(inherits(.rx, "RxODE"))
+            .rx <- rxode2(.rx)
+            expect_true(inherits(.rx, "rxode2"))
             .tmp <- c(.v1, rep("", 7 - length(.v1)))
             names(.tmp) <- paste0("par", seq_along(.tmp))
             .tmp["ncmt"] <- .ncmt
@@ -357,7 +357,7 @@ rxodeTest(
         } else {
           test_that(sprintf("linCmt() should error with parameters: %s", paste(na.omit(x), collapse = ", ")), {
             assign(".rx", .rx, globalenv())
-            expect_error(RxODE(.rx))
+            expect_error(rxode2(.rx))
           })
         }
       }

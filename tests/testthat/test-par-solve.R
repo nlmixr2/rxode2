@@ -9,7 +9,7 @@ rxodeTest(
         })
       }
 
-      mod <- RxODE({
+      mod <- rxode2({
         d / dt(intestine) <- -a * intestine
         d / dt(blood) <- a * intestine - b * blood
       })
@@ -33,7 +33,7 @@ rxodeTest(
       })
 
       ## Test mixed solved and ODEs
-      mod2 <- RxODE({
+      mod2 <- rxode2({
         ## the order of variables do not matter, the type of compartmental
         ## model is determined by the parameters specified.
         CL ~ TCL * exp(eta.Cl)
@@ -89,7 +89,7 @@ rxodeTest(
         expect_false(all(pk4$pk == 0))
       })
 
-      mod3 <- RxODE({
+      mod3 <- rxode2({
         C2 <- prod(centr, 1 / V2)
         C3 ~ prod(peri, 1 / V3)
         CL ~ prod(TCL, exp(eta.Cl))
@@ -126,7 +126,7 @@ rxodeTest(
         expect_true(rxIs(pk4, "data.frame"))
       })
 
-      mod2 <- RxODE({
+      mod2 <- rxode2({
         C2 <- centr / V2
         C3 ~ peri / V3
         CL ~ TCL * exp(eta.Cl)

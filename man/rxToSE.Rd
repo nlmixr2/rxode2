@@ -5,7 +5,7 @@
 \alias{.rxToSE}
 \alias{rxFromSE}
 \alias{.rxFromSE}
-\title{RxODE to symengine environment}
+\title{rxode2 to symengine environment}
 \usage{
 rxToSE(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE)
 
@@ -34,10 +34,10 @@ of numeric derivatives.  The currently supported methods are:\preformatted{- `fo
 }}
 }
 \value{
-An rxode symengine environment
+An rxode2 symengine environment
 }
 \description{
-RxODE to symengine environment
+rxode2 to symengine environment
 }
 \author{
 Matthew L. Fidler

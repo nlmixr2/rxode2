@@ -1,6 +1,6 @@
 rxodeTest(
   {
-    require(RxODE)
+    require(rxode2)
     context("Test loading, and unloading of models")
 
     rigid.txt <- "
@@ -15,7 +15,7 @@ d/dt(y2) = a2*y1*y3
 d/dt(y3) = a3*y1*y2
 "
 
-    rigid <- RxODE(rigid.txt)
+    rigid <- rxode2(rigid.txt)
 
     test_that("loading and unloading works.", {
       dll <- rxDll(rigid)

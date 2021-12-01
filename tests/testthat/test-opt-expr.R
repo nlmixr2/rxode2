@@ -1,6 +1,6 @@
 rxodeTest(
   {
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     test_that("simple expression optimization", {
       context("Expression optimization tests")

@@ -88,8 +88,8 @@
 #' | Value | Description |
 #' |-------|--------------------------------|
 #' | 0     |  No infusion is on this record |
-#' | -1    | Modeled rate (in RxODE:`rate(cmt) =`); Can be `et(rate=model)`. |
-#' |-2     | Modeled duration (in RxODE: `dur(cmt) =`); Can be`et(dur=model)` or `et(rate=dur)`. |
+#' | -1    | Modeled rate (in rxode2:`rate(cmt) =`); Can be `et(rate=model)`. |
+#' |-2     | Modeled duration (in rxode2: `dur(cmt) =`); Can be`et(dur=model)` or `et(rate=dur)`. |
 #'
 #' When a modeled bioavailability is applied to positive rates
 #' (`rate` > 0), the duration of infusion is changed. This is
@@ -156,9 +156,9 @@ et <- function(x, ..., envir = parent.frame()) {
 #' Clear/Set pipeline
 #'
 #' @inheritParams rxControl
-#' @param rx RxODE object
+#' @param rx rxode2 object
 #' @keywords internal
-#' @return None, clears RxODE pipeline
+#' @return None, clears rxode2 pipeline
 #' @export
 .clearPipe <- function(rx = NULL, inits = NULL,
                        events = NULL, params = NULL,
@@ -184,7 +184,7 @@ et <- function(x, ..., envir = parent.frame()) {
 
 #' @rdname et
 #' @export
-et.RxODE <- function(x, ..., envir = parent.frame()) {
+et.rxode2 <- function(x, ..., envir = parent.frame()) {
   .clearPipe()
   assignInMyNamespace(".pipelineRx", x)
   do.call(et, c(list(...), list(envir = envir)), envir = envir)
@@ -193,23 +193,23 @@ et.RxODE <- function(x, ..., envir = parent.frame()) {
 #' @export
 et.rxSolve <- function(x, ..., envir = parent.frame()) {
   ## Need to extract:
-  ## 1. RxODE model
+  ## 1. rxode2 model
   assignInMyNamespace(".pipelineRx", x$.args.object)
-  ## 2. RxODE parameters
+  ## 2. rxode2 parameters
   assignInMyNamespace(".pipelineParams", x$.args.par0)
   assignInMyNamespace(".pipelineICov", x$.args$iCov)
   assignInMyNamespace(".pipelineKeep", x$.args$keep)
-  ## 3. RxODE inits
+  ## 3. rxode2 inits
   assignInMyNamespace(".pipelineInits", x$.args.inits)
-  ## 4. RxODE thetaMat
+  ## 4. rxode2 thetaMat
   assignInMyNamespace(".pipelineThetaMat", x$.args$thetaMat)
-  ## 5. RxODE omega
+  ## 5. rxode2 omega
   assignInMyNamespace(".pipelineOmega", x$.args$omega)
-  ## 6. RxODE sigma
+  ## 6. rxode2 sigma
   assignInMyNamespace(".pipelineSigma", x$.args$sigma)
-  ## 7. RxODE dfObs
+  ## 7. rxode2 dfObs
   assignInMyNamespace(".pipelineDfObs", x$env$.args$dfObs)
-  ## 8. RxODE dfSub
+  ## 8. rxode2 dfSub
   assignInMyNamespace(".pipelineDfSub", x$env$.args$dfSub)
   do.call(et, c(list(...), list(envir = envir)), envir = envir)
 }
@@ -218,22 +218,22 @@ et.rxSolve <- function(x, ..., envir = parent.frame()) {
 #' @export
 et.rxParams <- function(x, ..., envir = parent.frame()) {
   ## Need to extract:
-  ## 1. RxODE model
-  ## 2. RxODE parameters
+  ## 1. rxode2 model
+  ## 2. rxode2 parameters
   if (!is.null(x$params)) assignInMyNamespace(".pipelineParams", x$params)
   if (!is.null(x$iCov)) assignInMyNamespace(".pipelineICov", x$iCov)
   if (!is.null(x$keep)) assignInMyNamespace(".pipelineKeep", x$keep)
-  ## 3. RxODE inits
+  ## 3. rxode2 inits
   if (!is.null(x$inits)) assignInMyNamespace(".pipelineInits", x$inits)
-  ## 4. RxODE thetaMat
+  ## 4. rxode2 thetaMat
   if (!is.null(x$thetaMat)) assignInMyNamespace(".pipelineThetaMat", x$thetaMat)
-  ## 5. RxODE omega
+  ## 5. rxode2 omega
   if (!is.null(x$omega)) assignInMyNamespace(".pipelineOmega", x$omega)
-  ## 6. RxODE sigma
+  ## 6. rxode2 sigma
   if (!is.null(x$sigma)) assignInMyNamespace(".pipelineSigma", x$sigma)
-  ## 7. RxODE dfObs
+  ## 7. rxode2 dfObs
   if (!is.null(x$dfObs)) assignInMyNamespace(".pipelineDfObs", x$dfObs)
-  ## 8. RxODE dfSub
+  ## 8. rxode2 dfSub
   if (!is.null(x$dfSub)) assignInMyNamespace(".pipelineDfSub", x$dfSub)
   if (!is.null(x$nSub)) assignInMyNamespace(".pipelineNSub", x$nSub)
   if (!is.null(x$nStud)) assignInMyNamespace(".pipelineNStud", x$nStud)
@@ -638,12 +638,12 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   .lst <- lapply(.lst, function(x) {
     eval(x, envir)
   })
-  .Call(`_RxODE_et_`, .lst, list())
+  .Call(`_rxode2_et_`, .lst, list())
 }
 
 #' @export
 `$.rxEt` <- function(obj, arg, exact = FALSE) {
-  return(.Call(`_RxODE_etUpdate`, obj, arg, NULL, exact))
+  return(.Call(`_rxode2_etUpdate`, obj, arg, NULL, exact))
 }
 
 #' @export
@@ -653,7 +653,7 @@ simulate.rxEt <- # nolint
     if (is.null(.pipelineRx) || .name != ".") {
       if (!missing(nsim)) warning("'nsim' is ignored when simulating event tables", call. = FALSE)
       if (!is.null(seed)) set.seed(seed)
-      return(.Call(`_RxODE_et_`, list(simulate = TRUE), object))
+      return(.Call(`_rxode2_et_`, list(simulate = TRUE), object))
     } else {
       return(rxSolve(object, ..., seed = seed, nsim = nsim))
     }
@@ -663,7 +663,7 @@ drop_units.rxEt <- function(x) {
   if (requireNamespace("units", quietly = TRUE)) {
     stop("requires package 'units'", call. = FALSE)
   }
-  .Call(`_RxODE_et_`, list(amountUnits = NA_character_, timeUnits = NA_character_), x)
+  .Call(`_rxode2_et_`, list(amountUnits = NA_character_, timeUnits = NA_character_), x)
 }
 
 set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
@@ -683,7 +683,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
       call. = FALSE
     )
     return(suppressWarnings({
-      .Call(`_RxODE_et_`, list(amountUnits = "", timeUnits = ""), x)
+      .Call(`_rxode2_et_`, list(amountUnits = "", timeUnits = ""), x)
     }))
   } else {
     if (!rxIs(value, "character")) value <- deparse(value)
@@ -691,10 +691,10 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
     .isTime <- try(units::set_units(units::set_units(1, value, mode = "standard"), "sec"), silent = TRUE)
     if (inherits(.isTime, "try-error")) {
       ## Amount
-      return(.Call(`_RxODE_et_`, list(amountUnits = value), x))
+      return(.Call(`_rxode2_et_`, list(amountUnits = value), x))
     } else {
       ##
-      return(.Call(`_RxODE_et_`, list(timeUnits = value), x))
+      return(.Call(`_rxode2_et_`, list(timeUnits = value), x))
     }
   }
 }
@@ -755,7 +755,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
     .lst$dosing.interval <- 0.0
   }
   checkmate::assertIntegerish(nbr.doses, lower = 1L, any.missing = FALSE, max.len = 1)
-  .Call(`_RxODE_et_`, .lst, eventTable)
+  .Call(`_rxode2_et_`, .lst, eventTable)
 }
 
 #' Add sampling to eventTable
@@ -776,7 +776,7 @@ add.dosing <- function(eventTable, dose, nbr.doses = 1L,
 add.sampling <- function(eventTable, time, time.units = NA) {
   .lst <- list(time = time)
   if (!is.na(time.units)) .lst$time.units <- time.units
-  return(.Call(`_RxODE_et_`, .lst, eventTable))
+  return(.Call(`_rxode2_et_`, .lst, eventTable))
 }
 
 
@@ -787,9 +787,9 @@ add.sampling <- function(eventTable, time, time.units = NA) {
 #'
 #' @param amount.units string denoting the amount dosing units, e.g.,
 #'      \dQuote{mg}, \dQuote{ug}. Default to `NA` to denote
-#'      unspecified units.  It could also be a solved RxODE object.  In
+#'      unspecified units.  It could also be a solved rxode2 object.  In
 #'      that case, eventTable(obj) returns the eventTable that was used
-#'      to solve the RxODE object.
+#'      to solve the rxode2 object.
 #'
 #' @param time.units string denoting the time units, e.g.,
 #'      \dQuote{hours}, \dQuote{days}. Default to `"hours"`.
@@ -838,7 +838,7 @@ add.sampling <- function(eventTable, time, time.units = NA) {
 #'
 #' @author Matthew Fidler, Melissa Hallow and Wenping Wang
 #'
-#' @seealso [et()], [RxODE()]
+#' @seealso [et()], [rxode2()]
 #'
 #' @examples
 #' # create dosing and observation (sampling) events
@@ -903,7 +903,7 @@ eventTable <- function(amount.units = NA, time.units = NA) {
     checkmate::assertCharacter(time.units, max.len = 1)
     .lst$time.units <- time.units
   }
-  .Call(`_RxODE_et_`, .lst, list())
+  .Call(`_rxode2_et_`, .lst, list())
 }
 # nolint end
 
@@ -959,7 +959,7 @@ etSeq <- function(..., samples = c("clear", "use"), waitII = c("smart", "+ii"), 
   .sampleIx <- c(clear = 0L, use = 1L)
   .waitIx <- c(smart = 0L, `+ii` = 1L)
   .collectWarnings(.Call(
-    `_RxODE_etSeq_`, list(...), setNames(.sampleIx[match.arg(samples)], NULL),
+    `_rxode2_etSeq_`, list(...), setNames(.sampleIx[match.arg(samples)], NULL),
     setNames(.waitIx[match.arg(waitII)], NULL), as.double(ii), FALSE, 0L,
     0L, TRUE, character(0), logical(0), FALSE
   ))
@@ -992,7 +992,7 @@ etRbind <- function(..., samples = c("use", "clear"), waitII = c("smart", "+ii")
   .waitIx <- c(smart = 0L, `+ii` = 1L)
   .idIx <- c(merge = 0L, unique = 1L)
   .collectWarnings(.Call(
-    `_RxODE_etSeq_`, list(...), setNames(.sampleIx[match.arg(samples)], NULL),
+    `_rxode2_etSeq_`, list(...), setNames(.sampleIx[match.arg(samples)], NULL),
     setNames(.waitIx[match.arg(waitII)], NULL), as.double(0), TRUE,
     setNames(.idIx[match.arg(id)], NULL),
     0L, TRUE, character(0), logical(0), FALSE
@@ -1002,7 +1002,7 @@ etRbind <- function(..., samples = c("use", "clear"), waitII = c("smart", "+ii")
 #' @rdname etRbind
 #' @export
 rbind.rxEt <- function(..., deparse.level = 1) {
-  if (!missing(deparse.level)) warning("'deparse.level' not used with RxODE event tables", call. = FALSE)
+  if (!missing(deparse.level)) warning("'deparse.level' not used with rxode2 event tables", call. = FALSE)
   do.call(etRbind, list(...))
 }
 
@@ -1017,13 +1017,13 @@ c.rxEt <- function(...) {
   do.call(etSeq, list(...))
 }
 
-#' Repeat an RxODE event table
+#' Repeat an rxode2 event table
 #'
-#' @param x An RxODE event table
+#' @param x An rxode2 event table
 #' @param times Number of times to repeat the event table
-#' @param length.out Invalid with RxODE event tables, will throw an
+#' @param length.out Invalid with rxode2 event tables, will throw an
 #'     error if used.
-#' @param each Invalid with RxODE event tables, will throw an error
+#' @param each Invalid with rxode2 event tables, will throw an error
 #'     if used.
 #' @param n The number of times to repeat the event table.  Overrides
 #'     `times`.
@@ -1045,7 +1045,7 @@ etRep <- function(x, times = 1, length.out = NA, each = NA, n = NULL, wait = 0, 
   if (!is.na(length.out)) stop("'length.out' makes no sense with event tables", call. = FALSE)
   if (!is.na(each)) stop("'each' makes no sense with event tables", call. = FALSE)
   .collectWarnings(.Call(
-    `_RxODE_etRep_`, x, as.integer(times),
+    `_rxode2_etRep_`, x, as.integer(times),
     wait, as.integer(id), setNames(.sampleIx[match.arg(samples)], NULL),
     setNames(.waitIx[match.arg(waitII)], NULL), as.double(ii)
   ))
@@ -1099,7 +1099,7 @@ as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
 
 #' Convert to tbl
 #'
-#' @param x RxODE event table
+#' @param x rxode2 event table
 #'
 #' @param ... Other arguments to `as_tibble`
 #'
@@ -1126,13 +1126,13 @@ as_tibble.rxEt <- function(x, ...) {
 #' If this is an rxEt object that has expired strip all rxEt
 #' information.
 #'
-#' @return Boolean indicating if this is a RxODE event table
+#' @return Boolean indicating if this is a rxode2 event table
 #'
 #' @author Matthew L.Fidler
 #' @export
 #' @keywords internal
 is.rxEt <- function(x) {
-  .Call(`_RxODE_rxIs`, x, "rxEt")
+  .Call(`_rxode2_rxIs`, x, "rxEt")
 }
 #' Expand additional doses
 #'
@@ -1149,7 +1149,7 @@ is.rxEt <- function(x) {
 #' ev$expand() ## Expands the current event table and saves it in ev
 #' @export
 etExpand <- function(et) {
-  .Call(`_RxODE_et_`, list(expand = TRUE), et)
+  .Call(`_rxode2_et_`, list(expand = TRUE), et)
 }
 
 #' @importFrom magrittr %>%
@@ -1162,7 +1162,7 @@ magrittr::`%>%`
 #' pharmacometricians. It displays what each means and allows it to
 #' be displayed in a tibble.
 #'
-#' @param x Item to be converted to a RxODE EVID specification.
+#' @param x Item to be converted to a rxode2 EVID specification.
 #'
 #' @param ... Other parameters
 #'

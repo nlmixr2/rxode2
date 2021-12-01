@@ -5,7 +5,7 @@ rxodeTest(
 
     ## 6.1
 
-    mod <- RxODE("
+    mod <- rxode2("
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine

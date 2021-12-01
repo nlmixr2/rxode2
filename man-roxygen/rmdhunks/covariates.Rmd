@@ -3,11 +3,11 @@
 If there is an individual covariate you wish to solve for you may specify it by the `iCov` dataset:
 
 ```{r individual-covariates}
-library(RxODE)
+library(rxode2)
 library(units)
 library(xgxr)
 
-mod3 <- RxODE({
+mod3 <- rxode2({
     KA=2.94E-01;
     ## Clearance with individuals
     CL=1.86E+01 * (WT / 70) ^ 0.75;
@@ -57,17 +57,17 @@ options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
 
-Covariates are easy to specify in RxODE, you can specify them as a
+Covariates are easy to specify in rxode2, you can specify them as a
 variable. Time-varying covariates, like clock time in a circadian
 rhythm model, can also be used.  Extending the indirect response model
 already discussed, we have:
 
 
 ```{r}
-library(RxODE)
+library(rxode2)
 library(units)
 
-mod3 <- RxODE({
+mod3 <- rxode2({
     KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
@@ -124,7 +124,7 @@ interpolation between near 24 and near 0. While linear seems
 reasonable, cases like clock time make other interpolation methods
 more attractive.
 
-In RxODE the default covariate interpolation is be the last
+In rxode2 the default covariate interpolation is be the last
 observation carried forward (`locf`), or constant approximation.  This is
 equivalent to R's `approxfun` with `method="constant"`.
 

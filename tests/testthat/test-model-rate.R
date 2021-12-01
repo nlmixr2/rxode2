@@ -7,7 +7,7 @@ rxodeTest(
     for (m in ms) {
       context(sprintf("Modeled rate (%s)", m))
 
-      mod.rate <- RxODE({
+      mod.rate <- rxode2({
         a <- 6
         b <- 0.6
         f <- 1
@@ -117,7 +117,7 @@ rxodeTest(
         expect_error(rxSolve(mod.rate, et, c(ri = 0, f = 1, li = 0.3), method = m))
       })
 
-      mod.dur <- RxODE({
+      mod.dur <- rxode2({
         a <- 6
         b <- 0.6
         f <- 1
@@ -184,7 +184,7 @@ rxodeTest(
 
     context("error when bioavaibility(state)+rate/dur, but maintain f(state) #216 #222")
 
-    mod.rate <- RxODE({
+    mod.rate <- rxode2({
       a <- 6
       b <- 0.6
       f <- 1
@@ -203,7 +203,7 @@ rxodeTest(
 
     expect_error(rxSolve(mod.rate, et))
 
-    mod.rate <- RxODE({
+    mod.rate <- rxode2({
       a <- 6
       b <- 0.6
       f <- 1
@@ -222,7 +222,7 @@ rxodeTest(
 
     expect_error(rxSolve(mod.rate, et))
 
-    mod.rate <- RxODE({
+    mod.rate <- rxode2({
       a <- 6
       b <- 0.6
       f <- 1
@@ -247,7 +247,7 @@ rxodeTest(
 
     expect_error(rxSolve(mod.rate, et))
 
-    mod.rate <- RxODE({
+    mod.rate <- rxode2({
       a <- 6
       b <- 0.6
       f <- 1
@@ -290,7 +290,7 @@ rxodeTest(
   d/dt(A2) =  CLp * fuinc * (C1 - C2) - CLh * C2 * Nh
   d/dt(M) = CLh * C2 * Nh
 "
-    mod <- RxODE(model = mod)
+    mod <- rxode2(model = mod)
 
     par <- c(
       CLp = CLp, CLh = CLh, fuinc = fuinc, Nh = Nh, V2 = Vh,

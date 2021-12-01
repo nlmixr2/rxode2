@@ -1,7 +1,7 @@
 ## Prior FOCEi
 rxodeTest(
   {
-    context("focei cross-check with old sympy RxODE")
+    context("focei cross-check with old sympy rxode2")
     ## Test Wang 2007 focei earlier
 
     .dat <- data.frame(
@@ -21,7 +21,7 @@ rxodeTest(
       v <- 1
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       ipre <- 10 * exp(-ke * t)
     })
 
@@ -44,8 +44,8 @@ rxodeTest(
         check.names = FALSE
       )
 
-      ## SymPy RxODE cross-check
-      rx <- RxODE({
+      ## SymPy rxode2 cross-check
+      rx <- rxode2({
         rx_expr_001 ~ -THETA[1]
         rx_expr_002 ~ rx_expr_001 * t
         rx_expr_003 ~ exp(ETA[1])
@@ -103,12 +103,12 @@ rxodeTest(
       expect_equal(solve1, solve2)
     })
 
-    context("foce cross-check with old sympy RxODE")
+    context("foce cross-check with old sympy rxode2")
 
     test_that("foce and fo cross-check", {
 
       ## the model is the same
-      rx <- RxODE({
+      rx <- rxode2({
         rx_expr_001 ~ -THETA[1]
         rx_expr_002 ~ rx_expr_001 * t
         rx_expr_003 ~ exp(ETA[1])

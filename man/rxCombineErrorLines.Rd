@@ -2,7 +2,7 @@
 % Please edit documentation in R/err-sim.R
 \name{rxCombineErrorLines}
 \alias{rxCombineErrorLines}
-\title{Combine Error Lines and create RxODE expression}
+\title{Combine Error Lines and create rxode2 expression}
 \usage{
 rxCombineErrorLines(
   uiModel,
@@ -22,14 +22,14 @@ rxCombineErrorLines(
 
 \item{paramsLine}{Params line, if not present.}
 
-\item{modelVars}{Return model vars instead of RxODE statement}
+\item{modelVars}{Return model vars instead of rxode2 statement}
 }
 \value{
-quoted extression that can be evaluated to compiled RxODE
+quoted extression that can be evaluated to compiled rxode2
 model
 }
 \description{
-Combine Error Lines and create RxODE expression
+Combine Error Lines and create rxode2 expression
 }
 \details{
 This is exported to allow other functions to mangle the error lines
@@ -59,7 +59,7 @@ one.cmt <- function() {
    })
 }
 
-f <- RxODE(one.cmt)
+f <- rxode2(one.cmt)
 
 # You can get the simulation model easily by
 rxCombineErrorLines(f)
@@ -122,10 +122,10 @@ pk.turnover.emax <- function() {
   })
 }
 
-f <- RxODE(pk.turnover.emax)
+f <- rxode2(pk.turnover.emax)
 rxCombineErrorLines(f)
 
-# Note that in the parsed form, you can also get the compiled RxODE
+# Note that in the parsed form, you can also get the compiled rxode2
 # model with $simulationModel
 
 f$simulationModel

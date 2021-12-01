@@ -8,7 +8,7 @@ rxodeTest(
         tmp <- normalizePath(tempfile(), mustWork = FALSE)
         on.exit(unlink(tmp))
         .rxWithSinkBoth(tmp, {
-          expect_error(RxODE(code))
+          expect_error(rxode2(code))
         })
       })
     }
@@ -18,8 +18,8 @@ rxodeTest(
         tmp <- normalizePath(tempfile(), mustWork = FALSE)
         on.exit(unlink(tmp))
         .rxWithSinkBoth(tmp, {
-          rx <- RxODE(code)
-          expect_equal(class(rx), "RxODE")
+          rx <- rxode2(code)
+          expect_equal(class(rx), "rxode2")
           rxDelete(rx)
         })
       })
@@ -30,8 +30,8 @@ rxodeTest(
         tmp <- normalizePath(tempfile(), mustWork = FALSE)
         on.exit(unlink(tmp))
         .rxWithSinkBoth(tmp, {
-          rx1 <- RxODE(code1)
-          rx2 <- RxODE(code2)
+          rx1 <- rxode2(code1)
+          rx2 <- rxode2(code2)
           expect_equal(rxMd5(rx1)["parsed_md5"], rxMd5(rx2)["parsed_md5"])
           rxDelete(rx1)
           rxDelete(rx2)
@@ -42,7 +42,7 @@ rxodeTest(
     badParse("incorrect d/dt operator", "d/dt(y = 1);")
 
     ## Statements don't require ; now.
-    .rxWithOptions(list(RxODE.syntax.require.semicolon = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.require.semicolon = FALSE), {
       goodParse(
         "comments must be outside statements #1",
         "d/dt(y) = 1   # bad comment;"
@@ -57,7 +57,7 @@ rxodeTest(
       )
     })
 
-    .rxWithOptions(list(RxODE.syntax.require.semicolon = TRUE), {
+    .rxWithOptions(list(rxode2.syntax.require.semicolon = TRUE), {
       rxSyncOptions()
       badParse(
         "comments must be outside statements #2",
@@ -74,7 +74,7 @@ rxodeTest(
     })
 
 
-    .rxWithOptions(list(RxODE.syntax.require.semicolon = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.require.semicolon = FALSE), {
       badParse(
         "arithmetic syntax error",
         paste(
@@ -87,7 +87,7 @@ rxodeTest(
     })
 
     ## added ** operator
-    .rxWithOptions(list(RxODE.syntax.star.pow = TRUE), {
+    .rxWithOptions(list(rxode2.syntax.star.pow = TRUE), {
       goodParse("existing operator **",
         code = paste(
           sep = "\n",
@@ -97,7 +97,7 @@ rxodeTest(
       )
     })
 
-    .rxWithOptions(list(RxODE.syntax.star.pow = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.star.pow = FALSE), {
       badParse("existing operator **",
         code = paste(
           sep = "\n",
@@ -137,7 +137,7 @@ rxodeTest(
       )
     })
 
-    .rxWithOptions(list(RxODE.syntax.allow.dots = TRUE), {
+    .rxWithOptions(list(rxode2.syntax.allow.dots = TRUE), {
       goodParse(
         desc = "dot in variable name (ini0)",
         code = paste(
@@ -198,7 +198,7 @@ rxodeTest(
     })
 
 
-    .rxWithOptions(list(RxODE.syntax.allow.dots = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.allow.dots = FALSE), {
       badParse(
         desc = "dot in variable name (ini0)",
         code = paste(
@@ -263,7 +263,7 @@ rxodeTest(
       )
     })
 
-    .rxWithOptions(list(RxODE.syntax.allow.dots = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.allow.dots = FALSE), {
       goodParse(
         desc = "Assignment with <- supported #1",
         "d/dt(y_1) <- F*y"
@@ -290,7 +290,7 @@ rxodeTest(
       )
     })
 
-    .rxWithOptions(list(RxODE.syntax.assign = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.assign = FALSE), {
       badParse(
         desc = "Assignment with <- not supported #1",
         "d/dt(y_1) <- F*y"
@@ -399,15 +399,15 @@ d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
 ")
     })
 
-    .rxWithOptions(list(RxODE.syntax.allow.ini0 = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.allow.ini0 = FALSE), {
       badParse(
-        desc = "y_1(0) unsupported when RxODE.syntax.allow.ini0=FALSE",
+        desc = "y_1(0) unsupported when rxode2.syntax.allow.ini0=FALSE",
         "y_1(0) = 1;d/dt(y_1) = F*y_1"
       )
     })
 
 
-    .rxWithOptions(list(RxODE.syntax.allow.ini0 = TRUE), {
+    .rxWithOptions(list(rxode2.syntax.allow.ini0 = TRUE), {
       badParse(
         desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",
         "
@@ -596,7 +596,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
       )
 
       ## 'rate' and 'dur' can be data items, so they cannot be variables
-      ## in an RxODE model
+      ## in an rxode2 model
       for (var in c("alag", "f", "F")) {
         goodParse(
           sprintf("Parsing of %s as a variable and function work.", var),
@@ -605,7 +605,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
       }
     })
 
-    .rxWithOptions(list(RxODE.syntax.assign = TRUE), {
+    .rxWithOptions(list(rxode2.syntax.assign = TRUE), {
       goodParse("x=ifelse(!matt,0,1)", "x=ifelse(!matt,0,1)")
       goodParse("x=ifelse(!(matt),0,1)", "x=ifelse(!(matt),0,1)")
       goodParse("x=ifelse((!matt),0,1)", "x=ifelse((!matt),0,1)")

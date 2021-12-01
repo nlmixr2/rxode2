@@ -13,7 +13,7 @@ If this is an rxEt object that has expired strip all rxEt
 information.}
 }
 \value{
-Boolean indicating if this is a RxODE event table
+Boolean indicating if this is a rxode2 event table
 }
 \description{
 Check to see if this is an rxEt object.

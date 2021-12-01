@@ -9,16 +9,16 @@
 .dparserVersion <- utils::packageVersion("dparser")
 .onLoad <- function(libname, pkgname) { ## nocov start
   if (!identical(.dparserVersion, utils::packageVersion("dparser"))) {
-    stop("RxODE compiled with dparser '", as.character(.dparserVersion),
+    stop("rxode2 compiled with dparser '", as.character(.dparserVersion),
       "' but dparser '", as.character(utils::packageVersion("dparser")),
-      "' is loaded\nRecompile RxODE with the this version of dparser",
+      "' is loaded\nRecompile rxode2 with the this version of dparser",
       call. = FALSE
     )
   }
   if (!identical(.PreciseSumsVersion, utils::packageVersion("PreciseSums"))) {
-    stop("RxODE compiled with PreciseSums '", as.character(.PreciseSumsVersion),
+    stop("rxode2 compiled with PreciseSums '", as.character(.PreciseSumsVersion),
       "' but PreciseSums '", as.character(utils::packageVersion("PreciseSums")),
-      "' is loaded\nRecompile RxODE with the this version of PreciseSums",
+      "' is loaded\nRecompile rxode2 with the this version of PreciseSums",
       call. = FALSE
     )
   }
@@ -56,8 +56,8 @@
     assignInMyNamespace(".hasUnits", FALSE)
   }
   backports::import(pkgname)
-  ## Setup RxODE.prefer.tbl
-  .Call(`_RxODE_setRstudio`, Sys.getenv("RSTUDIO") == "1")
+  ## Setup rxode2.prefer.tbl
+  .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
   suppressMessages(.rxWinRtoolsPath(retry = NA))
   rxTempDir()
@@ -69,12 +69,12 @@
 } ## nocov end
 
 .onAttach <- function(libname, pkgname) {
-  ## For some strange reason, mvnfast needs to be loaded before RxODE to work correctly
-  .Call(`_RxODE_setRstudio`, Sys.getenv("RSTUDIO") == "1")
+  ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
+  .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
   if (!.rxWinRtoolsPath(retry = NA)) {
     ## nocov start
-    packageStartupMessage("Rtools is not set up correctly!\n\nYou need a working Rtools installation for RxODE to compile models\n")
+    packageStartupMessage("Rtools is not set up correctly!\n\nYou need a working Rtools installation for rxode2 to compile models\n")
     ## nocov end
   }
   if (!interactive()) {
@@ -83,16 +83,16 @@
   rxTempDir()
   .getDTEnv()
   .ggplot2Fix()
-  v <- utils::packageVersion("RxODE")
+  v <- utils::packageVersion("rxode2")
   packageStartupMessage(
-    "RxODE ", v, " using ", getRxThreads(verbose = FALSE),
+    "rxode2 ", v, " using ", getRxThreads(verbose = FALSE),
     " threads (see ?getRxThreads)",
     ifelse(.cacheIsTemp, "\n  no cache: create with `rxCreateCache()`", "")
   )
   if (!.Call(`_rxHasOpenMp`)) {
     packageStartupMessage(
       "========================================\n",
-      "RxODE has not detected OpenMP support and will run in single-threaded mode\n",
+      "rxode2 has not detected OpenMP support and will run in single-threaded mode\n",
       if (Sys.info()["sysname"] == "Darwin") {
         "This is a Mac. Please read https://mac.r-project.org/openmp/"
       } else {
@@ -107,43 +107,43 @@
   ## nocov start
   rxUnloadAll()
   gc() # Force garbage collection finalization
-  library.dynam.unload("RxODE", libpath)
+  library.dynam.unload("rxode2", libpath)
   ## nocov end
 }
 
 .mkCache <- function(.tmp) {
   if (!file.exists(.tmp)) {
     dir.create(.tmp, recursive = TRUE)
-  } else if (!file.exists(file.path(.tmp, paste0(RxODE.md5, ".md5")))) {
-    if (!.cacheIsTemp) packageStartupMessage("detected new version of RxODE, cleaning cache")
+  } else if (!file.exists(file.path(.tmp, paste0(rxode2.md5, ".md5")))) {
+    if (!.cacheIsTemp) packageStartupMessage("detected new version of rxode2, cleaning cache")
     unlink(.tmp, recursive = TRUE, force = TRUE)
     dir.create(.tmp, recursive = TRUE)
-    writeLines("RxODE", file.path(.tmp, paste0(RxODE.md5, ".md5")))
+    writeLines("rxode2", file.path(.tmp, paste0(rxode2.md5, ".md5")))
   }
 }
 
 .cacheIsTemp <- TRUE
 .rxTempDir0 <- NULL
 .cacheDefault <- NULL
-#' Get the RxODE temporary directory
+#' Get the rxode2 temporary directory
 #'
-#' @return RxODE temporary directory.
+#' @return rxode2 temporary directory.
 #' @export
 rxTempDir <- function() {
-  if (is.null(getFromNamespace(".rxTempDir0", "RxODE"))) {
+  if (is.null(getFromNamespace(".rxTempDir0", "rxode2"))) {
     .tmp <- Sys.getenv("rxTempDir")
-    .rxUserDir <- R_user_dir("RxODE", "cache")
+    .rxUserDir <- R_user_dir("rxode2", "cache")
     assignInMyNamespace(".cacheIsTemp", FALSE)
     if (!file.exists(.rxUserDir)) {
-      .rxUserDir <- file.path(tempdir(), "RxODE")
+      .rxUserDir <- file.path(tempdir(), "rxode2")
       assignInMyNamespace(".cacheIsTemp", TRUE)
     }
     if (.tmp == "") {
       if (is.null(.cacheDefault)) {
         assignInMyNamespace(".cacheDefault", .rxUserDir)
       }
-      if (getOption("RxODE.cache.directory", .cacheDefault) != ".") {
-        .tmp <- getOption("RxODE.cache.directory", .cacheDefault)
+      if (getOption("rxode2.cache.directory", .cacheDefault) != ".") {
+        .tmp <- getOption("rxode2.cache.directory", .cacheDefault)
       } else {
         .tmp <- .rxUserDir
       }
@@ -152,18 +152,18 @@ rxTempDir <- function() {
     .tmp <- .normalizePath(.tmp)
     Sys.setenv(rxTempDir = .tmp)
     utils::assignInMyNamespace(".rxTempDir0", .tmp)
-    utils::assignInMyNamespace("RxODE.cache.directory", .tmp)
+    utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
     return(.tmp)
   } else {
-    .tmp <- getFromNamespace(".rxTempDir0", "RxODE")
+    .tmp <- getFromNamespace(".rxTempDir0", "rxode2")
     .mkCache(.tmp)
-    utils::assignInMyNamespace("RxODE.cache.directory", .tmp)
+    utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
     return(.tmp)
   }
 }
-#' This will create the cache directory for RxODE to save between sessions
+#' This will create the cache directory for rxode2 to save between sessions
 #'
-#' When run, if the `R_user_dir` for RxODE's cache isn't present,
+#' When run, if the `R_user_dir` for rxode2's cache isn't present,
 #' create the cache
 #'
 #' @return nothing
@@ -172,78 +172,78 @@ rxTempDir <- function() {
 #'
 #' @export
 rxCreateCache <- function() {
-  .tmp <- R_user_dir("RxODE", "cache")
-  assignInMyNamespace(".cacheDefault", R_user_dir("RxODE", "cache"))
+  .tmp <- R_user_dir("rxode2", "cache")
+  assignInMyNamespace(".cacheDefault", R_user_dir("rxode2", "cache"))
   .mkCache(.tmp)
   .tmp <- .normalizePath(.tmp)
   Sys.setenv(rxTempDir = .tmp)
   utils::assignInMyNamespace(".rxTempDir0", .tmp)
-  utils::assignInMyNamespace("RxODE.cache.directory", .tmp)
+  utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
   invisible()
 }
 
 
-#' Clear memoise cache for RxODE
+#' Clear memoise cache for rxode2
 #'
 #' @author Matthew L. Fidler
 #' @return nothing; called for side effects
 #' @keywords internal
 #' @export
 rxForget <- function() {
-  for (fn in ls(envir = getNamespace("RxODE"))) {
-    if (memoise::is.memoised(getFromNamespace(fn, "RxODE"))) {
-      memoise::forget(getFromNamespace(fn, "RxODE"))
+  for (fn in ls(envir = getNamespace("rxode2"))) {
+    if (memoise::is.memoised(getFromNamespace(fn, "rxode2"))) {
+      memoise::forget(getFromNamespace(fn, "rxode2"))
     }
   }
 }
 
 ## strict/permissive
 rxOpt <- list(
-  RxODE.prefer.tbl = c(FALSE, FALSE),
-  RxODE.warn.on.assign = c(TRUE, TRUE),
-  RxODE.syntax.assign = c(FALSE, TRUE),
-  RxODE.syntax.star.pow = c(FALSE, TRUE),
-  RxODE.syntax.require.semicolon = c(TRUE, FALSE),
-  RxODE.syntax.allow.dots = c(FALSE, TRUE),
-  RxODE.syntax.allow.ini0 = c(FALSE, TRUE),
-  RxODE.syntax.allow.ini = c(FALSE, TRUE),
-  RxODE.calculate.jacobian = c(FALSE, FALSE),
-  RxODE.calculate.sensitivity = c(FALSE, FALSE),
-  RxODE.verbose = c(TRUE, TRUE),
-  RxODE.suppress.syntax.info = c(FALSE, FALSE),
-  RxODE.sympy.engine = c("", ""),
-  RxODE.cache.directory = c(.cacheDefault, .cacheDefault),
-  RxODE.syntax.assign.state = c(FALSE, FALSE),
-  RxODE.tempfiles = c(TRUE, TRUE),
-  RxODE.sympy.run.internal = c(FALSE, FALSE),
-  RxODE.syntax.require.ode.first = c(TRUE, TRUE),
-  RxODE.compile.O = c("3", "3"),
-  RxODE.unload.unused = c(FALSE, FALSE),
-  RxODE.debug=c(FALSE, FALSE)
+  rxode2.prefer.tbl = c(FALSE, FALSE),
+  rxode2.warn.on.assign = c(TRUE, TRUE),
+  rxode2.syntax.assign = c(FALSE, TRUE),
+  rxode2.syntax.star.pow = c(FALSE, TRUE),
+  rxode2.syntax.require.semicolon = c(TRUE, FALSE),
+  rxode2.syntax.allow.dots = c(FALSE, TRUE),
+  rxode2.syntax.allow.ini0 = c(FALSE, TRUE),
+  rxode2.syntax.allow.ini = c(FALSE, TRUE),
+  rxode2.calculate.jacobian = c(FALSE, FALSE),
+  rxode2.calculate.sensitivity = c(FALSE, FALSE),
+  rxode2.verbose = c(TRUE, TRUE),
+  rxode2.suppress.syntax.info = c(FALSE, FALSE),
+  rxode2.sympy.engine = c("", ""),
+  rxode2.cache.directory = c(.cacheDefault, .cacheDefault),
+  rxode2.syntax.assign.state = c(FALSE, FALSE),
+  rxode2.tempfiles = c(TRUE, TRUE),
+  rxode2.sympy.run.internal = c(FALSE, FALSE),
+  rxode2.syntax.require.ode.first = c(TRUE, TRUE),
+  rxode2.compile.O = c("3", "3"),
+  rxode2.unload.unused = c(FALSE, FALSE),
+  rxode2.debug=c(FALSE, FALSE)
 )
 
-RxODE.prefer.tbl <- NULL
-RxODE.warn.on.assign <- NULL
-RxODE.syntax.assign <- NULL
-RxODE.syntax.star.pow <- NULL
-RxODE.syntax.require.semicolon <- NULL
-RxODE.syntax.allow.dots <- NULL
-RxODE.syntax.allow.ini0 <- NULL
-RxODE.syntax.allow.ini <- NULL
-RxODE.calculate.jacobian <- NULL
-RxODE.calculate.sensitivity <- NULL
-RxODE.verbose <- NULL
-RxODE.suppress.syntax.info <- NULL
-RxODE.sympy.engine <- NULL
-RxODE.cache.directory <- NULL
-RxODE.delete.unnamed <- NULL
-RxODE.syntax.assign.state <- NULL
-RxODE.tempfiles <- NULL
-RxODE.sympy.run.internal <- NULL
-RxODE.syntax.require.ode.first <- NULL
-RxODE.compile.O <- NULL
-RxODE.unload.unused <- NULL
-RxODE.debug <- NULL
+rxode2.prefer.tbl <- NULL
+rxode2.warn.on.assign <- NULL
+rxode2.syntax.assign <- NULL
+rxode2.syntax.star.pow <- NULL
+rxode2.syntax.require.semicolon <- NULL
+rxode2.syntax.allow.dots <- NULL
+rxode2.syntax.allow.ini0 <- NULL
+rxode2.syntax.allow.ini <- NULL
+rxode2.calculate.jacobian <- NULL
+rxode2.calculate.sensitivity <- NULL
+rxode2.verbose <- NULL
+rxode2.suppress.syntax.info <- NULL
+rxode2.sympy.engine <- NULL
+rxode2.cache.directory <- NULL
+rxode2.delete.unnamed <- NULL
+rxode2.syntax.assign.state <- NULL
+rxode2.tempfiles <- NULL
+rxode2.sympy.run.internal <- NULL
+rxode2.syntax.require.ode.first <- NULL
+rxode2.compile.O <- NULL
+rxode2.unload.unused <- NULL
+rxode2.debug <- NULL
 
 .isTestthat <- function() {
   return(regexpr("/tests/testthat/", getwd(), fixed = TRUE) != -1) # nolint
@@ -259,22 +259,22 @@ RxODE.debug <- NULL
 #' @export
 #' @examples
 #'
-#' # rxSupressMsg() is called with RxODE()
+#' # rxSupressMsg() is called with rxode2()
 #'
 #' # Note the errors are output to the console
 #'
-#' try(RxODE("d/dt(matt)=/3"), silent = TRUE)
+#' try(rxode2("d/dt(matt)=/3"), silent = TRUE)
 #'
 #' # When using suppressMessages, the output is suppressed
 #'
-#' suppressMessages(try(RxODE("d/dt(matt)=/3"), silent = TRUE))
+#' suppressMessages(try(rxode2("d/dt(matt)=/3"), silent = TRUE))
 #'
-#' # In RxODE, we use REprintf so that interrupted threads do not crash R
+#' # In rxode2, we use REprintf so that interrupted threads do not crash R
 #' # if there is a user interrupt. This isn't captured by R's messages, but
 #' # This interface allows the `suppressMessages()` to suppress the C printing
 #' # as well
 #'
-#' # If you  want to suppress messages from RxODE in other packages, you can use
+#' # If you  want to suppress messages from rxode2 in other packages, you can use
 #' # this function
 rxSuppressMsg <- function() {
   if (requireNamespace("knitr", quietly = TRUE)) {
@@ -289,17 +289,17 @@ rxSuppressMsg <- function() {
   invisible(NULL)
 }
 
-#' Sync options with RxODE variables
+#' Sync options with rxode2 variables
 #'
-#' Accessing RxODE options via getOption slows down solving.  This
+#' Accessing rxode2 options via getOption slows down solving.  This
 #' allows the options to be synced with variables.
 #'
-#' @param setDefaults This will setup RxODE's default solving options with the following options:
+#' @param setDefaults This will setup rxode2's default solving options with the following options:
 #'
 #' - `"none"` leave the options alone
 #' - `"permissive"` This is a permissive option set similar to R language specifications.
 #' - `"strict"` This is a strict option set similar to the original
-#'    RxODE(). It requires semicolons at the end of lines and equals for
+#'    rxode2(). It requires semicolons at the end of lines and equals for
 #'    assignment
 #'
 #' @author Matthew L. Fidler

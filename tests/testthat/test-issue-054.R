@@ -3,7 +3,7 @@ rxodeTest(
     context("Conditional statements")
     ## else if is actually already supported...
     test_that("else if", {
-      m <- RxODE({
+      m <- rxode2({
         if (cnd <= 1) {
           a <- 1.0
         } else if (cnd <= 2) {
@@ -35,7 +35,7 @@ rxodeTest(
     })
 
     test_that("ifelse", {
-      m <- RxODE({
+      m <- rxode2({
         a <- ifelse(cnd <= 1, 1.0, ifelse(cnd <= 2, 2, ifelse(cnd <= 3, 3, 100)))
         tmp <- cnd
       })
@@ -58,7 +58,7 @@ rxodeTest(
     })
 
     test_that("embedded logical expressions", {
-      m <- RxODE({
+      m <- rxode2({
         a <- (cnd == 1) * 1.0 + (cnd == 2) * 2 + (cnd == 3) * 3
         tmp <- cnd
       })
@@ -81,7 +81,7 @@ rxodeTest(
     })
 
     test_that("ifelse with assignments", {
-      m <- RxODE({
+      m <- rxode2({
         ifelse(cnd <= 1, a = 1.0, a = 2.0)
         tmp <- cnd
       })
@@ -94,7 +94,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 2)
       expect_equal(tmp$a, 2)
 
-      m <- RxODE({
+      m <- rxode2({
         ifelse(cnd <= 1, a <- 1.0, a <- 2.0)
         tmp <- cnd
       })
@@ -114,7 +114,7 @@ rxodeTest(
       expect_equal(rxPrune(tmp), "C2=centr/V\nC3=peri/V2\nd/dt(depot)=-KA*depot\nd/dt(centr)=KA*depot-CL*C2-Q*C2+Q*C3\nd/dt(peri)=Q*C2-Q*C3\nC4=CMT\nprd=(CMT==1)*(depot)\nprd=(CMT==2)*(centr)+(1-((CMT==2)))*(prd)\nprd=(CMT==3)*(peri)+(1-((CMT==3)))*(prd)")
 
       ## Advanced context pruining:
-      m <- RxODE({
+      m <- rxode2({
         if (cnd <= 1) {
           a <- 1.0
         } else if (cnd <= 2) {
@@ -127,7 +127,7 @@ rxodeTest(
         tmp <- cnd
       })
 
-      m <- RxODE(rxPrune(m))
+      m <- rxode2(rxPrune(m))
 
       ## The prefered syntax is only if / else but it still works...
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
@@ -146,7 +146,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 100)
 
-      m <- RxODE(rxOptExpr(rxNorm(m)))
+      m <- rxode2(rxOptExpr(rxNorm(m)))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -164,7 +164,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 100)
 
-      m <- RxODE({
+      m <- rxode2({
         a <- 100
         if (cnd <= 1) {
           a <- 1.0
@@ -194,7 +194,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 100)
 
-      m <- RxODE(rxPrune(m))
+      m <- rxode2(rxPrune(m))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -212,7 +212,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 100)
 
-      m <- RxODE(rxOptExpr(rxNorm(m)))
+      m <- rxode2(rxOptExpr(rxNorm(m)))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -230,12 +230,12 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 100)
 
-      m <- RxODE({
+      m <- rxode2({
         a <- ifelse(cnd <= 1, 1.0, ifelse(cnd <= 2, 2, ifelse(cnd <= 3, 3, 100)))
         tmp <- cnd
       })
 
-      m <- RxODE(rxPrune(m))
+      m <- rxode2(rxPrune(m))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -253,7 +253,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 100)
 
-      m <- RxODE(rxOptExpr(rxNorm(m)))
+      m <- rxode2(rxOptExpr(rxNorm(m)))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -272,12 +272,12 @@ rxodeTest(
       expect_equal(tmp$a, 100)
 
 
-      m <- RxODE({
+      m <- rxode2({
         ifelse(cnd <= 1, a = 1.0, a = 2.0)
         tmp <- cnd
       })
 
-      m <- RxODE(rxPrune(m))
+      m <- rxode2(rxPrune(m))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -287,7 +287,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 2)
       expect_equal(tmp$a, 2)
 
-      m <- RxODE(rxOptExpr(rxNorm(m)))
+      m <- rxode2(rxOptExpr(rxNorm(m)))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -297,12 +297,12 @@ rxodeTest(
       expect_equal(tmp$tmp, 2)
       expect_equal(tmp$a, 2)
 
-      m <- RxODE({
+      m <- rxode2({
         ifelse(cnd <= 1, a <- 1.0, a <- 2.0)
         tmp <- cnd
       })
 
-      m <- RxODE(rxPrune(m))
+      m <- rxode2(rxPrune(m))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -312,7 +312,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 2)
       expect_equal(tmp$a, 2)
 
-      m <- RxODE(rxOptExpr(rxNorm(m)))
+      m <- rxode2(rxOptExpr(rxNorm(m)))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -322,12 +322,12 @@ rxodeTest(
       expect_equal(tmp$tmp, 2)
       expect_equal(tmp$a, 2)
 
-      m <- RxODE({
+      m <- rxode2({
         a <- (cnd == 1) * 1.0 + (cnd == 2) * 2 + (cnd == 3) * 3
         tmp <- cnd
       })
 
-      m <- RxODE(rxPrune(m))
+      m <- rxode2(rxPrune(m))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -345,7 +345,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 0)
 
-      m <- RxODE(rxOptExpr(rxNorm(m)))
+      m <- rxode2(rxOptExpr(rxNorm(m)))
 
       tmp <- rxSolve(m, c(cnd = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -363,7 +363,7 @@ rxodeTest(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 0)
 
-      m <- RxODE({
+      m <- rxode2({
         if (cnd <= 1) {
           a <- theta[1]
         } else if (cnd <= 2) {
@@ -376,7 +376,7 @@ rxodeTest(
         tmp <- cnd
       })
 
-      m <- RxODE(rxOptExpr(rxPrune(m)))
+      m <- rxode2(rxOptExpr(rxPrune(m)))
 
       tmp <- rxSolve(m, c(cnd = 1, `THETA[1]` = 1), et(0.1))
       expect_equal(tmp$tmp, 1)
@@ -398,7 +398,7 @@ rxodeTest(
     context("cimet pruning checks")
 
     test_that("cimet pruning checks", {
-      cimet.1 <- RxODE({
+      cimet.1 <- rxode2({
         dose <- 300
         eta.ka <- 0
         eta.cl <- 0
@@ -439,13 +439,13 @@ rxodeTest(
 
       s1 <- rxSolve(cimet.1, et)
 
-      cimet.2 <- RxODE(rxPrune(cimet.1))
+      cimet.2 <- rxode2(rxPrune(cimet.1))
 
       s2 <- rxSolve(cimet.2, et)
 
       expect_equal(s1$cp, s2$cp)
 
-      cimet.3 <- RxODE(rxOptExpr(rxPrune(cimet.1)))
+      cimet.3 <- rxode2(rxOptExpr(rxPrune(cimet.1)))
 
       s3 <- rxSolve(cimet.3, et)
 

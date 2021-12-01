@@ -7,7 +7,7 @@ editor_options:
 ## ODE solving
 
 This is a brief comparison of pharmacometric ODE solving R packages to
-`RxODE`.
+`rxode2`.
 
 There are several [R packages for differential
 equations](https://CRAN.R-project.org/view=DifferentialEquations).
@@ -15,7 +15,7 @@ The most popular is
 [deSolve](https://CRAN.R-project.org/package=deSolve).
 
 However for pharmacometrics-specific ODE solving, there are only 2
-packages other than [RxODE](https://cran.r-project.org/package=RxODE)
+packages other than [rxode2](https://cran.r-project.org/package=rxode2)
 released on CRAN. Each uses compiled code to have faster ODE solving.
 
 -   [mrgsolve](https://cran.r-project.org/package=mrgsolve), which uses
@@ -23,29 +23,29 @@ released on CRAN. Each uses compiled code to have faster ODE solving.
     hybrid R/C++ code to create a mrgsolve model which is translated to
     C++ for solving.
 
-    In contrast, `RxODE` has a R-like mini-language that is parsed into
+    In contrast, `rxode2` has a R-like mini-language that is parsed into
     C code that solves the ODE system.
 
-    Unlike `RxODE`, `mrgsolve` does not currently support symbolic
+    Unlike `rxode2`, `mrgsolve` does not currently support symbolic
     manipulation of ODE systems, like automatic Jacobian calculation or
-    forward sensitivity calculation (`RxODE` currently supports this and
+    forward sensitivity calculation (`rxode2` currently supports this and
     this is the basis of
-    [nlmixr](https://CRAN.R-project.org/package=nlmixr)'s FOCEi
+    [nlmixr2](https://CRAN.R-project.org/package=nlmixr2)'s FOCEi
     algorithm)
 
 -   [dMod](https://CRAN.R-project.org/package=dMod), which uses a unique
     syntax to create "reactions". These reactions create the underlying
     ODEs and then created c code for a compiled deSolve model.
 
-    In contrast `RxODE` defines ODE systems at a lower level. `RxODE`'s
+    In contrast `rxode2` defines ODE systems at a lower level. `rxode2`'s
     parsing of the mini-language comes from C, whereas `dMod`'s parsing
     comes from R.
 
-    Like `RxODE`, `dMod` supports symbolic manipulation of ODE systems
+    Like `rxode2`, `dMod` supports symbolic manipulation of ODE systems
     and calculates forward sensitivities and adjoint sensitivities of
     systems.
 
-    Unlike `RxODE`, `dMod` is not thread-safe since `deSolve` is not yet
+    Unlike `rxode2`, `dMod` is not thread-safe since `deSolve` is not yet
     thread-safe.
 
 And there is one package that is not released on CRAN:
@@ -59,16 +59,16 @@ And there is one package that is not released on CRAN:
     `PKPDsim` is not thread-safe.
 
 The open pharmacometrics open source community is fairly friendly, and
-the RxODE maintainers has had positive interactions with all of the
+the rxode2 maintainers has had positive interactions with all of the
 ODE-solving pharmacometric projects listed.
 
 ## PK Solved systems
 
-`RxODE` supports 1-3 compartment models with gradients (using stan
+`rxode2` supports 1-3 compartment models with gradients (using stan
 math's auto-differentiation). This currently uses the same equations as
 `PKADVAN` to allow time-varying covariates.
 
-`RxODE` can mix ODEs and solved systems.
+`rxode2` can mix ODEs and solved systems.
 
 ### The following packages for solved PK systems are on CRAN
 

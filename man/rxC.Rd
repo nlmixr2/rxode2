@@ -2,12 +2,12 @@
 % Please edit documentation in R/RcppExports.R
 \name{rxC}
 \alias{rxC}
-\title{Return the C file associated with the RxODE object}
+\title{Return the C file associated with the rxode2 object}
 \usage{
 rxC(obj)
 }
 \arguments{
-\item{obj}{A RxODE family of objects or a character string of the
+\item{obj}{A rxode2 family of objects or a character string of the
 model specification or location of a file with a model
 specification.}
 }
@@ -15,7 +15,7 @@ specification.}
 a path of the library
 }
 \description{
-This will return C code for generating the RxODE DLL.
+This will return C code for generating the rxode2 DLL.
 }
 \author{
 Matthew L.Fidler

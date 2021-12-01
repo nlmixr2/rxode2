@@ -2,7 +2,7 @@
 print.rxEtTran <- function(x, ...) {
   print(as.data.frame(x))
   .cls <- class(x)
-  .lst <- attr(.cls, ".RxODE.lst")
+  .lst <- attr(.cls, ".rxode2.lst")
   cat("\nCovariates (non time-varying):\n")
   print(.lst$cov1)
   cat("\nCompartment translation:\n")
@@ -107,17 +107,17 @@ print.rxEt <- function(x, ...) {
   }
 }
 
-#' Print information about the RxODE object.
+#' Print information about the rxode2 object.
 #'
 #' This prints the model name and its status for being able to be solved
 #'
-#' @param x An rxode object
+#' @param x An rxode2 object
 #' @param ... Ignored parameters
 #' @author Matthew L.Fidler
 #' @return original object
 #' @export
 #' @keywords internal
-print.RxODE <- function(x, ...) {
+print.rxode2 <- function(x, ...) {
   rxModelVars(x)
   x <- .getReal(x)
   .bound <- .getBound(x, parent.frame(2))
@@ -125,7 +125,7 @@ print.RxODE <- function(x, ...) {
   .msg2 <- ""
   if (!.valid) {
     .msg <- crayon::red$bold("invalid")
-    .msg2 <- paste0(" re-create with ", crayon::blue("RxODE::"), crayon::yellow("RxODE"))
+    .msg2 <- paste0(" re-create with ", crayon::blue("rxode2::"), crayon::yellow("rxode2"))
     .ico <- crayon::red(cli::symbol$cross)
   } else {
     .loaded <- x$isLoaded()
@@ -135,7 +135,7 @@ print.RxODE <- function(x, ...) {
     } else {
       .msg <- crayon::yellow$bold("unloaded")
       .ico <- crayon::yellow(cli::symbol$warning)
-      .msg2 <- paste0(" reload with ", crayon::blue("RxODE::"), crayon::yellow("rxLoad"))
+      .msg2 <- paste0(" reload with ", crayon::blue("rxode2::"), crayon::yellow("rxLoad"))
     }
   }
   if (.useUtf()) {
@@ -143,7 +143,7 @@ print.RxODE <- function(x, ...) {
   } else {
     .ico <- ""
   }
-  .dll <- getOption("RxODE.basename.print", basename(RxODE::rxDll(x)))
+  .dll <- getOption("rxode2.basename.print", basename(rxode2::rxDll(x)))
   .env <- attr(x, ".env")
   .pkg <- ""
   .new <- ""
@@ -158,8 +158,8 @@ print.RxODE <- function(x, ...) {
     .dll <- substr(.dll, 1, nchar(.dll) - nchar(.Platform$dynlib.ext) - 1)
   }
   cat(paste0(
-    crayon::bold("RxODE "), as.vector(RxODE::rxVersion()["version"]), " model named ", .pkg,
-    crayon::yellow$bold(getOption("RxODE.dll.print", .dll)), .new, " model (", .ico, .msg,
+    crayon::bold("rxode2 "), as.vector(rxode2::rxVersion()["version"]), " model named ", .pkg,
+    crayon::yellow$bold(getOption("rxode2.dll.print", .dll)), .new, " model (", .ico, .msg,
     .msg2, ")."
   ), "\n")
   .indLin <- rxModelVars(x)$indLin
@@ -181,7 +181,7 @@ print.RxODE <- function(x, ...) {
     cat("\n")
   }
   if (!any(names(list(...)) == "rxSuppress") && .valid) {
-    .cur <- RxODE::rxState(x)
+    .cur <- rxode2::rxState(x)
     if (length(.cur) > 0) {
       cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$state"), ": ", paste(.cur, collapse = ", "), "\n"))
     }
@@ -189,11 +189,11 @@ print.RxODE <- function(x, ...) {
     if (length(.cur) > 0) {
       cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$stateExtra"), ": ", paste(.cur, collapse = ", "), "\n"))
     }
-    .cur <- RxODE::rxParams(x)
+    .cur <- rxode2::rxParams(x)
     if (length(.cur) > 0) {
       cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$params"), ": ", paste(.cur, collapse = ", "), "\n"))
     }
-    .cur <- RxODE::rxLhs(x)
+    .cur <- rxode2::rxLhs(x)
     if (length(.cur) > 0) {
       cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$lhs"), ": ", paste(.cur, collapse = ", "), "\n"))
     }
@@ -204,7 +204,7 @@ print.RxODE <- function(x, ...) {
 #' @export
 print.rxModelVars <- function(x, ...) {
   .bound <- .getBound(x, parent.frame(2))
-  cat("RxODE model variables (see str to see all variables)\n")
+  cat("rxode2 model variables (see str to see all variables)\n")
   .cur <- x$state
   if (length(.cur) > 0) {
     cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$state"), ": ", paste(.cur, collapse = ", "), "\n"))
@@ -235,35 +235,35 @@ print.rxModelVars <- function(x, ...) {
 #' @return original object
 #' @export
 print.rxCoef <- function(x, ...) {
-  .rxDllObj <- x$RxODE
+  .rxDllObj <- x$rxode2
   if (length(rxParams(.rxDllObj)) > 0) {
     cat(cli::cli_format_method({
       cli::cli_rule(left = "User supplied parameters:")
     }), "\n")
-    print(RxODE::rxInits(.rxDllObj, NULL, RxODE::rxParams(.rxDllObj), NA, TRUE))
+    print(rxode2::rxInits(.rxDllObj, NULL, rxode2::rxParams(.rxDllObj), NA, TRUE))
     cat(cli::cli_format_method({
       cli::cli_rule(left = "User initial conditions:")
     }), "\n")
-    .tmp <- RxODE::rxInits(.rxDllObj, NULL, RxODE::rxState(.rxDllObj), 0, TRUE)
+    .tmp <- rxode2::rxInits(.rxDllObj, NULL, rxode2::rxState(.rxDllObj), 0, TRUE)
     if (length(x$sens) > 0) {
-      .tmp <- .tmp[regexpr(getFromNamespace("regSens", "RxODE"), names(.tmp)) == -1]
+      .tmp <- .tmp[regexpr(getFromNamespace("regSens", "rxode2"), names(.tmp)) == -1]
     }
     print(.tmp)
   }
   cat(cli::cli_format_method({
     cli::cli_rule(left = "Compartments:")
   }), "\n")
-  .tmp <- RxODE::rxState(.rxDllObj)
+  .tmp <- rxode2::rxState(.rxDllObj)
   if (length(.tmp) > 0) {
     names(.tmp) <- paste0("cmt=", seq_along(.tmp))
     if (length(x$sens) > 0) {
-      .tmp1 <- .tmp[regexpr(getFromNamespace("regSens", "RxODE"), .tmp) == -1]
+      .tmp1 <- .tmp[regexpr(getFromNamespace("regSens", "rxode2"), .tmp) == -1]
       print(.tmp1)
       cat(cli::cli_format_method({
         cli::cli_rule(left = "Sensitivities:")
       }), "\n")
       .tmp2 <- gsub(
-        getFromNamespace("regSens", "RxODE"), "d/dt(d(\\1)/d(\\2))",
+        getFromNamespace("regSens", "rxode2"), "d/dt(d(\\1)/d(\\2))",
         .tmp[regexpr(regSens, .tmp) != -1]
       )
       print(.tmp2)
@@ -278,7 +278,7 @@ print.rxCoef <- function(x, ...) {
 
 #' @export
 print.rxC <- function(x, ...) {
-  cat(sprintf("C file: %s  ('summary' for code)\n", getOption("RxODE.c.print", x)))
+  cat(sprintf("C file: %s  ('summary' for code)\n", getOption("rxode2.c.print", x)))
 }
 
 
@@ -292,14 +292,14 @@ print.rxC <- function(x, ...) {
 #' @export
 print.rxDll <- function(x, ...) {
   if (file.exists(x$dll)) {
-    cat(sprintf("RxODE DLL named \"%s\"", getOption("RxODE.basename.print", basename(x$dll))))
+    cat(sprintf("rxode2 DLL named \"%s\"", getOption("rxode2.basename.print", basename(x$dll))))
     if (rxDllLoaded(x)) {
       cat(" is loaded and ready to use.\n")
     } else {
       cat(" is not loaded now.\n")
     }
   } else {
-    cat(sprintf("RxODE DLL named \"%s\" has been deleted.\n", getOption("RxODE.basename.print", basename(x$dll))))
+    cat(sprintf("rxode2 DLL named \"%s\" has been deleted.\n", getOption("rxode2.basename.print", basename(x$dll))))
   }
   invisible(x)
 }
@@ -408,7 +408,7 @@ print.rxSolve <- function(x, ...) {
           d <- cli::cli_div(theme = list(rule = list(
             "line-type" = "bar2"
           )))
-          cli::cli_rule(center = crayon::bold("Solved RxODE object"))
+          cli::cli_rule(center = crayon::bold("Solved rxode2 object"))
           cli::cli_end(d)
         }), sep = "\n")
       }
@@ -431,7 +431,7 @@ print.rxSolve <- function(x, ...) {
           cli::cli_rule(left = crayon::bold("First part of data (object):"))
         }), sep = "\n")
         .isDplyr <- requireNamespace("tibble", quietly = TRUE) &&
-          getOption("RxODE.display.tbl", TRUE)
+          getOption("rxode2.display.tbl", TRUE)
         if (!.isDplyr) {
           print(head(as.data.frame(x), n = .n))
         } else {
@@ -461,7 +461,7 @@ print.rxModelText <- function(x, ...) {
     .bound <- .getBound(x, parent.frame(2))
   }
   .code <- deparse(body(eval(parse(text = paste("function() {", as.vector(x), "}")))))
-  .code[1] <- "RxODE({"
+  .code[1] <- "rxode2({"
   .code[length(.code)] <- "})"
   if (.summary) {
     cat(cli::cli_format_method({
@@ -472,7 +472,7 @@ print.rxModelText <- function(x, ...) {
       d <- cli::cli_div(theme = list(rule = list(
         "line-type" = "bar2"
       )))
-      cli::cli_rule(center = crayon::bold("RxODE Model Syntax"))
+      cli::cli_rule(center = crayon::bold("rxode2 Model Syntax"))
       cli::cli_end(d)
     }), sep = "\n")
   }

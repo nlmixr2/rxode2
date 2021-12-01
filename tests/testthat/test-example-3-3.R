@@ -14,7 +14,7 @@ d/dt(y1) = a1*y2*y3;
 d/dt(y2) = a2*y1*y3;
 d/dt(y3) = a3*y1*y2;
 "
-    rigid <- RxODE(rigid.txt)
+    rigid <- rxode2(rigid.txt)
 
     et <- eventTable()
     et$add.sampling(seq(0, 20, by = 0.01))

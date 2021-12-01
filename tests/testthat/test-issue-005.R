@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Bad solve")
 
-    model <- RxODE({
+    model <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
       #
@@ -27,7 +27,7 @@ rxodeTest(
       EC50 <- 200
     })
 
-    event_table <- RxODE::eventTable() %>%
+    event_table <- rxode2::eventTable() %>%
       add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12) %>%
       add.sampling(0:240)
 

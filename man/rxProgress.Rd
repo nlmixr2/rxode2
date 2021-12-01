@@ -5,7 +5,7 @@
 \alias{rxTick}
 \alias{rxProgressStop}
 \alias{rxProgressAbort}
-\title{RxODE progress bar functions}
+\title{rxode2 progress bar functions}
 \usage{
 rxProgress(num, core = 0L)
 

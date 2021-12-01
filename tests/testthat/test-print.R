@@ -1,12 +1,12 @@
 rxodeTest(
   {
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     ## To keep basename the same
     .rxWithOptions(list(
-      "RxODE.basename.print" = "basename",
-      "RxODE.dll.print" = "dll",
-      "RxODE.c.print" = "cfile"
+      "rxode2.basename.print" = "basename",
+      "rxode2.dll.print" = "dll",
+      "rxode2.c.print" = "cfile"
     ), {
       ## test_path("test-print.txt")
       .df <- expand.grid(color = c(TRUE, FALSE), unicode = c(TRUE, FALSE))
@@ -18,7 +18,7 @@ rxodeTest(
         test_that(paste0(.i, ":", .path), {
           verify_output(.path,
             {
-              mod <- RxODE({
+              mod <- rxode2({
                 a <- 6
                 b <- 0.6 + a / 100
                 kel <- b * 0.01
@@ -64,8 +64,8 @@ rxodeTest(
               class(et2) <- tmp
               print(et2)
 
-              print(attr(class(et), ".RxODE.lst"))
-              str(attr(class(et), ".RxODE.lst"))
+              print(attr(class(et), ".rxode2.lst"))
+              str(attr(class(et), ".rxode2.lst"))
 
               print(format(structure(0:7, class = "rxEvid")))
               print(structure(0:7, class = "rxEvid"))
@@ -84,7 +84,7 @@ rxodeTest(
               print(pk, n = 10)
 
               .rxWithOptions(
-                list(RxODE.display.tbl = FALSE),
+                list(rxode2.display.tbl = FALSE),
                 print(pk)
               )
 
@@ -94,11 +94,11 @@ rxodeTest(
               print(summary(pk, bound = "k"))
 
 
-              modS <- RxODE(mod, calcSens = TRUE)
+              modS <- rxode2(mod, calcSens = TRUE)
 
               print(coef(modS))
 
-              ## Now "destroy" the RxODE solved object and change the printout
+              ## Now "destroy" the rxode2 solved object and change the printout
               tmp <- class(pk)
               pk$matt <- 4
               class(tmp) <- tmp
@@ -106,7 +106,7 @@ rxodeTest(
               class(pk) <- tmp
               summary(pk)
 
-              noOde <- RxODE({
+              noOde <- rxode2({
                 matt <- a^2 + b^2
               })
 
@@ -125,7 +125,7 @@ rxodeTest(
               summary(mod)
               str(mod)
 
-              mod <- RxODE(mod, indLin = TRUE)
+              mod <- rxode2(mod, indLin = TRUE)
 
               print(mod)
               summary(mod)
@@ -154,7 +154,7 @@ rxodeTest(
               class(v) <- "rxSymInvCholEnv"
               print(v)
 
-              mod <- RxODE("
+              mod <- rxode2("
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
@@ -179,7 +179,7 @@ d/dt(blood)     = a*intestine - b*blood
 
               print(ett1)
 
-              mod2 <- RxODE({
+              mod2 <- rxode2({
                 ## the order of variables do not matter, the type of compartmental
                 ## model is determined by the parameters specified.
                 CL ~ TCL * exp(eta.Cl)
@@ -221,7 +221,7 @@ d/dt(blood)     = a*intestine - b*blood
               print(pk3a)
               str(pk3a)
 
-              ode <- RxODE({
+              ode <- rxode2({
                 b <- -1
                 d / dt(X) <- a * X + Y * Z
                 d / dt(Y) <- b * (Y - Z)
@@ -249,7 +249,7 @@ d/dt(blood)     = a*intestine - b*blood
               print(out)
               str(out)
 
-              mmModel <- RxODE(
+              mmModel <- rxode2(
                 {
                   ka <- 1
                   Vc <- 1
@@ -264,7 +264,7 @@ d/dt(blood)     = a*intestine - b*blood
               print(mmModel)
               summary(mmModel)
 
-              mmModel <- RxODE(
+              mmModel <- rxode2(
                 {
                   ka <- 1
                   Vc <- 1
@@ -279,7 +279,7 @@ d/dt(blood)     = a*intestine - b*blood
               print(mmModel)
               summary(mmModel)
 
-              mod2 <- RxODE({
+              mod2 <- rxode2({
                 C2 <- centr / V2
                 C3 ~ peri / V3
                 CL ~ TCL * exp(eta.Cl)

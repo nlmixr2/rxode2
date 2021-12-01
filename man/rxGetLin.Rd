@@ -23,7 +23,7 @@ An ODE expression enclosed in \verb{\\\{\\\}}
 
 (see also the \code{filename} argument). For
 details, see the sections \dQuote{Details} and
-\verb{RxODE Syntax} below.}
+\verb{rxode2 Syntax} below.}
 
 \item{linCmtSens}{The method to calculate the linCmt() solutions}
 

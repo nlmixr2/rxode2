@@ -1,4 +1,4 @@
-#' Validate RxODE
+#' Validate rxode2
 #' This allows easy validation/qualification of nlmixr by running the
 #' testing suite on your system.
 #'
@@ -20,7 +20,7 @@ rxValidate <- function(type = NULL) {
     on.exit(Sys.setenv("NOT_CRAN" = .oldCran))
   }
   .rxWithOptions(list(testthat.progress.max_fails = 10000000000), {
-    path <- file.path(system.file("tests", package = "RxODE"), "testthat")
+    path <- file.path(system.file("tests", package = "rxode2"), "testthat")
     .rxWithWd(path, {
       try(testthat::test_dir(path, filter = .filter))
       message("================================================================================")
@@ -34,9 +34,9 @@ rxValidate <- function(type = NULL) {
 #' @export
 rxTest <- rxValidate
 
-#' Wrap a test in RxODE
+#' Wrap a test in rxode2
 #'
-#' This wraps tests in RxODE to allow testing on cran or not on cran
+#' This wraps tests in rxode2 to allow testing on cran or not on cran
 #'
 #' @param code Code to be evaluated
 #' @param test Test to be run.  Currently only accepts CRAN and not cran
@@ -45,7 +45,7 @@ rxTest <- rxValidate
 #' @keywords internal
 #' @author Matthew Fidler
 #' @export
-rxodeTest <- function(code, test = "cran", silent = "ignore") {
+rxode2Test <- function(code, test = "cran", silent = "ignore") {
   on.exit({
     rxUnloadAll()
   })

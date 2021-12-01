@@ -7,7 +7,7 @@
 rxSumProdModel(model, expand = FALSE, sum = TRUE, prod = TRUE)
 }
 \arguments{
-\item{model}{RxODE model}
+\item{model}{rxode2 model}
 
 \item{expand}{Boolean indicating if the expression is expanded.}
 

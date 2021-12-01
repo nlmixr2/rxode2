@@ -1,15 +1,15 @@
 library(devtools)
 cat("Copy header to inst directory")
 
-file.copy(devtools::package_file("src/RxODE_types.h"),
-          devtools::package_file("inst/include/RxODE_types.h"),
+file.copy(devtools::package_file("src/rxode2_types.h"),
+          devtools::package_file("inst/include/rxode2_types.h"),
           overwrite=TRUE);
 
 
 cat("Update Parser c file\n");
 dparser::mkdparse(devtools::package_file("inst/tran.g"),
          devtools::package_file("src/"),
-         grammar_ident="RxODE")
+         grammar_ident="rxode2")
 file <- gsub("^([#]line [0-9]+ )\".*(src)/+(.*)\"","\\1\"\\2/\\3\"",
              readLines(devtools::package_file("src/tran.g.d_parser.c")))
 sink(devtools::package_file("src/tran.g.d_parser.c"))
@@ -63,7 +63,7 @@ gen.ome <- function(mx){
 
 ## cpp code
 
-if (Sys.getenv("RxODE_derivs") == "TRUE"){
+if (Sys.getenv("rxode2_derivs") == "TRUE"){
   gen.ome(12)
 }
 
@@ -72,7 +72,7 @@ if (Sys.getenv("RxODE_derivs") == "TRUE"){
 
 
 genDefine <- function(){
-  mod1 <-RxODE({
+  mod1 <-rxode2({
     C2 = centr/V2;
     C3 = peri/V3;
     d/dt(depot) =-KA*depot;
@@ -81,7 +81,7 @@ genDefine <- function(){
     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
   })
 
-  mod <- RxODE("
+  mod <- rxode2("
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
@@ -91,9 +91,9 @@ d/dt(blood)     = a*intestine - b*blood
   mv <- rxModelVars(mod1)
 
   .n <- gsub("[.]","_",names(rxControl()))
-  sink(devtools::package_file("inst/include/RxODE_control.h"))
+  sink(devtools::package_file("inst/include/rxode2_control.h"))
   cat("#pragma once\n")
-  cat("#ifndef __RxODE_control_H__\n#define __RxODE_control_H__\n")
+  cat("#ifndef __rxode2_control_H__\n#define __rxode2_control_H__\n")
   cat(paste(paste0("#define ", "Rxc_", .n, " ", seq_along(.n)-1),collapse="\n"))
 
   .mv <- rxModelVars(mod1);
@@ -123,14 +123,14 @@ d/dt(blood)     = a*intestine - b*blood
     et(time=0.2,cmt="-intestine") %>%
     as.data.frame
 
-  ett1 <- RxODE:::etTrans(et, mod, keepDosingOnly=TRUE)
-  .n <- gsub("[.]", "_", names(attr(class(ett1), ".RxODE")))
+  ett1 <- rxode2:::etTrans(et, mod, keepDosingOnly=TRUE)
+  .n <- gsub("[.]", "_", names(attr(class(ett1), ".rxode2")))
 
   cat(paste(paste0("#define RxTrans_", .n, " ", seq_along(.n)-1),collapse="\n"))
   cat(paste0("\n#define RxTransNames CharacterVector _en(29);",
              paste(paste0("_en[",seq_along(.n)-1,']="', .n, '";'), collapse=""),"e.names() = _en;"))
   cat("\n");
-  cat("\n#endif // __RxODE_control_H__\n")
+  cat("\n#endif // __rxode2_control_H__\n")
   sink();
 }
 

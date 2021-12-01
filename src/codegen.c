@@ -1,10 +1,10 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include "codegen.h"
 #include "codegen2.h"
 
-SEXP _RxODE_rxQs(SEXP);
-SEXP _RxODE_rxQr(SEXP);
+SEXP _rxode2_rxQs(SEXP);
+SEXP _rxode2_rxQr(SEXP);
 
 static FILE *fpIO;
 
@@ -87,7 +87,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       const char *extra = "";
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
       writeHeader(md5, extra);
-      sAppendN(&sbOut,"#include <RxODE_model_shared.h>\n",32);
+      sAppendN(&sbOut,"#include <rxode2_model_shared.h>\n",33);
       int mx = maxSumProdN;
       if (SumProdLD > mx) mx = SumProdLD;
       sAppend(&sbOut,"#define __MAX_PROD__ %d\n", mx);
@@ -458,7 +458,7 @@ void writeSb(sbuf *sbb, FILE *fp){
   }
 }
 
-SEXP _RxODE_codegen(SEXP c_file, SEXP prefix, SEXP libname,
+SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
 		    SEXP pMd5, SEXP timeId, SEXP mvLast){
   if (!sbPm.o || !sbNrm.o){
     err_trans("nothing in output queue to write");
@@ -524,7 +524,7 @@ SEXP _RxODE_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     sPrint(&buf, "%sIndF", curPrefix);
     SET_STRING_ELT(trans, 21, mkChar(buf.s)); // IndF
   }
-  sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_RxODE_rxQs(mvLast)), 0))); pro++;
+  sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
   UNPROTECT(pro);
   sFree(&buf);
   //SET_STRING_ELT(tran, 0, mkChar());

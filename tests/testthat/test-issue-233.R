@@ -19,7 +19,7 @@ rxodeTest(
         f_sc_ip <- (tvf_sc * (ECROUTE == "SC") + tvf_ip * (ECROUTE != "SC"))
       }
 
-      model <- RxODE({
+      model <- rxode2({
         d / dt(SC) <- -Ka * SC
         d / dt(C) <- Ka * SC - kel * C
         F(SC) <- f_sc_ip
@@ -72,7 +72,7 @@ rxodeTest(
         f_sc_ip <- (tvf_sc * (ECROUTE) + tvf_ip * (!ECROUTE))
       }
 
-      model <- RxODE({
+      model <- rxode2({
         d / dt(SC) <- -Ka * SC
         d / dt(C) <- Ka * SC - kel * C
         F(SC) <- f_sc_ip

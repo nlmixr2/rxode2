@@ -52,10 +52,10 @@
 
 #' Handle a fix or unfixed single expressionon for population or single eta
 #'
-#' This updates the `iniDf` within the RxODE UI object
+#' This updates the `iniDf` within the rxode2 UI object
 #'
 #' @param expr Single assignment expression
-#' @param rxui RxODE UI object
+#' @param rxui rxode2 UI object
 #' @param envir Environment where the evaulation occurs
 #' @param maxLen Maximum length of the argument
 #' @return Nothing, called for side effects
@@ -147,7 +147,7 @@
 #'
 #' @param mat Lotri processed matrix from the piping ini function
 #'
-#' @param rxui RxODE UI function
+#' @param rxui rxode2 UI function
 #'
 #' @return Nothing, called for side effects
 #'
@@ -237,7 +237,7 @@ ini.rxUi <- function(x, ..., envir=parent.frame()) {
 #' @export
 #' @rdname ini
 ini.function <- function(x, ..., envir=parent.frame()) {
-  .ret <- RxODE(x)
+  .ret <- rxode2(x)
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line){
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
@@ -249,7 +249,7 @@ ini.function <- function(x, ..., envir=parent.frame()) {
 #' This tells if the line is modifying an estimate instead of a line of the model
 #'
 #' @param line Quoted line
-#' @param rxui RxODE UI object
+#' @param rxui rxode2 UI object
 #' @return boolean inticating if the line defines an `ini` change.
 #' @author Matthew L. Fidler
 #' @noRd

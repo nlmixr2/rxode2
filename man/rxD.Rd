@@ -2,7 +2,7 @@
 % Please edit documentation in R/symengine.R
 \name{rxD}
 \alias{rxD}
-\title{Add to RxODE's derivative tables}
+\title{Add to rxode2's derivative tables}
 \usage{
 rxD(name, derivatives)
 }
@@ -19,7 +19,7 @@ derivitive with respect to the second argument, and so on.}
 nothing
 }
 \description{
-Add to RxODE's derivative tables
+Add to rxode2's derivative tables
 }
 \examples{
 ## Add an arbitrary list of derivative functions

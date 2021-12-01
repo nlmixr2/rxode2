@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -20,13 +20,13 @@
 #include <Rmath.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
 #endif
 #include "tran.g.d_parser.c"
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 
 #define MXSYM 50000
 #define MXDER 5000
@@ -58,7 +58,7 @@ vLines _dupStrs;
 
 int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_podo = 0, rx_syntax_require_ode_first = 1;
 
-extern D_ParserTables parser_tables_RxODE;
+extern D_ParserTables parser_tables_rxode2;
 
 unsigned int found_jac = 0, nmtime=0;
 int rx_syntax_assign = 0, rx_syntax_star_pow = 0,
@@ -242,7 +242,7 @@ void err_msg(int chk, const char *msg, int code)
 sbuf _bufw, _bufw2;
 
 void parseFreeLast() {
-  if (gBufFree) Free(gBuf);
+  if (gBufFree) R_Free(gBuf);
   sFree(&sbOut);
   freeP();
   sFree(&_bufw);
@@ -269,19 +269,19 @@ void parseFree(int last){
   lineFree(&centralLines);
   lineFree(&_dupStrs);
   linCmtGenFree(&_linCmtGenStruct);
-  Free(tb.lh);
-  Free(tb.lag);
-  Free(tb.ini);
-  Free(tb.mtime);
-  Free(tb.iniv);
-  Free(tb.ini0);
-  Free(tb.di);
-  Free(tb.idi);
-  Free(tb.idu);
-  Free(tb.dvid);
-  Free(tb.df);
-  Free(tb.dy);
-  Free(tb.sdfdy);
+  R_Free(tb.lh);
+  R_Free(tb.lag);
+  R_Free(tb.ini);
+  R_Free(tb.mtime);
+  R_Free(tb.iniv);
+  R_Free(tb.ini0);
+  R_Free(tb.di);
+  R_Free(tb.idi);
+  R_Free(tb.idu);
+  R_Free(tb.dvid);
+  R_Free(tb.df);
+  R_Free(tb.dy);
+  R_Free(tb.sdfdy);
   freeP();
   if (last){
     parseFreeLast();
@@ -316,16 +316,16 @@ void reset() {
   lineIni(&(tb.ss));
   lineIni(&(tb.de));
 
-  tb.lh		= Calloc(MXSYM, int);
-  tb.ini	= Calloc(MXSYM, int);
-  tb.mtime	= Calloc(MXSYM, int);
-  tb.iniv	= Calloc(MXSYM, double);
-  tb.ini0	= Calloc(MXSYM, int);
-  tb.di		= Calloc(MXDER, int);
-  tb.idi	= Calloc(MXDER, int);
-  tb.idu	= Calloc(MXDER, int);
-  tb.lag	= Calloc(MXSYM, int);
-  tb.dvid	= Calloc(MXDER, int);
+  tb.lh		= R_Calloc(MXSYM, int);
+  tb.ini	= R_Calloc(MXSYM, int);
+  tb.mtime	= R_Calloc(MXSYM, int);
+  tb.iniv	= R_Calloc(MXSYM, double);
+  tb.ini0	= R_Calloc(MXSYM, int);
+  tb.di		= R_Calloc(MXDER, int);
+  tb.idi	= R_Calloc(MXDER, int);
+  tb.idu	= R_Calloc(MXDER, int);
+  tb.lag	= R_Calloc(MXSYM, int);
+  tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
   tb.dvidn      = 0;
   tb.ix		= 0;
@@ -347,9 +347,9 @@ void reset() {
   tb.linCmt     = 0;
   tb.linCmtN    = -100;
   tb.linCmtFlg  = 0;
-  tb.df		= Calloc(MXSYM, int);
-  tb.dy		= Calloc(MXSYM, int);
-  tb.sdfdy	= Calloc(MXSYM, int);
+  tb.df		= R_Calloc(MXSYM, int);
+  tb.dy		= R_Calloc(MXSYM, int);
+  tb.sdfdy	= R_Calloc(MXSYM, int);
   tb.cdf	= 0;
   tb.ndfdy	= 0;
   tb.maxtheta   = 0;
@@ -465,19 +465,19 @@ static inline void assertCorrectDfDy() {
 
 void trans_internal(const char* parse_file, int isStr){
   freeP();
-  curP = new_D_Parser(&parser_tables_RxODE, sizeof(D_ParseNode_User));
+  curP = new_D_Parser(&parser_tables_rxode2, sizeof(D_ParseNode_User));
   curP->save_parse_tree = 1;
   curP->error_recovery = 1;
   curP->initial_scope = NULL;
   curP->syntax_error_fn = rxSyntaxError;
   if (isStr){
-    if (gBufFree) Free(gBuf);
+    if (gBufFree) R_Free(gBuf);
     // Should be able to use gBuf directly, but I believe it cause
     // problems with R's garbage collection, so duplicate the string.
     gBuf = (char*)(parse_file);
     gBufFree=0;
   } else {
-    if (gBufFree) Free(gBuf);
+    if (gBufFree) R_Free(gBuf);
     gBuf = rc_sbuf_read(parse_file);
     gBufFree=1;
     err_msg((intptr_t) gBuf, "error: empty buf for FILE_to_parse\n", -2);
@@ -495,7 +495,7 @@ void trans_internal(const char* parse_file, int isStr){
   if (!_pn || curP->syntax_errors) {
     rx_syntax_error = 1;
   } else {
-    wprint_parsetree(parser_tables_RxODE, _pn, 0, wprint_node, NULL);
+    wprint_parsetree(parser_tables_rxode2, _pn, 0, wprint_node, NULL);
     // Determine Jacobian vs df/dvar
     assertCorrectDfDy();
   }
@@ -509,15 +509,15 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
 
   int isStr =INTEGER(parseStr)[0];
   reset();
-  rx_syntax_assign = R_get_option("RxODE.syntax.assign",1);
-  rx_syntax_star_pow = R_get_option("RxODE.syntax.star.pow",1);
-  rx_syntax_require_semicolon = R_get_option("RxODE.syntax.require.semicolon",0);
-  rx_syntax_allow_dots = R_get_option("RxODE.syntax.allow.dots",1);
-  rx_suppress_syntax_info = R_get_option("RxODE.suppress.syntax.info",0);
-  rx_syntax_allow_ini0 = R_get_option("RxODE.syntax.allow.ini0",1);
-  rx_syntax_allow_ini  = R_get_option("RxODE.syntax.allow.ini",1);
-  rx_syntax_allow_assign_state = R_get_option("RxODE.syntax.assign.state",0);
-  rx_syntax_require_ode_first = R_get_option("RxODE.syntax.require.ode.first",1);
+  rx_syntax_assign = R_get_option("rxode2.syntax.assign",1);
+  rx_syntax_star_pow = R_get_option("rxode2.syntax.star.pow",1);
+  rx_syntax_require_semicolon = R_get_option("rxode2.syntax.require.semicolon",0);
+  rx_syntax_allow_dots = R_get_option("rxode2.syntax.allow.dots",1);
+  rx_suppress_syntax_info = R_get_option("rxode2.suppress.syntax.info",0);
+  rx_syntax_allow_ini0 = R_get_option("rxode2.syntax.allow.ini0",1);
+  rx_syntax_allow_ini  = R_get_option("rxode2.syntax.allow.ini",1);
+  rx_syntax_allow_assign_state = R_get_option("rxode2.syntax.assign.state",0);
+  rx_syntax_require_ode_first = R_get_option("rxode2.syntax.require.ode.first",1);
   set_d_use_r_headers(0);
   set_d_rdebug_grammar_level(0);
   set_d_verbose_level(0);
@@ -578,7 +578,7 @@ static inline void finalizeSyntaxError() {
   }
 }
 
-SEXP _RxODE_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
+SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
 		  SEXP isEscIn, SEXP inME, SEXP goodFuns){
   const char *in = NULL;
   int isStr = setupTrans(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns);
@@ -590,7 +590,7 @@ SEXP _RxODE_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
   return lst;
 }
 
-SEXP _RxODE_parseModel(SEXP type){
+SEXP _rxode2_parseModel(SEXP type){
   if (!sbPm.o){
     err_trans("model no longer loaded in memory");
   }
@@ -615,7 +615,7 @@ SEXP _RxODE_parseModel(SEXP type){
   return pm;
 }
 
-SEXP _RxODE_codeLoaded(){
+SEXP _rxode2_codeLoaded(){
   SEXP pm = PROTECT(allocVector(INTSXP, 1));
   if (!sbPm.o || !sbNrm.o){
     INTEGER(pm)[0]=0;
@@ -626,7 +626,7 @@ SEXP _RxODE_codeLoaded(){
   return pm;
 }
 
-SEXP _RxODE_isLinCmt(){
+SEXP _rxode2_isLinCmt(){
   SEXP ret = PROTECT(allocVector(INTSXP, 1));
   INTEGER(ret)[0]=tb.linCmt;
   UNPROTECT(1);
@@ -638,7 +638,7 @@ SEXP _RxODE_isLinCmt(){
 ////////////////////////////////////////////////////////////////////////////////
 // linCmtParse
 
-// Taken from dparser and changed to use Calloc
+// Taken from dparser and changed to use R_Calloc
 char * rc_dup_str(const char *s, const char *e) {
   lastStr=s;
   int l = e ? e-s : (int)strlen(s);

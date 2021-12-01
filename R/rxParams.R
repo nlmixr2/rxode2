@@ -1,18 +1,18 @@
 #' Parameters specified by the model
 #'
 #' This returns the model's parameters that are required to solve the
-#' ODE system, and can be used to pipe parameters into an RxODE solve
+#' ODE system, and can be used to pipe parameters into an rxode2 solve
 #'
 #' @inheritParams rxModelVars
 #'
 #' @param constants is a boolean indicting if constants should be
-#'     included in the list of parameters. Currently RxODE parses
+#'     included in the list of parameters. Currently rxode2 parses
 #'     constants into variables in case you wish to change them
-#'     without recompiling the RxODE model.
+#'     without recompiling the rxode2 model.
 #'
 #' @inheritParams rxControl
 #'
-#' @return When extracting the parameters from an RxODE model, a
+#' @return When extracting the parameters from an rxode2 model, a
 #'     character vector listing the parameters in the model.
 #'
 #' @author Matthew L.Fidler
@@ -23,7 +23,7 @@ rxParams <- function(obj, ...) {
 
 #' @rdname rxParams
 #' @export
-rxParams.RxODE <- function(obj, constants = TRUE, ...,
+rxParams.rxode2 <- function(obj, constants = TRUE, ...,
                            params = NULL, inits = NULL, iCov = NULL,
                            keep = NULL,
                            thetaMat = NULL,
@@ -58,7 +58,7 @@ rxParams.RxODE <- function(obj, constants = TRUE, ...,
       ), call. = FALSE)
     }
     ## Most likely
-    ## RxODE() %>% rxParams() %>%
+    ## rxode2() %>% rxParams() %>%
     assignInMyNamespace(".pipelineRx", obj)
     assignInMyNamespace(".pipelineInits", NULL)
     assignInMyNamespace(".pipelineEvents", NULL)
@@ -121,23 +121,23 @@ rxParams.rxSolve <- function(obj, constants = TRUE, ...,
     .x <- obj
     ## Assign prior information
     ## Need to extract:
-    ## 1. RxODE model
+    ## 1. rxode2 model
     assignInMyNamespace(".pipelineRx", .x$.args.object)
     ## Events
     assignInMyNamespace(".pipelineEvents", .x$.args.events)
-    ## 2. RxODE parameters
+    ## 2. rxode2 parameters
     assignInMyNamespace(".pipelineParams", .x$.args.par0)
-    ## 3. RxODE inits
+    ## 3. rxode2 inits
     assignInMyNamespace(".pipelineInits", .x$.args.inits)
-    ## 4. RxODE thetaMat
+    ## 4. rxode2 thetaMat
     assignInMyNamespace(".pipelineThetaMat", .x$.args$thetaMat)
-    ## 5. RxODE omega
+    ## 5. rxode2 omega
     assignInMyNamespace(".pipelineOmega", .x$.args$omega)
-    ## 6. RxODE sigma
+    ## 6. rxode2 sigma
     assignInMyNamespace(".pipelineSigma", .x$.args$sigma)
-    ## 7. RxODE dfObs
+    ## 7. rxode2 dfObs
     assignInMyNamespace(".pipelineDfObs", .x$env$.args$dfObs)
-    ## 8. RxODE dfSub
+    ## 8. rxode2 dfSub
     assignInMyNamespace(".pipelineDfSub", .x$env$.args$dfSub)
     class(.ret) <- "rxParams"
     return(.ret)
@@ -178,7 +178,7 @@ rxParams.rxEt <- function(obj, ...,
 .rxParams <- function(obj, constants = TRUE) {
   .ret <- rxParams_(obj)
   if (!constants) {
-    .init <- RxODE::rxInit(obj)
+    .init <- rxode2::rxInit(obj)
     .ret <- .ret[!(.ret %in% names(.init))]
   }
   return(.ret)

@@ -7,10 +7,10 @@
 rxDfdy(obj)
 }
 \arguments{
-\item{obj}{RxODE family of objects}
+\item{obj}{rxode2 family of objects}
 }
 \value{
-A list of the jacobian parameters defined in this RxODE
+A list of the jacobian parameters defined in this rxode2
 object.
 }
 \description{

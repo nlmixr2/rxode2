@@ -1,7 +1,7 @@
 rxodeTest(
   {
     test_that("issue 272 and 273", {
-      m1 <- RxODE({
+      m1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01

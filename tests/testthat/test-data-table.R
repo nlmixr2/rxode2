@@ -3,7 +3,7 @@ rxodeTest(
     context("Data Table & tibble output")
     test_that("data.table", {
       for (rt in c("data.table", "tbl")) {
-        mod <- RxODE({
+        mod <- rxode2({
           d / dt(intestine) <- -a * intestine
           d / dt(blood) <- a * intestine - b * blood
         })
@@ -21,7 +21,7 @@ rxodeTest(
 
         expect_true(inherits(p2, rt))
         dat <- readRDS(file = test_path("test-data-setup.rds"))
-        mod2 <- RxODE({
+        mod2 <- rxode2({
           C2 <- centr / V2
           C3 ~ peri / V3
           CL ~ TCL * exp(eta.Cl)

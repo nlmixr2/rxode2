@@ -2,17 +2,17 @@ rxodeTest(
   {
     context("Focei Setup checks")
 
-    m1 <- RxODE({
+    m1 <- rxode2({
       d / dt(centr) <- -CL / V * centr
     })
 
-    m1a <- RxODE(m1, calcSens = TRUE)
+    m1a <- rxode2(m1, calcSens = TRUE)
 
     test_that("m1a created successfully.", {
-      expect_equal(class(m1a), "RxODE")
+      expect_equal(class(m1a), "rxode2")
     })
 
-    m2 <- RxODE({
+    m2 <- rxode2({
       d / dt(depot) <- -KA * depot
       d / dt(centr) <- KA * depot - CL / V * centr
     })
@@ -181,7 +181,7 @@ rxodeTest(
     ##     V = exp(THETA[2] + ETA[2])
     ## }
 
-    ## m1 <- RxODE({
+    ## m1 <- rxode2({
     ##     C2 = centr/V
     ##     d/dt(centr) = - CL*C2
     ## })
@@ -247,7 +247,7 @@ rxodeTest(
     ## ## While it is close, it isn't exactly the same.
     ## gr.calc <- attr(ret2a, "grad")
 
-    ## m1g$outer <- RxODE(rxLogifyModel(m1g$outer))
+    ## m1g$outer <- rxode2(rxLogifyModel(m1g$outer))
 
     ## ret2 <- m1g %>% rxFoceiInner(ev, theta=THETA[-(4:5)], eta=ETA,
     ##                             dv=DV, inv.env=symenv, NONMEM=1, invisible=1,
@@ -256,7 +256,7 @@ rxodeTest(
     ## gr2.calc <- attr(ret2, "grad")
 
     ## now try  Rik's example
-    rx <- RxODE({
+    rx <- rxode2({
       d / dt(abs) <- -KA * abs
       d / dt(centr) <- KA * abs - (Cl / Vc) * centr
       ## Concentration is calculated
@@ -276,7 +276,7 @@ rxodeTest(
     })
 
     ## Constants
-    m2 <- RxODE({
+    m2 <- rxode2({
       KA <- 3
       d / dt(depot) <- -KA * depot
       d / dt(centr) <- KA * depot - CL / V * centr
@@ -300,7 +300,7 @@ rxodeTest(
     ## })
 
     ## Now Test conditional statements
-    mod <- RxODE({
+    mod <- rxode2({
       Q1 <- 0
       if (t >= 2 & t < 4) {
         Q1 <- 1
@@ -364,7 +364,7 @@ rxodeTest(
       T0 <- exp(lt + eta.t0)
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       if (t > T0) {
         kel <- Cl / Vc
       } else {
@@ -409,7 +409,7 @@ rxodeTest(
       nlmixr_cvit_expr <- central / Vvit * 1e+06
     }
 
-    m1 <- RxODE({
+    m1 <- rxode2({
       ef0 <- nlmixr_ef0_expr
       fct <- nlmixr_fct_expr
       gamma <- nlmixr_gamma_expr
@@ -447,7 +447,7 @@ rxodeTest(
 
     ## Error
 
-    mod <- RxODE({
+    mod <- rxode2({
       tka <- THETA[1]
       tcl <- THETA[2]
       tv <- THETA[3]

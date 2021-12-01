@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Test Initial conditions -> sensitivity initial conditions")
 
-    fini <- RxODE({
+    fini <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
       d / dt(depot) <- -KA * depot
@@ -59,7 +59,7 @@ rxodeTest(
     ## })
 
 
-    fini <- RxODE({
+    fini <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
       d / dt(depot) <- -KA * depot
@@ -146,7 +146,7 @@ rxodeTest(
     ##     expect_true(all(!duplicated(out)));
     ## })
 
-    mod <- RxODE({
+    mod <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
       d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3

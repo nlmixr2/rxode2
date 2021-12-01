@@ -2,7 +2,7 @@
 % Please edit documentation in R/symengine.R
 \name{rxParsePk}
 \alias{rxParsePk}
-\title{Parse PK function for inclusion in RxODE}
+\title{Parse PK function for inclusion in rxode2}
 \usage{
 rxParsePk(x, init = NULL)
 }
@@ -12,10 +12,10 @@ rxParsePk(x, init = NULL)
 \item{init}{Initialization vector}
 }
 \value{
-RxODE transformed text.
+rxode2 transformed text.
 }
 \description{
-Parse PK function for inclusion in RxODE
+Parse PK function for inclusion in rxode2
 }
 \author{
 Matthew L. Fidler

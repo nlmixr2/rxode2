@@ -1,9 +1,9 @@
-require(RxODE)
+require(rxode2)
 require(digest)
 rxodeTest({
   context("evid=2 solves")
 
-  mod <- RxODE("
+  mod <- rxode2("
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
@@ -59,7 +59,7 @@ d/dt(blood)     = a*intestine - b*blood
   })
 
   ## Test mixed solved and ODEs
-  mod2 <- RxODE({
+  mod2 <- rxode2({
     ## the order of variables do not matter, the type of compartmental
     ## model is determined by the parameters specified.
     CL ~ TCL * exp(eta.Cl)

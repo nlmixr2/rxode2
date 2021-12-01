@@ -2,7 +2,7 @@ rxodeTest(
   {
     set.seed(42)
 
-    m1 <- RxODE({
+    m1 <- rxode2({
       CL ~ (1 - 0.2 * SEX) * (0.807 + 0.00514 * (CRCL - 91.2)) * exp(eta.cl)
       V1 ~ 4.8 * exp(eta.v1)
       Q ~ (3.46 + 0.0593 * (WT - 75.1)) * exp(eta.q)
@@ -32,7 +32,7 @@ rxodeTest(
 
     e <- et() %>%
       ## Specify the id and weight based dosing from covariate data.frame
-      ## This requires RxODE XXX
+      ## This requires rxode2 XXX
       et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
       ## Sampling is added for each ID
       et(s) %>%
@@ -43,7 +43,7 @@ rxodeTest(
 
     e2 <- et() %>%
       ## Specify the id and weight based dosing from covariate data.frame
-      ## This requires RxODE XXX
+      ## This requires rxode2 XXX
       et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
       ## Sampling is added for each ID
       et(s)
@@ -244,7 +244,7 @@ rxodeTest(
 
     e <- et(time.units = "hr") %>%
       ## Specify the id and weight based dosing from covariate data.frame
-      ## This requires RxODE XXX
+      ## This requires rxode2 XXX
       et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
       ## Sampling is added for each ID
       et(s) %>%
@@ -255,7 +255,7 @@ rxodeTest(
 
     e2 <- et(time.units = "hr") %>%
       ## Specify the id and weight based dosing from covariate data.frame
-      ## This requires RxODE XXX
+      ## This requires rxode2 XXX
       et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
       ## Sampling is added for each ID
       et(s)

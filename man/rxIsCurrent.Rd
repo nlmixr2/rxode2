@@ -2,16 +2,16 @@
 % Please edit documentation in R/RcppExports.R
 \name{rxIsCurrent}
 \alias{rxIsCurrent}
-\title{Checks if the RxODE object was built with the current build}
+\title{Checks if the rxode2 object was built with the current build}
 \usage{
 rxIsCurrent(obj)
 }
 \arguments{
-\item{obj}{RxODE family of objects}
+\item{obj}{rxode2 family of objects}
 }
 \value{
-boolean indicating if this was built with current RxODE
+boolean indicating if this was built with current rxode2
 }
 \description{
-Checks if the RxODE object was built with the current build
+Checks if the rxode2 object was built with the current build
 }

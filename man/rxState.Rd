@@ -7,7 +7,7 @@
 rxState(obj = NULL, state = NULL)
 }
 \arguments{
-\item{obj}{RxODE family of objects}
+\item{obj}{rxode2 family of objects}
 
 \item{state}{is a string indicating the state or compartment that
 you would like to lookup.}
@@ -21,7 +21,7 @@ If state is a string, return the compartment number of the named state.
 This returns the model's compartments or states.
 }
 \seealso{
-\code{\link[=RxODE]{RxODE()}}
+\code{\link[=rxode2]{rxode2()}}
 }
 \author{
 Matthew L.Fidler

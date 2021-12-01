@@ -4,7 +4,7 @@ rxodeTest(
     test_that("deSolve events", {
       ## Data frame event from deSolve vignette
 
-      derivs <- RxODE({
+      derivs <- rxode2({
         v1(0) <- 1
         v2(0) <- 2
         d / dt(v1) <- 0

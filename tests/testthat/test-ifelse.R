@@ -1,7 +1,7 @@
 rxodeTest(
   {
     context("If/Else expansion tests")
-    rx1 <- RxODE({
+    rx1 <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z
       d / dt(Y) <- b * (Y - Z)
@@ -24,7 +24,7 @@ rxodeTest(
       )
     })
 
-    rx2 <- RxODE({
+    rx2 <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z
       d / dt(Y) <- b * (Y - Z)
@@ -47,7 +47,7 @@ rxodeTest(
 
 
     ## Compound if/then
-    rx3 <- RxODE({
+    rx3 <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z
       d / dt(Y) <- b * (Y - Z)
@@ -76,7 +76,7 @@ rxodeTest(
       )
     })
 
-    rx4 <- RxODE({
+    rx4 <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z
       d / dt(Y) <- b * (Y - Z)
@@ -104,7 +104,7 @@ rxodeTest(
     })
 
     ## Compound if/then
-    rx5 <- RxODE({
+    rx5 <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z
       d / dt(Y) <- b * (Y - Z)
@@ -138,7 +138,7 @@ rxodeTest(
       )
     })
 
-    rx6 <- RxODE({
+    rx6 <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z
       d / dt(Y) <- b * (Y - Z)
@@ -182,9 +182,9 @@ rxodeTest(
 "
 
 
-    ode1 <- RxODE(ode)
+    ode1 <- rxode2(ode)
 
-    ode2 <- RxODE(ode, calcSens = TRUE, collapseModel = TRUE)
+    ode2 <- rxode2(ode, calcSens = TRUE, collapseModel = TRUE)
 
     ## No longer true or needed...
     ## test_that("LHS variables can be removed", {
@@ -192,7 +192,7 @@ rxodeTest(
     ##     expect_true(length(rxLhs(ode2)) == 0);
     ## })
 
-    ode3 <- RxODE({
+    ode3 <- rxode2({
       if (route == 1) {
         C2 <- centr / V2 * F
       } else {
@@ -205,9 +205,9 @@ rxodeTest(
       d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
     })
 
-    ode4 <- RxODE(ode3, calcSens = TRUE, collapseModel = TRUE)
+    ode4 <- rxode2(ode3, calcSens = TRUE, collapseModel = TRUE)
 
-    ode5 <- RxODE(ode3, calcSens = TRUE)
+    ode5 <- rxode2(ode3, calcSens = TRUE)
 
     ## test_that("LHS variables can be removed", {
     ##     expect_true(length(rxLhs(ode3)) > 1);

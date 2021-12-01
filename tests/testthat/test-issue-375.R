@@ -5,7 +5,7 @@ rxodeTest(
         log((x / 100)^2 + 1)
       }
 
-      mod2 <- RxODE({
+      mod2 <- rxode2({
         ## the order of variables do not matter, the type of compartmental
         ## model is determined by the parameters specified.
         CL ~ TCL * exp(eta.Cl) * (WT / 70)^0.75
@@ -51,7 +51,7 @@ rxodeTest(
       ), NA)
 
       # Nesting:
-      ## mod <- RxODE({
+      ## mod <- rxode2({
       ##   ## Clearance with individuals
       ##   eff(0) = 1
       ##   C2 = centr/V2*(1+prop.sd);

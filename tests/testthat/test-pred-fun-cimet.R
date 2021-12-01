@@ -22,7 +22,7 @@ rxodeTest(
         rkeb <- exp(trkeb + eta.rkeb)
       }
 
-      rxode.model <- RxODE({
+      rxode.model <- rxode2({
         bile <- 1
         if (t < tgap) {
           bile <- 0

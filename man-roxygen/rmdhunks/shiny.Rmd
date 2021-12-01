@@ -3,7 +3,7 @@
 An example of creating an
 R [shiny application](http://shiny.rstudio.com) to interactively
 explore responses of various complex dosing regimens is available at
-http://qsp.engr.uga.edu:3838/RxODE/RegimenSimulator.  Shiny
+http://qsp.engr.uga.edu:3838/rxode2/RegimenSimulator.  Shiny
 applications like this one may be programmatically created with the
 experimental function `genShinyApp.template()`.
 
@@ -19,10 +19,10 @@ runApp("shinyExample")
 
 ```
 
-[Click here to go to the Shiny App](http://qsp.engr.uga.edu:3838/RxODE/RegimenSimulator)
+[Click here to go to the Shiny App](http://qsp.engr.uga.edu:3838/rxode2/RegimenSimulator)
 
 
 # Exploring parameter fits graphically using shiny
 
-An RxODE object can be explored with `rxShiny(obj)`.  `rxShiny()` will also allow you to try 
+An rxode2 object can be explored with `rxShiny(obj)`.  `rxShiny()` will also allow you to try 
 new models to see how they behave.

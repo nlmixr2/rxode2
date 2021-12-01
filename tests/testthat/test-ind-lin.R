@@ -4,7 +4,7 @@ rxodeTest(
       context("Test inductive linearization")
 
       ## Case 1 ME alone from wikipedia
-      mod <- RxODE(
+      mod <- rxode2(
         {
           d / dt(x) <- 2 * x - y + z
           d / dt(y) <- 3 * y - 1 * z
@@ -21,9 +21,9 @@ rxodeTest(
 
       expect_equal(as.data.frame(m), as.data.frame(m2), tol = 1e-5)
 
-      ## Now do without indLin in the RxODE
+      ## Now do without indLin in the rxode2
 
-      mod <- RxODE({
+      mod <- rxode2({
         d / dt(x) <- 2 * x - y + z
         d / dt(y) <- 3 * y - 1 * z
         d / dt(z) <- 2 * x + y + 3 * z
@@ -41,7 +41,7 @@ rxodeTest(
 
       ## Case 2 ME alone with inhomogenous systems
 
-      mod <- RxODE(
+      mod <- rxode2(
         {
           d / dt(x) <- 2 * x - y + z + exp(-2 * t)
           d / dt(y) <- 3 * y - 1 * z
@@ -61,7 +61,7 @@ rxodeTest(
       ## FIXME?
       ## expect_equal(as.data.frame(m), as.data.frame(m2), tol=1e-5)
 
-      mod <- RxODE("
+      mod <- rxode2("
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
@@ -98,7 +98,7 @@ d/dt(blood)     = a*intestine - b*blood
       expect_equal(as.data.frame(pk), as.data.frame(pk2), tol = 1e-5)
 
       ## Inductive linearization
-      mmModel <- RxODE(
+      mmModel <- rxode2(
         {
           ka <- 1
           Vc <- 1
@@ -111,7 +111,7 @@ d/dt(blood)     = a*intestine - b*blood
       )
 
 
-      mmModel <- RxODE(
+      mmModel <- rxode2(
         {
           ka <- 1
           Vc <- 1
@@ -126,7 +126,7 @@ d/dt(blood)     = a*intestine - b*blood
 
       ## Inductive + 1x1 matrix
       ## FIXME this should be inductive too...
-      mmModel <- RxODE(
+      mmModel <- rxode2(
         {
           ka <- 1
           Vc <- 1
@@ -140,7 +140,7 @@ d/dt(blood)     = a*intestine - b*blood
       )
 
       ## This is inductive
-      mmModel <- RxODE(
+      mmModel <- rxode2(
         {
           ka <- 1
           Vc <- 1
@@ -153,7 +153,7 @@ d/dt(blood)     = a*intestine - b*blood
         indLin = TRUE
       )
 
-      mmModel <- RxODE(
+      mmModel <- rxode2(
         {
           ka <- 1
           Vc <- 1
@@ -173,7 +173,7 @@ d/dt(blood)     = a*intestine - b*blood
 
 
       ## Inductive linearization
-      mmModel <- RxODE(
+      mmModel <- rxode2(
         {
           ka <- 1
           Vc <- 1
@@ -201,7 +201,7 @@ d/dt(blood)     = a*intestine - b*blood
 
       expect_equal(as.data.frame(pk), as.data.frame(pk2), tol = 7e-5)
 
-      mmModel <- RxODE(
+      mmModel <- rxode2(
         {
           ka <- 1
           Vc <- 1
@@ -229,7 +229,7 @@ d/dt(blood)     = a*intestine - b*blood
       ## rxIndLinState(list(y="dy", dy="y"))
       rxIndLinState(NULL)
       rxIndLinStrategy()
-      van1 <- RxODE(
+      van1 <- rxode2(
         {
           y(0) <- 2
           d / dt(y) <- dy
@@ -243,7 +243,7 @@ d/dt(blood)     = a*intestine - b*blood
       rxIndLinState(list(y = "dy", dy = "y"))
       ## rxIndLinState(NULL)
       rxIndLinStrategy()
-      van2 <- RxODE(
+      van2 <- rxode2(
         {
           y(0) <- 2
           d / dt(y) <- dy
@@ -256,7 +256,7 @@ d/dt(blood)     = a*intestine - b*blood
       ## rxIndLinState(list(y="dy", dy="y"))
       rxIndLinState(NULL)
       rxIndLinStrategy("split")
-      van3 <- RxODE(
+      van3 <- rxode2(
         {
           y(0) <- 2
           d / dt(y) <- dy
@@ -339,7 +339,7 @@ d/dt(blood)     = a*intestine - b*blood
       ## microbenchmark::microbenchmark(rxSolve(mmModel,et, method="indLin"),
       ##                                rxSolve(mmModel,et, method="liblsoda"))
 
-      iSec <- RxODE(
+      iSec <- rxode2(
         {
           d / dt(Ga) <- -ka * Ga
           d / dt(Gt) <- ka * Ga - ka * Gt

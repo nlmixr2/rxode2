@@ -6,7 +6,7 @@ rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxnorm_`, mean, sd, n, ncores)
+  .Call(`_rxode2_rxnorm_`, mean, sd, n, ncores)
 }
 
 #' Simulate random normal variable from threefry/vandercorput generator
@@ -34,7 +34,7 @@ rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxnorm` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxnorm()
 #' })
 #'
@@ -52,7 +52,7 @@ rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxnormV` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxnormV()
 #' })
 #'
@@ -67,7 +67,7 @@ rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxnormV_`, mean, sd, n, ncores)
+  .Call(`_rxode2_rxnormV_`, mean, sd, n, ncores)
 }
 
 #' Simulate random Poisson variable from threefry generator
@@ -89,7 +89,7 @@ rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxpois` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxpois(3)
 #' })
 #'
@@ -103,7 +103,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxpois_`, lambda, n, ncores)
+  .Call(`_rxode2_rxpois_`, lambda, n, ncores)
 }
 
 
@@ -127,7 +127,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxt` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxt(3)
 #' })
 #'
@@ -142,7 +142,7 @@ rxt <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxt__`, df, n, ncores)
+  .Call(`_rxode2_rxt__`, df, n, ncores)
 }
 
 #' Simulate uniform variable from threefry generator
@@ -165,7 +165,7 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxunif` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxunif(0, 3)
 #' })
 #'
@@ -181,7 +181,7 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxunif_`, min, max, n, ncores)
+  .Call(`_rxode2_rxunif_`, min, max, n, ncores)
 }
 
 
@@ -208,7 +208,7 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxweibull` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxweibull(1, 3)
 #' })
 #'
@@ -223,7 +223,7 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxweibull_`, shape, scale, n, ncores)
+  .Call(`_rxode2_rxweibull_`, shape, scale, n, ncores)
 }
 
 
@@ -247,7 +247,7 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxgeom` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxgeom(0.24)
 #' })
 #'
@@ -262,7 +262,7 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxgeom_`, prob, n, ncores)
+  .Call(`_rxode2_rxgeom_`, prob, n, ncores)
 }
 
 
@@ -288,7 +288,7 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxbeta` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxbeta(2, 2)
 #' })
 #'
@@ -305,7 +305,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxbeta_`, shape1, shape2, n, ncores)
+  .Call(`_rxode2_rxbeta_`, shape1, shape2, n, ncores)
 }
 
 #' Simulate gamma variable from threefry generator
@@ -330,7 +330,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxbeta` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxgamma(2)
 #' })
 #'
@@ -355,7 +355,7 @@ rxgamma <- function(shape, rate = 1 / scale, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxgamma_`, shape, rate, n, ncores)
+  .Call(`_rxode2_rxgamma_`, shape, rate, n, ncores)
 }
 
 
@@ -381,7 +381,7 @@ rxgamma <- function(shape, rate = 1 / scale, scale = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxf` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxf(2, 2)
 #' })
 #'
@@ -399,7 +399,7 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxf_`, df1, df2, n, ncores)
+  .Call(`_rxode2_rxf_`, df1, df2, n, ncores)
 }
 
 
@@ -425,7 +425,7 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxexp` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxexp(2)
 #' })
 #'
@@ -441,7 +441,7 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxexp_`, rate, n, ncores)
+  .Call(`_rxode2_rxexp_`, rate, n, ncores)
 }
 
 
@@ -467,7 +467,7 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxchisq` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxchisq(2)
 #' })
 #'
@@ -483,7 +483,7 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxchisq_`, df, n, ncores)
+  .Call(`_rxode2_rxchisq_`, df, n, ncores)
 }
 
 #' Simulate Cauchy variable from threefry generator
@@ -508,7 +508,7 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxcauchy` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxcauchy(2)
 #' })
 #'
@@ -525,7 +525,7 @@ rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxcauchy_`, location, scale, n, ncores)
+  .Call(`_rxode2_rxcauchy_`, location, scale, n, ncores)
 }
 
 #' Simulate Binomial variable from threefry generator
@@ -549,7 +549,7 @@ rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxbinom` directly in the model
 #'
-#' rx <- RxODE({
+#' rx <- rxode2({
 #'   a <- rxbinom(1, 0.5)
 #' })
 #'
@@ -565,7 +565,7 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_RxODE_rxbinom_`, size, prob, n, ncores)
+  .Call(`_rxode2_rxbinom_`, size, prob, n, ncores)
 }
 
 
@@ -637,7 +637,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
   if (gamma != 1.0 & is.infinite(tmax)) {
     stop("when 'gamma' is not 1, 'tmax' cannot be infinite")
   }
-  .Call(`_RxODE_rpp_`, n, lambda, gamma, prob, t0, tmax, randomOrder, PACKAGE = "RxODE")
+  .Call(`_rxode2_rpp_`, n, lambda, gamma, prob, t0, tmax, randomOrder, PACKAGE = "rxode2")
 }
 
 #' Create a random "normal" matrix using vandercorput generator
@@ -657,5 +657,5 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
 rxRandNV <- function(nrow = 1, ncol = 1) {
   checkmate::assertIntegerish(nrow, len = 1, any.missing = FALSE, lower = 1L)
   checkmate::assertIntegerish(ncol, len = 1, any.missing = FALSE, lower = 1L)
-  .Call(`_RxODE_rxrandnV`, as.integer(nrow), as.integer(ncol))
+  .Call(`_rxode2_rxrandnV`, as.integer(nrow), as.integer(ncol))
 }

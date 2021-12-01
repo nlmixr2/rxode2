@@ -1,14 +1,14 @@
 //#undef NDEBUG
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <RcppArmadillo.h>
 #include <R.h>
 #include <threefry.h>
 #include <libintl.h>
 #include "checkmate.h"
 #include <boost/algorithm/string/predicate.hpp>
-#include "../inst/include/RxODE.h"
-#include "../inst/include/RxODE_as.h"
+#include "../inst/include/rxode2.h"
+#include "../inst/include/rxode2_as.h"
 extern "C"{
   typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
   lotriMat_type lotriMat;
@@ -806,7 +806,7 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
 			       control[Rxc_keepF])); pro++;
       rxModelsAssign(".nestEvents", events);
       RObject cls = Rf_getAttrib(events, R_ClassSymbol);
-      List rxLst = cls.attr(".RxODE.lst");
+      List rxLst = cls.attr(".rxode2.lst");
       rxLst.attr("class") = R_NilValue;
       nid = rxLst[RxTrans_nid];
       if (nid <= 1) {

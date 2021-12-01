@@ -1,10 +1,10 @@
 rxodeTest(
   {
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     context("Nesting tests")
 
-    mod <- RxODE({
+    mod <- rxode2({
       eff(0) <- 1
       C2 <- centr / V2 * (1 + prop.err)
       C3 <- peri / V3
@@ -16,7 +16,7 @@ rxodeTest(
       d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
     })
 
-    mod.eta <- RxODE({
+    mod.eta <- rxode2({
       eff(0) <- 1
       C2 <- centr / V2 * (1 + prop.err)
       C3 <- peri / V3

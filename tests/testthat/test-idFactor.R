@@ -7,7 +7,7 @@ rxodeTest(
       d <- theoSd[, names(theoSd) != "EVID"]
       d <- d[d$ID != 10, ]
 
-      mod <- RxODE({
+      mod <- rxode2({
         tka <- 1
         tcl <- 2
         tv <- 3
@@ -41,7 +41,7 @@ rxodeTest(
       d <- readRDS("theoSd.rds")
       d$ID <- paste(d$ID)
 
-      mod <- RxODE({
+      mod <- rxode2({
         ka <- exp(tka)
         cl <- exp(tcl)
         v <- exp(tv)
@@ -154,7 +154,7 @@ rxodeTest(
       d <- readRDS("theoSd.rds")
       d$ID <- paste(d$ID)
 
-      mod <- RxODE({
+      mod <- rxode2({
         tka <- 1
         tcl <- 2
         tv <- 3
@@ -256,7 +256,7 @@ rxodeTest(
 
       d$ID <- as.integer(d$ID)
 
-      mod <- RxODE({
+      mod <- rxode2({
         tka <- 1
         tcl <- 2
         tv <- 3

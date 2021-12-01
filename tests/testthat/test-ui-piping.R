@@ -1,6 +1,6 @@
 rxodeTest({
 
-  .rx <- loadNamespace("RxODE")
+  .rx <- loadNamespace("rxode2")
 
    testPipeQuote <- function(..., envir=parent.frame()) {
     .rx$.quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir)
@@ -302,7 +302,7 @@ rxodeTest({
   }
 
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, assign", {
 
@@ -342,7 +342,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, lower case f()", {
 
@@ -382,7 +382,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, upper case F()", {
 
@@ -422,7 +422,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, lag()", {
 
@@ -462,7 +462,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, alag()", {
 
@@ -502,7 +502,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, rate()", {
 
@@ -542,7 +542,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, dur()", {
 
@@ -585,7 +585,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, duplicate d/dt(depot)", {
 
@@ -630,7 +630,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, duplicate f(depot)", {
 
@@ -674,7 +674,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, duplicate f(depot)", {
 
@@ -718,7 +718,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   testEst <- function(ui, par, lower, value, upper, fix=FALSE) {
     .ini <- ui$iniDf
@@ -790,7 +790,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("simple ini piping, correlated model", {
 
@@ -852,7 +852,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   test_that("simple ini piping, fixed correlated model", {
 
@@ -926,7 +926,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.compartment)
+  f <- rxode2(one.compartment)
 
   testUi <- function(ui, has = NULL, exclude = NULL, values = NULL) {
     if (!is.null(has)) {
@@ -1062,15 +1062,15 @@ rxodeTest({
 
     test_that("Looks through prior frames for the correct object", {
 
-      fit <- RxODE(one.compartment)
+      fit <- rxode2(one.compartment)
       fits <- lapply(seq(-1, -0.1, 0.1), function(kainit) {
-        RxODE(update(fit, tka = kainit))
+        rxode2(update(fit, tka = kainit))
       })
 
       expect_true(inherits(fits, "list"))
 
       expect_error(lapply(seq(-1, -0.1, 0.1), function(kainit) {
-        RxODE(update(fit, tka = matt))
+        rxode2(update(fit, tka = matt))
       }))
 
 
@@ -1099,7 +1099,7 @@ rxodeTest({
     }
 
 
-    f <- RxODE(one.compartment)
+    f <- rxode2(one.compartment)
 
     test_that("piping works for correlations #1", {
       testUi(f %>% ini(eta.ka + eta.cl ~ c(

@@ -1,15 +1,15 @@
-## This is only for RxODE
-for (f in c("inst/include/RxODE_RcppExports.h", "src/RcppExports.cpp")) {
+## This is only for rxode2
+for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
   l <- readLines(f)
-  w <- which(regexpr("^[#]include <RcppArmadillo.h>", l) != -1)
-  if (length(w) == 1) {
-    l <- l[-w]
-    message("Excluding RcppArmadillo from", f)
-    unlink(f)
-    file.out <- file(f, "wb")
-    writeLines(l, file.out)
-    close(file.out)
-  }
+  ## w <- which(regexpr("^[#]include <RcppArmadillo.h>", l) != -1)
+  ## if (length(w) == 1) {
+  ##   l <- l[-w]
+  ##   message("Excluding RcppArmadillo from", f)
+  ##   unlink(f)
+  ##   file.out <- file(f, "wb")
+  ##   writeLines(l, file.out)
+  ##   close(file.out)
+  ## }
 }
 
 .in <- suppressWarnings(readLines("src/Makevars.in"))
@@ -54,7 +54,7 @@ if (file.exists("man/reexports.Rd")) {
 }
 
 
-unlink("R/RxODE_md5.R")
+unlink("R/rxode2_md5.R")
 
 cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
 include <- list.files("inst/include")
@@ -62,9 +62,9 @@ Rfiles <- list.files("R/", pattern = ".R")
 md5 <- digest::digest(lapply(c(paste0("src/", cpp),
                                paste0("inst/include/", include),
                                paste0("R/", Rfiles)), digest::digest, file = TRUE))
-unlink("R/RxODE_md5.R")
-md5file <- file("R/RxODE_md5.R", "wb")
-writeLines(sprintf("RxODE.md5 <- \"%s\"\n", md5), md5file)
+unlink("R/rxode2_md5.R")
+md5file <- file("R/rxode2_md5.R", "wb")
+writeLines(sprintf("rxode2.md5 <- \"%s\"\n", md5), md5file)
 close(md5file)
 
 l <- readLines("DESCRIPTION")
@@ -74,13 +74,13 @@ v <- gsub("Version[:] *(.*)$", "\\1", l[w])
 unlink("src/ode.h")
 ode.h <- file("src/ode.h", "wb")
 writeLines(c(sprintf("#define __VER_md5__ \"%s\"", md5),
-             "#define __VER_repo__ \"https://github.com/nlmixrdevelopment/RxODE\"",
+             "#define __VER_repo__ \"https://github.com/nlmixrdevelopment/rxode2\"",
              sprintf("#define __VER_ver__ \"%s\"", v)),
            ode.h)
 close(ode.h)
 
 unlink("src/codegen2.h")
-l <- readLines("inst/include/RxODE_model_shared.c")
+l <- readLines("inst/include/rxode2_model_shared.c")
 
 l <- l[l != ""]
 l <- gsub(" *= *NULL;", "=NULL;", l)

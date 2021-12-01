@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{rxTheme}
 \alias{rxTheme}
-\title{rxTheme is the RxODE theme for plots}
+\title{rxTheme is the rxode2 theme for plots}
 \usage{
 rxTheme(
   base_size = 11,
@@ -25,8 +25,8 @@ rxTheme(
 (\code{FALSE}). This could also be a character indicating \code{x} or \code{y}.}
 }
 \value{
-ggplot2 theme used in RxODE
+ggplot2 theme used in rxode2
 }
 \description{
-rxTheme is the RxODE theme for plots
+rxTheme is the rxode2 theme for plots
 }

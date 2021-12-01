@@ -2,14 +2,14 @@
 % Please edit documentation in R/rxOptExpr.R
 \name{rxOptExpr}
 \alias{rxOptExpr}
-\title{Optimize RxODE for computer evaluation}
+\title{Optimize rxode2 for computer evaluation}
 \usage{
 rxOptExpr(x, msg = "model")
 }
 \arguments{
-\item{x}{RxODE model that can be accessed by rxNorm}
+\item{x}{rxode2 model that can be accessed by rxNorm}
 
-\item{msg}{This is the name of type of object that RxODE is
+\item{msg}{This is the name of type of object that rxode2 is
 optimizing that will in the message when optimizing.  For
 example "model" will produce the following message while
 optimizing the model:
@@ -17,13 +17,13 @@ optimizing the model:
 finding duplicate expressions in model...}
 }
 \value{
-Optimized RxODE model text.  The order and type lhs and
+Optimized rxode2 model text.  The order and type lhs and
 state variables is maintained while the evaluation is sped up.
 While parameters names are maintained, their order may be
 modified.
 }
 \description{
-This optimizes RxODE code for computer evaluation by only
+This optimizes rxode2 code for computer evaluation by only
 calculating redundant expressions once.
 }
 \author{

@@ -14,12 +14,12 @@
 #include <errno.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
 #endif
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include "sbuf.h"
 #include "tran.h"
 #include "ode.h"

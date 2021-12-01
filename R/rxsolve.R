@@ -1,18 +1,18 @@
 #' Solving & Simulation of a ODE/solved system (and solving options) equation
 #'
-#' This uses RxODE family of objects, file, or model specification to
-#' solve a ODE system.  There are many options for a solved RxODE
+#' This uses rxode2 family of objects, file, or model specification to
+#' solve a ODE system.  There are many options for a solved rxode2
 #' model, the first are the required `object`, and `events` with the
 #' some-times optional `params` and `inits`.
 #'
 #' The rest of the document focus on the different ODE solving
-#' methods, followed by the core solving method's options, RxODE event
-#' handling options, RxODE's numerical stability options, RxODE's
-#' output options, and finally internal RxODE options or compatibility
+#' methods, followed by the core solving method's options, rxode2 event
+#' handling options, rxode2's numerical stability options, rxode2's
+#' output options, and finally internal rxode2 options or compatibility
 #' options.
 #'
-#' @param object is a either a RxODE family of objects, or a file-name
-#'     with a RxODE model specification, or a string with a RxODE
+#' @param object is a either a rxode2 family of objects, or a file-name
+#'     with a rxode2 model specification, or a string with a rxode2
 #'     model specification.
 #'
 #' @param params a numeric named vector with values for every
@@ -36,19 +36,19 @@
 #'       solving, but allows user Jacobian specification.
 #' * `"dop853"` -- DOP853 solver.  Does not support parallel thread-based
 #'         solving nor user Jacobain specification
-#' * `"indLin"` -- Solving through inductive linearization.  The RxODE dll
+#' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
 #'         must be setup specially to use this solving routine.
 #'
 #' @param stiff a logical (`TRUE` by default) indicating whether
 #'     the ODE system is stiff or not.
 #'
-#'     For stiff ODE systems (`stiff = TRUE`), `RxODE` uses the
+#'     For stiff ODE systems (`stiff = TRUE`), `rxode2` uses the
 #'     LSODA (Livermore Solver for Ordinary Differential Equations)
 #'     Fortran package, which implements an automatic method switching
 #'     for stiff and non-stiff problems along the integration
 #'     interval, authored by Hindmarsh and Petzold (2003).
 #'
-#'     For non-stiff systems (`stiff = FALSE`), `RxODE` uses
+#'     For non-stiff systems (`stiff = FALSE`), `rxode2` uses
 #'     DOP853, an explicit Runge-Kutta method of order 8(5, 3) of
 #'     Dormand and Prince as implemented in C by Hairer and Wanner
 #'     (1993).
@@ -75,7 +75,7 @@
 #'   `hmax=NA` (default), uses the average difference +
 #'   hmaxSd*sd in times and sampling events. The `hmaxSd` is a user
 #'   specified parameter and which defaults to zero.  When
-#'   `hmax=NULL` RxODE uses the maximum difference in times in
+#'   `hmax=NULL` rxode2 uses the maximum difference in times in
 #'   your sampling and events.  The value 0 is equivalent to infinite
 #'   maximum absolute step size.
 #'
@@ -108,7 +108,7 @@
 #'     not reset the `ISTATE` variable with doses.
 #'
 #' @param indLinMatExpType This is them matrix exponential type that
-#'     is use for RxODE.  Currently the following are supported:
+#'     is use for rxode2.  Currently the following are supported:
 #'
 #' * `Al-Mohy` Uses the exponential matrix method of Al-Mohy Higham (2009)
 #'
@@ -170,7 +170,7 @@
 #'     this is turned on but you may turn it off if you wish.
 #'
 #' @param sumType Sum type to use for `sum()` in
-#'     RxODE code blocks.
+#'     rxode2 code blocks.
 #'
 #' `pairwise` uses the pairwise sum (fast, default)
 #'
@@ -182,7 +182,7 @@
 #'
 #' `c` uses no correction: default/native summing
 #'
-#' @param prodType Product to use for `prod()` in RxODE blocks
+#' @param prodType Product to use for `prod()` in rxode2 blocks
 #'
 #' `long double` converts to long double, performs the
 #' multiplication and then converts back.
@@ -250,7 +250,7 @@
 #' @param seed an object specifying if and how the random number
 #'    generator should be initialized
 #'
-#' @param nsim represents the number of simulations.  For RxODE, if
+#' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
 #'     `[eventTable()]`)
 #'
@@ -436,7 +436,7 @@
 #' * `"rxSolve"` (default) will return a reactive data frame
 #'      that can change easily change different pieces of the solve and
 #'      update the data frame.  This is the currently standard solving
-#'      method in RxODE,  is used for `rxSolve(object, ...)`, `solve(object,...)`,
+#'      method in rxode2,  is used for `rxSolve(object, ...)`, `solve(object,...)`,
 #'
 #' * `"data.frame"` -- returns a plain, non-reactive data
 #'      frame; Currently very slightly faster than `returnType="matrix"`
@@ -449,16 +449,16 @@
 #'
 #' * `"tbl"` or `"tibble"` returns a tibble format.
 #'
-#' @param addDosing Boolean indicating if the solve should add RxODE
+#' @param addDosing Boolean indicating if the solve should add rxode2
 #'     EVID and related columns.  This will also include dosing
-#'     information and estimates at the doses.  Be default, RxODE
+#'     information and estimates at the doses.  Be default, rxode2
 #'     only includes estimates at the observations. (default
 #'     `FALSE`). When `addDosing` is `NULL`, only
 #'     include `EVID=0` on solve and exclude any model-times or
 #'     `EVID=2`. If `addDosing` is `NA` the classic
-#'     `RxODE` EVID events are returned. When `addDosing` is `TRUE`
+#'     `rxode2` EVID events are returned. When `addDosing` is `TRUE`
 #'     add the event information in NONMEM-style format; If
-#'     `subsetNonmem=FALSE` RxODE will also include extra event types
+#'     `subsetNonmem=FALSE` rxode2 will also include extra event types
 #'     (`EVID`) for ending infusion and modeled times:
 #'
 #'
@@ -494,7 +494,7 @@
 #'   default `TRUE`.
 #'
 #' @param matrix A boolean indicating if a matrix should be returned
-#'     instead of the RxODE's solved object.
+#'     instead of the rxode2's solved object.
 #'
 #' @param scale a numeric named vector with scaling for ode
 #'     parameters of the system.  The names must correspond to the
@@ -505,11 +505,11 @@
 #'
 #' @param amountUnits This supplies the dose units of a data frame
 #'     supplied instead of an event table.  This is for importing the
-#'     data as an RxODE event table.
+#'     data as an rxode2 event table.
 #'
 #' @param timeUnits This supplies the time units of a data frame
 #'     supplied instead of an event table.  This is for importing the
-#'     data as an RxODE event table.
+#'     data as an rxode2 event table.
 #'
 #' @param theta A vector of parameters that will be named `THETA\[#\]` and
 #'     added to parameters
@@ -531,7 +531,7 @@
 #'     is the amount to increment for the observations between `from`
 #'     and `to`.
 #'
-#' @param warnIdSort Warn if the ID is not present and RxODE assumes
+#' @param warnIdSort Warn if the ID is not present and rxode2 assumes
 #'     the order of the parameters/iCov are the same as the order of
 #'     the parameters in the input dataset.
 #'
@@ -556,7 +556,7 @@
 #'     named argument, this overwrites the output
 #'
 #' @param updateObject This is an internally used flag to update the
-#'     RxODE solved object (when supplying an RxODE solved object) as
+#'     rxode2 solved object (when supplying an rxode2 solved object) as
 #'     well as returning a new object.  You probably should not
 #'     modify it's `FALSE` default unless you are willing to
 #'     have unexpected results.
@@ -574,7 +574,7 @@
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
 #'   sampled time points and as many columns as system variables (as
-#'   defined by the ODEs and additional assignments in the RxODE model
+#'   defined by the ODEs and additional assignments in the rxode2 model
 #'   code).  It also stores information about the call to allow
 #'   dynamic updating of the solved object.
 #'
@@ -611,7 +611,7 @@
 #' 2nd edition, Springer Series in Computational Mathematics,
 #' Springer-Verlag (1993).
 #'
-#' @seealso [RxODE()]
+#' @seealso [rxode2()]
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
@@ -907,7 +907,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL) {
-  .object <- RxODE(object)
+  .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
                        list(...),
                        list(theta = theta, eta = eta)))
@@ -965,7 +965,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       )
     }
     if (is.null(.pipelineRx)) {
-      stop("need an RxODE compiled model as the start of the pipeline",
+      stop("need an rxode2 compiled model as the start of the pipeline",
         call. = FALSE
       )
     } else {
@@ -978,7 +978,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       params <- object$params
     }
     if (is.null(.pipelineRx)) {
-      stop("need an RxODE compiled model as the start of the pipeline",
+      stop("need an rxode2 compiled model as the start of the pipeline",
         call. = FALSE
       )
     } else {
@@ -986,7 +986,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       object <- .pipelineRx
     }
     if (is.null(.pipelineEvents)) {
-      stop("need an RxODE events as a part of the pipeline",
+      stop("need an rxode2 events as a part of the pipeline",
         call. = FALSE
       )
     } else {
@@ -1231,11 +1231,11 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       stop("'iCov' must be an input dataset")
     }
   }
-  if (RxODE.debug) {
+  if (rxode2.debug) {
     .rx <- rxNorm(object)
-    qs::qsave(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), "last-rxode.qs")
+    qs::qsave(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), "last-rxode2.qs")
   }
-  if (!any(class(object) %in% c("rxSolve", "RxODE", "character", "rxModelVars", "rxDll"))) {
+  if (!any(class(object) %in% c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll"))) {
     stop("Unsupported type of model trying to be solved")
   }
   .ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
@@ -1262,37 +1262,37 @@ update.rxSolve <- function(object, ...) {
 
 #' @rdname rxSolve
 #' @export
-predict.RxODE <- function(object, ...) {
+predict.rxode2 <- function(object, ...) {
   rxSolve(object, ...)
 }
 
 #' @rdname rxSolve
 #' @export
-predict.rxSolve <- predict.RxODE
+predict.rxSolve <- predict.rxode2
 
 #' @rdname rxSolve
 #' @export
-predict.rxEt <- predict.RxODE
+predict.rxEt <- predict.rxode2
 
 #' @rdname rxSolve
 #' @export
-predict.rxParams <- predict.RxODE
+predict.rxParams <- predict.rxode2
 
 #' @importFrom stats simulate
 
 #' @rdname rxSolve
 #' @export
-simulate.RxODE <- function(object, nsim = 1L, seed = NULL, ...) {
+simulate.rxode2 <- function(object, nsim = 1L, seed = NULL, ...) {
   rxSolve(object, ..., seed = seed, nsim = nsim)
 }
 #' @rdname rxSolve
 #' @export
-simulate.rxSolve <- simulate.RxODE
+simulate.rxSolve <- simulate.rxode2
 
 
 #' @rdname rxSolve
 #' @export
-simulate.rxParams <- simulate.RxODE
+simulate.rxParams <- simulate.rxode2
 
 #' @rdname rxSolve
 #' @export
@@ -1311,7 +1311,7 @@ solve.rxSolve <- function(a, b, ...) {
 
 #' @rdname rxSolve
 #' @export
-solve.RxODE <- solve.rxSolve
+solve.rxode2 <- solve.rxSolve
 
 #' @rdname rxSolve
 #' @export
@@ -1323,23 +1323,23 @@ solve.rxEt <- solve.rxSolve
 
 #' @export
 `$.rxSolveParams` <- function(obj, arg, exact = FALSE) {
-  return(.Call(`_RxODE_rxSolveGet`, obj, arg, exact))
+  return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
 
 #' @export
 `$.rxSolveCovs` <- function(obj, arg, exact = FALSE) {
-  return(.Call(`_RxODE_rxSolveGet`, obj, arg, exact))
+  return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
 #' @export
 `$.rxSolveSimType` <- function(obj, arg, exact = FALSE) {
-  return(.Call(`_RxODE_rxSolveGet`, obj, arg, exact))
+  return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
 #' @export
 `$.rxSolve` <- function(obj, arg, exact = FALSE) {
-  return(.Call(`_RxODE_rxSolveGet`, obj, arg, exact))
+  return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
 #' Check to see if this is an rxSolve object.
@@ -1355,7 +1355,7 @@ solve.rxEt <- solve.rxSolve
 #' @export
 #' @keywords internal
 is.rxSolve <- function(x) {
-  .Call(`_RxODE_rxIs`, x, "rxSolve")
+  .Call(`_rxode2_rxIs`, x, "rxSolve")
 }
 
 #' @export
@@ -1366,7 +1366,7 @@ is.rxSolve <- function(x) {
 
 #' @export
 "[[.rxSolve" <- function(obj, arg, exact = TRUE) {
-  return(.Call(`_RxODE_rxSolveGet`, obj, arg, exact))
+  return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
 #' @export
@@ -1396,7 +1396,7 @@ dimnames.rxSolve <- function(x) {
 "[<-.rxSolve" <- function(x, i, j, value) {
   if (missing(i) && !missing(j)) {
     if (rxIs(j, "character")) {
-      ret <- .Call(`_RxODE_rxSolveUpdate`, x, j, value)
+      ret <- .Call(`_rxode2_rxSolveUpdate`, x, j, value)
       if (is.null(ret)) {
         class(x) <- "data.frame"
         return(`[<-.data.frame`(x, , j, value = value))
@@ -1428,7 +1428,7 @@ dimnames.rxSolve <- function(x) {
 }
 #' @export
 `$<-.rxSolve` <- function(x, name, value) {
-  ret <- .Call(`_RxODE_rxSolveUpdate`, x, name, value)
+  ret <- .Call(`_rxode2_rxSolveUpdate`, x, name, value)
   if (is.null(ret)) {
     class(x) <- "data.frame"
     return(`$<-.data.frame`(x, name, value))
@@ -1439,7 +1439,7 @@ dimnames.rxSolve <- function(x) {
 #' @export
 "[[<-.rxSolve" <- function(x, i, j, value) {
   if (missing(j) && rxIs(i, "character")) {
-    ret <- .Call(`_RxODE_rxSolveUpdate`, x, i, value)
+    ret <- .Call(`_rxode2_rxSolveUpdate`, x, i, value)
     if (!is.null(ret)) {
       return(ret)
     } else {

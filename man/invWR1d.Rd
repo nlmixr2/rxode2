@@ -24,3 +24,4 @@ random covariate to a correlation.
 \author{
 Matthew Fidler
 }
+\keyword{internal}

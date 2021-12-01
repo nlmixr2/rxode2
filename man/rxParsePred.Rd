@@ -2,7 +2,7 @@
 % Please edit documentation in R/symengine.R
 \name{rxParsePred}
 \alias{rxParsePred}
-\title{Prepare Pred function for inclusion in RxODE}
+\title{Prepare Pred function for inclusion in rxode2}
 \usage{
 rxParsePred(x, init = NULL, err = NULL, addProp = c("combined2", "combined1"))
 }
@@ -12,10 +12,10 @@ rxParsePred(x, init = NULL, err = NULL, addProp = c("combined2", "combined1"))
 \item{init}{Initialization vector}
 }
 \value{
-RxODE transformed text.
+rxode2 transformed text.
 }
 \description{
-Prepare Pred function for inclusion in RxODE
+Prepare Pred function for inclusion in rxode2
 }
 \author{
 Matthew L. Fidler

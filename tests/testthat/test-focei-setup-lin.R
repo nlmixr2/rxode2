@@ -19,7 +19,7 @@ rxodeTest(
       return(prop(prop.err))
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       Central <- linCmt(Vc, Cl)
     })
 
@@ -46,7 +46,7 @@ rxodeTest(
       KA <- exp(lKA + eta.KA)
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       Central <- linCmt(Cl, Vc, KA)
     })
 
@@ -59,7 +59,7 @@ rxodeTest(
       expect_equal(class(pk2), "rxFocei")
     })
 
-    mod <- RxODE({
+    mod <- rxode2({
       Central <- linCmt(Vc, Cl, Vp, Q)
     })
 
@@ -107,7 +107,7 @@ rxodeTest(
       KA <- exp(lKA + eta.KA)
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       Central <- linCmt(Vc, Cl, Vp, Q, KA)
     })
 
@@ -142,7 +142,7 @@ rxodeTest(
       Q2 <- exp(lQ2 + eta.Q2)
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       Central <- linCmt(Vc, Cl, Vp, Q, Vp2, Q2)
     })
 
@@ -180,7 +180,7 @@ rxodeTest(
       Ka <- exp(lKa + eta.Ka)
     }
 
-    mod <- RxODE({
+    mod <- rxode2({
       Central <- linCmt(Vc, Cl, Vp, Q, Vp2, Q2, Ka)
     })
 

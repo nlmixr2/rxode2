@@ -1,18 +1,18 @@
 # Using prior data for solving
 
-RxODE can use a [single subject](rxode-single-subject.html) or
-[multiple subjects with a single event table](RxODE-sim-var.html) to
-solve ODEs.  Additionally, RxODE can use an arbitrary data frame with
+rxode2 can use a [single subject](rxode2-single-subject.html) or
+[multiple subjects with a single event table](rxode2-sim-var.html) to
+solve ODEs.  Additionally, rxode2 can use an arbitrary data frame with
 individualized events. For example when using `nlmixr`, you could use
 the `theo_sd` data frame
 
 ```{r}
-library(RxODE)
+library(rxode2)
 ## Load data from nlmixr
 d <- qs::qread("theo_sd.qs")
 
-## Create RxODE model
-theo <- RxODE({
+## Create rxode2 model
+theo <- rxode2({
     tka ~ 0.45 # Log Ka
     tcl ~ 1 # Log Cl
     tv ~ 3.45    # Log V
@@ -52,7 +52,7 @@ plot(solveData, cp)
 
 print(solveData)
 
-## Of course the fasest way to solve if you don't care about the RxODE extra parameters is
+## Of course the fasest way to solve if you don't care about the rxode2 extra parameters is
 
 solveData <- rxSolve(theo, parsDf, d, returnType="data.frame")
 

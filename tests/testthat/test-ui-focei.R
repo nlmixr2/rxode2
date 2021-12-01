@@ -1,6 +1,6 @@
 rxodeTest({
 
-  .rx <- loadNamespace("RxODE")
+  .rx <- loadNamespace("rxode2")
 
   one.cmt <- function() {
     ini({
@@ -25,7 +25,7 @@ rxodeTest({
   }
 
   test_that("theta and eta estimates", {
-    expect_equal(.rx$.uiGetThetaEta(RxODE(one.cmt)),
+    expect_equal(.rx$.uiGetThetaEta(rxode2(one.cmt)),
                  list(quote(THETA[1] <- tka),
                       quote(THETA[2] <- tcl),
                       quote(THETA[3] <- tv),
@@ -55,7 +55,7 @@ rxodeTest({
   }
 
   test_that("eta only parameters", {
-    expect_equal(.rx$.uiGetThetaEta(RxODE(one.cmt)),
+    expect_equal(.rx$.uiGetThetaEta(rxode2(one.cmt)),
                  list(quote(THETA[1] <- tka),
                       quote(THETA[2] <- tcl),
                       quote(THETA[3] <- tv),
@@ -86,7 +86,7 @@ rxodeTest({
   }
 
   test_that("no state information when there is not any states and one endpoint", {
-    f <- RxODE(one.cmt)
+    f <- rxode2(one.cmt)
     expect_equal(f$getStateInformation,
                  c(state = "", statef = "", dvid = ""))
 
@@ -116,7 +116,7 @@ rxodeTest({
     })
   }
 
-  f <- RxODE(one.cmt)
+  f <- rxode2(one.cmt)
   f$getStateInformation
 
 

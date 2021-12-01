@@ -1,15 +1,15 @@
-## (Regression) test 3 multiple instances of RxODE objects to ensure
+## (Regression) test 3 multiple instances of rxode2 objects to ensure
 ## C symbols and operations don't conflict.
 rxodeTest(
   {
-    library(RxODE)
+    library(rxode2)
     context("Make sure C operations and symbols don't conflict")
 
     test.dir <- tempfile("Rxmult-")
 
-    ## RxODE instance 1
+    ## rxode2 instance 1
     m1 <-
-      RxODE(
+      rxode2(
         model = "
          C2 = centr/V2;
          C3 = peri/V3;
@@ -21,8 +21,8 @@ rxodeTest(
         wd = test.dir
       )
 
-    test_that("RxODE instance 1 is created", {
-      expect_equal(class(m1), "RxODE")
+    test_that("rxode2 instance 1 is created", {
+      expect_equal(class(m1), "rxode2")
     })
 
     et1 <- eventTable(amount.units = "ug", time.units = "hours")
@@ -31,7 +31,7 @@ rxodeTest(
     et1$add.sampling(seq(from = 24 + 8, to = 5 * 24, by = 8))
 
 
-    test_that("RxODE event table 1 was created", {
+    test_that("rxode2 event table 1 was created", {
       expect_true(inherits(et1, "rxEt"))
       expect_equal(et1$get.nobs(), 37)
       expect_equal(length(et1$get.dosing()[, 1]), 1)
@@ -52,26 +52,26 @@ rxodeTest(
     })
 
 
-    test_that("RxODE event 1 solved.", {
+    test_that("rxode2 event 1 solved.", {
       expect_equal(length(o1.first[, 1]), et1$get.nobs())
     })
 
-    ## RxODE instance 2 (complete example)
+    ## rxode2 instance 2 (complete example)
     m2 <-
-      RxODE(
+      rxode2(
         model = "d/dt(y) = r * y * (1.0 - y/K);",
         modName = "inst2",
         wd = test.dir
       )
 
-    test_that("RxODE instance 2 was created", {
-      expect_equal(class(m1), "RxODE")
+    test_that("rxode2 instance 2 was created", {
+      expect_equal(class(m1), "rxode2")
     })
 
     et2 <- eventTable(time.units = NA)
     et2$add.sampling(seq(from = 0, to = 20, by = 0.2))
 
-    test_that("RxODE event table 2 was created", {
+    test_that("rxode2 event table 2 was created", {
       expect_true(inherits(et1, "rxEt"))
       expect_equal(et2$get.nobs(), 101)
       expect_equal(length(et2$get.dosing()[, 1]), 0)
@@ -80,13 +80,13 @@ rxodeTest(
     o2.s <-
       m2$solve(params = c(r = 1, K = 10), events = et2, inits = c(y = 2), method = "lsoda")
 
-    test_that("RxODE instance 2 was solved", {
+    test_that("rxode2 instance 2 was solved", {
       expect_equal(length(o2.s[, 1]), et2$get.nobs())
     })
 
-    ## RxODE instance 3 (complete example)
+    ## rxode2 instance 3 (complete example)
     m3 <-
-      RxODE(
+      rxode2(
         model = "
          d/dt(X) = a*X + Y*Z;
          d/dt(Y) = b*(Y - Z);
@@ -95,14 +95,14 @@ rxodeTest(
         wd = tempdir() # don't pollute "./tests"
       )
 
-    test_that("RxODE instance 3 is created", {
-      expect_equal(class(m3), "RxODE")
+    test_that("rxode2 instance 3 is created", {
+      expect_equal(class(m3), "rxode2")
     })
 
     et3 <- eventTable() # default time units
     et3$add.sampling(seq(from = 0, to = 100, by = 0.01))
 
-    test_that("RxODE instance 3 event table is created", {
+    test_that("rxode2 instance 3 event table is created", {
       expect_true(inherits(et3, "rxEt"))
       expect_equal(et3$get.nobs(), 10001)
     })
@@ -114,7 +114,7 @@ rxodeTest(
         inits = c(X = 1, Y = 1, Z = 1)
       )
 
-    test_that("RxODE instance 3 was solved", {
+    test_that("rxode2 instance 3 was solved", {
       expect_equal(et3$get.nobs(), length(o3[, 1]))
     })
 
@@ -146,7 +146,7 @@ rxodeTest(
     })
 
 
-    ## Inspect the internal compilation manager in each of the RxODE objects
+    ## Inspect the internal compilation manager in each of the rxode2 objects
     prt <-
       function(obj, expect) {
         ## cat(

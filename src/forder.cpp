@@ -1,11 +1,11 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include "rxomp.h"
 #include <R.h>
 #include <Rversion.h>
 #include <Rinternals.h>
 #include <algorithm>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 
 #include <cstdint>
@@ -14,7 +14,7 @@
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -41,14 +41,14 @@ static int getIntEnv(const char *name, int def)
   while (isspace(*end)) end++;  // ignore trailing whitespace
   if (errno || (size_t)(end-val)!=nchar || ans<1 || ans>INT_MAX) {
     Rf_warningcall(R_NilValue,
-		   _("ignoring invalid %s==\"%s\"\n not an integer >= 1\nremove any characters that are not a digit [0-9]\n See ?RxODE::setDTthreads"), name, val);
+		   _("ignoring invalid %s==\"%s\"\n not an integer >= 1\nremove any characters that are not a digit [0-9]\n See ?rxode2::setDTthreads"), name, val);
     return def;
   }
   return (int)ans;
 }
 
 // See https://github.com/Rdatatable/data.table/blob/752012f577f8e268bb6d0084ca39a09fa7fbc1c4/src/openmp-utils.c for the code
-// modified to use RxODE environmental variables and to tune based on RxODE variables
+// modified to use rxode2 environmental variables and to tune based on rxode2 variables
 // Also uses Rf_errorcall and Rf_warnngcall
 static inline int imin(int a, int b) { return a < b ? a : b; }
 static inline int imax(int a, int b) { return a > b ? a : b; }
@@ -58,16 +58,16 @@ extern "C" void initRxThreads() {
   // called at package startup from init.c
   // also called by setDTthreads(threads=NULL) (default) to reread environment variables; see setDTthreads below
   // No verbosity here in this setter. Verbosity is in getRxThreads(verbose=TRUE)
-  int ans = getIntEnv("RXODE_NUM_THREADS", INT_MIN);
+  int ans = getIntEnv("rxode2_NUM_THREADS", INT_MIN);
   if (ans>=1) {
     ans = imin(ans, omp_get_num_procs());  // num_procs is a hard limit; user cannot achieve more. ifndef _OPENMP then myomp.h defines this to be 1
   } else {
     // Only when R_DATATABLE_NUM_THREADS is unset (or <=0) do we use PROCS_PERCENT; #4514
-    int perc = getIntEnv("RXODE_NUM_PROCS_PERCENT", 50); // use "NUM_PROCS" to use the same name as the OpenMP function this uses
+    int perc = getIntEnv("rxode2_NUM_PROCS_PERCENT", 50); // use "NUM_PROCS" to use the same name as the OpenMP function this uses
     // 50% of logical CPUs by default; half of 8 is 4 on laptop with 4 cores. Leaves plenty of room for other processes
     if (perc<=1 || perc>100) {
       Rf_warningcall(R_NilValue,
-		     _("ignoring invalid RXODE_NUM_PROCS_PERCENT==%d.\nIf used it must be an integer between 2 and 100. Default is 50. See ?rxSetThreads"),
+		     _("ignoring invalid rxode2_NUM_PROCS_PERCENT==%d.\nIf used it must be an integer between 2 and 100. Default is 50. See ?rxSetThreads"),
 		     perc);
       // not allowing 1 is to catch attempts to use 1 or 1.0 to represent 100%.
       perc = 50;
@@ -81,7 +81,7 @@ extern "C" void initRxThreads() {
   ans = imin(ans, getIntEnv("OMP_NUM_THREADS", INT_MAX));   //   expectation by reading them again now. OpenMP just reads them on startup (quite reasonably)
   ans = imax(ans, 1);  // just in case omp_get_* returned <=0 for any reason, or the env variables above are set <=0
   rxThreads = ans;
-  rxThrottle = imax(1, getIntEnv("RXODE_THROTTLE", 2)); // 2nd thread is used only when nid>2, 3rd thread when n>4, etc
+  rxThrottle = imax(1, getIntEnv("rxode2_THROTTLE", 2)); // 2nd thread is used only when nid>2, 3rd thread when n>4, etc
 }
 
 static const char *mygetenv(const char *name, const char *unset) {
@@ -112,15 +112,15 @@ extern "C" SEXP getRxThreads_R(SEXP verbose) {
     // it is also printed at the start of test.data.table() so that we can trace any Killed events on CRAN before the end is reached
     // this is printed verbatim (e.g. without using data.table to format the output) in case there is a problem even with simple data.table creation/printing
     Rprintf(_("  omp_get_num_procs()            %d\n"), omp_get_num_procs());
-    Rprintf(_("  RXODE_NUM_PROCS_PERCENT  %s\n"), mygetenv("RXODE_NUM_PROCS_PERCENT", "unset (default 50)"));
-    Rprintf(_("  RXODE_NUM_THREADS        %s\n"), mygetenv("RXODE_NUM_THREADS", "unset"));
-    Rprintf(_("  RXODE_THROTTLE           %s\n"), mygetenv("RXODE_THROTTLE", "unset (default 2)"));
+    Rprintf(_("  rxode2_NUM_PROCS_PERCENT  %s\n"), mygetenv("rxode2_NUM_PROCS_PERCENT", "unset (default 50)"));
+    Rprintf(_("  rxode2_NUM_THREADS        %s\n"), mygetenv("rxode2_NUM_THREADS", "unset"));
+    Rprintf(_("  rxode2_THROTTLE           %s\n"), mygetenv("rxode2_THROTTLE", "unset (default 2)"));
     Rprintf(_("  omp_get_thread_limit()         %d\n"), omp_get_thread_limit());
     Rprintf(_("  omp_get_max_threads()          %d\n"), omp_get_max_threads());
     Rprintf(_("  OMP_THREAD_LIMIT               %s\n"), mygetenv("OMP_THREAD_LIMIT", "unset"));  // CRAN sets to 2
     Rprintf(_("  OMP_NUM_THREADS                %s\n"), mygetenv("OMP_NUM_THREADS", "unset"));
     /* Rprintf(_("  RestoreAfterFork               %s\n"), RestoreAfterFork ? "true" : "false"); */
-    Rprintf(_("  RxODE is using %d threads with throttle==%d. See ?setRxthreads.\n"), getRxThreads(INT_MAX, false), rxThrottle);
+    Rprintf(_("  rxode2 is using %d threads with throttle==%d. See ?setRxthreads.\n"), getRxThreads(INT_MAX, false), rxThrottle);
   }
   return ScalarInteger(getRxThreads(INT_MAX, false));
 }
@@ -180,7 +180,7 @@ extern "C" void after_fork() {
 }
 
 extern "C" void avoid_openmp_hang_within_fork() {
-  // Called once on loading RxODE from init.c
+  // Called once on loading rxode2 from init.c
 #ifdef _OPENMP
   pthread_atfork(&when_fork, &after_fork, NULL);
 #endif
@@ -218,7 +218,7 @@ extern "C" void calcNradix(int *nbyte, int *nradix, int *spare, uint64_t *maxD, 
 }
 
 
-// For RxODE sortType = 1
+// For rxode2 sortType = 1
 // FIXME key per thread
 
 static int dround=0; // No rounding by default
@@ -227,8 +227,8 @@ static uint64_t dmask=0;
 // https://github.com/Rdatatable/data.table/blob/588e0725320eacc5d8fc296ee9da4967cee198af/src/forder.c#L396-L414
 // for signed integers it's easy: flip sign bit to swap positives and negatives; the resulting unsigned is in the right order with INT_MIN ending up as 0
 // for floating point finite you have to flip the other bits too if it was signed: http://stereopsis.com/radix.html
-// CHANGES for RxODE:
-// By definition in RxODE, the value is always finite, drop the NA, NaN, and +-Inf
+// CHANGES for rxode2:
+// By definition in rxode2, the value is always finite, drop the NA, NaN, and +-Inf
 extern "C" uint64_t dtwiddle(const void *p, int i)
 {
   union {
@@ -265,7 +265,7 @@ static bool sort_ugrp(uint8_t *x, const int n)
   return skip;
 }
 // Modified because:
-//  - sortType=1 always for RxODE (ascending)
+//  - sortType=1 always for rxode2 (ascending)
 //  - retgrp = 0 (all pushs are meaningless)
 //  - Keys are stored based on core
 //  - modified so that radix_r is 0 order not 1 order like R (since we are using it in C)
@@ -356,7 +356,7 @@ extern "C" void radix_r(const int from, const int to, const int radix,
     uint16_t my_counts[256];// = {0};  // Needs to be all-0 on entry. This ={0} initialization should be fast as it's on stack. Otherwise, we have to manage
     // a stack of counts anyway since this is called recursively and these counts are needed to make the recursive calls.
     // This thread-private stack alloc has no chance of false sharing and gives omp and compiler best chance.
-    // RxODE change use std::fill_n();  In my experience sometimes = {0}; doesn't always fill 0.
+    // rxode2 change use std::fill_n();  In my experience sometimes = {0}; doesn't always fill 0.
     std::fill_n(my_counts, 256, 0);
     //uint8_t * my_ugrp = rx->UGRP + 0*256;  // uninitialized is fine; will use the first ngrp items. Only used if sortType==0
     // TODO: ensure my_counts, my_grp and my_tmp below are cache line aligned on both Linux and Windows.
@@ -389,7 +389,7 @@ extern "C" void radix_r(const int from, const int to, const int radix,
       // Modified nalast not used since NAs cannot occur for a good sort of times
       if (radix==0) {
 	// anso contains 1:n so skip reading and copying it. Only happens when nrow<65535. Saving worth the branch (untested) when user repeatedly calls a small-n small-cardinality order.
-	// RxODE: change 0 instead of +1 because C is 0-based
+	// rxode2: change 0 instead of +1 because C is 0-based
 	for (int i=0; i<my_n; i++) anso[my_starts[my_key[i]]++] = i;  // +1 as R is 1-based.
 	// The loop counter could be uint_fast16_t since max i here will be UINT16_MAX-1 (65534), hence ++ after last iteration won't overflow 16bits. However, have chosen signed
 	// integer for counters for now, as signed probably very slightly faster than unsigned on most platforms from what I can gather.

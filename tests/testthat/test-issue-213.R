@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("1e+5 doesn't drop, Issue #213")
     test_that("issue #213 doesn't drop patients", {
-      rx <- RxODE({
+      rx <- rxode2({
         ka <- .2
         BA <- 0.9
         cl <- 0.3 # fixed at value for model1/base_2comp_iv

@@ -9,7 +9,7 @@ void trans_syntax_error_report_fn(char *err);
 void parseFree(int last);
 void RSprintf(const char *format, ...);
 
-SEXP _RxODE_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
+SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
 		  SEXP isEscIn, SEXP inME, SEXP goodFuns);
 
 typedef struct symtab {
@@ -122,15 +122,15 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define fromDDT 2
 #define fromCMTprop 1
 
-#define NOASSIGN _("'<-' not supported, use '=' instead or set 'options(RxODE.syntax.assign = TRUE)'")
-#define NEEDSEMI _("lines need to end with ';'\n     to match R's handling of line endings set 'options(RxODE.syntax.require.semicolon = FALSE)'")
-#define NEEDPOW _("'**' not supported, use '^' instead or set 'options(RxODE.syntax.star.pow = TRUE)'")
-#define NOINI0 _("'%s(0)' for initialization not allowed\n to allow set 'options(RxODE.syntax.allow.ini0 = TRUE)'")
+#define NOASSIGN _("'<-' not supported, use '=' instead or set 'options(rxode2.syntax.assign = TRUE)'")
+#define NEEDSEMI _("lines need to end with ';'\n     to match R's handling of line endings set 'options(rxode2.syntax.require.semicolon = FALSE)'")
+#define NEEDPOW _("'**' not supported, use '^' instead or set 'options(rxode2.syntax.star.pow = TRUE)'")
+#define NOINI0 _("'%s(0)' for initialization not allowed\n to allow set 'options(rxode2.syntax.allow.ini0 = TRUE)'")
 #define NOSTATE _("defined 'df(%s)/dy(%s)', but '%s' is not a state")
 #define NOSTATEVAR _("defined 'df(%s)/dy(%s)', but '%s' is not a state or variable")
-#define ODEFIRST _("ODEs compartment 'd/dt(%s)' must be defined before changing/accessing its properties (f/alag/rate/dur/tad/tafd)\nIf you want to change this set 'options(RxODE.syntax.require.ode.first = FALSE).\nBe warned this may number compartments based on first occurance of property or ODE")
+#define ODEFIRST _("ODEs compartment 'd/dt(%s)' must be defined before changing/accessing its properties (f/alag/rate/dur/tad/tafd)\nIf you want to change this set 'options(rxode2.syntax.require.ode.first = FALSE).\nBe warned this may number compartments based on first occurance of property or ODE")
 #define ZERODVID _("'dvid()' cannot have zeros in it")
-#define ONEDVID _("RxODE only supports one dvid() statement per model")
+#define ONEDVID _("rxode2 only supports one dvid() statement per model")
 
 typedef struct nodeInfo {
   int alag;

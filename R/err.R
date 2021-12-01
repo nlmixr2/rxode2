@@ -95,7 +95,7 @@
 ## some information about the model.  The predictions will be replaced
 ## by rxPred__# for easy replacement with the correct information for
 ## simulating or estimating in different nlmixr algorithms and
-## different RxODE simulation routines
+## different rxode2 simulation routines
 
 ## Currently you can support the following types of expressions:
 ##
@@ -109,7 +109,7 @@
 ##
 ## In this case the named DVID is namedDvid
 ##
-## In the final RxODE model expression these expressions will look like:
+## In the final rxode2 model expression these expressions will look like:
 ##
 ## rxPred__1 = f
 ## rxPred__2 = g
@@ -944,11 +944,11 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$df <- as.data.frame(ini)
   .env$err <- NULL
   .env$errGlobal <- NULL
-  # Add error structure like nlmixr ui had before transitioning to RxODE
+  # Add error structure like nlmixr ui had before transitioning to rxode2
   .env$df$err <- NA_character_
   #.env$df$trLow <- .env$df$trHi <- NA_real_
   .env$curDvid <- 1L
-  # Pred df needs to be finalized with compartment information from parsing the raw RxODE model
+  # Pred df needs to be finalized with compartment information from parsing the raw rxode2 model
   .env$predDf  <- NULL
   .env$lastDistAssign <- ""
   if (is.call(x)) {
@@ -989,11 +989,11 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         .env$mv0 <- rxModelVars(paste(.env$lstChr[-.env$predDf$line], collapse="\n"))
       }
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
-      if (.Call(`_RxODE_isLinCmt`) == 1L) {
+      if (.Call(`_rxode2_isLinCmt`) == 1L) {
         .env$.linCmtM <- rxNorm(.env$mv0)
         .vars <- c(.env$mv0$params, .env$mv0$lhs, .env$mv0$slhs)
         .env$mvL <- rxGetModel(.Call(
-          `_RxODE_linCmtGen`,
+          `_rxode2_linCmtGen`,
           length(.env$mv0$state),
           .vars,
           setNames(

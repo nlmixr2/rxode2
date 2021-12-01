@@ -16,7 +16,7 @@ rxodeTest(
     expect_error(rxToSE("logit()"))
     expect_error(rxToSE("logit(a,b,c,d)"))
 
-    mod <- RxODE({
+    mod <- rxode2({
       b <- logit(a)
     })
 
@@ -25,7 +25,7 @@ rxodeTest(
       rxSolve(mod, et(0), params = data.frame(a = seq(0.01, 0.99, length.out = 10)))$b
     )
 
-    mod <- RxODE({
+    mod <- rxode2({
       b <- logit(a, -0.5)
     })
 
@@ -34,7 +34,7 @@ rxodeTest(
       rxSolve(mod, et(0), params = data.frame(a = seq(0.01, 0.99, length.out = 10)))$b
     )
 
-    mod <- RxODE({
+    mod <- rxode2({
       b <- logit(a, -0.5, 1.5)
     })
 
@@ -74,7 +74,7 @@ rxodeTest(
     expect_error(rxToSE("expit(a,b,c,d)"))
 
 
-    mod <- RxODE({
+    mod <- rxode2({
       b <- expit(a)
     })
 
@@ -83,7 +83,7 @@ rxodeTest(
       rxSolve(mod, et(0), params = data.frame(a = seq(-4, 4, length.out = 10)))$b
     )
 
-    mod <- RxODE({
+    mod <- rxode2({
       b <- expit(a, 0.5)
     })
 
@@ -92,14 +92,14 @@ rxodeTest(
       rxSolve(mod, et(0), params = data.frame(a = seq(-4, 4, length.out = 10)))$b
     )
 
-    mod <- RxODE({
+    mod <- rxode2({
       b <- expit(a, 0.5, 1.5)
     })
 
-    expect_error(RxODE({
+    expect_error(rxode2({
       b <- expit()
     }))
-    expect_error(RxODE({
+    expect_error(rxode2({
       b <- expit(a, b, c, d)
     }))
 

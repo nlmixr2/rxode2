@@ -7,7 +7,7 @@
 rxLhs(obj)
 }
 \arguments{
-\item{obj}{RxODE family of objects}
+\item{obj}{rxode2 family of objects}
 }
 \value{
 a character vector listing the calculated parameters
@@ -16,7 +16,7 @@ a character vector listing the calculated parameters
 This returns the model calculated variables
 }
 \seealso{
-\code{\link{RxODE}}
+\code{\link{rxode2}}
 }
 \author{
 Matthew L.Fidler

@@ -5,11 +5,11 @@
 
 rxodeTest(
   {
-    library("RxODE")
+    library("rxode2")
     library("digest")
     context("Example 3.2")
 
-    ode <- RxODE("
+    ode <- rxode2("
          d/dt(X) = a*X + Y*Z;
          d/dt(Y) = b*(Y - Z);
          d/dt(Z) = -X*Y + c*Y - Z;")

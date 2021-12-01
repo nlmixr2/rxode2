@@ -8,7 +8,7 @@ rxodeTest(
     dat2 <- structure(list(time = c(0, 0.0503, 0.1005, 0.1508, 0.201, 0.2513, 0.3015, 0.3518, 0.402, 0.4523, 0.5025, 0.5528, 0.603, 0.6533, 0.7035, 8.9447, 8.995, 9.0452, 9.0955, 9.1457, 9.196, 9.2462, 9.2965, 9.3467, 9.397, 9.4472, 9.4975, 9.5477, 9.598, 9.6482, 9.6985), k = c(0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814, 0.3814), ktr = c(57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027, 57.027), depot = c(20, 19.6217, 19.2506, 18.8865, 18.5292, 18.1788, 17.8349, 17.4976, 17.1666, 16.842, 16.5234, 16.2109, 15.9043, 15.6034, 15.3083, 0.6681, 0.6555, 0.6431, 0.6309, 0.619, 0.6073, 0.5958, 0.5845, 0.5735, 0.5626, 0.552, 0.5416, 0.5313, 0.5213, 0.5114, 0.5017), cen = c(0, 0.3747, 0.7351, 1.0818, 1.4151, 1.7354, 2.043, 2.3383, 2.6217, 2.8935, 3.1541, 3.4038, 3.6429, 3.8717, 4.0905, 2.2571, 2.2268, 2.1968, 2.1671, 2.1378, 2.1088, 2.0802, 2.0518, 2.0238, 1.9962, 1.9688, 1.9418, 1.9151, 1.8887, 1.8626, 1.8368)), row.names = c(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 179L, 180L, 181L, 182L, 183L, 184L, 185L, 186L, 187L, 188L, 189L, 190L, 191L, 192L, 193L, 194L), class = "data.frame")
 
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -56,7 +56,7 @@ d/dt(cen) = ka*depot-k*cen
       )
     })
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -82,7 +82,7 @@ d/dt(cen) = ka*depot-k*cen
     })
 
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -103,7 +103,7 @@ d/dt(cen) = ka*depot-k*cen
       expect_warning(rxSolve(mod, et))
     })
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -124,7 +124,7 @@ d/dt(cen) = ka*depot-k*cen
       expect_warning(rxSolve(mod, et))
     })
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -145,7 +145,7 @@ d/dt(cen) = ka*depot-k*cen
       expect_warning(rxSolve(mod, et))
     })
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -167,7 +167,7 @@ d/dt(cen) = ka*depot-k*cen
       )
     })
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -189,7 +189,7 @@ d/dt(cen) = ka*depot-k*cen
       )
     })
 
-    mod <- RxODE("
+    mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
 vc = 45.1 # L
@@ -212,16 +212,16 @@ d/dt(cen) = ka*depot-k*cen
     })
 
     test_that("transit can be a variable or ODE", {
-      mod <- RxODE("
+      mod <- rxode2("
 d/dt(transit) = -3
 ")
 
-      expect_true(inherits(mod, "RxODE"))
+      expect_true(inherits(mod, "rxode2"))
 
-      mod <- RxODE("
+      mod <- rxode2("
 transit = matt + fun
 ")
-      expect_true(inherits(mod, "RxODE"))
+      expect_true(inherits(mod, "rxode2"))
     })
   },
   silent = TRUE,

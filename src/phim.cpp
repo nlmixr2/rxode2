@@ -1,9 +1,9 @@
 //#undef NDEBUG
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <Rcpp.h>
 #include <RcppEigen.h>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 // #include <stan/math.hpp>
 #include <stan/math.hpp>
 using namespace Eigen;

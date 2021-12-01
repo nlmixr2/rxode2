@@ -7,7 +7,7 @@
 rxStack(Data, vars = NULL)
 }
 \arguments{
-\item{Data}{is a RxODE object to be stacked.}
+\item{Data}{is a rxode2 object to be stacked.}
 
 \item{vars}{Variables to include in stacked data; By default this
 is all the variables when vars is NULL.}

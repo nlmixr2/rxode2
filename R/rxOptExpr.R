@@ -88,7 +88,7 @@
 .rxOptEnv[["!="]] <- .rxOptBin("!=")
 .rxOptEnv[["["]] <- function(name, val) {
   .n <- toupper(name)
-  .err <- gettext("RxODE only supports THETA[#] and ETA[#] numbers")
+  .err <- gettext("rxode2 only supports THETA[#] and ETA[#] numbers")
   if (any(.n == c("THETA", "ETA")) && is.numeric(val)) {
     if (round(val) == val && val > 0) {
       return(sprintf("%s[%s]", .n, val))
@@ -104,7 +104,7 @@
 }
 .rxOptEnv[["["]] <- function(name, val) {
   .n <- toupper(name)
-  .err <- gettext("RxODE only supports THETA[#] and ETA[#] numbers")
+  .err <- gettext("rxode2 only supports THETA[#] and ETA[#] numbers")
   if (any(.n == c("THETA", "ETA")) && is.numeric(val)) {
     if (round(val) == val && val > 0) {
       return(sprintf("%s[%s]", .n, val))
@@ -382,21 +382,21 @@
   }
 }
 
-#' Optimize RxODE for computer evaluation
+#' Optimize rxode2 for computer evaluation
 #'
-#' This optimizes RxODE code for computer evaluation by only
+#' This optimizes rxode2 code for computer evaluation by only
 #' calculating redundant expressions once.
 #'
-#' @param x RxODE model that can be accessed by rxNorm
+#' @param x rxode2 model that can be accessed by rxNorm
 #'
-#' @param msg This is the name of type of object that RxODE is
+#' @param msg This is the name of type of object that rxode2 is
 #'     optimizing that will in the message when optimizing.  For
 #'     example "model" will produce the following message while
 #'     optimizing the model:
 #'
 #'  finding duplicate expressions in model...
 #'
-#' @return Optimized RxODE model text.  The order and type lhs and
+#' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
 #'     While parameters names are maintained, their order may be
 #'     modified.

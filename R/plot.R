@@ -1,11 +1,11 @@
-#' rxTheme is the RxODE theme for plots
+#' rxTheme is the rxode2 theme for plots
 #'
 #' @inheritParams ggplot2::theme_grey
 #'
 #' @param grid a Boolean indicating if the grid is on (`TRUE`) or off
 #'   (`FALSE`). This could also be a character indicating `x` or `y`.
 #'
-#' @return ggplot2 theme used in RxODE
+#' @return ggplot2 theme used in rxode2
 #'
 #' @export
 rxTheme <- function(base_size = 11, base_family = "",
@@ -113,7 +113,7 @@ rxTheme <- function(base_size = 11, base_family = "",
 }
 
 .plotTime <- function(.dat, xlab) {
-  .xgxr <- getOption("RxODE.xgxr", TRUE) &&
+  .xgxr <- getOption("rxode2.xgxr", TRUE) &&
     requireNamespace("xgxr", quietly = TRUE)
   .timex <- NULL
   .unit <- NULL
@@ -147,7 +147,7 @@ rxTheme <- function(base_size = 11, base_family = "",
 .plotLog <- function(.dat, .timex, log = "") {
   .logx <- NULL
   .logy <- NULL
-  .xgxr <- getOption("RxODE.xgxr", TRUE) &&
+  .xgxr <- getOption("rxode2.xgxr", TRUE) &&
     requireNamespace("xgxr", quietly = TRUE)
   if (is.character(log) && length(log) == 1) {
     if (log == "x") {
@@ -260,12 +260,12 @@ plot.rxSolve <- function(x, y, ..., log = "",
   if (length(.cmts) == 1) .facet <- NULL
   .ylab <- ylab(ylab)
   .theme <- rxTheme()
-  if (!getOption("RxODE.theme", TRUE)) .theme <- NULL
+  if (!getOption("rxode2.theme", TRUE)) .theme <- NULL
   .repel <- NULL
   .legend <- NULL
   .line <- geom_line(size = 1.2)
-  .rxSpaghetti <- getOption("RxODE.spaghetti", 7L)
-  .ggrepel <- getOption("RxODE.ggrepel", TRUE) &&
+  .rxSpaghetti <- getOption("rxode2.spaghetti", 7L)
+  .ggrepel <- getOption("rxode2.ggrepel", TRUE) &&
     requireNamespace("ggrepel", quietly = TRUE)
   if (.nlvl > 1 && .nlvl < .rxSpaghetti && .ggrepel && is.null(.facet)) {
     .repel <- ggrepel::geom_label_repel(.aesLab,
@@ -329,7 +329,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   }
   .line <- geom_line(size = 1.2, show.legend = !is.null(.facet))
   .theme <- NULL
-  if (getOption("RxODE.theme_bw", TRUE)) {
+  if (getOption("rxode2.theme_bw", TRUE)) {
     .theme <- rxTheme()
   }
   .ylab <- ylab(ylab)
@@ -385,7 +385,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   }
   .line <- geom_line(size = 1.1, show.legend = FALSE)
   .theme <- NULL
-  if (getOption("RxODE.theme_bw", TRUE)) {
+  if (getOption("rxode2.theme_bw", TRUE)) {
     .theme <- rxTheme()
   }
   .ylab <- ylab(ylab)
@@ -421,7 +421,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   ## if (length(.parm) > 1){
   ##     .ret <- .ret + facet_wrap( ~ trt, scales="free_y")
   ## }
-  ## if (getOption("RxODE.theme_bw", TRUE)){
+  ## if (getOption("rxode2.theme_bw", TRUE)){
   ##     .ret <- .ret + ggplot2::theme_bw()
   ## }
   return(.ret)

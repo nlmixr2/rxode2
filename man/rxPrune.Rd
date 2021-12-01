@@ -2,18 +2,18 @@
 % Please edit documentation in R/rxPrune.R
 \name{rxPrune}
 \alias{rxPrune}
-\title{Prune branches (ie if/else) from RxODE}
+\title{Prune branches (ie if/else) from rxode2}
 \usage{
 rxPrune(x)
 }
 \arguments{
-\item{x}{RxODE model that can be accessed by rxNorm}
+\item{x}{rxode2 model that can be accessed by rxNorm}
 }
 \value{
-Pruned RxODE model text.
+Pruned rxode2 model text.
 }
 \description{
-This prunes branches (ie if/else) from RxODE.
+This prunes branches (ie if/else) from rxode2.
 }
 \author{
 Matthew L. Fidler

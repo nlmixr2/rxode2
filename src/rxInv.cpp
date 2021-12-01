@@ -8,7 +8,7 @@
 #include <R.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -43,10 +43,10 @@ NumericVector rxInv(SEXP matrix){
 arma::mat rxToCholOmega(arma::mat cholMat){
   // Only the cholesky is needed for the liklihood calculation
   // trimatu is faster, but it seems to have problems sometimes with certain BLAS combinations:
-  // See https://github.com/nlmixrdevelopment/RxODE/issues/84
+  // See https://github.com/nlmixrdevelopment/rxode2/issues/84
     // Only the cholesky is needed for the liklihood calculation
   // trimatu is faster, but it seems to have problems sometimes with certain BLAS combinations:
-  // See https://github.com/nlmixrdevelopment/RxODE/issues/84
+  // See https://github.com/nlmixrdevelopment/rxode2/issues/84
   arma::mat cholO;
   bool success;
   try {
@@ -142,8 +142,8 @@ RObject rxSymInvChol(RObject invObjOrMatrix, Nullable<NumericVector> theta = R_N
       // }
     }
   } else  {
-    Environment rxode("package:RxODE");
-    Function rxSymInvCholCreate = as<Function>(rxode["rxSymInvCholCreate"]);
+    Environment rxode2("package:rxode2");
+    Function rxSymInvCholCreate = as<Function>(rxode2["rxSymInvCholCreate"]);
     return rxSymInvChol(rxSymInvCholCreate(invObjOrMatrix), R_NilValue, "cholOmegaInv", 0);
   }
   return R_NilValue;

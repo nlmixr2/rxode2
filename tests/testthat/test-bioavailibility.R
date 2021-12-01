@@ -4,7 +4,7 @@ rxodeTest(
     for (m in ms) {
       context(sprintf("Test bioavaibility with IV dosing (%s)", m))
       ## 6.1
-      mod <- RxODE({
+      mod <- rxode2({
         a <- 6
         b <- 0.6
         d / dt(intestine) <- -a * intestine
@@ -20,7 +20,7 @@ rxodeTest(
 
       solve1 <- solve(mod, et, method = m)
 
-      mod2 <- RxODE({
+      mod2 <- rxode2({
         a <- 6
         b <- 0.6
         d / dt(intestine) <- -a * intestine
@@ -49,7 +49,7 @@ rxodeTest(
         expect_equal(solve2$blood, solve3$blood)
       })
 
-      mod4 <- RxODE({
+      mod4 <- rxode2({
         a <- 6
         b <- 0.6
         d / dt(intestine) <- -a * intestine
@@ -80,7 +80,7 @@ rxodeTest(
         expect_equal(solve4a$blood, solve4b$blood)
       })
 
-      mod5 <- RxODE({
+      mod5 <- rxode2({
         a <- 6
         b <- 0.6
         f <- 1

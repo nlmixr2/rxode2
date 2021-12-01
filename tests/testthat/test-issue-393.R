@@ -3,7 +3,7 @@ rxodeTest(
     if (file.exists("test-issue-393.qs")) {
       d <- qs::qread("test-issue-393.qs")
 
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         #  CLH = THETA[1];
         #  CLD = THETA[2];
         #  V_centr = THETA[3];
@@ -24,7 +24,7 @@ rxodeTest(
         f(A_absorption) <- Fh * FaFg
       })
 
-      mod2 <- RxODE({
+      mod2 <- rxode2({
         CLH <- THETA[1]
         CLD <- THETA[2]
         V_centr <- THETA[3]

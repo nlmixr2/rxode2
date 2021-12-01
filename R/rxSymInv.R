@@ -42,7 +42,7 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
       digest::digest(deparse(list(mat1, diag.xform)))
     )
   )
-  cache.file2 <- file.path(system.file("inv", package = "RxODE"), cache.file)
+  cache.file2 <- file.path(system.file("inv", package = "rxode2"), cache.file)
   if (allow.cache && file.exists(cache.file)) {
     load(cache.file)
     return(ret)
@@ -499,12 +499,12 @@ rxSymInvCholCreate <- function(mat,
 
 #' @export
 `$.rxSymInvCholEnv` <- function(obj, arg, exact = TRUE) {
-  return(.Call(`_RxODE_rxSymInvCholEnvCalculate`, obj, arg, NULL))
+  return(.Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, NULL))
 }
 
 #' @export
 "$<-.rxSymInvCholEnv" <- function(obj, arg, value) {
-  return(.Call(`_RxODE_rxSymInvCholEnvCalculate`, obj, arg, value))
+  return(.Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, value))
 }
 
 

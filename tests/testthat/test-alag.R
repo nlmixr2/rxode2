@@ -3,14 +3,14 @@ rxodeTest(
   {
     if (requireNamespace("units", quietly = TRUE)) {
       ## 6.1
-      mod <- RxODE({
+      mod <- rxode2({
         a <- 6
         b <- 0.6
         d / dt(intestine) <- -a * intestine
         d / dt(blood) <- a * intestine - b * blood
       })
 
-      mod2 <- RxODE({
+      mod2 <- rxode2({
         a <- 6
         b <- 0.6
         d / dt(intestine) <- -a * intestine
@@ -62,7 +62,7 @@ rxodeTest(
         context(sprintf("bad alag (%s)", m))
 
         ## test bad solves -- These could depend on intestine indirectly so these are run-time errors
-        mod3 <- RxODE({
+        mod3 <- rxode2({
           a <- 6
           b <- 0.6
           d / dt(intestine) <- -a * intestine

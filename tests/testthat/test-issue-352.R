@@ -1,6 +1,6 @@
 rxodeTest(
   {
-    rx <- RxODE({
+    rx <- rxode2({
       cmt(A1)
       d / dt(A1) <- -exp(eta.cl + tcl - (eta.v + tv)) * A1
       rx_yj_ ~ 2

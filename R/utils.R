@@ -14,18 +14,18 @@
   cli::cli_alert_success(gettext(text), ..., .envir = .envir)
 }
 
-#' Unloads all RxODE compiled DLLs
+#' Unloads all rxode2 compiled DLLs
 #'
-#' @return List of RxODE dlls still loaded
+#' @return List of rxode2 dlls still loaded
 #'
-#' @return boolean of if all RxODE dlls have been unloaded
+#' @return boolean of if all rxode2 dlls have been unloaded
 #'
 #' @examples
 #'
 #' print(rxUnloadAll())
 #' @export
 rxUnloadAll <- function() {
-  .Call(`_RxODE_rxUnloadAll_`) # nolint
+  .Call(`_rxode2_rxUnloadAll_`) # nolint
   .dll <- getLoadedDLLs()
   .n <- names(.dll)
   .n <- .n[regexpr("^rx_[a-f0-9]{32}", .n) != -1]
@@ -76,7 +76,7 @@ rxReq <- function(pkg) {
   }
   ## nocov end
 }
-#' Use cat when RxODE.verbose is TRUE
+#' Use cat when rxode2.verbose is TRUE
 #'
 #' @param ... Parameters sent to cat
 #' @author Matthew L. Fidler
@@ -85,9 +85,9 @@ rxReq <- function(pkg) {
 #' @export
 rxCat <- function(a, ...) {
   ## nocov start
-  if (RxODE.verbose) {
-    if (is(a, "RxODE")) {
-      message(RxODE::rxNorm(a), appendLF = FALSE)
+  if (rxode2.verbose) {
+    if (is(a, "rxode2")) {
+      message(rxode2::rxNorm(a), appendLF = FALSE)
     } else {
       message(a, ..., appendLF = FALSE)
     }
@@ -99,12 +99,12 @@ rxCat <- function(a, ...) {
 
 #' Cleanup anonymous DLLs by unloading them
 #'
-#' This cleans up any RxODE loaded DLLs
+#' This cleans up any rxode2 loaded DLLs
 #'
 #' @param wd What directory should be cleaned; (DEPRECIATED), this no
 #'     longer does anything.
 #'
-#' This unloads all RxODE anonymous dlls.
+#' This unloads all rxode2 anonymous dlls.
 #'
 #' @return TRUE if successful
 #'
@@ -122,9 +122,9 @@ refresh <- function(derivs = FALSE) {
   cat("Dparser Version\n")
   print(dparser::dpVersion())
   if (derivs) {
-    Sys.setenv(RxODE_derivs = TRUE)
+    Sys.setenv(rxode2_derivs = TRUE)
   } else {
-    Sys.setenv(RxODE_derivs = FALSE)
+    Sys.setenv(rxode2_derivs = FALSE)
   }
   source(devtools::package_file("build/refresh.R"))
   ## nocov end
@@ -348,9 +348,9 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
       NULL
     )
   }
-  .ret <- .Call(`_RxODE_cvPost_`, nu, omega, n,
+  .ret <- .Call(`_rxode2_cvPost_`, nu, omega, n,
     omegaIsChol, returnChol, .type, .xform,
-    PACKAGE = "RxODE"
+    PACKAGE = "rxode2"
   )
   return(.ret)
 }
@@ -477,7 +477,7 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
 rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, isChol = FALSE,
                    keepNames = TRUE, a = 0.4, tol = 2.05, nlTol = 1e-10, nlMaxiter = 100L) {
   .ret <- .Call(
-    `_RxODE_rxRmvnSEXP`, n, mu, sigma, lower, upper, ncores,
+    `_rxode2_rxRmvnSEXP`, n, mu, sigma, lower, upper, ncores,
     isChol, keepNames, a, tol, nlTol, nlMaxiter
   )
   if (is.matrix(n)) {
@@ -525,7 +525,7 @@ rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, i
 #' @author Matthew Fidler
 #' @noRd
 .vecDf <- function(vec, n) {
-  .Call(`_vecDF`, vec, as.integer(n), PACKAGE = "RxODE") # nolint
+  .Call(`_vecDF`, vec, as.integer(n), PACKAGE = "rxode2") # nolint
 }
 #' cbind Ome
 #'
@@ -536,7 +536,7 @@ rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, i
 #' @author Matthew Fidler
 #' @noRd
 .cbindOme <- function(et, mat, n) {
-  .Call(`_cbindOme`, et, mat, as.integer(n), PACKAGE = "RxODE") # nolint
+  .Call(`_cbindOme`, et, mat, as.integer(n), PACKAGE = "rxode2") # nolint
 }
 
 #' Cumulative distribution of standard normal
@@ -552,10 +552,10 @@ rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, i
 #' # See
 #' pnorm(3)
 #'
-#' # This is provided for NONMEM-like compatibility in RxODE models
+#' # This is provided for NONMEM-like compatibility in rxode2 models
 #' @export
 phi <- function(q) {
-  .Call(`_phi`, q, PACKAGE = "RxODE")
+  .Call(`_phi`, q, PACKAGE = "rxode2")
 }
 #' Gammap: normalized lower incomplete gamma function
 #'
@@ -582,7 +582,7 @@ phi <- function(q) {
 #' gammap(1, 1:3)
 #' @export
 gammap <- function(a, z) {
-  .Call(`_gammap`, a, z, PACKAGE = "RxODE")
+  .Call(`_gammap`, a, z, PACKAGE = "rxode2")
 }
 
 #' Gammaq: normalized upper incomplete gamma function
@@ -610,7 +610,7 @@ gammap <- function(a, z) {
 #' gammaq(1, 1:3)
 #' @export
 gammaq <- function(a, z) {
-  .Call(`_gammaq`, a, z, PACKAGE = "RxODE")
+  .Call(`_gammaq`, a, z, PACKAGE = "rxode2")
 }
 #' uppergamma:  upper incomplete gamma function
 #'
@@ -641,7 +641,7 @@ gammaq <- function(a, z) {
 #' uppergamma(1, 1:3)
 #' @export
 uppergamma <- function(a, z) {
-  .Call(`_uppergamma`, a, z, PACKAGE = "RxODE")
+  .Call(`_uppergamma`, a, z, PACKAGE = "rxode2")
 }
 
 #' lowergamma:  upper incomplete gamma function
@@ -673,7 +673,7 @@ uppergamma <- function(a, z) {
 #' lowergamma(1, 1:3)
 #' @export
 lowergamma <- function(a, z) {
-  .Call(`_lowergamma`, a, z, PACKAGE = "RxODE")
+  .Call(`_lowergamma`, a, z, PACKAGE = "rxode2")
 }
 
 #' gammapDer:  derivative of gammap
@@ -697,7 +697,7 @@ lowergamma <- function(a, z) {
 #' gammapDer(1, 1:3)
 #' @export
 gammapDer <- function(a, z) {
-  .Call(`_gammapDer`, a, z, PACKAGE = "RxODE")
+  .Call(`_gammapDer`, a, z, PACKAGE = "rxode2")
 }
 
 #' gammaqInv and gammaqInva:  Inverses of normalized gammaq function
@@ -739,13 +739,13 @@ gammapDer <- function(a, z) {
 #' gammaqInva(1:3, 1:3 / 3.1)
 #' @export
 gammaqInv <- function(a, q) {
-  .Call(`_gammaqInv`, a, q, PACKAGE = "RxODE")
+  .Call(`_gammaqInv`, a, q, PACKAGE = "rxode2")
 }
 
 #' @rdname gammaqInv
 #' @export
 gammaqInva <- function(x, q) {
-  .Call(`_gammaqInva`, x, q, PACKAGE = "RxODE")
+  .Call(`_gammaqInva`, x, q, PACKAGE = "rxode2")
 }
 
 
@@ -787,13 +787,13 @@ gammaqInva <- function(x, q) {
 #' gammapInva(1:3, 1:3 / 3.1)
 #' @export
 gammapInv <- function(a, p) {
-  .Call(`_gammapInv`, a, p, PACKAGE = "RxODE")
+  .Call(`_gammapInv`, a, p, PACKAGE = "rxode2")
 }
 
 #' @rdname gammapInv
 #' @export
 gammapInva <- function(x, p) {
-  .Call(`_gammapInva`, x, p, PACKAGE = "RxODE")
+  .Call(`_gammapInva`, x, p, PACKAGE = "rxode2")
 }
 
 #' logit and inverse logit (expit) functions
@@ -846,20 +846,20 @@ gammapInva <- function(x, p) {
 #' logitNormInfo(logit(1, 0, 10), sd = 1, low = 0, high = 10)
 #' @export
 logit <- function(x, low = 0, high = 1) {
-  .Call(`_logit`, x, low, high, PACKAGE = "RxODE")
+  .Call(`_logit`, x, low, high, PACKAGE = "rxode2")
 }
 #' @rdname logit
 #' @export
 expit <- function(alpha, low = 0, high = 1) {
-  .Call(`_expit`, alpha, low, high, PACKAGE = "RxODE")
+  .Call(`_expit`, alpha, low, high, PACKAGE = "rxode2")
 }
 
 #' @rdname logit
 #' @export
 logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, ...) {
-  .fM1 <- function(x) .Call(`_expit`, x, low, high, PACKAGE = "RxODE") * dnorm(x, mean = mean, sd = sd)
+  .fM1 <- function(x) .Call(`_expit`, x, low, high, PACKAGE = "rxode2") * dnorm(x, mean = mean, sd = sd)
   .m <- integrate(.fM1, -Inf, Inf, abs.tol = abs.tol, ...)$value
-  .fV <- function(x) (.Call(`_expit`, x, low, high, PACKAGE = "RxODE") - .m)^2 * dnorm(x, mean = mean, sd = sd)
+  .fV <- function(x) (.Call(`_expit`, x, low, high, PACKAGE = "rxode2") - .m)^2 * dnorm(x, mean = mean, sd = sd)
   .v <- integrate(.fV, -Inf, Inf, abs.tol = abs.tol, ...)$value
   c(mean = .m, var = .v, cv = sqrt(.v) / .m)
 }
@@ -879,27 +879,27 @@ logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, .
 #' probitNormInfo(probit(1, 0, 10), sd = 1, low = 0, high = 10)
 #' @export
 probit <- function(x, low = 0, high = 1) {
-  .Call(`_probit`, x, low, high, PACKAGE = "RxODE")
+  .Call(`_probit`, x, low, high, PACKAGE = "rxode2")
 }
 
 #' @rdname probit
 #' @export
 probitInv <- function(x, low = 0, high = 1) {
-  .Call(`_probitInv`, x, low, high, PACKAGE = "RxODE")
+  .Call(`_probitInv`, x, low, high, PACKAGE = "rxode2")
 }
 
 
 #' @rdname logit
 #' @export
 probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, ...) {
-  .fM1 <- function(x) .Call(`_probitInv`, x, low, high, PACKAGE = "RxODE") * dnorm(x, mean = mean, sd = sd)
+  .fM1 <- function(x) .Call(`_probitInv`, x, low, high, PACKAGE = "rxode2") * dnorm(x, mean = mean, sd = sd)
   .m <- integrate(.fM1, -Inf, Inf, abs.tol = abs.tol, ...)$value
-  .fV <- function(x) (.Call(`_probitInv`, x, low, high, PACKAGE = "RxODE") - .m)^2 * dnorm(x, mean = mean, sd = sd)
+  .fV <- function(x) (.Call(`_probitInv`, x, low, high, PACKAGE = "rxode2") - .m)^2 * dnorm(x, mean = mean, sd = sd)
   .v <- integrate(.fV, -Inf, Inf, abs.tol = abs.tol, ...)$value
   c(mean = .m, var = .v, cv = sqrt(.v) / .m)
 }
 
-#' Get/Set the number of threads that RxODE uses
+#' Get/Set the number of threads that rxode2 uses
 #'
 #' @param threads NULL (default) rereads environment variables. 0
 #'   means to use all logical CPUs available. Otherwise a number >= 1
@@ -916,14 +916,14 @@ probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, 
 #'
 #'   The throttle will also suppress sorting which ID will be solved first
 #'   when there are (nsubject solved)*throttle <= nthreads.  In
-#'   `RxODE` this sorting occurs to minimize the time for waiting for
+#'   `rxode2` this sorting occurs to minimize the time for waiting for
 #'   another thread to finish. If the last item solved is has a long
 #'   solving time, all the other solving have to wait for that last
 #'   costly solving to occur. If the items which are likely to take
 #'   more time are solved first, this wait is less likely to have an
 #'   impact on the overall solving time.
 #'
-#'   In RxODE the IDs are sorted by the individual number of solving
+#'   In rxode2 the IDs are sorted by the individual number of solving
 #'   points (largest first). It also has a C interface that allows
 #'   these IDs to be resorted by total time spent solving the
 #'   equation.  This allows packages like nlmixr to sort by solving
@@ -933,7 +933,7 @@ probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, 
 #'   small tasks and sorting for IDs are suppressed.
 #'
 #' @param verbose Display the value of relevant OpenMP settings
-#' @return number of threads that RxODE uses
+#' @return number of threads that rxode2 uses
 #' @export
 getRxThreads <- function(verbose = FALSE) {
   .Call(`getRxThreads_R`, verbose)
@@ -1073,9 +1073,9 @@ rxUnloadAll <- function() {
   return("")
 }
 
-#' Set the parallel seed for RxODE random number generation
+#' Set the parallel seed for rxode2 random number generation
 #'
-#' This sets the seed for the RxODE parallel random number generation.
+#' This sets the seed for the rxode2 parallel random number generation.
 #' If set, then whenever a seed is set for the threefry or
 #' vandercorput simulation engine, it will use this seed, increment
 #' for the number of seeds and continue with the sequence the next
@@ -1091,11 +1091,11 @@ rxUnloadAll <- function() {
 #' generator.  The more times the seed is called, the more likely this
 #' becomes.
 #'
-#' @param seed An integer that represents the RxODE parallel and
+#' @param seed An integer that represents the rxode2 parallel and
 #'   internal random number generator seed.  When positive, use this
 #'   seed for random number generation and increment and reseed any
 #'   parallel or new engines that are being called. When negative,
-#'   turn off the RxODE seed and generate a seed from the R's uniform
+#'   turn off the rxode2 seed and generate a seed from the R's uniform
 #'   random number generator.  Best practice is to set this seed.
 #'
 #' @return Nothing, called for its side effects
@@ -1122,7 +1122,7 @@ rxUnloadAll <- function() {
 #' rnorm(1)
 #'
 #' # If we reset this to use the R's seed
-#' # (internally RxODE uses a uniform random number to span seeds)
+#' # (internally rxode2 uses a uniform random number to span seeds)
 #' # This can lead to duplicate sequences and seeds
 #'
 #' rxSetSeed(-1)

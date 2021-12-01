@@ -5,13 +5,13 @@
 #include <iostream>
 #include <RcppArmadillo.h>
 #include <algorithm>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #define ARMA_DONT_PRINT_ERRORS
 #define ARMA_DONT_USE_OPENMP // Known to cause speed problems
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -291,7 +291,7 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
 //' Inductive linearization solver
 //'
 //' @param cSub = Current subject number
-//' @param op - RxODE solving options
+//' @param op - rxode2 solving options
 //' @param tp - Prior time point/time zeor
 //' @param yp - Prior state;  vector size = neq; Final state is updated here
 //' @param tf - Final Time
@@ -300,8 +300,8 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
 //' @param cache
 //'    0 = no Cache
 //'    When doIndLin == 0, cache > 0 = nInf-1
-//' @param ME the RxODE matrix exponential function
-//' @param IndF The RxODE Inductive Linearization function F
+//' @param ME the rxode2 matrix exponential function
+//' @param IndF The rxode2 Inductive Linearization function F
 //' 
 //' @return Returns a status for solving
 //' 

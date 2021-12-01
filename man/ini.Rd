@@ -5,7 +5,7 @@
 \alias{ini.function}
 \alias{ini}
 \alias{ini.default}
-\title{Ini block for RxODE/nlmixr models}
+\title{Ini block for rxode2/nlmixr models}
 \usage{
 \method{ini}{rxUi}(x, ..., envir = parent.frame())
 
@@ -28,7 +28,7 @@ data frame, a pairlist or an integer as specified to \code{sys.call}.}
 Ini block
 }
 \description{
-Ini block for RxODE/nlmixr models
+Ini block for rxode2/nlmixr models
 }
 \author{
 Matthew Fidler

@@ -1,9 +1,9 @@
 rxodeTest({
 
-  test_that("nocb infusion RxODE vs NONMEM", {
+  test_that("nocb infusion rxode2 vs NONMEM", {
 
-    # RxODE model
-    mod_run30x <- RxODE({
+    # rxode2 model
+    mod_run30x <- rxode2({
       THETA_Cl = 4.0
       THETA_Vc = 70.0
       THETA_Ka = 1.0
@@ -41,7 +41,7 @@ rxodeTest({
 
     eta_302_1 <- c(ETA_Cl=0.398845969, ETA_Vc=0.0762201167, ETA_Ka=0)  # NONMEM
 
-    rx_302_1   <- RxODE::rxSolve(mod_run30x,eta_302_1,pat_302_1,
+    rx_302_1   <- rxode2::rxSolve(mod_run30x,eta_302_1,pat_302_1,
                                  covs_interpolation="nocb",
                                  addDosing=TRUE)
 
@@ -64,7 +64,7 @@ rxodeTest({
 
     eta_301_1 <- c(ETA_Cl=0.397632632, ETA_Vc=0.0632252546, ETA_Ka=-0.0815987631)  # NONMEM
 
-    rx_301_1   <- RxODE::rxSolve(mod_run30x,eta_301_1,pat_301_1,
+    rx_301_1   <- rxode2::rxSolve(mod_run30x,eta_301_1,pat_301_1,
                                  covs_interpolation="nocb",
                                  addDosing=TRUE)
 
@@ -79,8 +79,8 @@ rxodeTest({
     run302_tab$time <- run302_tab$TIME
 
 
-    simu_30x <- rbind(cbind(rx_301_1[,c("time","IPRED")],run="oral",solver="RxODE"),
-                      cbind(rx_302_1[,c("time","IPRED")],run="IV",solver="RxODE"),
+    simu_30x <- rbind(cbind(rx_301_1[,c("time","IPRED")],run="oral",solver="rxode2"),
+                      cbind(rx_302_1[,c("time","IPRED")],run="IV",solver="rxode2"),
                       cbind(run301_tab[run301_tab$ID == 1,c("time","IPRED")],run="oral",
                             solver="NONMEM"),
                       cbind(run302_tab[run302_tab$ID == 1,c("time","IPRED")],run="IV",

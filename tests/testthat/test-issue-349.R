@@ -1,9 +1,9 @@
 rxodeTest(
   {
-    .rx <- loadNamespace("RxODE")
+    .rx <- loadNamespace("rxode2")
 
     ## Zero variances
-    mod <- RxODE({
+    mod <- rxode2({
       eff(0) <- 1
       C2 <- centr / V2
       C3 <- peri / V3

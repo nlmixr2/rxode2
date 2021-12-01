@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Michelis Menton test (long lines)")
 
-    mm <- RxODE({
+    mm <- rxode2({
       C2 <- centr / V
       d / dt(centr) <- -(VM * C2) / (KM + C2)
     })
@@ -15,7 +15,7 @@ rxodeTest(
 
     pred <- function() C2
 
-    ## test_that("Functions outside of RxODE/global/nlmixr raise errors", {
+    ## test_that("Functions outside of rxode2/global/nlmixr raise errors", {
     ##     expect_error(rxSymPySetupPred(mm, pred, par, err=function(){err ~ prop(0.1)}, grad=TRUE));
     ## })
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{rxCat}
 \alias{rxCat}
-\title{Use cat when RxODE.verbose is TRUE}
+\title{Use cat when rxode2.verbose is TRUE}
 \usage{
 rxCat(a, ...)
 }
@@ -13,7 +13,7 @@ rxCat(a, ...)
 nothing
 }
 \description{
-Use cat when RxODE.verbose is TRUE
+Use cat when rxode2.verbose is TRUE
 }
 \author{
 Matthew L. Fidler

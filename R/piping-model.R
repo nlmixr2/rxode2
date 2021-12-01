@@ -2,14 +2,14 @@
 #' @rdname model
 model.function <- function(x, ..., envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
-  .ret <- RxODE(x)
+  .ret <- rxode2(x)
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, envir)
 }
 #'  Handle model lines
 #'
 #'
 #' @param modelLines The model lines that are being considered
-#' @param rxui The RxODE UI object
+#' @param rxui The rxode2 UI object
 #' @param modifyIni Should the ini({}) be considered
 #' @param envir Environment for evaluation
 #' @return New UI
@@ -149,7 +149,7 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
 #' Find the line of the original expression
 #'
 #' @param expr Expression
-#' @param rxui RxODE UI
+#' @param rxui rxode2 UI
 #' @param errorLine When TRUE,Should the error line be considered, or consider
 #'   the non-error line
 #' @return The return can be:
@@ -272,7 +272,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 
 #' Get the added or removed variables
 #'
-#' @param rxui This is the RxODE UI object
+#' @param rxui This is the rxode2 UI object
 #'
 #' @return A list with the removed and added error objects
 #'

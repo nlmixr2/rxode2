@@ -7,7 +7,7 @@
 rxSupportedFuns()
 }
 \value{
-list of supported functions in RxODE
+list of supported functions in rxode2
 }
 \description{
 Get list of supported functions

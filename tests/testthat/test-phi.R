@@ -5,7 +5,7 @@ rxodeTest(
     expect_equal(phi(1:3), pnorm(1:3))
     expect_equal(phi(as.double(1:3)), pnorm(as.double(1:3)))
 
-    o <- RxODE({
+    o <- rxode2({
       o <- phi(a)
     })
 
@@ -14,7 +14,7 @@ rxodeTest(
       pnorm(as.double(1:3))
     )
 
-    o <- RxODE({
+    o <- rxode2({
       o <- pnorm(a)
     })
 
@@ -23,7 +23,7 @@ rxodeTest(
       pnorm(as.double(1:3))
     )
 
-    o <- RxODE({
+    o <- rxode2({
       o <- pnorm(a, 0.5)
     })
 
@@ -32,7 +32,7 @@ rxodeTest(
       pnorm(as.double(1:3), 0.5)
     )
 
-    o <- RxODE({
+    o <- rxode2({
       o <- pnorm(a, 0.5, 2)
     })
 
@@ -41,15 +41,15 @@ rxodeTest(
       pnorm(as.double(1:3), 0.5, 2)
     )
 
-    expect_error(RxODE({
+    expect_error(rxode2({
       o <- pnorm()
     }))
 
-    expect_error(RxODE({
+    expect_error(rxode2({
       o <- pnorm(a, b, c, d)
     }))
 
-    o <- RxODE({
+    o <- rxode2({
       o <- qnorm(a)
     })
 
@@ -58,7 +58,7 @@ rxodeTest(
       suppressWarnings(qnorm(as.double(1:3)))
     )
 
-    o <- RxODE({
+    o <- rxode2({
       o <- qnorm(a, 0.5)
     })
 
@@ -67,7 +67,7 @@ rxodeTest(
       suppressWarnings(qnorm(as.double(1:3), 0.5))
     )
 
-    o <- RxODE({
+    o <- rxode2({
       o <- qnorm(a, 0.5, 2)
     })
 
@@ -76,28 +76,28 @@ rxodeTest(
       suppressWarnings(qnorm(as.double(1:3), 0.5, 2))
     )
 
-    expect_error(RxODE({
+    expect_error(rxode2({
       o <- qnorm()
     }))
 
-    expect_error(RxODE({
+    expect_error(rxode2({
       o <- qnorm(a, b, c, d)
     }))
 
-    m <- RxODE({
+    m <- rxode2({
       o <- pnorm(a)
     })
 
     if (requireNamespace("units", quietly = TRUE)) {
       expect_error(rxS(m), NA)
 
-      m <- RxODE({
+      m <- rxode2({
         o <- pnorm(a, b)
       })
 
       expect_error(rxS(m), NA)
 
-      m <- RxODE({
+      m <- rxode2({
         o <- pnorm(a, b, c)
       })
 

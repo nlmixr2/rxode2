@@ -7,7 +7,7 @@
 rxS(x, doConst = TRUE, promoteLinSens = FALSE)
 }
 \arguments{
-\item{x}{RxODE object}
+\item{x}{rxode2 object}
 
 \item{doConst}{Load constants into the environment as well.}
 
@@ -15,7 +15,7 @@ rxS(x, doConst = TRUE, promoteLinSens = FALSE)
 sensitivity-based solutions.}
 }
 \value{
-RxODE/symengine environment
+rxode2/symengine environment
 }
 \description{
 Load a model into a symengine environment

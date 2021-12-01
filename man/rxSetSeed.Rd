@@ -2,23 +2,23 @@
 % Please edit documentation in R/utils.R
 \name{rxSetSeed}
 \alias{rxSetSeed}
-\title{Set the parallel seed for RxODE random number generation}
+\title{Set the parallel seed for rxode2 random number generation}
 \usage{
 rxSetSeed(seed)
 }
 \arguments{
-\item{seed}{An integer that represents the RxODE parallel and
+\item{seed}{An integer that represents the rxode2 parallel and
 internal random number generator seed.  When positive, use this
 seed for random number generation and increment and reseed any
 parallel or new engines that are being called. When negative,
-turn off the RxODE seed and generate a seed from the R's uniform
+turn off the rxode2 seed and generate a seed from the R's uniform
 random number generator.  Best practice is to set this seed.}
 }
 \value{
 Nothing, called for its side effects
 }
 \description{
-This sets the seed for the RxODE parallel random number generation.
+This sets the seed for the rxode2 parallel random number generation.
 If set, then whenever a seed is set for the threefry or
 vandercorput simulation engine, it will use this seed, increment
 for the number of seeds and continue with the sequence the next
@@ -55,7 +55,7 @@ rxnorm()
 rnorm(1)
 
 # If we reset this to use the R's seed
-# (internally RxODE uses a uniform random number to span seeds)
+# (internally rxode2 uses a uniform random number to span seeds)
 # This can lead to duplicate sequences and seeds
 
 rxSetSeed(-1)

@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include "parseLinCmt.h"
 
 char errLin[errLinLen];
@@ -291,7 +291,7 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
 
 linCmtGenStruct _linCmtGenStruct;
 
-SEXP _RxODE_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose) {
+SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose) {
   linCmtGenIni(&_linCmtGenStruct);
   /* SEXP ret = PROTECT(allocVector(STRSXP, 1)); */
   if (tb.hasKa){

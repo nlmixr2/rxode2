@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Issue #7")
 
-    ode <- RxODE({
+    ode <- rxode2({
       d / dt(x) <- x - a * y
       d / dt(y) <- b * x - 2 * y
     })

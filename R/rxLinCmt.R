@@ -18,9 +18,9 @@ findLhs <- function(x) {
     } else {
       .lhs <- character()
     }
-    unique(c(.lhs, unlist(lapply(x, RxODE::findLhs))))
+    unique(c(.lhs, unlist(lapply(x, rxode2::findLhs))))
   } else if (is.pairlist(x)) {
-    unique(unlist(lapply(x, RxODE::findLhs)))
+    unique(unlist(lapply(x, rxode2::findLhs)))
   } else {
     stop(sprintf("do not know how to handle type '%s'", typeof(x)),
       call. = FALSE
@@ -126,7 +126,7 @@ findLhs <- function(x) {
 #'
 #' @examples
 #'
-#' ## Note that RxODE parses the names to figure out the best PK parameter
+#' ## Note that rxode2 parses the names to figure out the best PK parameter
 #'
 #' params <- rxDerived(cl = 29.4, v = 23.4, Vp = 114, vp2 = 4614, q = 270, q2 = 73)
 #'
@@ -175,16 +175,16 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 
 #' Get the linear compartment model true function
 #'
-#' @inheritParams RxODE
+#' @inheritParams rxode2
 #' @return model with linCmt() replaced with linCmtA()
 #' @author Matthew Fidler
 #' @export
 rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB", "linCmtC"), verbose = FALSE) {
   .mv <- rxGetModel(model)
-  if (.Call(`_RxODE_isLinCmt`) == 1L) {
+  if (.Call(`_rxode2_isLinCmt`) == 1L) {
     .vars <- c(.mv$params, .mv$lhs, .mv$slhs)
     return(.Call(
-      `_RxODE_linCmtGen`,
+      `_rxode2_linCmtGen`,
       length(.mv$state),
       .vars,
       setNames(

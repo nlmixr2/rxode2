@@ -17,7 +17,7 @@ rxodeTest(
    d/dt(eff) = Kin*(1-C2/(EC50+C2)) - Kout*eff;
 "
 
-        mod1 <- RxODE(model = ode, modName = "mod1")
+        mod1 <- rxode2(model = ode, modName = "mod1")
 
         ode <- "
    C2 = centr/V2;
@@ -27,7 +27,7 @@ rxodeTest(
 "
 
         ## Compile model
-        mod1 <- RxODE(model = ode, modName = "mod1")
+        mod1 <- rxode2(model = ode, modName = "mod1")
 
         expect_equal(rxModelVars(ode)$params, rxModelVars(mod1)$params)
       })

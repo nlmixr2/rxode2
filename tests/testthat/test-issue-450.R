@@ -72,7 +72,7 @@ rxodeTest({
                          alag = TV_alag)
 
     # zero-order absorption with lag time 2-compartment
-    mod <- RxODE({
+    mod <- rxode2({
       CL <- CLr+CLnr
       C2 <- central/Vc*1000
       all<- central+periph+output

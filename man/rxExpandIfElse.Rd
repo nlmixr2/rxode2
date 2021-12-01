@@ -7,7 +7,7 @@
 rxExpandIfElse(model, removeInis = TRUE, removePrint = TRUE)
 }
 \arguments{
-\item{model}{Model can be a character, or a RxODE model.  It needs
+\item{model}{Model can be a character, or a rxode2 model.  It needs
 to have normalized syntax, that is \code{if (...){}} has to be
 on the same line.  The \verb{else} statement must be on its
 own line with the closing bracket of the \code{if} statement

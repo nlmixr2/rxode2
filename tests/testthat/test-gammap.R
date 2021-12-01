@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("incomplete gamma")
 
-    gp <- RxODE({
+    gp <- rxode2({
       x <- gammap(a, z)
     })
 

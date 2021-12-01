@@ -65,7 +65,7 @@ in a data frame or arguments
 }
 \examples{
 
-## Note that RxODE parses the names to figure out the best PK parameter
+## Note that rxode2 parses the names to figure out the best PK parameter
 
 params <- rxDerived(cl = 29.4, v = 23.4, Vp = 114, vp2 = 4614, q = 270, q2 = 73)
 

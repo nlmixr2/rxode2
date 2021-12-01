@@ -2,7 +2,7 @@
 % Please edit documentation in R/modlib.R
 \name{rxPkg}
 \alias{rxPkg}
-\title{Creates a package from compiled RxODE models}
+\title{Creates a package from compiled rxode2 models}
 \usage{
 rxPkg(
   ...,
@@ -25,7 +25,7 @@ specified, a subdirectory named after the
 \dQuote{\code{modName.d}} will be created and populated with a
 C file, a dynamic loading library, plus various other working
 files. If missing, the files are created (and removed) in the
-temporary directory, and the RxODE DLL for the model is
+temporary directory, and the rxode2 DLL for the model is
 created in the current directory named \verb{rx_????_platform}, for
 example \code{rx_129f8f97fb94a87ca49ca8dafe691e1e_i386.dll}}
 
@@ -37,13 +37,13 @@ example \code{rx_129f8f97fb94a87ca49ca8dafe691e1e_i386.dll}}
 
 \item{fields}{A named list of fields to add to \code{DESCRIPTION}, potentially
 overriding default values. See \code{\link[usethis:use_description]{use_description()}} for how you can set
-personalized defaults using package options}
+personalized defaults using package options.}
 }
 \value{
 this function returns nothing and is used for its side effects
 }
 \description{
-Creates a package from compiled RxODE models
+Creates a package from compiled rxode2 models
 }
 \author{
 Matthew Fidler

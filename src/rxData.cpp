@@ -25,7 +25,7 @@
 #include <climits>
 #include "checkmate.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include "ode.h"
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -48,13 +48,13 @@ extern "C" void parseFree(int last);
 extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
 extern "C" void lineFree(vLines *sbb);
-extern "C" void RxODE_assign_fn_pointers(SEXP);
+extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
 extern "C" void lineIni(vLines *sbb);
 extern "C" void addLine(vLines *sbb, const char *format, ...);
 extern "C" void seedEng(int ncores);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
-extern "C" void RxODE_assign_fn_pointers_(const char *mv);
+extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
 
 bool useForder();
@@ -62,7 +62,7 @@ Function getForder();
 
 
 // https://github.com/Rdatatable/data.table/blob/588e0725320eacc5d8fc296ee9da4967cee198af/src/forder.c#L193-L211
-// range_d is modified because it DOES NOT count na/inf because RxODE assumes times cannot be NA, NaN, -Inf, Inf
+// range_d is modified because it DOES NOT count na/inf because rxode2 assumes times cannot be NA, NaN, -Inf, Inf
 // Also can integrate with prior range information (like prior integer range)
 static void range_d(double *x, int n, uint64_t *out_min, uint64_t *out_max)
 // return range of finite numbers (excluding NA, NaN, -Inf, +Inf), a count of NA and a count of Inf|-Inf|NaN
@@ -79,7 +79,7 @@ static void range_d(double *x, int n, uint64_t *out_min, uint64_t *out_max)
   *out_max = max;
 }
 
-#include "../inst/include/RxODE_as.h"
+#include "../inst/include/rxode2_as.h"
 
 SEXP qassertS(SEXP in, const char *test, const char *what);
 
@@ -181,7 +181,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
       cur = as<std::string>(classattr[i]);
       if (cur == cls) {
 	if (cls == "rxEt") {
-	  List ce = as<List>(classattr.attr(".RxODE.lst"));
+	  List ce = as<List>(classattr.attr(".rxode2.lst"));
 	  List lobj = List(obj);
 	  int nobs = asInt(ce["nobs"], "nobs");
 	  int ndose = asInt(ce["ndose"], "ndose");
@@ -195,7 +195,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
 	  }
 	  return true;
 	} else if (cls == "rxSolve") {
-	  Environment e = as<Environment>(classattr.attr(".RxODE.env"));
+	  Environment e = as<Environment>(classattr.attr(".rxode2.env"));
 	  List lobj = List(obj);
 	  CharacterVector cls2= CharacterVector::create("data.frame");
 	  if (as<int>(e[".check.ncol"]) != lobj.size()){
@@ -236,7 +236,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
 	rxcId   = 0;
 	rxcDv   = 5;
 	rxcIi   = 4;
-	List e = as<List>(classattr.attr(".RxODE.lst"));
+	List e = as<List>(classattr.attr(".rxode2.lst"));
 	int censAdd = asInt(e[RxTrans_censAdd], "censAdd");
 	int limitAdd = asInt(e[RxTrans_limitAdd], "limitAdd");
 	rx->maxShift = asDouble(e[RxTrans_maxShift],"maxShift");
@@ -550,19 +550,19 @@ RObject rxSimSigma(const RObject &sigma,
 
 bool foundEnv = false;
 Environment _rxModels;
-bool _RxODE_found = false;
-Environment _RxODE;
+bool _rxode2_found = false;
+Environment _rxode2;
 
-Environment RxODEenv(){
+Environment rxode2env(){
   Function loadNamespace("loadNamespace", R_BaseNamespace);
-  _RxODE = loadNamespace("RxODE");
-  _RxODE_found = true;
-  return _RxODE;
+  _rxode2 = loadNamespace("rxode2");
+  _rxode2_found = true;
+  return _rxode2;
 }
 // Export for C.
 //[[Rcpp::export]]
 Function getRxFn(std::string name){
-  Environment rx = RxODEenv();
+  Environment rx = rxode2env();
   return as<Function>(rx[name]);
 }
 
@@ -595,7 +595,7 @@ SEXP dynLoad(std::string dll){
 
 List rxModelVars_(const RObject &obj); // model variables section
 
-List rxModelVars_RxODE(const RObject &obj){
+List rxModelVars_rxode2(const RObject &obj){
   Environment e = asEnv(obj, "obj");
   List rxDll = asList(e["rxDll"], "e[\"rxDll\"]");
   List ret = asList(rxDll["modVars"], "rxDll[\"modVars\"]");
@@ -617,7 +617,7 @@ List rxModelVars_RxODE(const RObject &obj){
       isV = asBool(pkgLoaded(pkgR), ".rxPkgLoaded(pkgR)");
       if (isV){
 	Environment ns;
-	if (as<std::string>(pkgR) == "RxODE"){
+	if (as<std::string>(pkgR) == "rxode2"){
 	  return ret;
 	} else {
 	  ns=loadNamespace(pkgR);
@@ -630,9 +630,9 @@ List rxModelVars_RxODE(const RObject &obj){
 	    ret = rxDll["modVars"];
 	    return ret;
 	  } else {
-	    Function rxode = getRxFn("RxODE");
-	    e["modName"] = sobj + "_new"; // For RxODE parsing add "new"
-	    Environment newRx = rxode(e);
+	    Function rxode2 = getRxFn("rxode2");
+	    e["modName"] = sobj + "_new"; // For rxode2 parsing add "new"
+	    Environment newRx = rxode2(e);
 	    e["modName"] = sobj; // Put back
 	    rxU[sobj] = newRx;
 	    return rxModelVars_(as<RObject>(newRx));
@@ -699,7 +699,7 @@ List rxModelVars_character(const RObject &obj){
   if (modList.size() == 1){
     std::string sobj =as<std::string>(obj);
     if (sobj == ""){
-      // Blank RxODE model
+      // Blank rxode2 model
       return rxModelVars_blank();
     } else if (fileExists(sobj)){
       // From file
@@ -712,7 +712,7 @@ List rxModelVars_character(const RObject &obj){
 	RObject obj1 = _rxModels.get(sobj);
 	if (rxIs(obj1, "rxModelVars")){
 	  return asList(obj1, "obj1");
-	} else if (rxIs(obj1, "RxODE")){
+	} else if (rxIs(obj1, "rxode2")){
 	  return rxModelVars_(obj1);
 	}
       }
@@ -817,15 +817,15 @@ List rxModelVars_(const RObject &obj){
   if (rxIs(obj, "rxModelVars")){
     List ret(obj);
     return ret;
-  } else if (rxIs(obj,"RxODE")) {
-    return rxModelVars_RxODE(obj);
+  } else if (rxIs(obj,"rxode2")) {
+    return rxModelVars_rxode2(obj);
   } else if (rxIs(obj, "rxS")){
     Environment e = asEnv(obj, "obj");
     List ret = asList(e["..mv"], "e[\"..mv\"]");
     return ret;
   } else if (rxIs(obj,"rxSolve")){
     CharacterVector cls = obj.attr("class");
-    Environment e = asEnv(cls.attr(".RxODE.env"), ".RxODE.env");
+    Environment e = asEnv(cls.attr(".rxode2.env"), ".rxode2.env");
     return  rxModelVars_(as<RObject>(e[".args.object"]));
   } else if (rxIs(obj,"rxDll")){
     List lobj = (asList(obj, "obj"))["modVars"];
@@ -843,7 +843,7 @@ List rxModelVars_(const RObject &obj){
       }
       Rprintf("\n");
       rxSolveFree();
-      stop(_("need an RxODE-type object to extract model variables"));
+      stop(_("need an rxode2-type object to extract model variables"));
     }
   } else if (rxIsChar(obj)){
     return rxModelVars_character(obj);
@@ -851,7 +851,7 @@ List rxModelVars_(const RObject &obj){
     return rxModelVars_list(obj);
   } else if (rxIsNull(obj)) {
     rxSolveFree();
-    stop(_("a NULL object does not have any RxODE model variables"));
+    stop(_("a NULL object does not have any rxode2 model variables"));
   } else {
     CharacterVector cls = obj.attr("class");
     int i = 0;
@@ -861,7 +861,7 @@ List rxModelVars_(const RObject &obj){
     }
     Rprintf("\n");
     rxSolveFree();
-    stop(_("need an RxODE-type object to extract model variables"));
+    stop(_("need an rxode2-type object to extract model variables"));
   }
 }
 
@@ -879,7 +879,7 @@ List rxModelVars_(const RObject &obj){
 //'
 //' If state is a string, return the compartment number of the named state.
 //'
-//' @seealso [RxODE()]
+//' @seealso [rxode2()]
 //'
 //' @author Matthew L.Fidler
 //'
@@ -927,7 +927,7 @@ CharacterVector rxParams_(const RObject &obj){
 //'
 //' @inheritParams rxModelVars
 //'
-//' @return A list of the jacobian parameters defined in this RxODE
+//' @return A list of the jacobian parameters defined in this rxode2
 //'     object.
 //'
 //' @author Matthew L. Fidler
@@ -947,7 +947,7 @@ CharacterVector rxDfdy(const RObject &obj){
 //' @inheritParams rxModelVars
 //'
 //' @return a character vector listing the calculated parameters
-//' @seealso \code{\link{RxODE}}
+//' @seealso \code{\link{rxode2}}
 //'
 //' @author Matthew L.Fidler
 //' @export
@@ -1084,11 +1084,11 @@ NumericVector rxInits0(const RObject &obj,
   return ret;
 }
 
-//' Initial Values and State values for a RxODE object
+//' Initial Values and State values for a rxode2 object
 //'
 //' Returns the initial values of the rxDll object
 //'
-//' @param obj rxDll, RxODE, or named vector representing default
+//' @param obj rxDll, rxode2, or named vector representing default
 //'     initial arguments
 //'
 //' @param vec If supplied, named vector for the model.
@@ -1161,7 +1161,7 @@ SEXP rxInits(const RObject &obj,
 
 //' Setup the initial conditions.
 //'
-//' @param obj RxODE object
+//' @param obj rxode2 object
 //' @param inits A numeric vector of initial conditions.
 //' @return initial conditions that were setup
 //' @author Matthew L. Fidler
@@ -1177,7 +1177,7 @@ NumericVector rxSetupIni(const RObject &obj,
 
 //' Setup the initial conditions.
 //'
-//' @param obj RxODE object
+//' @param obj rxode2 object
 //'
 //' @param inits A numeric vector of initial conditions.
 //'
@@ -1245,7 +1245,7 @@ NumericVector rxSetupScale(const RObject &obj,
       }
     }
     if (foundS > usedS){
-      warning(_("scaled a compartment that is not defined by the RxODE model"));
+      warning(_("scaled a compartment that is not defined by the rxode2 model"));
     }
   }
   return ret;
@@ -1357,7 +1357,7 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
   if (rxIs(ev1, "rxEtTran")) {
     rx_solve* rx = getRxSolve_();
     CharacterVector tmpCls = ev1.attr("class");
-    List envCls = tmpCls.attr(".RxODE.lst");
+    List envCls = tmpCls.attr(".rxode2.lst");
     NumericMatrix iniPars = envCls[RxTrans_pars];
     // Copy the pre-filled covariates into the parameter values.
     for (int j = rx->nsim;j--;){
@@ -1646,13 +1646,13 @@ arma::vec fillVec(arma::vec& in, int len);
 
 //' Simulate Parameters from a Theta/Omega specification
 //'
-//' @param params Named Vector of RxODE model parameters
+//' @param params Named Vector of rxode2 model parameters
 //'
 //' @param nObs Number of observations to simulate (with `sigma` matrix)
 //'
 //' @inheritParams rxSolve
 //'
-//' @param simSubjects boolean indicated RxODE should simulate subjects in studies (`TRUE`,
+//' @param simSubjects boolean indicated rxode2 should simulate subjects in studies (`TRUE`,
 //'         default) or studies (`FALSE`)
 //'
 //' @return a data frame with the simulated subjects
@@ -1977,7 +1977,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
 
 RObject rxCurObj;
 
-Nullable<Environment> rxRxODEenv(RObject obj);
+Nullable<Environment> rxrxode2env(RObject obj);
 
 std::string rxDll(RObject obj);
 
@@ -2417,7 +2417,7 @@ static inline SEXP rxSolve_update(const RObject &object,
   if (rxSolveDat->isRxSolve){
     lobj = as<List>(object);
     CharacterVector classattr = object.attr("class");
-    e = as<Environment>(classattr.attr(".RxODE.env"));
+    e = as<Environment>(classattr.attr(".rxode2.env"));
   } else  { // if (rxIs(object, "environment"))
     e = as<Environment>(object);
     lobj = as<List>(e["obj"]);
@@ -2500,7 +2500,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   rx_solve* rx = getRxSolve_();
   if (rxIs(ev1, "rxEt")){
     CharacterVector cls = ev1.attr("class");
-    List etE = cls.attr(".RxODE.lst");
+    List etE = cls.attr(".rxode2.lst");
     int nobs = asInt(etE["nobs"], "nobs");
     if (nobs == 0){
       // KEEP/DROP?
@@ -2509,7 +2509,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
 			  rxControl[Rxc_keepF]);
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
-      List tmpL = tmpC.attr(".RxODE.lst");
+      List tmpL = tmpC.attr(".rxode2.lst");
       rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
       List keep = tmpL[RxTrans_keepL];
       keepFcov=keep;
@@ -2556,7 +2556,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
 	if (!ISNA(by)){
 	  // Matches seq(0,1,by=0.1,length.out=3)
 	  rxSolveFree();
-	  stop(_("cannot use both 'by' and 'length.out' for RxODE simulations"));
+	  stop(_("cannot use both 'by' and 'length.out' for rxode2 simulations"));
 	}
 	by = (to-from)/(lenOut-1);
       } else if (ISNA(by)) {
@@ -2581,7 +2581,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
 			   rxControl[Rxc_keepF]));
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
-    List tmpL = tmpC.attr(".RxODE.lst");
+    List tmpL = tmpC.attr(".rxode2.lst");
     rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
     List keep = tmpL[RxTrans_keepL];
     _rxModels[".fkeep"] = keep;
@@ -2612,11 +2612,11 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   rx->hasFactors=0;
   if (rxIs(ev1, "rxEtTran")){
     CharacterVector cls = ev1.attr("class");
-    List tmpL = cls.attr(".RxODE.lst");
+    List tmpL = cls.attr(".rxode2.lst");
     rx->nobs2 = asInt(tmpL[RxTrans_nobs], "nobs");
     rxSolveDat->convertInt = (asInt(tmpL[RxTrans_idInfo], "idInfo")==1);
     CharacterVector clsEt = Rf_getAttrib(ev1, R_ClassSymbol);
-    List e   = clsEt.attr(".RxODE.lst");
+    List e   = clsEt.attr(".rxode2.lst");
     // SETUP factors for ID=="" and CMT="" etc
     lineIni(&(rx->factors));
     lineIni(&(rx->factorNames));
@@ -2653,7 +2653,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
 	rx->factorNs[rx->hasFactors++] = len;
 	if (rx->hasFactors >= 500){
 	  rxSolveFree();
-	  stop(_("RxODE only supports 500 factors"));
+	  stop(_("rxode2 only supports 500 factors"));
 	}
       }
     }
@@ -3309,7 +3309,7 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
   CharacterVector mvCov1N;
   if (rxIs(ev1, "rxEtTran")){
     CharacterVector tmpCls = ev1.attr("class");
-    List e = tmpCls.attr(".RxODE.lst");
+    List e = tmpCls.attr(".rxode2.lst");
     List tmpCov1 = e[RxTrans_cov1];
     mvCov1N = tmpCov1.attr("names");
   }
@@ -3678,7 +3678,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
   rx->keys = _globals.keys = NULL;
   rx->keys = _globals.keys = (uint8_t ***)calloc(2, sizeof(uint8_t **)); // lost
   rx->keys[1] = NULL;
-  // In RxODE the keyAlloc size IS 9
+  // In rxode2 the keyAlloc size IS 9
   rx->keys[0] = (uint8_t **)calloc(10, sizeof(uint8_t *));
   for (int j = 0; j < 10; j++) rx->keys[0][j] = NULL;
   for (int b = 0; b < nbyte; b++){
@@ -3730,7 +3730,7 @@ List rxSolve_df(const RObject &obj,
   int doTBS = (rx->matrix == 3);
   if (doTBS) rx->matrix=2;
   if (rx->matrix == 4 || rx->matrix == 5) rx->matrix=2;
-  List dat = RxODE_df(doDose, doTBS);
+  List dat = rxode2_df(doDose, doTBS);
   if (rx->whileexit) {
     warning(_("exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"), rx->maxwhile);
   }
@@ -3797,7 +3797,7 @@ static inline Environment rxSolve_genenv(const RObject &object,
   std::copy(&_globals.dadt_counter[0], &_globals.dadt_counter[0] + rxSolveDat->nSize, dadt_counterIv.begin());
   std::copy(&_globals.jac_counter[0], &_globals.jac_counter[0] + rxSolveDat->nSize, jac_counterIv.begin());
   Function newEnv("new.env", R_BaseNamespace);
-  Environment e = newEnv(_["size"] = 29, _["parent"] = RxODEenv());
+  Environment e = newEnv(_["size"] = 29, _["parent"] = rxode2env());
   getRxModels();
   if(_rxModels.exists(".theta")){
     if (Rf_isMatrix(_rxModels[".theta"])) {
@@ -4145,7 +4145,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
     CharacterVector cls= CharacterVector::create("rxSolve", "rxSolveParams","rxSolveCovs",
 						 "rxSolveInits", "rxSolveSimType",
 						 "data.frame");
-    cls.attr(".RxODE.env") = rxSolve_genenv(obj, rxControl, specParams,
+    cls.attr(".rxode2.env") = rxSolve_genenv(obj, rxControl, specParams,
 					    dat, params, events,
 					    inits, rxSolveDat);
     // eGparPos
@@ -4371,7 +4371,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
   } else {
     object = obj;
-    // Update RxODE model (if needed) and simulate nesting
+    // Update rxode2 model (if needed) and simulate nesting
     if ((!Rf_isNull(rxControl[Rxc_thetaMat]) ||
     	 !Rf_isNull(rxControl[Rxc_omega]) ||
     	 !Rf_isNull(rxControl[Rxc_sigma])) &&
@@ -4392,8 +4392,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFreeObj = object;
       List indLin = rxSolveDat->mv[RxMv_indLin];
       if (indLin.size() == 0){
-	Function RxODE = getRxFn("RxODE");
-	object = RxODE(object, _["indLin"]=true);
+	Function rxode2 = getRxFn("rxode2");
+	object = rxode2(object, _["indLin"]=true);
 	rxSolveDat->mv = rxModelVars(object);
 	rxSolveFreeObj = object;
       } // else {
@@ -4423,7 +4423,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Load model
     if (!rxDynLoad(object)){
       rxSolveFree();
-      stop(_("cannot load RxODE dlls for this model"));
+      stop(_("cannot load rxode2 dlls for this model"));
     }
     // Get model
     // Get the C solve object
@@ -4660,7 +4660,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->addTimeUnits = false;
     if (rxIs(ev1, "rxEtTran")){
       CharacterVector cls = ev1.attr("class");
-      List evT = cls.attr(".RxODE.lst");
+      List evT = cls.attr(".rxode2.lst");
       evT.attr("class") = R_NilValue;
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
     }
@@ -4746,7 +4746,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // Now setup the rest of the rx_solve object
     if (rxSolveDat->nPopPar != 1 && rxSolveDat->nPopPar % rx->nsub != 0){
       rxSolveFree();
-      stop(_("number of parameters (%d) solved by RxODE for multi-subject data needs to be a multiple of the number of subjects (%d)"),rxSolveDat->nPopPar, rx->nsub);
+      stop(_("number of parameters (%d) solved by rxode2 for multi-subject data needs to be a multiple of the number of subjects (%d)"),rxSolveDat->nPopPar, rx->nsub);
     }
 #ifdef rxSolveT
     RSprintf("Time12: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4966,7 +4966,7 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
   int i, j, n;
   rxCurObj = obj;
   CharacterVector cls = lst.attr("class");
-  Environment e = as<Environment>(cls.attr(".RxODE.env"));
+  Environment e = as<Environment>(cls.attr(".rxode2.env"));
   if (sarg == "env"){
     return as<RObject>(e);
   }
@@ -5047,7 +5047,7 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     }
   }
   List mv = rxModelVars(obj);
-  if (sarg == "rx" || sarg == "rxode" || sarg == "RxODE"){
+  if (sarg == "rx" || sarg == "rxode2" || sarg == "rxode2"){
     CharacterVector trans = mv[RxMv_trans];
     getRxModels();
     std::string pre = as<std::string>(trans[RxMvTrans_prefix]);
@@ -5102,7 +5102,7 @@ CharacterVector rxSolveDollarNames(RObject obj){
   CharacterVector names1 = obj.attr("names");
   List lst = as<List>(obj);
   CharacterVector cls = lst.attr("class");
-  Environment e = as<Environment>(cls.attr(".RxODE.env"));
+  Environment e = as<Environment>(cls.attr(".rxode2.env"));
   updateSolveEnvPost(e);
   int nExtra = 6;
   if (e.exists(".theta")) nExtra++;
@@ -5143,7 +5143,7 @@ CharacterVector rxSolveDollarNames(RObject obj){
   ret[j++] = "params";
   ret[j++] = "inits";
   ret[j++] = "t";
-  ret[j++] = "rxode";
+  ret[j++] = "rxode2";
   if (e.exists(".theta")) ret[j++] = "thetaMat";
   if (e.exists(".sigmaL")) ret[j++] = "sigmaList";
   if (e.exists(".thetaL")) ret[j++] = "thetaList";
@@ -5216,7 +5216,7 @@ RObject rxSolveUpdate(RObject obj,
     if (rxIsChar(arg)){
       CharacterVector what = CharacterVector(arg);
       CharacterVector classattr = obj.attr("class");
-      Environment e = as<Environment>(classattr.attr(".RxODE.env"));
+      Environment e = as<Environment>(classattr.attr(".rxode2.env"));
       List rxControl = e[".args"];
       // updateSolveEnvPost(e);
       if (what.size() == 1){
@@ -5247,13 +5247,13 @@ RObject rxSolveUpdate(RObject obj,
 			  0);
 	} else if (sarg == "t" || sarg == "time"){
 	  CharacterVector classattr = obj.attr("class");
-          Environment e = as<Environment>(classattr.attr(".RxODE.env"));
+          Environment e = as<Environment>(classattr.attr(".rxode2.env"));
           updateSolveEnvPost(e);
 	  Function f = as<Function>(e[".replace.sampling"]);
 	  return f(value);
         } else {
 	  CharacterVector classattr = obj.attr("class");
-	  Environment e = as<Environment>(classattr.attr(".RxODE.env"));
+	  Environment e = as<Environment>(classattr.attr(".rxode2.env"));
           updateSolveEnvPost(e);
           if (rxIsNull(e[".params.dat"])) {
 	    rxSolveFree();
@@ -5480,13 +5480,13 @@ extern "C" void rxRmModelLib(const char* s){
   rxRmModelLib_(str);
 }
 
-Nullable<Environment> rxRxODEenv(RObject obj){
-  if (rxIs(obj, "RxODE")){
+Nullable<Environment> rxrxode2env(RObject obj){
+  if (rxIs(obj, "rxode2")){
     return(as<Environment>(obj));
   } else if (rxIs(obj, "rxSolve")){
     CharacterVector cls = obj.attr("class");
-    Environment e = as<Environment>(cls.attr(".RxODE.env"));
-    return rxRxODEenv(as<RObject>(e["args.object"]));
+    Environment e = as<Environment>(cls.attr(".rxode2.env"));
+    return rxrxode2env(as<RObject>(e["args.object"]));
   } else if (rxIs(obj, "rxModelVars")){
     List mv = as<List>(obj);
     CharacterVector trans = mv[RxMv_trans];
@@ -5498,33 +5498,33 @@ Nullable<Environment> rxRxODEenv(RObject obj){
       return R_NilValue;
     }
   } else {
-    return rxRxODEenv(as<RObject>(rxModelVars(obj)));
+    return rxrxode2env(as<RObject>(rxModelVars(obj)));
   }
 }
 
-//' Get RxODE model from object
-//' @param obj RxODE family of objects
-//' @return RxODE model
+//' Get rxode2 model from object
+//' @param obj rxode2 family of objects
+//' @return rxode2 model
 //' @export
 //[[Rcpp::export]]
-RObject rxGetRxODE(RObject obj){
-  Nullable<Environment> rxode1 = rxRxODEenv(obj);
-  if (rxode1.isNull()){
+RObject rxGetrxode2(RObject obj){
+  Nullable<Environment> rxode21 = rxrxode2env(obj);
+  if (rxode21.isNull()){
     // FIXME compile if needed.
     rxSolveFree();
-    stop(_("Can not figure out the RxODE object"));
+    stop(_("Can not figure out the rxode2 object"));
   } else {
-    Environment e = as<Environment>(rxode1);
-    e.attr("class") = "RxODE";
+    Environment e = as<Environment>(rxode21);
+    e.attr("class") = "rxode2";
     return as<RObject>(e);
   }
 }
 
-//' Checks if the RxODE object was built with the current build
+//' Checks if the rxode2 object was built with the current build
 //'
 //' @inheritParams rxModelVars
 //'
-//' @return boolean indicating if this was built with current RxODE
+//' @return boolean indicating if this was built with current rxode2
 //'
 //' @export
 //[[Rcpp::export]]
@@ -5545,14 +5545,14 @@ bool rxIsCurrent(RObject obj){
 }
 
 //' Assign pointer based on model variables
-//' @param object RxODE family of objects
+//' @param object rxode2 family of objects
 //' @return nothing, called for side effects
 //' @export
 //[[Rcpp::export]]
 void rxAssignPtr(SEXP object = R_NilValue){
   List mv=rxModelVars(as<RObject>(object));
   CharacterVector trans = mv[RxMv_trans];
-  RxODE_assign_fn_pointers_((as<std::string>(trans[RxMvTrans_model_vars])).c_str());
+  rxode2_assign_fn_pointers_((as<std::string>(trans[RxMvTrans_model_vars])).c_str());
   rxUpdateFuns(as<SEXP>(trans));
   getRxSolve_();
   // Update rxModels environment.
@@ -5564,7 +5564,7 @@ void rxAssignPtr(SEXP object = R_NilValue){
   } else if (!rxIsCurrent(as<RObject>(_rxModels[ptr]))) {
     _rxModels[ptr] = mv;
   }
-  Nullable<Environment> e1 = rxRxODEenv(object);
+  Nullable<Environment> e1 = rxrxode2env(object);
   if (!e1.isNull()){
     std::string prefix = as<std::string>(trans[RxMvTrans_prefix]);
     if (!_rxModels.exists(prefix)){
@@ -5578,12 +5578,12 @@ extern "C" void rxAssignPtrC(SEXP obj){
   rxAssignPtr(obj);
 }
 
-//' Return the DLL associated with the RxODE object
+//' Return the DLL associated with the rxode2 object
 //'
 //' This will return the dynamic load library or shared object used to
-//' run the C code for RxODE.
+//' run the C code for rxode2.
 //'
-//' @param obj A RxODE family of objects or a character string of the
+//' @param obj A rxode2 family of objects or a character string of the
 //'     model specification or location of a file with a model
 //'     specification.
 //'
@@ -5594,7 +5594,7 @@ extern "C" void rxAssignPtrC(SEXP obj){
 //' @export
 //[[Rcpp::export]]
 std::string rxDll(RObject obj){
-  if (rxIs(obj,"RxODE")){
+  if (rxIs(obj,"rxode2")){
     Environment e = as<Environment>(obj);
     Nullable<CharacterVector>pkgn = e["package"];
     if (!pkgn.isNull()){
@@ -5604,7 +5604,7 @@ std::string rxDll(RObject obj){
     return as<std::string>((as<List>(e["rxDll"]))["dll"]);
   } else if (rxIs(obj,"rxSolve")) {
     CharacterVector cls = obj.attr("class");
-    Environment e = as<Environment>(cls.attr(".RxODE.env"));
+    Environment e = as<Environment>(cls.attr(".rxode2.env"));
     return(as<std::string>(e["dll"]));
   } else if (rxIs(obj, "rxDll")){
     return as<std::string>(as<List>(obj)["dll"]);
@@ -5614,7 +5614,7 @@ std::string rxDll(RObject obj){
     return(rxDll(newO));
   } else {
     List mv = rxModelVars(obj);
-    Nullable<Environment> en = rxRxODEenv(mv);
+    Nullable<Environment> en = rxrxode2env(mv);
     if (en.isNull()){
       rxSolveFree();
       stop(_("can not figure out the DLL for this object"));
@@ -5625,11 +5625,11 @@ std::string rxDll(RObject obj){
   }
 }
 
-//' Return the C file associated with the RxODE object
+//' Return the C file associated with the rxode2 object
 //'
-//' This will return C code for generating the RxODE DLL.
+//' This will return C code for generating the rxode2 DLL.
 //'
-//' @param obj A RxODE family of objects or a character string of the
+//' @param obj A rxode2 family of objects or a character string of the
 //'     model specification or location of a file with a model
 //'     specification.
 //'
@@ -5642,12 +5642,12 @@ std::string rxDll(RObject obj){
 CharacterVector rxC(RObject obj){
   std::string rets;
   CharacterVector ret(1);
-  if (rxIs(obj,"RxODE")){
+  if (rxIs(obj,"rxode2")){
     Environment e = as<Environment>(obj);
     rets = as<std::string>((as<List>(e["rxDll"]))["c"]);
   } else if (rxIs(obj,"rxSolve")) {
     CharacterVector cls = obj.attr("class");
-    Environment e = as<Environment>(cls.attr(".RxODE.env"));
+    Environment e = as<Environment>(cls.attr(".rxode2.env"));
     rets = as<std::string>(e["c"]);
   } else if (rxIs(obj, "rxDll")){
     rets = as<std::string>(as<List>(obj)["c"]);
@@ -5657,7 +5657,7 @@ CharacterVector rxC(RObject obj){
     rets = rxDll(newO);
   } else {
     List mv = rxModelVars(obj);
-    Nullable<Environment> en = rxRxODEenv(mv);
+    Nullable<Environment> en = rxrxode2env(mv);
     if (en.isNull()){
       rxSolveFree();
       stop(_("can not figure out the DLL for this object"));
@@ -5672,11 +5672,11 @@ CharacterVector rxC(RObject obj){
 }
 
 
-//' Determine if the DLL associated with the RxODE object is loaded
+//' Determine if the DLL associated with the rxode2 object is loaded
 //'
-//' @param obj A RxODE family of objects
+//' @param obj A rxode2 family of objects
 //'
-//' @return Boolean returning if the RxODE library is loaded.
+//' @return Boolean returning if the rxode2 library is loaded.
 //'
 //' @keywords internal
 //' @author Matthew L.Fidler
@@ -5692,11 +5692,11 @@ bool rxIsLoaded(RObject obj){
   return ret;
 }
 
-//' Load RxODE object
+//' Load rxode2 object
 //'
-//' @param obj A RxODE family of objects
+//' @param obj A rxode2 family of objects
 //'
-//' @return Boolean returning if the RxODE library is loaded.
+//' @return Boolean returning if the rxode2 library is loaded.
 //'
 //' @keywords internal
 //' @author Matthew L.Fidler
@@ -5708,7 +5708,7 @@ bool rxDynLoad(RObject obj){
     if (fileExists(file)){
       dynLoad(file);
     } else {
-      Nullable<Environment> e1 = rxRxODEenv(obj);
+      Nullable<Environment> e1 = rxrxode2env(obj);
       if (!e1.isNull()){
 	Environment e = asEnv(e1, "e1");
 	Function compile = as<Function>(e["compile"]);
@@ -5724,9 +5724,9 @@ bool rxDynLoad(RObject obj){
   }
 }
 
-//' Lock/unlocking of RxODE dll file
+//' Lock/unlocking of rxode2 dll file
 //'
-//' @param obj A RxODE family of objects
+//' @param obj A rxode2 family of objects
 //' 
 //' @return nothing; called for side effects
 //' 
@@ -5787,16 +5787,16 @@ void rmRxModelsFromDll(std::string str){
 bool rxUnload_ = true;
 //' Allow unloading of dlls
 //'
-//' @param allow boolean indicating if garbage collection will unload of RxODE dlls.
+//' @param allow boolean indicating if garbage collection will unload of rxode2 dlls.
 //'
 //' @return Boolean allow; called for side effects
 //'
 //' @examples
 //'
-//' # Garbage collection will not unload un-used RxODE dlls
+//' # Garbage collection will not unload un-used rxode2 dlls
 //' rxAllowUnload(FALSE);
 //'
-//' # Garbage collection will unload unused RxODE dlls
+//' # Garbage collection will unload unused rxode2 dlls
 //' rxAllowUnload(TRUE);
 //' @export
 //' @author Matthew Fidler
@@ -5829,11 +5829,11 @@ RObject rxUnloadAll_(){
   return R_NilValue;
 }
 
-//' Unload RxODE object
+//' Unload rxode2 object
 //'
-//' @param obj A RxODE family of objects
+//' @param obj A rxode2 family of objects
 //'
-//' @return Boolean returning if the RxODE library is loaded.
+//' @return Boolean returning if the rxode2 library is loaded.
 //'
 //' @keywords internal
 //' @author Matthew L.Fidler
@@ -5841,7 +5841,7 @@ RObject rxUnloadAll_(){
 //[[Rcpp::export]]
 bool rxDynUnload(RObject obj){
   if (!rxUnload_) return false;
-  if (rxIs(obj, "RxODE")){
+  if (rxIs(obj, "rxode2")){
     Environment e = asEnv(obj, "rxDynUnload(obj)");
     Nullable<CharacterVector> pkg = e["package"];
     if (!pkg.isNull()){
@@ -5880,7 +5880,7 @@ bool rxDynUnload(RObject obj){
 //' This function deletes the DLL, but doesn't delete the model
 //' information in the object.
 //'
-//' @param obj RxODE family of objects
+//' @param obj rxode2 family of objects
 //'
 //' @return A boolean stating if the operation was successful.
 //'
@@ -5888,7 +5888,7 @@ bool rxDynUnload(RObject obj){
 //' @export
 //[[Rcpp::export]]
 bool rxDelete(RObject obj){
-  if (rxIs(obj, "RxODE")){
+  if (rxIs(obj, "rxode2")){
     Environment e = asEnv(obj, "rxDelete(obj)");
     Nullable<CharacterVector> pkg = e["package"];
     if (!pkg.isNull()){
@@ -6069,7 +6069,7 @@ List dropUnitsRxSolve(List x){
   return ret;
 }
 
-//' Silence some of RxODE's C/C++ messages
+//' Silence some of rxode2's C/C++ messages
 //'
 //' @param silent can be 0L "noisy"  or 1L "silent"
 //'

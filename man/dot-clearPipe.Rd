@@ -21,7 +21,7 @@
 )
 }
 \arguments{
-\item{rx}{RxODE object}
+\item{rx}{rxode2 object}
 
 \item{inits}{a vector of initial values of the state variables
 (e.g., amounts in each compartment), and the order in this
@@ -69,7 +69,7 @@ realization of the parameters.}
 parameters.}
 }
 \value{
-None, clears RxODE pipeline
+None, clears rxode2 pipeline
 }
 \description{
 Clear/Set pipeline

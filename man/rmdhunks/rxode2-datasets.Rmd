@@ -1,6 +1,6 @@
-# Datasets for RxODE & nlmixr
+# Datasets for rxode2 & nlmixr
 
-Data for input into `nlmixr` is the same type of data input for `RxODE`, and it is similar to data for NONMEM (most NONMEM-ready datasets can be used directly in `nlmixr`).
+Data for input into `nlmixr` is the same type of data input for `rxode2`, and it is similar to data for NONMEM (most NONMEM-ready datasets can be used directly in `nlmixr`).
 
 # Columns Described by Type of Use
 
@@ -46,7 +46,7 @@ For dosing rows, it is the amount of the dose administered to the `CMT`.  If the
 
 ## `CENS`/`LIMIT` Columns
 
-The `CENS` column is an indicator column indicating if censoring occurred.  For pharmacokinetic modeling, censoring is typically when a sample is below the limit of quantification.  Internally `RxODE` saves these values so that `nlmixr` can use them in likelihood calculations.
+The `CENS` column is an indicator column indicating if censoring occurred.  For pharmacokinetic modeling, censoring is typically when a sample is below the limit of quantification.  Internally `rxode2` saves these values so that `nlmixr` can use them in likelihood calculations.
 
 `CENS = 0` indicates that the value in `DV` is measured without censoring.
 
@@ -55,7 +55,7 @@ The `CENS` column is an indicator column indicating if censoring occurred.  For 
 `CENS = -1` indicates that a value is right censored (or above limit of quantitation) and that the value in `DV` is censoring/quantitation limit.
 
 
-The `LIMIT` is additional information about how censoring is handled with `nlmixr` and is stored in `RxODE`'s data structure as well. When a value is left censored, like below a limit of `1` you may also believe that the value is above a certain threshold, like zero.  In this case, a limit of `0` indicates that the censored value is between `0` and `1`.
+The `LIMIT` is additional information about how censoring is handled with `nlmixr` and is stored in `rxode2`'s data structure as well. When a value is left censored, like below a limit of `1` you may also believe that the value is above a certain threshold, like zero.  In this case, a limit of `0` indicates that the censored value is between `0` and `1`.
 
 In short when:
 
@@ -85,7 +85,7 @@ TODO
 
 The `EVID` column is the event identifier for a row of data.
 
-For observation records, it will be `0`.  For normal dosing records, it will be `1`.  Many more `EVID` values are detailed in the [RxODE Event Types](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-event-types.html) and [Classic RxODE Events](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-events-classic.html) vignettes.
+For observation records, it will be `0`.  For normal dosing records, it will be `1`.  Many more `EVID` values are detailed in the [rxode2 Event Types](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html) and [Classic rxode2 Events](https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html) vignettes.
 
 ## `ID` Column
 

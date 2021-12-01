@@ -19,7 +19,7 @@ left, or right.}
 nothing, simply included to be compatible with ggplot 3.2
 }
 \description{
-This empty guide draws nothing; It is included in RxODE for
+This empty guide draws nothing; It is included in rxode2 for
 compatibility with ggplot 3.2
 }
 \keyword{internal}

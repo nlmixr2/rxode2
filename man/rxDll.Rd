@@ -2,12 +2,12 @@
 % Please edit documentation in R/RcppExports.R
 \name{rxDll}
 \alias{rxDll}
-\title{Return the DLL associated with the RxODE object}
+\title{Return the DLL associated with the rxode2 object}
 \usage{
 rxDll(obj)
 }
 \arguments{
-\item{obj}{A RxODE family of objects or a character string of the
+\item{obj}{A rxode2 family of objects or a character string of the
 model specification or location of a file with a model
 specification.}
 }
@@ -16,7 +16,7 @@ a path of the library
 }
 \description{
 This will return the dynamic load library or shared object used to
-run the C code for RxODE.
+run the C code for rxode2.
 }
 \author{
 Matthew L.Fidler

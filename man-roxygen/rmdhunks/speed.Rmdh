@@ -1,17 +1,17 @@
-# Increasing RxODE speed by multi-subject parallel solving
-`RxODE` originally developed as an ODE solver that allowed an ODE
+# Increasing rxode2 speed by multi-subject parallel solving
+`rxode2` originally developed as an ODE solver that allowed an ODE
 solve for a single subject.  This flexibility is still supported.
 
-The original code from the `RxODE` tutorial is below:
+The original code from the `rxode2` tutorial is below:
 
 ```{r}
 
-library(RxODE)
+library(rxode2)
 
 library(microbenchmark)
 library(ggplot2)
 
-mod1 <- RxODE({
+mod1 <- rxode2({
     C2 = centr/V2;
     C3 = peri/V3;
     d/dt(depot) = -KA*depot;
@@ -66,7 +66,7 @@ runSapply <- function(){
 ```
 ## Run using a single-threaded solve
 
-You can also have RxODE solve all the subject simultaneously without
+You can also have rxode2 solve all the subject simultaneously without
 collecting the results in R, using a single threaded solve.
 
 The data output is slightly different here, but still gives the same
@@ -80,7 +80,7 @@ runSingleThread <- function(){
 
 ## Run a 2 threaded solve
 
-RxODE supports multi-threaded solves, so another option is to have `2`
+rxode2 supports multi-threaded solves, so another option is to have `2`
 threads (called `cores` in the solve options, you can see the options
 in `rxControl()` or `rxSolve()`). 
 
@@ -104,7 +104,7 @@ autoplot(bench)
 ```
 
 It is clear that the **largest** jump in performance when using the
-`solve` method and providing *all* the parameters to RxODE to solve
+`solve` method and providing *all* the parameters to rxode2 to solve
 without looping over each subject with either a `for` or a `sapply`.
 The number of cores/threads applied to the solve also plays a role in
 the solving.
@@ -136,23 +136,23 @@ processors with 4 threads).
 # A real life example
 
 Before some of the parallel solving was implemented, the fastest way
-to run `RxODE` was with `lapply`.  This is how Rik Schoemaker created
+to run `rxode2` was with `lapply`.  This is how Rik Schoemaker created
 the data-set for `nlmixr` comparisons, but reduced to run faster
 automatic building of the pkgdown website.
 
 
 ```{r}
-library(RxODE)
+library(rxode2)
 library(data.table)
-#Define the RxODE model
+#Define the rxode2 model
   ode1 <- "
   d/dt(abs)    = -KA*abs;
   d/dt(centr)  =  KA*abs-(CL/V)*centr;
   C2=centr/V;
   "
   
-#Create the RxODE simulation object
-mod1 <- RxODE(model = ode1)
+#Create the rxode2 simulation object
+mod1 <- rxode2(model = ode1)
 
 #Population parameter values on log-scale
   paramsl <- c(CL = log(4),
@@ -199,7 +199,7 @@ Startlapply <- Sys.time()
     )
 #generates 4 random samples in a 24 hour period
     ev$add.sampling(c(0, sort(round(sample(runif(600, 0, 1440), 4) / 60, 2))))
-#runs the RxODE simulation
+#runs the rxode2 simulation
     x <- as.data.table(mod1$run(params, ev))
 #merges the parameters and ID number to the simulation output
     x[, names(params) := params]
@@ -217,7 +217,7 @@ By applying some of the new parallel solving concepts you can simply
 run the same simulation both with less code and faster:
 
 ```{r}
-rx <- RxODE({
+rx <- rxode2({
     CL =  log(4)
     V = log(70)
     KA = log(1)
@@ -258,7 +258,7 @@ print(endParallel - startParallel)
 You can see a striking time difference between the two methods; A few
 things to keep in mind:
 
- - `RxODE` use the thread-safe sitmo `threefry` routines for simulation of `eta`
+ - `rxode2` use the thread-safe sitmo `threefry` routines for simulation of `eta`
    values. Therefore the results are expected to be different (also the random
    samples are taken in a different order which would be different)
    
@@ -267,10 +267,10 @@ things to keep in mind:
    different from the actual nlmixr comparison when using the slower
    simulation.
    
- - This speed comparison used `data.table`.  `RxODE` uses `data.table`
+ - This speed comparison used `data.table`.  `rxode2` uses `data.table`
    internally (when available) try to speed up sorting, so this would
    be different than installations where `data.table` is not
-   installed.  You can force RxODE to use `order()` when sorting by
+   installed.  You can force rxode2 to use `order()` when sorting by
    using `forderForceBase(TRUE)`.  In this case there is little
    difference between the two, though in other examples `data.table`'s
    presence leads to a speed increase (and less likely it could lead
@@ -279,10 +279,10 @@ things to keep in mind:
 ## Want more ways to run multi-subject simulations
 The version since the tutorial has even more ways to run multi-subject
 simulations, including adding variability in sampling and dosing times
-with `et()` (see [RxODE
-events](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-events.html#add-doses-and-samples-within-a-sampling-window)
+with `et()` (see [rxode2
+events](https://nlmixr2.github.io/rxode2/articles/rxode2-events.html#add-doses-and-samples-within-a-sampling-window)
 for more information), ability to supply both an `omega` and `sigma`
 matrix as well as adding as a `thetaMat` to R to simulate with
-uncertainty in the `omega`, `sigma` and `theta` matrices; see [RxODE
+uncertainty in the `omega`, `sigma` and `theta` matrices; see [rxode2
 simulation
-vignette](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-sim-var.html).
+vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html).

@@ -1,6 +1,6 @@
 //#undef NDEBUG
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #if defined(_WIN32) || defined(WIN32)
 #include <windows.h>
 #undef ERROR

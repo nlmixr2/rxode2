@@ -100,8 +100,8 @@
       return(paste0("((", .f2, ")*(", .f3, ")+(1-(", .f2, "))*(", .f4, "))"))
     } else if (identical(x[[1]], quote(`[`))) {
       .type <- toupper(as.character(x[[2]]))
-      ## Since only THETA/ETA are allowed with RxODE pruning
-      ## only will take legal RxODE; Therefore just paste these.
+      ## Since only THETA/ETA are allowed with rxode2 pruning
+      ## only will take legal rxode2; Therefore just paste these.
       return(paste0(.type, "[", x[[3]], "]"))
     } else {
       .ret0 <- lapply(x, .rxPrune, envir = envir)
@@ -117,12 +117,12 @@
 }
 
 
-#' Prune branches (ie if/else) from RxODE
+#' Prune branches (ie if/else) from rxode2
 #'
-#' This prunes branches (ie if/else) from RxODE.
+#' This prunes branches (ie if/else) from rxode2.
 #'
-#' @param x RxODE model that can be accessed by rxNorm
-#' @return Pruned RxODE model text.
+#' @param x rxode2 model that can be accessed by rxNorm
+#' @return Pruned rxode2 model text.
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export

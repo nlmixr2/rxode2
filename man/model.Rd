@@ -5,7 +5,7 @@
 \alias{model.rxUi}
 \alias{model}
 \alias{model.default}
-\title{Model block for RxODE/nlmixr models}
+\title{Model block for rxode2/nlmixr models}
 \usage{
 \method{model}{`function`}(x, ..., envir = parent.frame())
 
@@ -29,7 +29,7 @@ Model block with ini information included.  \code{ini} must be
 called before \code{model} block
 }
 \description{
-Model block for RxODE/nlmixr models
+Model block for rxode2/nlmixr models
 }
 \author{
 Matthew Fidler

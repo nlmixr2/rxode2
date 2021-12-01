@@ -1,21 +1,21 @@
 ---
-title: "RxODE events"
+title: "rxode2 events"
 output: 
   learnr::tutorial:
     progressive: true
 runtime: shiny_prerendered
 description: >
-  This covers basic events supported for `RxODE` models with an example RxODE model
+  This covers basic events supported for `rxode2` models with an example rxode2 model
 ---
 
 ```{r setup, include=FALSE}
 library(learnr)
-library(RxODE)
+library(rxode2)
 library(ggplot2)
 ## Adapted from gradethis::grade_result for now
 ## Wait for gradethis to make it to CRAN
-## Model from RxODE tutorial
-m1 <-RxODE({
+## Model from rxode2 tutorial
+m1 <-rxode2({
     KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
@@ -49,11 +49,11 @@ From Rstudio 1.3+ tutorial pane you can use the expand button
 ### Model for Event discussion
 
 For these models, we can illustrate by using the model shared in the
-RxODE tutorial; Compile it so we can continue:
+rxode2 tutorial; Compile it so we can continue:
 
 ```{r m1, exercise=TRUE}
-## Model from RxODE tutorial
-m1 <-RxODE({
+## Model from rxode2 tutorial
+m1 <-rxode2({
     KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
@@ -82,15 +82,15 @@ print(summary(m1))
 ```
 ### What is an event table
 
-An event table in RxODE is a specialized data frame that acts as a
-container for all of RxODE's events and observation times.  While not
+An event table in rxode2 is a specialized data frame that acts as a
+container for all of rxode2's events and observation times.  While not
 required to solve, the event table allows easy generation of a data
-table in the format that `RxODE` expects.
+table in the format that `rxode2` expects.
 
-To create an RxODE event table you may use the code `eventTable()`,
+To create an rxode2 event table you may use the code `eventTable()`,
 `et()`, or even create your own data frame with the right event
 information contained in it.  This is closely related to the [types of
-events that RxODE supports](RxODE-event-types.html).
+events that rxode2 supports](rxode2-event-types.html).
 
 Once the event table has been created you can add
 sampling/observations or doses by piping or direct access.
@@ -128,7 +128,7 @@ You may add a dose by `$add.dosing(dose=...)` or `e %>% et(amt=...)`
 
 ### Solving the system
 
-With the model built from `RxODE`, and the event table built above, we
+With the model built from `rxode2`, and the event table built above, we
 can solve and plot the scenario; Run the code and see if you notice
 anything:
 
@@ -145,7 +145,7 @@ Lets see if you can recall everything so far:
 
 ```{r unitsQuiz, echo=FALSE}
 quiz(
-  question("What function(s) can create event table for solving in RxODE?",
+  question("What function(s) can create event table for solving in rxode2?",
     answer("`data.frame()`", correct=TRUE),
     answer("`eventTable()`", correct=TRUE),
     answer("`et()`", correct=TRUE),
@@ -155,20 +155,20 @@ quiz(
   ),
   question("What did you notice about the event table plot?",
            answer("There was a missing dose at the end of the plot"), 
-           answer("The samples times were chose by RxODE", correct=TRUE))
+           answer("The samples times were chose by rxode2", correct=TRUE))
 )
 ```
 
 ## Adding sampling
 
 In the last example you may have noticed that the sample times were
-chosen by `RxODE`; This is because the event table that was supplied
+chosen by `rxode2`; This is because the event table that was supplied
 to the solving routine only included dosing information.  If you add
 observations to the event table you can control the observations of
 each event.
 
-Recall `RxODE` you can use `add.sampling(` samples `)` or `et(` samples `)` to add
-observations to an RxODE event table.
+Recall `rxode2` you can use `add.sampling(` samples `)` or `et(` samples `)` to add
+observations to an rxode2 event table.
 
 ### Exercise, add observations for the first 24 hours
 
@@ -219,8 +219,8 @@ rxSolve(m1, ev) %>% plot(C2)
 
 ## Event classification
  
-Here are the legal entries to a RxODE event table (which can be a
-`tibble`, `data.frame`, `data.table` or `RxODE` event table):
+Here are the legal entries to a rxode2 event table (which can be a
+`tibble`, `data.frame`, `data.table` or `rxode2` event table):
  
 | Column | Meaning               | Notes                                                                        |
 |-----------|-----------------------|------------------------------------------------------------------------------|
@@ -254,7 +254,7 @@ quiz(
 ### Event differences
 
 If you are familiar with `NONMEM` or `Monolix`, you may notice that
-`RxODE` event tables are very similar to the `NONMEM`/`Monolix`
+`rxode2` event tables are very similar to the `NONMEM`/`Monolix`
 dataset convention with these exceptions:
 
  - The compartment data item (`cmt`) can be a string/factor with
@@ -367,7 +367,7 @@ quiz(
 
 One of the challenges of flexible event types, is remembering the
 event identifiers; If you ever want to figure out what an event type
-is, it is print out in an `RxODE` event table.
+is, it is print out in an `rxode2` event table.
 
 In this exercise, print out event types `1`  to `6` by creating an event table:
 
@@ -431,9 +431,9 @@ print(e)
 
 ## Bolus/Additive Doses
 
-A bolus dose is the default type of dose in RxODE and only requires
+A bolus dose is the default type of dose in rxode2 and only requires
 the `amt`/`dose`.  Note that this uses the convenience function `et()`
-described in the [RxODE event tables](RxODE-event-table.html)
+described in the [rxode2 event tables](rxode2-event-table.html)
 
 ```{r, bolus, exercise=TRUE}
 ev <- et(timeUnits="hr") %>%
@@ -447,7 +447,7 @@ rxSolve(m1, ev) %>% plot(C2) +
 ```
 ## Infusions
 
-There are a few different type of infusions that RxODE supports:
+There are a few different type of infusions that rxode2 supports:
 
 - Constant Rate Infusion (`rate`)
 - Constant Duration Infusion (`dur`)
@@ -496,7 +496,7 @@ this in mind as we continue our infusion discussion.
 ### What does bioavailability do to the system?
 
 Now that we have infusion, a natural question is how does
-bioavailability affect the `RxODE` system?
+bioavailability affect the `rxode2` system?
 
 Let check; Change the bioavailability to `fdepot=0.25` when the event
 table is parameterized in terms of `rate` to see what happens (you may
@@ -592,7 +592,7 @@ changed.
 ### Modeled rate
 
 You may also model rate.  This is equivalent to NONMEM's `rate=-1` and
-is how RxODE's event table specifies the data item as well. You can
+is how rxode2's event table specifies the data item as well. You can
 also use `rate=model` as a mnemonic.  Note that you chan change the
 `rateDepot` to change the rate of the infusion.  Also `fdepot` in this
 case changes the duration of infusion.
@@ -639,13 +639,13 @@ rxSolve(m1, ev, c(durDepot=7, fdepot =1)) %>% plot(depot, C2) +
 
 These doses are solved until a steady state is reached with a constant
 inter-dose interval.  There are three types of steady state doses that
-`RxODE` supports:
+`rxode2` supports:
 
 - Simple steady state solutions
 - Complex steady state solutions
 - Infusion steady state solutions
 
-The `RxODE` event table needs to be setup specially for each type of
+The `rxode2` event table needs to be setup specially for each type of
 steady state record.
 
 ### Simple Steady State dosing
@@ -727,7 +727,7 @@ rxSolve(m1, ev,maxsteps=10000) %>% plot(C2) +
 
 ### Infusion steady states
 
-The last type of steady state that RxODE supports is steady-state
+The last type of steady state that rxode2 supports is steady-state
 constant infusion rate.  This can be specified the same way as NONMEM,
 that is:
 
@@ -776,7 +776,7 @@ grid.arrange(p1,p2, ncol=1)
 
 ## Resetting or turning off Compartments
 
-RxODE supports two different types of events that may be useful:
+rxode2 supports two different types of events that may be useful:
 
 - Reset events
 - Turning off compartments
@@ -1018,7 +1018,7 @@ the `qd` event tables is exactly one week, not 1 week plus 24 hours
 because of the inter-dose interval.  If you want that behavior, you
 can sequence it using the `wait="+ii"`.
 
-Also note, that `RxODE` assumes that the dosing is what you want to
+Also note, that `rxode2` assumes that the dosing is what you want to
 space the event tables by, and clears out any sampling records when
 you combine the event tables.  If that is not true, you can also use
 the option `samples="use"`
@@ -1187,7 +1187,7 @@ library(ggplot2)
 solve(m1, ev, params=data.frame(KA=0.294*exp(rnorm(4)), 18.6*exp(rnorm(4)))) %>% plot(C2) + geom_point()
 ```
 
-This shows the flexibility in dosing and sampling that the RxODE event tables allow.
+This shows the flexibility in dosing and sampling that the rxode2 event tables allow.
 
 ## Units in event tables
 
@@ -1195,7 +1195,7 @@ As commented in the last exercise, you may specify units in the table
 event table. When specified, the units use the `units` package to keep
 track of the units and convert them if needed.  Additionally,
 `ggforce` uses them to label the `ggplot` axes.  The `set_units` and
-`drop_units` are useful to set and drop the RxODE event table units.
+`drop_units` are useful to set and drop the rxode2 event table units.
 
 This example creates a data-set with doses in `mg` and time in `hr`.
 
@@ -1220,8 +1220,8 @@ Use `ev %>% set_units(g) %>% set_units(day)`
 ### Dropping units
 
 You may have used the `units` package in the past; In the case of
-`RxODE` event tables, you do not have to apply to the column(s) in the
-dataset, but `RxODE` applies the unit changes where it needs to apply them.
+`rxode2` event tables, you do not have to apply to the column(s) in the
+dataset, but `rxode2` applies the unit changes where it needs to apply them.
 
 This is also true when dropping units in an event table.  In this
 exercise, drop the units using `drop_units` from the event table dataset:
@@ -1268,17 +1268,17 @@ Use the `set_units(mg) %>% set_units(hr)` to change the units
 ## Using deSolve data frames
 
 Sometimes you may have a `deSolve` model you may wish to convert to
-`RxODE` to take advantage of its threading capabilities or
+`rxode2` to take advantage of its threading capabilities or
 pre-compiled models.
 
 Using the `deSolve`'s example for the event data frame and adapting it
-for `RxODE` you simply wrap the `deSolve` data frame in the `et()` function;
+for `rxode2` you simply wrap the `deSolve` data frame in the `et()` function;
 
 For example, using the model and event table the March 2020
 `deSolve`'s vignette, we can reproduce the results
 
 ```{r deSolve, exercise=TRUE}
-rx <- RxODE({
+rx <- rxode2({
     d/dt(v1) = -0.1 * v1
     d/dt(v2) = -0.1 * v2
     v1(0) = 1

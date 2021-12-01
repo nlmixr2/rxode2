@@ -3,7 +3,7 @@ rxodeTest(
     context("Test Issue #169 -- NAs everywhere")
     test_that("Test Issue #169", {
       Book4 <- readRDS(test_path("test-issue-169.rds"))
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01

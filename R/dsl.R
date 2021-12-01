@@ -119,7 +119,7 @@ regIni <- rex::rex(or(
 #' Expand if/else clauses into mutiple different types of lines.
 #'
 #'
-#' @param model Model can be a character, or a RxODE model.  It needs
+#' @param model Model can be a character, or a rxode2 model.  It needs
 #'     to have normalized syntax, that is `if (...){}` has to be
 #'     on the same line.  The `else` statement must be on its
 #'     own line with the closing bracket of the `if` statement
@@ -217,8 +217,8 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
 }
 
 #' Remove INIs
-#' @param x RxODE list of lines to remove
-#' @return RxODE lines with inis removed.
+#' @param x rxode2 list of lines to remove
+#' @return rxode2 lines with inis removed.
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @noRd
@@ -237,12 +237,12 @@ rxExpandIfElse <- function(model, removeInis = TRUE, removePrint = TRUE) {
 }
 
 #' Remove print statements
-#' @param x RxODE lines to remove
-#' @return RxODE with print lines removed.
+#' @param x rxode2 lines to remove
+#' @return rxode2 with print lines removed.
 #' @author Matthew L. Fidler
 #' @noRd
 .rxRmPrint <- function(x) {
-  return(x[regexpr(getFromNamespace("regPrint", "RxODE"), x) == -1])
+  return(x[regexpr(getFromNamespace("regPrint", "rxode2"), x) == -1])
 }
 
 #' Add a return statment to a function.
@@ -421,7 +421,7 @@ symengineC[["/"]] <- function(e1, e2) {
 unknownCsymengine <- function(op) {
   force(op)
   function(...) {
-    stop(sprintf(gettext("RxODE doesn't support '%s' translation for 'omega' translation"), op), call. = FALSE)
+    stop(sprintf(gettext("rxode2 doesn't support '%s' translation for 'omega' translation"), op), call. = FALSE)
   }
 }
 
@@ -607,7 +607,7 @@ sumProdEnv[["("]] <- function(a) {
 
 sumProdEnv[["["]] <- function(name, val) {
   n <- toupper(name)
-  err <- gettext("RxODE only supports THETA[#] and ETA[#] numbers")
+  err <- gettext("rxode2 only supports THETA[#] and ETA[#] numbers")
   if (any(n == c("THETA", "ETA")) && is.numeric(val)) {
     if (round(val) == val && val > 0) {
       return(sprintf("%s[%s]", n, val))
@@ -639,7 +639,7 @@ rxSumProd <- function(x) {
 }
 #' Recast model in terms of sum/prod
 #'
-#' @param model RxODE model
+#' @param model rxode2 model
 #' @param expand Boolean indicating if the expression is expanded.
 #' @param sum Use sum(...)
 #' @param prod Use prod(...)

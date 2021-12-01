@@ -1,8 +1,8 @@
 #define USE_FC_LEN_T
 //#undef NDEBUG
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 #include <Rcpp.h>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 
 using namespace Rcpp;
 
@@ -20,7 +20,7 @@ bool hasElement(CharacterVector one, std::string what){
 
 //' Stack a solved object for things like ggplot
 //'
-//' @param Data is a RxODE object to be stacked.
+//' @param Data is a rxode2 object to be stacked.
 //'
 //' @param vars Variables to include in stacked data; By default this
 //'   is all the variables when vars is NULL.

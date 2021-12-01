@@ -1,10 +1,10 @@
-RxODE automatically assigns compartment numbers when parsing. For
+rxode2 automatically assigns compartment numbers when parsing. For
 example, with the Mavoglurant PBPK model the following model may be
 used:
 
 ```{r}
-library(RxODE)
-pbpk <- RxODE({
+library(rxode2)
+pbpk <- rxode2({
     KbBR = exp(lKbBR)
     KbMU = exp(lKbMU)
     KbAD = exp(lKbAD)
@@ -96,7 +96,7 @@ pbpk <- RxODE({
 
 ```
 
-If you look at the summary, you can see where RxODE assigned the compartment number(s)
+If you look at the summary, you can see where rxode2 assigned the compartment number(s)
 
 ```{r}
 summary(pbpk)
@@ -106,6 +106,6 @@ In this case, `Venous_Blood` is assigned to compartment `15`.
 Figuring this out can be inconvenient and also lead to re-numbering
 compartment in simulation or estimation datasets. While it is easy and
 probably clearer to specify the [compartment by
-name](RxODE-events.html), other tools only support compartment
+name](rxode2-events.html), other tools only support compartment
 numbers.  Therefore, having a way to number compartment easily can
 lead to less data modification between multiple tools.

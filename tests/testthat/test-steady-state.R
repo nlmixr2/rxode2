@@ -6,7 +6,7 @@ rxodeTest(
         add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
         add.sampling(seq(0, 48, length.out = 200))
 
-      ode.1c <- RxODE({
+      ode.1c <- rxode2({
         V <- 20
         Cl <- 1
         fc <- 1
@@ -15,7 +15,7 @@ rxodeTest(
         f(center) <- fc
       })
 
-      ode.1cR <- RxODE({
+      ode.1cR <- rxode2({
         V <- 20
         Cl <- 1
         C2 <- center / V
@@ -25,7 +25,7 @@ rxodeTest(
         f(center) <- fc
       })
 
-      ode.1cD <- RxODE({
+      ode.1cD <- rxode2({
         V <- 20
         Cl <- 1
         C2 <- center / V
@@ -318,7 +318,7 @@ rxodeTest(
       context("Constant Infusion steady state")
 
       test_that("constant infusion steady state", {
-        ode.1cR <- RxODE({
+        ode.1cR <- rxode2({
           V <- 20
           Cl <- 1
           C2 <- center / V

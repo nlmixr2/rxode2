@@ -1,6 +1,6 @@
 rxodeTest(
   {
-    context("Test symengine<->RxODE dsl")
+    context("Test symengine<->rxode2 dsl")
 
     test_that("d/dt(x) parsing", {
       expect_equal(rxToSE(d / dt(matt)), "rx__d_dt_matt__")

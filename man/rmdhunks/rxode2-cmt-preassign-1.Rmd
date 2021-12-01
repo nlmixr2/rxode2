@@ -1,10 +1,10 @@
-To add the compartments to the RxODE model in the order you desire you
+To add the compartments to the rxode2 model in the order you desire you
 simply need to pre-declare the compartments with `cmt`.  For example
 specifying is `Venous_Blood` and `Skin` to be the 1st and 2nd
 compartments, respectively, is simple:
 
 ```{r}
-pbpk2 <- RxODE({
+pbpk2 <- rxode2({
   ## Now this is the first compartment, ie cmt=1
   cmt(Venous_Blood)
   ## Skin may be a compartment you wish to dose to as well,

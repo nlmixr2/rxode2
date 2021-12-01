@@ -35,7 +35,7 @@
   .ret
 }
 
-#' Convert RxODE/nlmixr model function to a string
+#' Convert rxode2/nlmixr model function to a string
 #'
 #' @param fun function name for parsing
 #' @return Modified function
@@ -63,7 +63,7 @@
 
 .lastIni <- NULL
 .lastIniQ <- NULL
-#' Ini block for RxODE/nlmixr models
+#' Ini block for rxode2/nlmixr models
 #'
 #' @param x expression
 #' @param ... Other expressions for `ini()` function
@@ -89,7 +89,7 @@ ini.default <- function(x, ...) {
 
 }
 
-#' Model block for RxODE/nlmixr models
+#' Model block for rxode2/nlmixr models
 #'
 #' @param x model expression
 #' @param ... Other arguments

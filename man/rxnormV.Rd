@@ -39,7 +39,7 @@ rxnorm(2, 3) ## The first 2 arguments are the mean and standard deviation
 
 ## This example uses `rxnorm` directly in the model
 
-rx <- RxODE({
+rx <- rxode2({
   a <- rxnorm()
 })
 
@@ -57,7 +57,7 @@ rxnormV(2, 3) ## The first 2 arguments are the mean and standard deviation
 
 ## This example uses `rxnormV` directly in the model
 
-rx <- RxODE({
+rx <- rxode2({
   a <- rxnormV()
 })
 

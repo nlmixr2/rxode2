@@ -1,4 +1,4 @@
-##' Note, in RxODE models \code{n} or \code{ncores} are not
+##' Note, in rxode2 models \code{n} or \code{ncores} are not
 ##' accepted/included.  These are determined by the \code{rxSolve()}
 ##' and the event table.
 ##'
@@ -15,9 +15,9 @@
 ##' birthday problem will increase.
 ##'
 ##' The key to avoid this problem is to either run all simulations in the
-##' `RxODE` environment once (therefore one seed or series of seeds
+##' `rxode2` environment once (therefore one seed or series of seeds
 ##' for the whole simulation), pre-generate all random variables
-##' used for the simulation, or seed the RxODE engine with `rxSetSeed()`
+##' used for the simulation, or seed the rxode2 engine with `rxSetSeed()`
 ##'
 ##' Also care should be made that the computer you will be running on
 ##' can run the same number of cores as you are running so they can

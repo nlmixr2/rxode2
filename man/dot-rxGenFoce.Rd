@@ -19,7 +19,7 @@
 )
 }
 \arguments{
-\item{obj}{RxODE object}
+\item{obj}{rxode2 object}
 
 \item{predfn}{Prediction function}
 
@@ -32,7 +32,7 @@
 \item{pred.minus.dv}{Boolean stating if the FOCEi objective
 function is based on PRED-DV (like NONMEM).  Default TRUE.}
 
-\item{sum.prod}{A boolean determining if RxODE should use more
+\item{sum.prod}{A boolean determining if rxode2 should use more
 numerically stable sums/products.}
 
 \item{optExpression}{Optimize the model text for computer
@@ -53,7 +53,7 @@ combined1: transform(y)=transform(f)+(a+b*f^c)*eps
 combined2: transform(y)=transform(f)+(a^2+b^2*f^(2c))*eps}
 }
 \value{
-RxODE/symengine environment
+rxode2/symengine environment
 }
 \description{
 Generate FOCE without interaction

@@ -5,7 +5,7 @@ char *getLine (char *src, int line, int *lloc) {
   }
   for(col = 0; src[i + col] != '\n' && src[i + col] != '\0'; col++);
   *lloc=i+col;
-  char *buf = Calloc(col + 1, char);
+  char *buf = R_Calloc(col + 1, char);
   memcpy(buf, src + i, col);
   buf[col] = '\0';
   return buf;
@@ -15,10 +15,10 @@ void trans_syntax_error_report_fn0(char *err){
   if (!rx_suppress_syntax_info){
     if (lastSyntaxErrorLine == 0){
       if (isEsc) {
-	RSprintf(_("\033[1mRxODE model syntax error:\n================================================================================\033[0m"));
+	RSprintf(_("\033[1mrxode2 model syntax error:\n================================================================================\033[0m"));
       }
       else {
-	RSprintf(_("RxODE model syntax error:\n================================================================================"));
+	RSprintf(_("rxode2 model syntax error:\n================================================================================"));
       }
       lastSyntaxErrorLine=1;
     }
@@ -35,10 +35,10 @@ void trans_syntax_error_report_fn0(char *err){
 static inline void printSyntaxErrorHeader() {
   if (lastSyntaxErrorLine == 0){
     if (isEsc) {
-      RSprintf(_("\033[1mRxODE model syntax error:\n================================================================================\033[0m"));
+      RSprintf(_("\033[1mrxode2 model syntax error:\n================================================================================\033[0m"));
     }
     else {
-      RSprintf(_("RxODE model syntax error:\n================================================================================"));
+      RSprintf(_("rxode2 model syntax error:\n================================================================================"));
     }
     lastSyntaxErrorLine=1;
   }
@@ -49,7 +49,7 @@ static inline void printPriorLines(Parser *p) {
   for (; lastSyntaxErrorLine < p->user.loc.line; lastSyntaxErrorLine++){
     buf = getLine(gBuf, lastSyntaxErrorLine, &gBufLast);
     RSprintf("\n:%03d: %s", lastSyntaxErrorLine, buf);
-    Free(buf);
+    R_Free(buf);
   }
   if (lastSyntaxErrorLine < p->user.loc.line){
     RSprintf("\n");
@@ -68,24 +68,24 @@ static inline void printErrorInfo(Parser *p, char *err, char *after, int printLi
   } else {
     if (after){
       if (isEsc){
-	RSprintf(_("\n\n\033[1mRxODE syntax error after\033[0m '\033[35m\033[1m%s\033[0m':\n"),  after);
+	RSprintf(_("\n\n\033[1mrxode2 syntax error after\033[0m '\033[35m\033[1m%s\033[0m':\n"),  after);
       }
       else {
-	RSprintf(_("\n\nRxODE syntax error after '%s'\n"),  after);
+	RSprintf(_("\n\nrxode2 syntax error after '%s'\n"),  after);
       }
       if (firstErrD == 0) {
-	sAppend(&firstErr, _("RxODE syntax error after '%s':\n"), after);
+	sAppend(&firstErr, _("rxode2 syntax error after '%s':\n"), after);
       }
     }
     else{
       if (isEsc){
-	RSprintf(_("\n\n\033[1mRxODE syntax error\033[0m:\n"));
+	RSprintf(_("\n\n\033[1mrxode2 syntax error\033[0m:\n"));
       }
       else{
-	RSprintf(_("\n\nRxODE syntax error:\n"));
+	RSprintf(_("\n\nrxode2 syntax error:\n"));
       }
       if (firstErrD == 0) {
-	sAppendN(&firstErr, "RxODE syntax error:\n", 20);
+	sAppendN(&firstErr, "rxode2 syntax error:\n", 20);
       }
     }
   }
@@ -109,7 +109,7 @@ static inline void printErrorLineHighlightPoint(Parser *p) {
     RSprintf("%c", buf[i]);
   }
   RSprintf("\n      ");
-  Free(buf);
+  R_Free(buf);
   for (int i = 0; i < p->user.loc.col; i++){
     RSprintf(" ");
     if (i == len-2) { i++; break;}
@@ -261,7 +261,7 @@ static inline void printErrorLineHiglightRegion(Parser *p, char *after) {
   int len= strlen(buf);
   printErrorLineHighlight1(p, buf, after, len);
   printErrorLineHighlight2(p, buf, after, len);
-  Free(buf);
+  R_Free(buf);
 }
 
 

@@ -34,9 +34,9 @@ random number generator calls are increased the probability that the
 birthday problem will increase.
 
 The key to avoid this problem is to either run all simulations in the
-\code{RxODE} environment once (therefore one seed or series of seeds
+\code{rxode2} environment once (therefore one seed or series of seeds
 for the whole simulation), pre-generate all random variables
-used for the simulation, or seed the RxODE engine with \code{rxSetSeed()}
+used for the simulation, or seed the rxode2 engine with \code{rxSetSeed()}
 
 Also care should be made that the computer you will be running on
 can run the same number of cores as you are running so they can
@@ -54,7 +54,7 @@ rxpois(4) ## The first arguments are the lambda parameter
 
 ## This example uses `rxpois` directly in the model
 
-rx <- RxODE({
+rx <- rxode2({
   a <- rxpois(3)
 })
 

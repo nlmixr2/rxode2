@@ -1,8 +1,8 @@
 rxodeTest(
   {
-    library(RxODE)
+    library(rxode2)
     context("Test Inis")
-    m1 <- RxODE({
+    m1 <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
       d / dt(depot) <- -KA * depot
@@ -19,7 +19,7 @@ rxodeTest(
       )
     )
 
-    out <- RxODE("ini = 1; fun_ini = 2; fun = 4; addit = ini + fun_ini + pi + no_ini")
+    out <- rxode2("ini = 1; fun_ini = 2; fun = 4; addit = ini + fun_ini + pi + no_ini")
 
     test_that("Initial constants are correct", {
       expect_equal(rxInits(out)["pi"], c(pi = pi))
@@ -32,8 +32,8 @@ rxodeTest(
       expect_equal(out$get.modelVars()$params, "no_ini")
     })
 
-    .rxWithOptions(list(RxODE.syntax.allow.ini = FALSE), {
-      out2 <- RxODE("ini = 1; fun_ini = 2; fun = 4; addit = ini + fun_ini + pi + no_ini")
+    .rxWithOptions(list(rxode2.syntax.allow.ini = FALSE), {
+      out2 <- rxode2("ini = 1; fun_ini = 2; fun = 4; addit = ini + fun_ini + pi + no_ini")
 
       test_that("Initial constants only include pi.", {
         expect_equal(names(rxInits(out2)), "pi")
@@ -42,9 +42,9 @@ rxodeTest(
       })
     })
 
-    .rxWithOptions(list(RxODE.syntax.allow.ini = TRUE), {
+    .rxWithOptions(list(rxode2.syntax.allow.ini = TRUE), {
 
-      ## out <- RxODE({
+      ## out <- rxode2({
       ##     theta[1] = 3
       ##     eta[1] = 2
       ##     k = exp(theta[1] + eta[1])
@@ -54,7 +54,7 @@ rxodeTest(
       ## test_that("Allow THETA[#] and ETA[#]s.", {
       ## })
 
-      fini <- RxODE({
+      fini <- rxode2({
         C2 <- centr / V2
         C3 <- peri / V3
         d / dt(depot) <- -KA * depot
@@ -82,7 +82,7 @@ rxodeTest(
 
       rxDelete(fini)
 
-      fini <- RxODE({
+      fini <- rxode2({
         C2 <- centr / V2
         C3 <- peri / V3
         d / dt(depot) <- -KA * depot
@@ -139,7 +139,7 @@ rxodeTest(
       )
     })
 
-    .rxWithOptions(list(RxODE.syntax.allow.ini = TRUE), {
+    .rxWithOptions(list(rxode2.syntax.allow.ini = TRUE), {
       out <- rxGetModel("ini = 1; fun_ini = 2; fun = 4; addit = ini + fun_ini + pi + no_ini")
 
       test_that("Initial constants are correct", {
@@ -150,7 +150,7 @@ rxodeTest(
       })
     })
 
-    .rxWithOptions(list(RxODE.syntax.allow.ini = FALSE), {
+    .rxWithOptions(list(rxode2.syntax.allow.ini = FALSE), {
       out2 <- rxGetModel("ini = 1; fun_ini = 2; fun = 4; addit = ini + fun_ini + pi + no_ini")
 
       test_that("Initial constants only include pi.", {
@@ -159,7 +159,7 @@ rxodeTest(
 
       test_that("Initial conditions are zero length before and after compile", {
         expect_equal(rxModelVars("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")$ini, structure(numeric(0), .Names = character(0)))
-        tmp <- RxODE("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")
+        tmp <- rxode2("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")
         expect_equal(rxModelVars(tmp)$ini, structure(numeric(0), .Names = character(0)))
       })
     })

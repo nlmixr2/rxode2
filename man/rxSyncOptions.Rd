@@ -2,17 +2,17 @@
 % Please edit documentation in R/rxode-options.R
 \name{rxSyncOptions}
 \alias{rxSyncOptions}
-\title{Sync options with RxODE variables}
+\title{Sync options with rxode2 variables}
 \usage{
 rxSyncOptions(setDefaults = c("none", "permissive", "strict"))
 }
 \arguments{
-\item{setDefaults}{This will setup RxODE's default solving options with the following options:
+\item{setDefaults}{This will setup rxode2's default solving options with the following options:
 \itemize{
 \item \code{"none"} leave the options alone
 \item \code{"permissive"} This is a permissive option set similar to R language specifications.
 \item \code{"strict"} This is a strict option set similar to the original
-RxODE(). It requires semicolons at the end of lines and equals for
+rxode2(). It requires semicolons at the end of lines and equals for
 assignment
 }}
 }
@@ -20,7 +20,7 @@ assignment
 nothing; called for side effects
 }
 \description{
-Accessing RxODE options via getOption slows down solving.  This
+Accessing rxode2 options via getOption slows down solving.  This
 allows the options to be synced with variables.
 }
 \author{

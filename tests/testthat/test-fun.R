@@ -3,7 +3,7 @@ rxodeTest(
     context("User function tests")
 
     test_that("user function tests", {
-      expect_error(RxODE("a=fun(d,b,c)"))
+      expect_error(rxode2("a=fun(d,b,c)"))
       expect_error(rxFromSE("Derivative(fun(a,b,c),a)"))
 
       fun <- "
@@ -16,7 +16,7 @@ rxodeTest(
       rxFun("fun", c("a", "b", "c"), fun)
       expect_error(rxFun("fun", c("a", "b", "c"), fun))
 
-      tmp <- RxODE("a=fun(d,b,c)")
+      tmp <- rxode2("a=fun(d,b,c)")
 
       tmp <- rxSolve(tmp, c(c = 2, b = 4, d = 8), et(1))
       expect_equal(tmp$a, 8^2 + 4 * 8 + 2)
@@ -98,7 +98,7 @@ rxodeTest(
       expect_warning(rxRmFun("a"))
 
       rxRmFun("fun")
-      expect_error(RxODE("a=fun(d,b,c)"))
+      expect_error(rxode2("a=fun(d,b,c)"))
       expect_error(rxFromSE("Derivative(fun(a,b,c),a)"))
     })
   },

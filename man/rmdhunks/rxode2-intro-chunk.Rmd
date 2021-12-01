@@ -3,18 +3,18 @@ file or an R expression. Both differential and algebraic equations are
 permitted. Differential equations are specified by `d/dt(var_name) = `. Each
 equation can be separated by a semicolon.
 
-To load `RxODE` package and compile the model: 
+To load `rxode2` package and compile the model: 
 
 ```{r}
-library(RxODE)
+library(rxode2)
 
-mod1 <-RxODE({
-    C2 = centr/V2;
-    C3 = peri/V3;
-    d/dt(depot) =-KA*depot;
-    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-    d/dt(peri)  =                    Q*C2 - Q*C3;
-    d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
+mod1 <- rxode2({
+  C2 <- centr/V2;
+  C3 <- peri/V3;
+  d/dt(depot) <- -KA*depot;
+  d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3;
+  d/dt(peri)  <- Q*C2 - Q*C3;
+  d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff;
 })
 ```
 
@@ -37,7 +37,7 @@ is assumed to be zero.
 
 
 ```{r}
-inits <- c(eff=1);
+inits <- c(eff=1)
 ```
 
 If you want to specify the initial conditions in the model you can add:
@@ -46,9 +46,9 @@ If you want to specify the initial conditions in the model you can add:
 eff(0) = 1
 ```
 
-## Specify Dosing and sampling in RxODE
+## Specify Dosing and sampling in rxode2
 
-`RxODE` provides a simple and very flexible way to specify dosing and
+`rxode2` provides a simple and very flexible way to specify dosing and
 sampling through functions that generate an event table. First, an
 empty event table is generated through the "eventTable()" function:
 
@@ -104,14 +104,14 @@ ev  <- et(amountUnits="mg", timeUnits="hours") %>%
 ```
 
 You can see from the above code, you can dose to the compartment named
-in the RxODE model.  This slight deviation from NONMEM can reduce the
+in the rxode2 model.  This slight deviation from NONMEM can reduce the
 need for compartment renumbering.
 
 These events can also be combined and expanded (to multi-subject
 events and complex regimens) with `rbind`, `c`, `seq`, and `rep`. For
-more information about creating complex dosing regimens using RxODE
-see the [RxODE events
-vignette](https://nlmixrdevelopment.github.io/RxODE.doc/articles/RxODE-events.html).
+more information about creating complex dosing regimens using rxode2
+see the [rxode2 events
+vignette](https://nlmixr2.github.io/rxode2.doc/articles/rxode2-events.html).
 
 
 ## Solving ODEs
@@ -125,7 +125,7 @@ x <- mod1$solve(theta, ev, inits);
 knitr::kable(head(x))
 ```
 
-You can also solve this and create a RxODE data frame:
+You can also solve this and create a rxode2 data frame:
 
 
 ```{r}
@@ -148,5 +148,5 @@ plot(x,eff)  + ylab("Effect")
 ```
 
 Note that the labels are automatically labeled with the units from the
-initial event table. RxODE extracts `units` to label the plot (if they
+initial event table. rxode2 extracts `units` to label the plot (if they
 are present).

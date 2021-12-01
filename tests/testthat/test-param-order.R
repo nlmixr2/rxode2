@@ -2,7 +2,7 @@ rxodeTest({
   context("param order")
 
   test_that("param order", {
-    mod <- RxODE({
+    mod <- rxode2({
       a <- 6
       b <- 0.6
       cmt(blood) # cmt = 1 now
@@ -14,7 +14,7 @@ rxodeTest({
   })
 
   test_that("param order rev", {
-    mod2 <- RxODE({
+    mod2 <- rxode2({
       param(b, a)
       a <- 6
       b <- 0.6
@@ -27,7 +27,7 @@ rxodeTest({
   })
 
   test_that("large params()", {
-    tmp <- expect_error(RxODE("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
+    tmp <- expect_error(rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
 cmt(depot)
 cmt(gut)
 cmt(center)

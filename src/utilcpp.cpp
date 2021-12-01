@@ -1,13 +1,13 @@
 #define USE_FC_LEN_T
-#define STRICT_R_HEADER
+#define STRICT_R_HEADERS
 // [[Rcpp::interfaces(r, cpp)]]
 //#undef NDEBUG
 #include <RcppArmadillo.h>
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include <R.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
@@ -15,7 +15,7 @@
 using namespace Rcpp;
 using namespace arma;
 
-extern "C" SEXP _RxODE_isNullZero(SEXP); 
+extern "C" SEXP _rxode2_isNullZero(SEXP); 
 
 //[[Rcpp::export]]
 LogicalVector isNullZero(RObject obj) {

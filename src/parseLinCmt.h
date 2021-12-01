@@ -14,12 +14,12 @@
 #include <errno.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
 #endif
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 #include "tran.h"
 #include "sbuf.h"
 
@@ -221,7 +221,7 @@ static inline void linCmtStr(linCmtStruct *lin, const char *in, int *index) {
 #include "parseLinCmtAdjustPars.h"
 
 SEXP _linCmtParse(SEXP vars, SEXP inStr, SEXP verboseSXP);
-SEXP _RxODE_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
+SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 
 typedef struct linCmtGenStruct {
   sbuf last;

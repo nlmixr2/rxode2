@@ -1,13 +1,13 @@
 # Using Pre-compiled models in your packages
 
-If you have a package and would like to include pre-compiled RxODE
+If you have a package and would like to include pre-compiled rxode2
 models in your package it is easy to create the package. You simple
 make the package with the `rxPkg()` command.
 
 ```
-library(RxODE);
+library(rxode2);
 ## Now Create a model
-idr <- RxODE({
+idr <- rxode2({
     C2 = centr/V2;
     C3 = peri/V3;
     d/dt(depot) =-KA*depot;
@@ -33,16 +33,16 @@ This will:
   package documentation.  In this case it would be the file
   `idr-doc.R` in your `R` directory
 - Create a `configure` and `configure.win` script that removes and
-  regenerates the `src` directory based on whatever version of `RxODE`
+  regenerates the `src` directory based on whatever version of `rxode2`
   this is compiled against. This should be modified if you plan to
   have your own compiled code, though this is not suggested.
   
 - You can write your own R code in your package that interacts with
-  the RxODE object so you can distribute shiny apps and similar things
+  the rxode2 object so you can distribute shiny apps and similar things
   in the package context. 
   
 Once this is present you can add more models to your package by
-`rxUse()`.  Simply compile the RxODE model in your package then add
+`rxUse()`.  Simply compile the rxode2 model in your package then add
 the model with `rxUse()`
 
 ```
@@ -69,18 +69,18 @@ To illustrate, lets start with a
 blank package
 
 ```
-library(RxODE)
+library(rxode2)
 library(usethis)
 pkgPath  <- file.path(rxTempDir(),"MyRxModel")
 create_package(pkgPath);
 use_gpl3_license("Matt")
-use_package("RxODE", "LinkingTo")
-use_package("RxODE", "Depends") ##  library(RxODE) on load; Can use imports instead.
+use_package("rxode2", "LinkingTo")
+use_package("rxode2", "Depends") ##  library(rxode2) on load; Can use imports instead.
 use_roxygen_md()
 ##use_readme_md()
-library(RxODE);
+library(rxode2);
 ## Now Create a model
-idr <- RxODE({
+idr <- rxode2({
     C2 = centr/V2;
     C3 = peri/V3;
     d/dt(depot) =-KA*depot;
@@ -90,99 +90,99 @@ idr <- RxODE({
 });
 
 rxUse(idr); ## Add the idr model to your package
-rxUse(); # Update the compiled RxODE sources for all of your packages
+rxUse(); # Update the compiled rxode2 sources for all of your packages
 
 ```
 
 The `rxUse()` will:
-- Create `RxODE` sources and move them into the package's `src/`
+- Create `rxode2` sources and move them into the package's `src/`
   directory.  If there is only R source in the package, it will also
   finish off the directory with an `library-init.c` which registers
-  all the RxODE models in the package for use in R.
+  all the rxode2 models in the package for use in R.
 - Create stub R documentation for each of the models your are
   including in your package. You will be able to see the R
   documentation when loading your package by the standard `?` interface.
   
 You will still need to:
 - Export at least one function.  If you do not have a function that
-  you wish to export, you can add a re-export of `RxODE` using roxygen
+  you wish to export, you can add a re-export of `rxode2` using roxygen
   as follows:
   
 ```
-##' @importFrom RxODE RxODE
+##' @importFrom rxode2 rxode2
 ##' @export
-RxODE::RxODE
+rxode2::rxode2
 ```
 
 If you want to use `Suggests` instead of `Depends` in your package,
-you way want to export all of RxODE's normal routines
+you way want to export all of rxode2's normal routines
 
 
 ```
-##' @importFrom RxODE RxODE
+##' @importFrom rxode2 rxode2
 ##' @export
-RxODE::RxODE
+rxode2::rxode2
 
-##' @importFrom RxODE et
+##' @importFrom rxode2 et
 ##' @export
-RxODE::et
+rxode2::et
 
-##' @importFrom RxODE etRep
+##' @importFrom rxode2 etRep
 ##' @export
-RxODE::etRep
+rxode2::etRep
 
-##' @importFrom RxODE etSeq
+##' @importFrom rxode2 etSeq
 ##' @export
-RxODE::etSeq
+rxode2::etSeq
 
-##' @importFrom RxODE as.et
+##' @importFrom rxode2 as.et
 ##' @export
-RxODE::as.et
+rxode2::as.et
 
-##' @importFrom RxODE eventTable
+##' @importFrom rxode2 eventTable
 ##' @export
-RxODE::eventTable
+rxode2::eventTable
 
-##' @importFrom RxODE add.dosing
+##' @importFrom rxode2 add.dosing
 ##' @export
-RxODE::add.dosing
+rxode2::add.dosing
 
-##' @importFrom RxODE add.sampling
+##' @importFrom rxode2 add.sampling
 ##' @export
-RxODE::add.sampling
+rxode2::add.sampling
 
-##' @importFrom RxODE rxSolve
+##' @importFrom rxode2 rxSolve
 ##' @export
-RxODE::rxSolve
+rxode2::rxSolve
 
-##' @importFrom RxODE rxControl
+##' @importFrom rxode2 rxControl
 ##' @export
-RxODE::rxControl
+rxode2::rxControl
 
-##' @importFrom RxODE rxClean
+##' @importFrom rxode2 rxClean
 ##' @export
-RxODE::rxClean
+rxode2::rxClean
 
-##' @importFrom RxODE rxUse
+##' @importFrom rxode2 rxUse
 ##' @export
-RxODE::rxUse
+rxode2::rxUse
 
-##' @importFrom RxODE rxShiny
+##' @importFrom rxode2 rxShiny
 ##' @export
-RxODE::rxShiny
+rxode2::rxShiny
 
-##' @importFrom RxODE genShinyApp.template
+##' @importFrom rxode2 genShinyApp.template
 ##' @export
-RxODE::genShinyApp.template
+rxode2::genShinyApp.template
 
-##' @importFrom RxODE cvPost
+##' @importFrom rxode2 cvPost
 ##' @export
-RxODE::cvPost
+rxode2::cvPost
 
 # This is actually from `magrittr` but allows less imports
-##' @importFrom RxODE %>%
+##' @importFrom rxode2 %>%
 ##' @export
-RxODE::`%>%`
+rxode2::`%>%`
 ```
 
 - You also need to instruct R to load the model library models
@@ -193,13 +193,13 @@ RxODE::`%>%`
 ##' @useDynLib rxModels, .registration=TRUE
 ```
 
-If this is a R package with RxODE models and you do not intend to add
+If this is a R package with rxode2 models and you do not intend to add
 any other compiled sources (recommended), you can add the following configure scripts
 
 ```sh
 #!/bin/sh
 # This should be used for both configure and configure.win
-echo "unlink('src', recursive=TRUE);RxODE::rxUse()" > build.R
+echo "unlink('src', recursive=TRUE);rxode2::rxUse()" > build.R
 ${R_HOME}/bin/Rscript build.R
 rm build.R
 ```
@@ -216,7 +216,7 @@ If you want to integrate with other sources in your `Rcpp` or
 - Add the define macro `compiledModelCall` to the list of registered
   `.Call` functions.
 - Register C interface to allow model solving by
-  `R_init0_rxModels_RxODE_models()` (again `rxModels` would be
+  `R_init0_rxModels_rxode2_models()` (again `rxModels` would be
   replaced by your package name).
   
 Once this is complete, you can compile/document by the standard methods:
@@ -227,12 +227,12 @@ devtools::document()
 devtools::install()
 ```
 
-If you load the package with a new version of RxODE, the models
+If you load the package with a new version of rxode2, the models
 will be recompiled when they are used.
 
 
 However, if you want the models recompiled for the most recent version
-of RxODE, you simply need to call `rxUse()` again in the project
+of rxode2, you simply need to call `rxUse()` again in the project
 directory followed by the standard methods for install/create a
 package. 
 
@@ -242,9 +242,9 @@ devtools::document()
 devtools::install()
 ```
 
-**Note** you do not have to include the `RxODE` code required to
-generate the model to regenerate the RxODE c-code in the `src`
-directory.  As with all RxODE objects, a `summary` will show one way to recreate the same model. 
+**Note** you do not have to include the `rxode2` code required to
+generate the model to regenerate the rxode2 c-code in the `src`
+directory.  As with all rxode2 objects, a `summary` will show one way to recreate the same model. 
 
 An example of compiled models package can be found in the
-[rxModels](https://github.com/nlmixrdevelopment/rxModels) repository.
+[rxModels](https://github.com/nlmixr2/rxModels) repository.

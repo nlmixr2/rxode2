@@ -14,17 +14,17 @@
 #include <errno.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("RxODE", String)
+#define _(String) dgettext ("rxode2", String)
 /* replace pkg as appropriate */
 #else
 #define _(String) (String)
 #endif
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 
 #define SBUF_MXBUF 48000
 #define SBUF_MXLINE 100
 
-#define NODOT _("'.' in variables and states not supported, use '_' instead or set 'options(RxODE.syntax.allow.dots = TRUE)'")
+#define NODOT _("'.' in variables and states not supported, use '_' instead or set 'options(rxode2.syntax.allow.dots = TRUE)'")
 
 
 int rc_buf_read(const char *pathname, char **buf, int *len);
@@ -44,7 +44,7 @@ void sAppendN(sbuf *sbb, const char *what, int n);
 static inline void sPut(sbuf *sbb, char what) {
   if (sbb->sN <= 2 + sbb->o) {
     int mx = sbb->o + 2 + SBUF_MXBUF;
-    sbb->s = Realloc(sbb->s, mx, char);
+    sbb->s = R_Realloc(sbb->s, mx, char);
     sbb->sN = mx;
   }
   sprintf(sbb->s+sbb->o, "%c", what);

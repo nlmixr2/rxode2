@@ -1,4 +1,4 @@
-rxode.logo <- "  _____         ____  _____  ______
+rxode2.logo <- "  _____         ____  _____  ______
  |  __ \\       / __ \\|  __ \\|  ____| %s
  | |__) |__  _| |  | | |  | | |__
  |  _  / \\ \\/ / |  | | |  | |  __|
@@ -15,9 +15,9 @@ rxode.logo <- "  _____         ____  _____  ______
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
-rxVersion <- function(extra = "", echo = FALSE, version = sessionInfo()$otherPkgs$RxODE$Version) {
+rxVersion <- function(extra = "", echo = FALSE, version = sessionInfo()$otherPkgs$rxode2$Version) {
   if (echo) {
-    message(sprintf(rxode.logo, sprintf("%s%s", version, extra)), appendLF = FALSE)
+    message(sprintf(rxode2.logo, sprintf("%s%s", version, extra)), appendLF = FALSE)
   }
-  return(invisible(c(version = version, repo = "https://github.com/nlmixrdevelopment/RxODE", md5 = RxODE.md5)))
+  return(invisible(c(version = version, repo = "https://github.com/nlmixrdevelopment/rxode2", md5 = rxode2.md5)))
 }

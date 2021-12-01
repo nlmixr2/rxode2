@@ -5,105 +5,105 @@ rxodeTest(
 
     context("lag() tests")
     test_that("lag()", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- lag()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- lag(b, c)
       }))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b + 2
         a <- lag(b, 3)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(NA, NA, NA, 1, 2, 3, 4, 5, 6, 7))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lag(b, 3)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(NA, NA, NA, 1, 2, 3, 4, 5, 6, 7))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lag(b, -1)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(2, 3, 4, 5, 6, 7, 8, 9, 10, NA))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lag(b, 0)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, 1:10)
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lag(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- b
         c <- lag(a)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$c, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- b
         c <- lag(a, 1)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$c, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- b
         c <- lead(a, -1)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$c, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b + 3
         a <- lag(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
@@ -113,72 +113,72 @@ rxodeTest(
     context("lead()")
 
     test_that("lead()", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- lead()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- lead(b, c)
       }))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b + 2
         a <- lead(b, 3)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(4, 5, 6, 7, 8, 9, 10, NA, NA, NA))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lead(b, 3)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(4, 5, 6, 7, 8, 9, 10, NA, NA, NA))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lead(b, -1)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lead(b, 0)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, 1:10)
 
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- lead(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(2:10, NA))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b + 3
         a <- lead(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
@@ -189,34 +189,34 @@ rxodeTest(
     context("first()")
 
     test_that("first()", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- first()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- first(b, 1)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- first(b, 1, 2)
       }))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- first(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_true(all(x1$a == 1))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b + 3
         a <- first(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
@@ -226,34 +226,34 @@ rxodeTest(
     context("last()")
 
     test_that("last()", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- last()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- last(b, 1)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- last(b, 1, 2)
       }))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- last(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_true(all(x1$a == 10))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b + 3
         a <- last(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
@@ -267,68 +267,68 @@ rxodeTest(
     context("diff()")
 
     test_that("diff()", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- diff()
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- diff(b, 1, 2)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- diff(b, 1.2)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- diff(b, c)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- diff(b, -1)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- diff(b, 0)
       }))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- diff(b)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(NA, 2, 4, 8, 16, 32, 64, 128, 256, 512))
 
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b
         a <- diff(c)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(NA, 2, 4, 8, 16, 32, 64, 128, 256, 512))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         c <- b
         a <- diff(c, 1)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
       expect_equal(x1$a, c(NA, 2, 4, 8, 16, 32, 64, 128, 256, 512))
 
-      m1 <- RxODE({
+      m1 <- rxode2({
         a <- diff(b, 2)
       })
 
-      expect_true(inherits(m1, "RxODE"))
+      expect_true(inherits(m1, "rxode2"))
 
       x1 <- m1 %>% rxSolve(et)
 
@@ -338,28 +338,28 @@ rxodeTest(
     context("bad lag() types")
 
     test_that("bad lag", {
-      expect_error(RxODE({
+      expect_error(rxode2({
         a ~ c + d
         b <- lag(a)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         d / dt(a) <- 3
         b <- lag(a)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- a + 3
         b <- lag(a)
       }))
 
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- 13 + b
         b <- lag(a, 3)
       }))
 
-      expect_error(RxODE({
+      expect_error(rxode2({
         a <- 13 + b
         b <- lead(a)
       }))
@@ -368,7 +368,7 @@ rxodeTest(
 
 
     test_that("test sticky lhs", {
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01
@@ -407,7 +407,7 @@ rxodeTest(
 
 
     test_that("newind", {
-      mod1 <- RxODE({
+      mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01

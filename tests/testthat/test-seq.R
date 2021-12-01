@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("seq test for rxSolve")
     test_that("seq tests", {
-      m1 <- RxODE({
+      m1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
         V2 <- 4.02E+01

@@ -1,7 +1,7 @@
 #ifndef __HANDLE_EVID_H___
 #define __HANDLE_EVID_H___
 
-#include "../inst/include/RxODE.h"
+#include "../inst/include/rxode2.h"
 
 #if defined(__cplusplus)
 #define FLOOR(x) std::floor(x)

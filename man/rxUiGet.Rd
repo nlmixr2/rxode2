@@ -65,7 +65,7 @@ rxUiGet(x, ...)
 }
 \arguments{
 \item{x}{list of (UIenvironment, exact).  UI environment is the
-parsed function for RxODE.  \code{exact} is a boolean that says if an
+parsed function for rxode2.  \code{exact} is a boolean that says if an
 exact match is required.}
 
 \item{...}{Other arguments}

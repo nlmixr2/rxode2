@@ -2,7 +2,7 @@ rxodeTest(
   {
     context("Test Scaling Factors")
     ode <-
-      RxODE({
+      rxode2({
         b <- -1
         d / dt(X) <- a * X + Y * Z
         d / dt(Y) <- b * (Y - Z)

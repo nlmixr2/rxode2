@@ -1,11 +1,11 @@
 Savic 2008 first introduced the idea of transit compartments being a
-mechanistic explanation of a a lag-time type phenomena. RxODE has special handling of these models:
+mechanistic explanation of a a lag-time type phenomena. rxode2 has special handling of these models:
 
 You can specify this in a similar manner as the original paper:
 
 ```{r out.width="100%"}
-library(RxODE)
-mod <- RxODE({
+library(rxode2)
+mod <- rxode2({
     ## Table 3 from Savic 2007
     cl = 17.2 # (L/hr)
     vc = 45.1 # L
@@ -41,7 +41,7 @@ option.  Therefore, the same model can be specified by:
 
 ```{r}
 
-mod <- RxODE({
+mod <- rxode2({
     ## Table 3 from Savic 2007
     cl = 17.2 # (L/hr)
     vc = 45.1 # L

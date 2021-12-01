@@ -84,7 +84,7 @@ rxPhysicalDrives <- memoise::memoise(function(duplicates = FALSE) {
 })
 
 .rxRtoolsBaseWin <- memoise::memoise(function(retry = FALSE) {
-  if (.Platform$OS.type == "unix" || getOption("RxODE.rtools.setup", FALSE)) {
+  if (.Platform$OS.type == "unix" || getOption("rxode2.rtools.setup", FALSE)) {
     return("")
   } else if (file.exists(R.home("rtools"))) {
     return(R.home("rtools"))
@@ -103,7 +103,7 @@ rxPhysicalDrives <- memoise::memoise(function(duplicates = FALSE) {
 .rxWinRtoolsPath <- function(rm.rtools = TRUE, retry = FALSE) {
   ## Note that devtools seems to assume that rtools/bin is setup
   ## appropriately, and figures out the c compiler from there.
-  if (.Platform$OS.type == "unix" || getOption("RxODE.rtools.setup", FALSE)) {
+  if (.Platform$OS.type == "unix" || getOption("rxode2.rtools.setup", FALSE)) {
     return(TRUE)
   } else if (Sys.which("make") != "") {
     return(TRUE)
@@ -158,7 +158,7 @@ rxPhysicalDrives <- memoise::memoise(function(duplicates = FALSE) {
       if (is.na(.gcc)) {
         .gcc <- ""
       }
-      ## This allows both toolchains to be present, but RxODE should still work...
+      ## This allows both toolchains to be present, but rxode2 should still work...
       for (.x in rev(c(
         file.path(.rtoolsBase, "bin"),
         file.path(.rtoolsBase, "pandoc"),
@@ -207,7 +207,7 @@ rxPhysicalDrives <- memoise::memoise(function(duplicates = FALSE) {
     }
   }
 }
-#' Setup Windows components for RxODE
+#' Setup Windows components for rxode2
 #'
 #' @param rm.rtools Remove the Rtools from the current path specs.
 #'
@@ -216,6 +216,6 @@ rxPhysicalDrives <- memoise::memoise(function(duplicates = FALSE) {
 #' @export
 rxWinSetup <- function(rm.rtools = TRUE) {
   if (!.rxWinRtoolsPath(rm.rtools = rm.rtools)) {
-    message("RxODE requires 'rtools' for custom models\nPlease download from http://cran.r-project.org/bin/windows/Rtools/,\ninstall and restart your R session before proceeding\n")
+    message("rxode2 requires 'rtools' for custom models\nPlease download from http://cran.r-project.org/bin/windows/Rtools/,\ninstall and restart your R session before proceeding\n")
   }
 }

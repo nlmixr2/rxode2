@@ -1,7 +1,7 @@
 rxodeTest(
   {
     test_that(".DollarNames", {
-      mod2 <- RxODE({
+      mod2 <- rxode2({
         ## the order of variables do not matter, the type of compartmental
         ## model is determined by the parameters specified.
         CL ~ TCL * exp(eta.Cl)

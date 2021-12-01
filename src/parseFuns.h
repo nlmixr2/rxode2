@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// RxODE parsing function routines
+// rxode2 parsing function routines
 
 static inline int isAtFunctionArg(const char *name) {
   return !strcmp("(", name) ||
@@ -221,7 +221,7 @@ static inline void handleBadFunctions(transFunctions *tf) {
     }
   }
   if (foundFun == 0){
-    sPrint(&_gbuf, _("function '%s' is not supported in RxODE"), tf->v);
+    sPrint(&_gbuf, _("function '%s' is not supported in rxode2"), tf->v);
     updateSyntaxCol();
     trans_syntax_error_report_fn(_gbuf.s);
   }

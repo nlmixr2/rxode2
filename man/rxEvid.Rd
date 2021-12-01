@@ -34,7 +34,7 @@ as.rxEvid(x)
 \method{print}{rxEvid}(x, ...)
 }
 \arguments{
-\item{x}{Item to be converted to a RxODE EVID specification.}
+\item{x}{Item to be converted to a rxode2 EVID specification.}
 
 \item{...}{Other parameters}
 }

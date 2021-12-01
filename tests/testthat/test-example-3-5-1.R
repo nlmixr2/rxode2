@@ -1,11 +1,11 @@
 rxodeTest(
   {
-    require(RxODE)
+    require(rxode2)
     context("Test Jacobian specification")
     require(digest)
 
     ## https://cran.r-project.org/web/packages/diffEq/vignettes/ODEinR.pdf p15
-    Vtpol <- RxODE("
+    Vtpol <- rxode2("
 d/dt(y) = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Initial conditions
@@ -16,7 +16,7 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 ")
 
 
-    Vtpol2 <- RxODE("
+    Vtpol2 <- rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Jacobian

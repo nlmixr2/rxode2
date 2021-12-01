@@ -2,7 +2,7 @@
 % Please edit documentation in R/RcppExports.R
 \name{rxSetSilentErr}
 \alias{rxSetSilentErr}
-\title{Silence some of RxODE's C/C++ messages}
+\title{Silence some of rxode2's C/C++ messages}
 \usage{
 rxSetSilentErr(silent)
 }
@@ -13,6 +13,6 @@ rxSetSilentErr(silent)
 TRUE; called for side effects
 }
 \description{
-Silence some of RxODE's C/C++ messages
+Silence some of rxode2's C/C++ messages
 }
 \keyword{internal}

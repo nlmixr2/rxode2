@@ -1,36 +1,38 @@
 #pragma once
-#ifndef __RxODE_H__
-#define __RxODE_H__
 #define STRICT_R_HEADERS
+#ifndef __rxode2_H__
+#define __rxode2_H__
 
-#include <float.h>
-#include <stdio.h>
-#include <stdarg.h>
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
 #include <stdbool.h>
 #include <R_ext/Rdynload.h>
 
+#include <float.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+
 #define isDose(evid) ((evid) == 3 || (evid) >= 100)
 #define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 9 && (evid) <= 99))
 
-#include "RxODE_control.h"
+#include "rxode2_control.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #define getAdvan(idx) ind->solve + (op->neq + op->nlin)*(idx) + op->neq
 #define getSolve(idx) ind->solve + (op->neq + op->nlin)*(idx)
 
-#ifdef _isRxODE_
+#ifdef _isrxode2_
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define isSameTime(xout, xp) ((xout)-(xp) <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 
 #else
 #if defined(__cplusplus)
-#include "RxODE_RcppExports.h"
+#include "rxode2_RcppExports.h"
 #endif
 
-#endif // _isRxODE_
+#endif // _isrxode2_
 
 
 
@@ -309,8 +311,8 @@ void par_solve(rx_solve *rx);
 
 rx_solving_options *getRxOp(rx_solve *rx);
 
-SEXP RxODE_df(int doDose, int doTBS);
-SEXP RxODE_par_df();
+SEXP rxode2_df(int doDose, int doTBS);
+SEXP rxode2_par_df();
 
 void rxOptionsIniEnsure(int mx);
 

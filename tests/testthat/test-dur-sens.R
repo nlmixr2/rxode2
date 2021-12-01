@@ -26,7 +26,7 @@ rxodeTest(
         F2 <- 1 / (1 + exp(lf + eta.f))
       }
 
-      mod <- RxODE({
+      mod <- rxode2({
         d / dt(depot) <- -ka * depot
         d / dt(center) <- ka * depot - cl / v * center
         f(depot) <- 1 - F2

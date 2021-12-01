@@ -10,7 +10,7 @@ rxHtml(x, ...)
 \method{rxHtml}{rxSolve}(x, ...)
 }
 \arguments{
-\item{x}{RxODE object}
+\item{x}{rxode2 object}
 
 \item{...}{Extra arguments sent to kable}
 }

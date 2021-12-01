@@ -952,7 +952,7 @@ rxodeTest(
       class = "data.frame", row.names = c(NA, -1L)
     )
 
-    m1 <- RxODE({
+    m1 <- rxode2({
       C2 <- centr / V1
       C3 <- peri / V2
       d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3 + R * doInf

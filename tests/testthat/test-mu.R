@@ -1,6 +1,6 @@
 rxodeTest({
 
-  .rx <- loadNamespace("RxODE")
+  .rx <- loadNamespace("rxode2")
 
 
   test_that("bounded functions needs numeric bounds", {
@@ -81,7 +81,7 @@ rxodeTest({
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
       v <- tv + eta.v
@@ -119,7 +119,7 @@ rxodeTest({
     })
 
     ## ## Test a duplicated eta; It shouldn't be counted as mu-referenced
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       EmaxA <- exp(t.EmaxA + eta.emax)
       EmaxB <- exp(t.EmaxB + eta.emax)
       EmaxC <- exp(t.EmaxC + eta.emax)
@@ -138,7 +138,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtraEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"), nonMuEtas = "eta.emax"))
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       EmaxA <- exp(t.EmaxA + eta.emax)
       EmaxB <- exp(t.EmaxB + eta.emax)
       EmaxC <- t.EmaxC + eta.emax
@@ -157,7 +157,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtraEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"), nonMuEtas = "eta.emax"))
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       EmaxB <- t.EmaxB + eta.emax
       EmaxA <- exp(t.EmaxA + eta.emax)
     }), lmat)
@@ -195,7 +195,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       d/dt(depot) = -exp(tka + eta.ka) * depot
       d/dt(center) = exp(tka + eta.ka) * depot - exp(tcl + eta.cl)/exp(tv + eta.v) * center
       cp = center/exp(tv + eta.v)
@@ -235,7 +235,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       ka <- tka * exp(eta.ka + 0)
       cl <- tcl * exp(eta.cl + 0)
       v <- tv * exp(eta.v + 0)
@@ -260,7 +260,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     ), class = "data.frame"), muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka",
     "eta.cl", "eta.v")))
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       ka <- tka * exp(eta.ka + 0)
       cl <- tcl * exp(eta.cl + 0)
       v <- tv * exp(eta.v + 0)
@@ -286,7 +286,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                        ), class = "data.frame"), muRefExtraEmpty = "tv", nonMuEtas = c("eta.ka",
     "eta.cl", "eta.v")))
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       ka <- tka * exp(eta.ka)
       cl <- tcl * exp(eta.cl)
       v <- tv * exp(eta.v)
@@ -310,7 +310,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka", "eta.cl",
     "eta.v")))
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       ka <- tka * exp(eta.ka)
       cl <- tcl * exp(eta.cl)
       v <- tv * exp(eta.v)
@@ -362,7 +362,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -394,7 +394,7 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
 
 
     # This one tv is used in 2 covariate references
-    env <- .rx$.rxMuRef(RxODE({
+    env <- .rx$.rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -432,13 +432,13 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
 }, test="lvl2")
 
 ## ## Composite expressions should be extracted to their own lines
-## rxMuRef(RxODE({
+## rxMuRef(rxode2({
 ##   ratio <- exp(t.EmaxA + eta.emaxA) / exp(t.EmaxB + eta.emaxB)
 ## }), theta=c("tka", "tcl", "tv", "add.sd"),
 ## eta=c("eta.ka", "eta.cl", "eta.v"))
 
 ## ## This should be expanded to eta.ka mu-referenced variables
-## rxMuRef(RxODE({
+## rxMuRef(rxode2({
 ##   ka <- tka * exp(eta.ka)
 ##   cl <- tcl * exp(eta.cl)
 ##   v <- tv * exp(eta.v)

@@ -1,23 +1,23 @@
-# Population Simulations with RxODE
+# Population Simulations with rxode2
 
-## Simulation of Variability with RxODE
+## Simulation of Variability with rxode2
 
 In pharmacometrics the nonlinear-mixed effect modeling software (like
 nlmixr) characterizes the between-subject variability.  With this
 between subject variability you can simulate new subjects.
 
 Assuming that you have a 2-compartment, indirect response model, you
-can set create an RxODE model describing this system below:
+can set create an rxode2 model describing this system below:
 
-### Setting up the RxODE model
+### Setting up the rxode2 model
 
 ```{r}
-library(RxODE)
+library(rxode2)
 
 set.seed(32)
 rxSetSeed(32)
 
-mod <- RxODE({
+mod <- rxode2({
   eff(0) = 1
   C2 = centr/V2*(1+prop.err);
   C3 = peri/V3;
@@ -44,7 +44,7 @@ lower-triangular matrix specification as nlmixr (also similar to
 NONMEM):
 
 ```{r}
-## the column names of the omega matrix need to match the parameters specified by RxODE
+## the column names of the omega matrix need to match the parameters specified by rxode2
 omega <- lotri(eta.Cl ~ 0.4^2)
 omega
 ```
@@ -57,7 +57,7 @@ The next step to simulate is to create the dosing regimen for overall simulation
 ev <- et(amount.units="mg", time.units="hours") %>%
   et(amt=10000, cmt="centr")
 ```
-If you wish, you can also add sampling times (though now RxODE can fill these in for you):
+If you wish, you can also add sampling times (though now rxode2 can fill these in for you):
 
 ```{r}
 ev <- ev %>% et(0,48, length.out=100)
@@ -66,9 +66,9 @@ ev <- ev %>% et(0,48, length.out=100)
 Note the `et` takes similar arguments as `seq` when adding sampling
 times.  There are more methods to adding sampling times and events to
 make complex dosing regimens (See [the event
-vignette](RxODE-events.html)). This includes ways to add variability
+vignette](rxode2-events.html)). This includes ways to add variability
 to the [both the sampling and dosing
-times](RxODE-events.html#add-doses-and-samples-within-a-sampling-window)).
+times](rxode2-events.html#add-doses-and-samples-within-a-sampling-window)).
 
 Once this is complete you can simulate using the `rxSolve` routine:
 
@@ -77,9 +77,9 @@ sim  <- rxSolve(mod,theta,ev,omega=omega,nSub=100)
 ```
 
 To quickly look and customize your simulation you use the default
-`plot` routine.  Since this is an RxODE object, it will create a
+`plot` routine.  Since this is an rxode2 object, it will create a
 `ggplot2` object that you can modify as you wish.  The extra parameter
-to the `plot` tells `RxODE`/`R` what piece of information you are
+to the `plot` tells `rxode2`/`R` what piece of information you are
 interested in plotting. In this case, we are interested in looking at
 the derived parameter `C2`:
 
@@ -87,7 +87,7 @@ the derived parameter `C2`:
 
 ```{r}
 library(ggplot2)
-## The plots from RxODE are ggplots so they can be modified with
+## The plots from rxode2 are ggplots so they can be modified with
 ## standard ggplot commands.
 plot(sim, C2, log="y") +
     ylab("Central Compartment") 
@@ -119,8 +119,8 @@ Usually in pharmacometric simulations it is not enough to simply
 simulate the system.  We have to do something easier to digest, like
 look at the central and extreme tendencies of the simulation.
 
-Since the `RxODE` solve object is a type of [data
-frame](RxODE-data-frame.html)
+Since the `rxode2` solve object is a type of [data
+frame](rxode2-data-frame.html)
 
 It is now straightforward to perform calculations and generate plots
 with the simulated data. You can 
@@ -150,7 +150,7 @@ In addition to conveniently simulating between subject variability,
 you can also easily simulate unexplained variability.
 
 ```{r}
-mod <- RxODE({
+mod <- rxode2({
   eff(0) = 1
   C2 = centr/V2;
   C3 = peri/V3;
@@ -180,8 +180,8 @@ plot(s)
 
 Sometimes you may want to match the dosing and observations of
 individuals in a clinical trial.  To do this you will have to create a
-data.frame using the `RxODE` event specification as well as an `ID`
-column to indicate an individual. The RxODE event vignette talks more about
+data.frame using the `rxode2` event specification as well as an `ID`
+column to indicate an individual. The rxode2 event vignette talks more about
 how these datasets should be created.
 
 ```{r}
@@ -215,7 +215,7 @@ uncertainty in the fixed parameter estimates, and even the uncertainty
 in both your between subject variability as well as the unexplained
 variability.
 
-`RxODE` allows you to account for these uncertainties by simulating
+`rxode2` allows you to account for these uncertainties by simulating
 multiple virtual "studies," specified by the parameter `nStud`.  Each
 of these studies samples a realization of fixed effect parameters and
 covariance matrices for the between subject variability(`omega`) and
@@ -247,7 +247,7 @@ to simulate the correlation matrix.  For higher dimension covariance
 matrices it is suggested you use the inverse wishart distribution
 (transformed to a correlation matrix) for the simulations.
 
-The covariance/variance prior is simulated from `RxODE`s `cvPost()`
+The covariance/variance prior is simulated from `rxode2`s `cvPost()`
 function.
 
 ## Simulation from inverse Wishart correlations
@@ -288,7 +288,7 @@ xpose](https://github.com/UUPharmacometrics/xpose/blob/master/inst/extdata/run00
 First we setup the model:
 
 ```{r}
-rx1 <- RxODE({
+rx1 <- rxode2({
   cl <- tcl*(1+crcl.cl*(CLCR-65)) * exp(eta.cl)
   v <- tv * WT * exp(eta.v)
   ka <- tka * exp(eta.ka)
@@ -382,7 +382,7 @@ specifying the `simVariability = FALSE` option when solving:
 
 ```{r}
 
-mod <- RxODE({
+mod <- rxode2({
   eff(0) = 1
   C2 = centr/V2;
   C3 = peri/V3;
@@ -415,9 +415,9 @@ plot(s)
 Note since realizations of `omega` and `sigma` were not simulated,
 `$omega.list` and `$sigma.list` both return `NULL`.
 
-#### RxODE multi-threaded solving and simulation
+#### rxode2 multi-threaded solving and simulation
 
-RxODE now supports multi-threaded solving on OpenMP supported
+rxode2 now supports multi-threaded solving on OpenMP supported
 compilers, including linux and windows. Mac OSX can also be supported
 By default it uses all your available cores for solving as determined
 by `rxCores()`.  This may be overkill depending on your system, at a

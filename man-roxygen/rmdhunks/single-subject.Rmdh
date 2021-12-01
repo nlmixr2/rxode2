@@ -1,11 +1,11 @@
 # Single Subject solving
 
-Originally, RxODE was only created to solve ODEs for one individual.
+Originally, rxode2 was only created to solve ODEs for one individual.
 That is a single system without any changes in individual parameters.
 
 Of course this is still supported, the classic examples are found in
-[RxODE
-intro](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-intro.html).
+[rxode2
+intro](https://nlmixr2.github.io/rxode2/articles/rxode2-intro.html).
 
 This article discusses the differences between multiple subject and
 single subject solving. There are three differences:
@@ -20,7 +20,7 @@ single subject solving. There are three differences:
 The first obvious difference is in speed; With multiple subjects you
 can run each subject ID in parallel.  For more information and
 examples of the speed gains with multiple subject solving see the
-[Speeding up RxODE](RxODE-speed.html) vignette. 
+[Speeding up rxode2](rxode2-speed.html) vignette. 
 
 The next difference is the amount of information output in the final data.
 
@@ -28,8 +28,8 @@ Taking the 2 compartment indirect response model originally in the
 tutorial:
 
 ```{r}
-library(RxODE)
-mod1 <-RxODE({
+library(rxode2)
+mod1 <-rxode2({
     KA=2.94E-01
     CL=1.86E+01
     V2=4.02E+01
@@ -80,10 +80,10 @@ By observing the two solves, you can see:
   frame and then data frame of parameters for each subject.
   
 The last feature that is not as obvious, modifying the individual
-parameters.  For single subject data, you can modify the RxODE data
+parameters.  For single subject data, you can modify the rxode2 data
 frame changing initial conditions and parameter values as if they were
-part of the data frame, as described in the [RxODE Data
-Frames](https://nlmixrdevelopment.github.io/RxODE/articles/RxODE-data-frame.html).
+part of the data frame, as described in the [rxode2 Data
+Frames](https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html).
 
 For multiple subject solving, this feature still works, but requires
 care when supplying each individual's parameter value, otherwise you

@@ -6,15 +6,15 @@
 \alias{rxSolve.rxUi}
 \alias{rxSolve.default}
 \alias{update.rxSolve}
-\alias{predict.RxODE}
+\alias{predict.rxode2}
 \alias{predict.rxSolve}
 \alias{predict.rxEt}
 \alias{predict.rxParams}
-\alias{simulate.RxODE}
+\alias{simulate.rxode2}
 \alias{simulate.rxSolve}
 \alias{simulate.rxParams}
 \alias{solve.rxSolve}
-\alias{solve.RxODE}
+\alias{solve.rxode2}
 \alias{solve.rxParams}
 \alias{solve.rxEt}
 \alias{rxControl}
@@ -151,7 +151,7 @@ rxSolve(
 
 \method{update}{rxSolve}(object, ...)
 
-\method{predict}{RxODE}(object, ...)
+\method{predict}{rxode2}(object, ...)
 
 \method{predict}{rxSolve}(object, ...)
 
@@ -159,7 +159,7 @@ rxSolve(
 
 \method{predict}{rxParams}(object, ...)
 
-\method{simulate}{RxODE}(object, nsim = 1L, seed = NULL, ...)
+\method{simulate}{rxode2}(object, nsim = 1L, seed = NULL, ...)
 
 \method{simulate}{rxSolve}(object, nsim = 1L, seed = NULL, ...)
 
@@ -167,7 +167,7 @@ rxSolve(
 
 \method{solve}{rxSolve}(a, b, ...)
 
-\method{solve}{RxODE}(a, b, ...)
+\method{solve}{rxode2}(a, b, ...)
 
 \method{solve}{rxParams}(a, b, ...)
 
@@ -176,8 +176,8 @@ rxSolve(
 rxControl(..., params = NULL, events = NULL, inits = NULL)
 }
 \arguments{
-\item{object}{is a either a RxODE family of objects, or a file-name
-with a RxODE model specification, or a string with a RxODE
+\item{object}{is a either a rxode2 family of objects, or a file-name
+with a rxode2 model specification, or a string with a rxode2
 model specification.}
 
 \item{params}{a numeric named vector with values for every
@@ -208,7 +208,7 @@ thread-based solving, and ignores user Jacobian specification.
 solving, but allows user Jacobian specification.
 \item \code{"dop853"} -- DOP853 solver.  Does not support parallel thread-based
 solving nor user Jacobain specification
-\item \code{"indLin"} -- Solving through inductive linearization.  The RxODE dll
+\item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.
 }}
 
@@ -235,7 +235,7 @@ value is 0.}
 \code{hmax=NA} (default), uses the average difference +
 hmaxSd*sd in times and sampling events. The \code{hmaxSd} is a user
 specified parameter and which defaults to zero.  When
-\code{hmax=NULL} RxODE uses the maximum difference in times in
+\code{hmax=NULL} rxode2 uses the maximum difference in times in
 your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.}
 
@@ -281,7 +281,7 @@ to the output matrix or data frame. By default this is
 disabled.}
 
 \item{matrix}{A boolean indicating if a matrix should be returned
-instead of the RxODE's solved object.}
+instead of the rxode2's solved object.}
 
 \item{sigma}{Named sigma covariance or Cholesky decomposition of a
 covariance matrix.  The names of the columns indicate
@@ -355,20 +355,20 @@ this is 10,000.}
 
 \item{amountUnits}{This supplies the dose units of a data frame
 supplied instead of an event table.  This is for importing the
-data as an RxODE event table.}
+data as an rxode2 event table.}
 
 \item{timeUnits}{This supplies the time units of a data frame
 supplied instead of an event table.  This is for importing the
-data as an RxODE event table.}
+data as an rxode2 event table.}
 
 \item{stiff}{a logical (\code{TRUE} by default) indicating whether
-the ODE system is stiff or not.\preformatted{For stiff ODE systems (`stiff = TRUE`), `RxODE` uses the
+the ODE system is stiff or not.\preformatted{For stiff ODE systems (`stiff = TRUE`), `rxode2` uses the
 LSODA (Livermore Solver for Ordinary Differential Equations)
 Fortran package, which implements an automatic method switching
 for stiff and non-stiff problems along the integration
 interval, authored by Hindmarsh and Petzold (2003).
 
-For non-stiff systems (`stiff = FALSE`), `RxODE` uses
+For non-stiff systems (`stiff = FALSE`), `rxode2` uses
 DOP853, an explicit Runge-Kutta method of order 8(5, 3) of
 Dormand and Prince as implemented in C by Hairer and Wanner
 (1993).
@@ -388,16 +388,16 @@ variability (by default \code{Inf})}
 \item{eta}{A vector of parameters that will be named \verb{ETA\[#\]} and
 added to parameters}
 
-\item{addDosing}{Boolean indicating if the solve should add RxODE
+\item{addDosing}{Boolean indicating if the solve should add rxode2
 EVID and related columns.  This will also include dosing
-information and estimates at the doses.  Be default, RxODE
+information and estimates at the doses.  Be default, rxode2
 only includes estimates at the observations. (default
 \code{FALSE}). When \code{addDosing} is \code{NULL}, only
 include \code{EVID=0} on solve and exclude any model-times or
 \code{EVID=2}. If \code{addDosing} is \code{NA} the classic
-\code{RxODE} EVID events are returned. When \code{addDosing} is \code{TRUE}
+\code{rxode2} EVID events are returned. When \code{addDosing} is \code{TRUE}
 add the event information in NONMEM-style format; If
-\code{subsetNonmem=FALSE} RxODE will also include extra event types
+\code{subsetNonmem=FALSE} rxode2 will also include extra event types
 (\code{EVID}) for ending infusion and modeled times:
 \itemize{
 \item \code{EVID=-1} when the modeled rate infusions are turned
@@ -421,7 +421,7 @@ upper range to make sure all state values are in the
 reasonable range.}
 
 \item{updateObject}{This is an internally used flag to update the
-RxODE solved object (when supplying an RxODE solved object) as
+rxode2 solved object (when supplying an rxode2 solved object) as
 well as returning a new object.  You probably should not
 modify it's \code{FALSE} default unless you are willing to
 have unexpected results.}
@@ -517,7 +517,7 @@ currently supported types are:
 \item \code{"rxSolve"} (default) will return a reactive data frame
 that can change easily change different pieces of the solve and
 update the data frame.  This is the currently standard solving
-method in RxODE,  is used for \code{rxSolve(object, ...)}, \code{solve(object,...)},
+method in rxode2,  is used for \code{rxSolve(object, ...)}, \code{solve(object,...)},
 \item \code{"data.frame"} -- returns a plain, non-reactive data
 frame; Currently very slightly faster than \code{returnType="matrix"}
 \item \code{"matrix"} -- returns a plain matrix with column names attached
@@ -530,7 +530,7 @@ created by reference (ie \code{setDt()}), which should be fast.
 \item{seed}{an object specifying if and how the random number
 generator should be initialized}
 
-\item{nsim}{represents the number of simulations.  For RxODE, if
+\item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
 \verb{[eventTable()]})}
 
@@ -595,7 +595,7 @@ exponential matrix.}
 \item{indLinPhiM}{the maximum size for the Krylov basis}
 
 \item{indLinMatExpType}{This is them matrix exponential type that
-is use for RxODE.  Currently the following are supported:
+is use for rxode2.  Currently the following are supported:
 \itemize{
 \item \code{Al-Mohy} Uses the exponential matrix method of Al-Mohy Higham (2009)
 \item \code{arma} Use the exponential matrix from RcppArmadillo
@@ -622,7 +622,7 @@ value is 0 (or infinite).}
 \item{hmxi}{inverse of the maximum absolute value of \code{H} to are used.
 hmxi = 0.0 is allowed and corresponds to an infinite \verb{hmax1 (default).  }hmin\code{and}hmxi\verb{may be changed at any time, but will not take effect until the next change of}H\verb{is considered. This option is only considered with}method="liblsoda"`.}
 
-\item{warnIdSort}{Warn if the ID is not present and RxODE assumes
+\item{warnIdSort}{Warn if the ID is not present and rxode2 assumes
 the order of the parameters/iCov are the same as the order of
 the parameters in the input dataset.}
 
@@ -639,7 +639,7 @@ vector based on each state.}
 this is turned on but you may turn it off if you wish.}
 
 \item{sumType}{Sum type to use for \code{sum()} in
-RxODE code blocks.
+rxode2 code blocks.
 
 \code{pairwise} uses the pairwise sum (fast, default)
 
@@ -651,7 +651,7 @@ RxODE code blocks.
 
 \code{c} uses no correction: default/native summing}
 
-\item{prodType}{Product to use for \code{prod()} in RxODE blocks
+\item{prodType}{Product to use for \code{prod()} in rxode2 blocks
 
 \verb{long double} converts to long double, performs the
 multiplication and then converts back.
@@ -716,7 +716,7 @@ An \dQuote{rxSolve} solve object that stores the solved
 value in a special data.frame or other type as determined by
 \code{returnType}. By default this has as many rows as there are
 sampled time points and as many columns as system variables (as
-defined by the ODEs and additional assignments in the RxODE model
+defined by the ODEs and additional assignments in the rxode2 model
 code).  It also stores information about the call to allow
 dynamic updating of the solved object.
 
@@ -730,16 +730,16 @@ You can call the \code{\link[=eventTable]{eventTable()}} methods on the solved o
 update the event table and resolve the system of equations.
 }
 \description{
-This uses RxODE family of objects, file, or model specification to
-solve a ODE system.  There are many options for a solved RxODE
+This uses rxode2 family of objects, file, or model specification to
+solve a ODE system.  There are many options for a solved rxode2
 model, the first are the required \code{object}, and \code{events} with the
 some-times optional \code{params} and \code{inits}.
 }
 \details{
 The rest of the document focus on the different ODE solving
-methods, followed by the core solving method's options, RxODE event
-handling options, RxODE's numerical stability options, RxODE's
-output options, and finally internal RxODE options or compatibility
+methods, followed by the core solving method's options, rxode2 event
+handling options, rxode2's numerical stability options, rxode2's
+output options, and finally internal rxode2 options or compatibility
 options.
 }
 \references{
@@ -766,7 +766,7 @@ Hairer, E., Norsett, S. P., and Wanner, G.
 Springer-Verlag (1993).
 }
 \seealso{
-\code{\link[=RxODE]{RxODE()}}
+\code{\link[=rxode2]{rxode2()}}
 }
 \author{
 Matthew Fidler, Melissa Hallow and  Wenping Wang
