@@ -1,6 +1,8 @@
 rxode2Test(
   {
     test_that(".DollarNames", {
+
+
       mod2 <- rxode2({
         ## the order of variables do not matter, the type of compartmental
         ## model is determined by the parameters specified.
@@ -63,7 +65,7 @@ rxode2Test(
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
         "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-        "env", "model", "params", "inits", "t", "rxode", "thetaMat",
+        "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
         "sigmaList", "omegaList"
       ))
 
@@ -82,7 +84,7 @@ rxode2Test(
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
         "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-        "env", "model", "params", "inits", "t", "rxode", "thetaMat",
+        "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
         "omegaList"
       ))
 
@@ -100,7 +102,7 @@ rxode2Test(
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
         "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-        "env", "model", "params", "inits", "t", "rxode", "thetaMat"
+        "env", "model", "params", "inits", "t", "rxode2", "thetaMat"
       ))
 
       pk4 <- .rxSolve(mod2, c(
@@ -117,7 +119,7 @@ rxode2Test(
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
         "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
-        "env", "model", "params", "inits", "t", "rxode"
+        "env", "model", "params", "inits", "t", "rxode2"
       ))
     })
   },
