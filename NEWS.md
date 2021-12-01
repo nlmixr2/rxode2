@@ -1,21 +1,29 @@
-# RxODE 
+# rxode2
 
-
-* The UI functions of `nlmixr` have been ported to work in `rxode2`
-  directly.
-
-* `rxModelVars({})` is now supported. 
+## Breaking changes
 
 * For simulations, `$simulationSigma` now assumes a diagonal matrix.
   The sigma values are assumed to be standard normal, and uncorrelated
   between endpoints.  Simulation with uncertainty will still draw from
   this identity diagonal matrix
   
-* Strict R headers are enforced more places
-
+* Solved objects now access the underlying rxode model with `$rxode2`
+  instead of `$rxode`
+  
 * Since this change names, `rxode2`, `rxode` and `RxODE` all perform
   the same function.
+
+## Additional features
+
+* The UI functions of `nlmixr` have been ported to work in `rxode2`
+  directly.
+
+* `rxModelVars({})` is now supported. 
+
+## Internal changes
   
+* Strict R headers are enforced more places
+
 * Since there are many changes that could be incompatible, this
   version has been renamed to `rxode2`
 
