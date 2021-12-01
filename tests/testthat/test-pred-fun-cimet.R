@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("cimet gives the correct calculated lhs value", {
       context("Cimet Pred function setup")

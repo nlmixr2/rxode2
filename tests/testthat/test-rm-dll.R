@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Removing dlls")
     ode <- rxode2({

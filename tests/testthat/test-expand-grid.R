@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     expand.grid.jc <- function(seq1, seq2) {
       cbind(

@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     set.seed(42)
     dgs <- c("sqrt", "log", "identity")

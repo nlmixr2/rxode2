@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("parsing for nlmixr issue #281", {
       .mv <- rxModelVars("Resp(0)=1;\nemaxD=exp(temaxD);\nec50=exp(tec50);\nemaxT=exp(temaxT);\net50=exp(tet50);\nslope=exp(tslope);\ndelay=exp(tdelay);\nkin=exp(tkin);\nkout=kin;\nGAM=exp(1)/2;\nC2=centr/V;\nCONC=(C2)^2;\nStim1=emaxT*(t)/(t+et50);\nStim2=emaxD*(CONC^GAM)/(CONC^GAM+ec50^GAM);\nStim=Stim1*(1+TRX*Stim2);\nDelta=1/(1+exp(-20*(t-delay)));\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL*C2;\nd/dt(Resp)=kin*(1+Delta*slope)-kout*(1+Stim)*Resp;\nnlmixr_pred=Resp;\nrx_yj_~2;\nrx_lambda_~1;\nrx_hi_~1;\nrx_low_~0;\nrx_pred_f_~nlmixr_pred;\nrx_pred_=nlmixr_pred;\nrx_r_=(nlmixrAdd)^2;\n")

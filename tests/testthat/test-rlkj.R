@@ -1,5 +1,5 @@
 ## Adapted from https://github.com/biobakery/banocc/blob/master/tests/testthat/test_utils_rlkj.R
-rxodeTest(
+rxode2Test(
   {
     context("Utilities - rLKJ1")
     d_vals <- c(2, 5) # seq(2, 200, 10)

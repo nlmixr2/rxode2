@@ -1,4 +1,4 @@
-rxodeTest({
+rxode2Test({
 
   lmat <- lotri({
     ## You may label each parameter with a comment

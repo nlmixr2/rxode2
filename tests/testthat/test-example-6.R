@@ -1,5 +1,5 @@
 
-rxodeTest(
+rxode2Test(
   {
     if (requireNamespace("units", quietly = TRUE)) {
       require(rxode2)

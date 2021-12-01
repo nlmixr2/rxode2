@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("lhs for different compartments make sense")
 

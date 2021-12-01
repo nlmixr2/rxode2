@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Linear model FOCEi setup checks")
     pred <- function() {

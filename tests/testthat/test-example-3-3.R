@@ -1,7 +1,7 @@
 ## Example 3.3 from
 ## "Solving Differential Equations in R" by Soetaert et al (2012)
 ## https://cran.r-project.org/web/packages/diffEq/vignettes/ODEinR.pdf Example #3
-rxodeTest(
+rxode2Test(
   {
     library(digest)
     context("Example 3.3")

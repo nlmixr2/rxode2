@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("phi/pnorm/qnorm")
 

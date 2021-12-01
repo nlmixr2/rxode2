@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("test newind flag")
     ode.1c <- rxode2({

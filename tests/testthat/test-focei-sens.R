@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Test Initial conditions -> sensitivity initial conditions")
 

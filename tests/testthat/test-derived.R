@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("v1 rate constants")
     test_that("v1 rate constants", {

@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("rxIs")
     test_that("rxIs tests", {

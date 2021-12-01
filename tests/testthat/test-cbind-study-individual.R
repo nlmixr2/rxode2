@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("cbind study and individual", {
 

@@ -1,5 +1,5 @@
 ## test ODE parsing for syntax errors
-rxodeTest(
+rxode2Test(
   {
     context("Test Parsing of models")
 

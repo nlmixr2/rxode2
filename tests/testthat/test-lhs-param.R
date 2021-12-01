@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Dual lhs/param values (Issue #135)")
 

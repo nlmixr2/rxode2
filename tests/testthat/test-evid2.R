@@ -1,6 +1,6 @@
 require(rxode2)
 require(digest)
-rxodeTest({
+rxode2Test({
   context("evid=2 solves")
 
   mod <- rxode2("

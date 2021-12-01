@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Test rxode2 THETA/ETA support")
     library(digest)

@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("mdv tests")
     test_that("mdv means EVID=2 when amt=0", {

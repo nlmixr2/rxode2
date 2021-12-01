@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     et <- et(1:10)
     et$b <- 1:10

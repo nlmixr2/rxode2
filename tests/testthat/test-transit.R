@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Test Transit compartment model")
     library(digest)

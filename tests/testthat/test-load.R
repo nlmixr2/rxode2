@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     require(rxode2)
     context("Test loading, and unloading of models")

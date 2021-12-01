@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     library(rxode2)
     context("Test Inis")

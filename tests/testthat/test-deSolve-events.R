@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("deSolve event")
     test_that("deSolve events", {

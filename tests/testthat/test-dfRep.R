@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("tests the internal df repetition routines")
 

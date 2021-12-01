@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     if (requireNamespace("units", quietly = TRUE) &
       requireNamespace("devtools", quietly = TRUE)) {

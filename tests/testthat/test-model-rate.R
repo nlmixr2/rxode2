@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     library(dplyr)
     library(testthat)

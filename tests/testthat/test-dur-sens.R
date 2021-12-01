@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Capture which ETAs are in events")
 

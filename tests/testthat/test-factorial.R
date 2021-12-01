@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     .rx <- loadNamespace("rxode2")
 

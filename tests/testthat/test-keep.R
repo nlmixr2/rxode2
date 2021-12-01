@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Individual keep AGE==AGE2")
 

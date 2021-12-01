@@ -1,4 +1,4 @@
-## rxodeTest(
+## rxode2Test(
 ##   {
 ##     options(rxode2.unload.unused = TRUE)
 ##     library(rxode2)

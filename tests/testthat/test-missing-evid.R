@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("missing evid", {
       ode.1c <- rxode2({

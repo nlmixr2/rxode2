@@ -1,6 +1,6 @@
 ## (Regression) test 3 multiple instances of rxode2 objects to ensure
 ## C symbols and operations don't conflict.
-rxodeTest(
+rxode2Test(
   {
     library(rxode2)
     context("Make sure C operations and symbols don't conflict")

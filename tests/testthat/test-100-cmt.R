@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Use of initial conditions works")
 

@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     for (meth in c("dop853", "liblsoda", "lsoda")) {
       context(sprintf("Test Parallel/Multi-subject Solve (%s)", meth))

@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Test that model specification can take string, file name or rxode expressions")
     ode <- rxode2(model = "d/dt(y) = r * y * (1 - y/K);")

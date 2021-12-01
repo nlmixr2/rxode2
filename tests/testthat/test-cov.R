@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     if (requireNamespace("units", quietly = TRUE)) {
       for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match precisely.

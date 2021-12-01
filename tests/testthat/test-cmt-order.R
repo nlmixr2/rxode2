@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Compartment order & extra CMTs with cmt()")
 

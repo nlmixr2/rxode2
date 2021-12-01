@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("progress_bar", {
       context("Test progress bar")

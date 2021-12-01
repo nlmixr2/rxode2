@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("seq test for rxSolve")
     test_that("seq tests", {

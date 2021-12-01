@@ -1,4 +1,4 @@
-rxodeTest({
+rxode2Test({
   context("param order")
 
   test_that("param order", {

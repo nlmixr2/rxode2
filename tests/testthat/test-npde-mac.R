@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("npde simulation works on mac nlmixr #460", {
       skip_if(!file.exists(test_path("si.qs")))

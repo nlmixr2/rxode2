@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("Matrix exponential alone works", {
       context("Test inductive linearization")

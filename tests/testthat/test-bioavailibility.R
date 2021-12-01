@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     ms <- c("liblsoda", "lsoda", "dop853")
     for (m in ms) {

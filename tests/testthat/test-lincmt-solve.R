@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     tol <- 5e-6 ## Current difference for all equations
     type <- 2

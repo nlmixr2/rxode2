@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("Testing solving with ID(s) in the dataset")
 

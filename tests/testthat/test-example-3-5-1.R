@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     require(rxode2)
     context("Test Jacobian specification")

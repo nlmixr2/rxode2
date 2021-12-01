@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("If/Else expansion tests")
     rx1 <- rxode2({

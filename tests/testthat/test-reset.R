@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     if (requireNamespace("units", quietly = TRUE)) {
       context("Test reset event EVID=3")

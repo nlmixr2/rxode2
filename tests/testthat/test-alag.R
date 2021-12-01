@@ -1,5 +1,5 @@
 ## Tests for absorption lag time.
-rxodeTest(
+rxode2Test(
   {
     if (requireNamespace("units", quietly = TRUE)) {
       ## 6.1

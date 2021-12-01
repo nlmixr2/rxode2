@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     test_that("Demo runs successfully", {
       skip_if_not(dir.exists(file.path(system.file(package = "rxode2"), "demo")), "demo not installed")

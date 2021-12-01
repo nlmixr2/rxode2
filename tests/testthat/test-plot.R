@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("plot tests")
     if (requireNamespace("units", quietly = TRUE)) {

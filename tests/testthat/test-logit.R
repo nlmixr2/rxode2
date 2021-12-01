@@ -1,4 +1,4 @@
-rxodeTest(
+rxode2Test(
   {
     context("logit tests")
     expect_equal(

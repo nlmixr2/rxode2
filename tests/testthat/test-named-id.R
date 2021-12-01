@@ -1,4 +1,4 @@
-rxodeTest({
+rxode2Test({
   context("test id==\"item\"")
 
   f1 <- rxode2({
