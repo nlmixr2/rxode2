@@ -87,55 +87,36 @@ rxode2Test(
     })
 
     ## added ** operator
-    .rxWithOptions(list(rxode2.syntax.star.pow = TRUE), {
-      goodParse("existing operator **",
-        code = paste(
-          sep = "\n",
-          "d/dt(y) = -ka;",
-          "C1 = ka *  y**2;"
-        )
-      )
-    })
+    goodParse("existing operator **",
+              code = paste(
+                sep = "\n",
+                "d/dt(y) = -ka;",
+                "C1 = ka *  y**2;"))
+    badParse("unexistent operator %",
+             code = paste(
+               sep = "\n",
+               "remainder = 4 % 3;",
+               "d/dt(y) = -ka;",
+               "C1 = ka * y;"))
 
-    .rxWithOptions(list(rxode2.syntax.star.pow = FALSE), {
-      badParse("existing operator **",
-        code = paste(
-          sep = "\n",
-          "d/dt(y) = -ka;",
-          "C1 = ka *  y**2;"
-        )
-      )
-      badParse("unexistent operator %",
-        code = paste(
-          sep = "\n",
-          "remainder = 4 % 3;",
-          "d/dt(y) = -ka;",
-          "C1 = ka * y;"
-        )
-      )
-      badParse(
-        desc = 'incorrect "if" statement',
-        code = paste(
-          sep = "\n",
-          "if(comed==0){",
-          "   F = 1.0;",
-          "else {", # missing "}"'
-          "   F = 0.75;",
-          "};",
-          "d/dt(y) = F * y;"
-        )
-      )
+    badParse(
+      desc = 'incorrect "if" statement',
+      code = paste(
+        sep = "\n",
+        "if(comed==0){",
+        "   F = 1.0;",
+        "else {", # missing "}"'
+        "   F = 0.75;",
+        "};",
+        "d/dt(y) = F * y;"))
 
-      badParse(
-        desc = "illegal variable name (starting w. a digit)",
-        code = paste(
-          sep = "\n",
-          "F = 0.75;",
-          "12foo_bar = 1.0/2.0;",
-          "d/dt(y) = F * y;"
-        )
-      )
-    })
+    badParse(
+      desc = "illegal variable name (starting w. a digit)",
+      code = paste(
+        sep = "\n",
+        "F = 0.75;",
+        "12foo_bar = 1.0/2.0;",
+        "d/dt(y) = F * y;"))
 
     .rxWithOptions(list(rxode2.syntax.allow.dots = TRUE), {
       goodParse(

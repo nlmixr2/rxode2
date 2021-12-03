@@ -201,7 +201,6 @@ rxForget <- function() {
 rxOpt <- list(
   rxode2.prefer.tbl = c(FALSE, FALSE),
   rxode2.warn.on.assign = c(TRUE, TRUE),
-  rxode2.syntax.star.pow = c(FALSE, TRUE),
   rxode2.syntax.require.semicolon = c(TRUE, FALSE),
   rxode2.syntax.allow.dots = c(FALSE, TRUE),
   rxode2.syntax.allow.ini0 = c(FALSE, TRUE),
@@ -222,7 +221,6 @@ rxOpt <- list(
 
 rxode2.prefer.tbl <- NULL
 rxode2.warn.on.assign <- NULL
-rxode2.syntax.star.pow <- NULL
 rxode2.syntax.require.semicolon <- NULL
 rxode2.syntax.allow.dots <- NULL
 rxode2.syntax.allow.ini0 <- NULL

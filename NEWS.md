@@ -19,7 +19,11 @@
   `RxODE.syntax.assign.state`) is no longer supported.
 
 * Enforcing "pure" assignment syntax with `=` syntax is no longer
-  supported so `rxode2.syntax.assign` is no longer supported.
+  supported so `rxode2.syntax.assign` is no longer supported (was
+  `RxODE.syntax.assign`).
+
+* Since R supports `**` as an exponentiation operator, so
+  `rxode2.syntax.star.pow` (was `RxODE.syntax.star.pow`)
 
 ## Additional features
 

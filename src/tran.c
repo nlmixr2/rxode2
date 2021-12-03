@@ -61,8 +61,7 @@ int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_podo = 0, rx_syntax_requi
 extern D_ParserTables parser_tables_rxode2;
 
 unsigned int found_jac = 0, nmtime=0;
-int rx_syntax_star_pow = 0,
-  rx_syntax_require_semicolon = 0, rx_syntax_allow_dots = 0,
+int rx_syntax_require_semicolon = 0, rx_syntax_allow_dots = 0,
   rx_syntax_allow_ini0 = 1, rx_syntax_allow_ini = 1, 
   maxSumProdN = 0, SumProdLD = 0, good_jac=1, extraCmt=0;
 
@@ -184,13 +183,6 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
   if (*i==0 && nodeHas(power_expression)) {
     aAppendN("),", 2);
     sAppendN(&sbt, "^", 1);
-  }
-  if (!rx_syntax_star_pow && *i == 1 && nodeHas(power_expression)){
-    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-    if (!strcmp("**",v)){
-      updateSyntaxCol();
-      trans_syntax_error_report_fn(NEEDPOW);
-    }
   }
   handleRemainingAssignments(ni, name, *i, pn, xpn);
   return 0;
@@ -381,7 +373,6 @@ void reset() {
   rx_syntax_error = 0;
   rx_suppress_syntax_info=0;
   rx_podo = 0;
-  rx_syntax_star_pow = 0;
   rx_syntax_require_semicolon = 0;
   rx_syntax_allow_dots = 0;
   rx_syntax_allow_ini0 = 1;
@@ -506,7 +497,6 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
 
   int isStr =INTEGER(parseStr)[0];
   reset();
-  rx_syntax_star_pow = R_get_option("rxode2.syntax.star.pow",1);
   rx_syntax_require_semicolon = R_get_option("rxode2.syntax.require.semicolon",0);
   rx_syntax_allow_dots = R_get_option("rxode2.syntax.allow.dots",1);
   rx_suppress_syntax_info = R_get_option("rxode2.suppress.syntax.info",0);

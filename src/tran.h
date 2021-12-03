@@ -123,7 +123,6 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define fromCMTprop 1
 
 #define NEEDSEMI _("lines need to end with ';'\n     to match R's handling of line endings set 'options(rxode2.syntax.require.semicolon = FALSE)'")
-#define NEEDPOW _("'**' not supported, use '^' instead or set 'options(rxode2.syntax.star.pow = TRUE)'")
 #define NOINI0 _("'%s(0)' for initialization not allowed\n to allow set 'options(rxode2.syntax.allow.ini0 = TRUE)'")
 #define NOSTATE _("defined 'df(%s)/dy(%s)', but '%s' is not a state")
 #define NOSTATEVAR _("defined 'df(%s)/dy(%s)', but '%s' is not a state or variable")
