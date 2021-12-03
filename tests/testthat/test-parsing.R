@@ -42,49 +42,26 @@ rxode2Test(
     badParse("incorrect d/dt operator", "d/dt(y = 1);")
 
     ## Statements don't require ; now.
-    .rxWithOptions(list(rxode2.syntax.require.semicolon = FALSE), {
-      goodParse(
-        "comments must be outside statements #1",
-        "d/dt(y) = 1   # bad comment;"
-      )
-      goodParse(
-        'missing end of statement ";" dosen\'t cause errors',
-        paste(
-          sep = "\n",
-          "d/dt(depot) = -ka * depot",
-          "d/dt(centr) =  ka * depot - kout * centr;"
-        )
-      )
-    })
+    goodParse(
+      "comments must be outside statements #1",
+      "d/dt(y) = 1   # bad comment;")
 
-    .rxWithOptions(list(rxode2.syntax.require.semicolon = TRUE), {
-      rxSyncOptions()
-      badParse(
-        "comments must be outside statements #2",
-        "d/dt(y) = 1   # bad comment;"
-      )
-      badParse(
-        'missing end of statement ";"',
-        paste(
-          sep = "\n",
-          "d/dt(depot) = -ka * depot",
-          "d/dt(centr) =  ka * depot - kout * centr;"
-        )
-      )
-    })
+    goodParse(
+      'missing end of statement ";" dosen\'t cause errors',
+      paste(
+        sep = "\n",
+        "d/dt(depot) = -ka * depot",
+        "d/dt(centr) =  ka * depot - kout * centr;"))
 
-
-    .rxWithOptions(list(rxode2.syntax.require.semicolon = FALSE), {
-      badParse(
-        "arithmetic syntax error",
-        paste(
-          sep = "\n",
-          "# comment, just to show error in line 3",
-          "d/dt(y) = -ka;",
-          "C1 = /y;"
-        )
+    badParse(
+      "arithmetic syntax error",
+      paste(
+        sep = "\n",
+        "# comment, just to show error in line 3",
+        "d/dt(y) = -ka;",
+        "C1 = /y;"
       )
-    })
+    )
 
     ## added ** operator
     goodParse("existing operator **",

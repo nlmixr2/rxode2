@@ -22,8 +22,14 @@
   supported so `rxode2.syntax.assign` is no longer supported (was
   `RxODE.syntax.assign`).
 
-* Since R supports `**` as an exponentiation operator, so
-  `rxode2.syntax.star.pow` (was `RxODE.syntax.star.pow`)
+* Since R supports `**` as an exponentiation operator, the pure syntax
+  without `**` can no longer be enabled. Hence
+  `rxode2.syntax.star.pow` (was `RxODE.syntax.star.pow`) no longer has
+  any effect.
+
+* The "pure" syntax that requires a semicolon can no longer be
+  enabled.  Therefore `rxode2.syntax.require.semicolon` (was
+  `RxODE.syntax.require.semicolon`) no longer has any effect.
 
 ## Additional features
 
