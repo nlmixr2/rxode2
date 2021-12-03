@@ -149,24 +149,19 @@ rxode2Test(
           sep = "\n",
           "F = 0.75;",
           ".foo.bar = 0.5;",
-          "d/dt(y) = F * y;"
-        )
-      )
+          "d/dt(y) = F * y;"))
 
       badParse(
         desc = "Assignment with <<- not supported",
-        "d/dt(y_1) <<- F*y"
-      )
+        "d/dt(y_1) <<- F*y")
 
       goodParse(
         desc = "Assignment with <- supported #1",
-        "d/dt(y_1) <- F*y"
-      )
+        "d/dt(y_1) <- F*y")
 
       goodParse(
         desc = "Assignment with <- supported #2",
-        "y_1(0) <- 1;d/dt(y_1) = F*y_1"
-      )
+        "y_1(0) <- 1;d/dt(y_1) = F*y_1")
 
       goodParse(
         desc = "Assignment with <- supported #3",
