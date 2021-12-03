@@ -123,7 +123,6 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define fromCMTprop 1
 
 #define NEEDSEMI _("lines need to end with ';'\n     to match R's handling of line endings set 'options(rxode2.syntax.require.semicolon = FALSE)'")
-#define NOINI0 _("'%s(0)' for initialization not allowed\n to allow set 'options(rxode2.syntax.allow.ini0 = TRUE)'")
 #define NOSTATE _("defined 'df(%s)/dy(%s)', but '%s' is not a state")
 #define NOSTATEVAR _("defined 'df(%s)/dy(%s)', but '%s' is not a state or variable")
 #define ODEFIRST _("ODEs compartment 'd/dt(%s)' must be defined before changing/accessing its properties (f/alag/rate/dur/tad/tafd)\nIf you want to change this set 'options(rxode2.syntax.require.ode.first = FALSE).\nBe warned this may number compartments based on first occurance of property or ODE")

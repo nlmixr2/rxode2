@@ -31,6 +31,10 @@
   enabled.  Therefore `rxode2.syntax.require.semicolon` (was
   `RxODE.syntax.require.semicolon`) no longer has any effect.
 
+* The syntax `state(0)` can no longer be turned
+  off. `rxode2.syntax.allow.ini0` (was `RxODE.syntax.allow.ini0`) has
+  been removed.
+
 ## Additional features
 
 * The UI functions of `nlmixr` have been ported to work in `rxode2`

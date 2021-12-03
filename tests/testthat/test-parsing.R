@@ -248,18 +248,9 @@ rxode2Test(
       )
     })
 
-    .rxWithOptions(list(rxode2.syntax.allow.ini0 = FALSE), {
-      badParse(
-        desc = "y_1(0) unsupported when rxode2.syntax.allow.ini0=FALSE",
-        "y_1(0) = 1;d/dt(y_1) = F*y_1"
-      )
-    })
-
-
-    .rxWithOptions(list(rxode2.syntax.allow.ini0 = TRUE), {
-      badParse(
-        desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",
-        "
+    badParse(
+      desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",
+      "
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Jacobian
@@ -273,11 +264,11 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-      )
+)
 
-      badParse(
-        desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",
-        "
+    badParse(
+      desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",
+      "
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Jacobian
@@ -291,11 +282,11 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-      )
+)
 
-      goodParse(
-        desc = "Defining df(var1)/dy(var2) where var1 is a state variable.",
-        "
+    goodParse(
+      desc = "Defining df(var1)/dy(var2) where var1 is a state variable.",
+      "
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Jacobian
@@ -308,11 +299,11 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-      )
+)
 
-      goodParse(
-        desc = "Defining df(var1)/dy(var2) where var2 is a variable.",
-        "
+    goodParse(
+      desc = "Defining df(var1)/dy(var2) where var2 is a variable.",
+      "
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Jacobian
@@ -326,11 +317,11 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-      )
+)
 
-      badParse(
-        desc = "Defining df(var1)/dy(var2) where var2 is a calculated value.",
-        "
+    badParse(
+      desc = "Defining df(var1)/dy(var2) where var2 is a calculated value.",
+      "
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Jacobian
@@ -344,115 +335,114 @@ dy(0) = 0
 ## mu
 mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-      )
+)
 
-      goodParse(
-        desc = "a*b/c^2",
-        "d/dt(x)=a*b/c^2*x"
-      )
+    goodParse(
+      desc = "a*b/c^2",
+      "d/dt(x)=a*b/c^2*x"
+    )
 
-      goodParse(
-        desc = "a*b/c^2/d",
-        "d/dt(x)=a*b/c^2/d*x"
-      )
+    goodParse(
+      desc = "a*b/c^2/d",
+      "d/dt(x)=a*b/c^2/d*x"
+    )
 
-      goodParse(
-        desc = "Transit as a compartment",
-        "d/dt(transit) = -(1/mtt) * transit
+    goodParse(
+      desc = "Transit as a compartment",
+      "d/dt(transit) = -(1/mtt) * transit
         d/dt(depot)   =  (1/mtt) * transit - ka * depot
         d/dt(center)  = ka * depot - (cl/v1) * center - (q/v1) * center + (q/v2) * periph
         d/dt(periph)  = (q / v1) * center - (q / v2) * periph
         cp = center / v1"
-      )
+    )
 
-      goodParse(
-        desc = "=+ parsing",
-        "C2 = +centr/V2;
+    goodParse(
+      desc = "=+ parsing",
+      "C2 = +centr/V2;
               C3 = peri/V3;
               d/dt(depot) =-KA*depot;
               d/dt(centr) = +KA*depot - CL*C2 - Q*C2 + Q*C3;
               d/dt(peri)  =                    Q*C2 - Q*C3;
               d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;"
-      )
+    )
 
-      for (v in c("ii", "evid")) {
-        badParse(
-          desc = sprintf("bad variables: %s", v),
-          sprintf("var=%s", v)
-        )
-      }
-      for (v in "tlast") {
-        goodParse(
-          desc = sprintf("good variables: %s", v),
-          sprintf("var=%s", v)
-        )
-      }
-      for (v in "abs") {
-        goodParse(
-          desc = sprintf("good functions: %s", v),
-          sprintf("var=%s(x)", v)
-        )
-      }
-
-      badParse(desc = "No duplicate dvid()", "a=b;dvid(1,2,3);dvid(3,4,5)")
-
-      badParse(desc = "Bad dvid(0)", "a=b;dvid(0);")
-      badParse(desc = "Bad dvid(0, 1)", "a=b;dvid(1,0);")
-
-      goodParse(desc = "THETA/ETA parsing", "a=THETA[1]+ETA[2];")
-
-      goodParse(desc = "Duplicate d/dt(x)", "d/dt(depot) = -depot*ka;\nd/dt(depot) = d/dt(depot)+0")
-
-      goodParse(desc = "Duplicate d/dt(x)", "d/dt(depot) ~ -depot*ka;\nd/dt(depot) = d/dt(depot)+0")
-      goodParse(desc = "Duplicate d/dt(x)", "d/dt(depot) = -depot*ka;\nd/dt(depot) ~ d/dt(depot)+0")
-
-      goodParse(desc = "pi Parse", "a = pi+e2")
-
-      for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
-        badParse(
-          sprintf("%s cannot depend on d/dt(state)", v),
-          sprintf("d/dt(depot)=-depot*ka;\nd/dt(central)=ka*depot-kel*central\n%s(depot)=d/dt(central)+3", v)
-        )
-      }
-
-      badParse(desc = "Using d/dt(x) before defined", "y=d/dt(x)+3")
-
-      goodParse(
-        desc = "Jacobain with theta and eta",
-        "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\n"
-      )
-
-
-      for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
-        badParse(
-          sprintf("%s cannot depend on jacobain info", v),
-          sprintf("d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\n%s(x)=df(x)/dt(ETA[1])+3", v)
-        )
-      }
-
+    for (v in c("ii", "evid")) {
       badParse(
-        "mtime cannot depend on df(x)/dt(ETA[1])",
-        "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=df(x)/dt(ETA[1])+3"
+        desc = sprintf("bad variables: %s", v),
+        sprintf("var=%s", v)
       )
-      badParse(
-        "mtime cannot depend on d/dt(x)",
-        "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=d/dt(x)+3"
-      )
-
+    }
+    for (v in "tlast") {
       goodParse(
-        "functional initialization ok",
-        "x(0) = y + 3\nd/dt(x) =-3*z"
+        desc = sprintf("good variables: %s", v),
+        sprintf("var=%s", v)
       )
+    }
+    for (v in "abs") {
+      goodParse(
+        desc = sprintf("good functions: %s", v),
+        sprintf("var=%s(x)", v)
+      )
+    }
 
-      ## 'rate' and 'dur' can be data items, so they cannot be variables
-      ## in an rxode2 model
-      for (var in c("alag", "f", "F")) {
-        goodParse(
-          sprintf("Parsing of %s as a variable and function work.", var),
-          sprintf("d/dt(x) = -k*x;%s(x) = %s;", var, var)
-        )
-      }
-    })
+    badParse(desc = "No duplicate dvid()", "a=b;dvid(1,2,3);dvid(3,4,5)")
+
+    badParse(desc = "Bad dvid(0)", "a=b;dvid(0);")
+    badParse(desc = "Bad dvid(0, 1)", "a=b;dvid(1,0);")
+
+    goodParse(desc = "THETA/ETA parsing", "a=THETA[1]+ETA[2];")
+
+    goodParse(desc = "Duplicate d/dt(x)", "d/dt(depot) = -depot*ka;\nd/dt(depot) = d/dt(depot)+0")
+
+    goodParse(desc = "Duplicate d/dt(x)", "d/dt(depot) ~ -depot*ka;\nd/dt(depot) = d/dt(depot)+0")
+    goodParse(desc = "Duplicate d/dt(x)", "d/dt(depot) = -depot*ka;\nd/dt(depot) ~ d/dt(depot)+0")
+
+    goodParse(desc = "pi Parse", "a = pi+e2")
+
+    for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
+      badParse(
+        sprintf("%s cannot depend on d/dt(state)", v),
+        sprintf("d/dt(depot)=-depot*ka;\nd/dt(central)=ka*depot-kel*central\n%s(depot)=d/dt(central)+3", v)
+      )
+    }
+
+    badParse(desc = "Using d/dt(x) before defined", "y=d/dt(x)+3")
+
+    goodParse(
+      desc = "Jacobain with theta and eta",
+      "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\n"
+    )
+
+
+    for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
+      badParse(
+        sprintf("%s cannot depend on jacobain info", v),
+        sprintf("d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\n%s(x)=df(x)/dt(ETA[1])+3", v)
+      )
+    }
+
+    badParse(
+      "mtime cannot depend on df(x)/dt(ETA[1])",
+      "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=df(x)/dt(ETA[1])+3"
+    )
+    badParse(
+      "mtime cannot depend on d/dt(x)",
+      "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=d/dt(x)+3"
+    )
+
+    goodParse(
+      "functional initialization ok",
+      "x(0) = y + 3\nd/dt(x) =-3*z"
+    )
+
+    ## 'rate' and 'dur' can be data items, so they cannot be variables
+    ## in an rxode2 model
+    for (var in c("alag", "f", "F")) {
+      goodParse(
+        sprintf("Parsing of %s as a variable and function work.", var),
+        sprintf("d/dt(x) = -k*x;%s(x) = %s;", var, var)
+      )
+    }
 
     goodParse("x=ifelse(!matt,0,1)", "x=ifelse(!matt,0,1)")
     goodParse("x=ifelse(!(matt),0,1)", "x=ifelse(!(matt),0,1)")

@@ -114,11 +114,6 @@ static inline int handleRemainingAssignmentsIniProp(nodeInfo ni, char *name, int
 	trans_syntax_error_report_fn(_gbuf.s);
       }
     }
-    if (!rx_syntax_allow_ini0 && nodeHas(ini0)){
-      sPrint(&_gbuf,NOINI0,v);
-      updateSyntaxCol();
-      trans_syntax_error_report_fn(_gbuf.s);
-    }
     return 1;
   }
   return 0;

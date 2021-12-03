@@ -1040,7 +1040,7 @@ rxMd5 <- function(model, # Model File
     rxSyncOptions()
     .tmp <- c(
       rxode2.syntax.allow.dots,
-      rxode2.syntax.allow.ini0, rxode2.syntax.allow.ini, rxode2.calculate.jacobian,
+      rxode2.syntax.allow.ini, rxode2.calculate.jacobian,
       rxode2.calculate.sensitivity
     )
     .ret <- c(

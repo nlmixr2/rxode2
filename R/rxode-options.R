@@ -202,7 +202,6 @@ rxOpt <- list(
   rxode2.prefer.tbl = c(FALSE, FALSE),
   rxode2.warn.on.assign = c(TRUE, TRUE),
   rxode2.syntax.allow.dots = c(FALSE, TRUE),
-  rxode2.syntax.allow.ini0 = c(FALSE, TRUE),
   rxode2.syntax.allow.ini = c(FALSE, TRUE),
   rxode2.calculate.jacobian = c(FALSE, FALSE),
   rxode2.calculate.sensitivity = c(FALSE, FALSE),
@@ -221,7 +220,6 @@ rxOpt <- list(
 rxode2.prefer.tbl <- NULL
 rxode2.warn.on.assign <- NULL
 rxode2.syntax.allow.dots <- NULL
-rxode2.syntax.allow.ini0 <- NULL
 rxode2.syntax.allow.ini <- NULL
 rxode2.calculate.jacobian <- NULL
 rxode2.calculate.sensitivity <- NULL
