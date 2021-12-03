@@ -61,7 +61,7 @@ int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_podo = 0, rx_syntax_requi
 extern D_ParserTables parser_tables_rxode2;
 
 unsigned int found_jac = 0, nmtime=0;
-int rx_syntax_assign = 0, rx_syntax_star_pow = 0,
+int rx_syntax_star_pow = 0,
   rx_syntax_require_semicolon = 0, rx_syntax_allow_dots = 0,
   rx_syntax_allow_ini0 = 1, rx_syntax_allow_ini = 1, 
   maxSumProdN = 0, SumProdLD = 0, good_jac=1, extraCmt=0;
@@ -136,7 +136,6 @@ static inline int finalizeLineParam(nodeInfo ni, char *name);
 static inline int isCmtLhsStatement(nodeInfo ni, char *name, char *v);
 //static inline int add_deCmtProp(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere);
 static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere);
-static inline int assertNoRAssign(nodeInfo ni, char *name, D_ParseNode *pn, int i);
 static inline void assertEndSemicolon(nodeInfo ni, char *name, int i, D_ParseNode *xpn);
 
 
@@ -153,8 +152,7 @@ static inline void assertEndSemicolon(nodeInfo ni, char *name, int i, D_ParseNod
 
 static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_ParseNode *pn, D_ParseNode *xpn,
 						 int *i, int nch, int *depth) {
-  if (assertNoRAssign(ni, name, pn, *i) ||
-      isSkipChild(ni, name, *i))  return 1;
+  if (isSkipChild(ni, name, *i))  return 1;
 
   // Inductive linearization matrices
   handleIndLinMat0(ni, name);
@@ -383,7 +381,6 @@ void reset() {
   rx_syntax_error = 0;
   rx_suppress_syntax_info=0;
   rx_podo = 0;
-  rx_syntax_assign = 0;
   rx_syntax_star_pow = 0;
   rx_syntax_require_semicolon = 0;
   rx_syntax_allow_dots = 0;
@@ -509,7 +506,6 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
 
   int isStr =INTEGER(parseStr)[0];
   reset();
-  rx_syntax_assign = R_get_option("rxode2.syntax.assign",1);
   rx_syntax_star_pow = R_get_option("rxode2.syntax.star.pow",1);
   rx_syntax_require_semicolon = R_get_option("rxode2.syntax.require.semicolon",0);
   rx_syntax_allow_dots = R_get_option("rxode2.syntax.allow.dots",1);

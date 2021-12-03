@@ -18,6 +18,9 @@
 * Assigning states with `rxode2.syntax.assign.state` (was
   `RxODE.syntax.assign.state`) is no longer supported.
 
+* Enforcing "pure" assignment syntax with `=` syntax is no longer
+  supported so `rxode2.syntax.assign` is no longer supported.
+
 ## Additional features
 
 * The UI functions of `nlmixr` have been ported to work in `rxode2`

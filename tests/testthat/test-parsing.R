@@ -290,115 +290,6 @@ rxode2Test(
       )
     })
 
-    .rxWithOptions(list(rxode2.syntax.assign = FALSE), {
-      badParse(
-        desc = "Assignment with <- not supported #1",
-        "d/dt(y_1) <- F*y"
-      )
-
-      badParse(
-        desc = "Assignment with <- not supported #2",
-        "y_1(0) <- 1;d/dt(y_1) = F*y"
-      )
-
-      badParse(
-        desc = "Assignment with <- not supported #3",
-        "y_2 <- 1;d/dt(y_1) = F*y"
-      )
-
-      badParse(
-        desc = "Assignment with <- not supported #4",
-        "y_2 <- 1+7;d/dt(y_1) = F*y"
-      )
-
-      badParse(
-        desc = "Assignment with <- not supported #7",
-        "d/dt(y_1) = F*y; df(y_1)/dy(F) <- y"
-      )
-      equivSyntax(
-        desc = "time and t are equivalent",
-        "d/dt(depot) = time^2", "d/dt(depot) = t^2"
-      )
-
-      badParse(desc = "Assignment of state varaible #1", "
-a       = 1.0E4+0
-x       = 1
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-")
-
-      badParse(desc = "Assignment of state varaible #2", "
-a       = 1.0E4+0
-x       = 1+2
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-")
-
-      goodParse(desc = "Assignment of state varaible #3", "
-a       = 1.0E4+0
-x(0)    = 1+2
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-")
-
-      badParse(desc = "Assignment of state varaible #4", "
-a       = 1.0E4+0
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-x       = 1
-")
-
-
-      badParse(desc = "Assignment of state varaible #5", "
-a       = 1.0E4+0
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-x       = 1+2
-")
-
-      goodParse(desc = "Initial Condition Assignment #1", "
-a       = 1.0E4+0
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-x(0)     = 1
-")
-
-      goodParse(desc = "Initial Condition Assignment #2", "
-a       = 1.0E4+0
-x(0)    = 1
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-")
-
-      badParse(desc = "Initial conditions based on if/then statements", "
-if (a > 1){
-x(0)    = 1
-} else {
-x(0) = 2
-}
-a       = 1.0E4+0
-x(0)    = 1
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-")
-
-
-      badParse(desc = "RHS d/dt(x) before defined", "
-d/dt
-d/dt(x) = a*y*z - 0.04*x
-d/dt(z) = 3.0e7*y^2
-d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
-")
-    })
-
     .rxWithOptions(list(rxode2.syntax.allow.ini0 = FALSE), {
       badParse(
         desc = "y_1(0) unsupported when rxode2.syntax.allow.ini0=FALSE",
@@ -605,12 +496,11 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
       }
     })
 
-    .rxWithOptions(list(rxode2.syntax.assign = TRUE), {
-      goodParse("x=ifelse(!matt,0,1)", "x=ifelse(!matt,0,1)")
-      goodParse("x=ifelse(!(matt),0,1)", "x=ifelse(!(matt),0,1)")
-      goodParse("x=ifelse((!matt),0,1)", "x=ifelse((!matt),0,1)")
+    goodParse("x=ifelse(!matt,0,1)", "x=ifelse(!matt,0,1)")
+    goodParse("x=ifelse(!(matt),0,1)", "x=ifelse(!(matt),0,1)")
+    goodParse("x=ifelse((!matt),0,1)", "x=ifelse((!matt),0,1)")
 
-      goodParse("mix lincmt with lags etc", "popCl <- 1
+    goodParse("mix lincmt with lags etc", "popCl <- 1
     popV <- 20
     popKa <- 1
     popVp <- 10
@@ -652,9 +542,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
 
-      badParse(
-        "Still cannot take undefined compartments",
-        "popCl <- 1
+    badParse(
+      "Still cannot take undefined compartments",
+      "popCl <- 1
     popV <- 20
     popKa <- 1
     popVp <- 10
@@ -696,9 +586,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
-      )
+    )
 
-      badParse("cmt(depot) doesn't work with linCmt()", "popCl <- 1
+    badParse("cmt(depot) doesn't work with linCmt()", "popCl <- 1
     cmt(depot)
     popV <- 20
     popKa <- 1
@@ -741,7 +631,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
 
-      badParse("cmt(central) doesn't work with linCmt()", "popCl <- 1
+    badParse("cmt(central) doesn't work with linCmt()", "popCl <- 1
     cmt(central)
     popV <- 20
     popKa <- 1
@@ -784,87 +674,86 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
 
-      badParse("theta0", "a = theta[0]")
-      badParse("eta0", "a = eta[0]")
-      goodParse("theta1", "a = theta[1]")
-      goodParse("eta1", "a = eta[1]")
-      badParse("matt1", "a = matt[1]")
+    badParse("theta0", "a = theta[0]")
+    badParse("eta0", "a = eta[0]")
+    goodParse("theta1", "a = theta[1]")
+    goodParse("eta1", "a = eta[1]")
+    badParse("matt1", "a = matt[1]")
 
-      badParse("ifelse1", "ifelse=3")
-      badParse("ifelse2", "a=ifelse+3")
-      badParse("ifelse3", "d/dt(ifelse)=matt")
+    badParse("ifelse1", "ifelse=3")
+    badParse("ifelse2", "a=ifelse+3")
+    badParse("ifelse3", "d/dt(ifelse)=matt")
 
-      badParse("if1", "if=3")
-      badParse("if2", "a=if+3")
-      badParse("if3", "d/dt(if)=matt")
+    badParse("if1", "if=3")
+    badParse("if2", "a=if+3")
+    badParse("if3", "d/dt(if)=matt")
 
 
-      badParse("cmt1", "cmt=3")
-      goodParse("cmt2", "a=cmt+3")
-      badParse("cmt3", "d/dt(cmt)=matt")
+    badParse("cmt1", "cmt=3")
+    goodParse("cmt2", "a=cmt+3")
+    badParse("cmt3", "d/dt(cmt)=matt")
 
-      badParse("dvid1", "dvid=3")
-      goodParse("dvid2", "a=dvid+3")
-      badParse("dvid3", "d/dt(dvid)=matt")
+    badParse("dvid1", "dvid=3")
+    goodParse("dvid2", "a=dvid+3")
+    badParse("dvid3", "d/dt(dvid)=matt")
 
-      badParse("addl1", "addl=3")
-      goodParse("addl2", "a=addl+3")
-      badParse("addl3", "d/dt(addl)=matt")
+    badParse("addl1", "addl=3")
+    goodParse("addl2", "a=addl+3")
+    badParse("addl3", "d/dt(addl)=matt")
 
-      badParse("ss1", "ss=3")
-      goodParse("ss2", "a=ss+3")
-      badParse("ss3", "d/dt(ss)=matt")
+    badParse("ss1", "ss=3")
+    goodParse("ss2", "a=ss+3")
+    badParse("ss3", "d/dt(ss)=matt")
 
-      badParse("amt1", "amt=3")
-      goodParse("amt2", "a=amt+3")
-      badParse("amt3", "d/dt(amt)=matt")
+    badParse("amt1", "amt=3")
+    goodParse("amt2", "a=amt+3")
+    badParse("amt3", "d/dt(amt)=matt")
 
-      badParse("rate1", "rate=3")
-      goodParse("rate2", "a=rate+3")
-      badParse("rate3", "d/dt(rate)=matt")
+    badParse("rate1", "rate=3")
+    goodParse("rate2", "a=rate+3")
+    badParse("rate3", "d/dt(rate)=matt")
 
-      badParse("printf1", "printf=3")
-      badParse("printf2", "a=printf+3")
-      badParse("printf3", "d/dt(printf)=matt")
+    badParse("printf1", "printf=3")
+    badParse("printf2", "a=printf+3")
+    badParse("printf3", "d/dt(printf)=matt")
 
-      badParse("Rprintf1", "Rprintf=3")
-      badParse("Rprintf2", "a=Rprintf+3")
-      badParse("Rprintf3", "d/dt(Rprintf)=matt")
+    badParse("Rprintf1", "Rprintf=3")
+    badParse("Rprintf2", "a=Rprintf+3")
+    badParse("Rprintf3", "d/dt(Rprintf)=matt")
 
-      badParse("print1", "print=3")
-      badParse("print2", "a=print+3")
-      badParse("print3", "d/dt(print)=matt")
+    badParse("print1", "print=3")
+    badParse("print2", "a=print+3")
+    badParse("print3", "d/dt(print)=matt")
 
-      goodParse("sum1", "a=sum(1,2,3,a,b,c)")
-      goodParse("sum2", "a=lag(b, 1)")
+    goodParse("sum1", "a=sum(1,2,3,a,b,c)")
+    goodParse("sum2", "a=lag(b, 1)")
 
-      goodParse("transit1", "a=transit(n, mtt, bio)")
-      goodParse("transit2", "a=transit(n, mtt)")
-      badParse("transit3", "a=transit(n, mtt, bio,ack)")
+    goodParse("transit1", "a=transit(n, mtt, bio)")
+    goodParse("transit2", "a=transit(n, mtt)")
+    badParse("transit3", "a=transit(n, mtt, bio,ack)")
 
-      goodParse("fun1", "a=is.nan(x)")
-      badParse("fun2", "a=is.nan(x,b)")
-      badParse("fun3", "a=is.nan()")
+    goodParse("fun1", "a=is.nan(x)")
+    badParse("fun2", "a=is.nan(x,b)")
+    badParse("fun3", "a=is.nan()")
 
-      goodParse("fun4", "a=is.finite(x)")
-      badParse("fun5", "a=is.finite(x,a)")
-      badParse("fun6", "a=is.finite()")
+    goodParse("fun4", "a=is.finite(x)")
+    badParse("fun5", "a=is.finite(x,a)")
+    badParse("fun6", "a=is.finite()")
 
-      goodParse("fun7", "a=is.infinite(x)")
-      badParse("fun8", "a=is.infinite(x,a)")
-      badParse("fun9", "a=is.infinite()")
+    goodParse("fun7", "a=is.infinite(x)")
+    badParse("fun8", "a=is.infinite(x,a)")
+    badParse("fun9", "a=is.infinite()")
 
-      badParse("fun10", "t=tinf")
-      badParse("fun11", "time=tinf")
+    badParse("fun10", "t=tinf")
+    badParse("fun11", "time=tinf")
 
-      badParse("while/else", "a=1;while(1){a=a+3} else { a=3}")
+    badParse("while/else", "a=1;while(1){a=a+3} else { a=3}")
 
-      goodParse("while", "a=1;while(1){a=a+3}")
+    goodParse("while", "a=1;while(1){a=a+3}")
 
-      goodParse("while-break", "a=1;while(1){a=a+3; break;}")
-      badParse("while-break-bad", "a=1;while(1){a=a+3;}; break;")
-    })
+    goodParse("while-break", "a=1;while(1){a=a+3; break;}")
+    badParse("while-break-bad", "a=1;while(1){a=a+3;}; break;")
   },
-  silent = TRUE,
-  test = "parsing"
+silent = TRUE,
+test = "parsing"
 )

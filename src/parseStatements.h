@@ -139,5 +139,4 @@ static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int is
     finalizeLineSelectionStatement(ni, name, isWhile) ||
     finalizeLinePower(ni, name);
   (void) tmp;
-  assertLineEquals(ni, name, pn);
 }

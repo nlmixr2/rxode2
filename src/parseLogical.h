@@ -326,23 +326,3 @@ static inline int finalizeLineSelectionStatement(nodeInfo ni, char *name, int is
   }
   return 0;
 }
-
-static inline void assertLineEquals(nodeInfo ni, char *name, D_ParseNode *pn){
-  if (!rx_syntax_assign && (nodeHas(assignment) || nodeHas(ini) || nodeHas(ini0) || nodeHas(ini0f) || nodeHas(mtime))){
-    int i;
-    if (nodeHas(mtime)){
-      i = 4;
-    } else if (nodeHas(ini0)){
-      i = 2;
-    } else {
-      i = 1;
-    }
-    D_ParseNode *xpn = d_get_child(pn,i);
-    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-    if (!strcmp("<-",v)){
-      updateSyntaxCol();
-      trans_syntax_error_report_fn(NOASSIGN);
-    }
-    /* Free(v); */
-  }
-}

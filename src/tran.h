@@ -122,7 +122,6 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define fromDDT 2
 #define fromCMTprop 1
 
-#define NOASSIGN _("'<-' not supported, use '=' instead or set 'options(rxode2.syntax.assign = TRUE)'")
 #define NEEDSEMI _("lines need to end with ';'\n     to match R's handling of line endings set 'options(rxode2.syntax.require.semicolon = FALSE)'")
 #define NEEDPOW _("'**' not supported, use '^' instead or set 'options(rxode2.syntax.star.pow = TRUE)'")
 #define NOINI0 _("'%s(0)' for initialization not allowed\n to allow set 'options(rxode2.syntax.allow.ini0 = TRUE)'")
