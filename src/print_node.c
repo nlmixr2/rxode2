@@ -29,16 +29,12 @@ void wprint_node(int depth, char *name, char *value, void *client_data) {
     // Apply fix for dot.syntax
     for (i = 0; i < (int)strlen(value); i++){
       if (value[i] == '.' && nodeHas(identifier_r)){
-	aAppendN("_DoT_", 5);
-	sAppendN(&sbt, ".", 1);
-        if (rx_syntax_allow_dots == 0){
-	  updateSyntaxCol();
-          trans_syntax_error_report_fn(NODOT);
-        }
+        aAppendN("_DoT_", 5);
+        sAppendN(&sbt, ".", 1);
       } else {
-	sPut(&sb, value[i]);
-	sPut(&sbDt, value[i]);
-	sPut(&sbt, value[i]);
+        sPut(&sb, value[i]);
+        sPut(&sbDt, value[i]);
+        sPut(&sbt, value[i]);
       }
     }
   }

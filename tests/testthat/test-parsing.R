@@ -95,7 +95,6 @@ rxode2Test(
         "12foo_bar = 1.0/2.0;",
         "d/dt(y) = F * y;"))
 
-    .rxWithOptions(list(rxode2.syntax.allow.dots = TRUE), {
       goodParse(
         desc = "dot in variable name (ini0)",
         code = paste(
@@ -145,67 +144,6 @@ rxode2Test(
       )
 
       goodParse(
-        desc = "leading dot in variable name",
-        code = paste(
-          sep = "\n",
-          "F = 0.75;",
-          ".foo.bar = 0.5;",
-          "d/dt(y) = F * y;"
-        )
-      )
-    })
-
-
-    .rxWithOptions(list(rxode2.syntax.allow.dots = FALSE), {
-      badParse(
-        desc = "dot in variable name (ini0)",
-        code = paste(
-          sep = "\n",
-          "F = 0.75;",
-          "foo.bar = 1.0/2.0;",
-          "d/dt(y) = F * y;"
-        )
-      )
-
-      badParse(
-        desc = "dot in variable name in d/dt()",
-        code = paste(
-          sep = "\n",
-          "d/dt(y_1) = F * y;", # okay
-          "d/dt(y.1) = F * y;"
-        ) # not okay
-      )
-
-      badParse(
-        desc = "leading dot in variable name",
-        code = paste(
-          sep = "\n",
-          "F = 0.75;",
-          ".foo.bar = 0.5;",
-          "d/dt(y) = F * y;"
-        )
-      )
-
-      badParse(
-        desc = "leading dot in variable name (ini0)",
-        code = paste(
-          sep = "\n",
-          "F = 0.75;",
-          ".foo.bar = 1.0/2.0;",
-          "d/dt(y) = F * y;"
-        )
-      )
-
-      badParse(
-        desc = "leading dot in variable name in d/dt()",
-        code = paste(
-          sep = "\n",
-          "d/dt(y_1) = F * y;", # okay
-          "d/dt(.y.1) = F * y;"
-        ) # not okay
-      )
-
-      badParse(
         desc = "leading dot in variable name",
         code = paste(
           sep = "\n",
@@ -219,9 +157,7 @@ rxode2Test(
         desc = "Assignment with <<- not supported",
         "d/dt(y_1) <<- F*y"
       )
-    })
 
-    .rxWithOptions(list(rxode2.syntax.allow.dots = FALSE), {
       goodParse(
         desc = "Assignment with <- supported #1",
         "d/dt(y_1) <- F*y"
@@ -246,7 +182,6 @@ rxode2Test(
         desc = "Assignment with <- supported #7",
         "d/dt(y_1) = F*y; df(y_1)/dy(y_1) <- 0"
       )
-    })
 
     badParse(
       desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",

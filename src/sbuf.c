@@ -208,10 +208,6 @@ void doDot(sbuf *out, char *buf) {
   for (int k = 0; k < (int)strlen(buf); k++){
     if (buf[k] == '.'){
       sAppend(out,"_DoT_");
-      if (rx_syntax_allow_dots == 0){
-	updateSyntaxCol();
-	trans_syntax_error_report_fn(NODOT);
-      }
     } else {
       sPut(out,buf[k]);
     }
@@ -223,10 +219,6 @@ void doDot2(sbuf *sb, sbuf *sbDt, char *buf) {
     if (buf[k] == '.') {
       sAppend(sb,"_DoT_");
       sAppend(sbDt,"_DoT_");
-      if (rx_syntax_allow_dots == 0){
-	updateSyntaxCol();
-	trans_syntax_error_report_fn(NODOT);
-      }
     } else {
       sPut(sb,buf[k]);
       sPut(sbDt,buf[k]);

@@ -35,6 +35,11 @@
   off. `rxode2.syntax.allow.ini0` (was `RxODE.syntax.allow.ini0`) has
   been removed.
 
+* Variable with dotss in variable and state names like
+  `state.name` works in R. Therefore, "pure" syntax of excluding `.` values
+  from variables cannot be enforced with `rxode2.syntax.allow.dots`
+  (was `RxODE.syntax.allow.dots`).
+
 ## Additional features
 
 * The UI functions of `nlmixr` have been ported to work in `rxode2`

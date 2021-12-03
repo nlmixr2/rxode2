@@ -102,16 +102,16 @@ static inline int handleRemainingAssignmentsIniProp(nodeInfo ni, char *name, int
     doDot2(&sb, &sbDt, v);
     if (nodeHas(ini) && !new_de(v)){
       if (tb.idu[tb.id] == 0){
-	new_or_ith(v);
-	if (tb.lh[tb.ix] == isSuppressedLHS || tb.lh[tb.ix] == 29){
-	  tb.lh[tb.ix] = 29;
-	} else {
-	  tb.lh[tb.ix] = isLhsStateExtra;
-	}
+        new_or_ith(v);
+        if (tb.lh[tb.ix] == isSuppressedLHS || tb.lh[tb.ix] == 29){
+          tb.lh[tb.ix] = 29;
+        } else {
+          tb.lh[tb.ix] = isLhsStateExtra;
+        }
       } else {
-	updateSyntaxCol();
-	sPrint(&_gbuf,"Cannot assign state variable %s; For initial condition assigment use '%s(0) ='",v,v);
-	trans_syntax_error_report_fn(_gbuf.s);
+        updateSyntaxCol();
+        sPrint(&_gbuf,"Cannot assign state variable %s; For initial condition assigment use '%s(0) ='",v,v);
+        trans_syntax_error_report_fn(_gbuf.s);
       }
     }
     return 1;
