@@ -213,7 +213,6 @@ rxOpt <- list(
   rxode2.suppress.syntax.info = c(FALSE, FALSE),
   rxode2.sympy.engine = c("", ""),
   rxode2.cache.directory = c(.cacheDefault, .cacheDefault),
-  rxode2.syntax.assign.state = c(FALSE, FALSE),
   rxode2.tempfiles = c(TRUE, TRUE),
   rxode2.sympy.run.internal = c(FALSE, FALSE),
   rxode2.syntax.require.ode.first = c(TRUE, TRUE),
@@ -237,7 +236,6 @@ rxode2.suppress.syntax.info <- NULL
 rxode2.sympy.engine <- NULL
 rxode2.cache.directory <- NULL
 rxode2.delete.unnamed <- NULL
-rxode2.syntax.assign.state <- NULL
 rxode2.tempfiles <- NULL
 rxode2.sympy.run.internal <- NULL
 rxode2.syntax.require.ode.first <- NULL

@@ -2,7 +2,11 @@
 for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
   l <- readLines(f)
   w <- which(regexpr("^[#]include <RcppArmadillo.h>", l) != -1)
-  if (length(w) == 1) {
+  if (length(w) > 0) {
+    l <- l[-w]
+  }
+  w <- which(regexpr("^[#]define R_STRICT_HEADERS", l) != -1)
+  if (length(w) > 0) {
     l <- l[-w]
   }
   l <- c("#define R_STRICT_HEADERS",

@@ -13,6 +13,11 @@
 * Since this change names, `rxode2`, `rxode` and `RxODE` all perform
   the same function.
 
+* Options were changed from `RxODE.syntax` to `rxode2.syntax`.
+
+* Assigning states with `rxode2.syntax.assign.state` (was
+  `RxODE.syntax.assign.state`) is no longer supported.
+
 ## Additional features
 
 * The UI functions of `nlmixr` have been ported to work in `rxode2`

@@ -63,7 +63,7 @@ extern D_ParserTables parser_tables_rxode2;
 unsigned int found_jac = 0, nmtime=0;
 int rx_syntax_assign = 0, rx_syntax_star_pow = 0,
   rx_syntax_require_semicolon = 0, rx_syntax_allow_dots = 0,
-  rx_syntax_allow_ini0 = 1, rx_syntax_allow_ini = 1, rx_syntax_allow_assign_state = 0,
+  rx_syntax_allow_ini0 = 1, rx_syntax_allow_ini = 1, 
   maxSumProdN = 0, SumProdLD = 0, good_jac=1, extraCmt=0;
 
 sbuf s_inits;
@@ -516,7 +516,6 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   rx_suppress_syntax_info = R_get_option("rxode2.suppress.syntax.info",0);
   rx_syntax_allow_ini0 = R_get_option("rxode2.syntax.allow.ini0",1);
   rx_syntax_allow_ini  = R_get_option("rxode2.syntax.allow.ini",1);
-  rx_syntax_allow_assign_state = R_get_option("rxode2.syntax.assign.state",0);
   rx_syntax_require_ode_first = R_get_option("rxode2.syntax.require.ode.first",1);
   set_d_use_r_headers(0);
   set_d_rdebug_grammar_level(0);
