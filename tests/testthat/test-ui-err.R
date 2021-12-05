@@ -36,7 +36,7 @@ rxode2Test({
   }
 
   test_that("error when errors have too many arguments", {
-    expect_err2(.errProcessExpression(quote({
+   expect_err2(.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -70,8 +70,10 @@ rxode2Test({
       d/dt(depot) = -ka * depot
       d/dt(center) = ka * depot - cl/v * center
       cp = center/v
-      cp ~ dbinom(add.sd, pow, lambda)
-      center ~ pow(pow.sd, pow) + boxCox(lambda) | cond
+      p <- pow
+      l <- lamba
+      cp ~ dbinom(add.sd, p, l)
+      center ~ pow(pow.sd, p) + boxCox(l) | cond
     }), lmat))
   })
 
@@ -1557,7 +1559,7 @@ rxode2Test({
       d/dt(effect) = kin*PD -kout*effect
       ##
       cp = center / v
-      n2ll(cp) ~ log(prop.err) + log(pkadd.err)
+      n2ll(cp) ~ log(prop.err) + log(cp)
       effect ~ add(pdadd.err) | pca
     }), lmat2) -> mod
 

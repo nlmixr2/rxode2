@@ -564,7 +564,18 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   prop="b",
   propT="b",
   propF=c("b", "f"),
-  t=c("d", "e")
+  t=c("d", "e"),
+  pois=c("a"),
+  binom=c("a", "b"),
+  beta=c("a", "b",  "c"),
+  chisq=c("a", "b"), #6
+  dexp=c("a"), #7
+  f=c("a", "b", "c"), #8
+  geom=c("a"), #9
+  hyper=c("a", "b", "c"), #10
+  unif=c("a", "b"), #11
+  weibull=c("a", "b")#12
+
 )
 
 #' This handles the error distribution for a single argument.
@@ -588,7 +599,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     } else if (length(.w) == 1L) {
       .df  <- env$df
       .df$err[.w] <- ifelse(argumentNumber == 1, funName, paste0(funName, argumentNumber))
-      .df$condition[.w] <- rxPreferredDistributionName(env$curCondition)
+      .df$condition[.w] <- env$curCondition
       assign("df", .df, envir=env)
       assign("lastDistAssign", .curName, envir=env)
     } else {
@@ -665,6 +676,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                              .min, " to ", .max, " argument(s), you specified ", .nargs)),
              envir=env)
     }
+    if (.nargs > 0) {
+      lapply(seq(1, .nargs), .errHandleSingleDistributionArgument, funName=funName, expression=expression, env=env)
+    }
+
   }
 }
 #' This handles a function that is not an error term.
@@ -884,10 +899,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .err <- NULL
   for (.i in seq_along(.predDf$cond)) {
     if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
-      .cnd <- .predDf$cond[.i]
-      .w <- which(.iniDf$condition == .cnd)
-      if (length(.w) == 0L) {
-        .err <- c(.err, .cnd)
+      if (.predDf[.i, "distribution"] != "-2LL") {
+        .cnd <- .predDf$cond[.i]
+        .w <- which(.iniDf$condition == .cnd)
+        if (length(.w) == 0L) {
+          .err <- c(.err, .cnd)
+        }
       }
     }
   }
