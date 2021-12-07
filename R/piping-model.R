@@ -216,11 +216,11 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
       }
       if (is.null(.ret)) {
         assign(".err",
-               c(.err, paste0("the lhs expression '", paste0(as.charcter(line[[2]])), "' is duplicated in the model and cannot be modified by piping")),
+               c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is duplicated in the model and cannot be modified by piping")),
                envir=.env)
       } else if (is.na(.ret)) {
         assign(".err",
-               c(.err, paste0("the lhs expression '", paste0(as.charcter(line[[2]])), "' is not in model and cannot be modified by piping")),
+               c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
                envir=.env)
       } else if (.ret > 0) {
         .lstExpr <- get("lstExpr", rxui)

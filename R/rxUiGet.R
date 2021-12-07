@@ -131,7 +131,7 @@ attr(rxUiGet.multipleEndpoint, "desc") <- "table/huxtable of multiple endpoint t
 #' @export
 rxUiGet.funPrint <- function(x, ...) {
   .x <- x[[1]]
-  .ls <- ls(.x$meta, all=TRUE)
+  .ls <- ls(.x$meta, all.names=TRUE)
   .ret <- vector("list", length(.ls) + 3)
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
@@ -271,7 +271,7 @@ rxUiGet.default <- function(x, ...) {
 
 
 .rxUiGetSupportedDollars <- function() {
-  .v <- as.character(methods("rxUiGet"))
+  .v <- as.character(utils::methods("rxUiGet"))
   .v <- .v[.v != "rxUiGet.default"]
   .cls <- vapply(.v, function(methodStr){
     substr(methodStr,9,nchar(methodStr))

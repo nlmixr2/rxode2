@@ -290,8 +290,8 @@ rxDemoteAddErr <- function(errType) {
   .tmp <- as.character(oldAddProp)
   .w <- which(names(.incompatibleAddProp) == .tmp)
   if (length(.w) == 1L) {
-    if (newTransform %in% .incompatibleAddProp[[.w]]) {
-      return(.incompatibleErr(.tmp, newTransform))
+    if (newAddProp %in% .incompatibleAddProp[[.w]]) {
+      return(.incompatibleErr(.tmp, newAddProp))
     }
   }
   structure(switch(newAddProp,
@@ -320,8 +320,8 @@ rxDemoteAddErr <- function(errType) {
   .tmp <- as.character(oldErrTypeF)
   .w <- which(names(.incompatibleErrTypeF) == .tmp)
   if (length(.w) == 1L) {
-    if (newTransform %in% .incompatibleErrTypeF[[.w]]) {
-      return(.incompatibleErr(.tmp, newTransform))
+    if (newErrTypeF %in% .incompatibleErrTypeF[[.w]]) {
+      return(.incompatibleErr(.tmp, newErrTypeF))
     }
   }
   structure(switch(newErrTypeF,

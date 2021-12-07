@@ -299,7 +299,7 @@
     # as not having covariates.  Perhaps a warning should be
     # issued for this condition
     .covariate <- names(.doubleNames)
-    .covariateParameter <- setNames(unlist(.doubleNames), NUsLL)
+    .covariateParameter <- setNames(unlist(.doubleNames), NULL)
     env$muRefDropParameters <- rbind(env$muRefDropParameters,
                                      data.frame(parameter=.names[.wt], term=paste0(.covariate, "*", .covariateParameter)))
     .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)

@@ -325,7 +325,7 @@
 #' @noRd
 .handleSingleErrTypeFoceiBase <- function(env, i) {
   .pred1 <- env$predDf[i, ]
-  if (tmp$predDf$distribution %in% c("norm", "t")) {
+  if (.pred1$distribution %in% c("norm", "t")) {
     .handleSingleErrTypeNormOrTFoceiBase(env, .pred1)
   } else {
     # This is for the non-normal cases
