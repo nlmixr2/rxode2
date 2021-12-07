@@ -1,5 +1,5 @@
 ---
-title: "Nesting levels in RxODE"
+title: "Nesting levels in rxode2"
 output:
   html_document:
     self_contained: no
@@ -13,7 +13,7 @@ knitr::opts_chunk$set( comment = "#>")
 options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
-## Nesting in RxODE
+## Nesting in rxode2
 
 ```{r child='../man-roxygen/rmdhunks/nesting.Rmdh'}
 ```

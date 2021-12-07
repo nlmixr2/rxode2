@@ -1,7 +1,7 @@
 # rxode2
 
 ## Breaking changes
-
+ 
 * For simulations, `$simulationSigma` now assumes a diagonal matrix.
   The sigma values are assumed to be standard normal, and uncorrelated
   between endpoints.  Simulation with uncertainty will still draw from
@@ -39,6 +39,9 @@
   `state.name` works in R. Therefore, "pure" syntax of excluding `.` values
   from variables cannot be enforced with `rxode2.syntax.allow.dots`
   (was `RxODE.syntax.allow.dots`).
+  
+* The mneumonic `et(rate=model)` and `et(dur=model)` mnumonics have
+  been removed.  `rate` needs to be set to `-1` and `-2` manually instead.
 
 ## Additional features
 

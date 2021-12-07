@@ -1,5 +1,5 @@
 ---
-title: "RxODE Event Types"
+title: "rxode2 Event Types"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -11,11 +11,11 @@ options(cli.unicode=FALSE, crayon.enabled=FALSE);
 options(knitr.table.format = "html")
 knitr::opts_chunk$set( comment = "#>")
 htmltools::img(src = knitr::image_uri("logo.png"), 
-               alt = 'RxODE', 
+               alt = 'rxode2', 
                style = 'position:absolute; top:0; right:0; padding:10px; border: 0;')
 options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
 
-```{r child='RxODE-event-types.Rmdh'}
+```{r child='rxode2-event-types.Rmdh'}
 ```

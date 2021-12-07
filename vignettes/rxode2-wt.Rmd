@@ -1,10 +1,10 @@
 ---
-title: "Weight Based Dosing in RxODE"
+title: "Weight Based Dosing in rxode2"
 output:
   html_document:
     self_contained: no
 date: "`r Sys.Date()`"
 ---
 
-```{r child='../man-roxygen/rmdhunks/RxODE-wt.Rmd'}
+```{r child='../man-roxygen/rmdhunks/rxode2-wt.Rmd'}
 ```

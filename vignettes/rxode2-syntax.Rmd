@@ -1,9 +1,9 @@
 ---
-title: "RxODE ODE solving syntax"
+title: "rxode2 ODE solving syntax"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{RxODE ODE solving syntax}
+  %\VignetteIndexEntry{rxode2 ODE solving syntax}
   %\VignetteEngine{knitr::rmarkdown_notangle}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,18 +18,18 @@ knitr::opts_chunk$set(
 ## Introduction
 
 This briefly describes the syntax used to define models 
-that `RxODE` will translate into R-callable compiled code. It also
+that `rxode2` will translate into R-callable compiled code. It also
 describes the communication of variables between `R` and the
-`RxODE` modeling specification.
+`rxode2` modeling specification.
 
 
 Below is a commented example to quickly show the capabilities of
-`RxODE` syntax.
+`rxode2` syntax.
 
 ## Example
 
 ```
-   # An RxODE model specification (this line is a comment).
+   # An rxode2 model specification (this line is a comment).
 
    if(comed==0){   # concomitant medication (con-med)?
       F = 1.0;     # full bioavailability w.o. con-med
@@ -51,7 +51,7 @@ Below is a commented example to quickly show the capabilities of
 
 ## Syntax
 
-```{r child='../man/rmdhunks/RxODE-syntax-hunk.Rmd'}
+```{r child='../man/rmdhunks/rxode2-syntax-hunk.Rmd'}
 ```
 
 
@@ -59,11 +59,11 @@ Below is a commented example to quickly show the capabilities of
 
 Users specify which variables are the dynamic system's state variables
 via the `d/dt(identifier)` operator as part of the model specification,
-and which are model parameters via the `params=` argument in `RxODE`
+and which are model parameters via the `params=` argument in `rxode2`
 `solve()` method:
 
 ```
-m1 <- RxODE(model = ode, modName = "m1")
+m1 <- rxode2(model = ode, modName = "m1")
 
 # model parameters -- a named vector is required
 theta <- 
@@ -90,14 +90,14 @@ open source tool *DParser*, Plevyak (2015).
 
 ## Supported functions
 
-All the supported functions in RxODE can be seen with the
+All the supported functions in rxode2 can be seen with the
 `rxSupportedFuns()`.
 
 A brief description of the built-in functions are
 in the following table:
 
 ```{r, echo=FALSE, screenshot.force=FALSE}
-library(RxODE)
+library(rxode2)
 ## rxSyntaxFunctions <- read.csv("syntax-functions.csv");usethis::use_data(rxSyntaxFunctions)
 library(DT)
 datatable(rxSyntaxFunctions, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
@@ -107,7 +107,7 @@ Note that `lag(cmt) = ` is equivalent to `alag(cmt) = ` and not the same as `= l
 
 ## Reserved keywords
 
-There are a few reserved keywords in a RxODE model.  They are  in the following table:
+There are a few reserved keywords in a rxode2 model.  They are  in the following table:
 
 ```{r, echo=FALSE, screenshot.force=FALSE}
 ## rxReservedKeywords <- read.csv("reserved-keywords.csv");names(rxReservedKeywords)[1] <- "Reserved Name";usethis::use_data(rxReservedKeywords)

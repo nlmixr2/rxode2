@@ -1,5 +1,5 @@
 ---
-title: "Compiled RxODE models in Packages"
+title: "Compiled rxode2 models in Packages"
 author: "Matthew Fidler"
 date: "`r Sys.Date()`"
 output:

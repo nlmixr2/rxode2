@@ -1,14 +1,14 @@
 
-An event table in RxODE is a specialized data frame that acts as a
-container for all of RxODE's events and observation times.
+An event table in rxode2 is a specialized data frame that acts as a
+container for all of rxode2/ ' 's events and observation times.
 
-To create an RxODE event table you may use the code `eventTable()`,
+To create an rxode2 event table you may use the code `eventTable()`,
 `et()`, or even create your own data frame with the right event
 information contained in it.  This is closely related to the [types of
-events that RxODE supports](RxODE-event-types.html).
+events that rxode2 supports](rxode2-event-types.html).
 
 ```{r}
-library(RxODE)
+library(rxode2)
 library(units)
 (ev <- eventTable())
 ```
@@ -40,11 +40,11 @@ windows](#add-doses-and-samples-within-a-sampling-window) are also
 supported.
 
 For these models, we can illustrate by using the model shared in the
-RxODE tutorial:
+rxode2 tutorial:
 
 ```{r}
-## Model from RxODE tutorial
-m1 <-RxODE({
+## Model from rxode2 tutorial
+m1 <-rxode2({
     KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
@@ -106,7 +106,7 @@ Notice that the units were specified in the table. When specified, the
 units use the `units` package to keep track of the units and convert
 them if needed.  Additionally, `ggforce` uses them to label the
 `ggplot` axes.  The `set_units` and `drop_units` are useful to set and
-drop the RxODE event table units.
+drop the rxode2 event table units.
 
 In this example, you can see the time axes is labeled:
 
@@ -115,7 +115,7 @@ rxSolve(m1, ev) %>% plot(C2)
 ```
 
 
-If you are more familiar with the NONMEM/RxODE event records, you can
+If you are more familiar with the NONMEM/rxode2 event records, you can
 also specify dosing using `et` with the dose elements directly:
 
 ```{r}
@@ -136,10 +136,10 @@ This shows how easy creating event tables can be.
 
 ## Adding sampling to an event table
 
-If you notice in the above examples, RxODE generated some default
+If you notice in the above examples, rxode2 generated some default
 sampling times since there was not any sampling times.  If you wish
 more control over the sampling time, you should add the samples to the
-RxODE event table by `add.sampling` or `et`
+rxode2 event table by `add.sampling` or `et`
 
 ```{r}
 ev <- eventTable(amount.units="mg", time.units="hr")
@@ -169,7 +169,7 @@ ev <- et(timeUnits="hr") %>%
 ev
 ```
 
-which gives the following RxODE solve:
+which gives the following rxode2 solve:
 
 ```{r}
 solve(m1, ev) %>% plot(C2)
@@ -278,12 +278,12 @@ solve(m1, ev, params=data.frame(KA=0.294*exp(rnorm(4)),
   plot(C2) + geom_point()
 ```
 
-This shows the flexibility in dosing and sampling that the RxODE event tables allow.
+This shows the flexibility in dosing and sampling that the rxode2 event tables allow.
 
 ## Combining event tables
 
 Since you can create dosing records and sampling records, you can
-create any complex dosing regimen you wish.  In addition, RxODE allows
+create any complex dosing regimen you wish.  In addition, rxode2 allows
 you to combine event tables by `c`, `seq`, `rep`, and `rbind`.
 
 ## Sequencing event tables
@@ -333,7 +333,7 @@ et <- seq(bid,set_units(1, "week"), qd,wait="+ii") %>%
 rxSolve(m1, et) %>% plot(C2)
 ```
 
-Also note, that RxODE assumes that the dosing is what you want to
+Also note, that rxode2 assumes that the dosing is what you want to
 space the event tables by, and clears out any sampling records when
 you combine the event tables.  If that is not true, you can also use
 the option `samples="use"`

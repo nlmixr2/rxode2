@@ -1,6 +1,6 @@
-# RxODE event tables
+# rxode2 event tables
 
-In general, RxODE event tables follow NONMEM dataset convention with
+In general, rxode2 event tables follow NONMEM dataset convention with
 the exceptions:
 
  - The compartment data item (`cmt`) can be a string/factor with
@@ -47,15 +47,15 @@ the exceptions:
 Other notes:
 
  - The `evid` can be the classic RxODE (described
-   [here](RxODE-events-classic.html))
+   [here](rxode2-events-classic.html))
    or the `NONMEM`-style `evid` described above.
- - `NONMEM`'s `DV` is not required; `RxODE` is a ODE solving framework.
+ - `NONMEM`'s `DV` is not required; `rxode2` is a ODE solving framework.
  - `NONMEM`'s `MDV` is not required, since it is captured in `EVID`.
  - Instead of `NONMEM`-compatible data, it can accept `deSolve`
    compatible data-frames.
 
  
-When returning the RxODE solved data-set there are a few additional
+When returning the `rxode2` solved data-set there are a few additional
 event ids (`EVID`) that you may see depending on the solving options:
 
 - `EVID = -1` is when a modeled rate ends (corresponds to `rate = -1`)
@@ -71,13 +71,13 @@ These can only be accessed when solving with the option combination
 `addDosing=TRUE` and `subsetNonmem=FALSE`. If you want to see the
 classic `EVID` equivalents you can use `addDosing=NA`.
 
-To illustrate the event types we will use the model from the original RxODE
+To illustrate the event types we will use the model from the original `rxode2`
 tutorial.
 
 ```{r}
-library(RxODE)
-## Model from RxODE tutorial
-m1 <-RxODE({
+library(rxode2)
+## Model from rxode2 tutorial
+m1 <- rxode({
     KA=2.94E-01;
     CL=1.86E+01;
     V2=4.02E+01;
@@ -105,9 +105,9 @@ m1 <-RxODE({
  
 # Bolus/Additive Doses
 
-A bolus dose is the default type of dose in RxODE and only requires
+A bolus dose is the default type of dose in `rxode2` and only requires
 the `amt`/`dose`.  Note that this uses the convenience function `et()`
-described in the [RxODE event tables](RxODE-event-table.html)
+described in the [rxode2 event tables](rxode2-event-table.html)
 
 ```{r}
 ev <- et(timeUnits="hr") %>%
@@ -124,7 +124,7 @@ rxSolve(m1, ev) %>% plot(C2) +
 
 # Infusion Doses
 
-There are a few different type of infusions that RxODE supports:
+There are a few different type of infusions that `rxode2` supports:
 
 - Constant Rate Infusion (`rate`)
 - Constant Duration Infusion (`dur`)
@@ -219,12 +219,10 @@ p1 * p2
 ## Modeled Rate and Duration of Infusion
 
 You can model the duration, which is equivalent to NONMEM's
-`rate=-2`. As a mnemonic you can use the `dur=model` instead of
-`rate=-2`
-
+`rate=-2`. 
 ```{r}
 ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24, dur=model) %>%
+    et(amt=10000, ii=12,until=24, rate=-2) %>%
     et(seq(0, 24, length.out=100))
 
 ev
@@ -237,12 +235,12 @@ rxSolve(m1, ev, c(durDepot=7)) %>% plot(depot, C2) +
 ```
 
 Similarly, you may also model rate.  This is equivalent to NONMEM's
-`rate=-1` and is how RxODE's event table specifies the data item as
-well. You can also use `rate=model` as a mnemonic:
+`rate=-1` and is how `rxode2`'s event table specifies the data item as
+well.
 
 ```{r}
 ev <- et(timeUnits="hr") %>%
-    et(amt=10000, ii=12,until=24, rate=model) %>%
+    et(amt=10000, ii=12,until=24, rate=-1) %>%
     et(seq(0, 24, length.out=100))
 
 ev
@@ -307,7 +305,7 @@ steady state dosing.
 ## Steady state for constant infusion or zero order processes
 
 
-The last type of steady state that RxODE supports is steady-state
+The last type of steady state that `rxode2` supports is steady-state
 constant infusion rate.  This can be specified the same way as NONMEM,
 that is:
 

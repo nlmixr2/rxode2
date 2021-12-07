@@ -15,18 +15,18 @@ knitr::opts_chunk$set(
 ```
 # Interactive tutorials
 ```{r setup}
-library(RxODE)
+library(rxode2)
 ```
 
-RxODE comes with a few interactive tutorials that you can run with
+`rxode2` comes with a few interactive tutorials that you can run with
 your own R session; They are built into Rstudio 1.3 and can be run
 from any R session by:
 
 ```
-## RxODE Syntax
-learnr::run_tutorial("RxODE00syntax", "RxODE")
+## rxode2 Syntax
+learnr::run_tutorial("rxode2-00-syntax", "rxode2")
 
-## RxODE event tables 
+## rxode2 event tables 
 
-learnr::run_tutorial("RxODevents", "RxODE")
+learnr::run_tutorial("rxode2-00-events", "rxode2")
 ```

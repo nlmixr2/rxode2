@@ -567,24 +567,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         }
       }
     }
-    if (.rate == "model" || .rate == "modeled" ||
-      .rate == "modelled" || .rate == "rate") {
-      .rate <- try(eval(rate, envir = envir), silent = TRUE)
-      if (!inherits(.rate, "try-error")) {
-        .lst$rate <- .rate
-      } else {
-        .lst$rate <- -1.0
-      }
-    } else if (.rate == "dur" || .rate == "duration") {
-      .rate <- try(eval(rate, envir = envir), silent = TRUE)
-      if (!inherits(.rate, "try-error")) {
-        .lst$rate <- .rate
-      } else {
-        .lst$rate <- -2.0
-      }
-    } else {
-      .lst$rate <- rate
-    }
+    .lst$rate <- rate
   }
   if (!missing(dur)) {
     .dur <- as.character(substitute(dur))
@@ -603,27 +586,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
         }
       }
     }
-    if (.dur == "model" || .dur == "modeled" ||
-      .dur == "modelled" || .dur == "dur" ||
-      .dur == "duration") {
-      .dur <- try(eval(dur, envir = envir), silent = TRUE)
-      if (inherits(.dur, "try-error")) {
-        .lst$rate <- -2.0
-        .lst <- .lst[names(.lst) != "dur"]
-      } else {
-        .lst$dur <- .dur
-      }
-    } else if (.dur == "rate") {
-      .dur <- try(eval(dur, envir = envir), silent = TRUE)
-      if (inherits(.dur, "try-error")) {
-        .lst$rate <- -1.0
-        .lst <- .lst[names(.lst) != "dur"]
-      } else {
-        .lst$dur <- .dur
-      }
-    } else {
-      .lst$dur <- dur
-    }
+    .lst$dur <- dur
   }
   .unitNames <- names(.lst)
   .unitNames <- .unitNames[regexpr("^(amount|time)", .unitNames) != -1]

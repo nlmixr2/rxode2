@@ -1,5 +1,5 @@
 ---
-title: "RxODE additional model types"
+title: "rxode2 additional model types"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -12,11 +12,11 @@ options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
 
-As suggested in the name, RxODE is often concerned with solutions to
+As suggested in the name, rxode2 is often concerned with solutions to
 ordinary differential equations.  The syntax of the ODE models is
-covered in the [RxODE syntax vignette](RxODE-syntax.html)
+covered in the [rxode2 syntax vignette](rxode2-syntax.html)
 
-You can create other types of models with RxODE:
+You can create other types of models with rxode2:
 
 - Prediction only models without ODE systems in them (`$PRED` models
   in NONMEM).

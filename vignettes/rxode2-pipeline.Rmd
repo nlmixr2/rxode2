@@ -1,5 +1,5 @@
 ---
-title: "RxODE in a pipeline"
+title: "rxode2 in a pipeline"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   )
 options(knitr.table.format = "html")
 htmltools::img(src = knitr::image_uri("logo.png"), 
-               alt = 'RxODE', 
+               alt = 'rxode2', 
                style = 'position:absolute; top:0; right:0; padding:10px; border: 0;')
 options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)

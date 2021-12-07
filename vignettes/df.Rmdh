@@ -1,17 +1,17 @@
-# Using RxODE data frames
+# Using rxode2 data frames
 
 ## Creating an interactive data frame
 
-RxODE supports returning a solved object that is a modified data-frame.
+`rxode2` supports returning a solved object that is a modified data-frame.
 This is done by the `predict()`, `solve()`, or `rxSolve()` methods.
 
 ```{r}
 
-library(RxODE)
+library(rxode2)
 library(units)
 
 ## Setup example model
-mod1 <-RxODE({
+mod1 <- rxode2({
   C2 = centr/V2;
   C3 = peri/V3;
   d/dt(depot) =-KA*depot;
@@ -55,7 +55,7 @@ x <- mod1 %>% solve(theta, ev, inits)
 print(x)
 ```
 
-## RxODE solved object properties
+## rxode2 solved object properties
 
 
 
@@ -108,7 +108,7 @@ print(x)
 plot(x)
 ```
 
-## Modifying observation times for RxODE
+## Modifying observation times for rxode2
 Notice that the initial effect is now `2`.
 
 You can also change the sampling times easily by this method by

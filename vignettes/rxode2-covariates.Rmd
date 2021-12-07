@@ -1,5 +1,5 @@
 ---
-title: "RxODE Covariates"
+title: "rxode2 Covariates"
 date: "`r Sys.Date()`"
 output:
   html_document:

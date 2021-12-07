@@ -1,7 +1,7 @@
-Originally RxODE supported compound event IDs; RxODE still supports
+Originally RxODE supported compound event IDs; rxode2 still supports
 these parameters, but it is often more useful to use the the normal
 NONMEM dataset standard that is used by many modeling tools like
-NONMEM, Monolix and nlmixr, described in the [RxODE event types](RxODE-event-types.html) article.
+NONMEM, Monolix and nlmixr, described in the [rxode2 types](rxode2-event-types.html) article.
 
 Classically, RxODE supported event coding in a single event id `evid` described in the following table.
 
@@ -135,7 +135,7 @@ Turn off the first compartment at time 12
 
 
 
-Event coding in RxODE is encoded in a single event number `evid`. For
+Event coding in `rxode2` is encoded in a single event number `evid`. For
 compartments under 100, this is coded as:
 
 

@@ -1,5 +1,5 @@
 ---
-title: "Plotting RxODE models"
+title: "Plotting rxode2 models"
 author: "Matthew Fidler"
 date: "`r Sys.Date()`"
 output:
@@ -7,20 +7,20 @@ output:
     self_contained: no
 ---
 
-## Plotting in RxODE
+## Plotting in rxode2
 
 ### Setting up model for plotting explanation
 
-The first step to explain the RxODE model plots is to setup:
+The first step to explain the rxode2 model plots is to setup:
 
-1. An RxODE model
+1. An rxode2 model
 2. An event table
 3. A solved object
 
 ```{r}
-library(RxODE)
-## Model from RxODE tutorial
-m1 <- RxODE({
+library(rxode2)
+## Model from rxode2 tutorial
+m1 <- rxode2({
   KA <- 2.94E-01
   CL <- 1.86E+01
   V2 <- 4.02E+01
@@ -52,9 +52,9 @@ ev <- et(timeUnits = "hr") %>%
 s <- rxSolve(m1, ev)
 ```
 
-### Default RxODE plot
+### Default rxode2 plot
 
-The default plot in `RxODE` is to plot time versus `state` or calculated `lhs` values:
+The default plot in `rxode2` is to plot time versus `state` or calculated `lhs` values:
 
 ```{r}
 plot(s)
@@ -123,7 +123,7 @@ include a plot of 4 subjects with lognormal random variability between subjects;
 
 ```{r}
 # Setup the new problem
-m2 <- RxODE({
+m2 <- rxode2({
   KA <- 2.94E-01
   CL <- 1.86E+01 * exp(eta.Cl)
   V2 <- 4.02E+01
@@ -201,8 +201,8 @@ more subjects are present to be darker.
 
 
 The number of individuals where the plots switch from legend to
-grayscale is controlled by changing the options for `RxODE.spaghetti`.
-ie. `options(RxODE.spaghetti=7)`.  7 individuals is the default value
+grayscale is controlled by changing the options for `rxode2.spaghetti`.
+ie. `options(rxode2.spaghetti=7)`.  7 individuals is the default value
 when the plotting changes from individual to grayscale spaghetti
 plots.
 

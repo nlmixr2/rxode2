@@ -22,7 +22,7 @@ This event table contains nesting variables:
  - occ: occasion
  
 ```{r}
-library(rxode22)
+library(rxode2)
 library(dplyr)
 
 et(amountUnits="mg", timeUnits="hours") %>%
