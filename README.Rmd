@@ -33,7 +33,7 @@ knitr::opts_chunk$set(
 
 ## Overview
 
-**RxODE2** is an R package for solving and simulating from ode-based
+**rxode2** is an R package for solving and simulating from ode-based
 models. These models are convert the rxode2 mini-language to C and
 create a compiled dll for fast solving. ODE solving using rxode2 has a
 few key parts:
