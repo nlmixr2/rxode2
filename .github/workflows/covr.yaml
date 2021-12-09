@@ -56,5 +56,5 @@ jobs:
       - name: Test coverage
         run: |
            options(covr.flags = c(CFLAGS = "-O0 --coverage", CXXFLAGS = "-O0 --coverage", LDFLAGS = "--coverage"))
-           pkgbuild::with_build_tools(covr::codecov(token="c1a47ffb-e5b5-420a-a0ed-6df480bcb833", quiet=FALSE))
+           pkgbuild::with_build_tools(covr::codecov(quiet=FALSE))
         shell: Rscript {0}
