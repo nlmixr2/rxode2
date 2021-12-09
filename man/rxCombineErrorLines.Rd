@@ -9,7 +9,9 @@ rxCombineErrorLines(
   errLines = NULL,
   prefixLines = NULL,
   paramsLine = NULL,
-  modelVars = FALSE
+  modelVars = FALSE,
+  cmtLines = TRUE,
+  dvidLine = TRUE
 )
 }
 \arguments{
@@ -23,6 +25,10 @@ rxCombineErrorLines(
 \item{paramsLine}{Params line, if not present.}
 
 \item{modelVars}{Return model vars instead of rxode2 statement}
+
+\item{cmtLines}{Include trailing \code{cmt} lines}
+
+\item{dvidLine}{Include trailing \code{dvid()} specificatioin}
 }
 \value{
 quoted extression that can be evaluated to compiled rxode2

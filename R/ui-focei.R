@@ -8,14 +8,14 @@
   .iniDf <- rxui$iniDf
   .w <- which(!is.na(.iniDf$ntheta))
   .thetas <- lapply(.w, function(i) {
-    eval(parse(text=paste0("quote(THETA[", .iniDf$ntheta[i],"] <- ", .iniDf$name[i], ")")))
+    eval(parse(text=paste0("quote(", .iniDf$name[i], " <- THETA[", .iniDf$ntheta[i],"])")))
   })
   .etas <- NULL
   .i2 <- .iniDf[-.w, ]
   if (length(.i2$name) > 0) {
     .i2 <- .i2[.i2$neta1 == .i2$neta2, ]
     .etas <- lapply(seq_along(.i2$name), function(i) {
-      eval(parse(text=paste0("quote(ETA[", .i2$neta1[i],"] <- ", .i2$name[i], ")")))
+      eval(parse(text=paste0("quote(", .i2$name[i], " <- ETA[", .i2$neta1[i], "])")))
     })
   }
   c(.thetas, .etas)
@@ -103,7 +103,9 @@ rxUiGet.foceiModel0 <- function(x, ...) {
   .f <- x[[1]]
   rxCombineErrorLines(.f, errLines=rxGetDistributionFoceiLines(.f),
                       prefixLines=.uiGetThetaEta(.f),
-                      paramsLine=.uiGetThetaEtaParams(.f),
-                      modelVars=TRUE)
+                      paramsLine=NA, #.uiGetThetaEtaParams(.f),
+                      modelVars=TRUE,
+                      cmtLines=FALSE,
+                      dvidLine=FALSE)
 }
 attr(rxUiGet.foceiModel0, "desc") <- "FOCEi model base"

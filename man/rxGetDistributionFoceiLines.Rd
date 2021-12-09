@@ -6,7 +6,7 @@
 \alias{rxGetDistributionFoceiLines.t}
 \alias{rxGetDistributionFoceiLines.default}
 \alias{rxGetDistributionFoceiLines.rxUi}
-\title{This is a S3 method for getting the distribution lines for a rxode2 simulation}
+\title{This is a S3 method for getting the distribution lines for a base rxode2 focei problem}
 \usage{
 rxGetDistributionFoceiLines(line)
 
@@ -26,7 +26,7 @@ Lines for the simulation of \code{ipred} and \code{dv}. This is based
 on the idea that the focei parameters are defined
 }
 \description{
-This is a S3 method for getting the distribution lines for a rxode2 simulation
+This is a S3 method for getting the distribution lines for a base rxode2 focei problem
 }
 \author{
 Matthew Fidler

@@ -175,6 +175,8 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' @param prefixLines Prefix lines, after param statement
 #' @param paramsLine Params line, if not present.
 #' @param modelVars Return model vars instead of rxode2 statement
+#' @param cmtLines Include trailing `cmt` lines
+#' @param dvidLine Include trailing `dvid()` specificatioin
 #' @return quoted extression that can be evaluated to compiled rxode2
 #'   model
 #' @export
@@ -281,7 +283,7 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' f$simulationModel
 #'
 rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, paramsLine=NULL,
-                                modelVars=FALSE) {
+                                modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE) {
   if(!inherits(uiModel, "rxUi")) {
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
@@ -300,16 +302,28 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     }, integer(1)))
   }
   .expr <- uiModel$lstExpr
-  .cmtLines <- uiModel$cmtLines
+  .cmtLines <- NULL
+  if (cmtLines) {
+    .cmtLines <- uiModel$cmtLines
+  }
   .lenLines <- .lenLines + length(uiModel$lstExpr) - length(.predDf$line) + length(.cmtLines) + length(prefixLines)
-  .ret <- vector("list", .lenLines + 3)
+  .k <- 2 + dvidLine * 1
+
+  if (is.null(paramsLine)) {
+  } else if (is.na(paramsLine)) {
+    .lenLines <- .lenLines - 1
+    .k <- 1 + dvidLine * 1
+  }
+  .ret <- vector("list", .lenLines + .k)
   .curErrLine <- 1
-  .k <- 3
   .ret[[1]] <- quote(`{`)
-  if (!is.null(paramsLine)) {
-    .ret[[2]] <- paramsLine
-  } else {
+  .k <- 3
+  if (is.null(paramsLine)) {
     .ret[[2]] <- uiModel$paramsLine
+  } else if (is.na(paramsLine)) {
+    .k <- 2
+  } else {
+    .ret[[2]] <- paramsLine
   }
   for (.i in seq_along(prefixLines)) {
     .ret[[.k]] <- prefixLines[[.i]]
@@ -340,7 +354,9 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .ret[[.k]] <- .cmtLines[[.i]]
     .k <- .k + 1
   }
-  .ret[[.k]] <- uiModel$dvidLine
+  if (dvidLine) {
+    .ret[[.k]] <- uiModel$dvidLine
+  }
   if (modelVars) {
     as.call(list(quote(`rxModelVars`), as.call(.ret)))
   } else {
