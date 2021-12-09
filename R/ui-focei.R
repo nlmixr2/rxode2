@@ -109,3 +109,54 @@ rxUiGet.foceiModel0 <- function(x, ...) {
                       dvidLine=FALSE)
 }
 attr(rxUiGet.foceiModel0, "desc") <- "FOCEi model base"
+
+
+..foceiPrune <- function(x, fullModel=TRUE) {
+  .x <- x[[1]]
+  .x <- .x$foceiModel0[[-1]]
+  .env <- new.env(parent = emptyenv())
+  .env$.if <- NULL
+  .env$.def1 <- NULL
+  if (fullModel) {
+    .malert("pruning branches ({.code if}/{.code else}) of full model...")
+  } else {
+    .malert("pruning branches ({.code if}/{.code else})...")
+  }
+  .ret <- .rxPrune(.x, envir = .env)
+  .mv <- rxModelVars(.ret)
+  ## Need to convert to a function
+  if (.Call(`_rxode2_isLinCmt`) == 1L) {
+    .vars <- c(.mv$params, .mv$lhs, .mv$slhs)
+    .mv <- rxGetModel(.Call(
+      `_rxode2_linCmtGen`,
+      length(.mv$state),
+      .vars, 1L, FALSE))
+  }
+  .msuccess("done")
+  rxNorm(.mv)
+}
+
+..loadSymengine <- function(newmod, promoteLinSens = TRUE, fullModel = FALSE) {
+  if (fullModel) {
+    .malert("loading full model into {.pkg symengine} environment...")
+  } else {
+    .malert("loading into {.pkg symengine} environment...")
+  }
+  rxS(newmod, TRUE, promoteLinSens = promoteLinSens)
+}
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.loadPruneSens <- function(x, ...) {
+  #..foceiPrune(x)
+  ..loadSymengine(..foceiPrune(x), promoteLinSens = TRUE)
+}
+attr(rxUiGet.loadPruneSens, "desc") <- "load sensitivity with linCmt() promoted"
+
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.loadPrune <- function(x, ...) {
+  ..loadSymengine(..foceiPrune(x), promoteLinSens = FALSE)
+}
+attr(rxUiGet.loadPrune, "desc") <- "load sensitivity without linCmt() promoted"
