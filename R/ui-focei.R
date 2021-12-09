@@ -55,7 +55,7 @@
   .ret
 }
 
-#' This is a S3 method for getting the distribution lines for a rxode2 simulation
+#' This is a S3 method for getting the distribution lines for a base rxode2 focei problem
 #'
 #' @param line Parsed rxode2 model environment
 #' @return Lines for the simulation of `ipred` and `dv`. This is based

@@ -26,11 +26,7 @@ jobs:
       - name: Install packages from cran (source)
         run: |
           install.packages('remotes')
-          remotes::install_github("jeroen/curl")
-          remotes::install_github("nlmixrdevelopment/dparser-R")
-          remotes::install_cran("stringi")
-          remotes::install_github("https://github.com/symengine/symengine.R")
-          remotes::install_cran("covr")
+          remotes::install_github("nlmixr2/lotri")
         shell: Rscript {0}
 
       - name: Query dependencies
@@ -53,8 +49,6 @@ jobs:
           # To get links for homepage
           remotes::install_cran("devtools")
           remotes::install_deps(dependencies = TRUE)
-          remotes::install_github("nlmixrdevelopment/dparser-R")
-          remotes::install_github("jeroen/curl")
           remotes::install_dev("pkgdown")
         shell: Rscript {0}
 
