@@ -30,6 +30,26 @@ rxSetControl <- function(ui, control) {
   }
   invisible()
 }
+
+#'  Assign Control Variable
+#'
+#' @param ui rxode2 ui function
+#' @param option Option name in the control to modify
+#' @param value Value of control to modify
+#' @return Nothing; called for the side effects
+#' @author Matthew L. Fidler
+#' @export
+rxAssignControlValue <- function(ui, option, value) {
+  if (exists("control", envir=ui)) {
+    .ctl <- get("control", envir=ui)
+    assign("control", .ctl, envir=ui)
+  } else {
+    .ctl <- list()
+    .ctl[[option]] <- value
+  }
+  .ctl[[option]] <- value
+  invisible()
+}
 #'  rxGetControl option from ui
 #'
 #'

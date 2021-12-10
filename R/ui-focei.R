@@ -457,6 +457,32 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
 }
 #attr(rxUiGet.foceiEtaNames, "desc") <- "focei eta names"
 
+.foceiOptEnvAssignTol <- function(ui, env) {
+  .len <- length(env$model$pred.nolhs$state)
+  .atol <- rep(rxGetControl(ui, "atol", 5e-06), .len)
+  .rtol <- rep(rxGetControl(ui, "rtol", 5e-06), .len)
+  .ssAtol <- rep(rxGetControl(ui, "ssAtol", 5e-06), .len)
+  .ssRtol <- rep(rxGetControl(ui, "ssRtol", 5e-06), .len)
+  if (!is.null(env$model$inner)) {
+    .len2 <- length(env$model$inner$state) - .len
+    .defSens <- 5e-06 / 2
+    .atol <- c(.atol, rep(rxGetControl(ui, "atolSens", .defSens), .len2))
+    .rtol <- c(.rtol, rep(rxGetControl(ui, "rtolSens", .defSens), .len2))
+    .ssAtol <- c(.ssAtol, rep(rxGetControl(ui, "ssAtolSens", .defSens), .len2))
+    .ssRtol <- c(.ssAtol, rep(rxGetControl(ui, "ssRtolSens", .defSens), .len2))
+  }
+  rxAssignControlValue(ui, "atol", .atol)
+  rxAssignControlValue(ui, "rtol", .rtol)
+  rxAssignControlValue(ui, "ssAtol", .ssAtol)
+  rxAssignControlValue(ui, "ssRtol", .ssRtol)
+}
+
+.foceiOptEnvLik <- function(ui, env) {
+  env$model <- rxUiGet.foceiModel(ui, ...)
+  .foceiOptEnvAssignTol(ui, env)
+  env
+}
+
 #' @rdname rxUiGet
 #' @export
 rxUiGet.foceiOptEnv <- function(x, ...) {
@@ -469,7 +495,13 @@ rxUiGet.foceiOptEnv <- function(x, ...) {
   }
   .env$etaNames <- rxUiGet.foceiEtaNames(x, ...)
   .env$thetaFixed <- rxUiGet.foceiThetaFixed(x, ...)
-  .env$model <- rxUiGet.foceiModel(x, ...)
+  .env$adjLik <- rxGetControl(.x, "adjLik", TRUE)
+  .env$diagXformInv <- c("sqrt" = ".square", "log" = "exp", "identity" = "identity")[rxGetControl(.x, "diagXform", "sqrt")]
+  # FIXME is ODEmodel needed?
+  .env$ODEmodel <- TRUE
+  if (exists("noLik", envir = .env)) {
+    .foceiOptEnvLik(.x, .env)
+  }
   .env
 }
 attr(rxUiGet.foceiOptEnv, "desc") <- "Get focei optimization environment"
