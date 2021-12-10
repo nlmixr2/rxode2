@@ -32,6 +32,10 @@
 \alias{rxUiGet.focei}
 \alias{rxUiGet.foce}
 \alias{rxUiGet.ebe}
+\alias{rxUiGet.foceiModel}
+\alias{rxUiGet.foceiThetaFixed}
+\alias{rxUiGet.foceiEtaNames}
+\alias{rxUiGet.foceiOptEnv}
 \title{S3 for getting information from UI model}
 \usage{
 \method{rxUiGet}{cmtLines}(x, ...)
@@ -95,6 +99,14 @@ rxUiGet(x, ...)
 \method{rxUiGet}{foce}(x, ...)
 
 \method{rxUiGet}{ebe}(x, ...)
+
+\method{rxUiGet}{foceiModel}(x, ...)
+
+\method{rxUiGet}{foceiThetaFixed}(x, ...)
+
+\method{rxUiGet}{foceiEtaNames}(x, ...)
+
+\method{rxUiGet}{foceiOptEnv}(x, ...)
 }
 \arguments{
 \item{x}{list of (UIenvironment, exact).  UI environment is the

@@ -399,7 +399,7 @@ rxUiGet.focei <- function(x, ...) {
   .s <- rxUiGet.foceiEnv(x, ...)
   .innerInternal(x[[1]], .s)
 }
-attr(rxUiGet.focei, "desc") <- "Get the FOCEi rxFocei object"
+#attr(rxUiGet.focei, "desc") <- "Get the FOCEi rxFocei object"
 
 #' @rdname rxUiGet
 #' @export
@@ -407,7 +407,7 @@ rxUiGet.foce <- function(x, ...) {
   .s <- rxUiGet.foceEnv(x, ...)
   .innerInternal(x[[1]], .s)
 }
-attr(rxUiGet.foce, "desc") <- "Get the FOCE rxFocei object"
+#attr(rxUiGet.foce, "desc") <- "Get the FOCE rxFocei object"
 
 
 #' @rdname rxUiGet
@@ -416,4 +416,60 @@ rxUiGet.ebe <- function(x, ...) {
   .s <- rxUiGet.getEBEEnv(x, ...)
   .innerInternal(x[[1]], .s)
 }
-attr(rxUiGet.ebe, "desc") <- "Get the EBE rxFocei object"
+#attr(rxUiGet.ebe, "desc") <- "Get the EBE rxFocei object"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiModel <- function(x, ...) {
+  .ui <- x[[1]]
+  if (rxGetControl(.ui, "interaction", 1L)) {
+    rxUiGet.focei(x, ...)
+  } else {
+    .iniDf <- get("iniDf", .ui)
+    if (all(is.na(.iniDf$neta1))) {
+      rxUiGet.foce(x, ...)
+    } else {
+      rxUiGet.ebe(x, ...)
+    }
+  }
+}
+# attr(rxUiGet.foceiModel, "desc") <- "Get focei model object"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiThetaFixed <- function(x, ...) {
+  .x <- x[[1]]
+  .df <- get("iniDf", .x)
+  .dft <- .df[!is.na(.df$ntheta), ]
+  .fix <- .dft$fix
+  .dft <- .df[is.na(.df$ntheta), ]
+  c(.fix, .dft$fix)
+}
+#attr(rxUiGet.thetaFixed, "desc") <- "focei theta fixed vector"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiEtaNames <- function(x, ...) {
+  .x <- x[[1]]
+  .df <- get("iniDf", .x)
+  .dft <- .df[is.na(.df$ntheta), ]
+  .dft[.dft$neta1 == .dft$neta2, "name"]
+}
+#attr(rxUiGet.foceiEtaNames, "desc") <- "focei eta names"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiOptEnv <- function(x, ...) {
+  .x <- x[[1]]
+  if (exists("foceiEnv", envir=.x)) {
+    .env <- get("foceiEnv", envir=.x)
+    rm("foceiEnv", envir=.x)
+  } else {
+    .env <- new.env(parent=emptyenv())
+  }
+  .env$etaNames <- rxUiGet.foceiEtaNames(x, ...)
+  .env$thetaFixed <- rxUiGet.foceiThetaFixed(x, ...)
+  .env$model <- rxUiGet.foceiModel(x, ...)
+  .env
+}
+attr(rxUiGet.foceiOptEnv, "desc") <- "Get focei optimization environment"
