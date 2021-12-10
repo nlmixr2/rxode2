@@ -108,7 +108,7 @@ rxUiGet.foceiModel0 <- function(x, ...) {
                       cmtLines=FALSE,
                       dvidLine=FALSE)
 }
-attr(rxUiGet.foceiModel0, "desc") <- "FOCEi model base"
+#attr(rxUiGet.foceiModel0, "desc") <- "FOCEi model base"
 
 
 ..foceiPrune <- function(x, fullModel=TRUE) {
@@ -151,7 +151,7 @@ rxUiGet.loadPruneSens <- function(x, ...) {
   #..foceiPrune(x)
   ..loadSymengine(..foceiPrune(x), promoteLinSens = TRUE)
 }
-attr(rxUiGet.loadPruneSens, "desc") <- "load sensitivity with linCmt() promoted"
+#attr(rxUiGet.loadPruneSens, "desc") <- "load sensitivity with linCmt() promoted"
 
 
 #' @rdname rxUiGet
@@ -159,4 +159,261 @@ attr(rxUiGet.loadPruneSens, "desc") <- "load sensitivity with linCmt() promoted"
 rxUiGet.loadPrune <- function(x, ...) {
   ..loadSymengine(..foceiPrune(x), promoteLinSens = FALSE)
 }
-attr(rxUiGet.loadPrune, "desc") <- "load sensitivity without linCmt() promoted"
+#attr(rxUiGet.loadPrune, "desc") <- "load sensitivity without linCmt() promoted"
+
+
+..sensEtaOrTheta <- function(s, theta=FALSE) {
+  .etaVars <- NULL
+  if (theta && exists("..maxTheta", s)) {
+    .etaVars <- paste0("THETA_", seq(1, s$..maxTheta), "_")
+  } else if (exists("..maxEta", s)) {
+    .etaVars <- paste0("ETA_", seq(1, s$..maxEta), "_")
+  }
+  if (length(.etaVars) == 0L) {
+    stop("cannot identify parameters for sensitivity analysis\n   with nlmixr2 an 'eta' initial estimate must use '~'", call. = FALSE)
+  }
+  .stateVars <- rxState(s)
+  .rxJacobian(s, c(.stateVars, .etaVars))
+  .rxSens(s, .etaVars)
+  s
+}
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiEtaS <- function(x, ..., theta=FALSE) {
+  .s <- rxUiGet.loadPruneSens(x, ...)
+  ..sensEtaOrTheta(.s)
+}
+#attr(rxUiGet.foceiEtaS, "desc") <- "Get symengine environment with eta sensitivities"
+
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiThetaS <- function(x, ..., theta=FALSE) {
+  .s <- rxUiGet.loadPruneSens(x, ...)
+  ..sensEtaOrTheta(.s, theta=TRUE)
+}
+#attr(rxUiGet.foceiEtaS, "desc") <- "Get symengine environment with eta sensitivities"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiHdEta <- function(x, ...) {
+  .s <- rxUiGet.foceiEtaS(x)
+  .stateVars <- rxState(.s)
+  # FIXME: take out pred.minus.dv
+  .predMinusDv <- rxGetControl(x[[1]], "predMinusDv", TRUE)
+  .grd <- rxExpandFEta_(
+    .stateVars, .s$..maxEta,
+    ifelse(.predMinusDv, 1L, 2L)
+  )
+  if (.useUtf()) {
+    .malert("calculate \u2202(f)/\u2202(\u03B7)")
+  } else {
+    .malert("calculate d(f)/d(eta)")
+  }
+  rxProgress(dim(.grd)[1])
+  on.exit({
+    rxProgressAbort()
+  })
+  .any.zero <- FALSE
+  .all.zero <- TRUE
+  .ret <- apply(.grd, 1, function(x) {
+    .l <- x["calc"]
+    .l <- eval(parse(text = .l))
+    .ret <- paste0(x["dfe"], "=", rxFromSE(.l))
+    .zErr <- suppressWarnings(try(as.numeric(get(x["dfe"], .s)), silent = TRUE))
+    if (identical(.zErr, 0)) {
+      .any.zero <<- TRUE
+    } else if (.all.zero) {
+      .all.zero <<- FALSE
+    }
+    rxTick()
+    return(.ret)
+  })
+  if (.all.zero) {
+    stop("none of the predictions depend on 'ETA'", call. = FALSE)
+  }
+  if (.any.zero) {
+    warning("some of the predictions do not depend on 'ETA'", call. = FALSE)
+  }
+  .s$..HdEta <- .ret
+  .s$..pred.minus.dv <- .predMinusDv
+  rxProgressStop()
+  .s
+}
+attr(rxUiGet.foceiHdEta, "desc") <- "Generate the d(err)/d(eta) values for FO related methods"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceiEnv <- function(x, ...) {
+  .s <- rxUiGet.foceiHdEta(x, ...)
+  .stateVars <- rxState(.s)
+  .grd <- rxExpandFEta_(.stateVars, .s$..maxEta, FALSE)
+  if (.useUtf()) {
+    .malert("calculate \u2202(R\u00B2)/\u2202(\u03B7)")
+  } else {
+    .malert("calculate d(R^2)/d(eta)")
+  }
+  rxProgress(dim(.grd)[1])
+  on.exit({
+    rxProgressAbort()
+  })
+  .ret <- apply(.grd, 1, function(x) {
+    .l <- x["calc"]
+    .l <- eval(parse(text = .l))
+    .ret <- paste0(x["dfe"], "=", rxFromSE(.l))
+    rxTick()
+    return(.ret)
+  })
+  .s$..REta <- .ret
+  rxProgressStop()
+  .sumProd <- rxGetControl(x[[1]], "sumProd", FALSE)
+  .optExpression <- rxGetControl(x[[1]], "optExpression", TRUE)
+  .rxFinalizeInner(.s, .sumProd, .optExpression)
+  .rxFinalizePred(.s, .sumProd, .optExpression)
+  .s$..outer <- NULL
+  .s
+}
+#attr(rxUiGet.foceiEnv, "desc") <- "Get the focei environment"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foceEnv <- function(x, ...) {
+  .s <- rxUiGet.foceiHdEta(x, ...)
+  .s$..REta <- NULL
+  ## Take etas from rx_r
+  eval(parse(text = rxRepR0_(.s$..maxEta)))
+  .sumProd <- rxGetControl(x[[1]], "sumProd", FALSE)
+  .optExpression <- rxGetControl(x[[1]], "optExpression", TRUE)
+  .rxFinalizeInner(.s, .sumProd, .optExpression)
+  .rxFinalizePred(.s, .sumProd, .optExpression)
+  .s$..outer <- NULL
+  .s
+}
+#attr(rxUiGet.foceEnv, "desc") <- "Get the foce environment"
+
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.getEBEEnv <- function(x, ...) {
+  .s <- rxUiGet.loadPrune(x, ...)
+  .s$..inner <- NULL
+  .s$..outer <- NULL
+  .sumProd <- rxGetControl(x[[1]], "sumProd", FALSE)
+  .optExpression <- rxGetControl(x[[1]], "optExpression", TRUE)
+  .rxFinalizePred(.s, .sumProd, .optExpression)
+  .s
+}
+#attr(rxUiGet.foceiEnv, "desc") <- "Get the foce environment"
+
+.toRx <- function(x, msg) {
+  if (is.null(x)) {
+    return(NULL)
+  }
+  .malert(msg)
+  .ret <- rxode2(x)
+  .msuccess("done")
+  return(.ret)
+}
+
+.nullInt <- function(x) {
+  if (rxode2::rxIs(x, "integer") || rxode2::rxIs(x, "numeric")) {
+    return(as.integer(x))
+  } else {
+    return(integer(0))
+  }
+}
+
+
+.innerInternal <- function(ui, s) {
+  if (exists("..maxTheta", s)) {
+    .eventTheta <- rep(0L, s$..maxTheta)
+  } else {
+    .eventTheta <- integer()
+  }
+  if (exists("..maxEta", s)) {
+    .eventEta <- rep(0L, s$..maxEta)
+  } else {
+    .eventEta <- integer()
+  }
+  for (.v in s$..eventVars) {
+    .vars <- as.character(get(.v, envir = s))
+    .vars <- rxGetModel(paste0("rx_lhs=", .vars))$params
+    for (.v2 in .vars) {
+      .reg <- rex::rex(start, "ETA_", capture(any_numbers), "_", end)
+      if (regexpr(.reg, .v2) != -1) {
+        .num <- as.numeric(sub(.reg, "\\1", .v2))
+        .eventEta[.num] <- 1L
+      }
+      .reg <- rex::rex(start, "THETA_", capture(any_numbers), "_", end)
+      if (regexpr(.reg, .v2) != -1) {
+        .num <- as.numeric(sub(.reg, "\\1", .v2))
+        .eventTheta[.num] <- 1L
+      }
+    }
+  }
+  pred.opt <- NULL
+  inner <- .toRx(s$..inner, "compiling inner model...")
+  .sumProd <- rxGetControl(ui, "sumProd", FALSE)
+  .optExpression <- rxGetControl(ui, "optExpression", TRUE)
+    .predMinusDv <- rxGetControl(ui, "predMinusDv", TRUE)
+  if (!is.null(inner)) {
+    if (.sumProd) {
+      .malert("stabilizing round off errors in FD model...")
+      s$..pred.nolhs <- rxSumProdModel(s$..pred.nolhs)
+      .msuccess("done")
+    }
+    if (.optExpression) {
+      s$..pred.nolhs <- rxOptExpr(s$..pred.nolhs, "FD model")
+    }
+    s$..pred.nolhs <- paste(c(
+      paste0("params(", paste(inner$params, collapse = ","), ")"),
+      s$..pred.nolhs
+    ), collapse = "\n")
+    pred.opt <- s$..pred.nolhs
+  }
+  .ret <- list(
+    inner = inner,
+    pred.only = .toRx(s$..pred, "compiling EBE model..."),
+    extra.pars = s$..extraPars,
+    outer = .toRx(s$..outer),
+    pred.nolhs = .toRx(pred.opt, "compiling events FD model..."),
+    theta = NULL,
+    ## warn=.zeroSens,
+    pred.minus.dv = .predMinusDv,
+    log.thetas = .nullInt(s$..extraTheta[["exp"]]),
+    log.etas = .nullInt(s$..extraEta[["exp"]]),
+    extraProps = s$..extraTheta,
+    eventTheta = .eventTheta,
+    eventEta = .eventEta
+    ## ,
+    ## cache.file=cache.file
+  )
+  class(.ret) <- "rxFocei"
+  .ret
+}
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.focei <- function(x, ...) {
+  .s <- rxUiGet.foceiEnv(x, ...)
+  .innerInternal(x[[1]], .s)
+}
+attr(rxUiGet.focei, "desc") <- "Get the FOCEi rxFocei object"
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.foce <- function(x, ...) {
+  .s <- rxUiGet.foceEnv(x, ...)
+  .innerInternal(x[[1]], .s)
+}
+attr(rxUiGet.foce, "desc") <- "Get the FOCE rxFocei object"
+
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.ebe <- function(x, ...) {
+  .s <- rxUiGet.getEBEEnv(x, ...)
+  .innerInternal(x[[1]], .s)
+}
+attr(rxUiGet.ebe, "desc") <- "Get the EBE rxFocei object"

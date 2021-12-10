@@ -21,6 +21,17 @@
 \alias{rxUiGet.thetaUpper}
 \alias{rxUiGet.default}
 \alias{rxUiGet.foceiModel0}
+\alias{rxUiGet.loadPruneSens}
+\alias{rxUiGet.loadPrune}
+\alias{rxUiGet.foceiEtaS}
+\alias{rxUiGet.foceiThetaS}
+\alias{rxUiGet.foceiHdEta}
+\alias{rxUiGet.foceiEnv}
+\alias{rxUiGet.foceEnv}
+\alias{rxUiGet.getEBEEnv}
+\alias{rxUiGet.focei}
+\alias{rxUiGet.foce}
+\alias{rxUiGet.ebe}
 \title{S3 for getting information from UI model}
 \usage{
 \method{rxUiGet}{cmtLines}(x, ...)
@@ -62,6 +73,28 @@ rxUiGet(x, ...)
 \method{rxUiGet}{default}(x, ...)
 
 \method{rxUiGet}{foceiModel0}(x, ...)
+
+\method{rxUiGet}{loadPruneSens}(x, ...)
+
+\method{rxUiGet}{loadPrune}(x, ...)
+
+\method{rxUiGet}{foceiEtaS}(x, ..., theta = FALSE)
+
+\method{rxUiGet}{foceiThetaS}(x, ..., theta = FALSE)
+
+\method{rxUiGet}{foceiHdEta}(x, ...)
+
+\method{rxUiGet}{foceiEnv}(x, ...)
+
+\method{rxUiGet}{foceEnv}(x, ...)
+
+\method{rxUiGet}{getEBEEnv}(x, ...)
+
+\method{rxUiGet}{focei}(x, ...)
+
+\method{rxUiGet}{foce}(x, ...)
+
+\method{rxUiGet}{ebe}(x, ...)
 }
 \arguments{
 \item{x}{list of (UIenvironment, exact).  UI environment is the
