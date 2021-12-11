@@ -477,9 +477,52 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
   rxAssignControlValue(ui, "ssRtol", .ssRtol)
 }
 
+.foceiOptEnvSetupBounds <- function(ui, env) {
+  .iniDf <- ui$iniDf
+  .w <- which(!is.na(.iniDf$ntheta))
+  .lower <- .iniDf$lower[.w]
+  .upper <- .iniDf$upper[.w]
+  env$thetaIni <- ui$theta
+  rxAssignControlValue(ui, "nfixed", sum(ui$iniDf$fix))
+  if (is.null(env$etaNames)) {
+    rxAssignControlValue(ui, "nomega", 0)
+    rxAssignControlValue(ui, "neta", 0)
+    env$xType <- -1
+    rxAssignControlValue(ui, "ntheta", length(ui$iniDf$lower))
+  } else {
+    .om0 <- ui$omega
+    .diagXform <- rxGetControl(ui, "diagXform", "sqrt")
+    env$rxInv <- rxode2::rxSymInvCholCreate(mat = .om0, diag.xform = .diagXform)
+    env$xType <- env$rxInv$xType
+    .om0a <- .om0
+    .om0a <- .om0a / rxGetControl(ui, "diagOmegaBoundLower", 100)
+    .om0b <- .om0
+    .om0b <- .om0b * rxGetControl(ui, "diagOmegaBoundUpper", 5)
+    .om0a <- rxode2::rxSymInvCholCreate(mat = .om0a, diag.xform = .diagXform)
+    .om0b <- rxode2::rxSymInvCholCreate(mat = .om0b, diag.xform = .diagXform)
+    .omdf <- data.frame(a = .om0a$theta, m = env$rxInv$theta, b = .om0b$theta, diag = .om0a$theta.diag)
+    .omdf$lower <- with(.omdf, ifelse(a > b, b, a))
+    .omdf$lower <- with(.omdf, ifelse(lower == m, -Inf, lower))
+    .omdf$lower <- with(.omdf, ifelse(!diag, -Inf, lower))
+    .omdf$upper <- with(.omdf, ifelse(a < b, b, a))
+    .omdf$upper <- with(.omdf, ifelse(upper == m, Inf, upper))
+    .omdf$upper <- with(.omdf, ifelse(!diag, Inf, upper))
+    rxAssignControlValue(ui, "nomega", length(.omdf$lower))
+    rxAssignControlValue(ui, "neta", sum(.omdf$diag))
+    rxAssignControlValue(ui, "ntheta", length(.lower))
+    .lower <- c(.lower, .omdf$lower)
+    .upper <- c(.upper, .omdf$upper)
+  }
+  env$lower <- .lower
+  env$upper <- .upper
+  env
+}
+
 .foceiOptEnvLik <- function(ui, env) {
-  env$model <- rxUiGet.foceiModel(ui, ...)
+  env$model <- rxUiGet.foceiModel(list(ui))
   .foceiOptEnvAssignTol(ui, env)
+  .foceiOptEnvSetupBounds(ui, env)
+  env$control <- get("control", envir=ui)
   env
 }
 
@@ -499,7 +542,7 @@ rxUiGet.foceiOptEnv <- function(x, ...) {
   .env$diagXformInv <- c("sqrt" = ".square", "log" = "exp", "identity" = "identity")[rxGetControl(.x, "diagXform", "sqrt")]
   # FIXME is ODEmodel needed?
   .env$ODEmodel <- TRUE
-  if (exists("noLik", envir = .env)) {
+  if (!exists("noLik", envir = .env)) {
     .foceiOptEnvLik(.x, .env)
   }
   .env

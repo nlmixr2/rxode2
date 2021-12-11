@@ -3,13 +3,25 @@
   "model.desc"="modelDesc"
 )
 
-#' @export
-`$.rxUi` <- function(obj, arg, exact = TRUE) {
+#' Convert rxode2 UI object to object for `rxUiGet`
+#'
+#' @param obj rxode2 ui object
+#' @param arg argument that you are trying to get from rxui
+#' @param exact exact argument
+#' @return
+#' @author Matthew L. Fidler
+#' @noRd
+.uiToRxUiGet <- function(obj, arg, exact=TRUE) {
   .lst <- list(obj, exact)
   .arg <- .rxUiBackward[arg]
   if (is.na(.arg)) .arg <- arg
   class(.lst) <- c(.arg, "rxUiGet")
-  rxUiGet(.lst)
+  .lst
+}
+
+#' @export
+`$.rxUi` <- function(obj, arg, exact = TRUE) {
+  rxUiGet(.uiToRxUiGet(obj=obj, arg=arg, exact=exact))
 }
 
 #' S3 for getting information from UI model

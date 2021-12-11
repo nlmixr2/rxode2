@@ -147,9 +147,11 @@ print.rxUi <-function(x, ...) {
   cat(paste0(crayon::bold("Fixed Effects"), " (", crayon::bold$blue("$theta"), "):"), "\n")
   print(x$theta)
   .omega <- x$omega
-  if (dim(.omega)[1] > 0) {
-    cat(paste0("\n", crayon::bold("Omega"), " (", crayon::bold$blue("$omega"), "):"), "\n")
-    print(.omega)
+  if (!is.null(dim(.omega))) {
+    if (dim(.omega)[1] > 0) {
+      cat(paste0("\n", crayon::bold("Omega"), " (", crayon::bold$blue("$omega"), "):"), "\n")
+      print(.omega)
+    }
   }
 
   # Multiple Endpoint

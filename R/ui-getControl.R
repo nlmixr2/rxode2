@@ -42,12 +42,11 @@ rxSetControl <- function(ui, control) {
 rxAssignControlValue <- function(ui, option, value) {
   if (exists("control", envir=ui)) {
     .ctl <- get("control", envir=ui)
-    assign("control", .ctl, envir=ui)
   } else {
     .ctl <- list()
-    .ctl[[option]] <- value
   }
   .ctl[[option]] <- value
+  assign("control", .ctl, envir=ui)
   invisible()
 }
 #'  rxGetControl option from ui
