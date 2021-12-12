@@ -457,6 +457,16 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
 }
 #attr(rxUiGet.foceiEtaNames, "desc") <- "focei eta names"
 
+
+#' This assigns the tolerances based on a different tolerance for the sensitivity equations
+#'
+#' It will update and modify the control inside of the UI
+#'
+#' @param ui rxode2 UI object
+#' @param env focei environment for solving
+#' @return Called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
 .foceiOptEnvAssignTol <- function(ui, env) {
   .len <- length(env$model$pred.nolhs$state)
   .atol <- rep(rxGetControl(ui, "atol", 5e-06), .len)
@@ -477,6 +487,13 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
   rxAssignControlValue(ui, "ssRtol", .ssRtol)
 }
 
+#'  This sets up the initial omega estimates and the boundaries for the whole system
+#'
+#' @param ui rxode2 UI object
+#' @param env focei solving environment
+#' @return NoHing, called for side effecs
+#' @author Matthew L. Fidler
+#' @noRd
 .foceiOptEnvSetupBounds <- function(ui, env) {
   .iniDf <- ui$iniDf
   .w <- which(!is.na(.iniDf$ntheta))
@@ -517,11 +534,85 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
   env$upper <- .upper
   env
 }
+#' Setup the scaleC
+#'
+#' @param ui rxode2 UI
+#' @param env Focei setup environment
+#' @return NoHing called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
+.foceiOptEnvSetupScaleC <- function(ui, env) {
+  .controlScaleC <- rxGetControl(ui, "scaleC", NULL)
+  .len <- length(env$lower)
+  if (is.null(.controlScaleC)) {
+    .scaleC <- rep(NA_real_, .len)
+  } else {
+    .scaleC <- as.double(.controlScaleC)
+  }
+  .lenC <- length(.scaleC)
+  if (.len > .lenC) {
+    .scaleC <- c(.scaleC, rep(NA_real_, .len - .lenC))
+  } else if (.len < .lenC) {
+    .scaleC <- .scaleC[seq(1, .lenC)]
+    warning("scaleC control option has more options than estimated population parameters, please check.")
+  }
+
+  .ini <- ui$iniDf
+  .ini <- .ini[!is.na(.ini$err), c("est", "err", "ntheta")]
+  for (.i in seq_along(.ini$err)) {
+    if (is.na(.scaleC[.ini$ntheta[.i]])) {
+      if (any(.ini$err[.i] == c("boxCox", "yeoJohnson", "pow2", "tbs", "tbsYj"))) {
+        .scaleC[.ini$ntheta[.i]] <- 1
+      } else if (any(.ini$err[.i] == c("prop", "add", "norm", "dnorm", "logn", "dlogn", "lnorm", "dlnorm"))) {
+        .scaleC[.ini$ntheta[.i]] <- 0.5 * abs(.ini$est[.i])
+      }
+    }
+  }
+  .muRefCurEval <- ui$muRefCurEval
+  for (.i in seq_along(.muRefCurEval$parameter)) {
+    .curEval <- .muRefCurEval$curEval[.i]
+    .par <- .muRefCurEval$curEval[.i]
+    .w <- which(.ini$name == .par)
+    if (length(.w) == 1) {
+      if (!is.na(.ini$ntheta[.w])) {
+        .j <- .ini$ntheta[.w]
+        if (is.na(.scaleC[.j])) {
+          if (.curEval == "exp") {
+            .scaleC[.j] <- 1 # log scaled
+          } else if (.curEval == "factorial") {
+            .scaleC[.j] <- abs(1 / digamma(.ini$est[.j] + 1))
+          } else if (.curEval == "gamma") {
+            .scaleC[.j] <- abs(1 / digamma(.ini$est[.j]))
+          } else if (.curEval == "log") {
+            .scaleC[.j] <- log(abs(.ini$est[.j])) * abs(.ini$est[.j])
+          } else if (.curEval == "logit") {
+            .a <- .muRefCurEval$low[.i]
+            .b <- .muRefCurEval$hi[.i]
+            .x <- .ini$est[.j]
+            .scaleC[.j] <- -1.0*(-.a + .b)/((-.a + .x)^2*(-1.0 + 1.0*(-.a + .b)/(-.a + .x))*log(-1.0 + 1.0*(-.a + .b)/(-.a + .x)))
+          } else if (.curEval == "expit") {
+            .a <- .muRefCurEval$low[.i]
+            .b <- .muRefCurEval$hi[.i]
+            .x <- .ini$est[.j]
+            .scaleC[.j] <- 1.0*(-.a + .b)*exp(-.x)/((1.0 + exp(-.x))^2*(.a + 1.0*(-.a + .b)/(1.0 + exp(-.x))))
+          } else if (.curEval == "probitInv") {
+            .a <- .muRefCurEval$low[.i]
+            .b <- .muRefCurEval$hi[.i]
+            .x <- .ini$est[.j]
+            .scaleC[.j] <- 0.707106781186547*(-.a + .b)*exp(-0.5*.x^2)/(sqrt(pi)*(.a + 0.5*(-.a + .b)*(1.0 + erf(0.707106781186547*.x))))
+          }
+        }
+      }
+    }
+  }
+  ret$scaleC <- .scaleC
+}
 
 .foceiOptEnvLik <- function(ui, env) {
   env$model <- rxUiGet.foceiModel(list(ui))
   .foceiOptEnvAssignTol(ui, env)
   .foceiOptEnvSetupBounds(ui, env)
+  .foceiOptEnvSetupScaleC(ui, env)
   env$control <- get("control", envir=ui)
   env
 }

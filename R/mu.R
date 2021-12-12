@@ -643,6 +643,8 @@
     } else {
       assign(".curEval", as.character(x[[1]]), env)
       .handleSingleEtaIfExists(x[[2]], env)
+      env$curHi <- NA_real_
+      env$curLow <- NA_real_
       if (env$.curEval == "probitInv" ||
             env$.curEval == "expit" ||
             env$.curEval == "logit" ||
@@ -675,13 +677,13 @@
   .blankEval <- ""
   if (inherits(set, "character")) {
     if (length(.w) == 0L) {
-      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=set))
+      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=set, low=env$curLow, hi=curHi))
     } else {
       env$muRefCurEval$curEval[.w] <- set
     }
   } else {
     if (length(.w) == 0L) {
-      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=.curEval))
+      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=.curEval, low=env$curLow, hi=env$curHi))
     } else if (env$muRefCurEval$curEval[.w] != env$.curEval) {
       env$muRefCurEval$curEval[.w] <- .blankEval
     }
