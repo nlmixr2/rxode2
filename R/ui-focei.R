@@ -577,29 +577,45 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
       if (!is.na(.ini$ntheta[.w])) {
         .j <- .ini$ntheta[.w]
         if (is.na(.scaleC[.j])) {
+          # These have similar deriavtes on a log scale.
           if (.curEval == "exp") {
+            # Hence D(S("log(exp(x))"}, "x")
             .scaleC[.j] <- 1 # log scaled
           } else if (.curEval == "factorial") {
+            # Hence 1/D(S("log(factorial(x))"}, "x"):
             .scaleC[.j] <- abs(1 / digamma(.ini$est[.j] + 1))
           } else if (.curEval == "gamma") {
+            #1/D(log(gamma(x)), x)
             .scaleC[.j] <- abs(1 / digamma(.ini$est[.j]))
           } else if (.curEval == "log") {
+            #1/D(log(log(x)), x)
             .scaleC[.j] <- log(abs(.ini$est[.j])) * abs(.ini$est[.j])
           } else if (.curEval == "logit") {
+            # 1/D(log(logit(x, a, b)))
             .a <- .muRefCurEval$low[.i]
             .b <- .muRefCurEval$hi[.i]
             .x <- .ini$est[.j]
-            .scaleC[.j] <- -1.0*(-.a + .b)/((-.a + .x)^2*(-1.0 + 1.0*(-.a + .b)/(-.a + .x))*log(-1.0 + 1.0*(-.a + .b)/(-.a + .x)))
+            .scaleC[.j] <- -1.0*(-.a + .x)^2*(-1.0 + 1.0*(-.a + .b)/(-.a + .x))*log(abs(-1.0 + 1.0*(-.a + b)/(-.a + .x)))/(-.a + .b)
           } else if (.curEval == "expit") {
+            # 1/D(log(expit(x, a, b)))
             .a <- .muRefCurEval$low[.i]
             .b <- .muRefCurEval$hi[.i]
             .x <- .ini$est[.j]
-            .scaleC[.j] <- 1.0*(-.a + .b)*exp(-.x)/((1.0 + exp(-.x))^2*(.a + 1.0*(-.a + .b)/(1.0 + exp(-.x))))
+            .scaleC[.j] <- 1.0*exp(.x)*(1.0 + exp(-.x))^2*(.a + 1.0*(-.a + .b)/(1.0 + exp(-.x)))/(-.a + .b)
           } else if (.curEval == "probitInv") {
             .a <- .muRefCurEval$low[.i]
             .b <- .muRefCurEval$hi[.i]
             .x <- .ini$est[.j]
-            .scaleC[.j] <- 0.707106781186547*(-.a + .b)*exp(-0.5*.x^2)/(sqrt(pi)*(.a + 0.5*(-.a + .b)*(1.0 + erf(0.707106781186547*.x))))
+            .scaleC[.j] <- 1.4142135623731*exp(0.5*.x^2)*sqrt(pi)*(.a + 0.5*(-.a + .b)*(1.0 + erf(0.707106781186547*x)))/(-.a + .b)
+          } else if (.curEval == "probit") {
+            .a <- .muRefCurEval$low[.i]
+            .b <- .muRefCurEval$hi[.i]
+            .x <- .ini$est[.j]
+            erfinvF  <- function(y) {
+              if(abs(y) > 1) return(NA_real_)
+              sqrt(qchisq(abs(y),1)/2) * sign(y)
+            }
+            .scaleC[.j] <- sqrt(2)*(-.a+.b)*erfinvF(-1+2*(-.a+.x)/(-.a+.b))/sqrt(pi)/2*exp(((erfinvF(-1+2*(-.a+.x)/(-.a+.b))) ^ 2))
           }
         }
       }
