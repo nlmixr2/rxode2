@@ -487,7 +487,7 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
   rxAssignControlValue(ui, "ssRtol", .ssRtol)
 }
 
-#'  This sets up the initial omega estimates and the boundaries for the whole system
+#'  This sets up the initial omega/eta estimates and the boundaries for the whole system
 #'
 #' @param ui rxode2 UI object
 #' @param env focei solving environment
@@ -532,8 +532,10 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
   }
   env$lower <- .lower
   env$upper <- .upper
+  env$etaMat <- rxGetControl(ui, "etaMat", NULL)
   env
 }
+
 #' Setup the scaleC
 #'
 #' @param ui rxode2 UI
@@ -569,9 +571,10 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
     }
   }
   .muRefCurEval <- ui$muRefCurEval
+  .ini <- ui$iniDf
   for (.i in seq_along(.muRefCurEval$parameter)) {
     .curEval <- .muRefCurEval$curEval[.i]
-    .par <- .muRefCurEval$curEval[.i]
+    .par <- .muRefCurEval$parameter[.i]
     .w <- which(.ini$name == .par)
     if (length(.w) == 1) {
       if (!is.na(.ini$ntheta[.w])) {
@@ -621,7 +624,35 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
       }
     }
   }
-  ret$scaleC <- .scaleC
+  env$scaleC <- .scaleC
+}
+
+#' This sets up the transformation bounds and indexes and bounds for inner.cpp
+#'
+#' Note that the C code assumes the index starts at 1
+#'
+#' @param ui rxode2 ui environment
+#' @param env focei environment used for solving
+#' @return Nothing called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
+.foceiOptEnvSetupTransformIndexs <- function(ui, env) {
+  .muRefCurEval <- ui$muRefCurEval
+  .ini <- ui$iniDf
+  .ini <- .ini[!is.na(.ini$ntheta), c("ntheta", "name")]
+  names(.ini)[2] <- "parameter"
+  .transform <- merge(.ini, .muRefCurEval)
+  .transform <- .transform[order(.transform$ntheta), ]
+
+  env$logThetasF <- .transform[which(.transform$curEval == "exp"), "ntheta"]
+
+  env$logitThetasF <- .transform[which(.transform$curEval == "expit"), "ntheta"]
+  env$logitThetasLowF <- .transform[which(.transform$curEval == "expit"), "low"]
+  env$logitThetasHiF <- .transform[which(.transform$curEval == "expit"), "hi"]
+
+  env$probitThetasF <- .transform[which(.transform$curEval == "probitInv"), "ntheta"]
+  env$probitThetasLowF <- .transform[which(.transform$curEval == "probitInv"), "low"]
+  env$probitThetasHiF <- .transform[which(.transform$curEval == "probitInv"), "hi"]
 }
 
 .foceiOptEnvLik <- function(ui, env) {
@@ -629,6 +660,7 @@ rxUiGet.foceiEtaNames <- function(x, ...) {
   .foceiOptEnvAssignTol(ui, env)
   .foceiOptEnvSetupBounds(ui, env)
   .foceiOptEnvSetupScaleC(ui, env)
+  .foceiOptEnvSetupTransformIndexs(ui, env)
   env$control <- get("control", envir=ui)
   env
 }

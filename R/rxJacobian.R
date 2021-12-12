@@ -745,7 +745,6 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
   if (optExpression) {
     .s$..inner <- rxOptExpr(.s$..inner, "inner model")
   }
-  .s$..inner <- paste0(.s$..stateInfo["state"], "\n", .s$..inner)
 }
 #' Generate FOCE without interaction
 #'
