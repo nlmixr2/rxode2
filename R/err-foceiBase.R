@@ -302,7 +302,7 @@
 #' - `rx_pred_` The transformed prediction function
 #' - `rx_r_` The transformed variance
 #' @author Matthew Fidler
-#' @noRd
+#' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1) {
   .ret <- vector("list", 7)
   .yj <- as.double(pred1$transform) - 1
