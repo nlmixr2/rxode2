@@ -16,7 +16,13 @@ bool rxIs(const RObject &obj, std::string cls);
 Function getRxFn(std::string name);
 
 std::string symengineRes(std::string val);
-
+//' Expand grid internal function
+//'
+//' @param c1 character vector of items to be expanded
+//' @param c2 second character vector of items to be expanded
+//' @param type 0 for a typical data frame, 1 for symengine sensitivity expansion
+//' @export
+//' @keywords internal
 //[[Rcpp::export]]
 List rxExpandGrid_(RObject &c1, RObject &c2, RObject &type){
   if (rxIs(c1, "character") && rxIs(c2, "character")){
@@ -77,7 +83,12 @@ List rxExpandGrid_(RObject &c1, RObject &c2, RObject &type){
   List tmp = List(0);
   return tmp;
 }
-
+//' Expand sensitivity
+//'
+//' @param state is the state to expand
+//' @param calcSens is the variables to calculate sensitivity
+//' @keywords internal
+//' @export
 //[[Rcpp::export]]
 List rxExpandSens_(CharacterVector state, CharacterVector calcSens){
   // rx__d_dt_rx__sens_V1_BY_V2____
@@ -159,7 +170,13 @@ List rxExpandSens_(CharacterVector state, CharacterVector calcSens){
   return out;
 }
 
-
+//' Expand second order sensitivity
+//'
+//' @param state is the state to expand
+//' @param s1 is the variables to calculate sensitivity
+//' @param s2 is the variabs to calculate second order sensitivity
+//' @keywords internal
+//' @export
 //[[Rcpp::export]]
 List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s2){
   // rx__d_dt_rx__sens_V1_BY_V2____
@@ -222,6 +239,13 @@ List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s
   return out;  
 }
 
+//' Expand FEta
+//'
+//' @param state is the state to expand
+//' @param neta is the number of etas
+//' @param pred type of prediction 
+//' @keywords internal
+//' @export
 //[[Rcpp::export]]
 List rxExpandFEta_(CharacterVector state, int neta, int pred){
   CharacterVector fe(neta);

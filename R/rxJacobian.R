@@ -33,6 +33,15 @@ rxExpandGrid <- function(x, y, type = 0L) {
 }
 
 ## Assumes model is loaded.
+#'  Internal function for calculating the jacobian
+#'
+#'
+#' @param model symengine environment
+#' @param vars Variables
+#' @return Jacobian informat
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
 .rxJacobian <- function(model, vars = TRUE) {
   if (rxIs(vars, "logical")) {
     if (vars) {
@@ -79,14 +88,24 @@ rxExpandGrid <- function(x, y, type = 0L) {
 }
 
 ## Assumes .rxJacobian called on model c(state,vars)
+#'  Sensitivity for model
+#'
+#'
+#' @param model symengiE model environme
+#' @param vars Variables for single sensitivity
+#' @param vars2 if present, 2 parameter sensitivity
+#' @return Sensitivity
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
 .rxSens <- function(model, vars, vars2) {
   .state <- rxState(model)
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
     if (!missing(vars2)) {
-      .grd <- rxExpandSens2_(.state, vars, vars2)
+      .grd <- rxode2::serxExpandSens2_(.state, vars, vars2)
     } else {
-      .grd <- rxExpandSens_(.state, vars)
+      .grd <- rxode2::rxExpandSens_(.state, vars)
     }
     .malert("calculate sensitivities")
     rxProgress(dim(.grd)[1])
