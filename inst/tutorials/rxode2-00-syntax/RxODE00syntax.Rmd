@@ -219,7 +219,7 @@ that can be added to each state:
 
 More information about the event specification for the duration/rate
   items can be found in the [rxode2 events
-  vignette](https://nlmixrdevelopment.github.io/rxode2/articles/rxode2-event-types.html).
+  vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
   
 **Important:** By default, these special properties can only be defined after a state has been defined by `d/dt(state)=`.  
 
@@ -633,7 +633,7 @@ The last parameterization possible is using `alpha` and `V` and/or
 
 To see some tables of tested parameters for `linCmt()` you can go to
 the [`linCmt()`
-vignette](https://nlmixrdevelopment.github.io/rxode2/articles/rxode2-model-types.html#solved-compartment-models)
+vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-model-types.html#solved-compartment-models)
 
 Once the `linCmt()` sleuthing is complete, the `1`, `2` or `3`
 compartment model solution is used as the value of `linCmt()`.
@@ -811,7 +811,7 @@ the Jacoabian by `rxode2({}, calcJac=TRUE)`
   (`rate(depot)=2`) and **modeled duration** (`dur(depot)=2`). An
   example of these model features and the event specification for the
   modeled infusions the rxode2 data specification is found in [rxode2
-  events vignette](https://nlmixrdevelopment.github.io/rxode2/articles/rxode2-event-types.html).
+  events vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 - **Compartment declaration statements**, which can change the default
   dosing compartment and the assumed compartment number(s) as well as
   add extra compartment names at the end (useful for multiple-endpoint
