@@ -242,3 +242,20 @@
   }
   stop("cannot figure out numeric time", call. = FALSE)
 }
+
+.lastIdLvl <- NULL
+
+.setLastIdLvl <- function(idLvl) {
+  assignInMyNamespace(".lastIdLvl", idLvl)
+}
+#' Get the last `idLvl`
+#'
+#' @return Last `idLvl`
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @examples
+#' .getLastIdLvl()
+#' @export
+.getLastIdLvl <- function() {
+  .lastIdLvl
+}

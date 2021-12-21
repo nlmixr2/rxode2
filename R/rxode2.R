@@ -881,7 +881,13 @@ rxChain2.EventTable <- function(obj, solvedObject) {
   get("is_latex_output", asNamespace("knitr"))()
   ## nocov end
 }
-
+#' Internal function to figure out if this session supports unicode
+#'
+#' @return boolean indicating if this session supports unicode
+#'
+#' @keywords internal
+#'
+#' @export
 .useUtf <- function() {
   ## nocov start
   opt <- getOption("cli.unicode", NULL)
