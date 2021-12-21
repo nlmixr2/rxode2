@@ -19,5 +19,5 @@ rxVersion <- function(extra = "", echo = FALSE, version = sessionInfo()$otherPkg
   if (echo) {
     message(sprintf(rxode2.logo, sprintf("%s%s", version, extra)), appendLF = FALSE)
   }
-  return(invisible(c(version = version, repo = "https://github.com/nlmixrdevelopment/rxode2", md5 = rxode2.md5)))
+  return(invisible(c(version = version, repo = "https://github.com/nlmixr2/rxode2", md5 = rxode2.md5)))
 }
