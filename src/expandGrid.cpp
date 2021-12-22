@@ -303,6 +303,15 @@ List rxExpandFEta_(CharacterVector state, int neta, int pred){
   return out;
 }
 
+//' Rep R0 for foce
+//'
+//' @param number ETA to substitute
+//'
+//' @return Returns a string of R code to substitute the rx_r expression in the symengine environment .s
+//'
+//' @keywords internal
+//'
+//' @export
 //[[Rcpp::export]]
 std::string rxRepR0_(int neta){
   std::string cur = "rx_r_";

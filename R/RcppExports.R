@@ -219,6 +219,15 @@ rxExpandFEta_ <- function(state, neta, pred) {
     .Call(`_rxode2_rxExpandFEta_`, state, neta, pred)
 }
 
+#' Rep R0 for foce
+#'
+#' @param number ETA to substitute
+#'
+#' @return Returns a string of R code to substitute the rx_r expression in the symengine environment .s
+#'
+#' @keywords internal
+#'
+#' @export
 rxRepR0_ <- function(neta) {
     .Call(`_rxode2_rxRepR0_`, neta)
 }
