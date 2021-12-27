@@ -10,6 +10,7 @@
 \alias{rxUiGet.theta}
 \alias{rxUiGet.omega}
 \alias{rxUiGet.funTxt}
+\alias{rxUiGet.allCovs}
 \alias{rxUiGet.muRefTable}
 \alias{rxUiGet.multipleEndpoint}
 \alias{rxUiGet.funPrint}
@@ -40,6 +41,8 @@ rxUiGet(x, ...)
 \method{rxUiGet}{omega}(x, ...)
 
 \method{rxUiGet}{funTxt}(x, ...)
+
+\method{rxUiGet}{allCovs}(x, ...)
 
 \method{rxUiGet}{muRefTable}(x, ...)
 
