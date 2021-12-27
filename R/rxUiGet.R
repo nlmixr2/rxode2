@@ -1,6 +1,7 @@
 # backward-compatible list
 .rxUiBackward <- c(
-  "model.desc"="modelDesc"
+  "model.desc"="modelDesc",
+  "fun.txt"="funTxt"
 )
 
 #' Convert rxode2 UI object to object for `rxUiGet`
@@ -64,6 +65,14 @@ rxUiGet.omega <- function(x, ...) {
   .lotri
 }
 #attr(rxUiGet.omega, "desc") <- "Initial Random Effects variability matrix, omega"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.funTxt <- function(x, ...) {
+  .x <- x[[1]]
+  paste(get("lstChr", envir=.x), collapse="\n")
+}
+attr(rxUiGet.funTxt, "desc") <- "Get function text for the model({}) block"
 
 #' @export
 #' @rdname rxUiGet
