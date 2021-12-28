@@ -7,14 +7,13 @@ model.function <- function(x, ..., envir=parent.frame()) {
 }
 #'  Handle model lines
 #'
-#'
 #' @param modelLines The model lines that are being considered
 #' @param rxui The rxode2 UI object
 #' @param modifyIni Should the ini({}) be considered
 #' @param envir Environment for evaluation
 #' @return New UI
 #' @author Matthew L. Fidler
-#' @noRd
+#' @export
 .modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, envir) {
   .modifyModelLines(modelLines, rxui, modifyIni, envir)
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
