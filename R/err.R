@@ -840,7 +840,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       env$distribution <- "-2LL"
       env$predDf <- rbind(env$predDf,
                           data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
-                                     trHi=env$trLimit[1], trLow=env$trLimit[2],
+                                     trLow=env$trLimit[1], trHi=env$trLimit[2],
                                      transform=env$errTypeInfo$transform,
                                      errType=env$errTypeInfo$errType,
                                      errTypeF=env$errTypeInfo$errTypeF,
@@ -868,7 +868,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       }
       env$predDf <- rbind(env$predDf,
                           data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
-                                     trHi=env$trLimit[1], trLow=env$trLimit[2],
+                                     trLow=env$trLimit[1], trHi=env$trLimit[2],
                                      transform=env$errTypeInfo$transform,
                                      errType=env$errTypeInfo$errType,
                                      errTypeF=env$errTypeInfo$errTypeF,
