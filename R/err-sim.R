@@ -177,6 +177,9 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' @param modelVars Return model vars instead of rxode2 statement
 #' @param cmtLines Include trailing `cmt` lines
 #' @param dvidLine Include trailing `dvid()` specificatioin
+#' @param lstExpr A list of expressions for model, or NULL.  When NULL
+#'   defaults to the model expressions accessible by
+#'   `uiModel$lstExpr`.
 #' @return quoted extression that can be evaluated to compiled rxode2
 #'   model
 #' @export
@@ -283,7 +286,8 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' f$simulationModel
 #'
 rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, paramsLine=NULL,
-                                modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE) {
+                                modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE,
+                                lstExpr=NULL) {
   if(!inherits(uiModel, "rxUi")) {
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
@@ -301,7 +305,11 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
       length(errLines[[i]])
     }, integer(1)))
   }
-  .expr <- uiModel$lstExpr
+  if (is.null(lstExpr)) {
+    .expr <- uiModel$lstExpr
+  } else {
+    .expr <- lstExpr
+  }
   .cmtLines <- NULL
   if (cmtLines) {
     .cmtLines <- uiModel$cmtLines
