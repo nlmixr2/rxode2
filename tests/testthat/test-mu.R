@@ -2,7 +2,6 @@ rxode2Test({
 
   .rx <- loadNamespace("rxode2")
 
-
   test_that("bounded functions needs numeric bounds", {
 
     lmat <- lotri({
@@ -48,6 +47,7 @@ rxode2Test({
 
   testEnv <- function(env, ref) {
     lapply(names(ref), function(n) {
+      message(n)
       expect_equal(get(n, envir=env), ref[[n]])
     })
     invisible()
@@ -92,18 +92,21 @@ rxode2Test({
     }), lmat)
 
     testEnv(env,
-      list(muRefCovariateDataFrame = structure(list(theta = character(0),
-          covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
-          muRefCovariateEmpty = c("tka", "tcl", "tv"), muRefCurEval = structure(list(
-            parameter = c("eta.ka", "tka", "eta.cl", "tcl", "eta.v",
-            "tv"), curEval = c("exp", "exp", "exp", "exp", "", ""
-          )), row.names = c(NA, -6L), class = "data.frame"), muRefDataFrame = structure(list(
-          theta = c("tka", "tcl", "tv"), eta = c("eta.ka", "eta.cl",
-         "eta.v"), level = c("id", "id", "id")), row.names = c(NA,
-         -3L), class = "data.frame"), muRefDropParameters = structure(list(
-         parameter = character(0), term = character(0)), class = "data.frame", row.names = integer(0)),
-         muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
-         muRefExtraEmpty = c("tka", "tcl", "tv"), nonMuEtas = NULL))
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
+    covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefCovariateEmpty = c("tka", "tcl", "tv"), muRefCurEval = structure(list(
+        parameter = c("eta.ka", "tka", "eta.cl", "tcl", "eta.v",
+        "tv"), curEval = c("exp", "exp", "exp", "exp", "", ""
+        ), low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_), hi = c(NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
+    muRefDataFrame = structure(list(theta = c("tka", "tcl", "tv"
+    ), eta = c("eta.ka", "eta.cl", "eta.v"), level = c("id",
+    "id", "id")), row.names = c(NA, -3L), class = "data.frame"),
+    muRefDropParameters = structure(list(parameter = character(0),
+        term = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefExtraEmpty = c("tka", "tcl", "tv"), nonMuEtas = NULL))
 
 
   })
@@ -126,13 +129,15 @@ rxode2Test({
     }), lmat)
 
     testEnv(env,
-list(muRefCovariateDataFrame = structure(list(theta = character(0),
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
     covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
     muRefCovariateEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"),
     muRefCurEval = structure(list(parameter = c("eta.emax", "t.EmaxA",
     "t.EmaxB", "t.EmaxC"), curEval = c("exp", "exp", "exp", "exp"
-    )), row.names = c(NA, -4L), class = "data.frame"), muRefDataFrame = structure(list(
-        theta = character(0), eta = character(0), level = character(0)), row.names = integer(0), class = "data.frame"),
+    ), low = c(NA_real_, NA_real_, NA_real_, NA_real_), hi = c(NA_real_,
+    NA_real_, NA_real_, NA_real_)), row.names = c(NA, -4L), class = "data.frame"),
+    muRefDataFrame = structure(list(theta = character(0), eta = character(0),
+        level = character(0)), row.names = integer(0), class = "data.frame"),
     muRefDropParameters = structure(list(parameter = character(0),
         term = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
@@ -145,12 +150,14 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     }), lmat)
 
     testEnv(env,
-    list(muRefCovariateDataFrame = structure(list(theta = character(0),
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
     covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
     muRefCovariateEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"),
     muRefCurEval = structure(list(parameter = c("eta.emax", "t.EmaxA",
-    "t.EmaxB", "t.EmaxC"), curEval = c("", "exp", "exp", "")), row.names = c(NA,
-    -4L), class = "data.frame"), muRefDataFrame = structure(list(
+    "t.EmaxB", "t.EmaxC"), curEval = c("", "exp", "exp", ""),
+        low = c(NA_real_, NA_real_, NA_real_, NA_real_), hi = c(NA_real_,
+        NA_real_, NA_real_, NA_real_)), row.names = c(NA, -4L
+    ), class = "data.frame"), muRefDataFrame = structure(list(
         theta = character(0), eta = character(0), level = character(0)), row.names = integer(0), class = "data.frame"),
     muRefDropParameters = structure(list(parameter = character(0),
         term = character(0)), class = "data.frame", row.names = integer(0)),
@@ -163,18 +170,18 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     }), lmat)
 
     testEnv(env,
-    list(muRefCovariateDataFrame = structure(list(theta = character(0),
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
     covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
     muRefCovariateEmpty = c("t.EmaxB", "t.EmaxA"), muRefCurEval = structure(list(
         parameter = c("eta.emax", "t.EmaxB", "t.EmaxA"), curEval = c("",
-        "", "exp")), row.names = c(NA, -3L), class = "data.frame"),
+        "", "exp"), low = c(NA_real_, NA_real_, NA_real_), hi = c(NA_real_,
+        NA_real_, NA_real_)), row.names = c(NA, -3L), class = "data.frame"),
     muRefDataFrame = structure(list(theta = character(0), eta = character(0),
         level = character(0)), row.names = integer(0), class = "data.frame"),
     muRefDropParameters = structure(list(parameter = character(0),
         term = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtraEmpty = c("t.EmaxB", "t.EmaxA"), nonMuEtas = "eta.emax"))
-
 
   })
 
@@ -203,19 +210,22 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     }), lmat)
 
     testEnv(env,
-    list(muRefCovariateDataFrame = structure(list(theta = character(0),
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
     covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
     muRefCovariateEmpty = c("tka", "tcl", "tv"), muRefCurEval = structure(list(
         parameter = c("eta.ka", "tka", "eta.cl", "tcl", "eta.v",
         "tv"), curEval = c("exp", "exp", "exp", "exp", "exp",
-        "exp")), row.names = c(NA, -6L), class = "data.frame"),
-    muRefDataFrame = structure(list(theta = c("tka", "tcl", "tv"
-    ), eta = c("eta.ka", "eta.cl", "eta.v"), level = c("id",
-    "id", "id")), row.names = c(NA, -3L), class = "data.frame"),
-    muRefDropParameters = structure(list(parameter = character(0),
-        term = character(0)), class = "data.frame", row.names = integer(0)),
+        "exp"), low = c(NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_, NA_real_), hi = c(NA_real_, NA_real_, NA_real_,
+        NA_real_, NA_real_, NA_real_)), row.names = c(NA, -6L
+    ), class = "data.frame"), muRefDataFrame = structure(list(
+        theta = c("tka", "tcl", "tv"), eta = c("eta.ka", "eta.cl",
+        "eta.v"), level = c("id", "id", "id")), row.names = c(NA,
+    -3L), class = "data.frame"), muRefDropParameters = structure(list(
+        parameter = character(0), term = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
-    muRefExtraEmpty = c("tka", "tcl", "tv"), nonMuEtas = NULL))
+    muRefExtraEmpty = c("tka", "tcl", "tv"), nonMuEtas = NULL)
+    )
 
   })
 
@@ -245,12 +255,15 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
       ## cp ~ add(add.sd)
     }), lmat)
 
-    testEnv(env,
+     testEnv(env,
     list(muRefCovariateDataFrame = structure(list(theta = character(0),
     covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
     muRefCovariateEmpty = NULL, muRefCurEval = structure(list(
-        parameter = c("eta.ka", "eta.cl", "eta.v"), curEval = c("exp",
-        "exp", "exp")), row.names = c(NA, -3L), class = "data.frame"),
+        parameter = c("tka", "eta.ka", "tcl", "eta.cl", "tv",
+        "eta.v"), curEval = c("*", "exp", "*", "exp", "*", "exp"
+        ), low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_), hi = c(NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
     muRefDataFrame = structure(list(eta = character(0), theta = character(0),
         level = character(0)), class = "data.frame", row.names = integer(0)),
     muRefDropParameters = structure(list(parameter = character(0),
@@ -272,18 +285,21 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     }), lmat)
 
     testEnv(env,
-    list(muRefCovariateDataFrame = structure(list(theta = character(0),
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
     covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
     muRefCovariateEmpty = "tv", muRefCurEval = structure(list(
-        parameter = c("eta.ka", "eta.cl", "eta.v", "tv"), curEval = c("exp",
-        "exp", "", "")), row.names = c(NA, -4L), class = "data.frame"),
+        parameter = c("tka", "eta.ka", "tcl", "eta.cl", "tv",
+        "eta.v"), curEval = c("*", "exp", "*", "exp", "", ""),
+        low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_), hi = c(NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
     muRefDataFrame = structure(list(eta = character(0), theta = character(0),
         level = character(0)), class = "data.frame", row.names = integer(0)),
     muRefDropParameters = structure(list(parameter = character(0),
         term = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtra = structure(list(parameter = c("eta.ka", "eta.cl",
     "eta.v"), extra = c("0", "0", "0")), row.names = c(NA, -3L
-                                                       ), class = "data.frame"), muRefExtraEmpty = "tv", nonMuEtas = c("eta.ka",
+    ), class = "data.frame"), muRefExtraEmpty = "tv", nonMuEtas = c("eta.ka",
     "eta.cl", "eta.v")))
 
     env <- .rx$.rxMuRef(rxode2({
@@ -297,11 +313,14 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
     }), lmat)
 
     testEnv(env,
-list(muRefCovariateDataFrame = structure(list(theta = character(0),
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
     covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
     muRefCovariateEmpty = NULL, muRefCurEval = structure(list(
-        parameter = c("eta.ka", "eta.cl", "eta.v"), curEval = c("exp",
-        "exp", "exp")), row.names = c(NA, -3L), class = "data.frame"),
+        parameter = c("tka", "eta.ka", "tcl", "eta.cl", "tv",
+        "eta.v"), curEval = c("*", "exp", "*", "exp", "*", "exp"
+        ), low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_), hi = c(NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
     muRefDataFrame = structure(list(eta = character(0), theta = character(0),
         level = character(0)), class = "data.frame", row.names = integer(0)),
     muRefDropParameters = structure(list(parameter = character(0),
@@ -323,17 +342,65 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
 
     testEnv(env,
             list(muRefCovariateDataFrame = structure(list(theta = character(0),
-                                                          covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
-                 muRefCovariateEmpty = NULL, muRefCurEval = structure(list(
-                   parameter = c("eta.ka", "eta.cl", "eta.v"), curEval = c("exp",
-                                                                           "exp", "")), row.names = c(NA, -3L), class = "data.frame"),
-                 muRefDataFrame = structure(list(eta = character(0), theta = character(0),
-                                                 level = character(0)), class = "data.frame", row.names = integer(0)),
-                 muRefDropParameters = structure(list(parameter = character(0),
-                                                      term = character(0)), class = "data.frame", row.names = integer(0)),
-                 muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
-                 muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka", "eta.cl",
-                                                       "eta.v")))
+    covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefCovariateEmpty = NULL, muRefCurEval = structure(list(
+        parameter = c("tka", "eta.ka", "tcl", "eta.cl", "tv",
+        "eta.v"), curEval = c("*", "exp", "*", "exp", "*", "exp"
+        ), low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_), hi = c(NA_real_, NA_real_, NA_real_, NA_real_,
+        NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
+    muRefDataFrame = structure(list(eta = character(0), theta = character(0),
+        level = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefDropParameters = structure(list(parameter = character(0),
+        term = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka", "eta.cl",
+                                          "eta.v")))
+
+  })
+
+
+  test_that("curEval for theta only", {
+
+    lmat <- lotri({
+      ## You may label each parameter with a comment
+      tka <- 0.45 # Log Ka
+      tcl <- log(c(0, 2.7, 100)) # Log Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      tv <- 3.45; label("log V")
+      ## the label("Label name") works with all models
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+
+    env <- .rx$.rxMuRef(rxode2({
+      ka <- exp(tka)
+      cl <- exp(tcl + eta.cl)
+      v <- tv * exp(eta.v)
+      etv <- eta.v
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl/v * center
+      cp = center/v
+      ## cp ~ add(add.sd)
+    }), lmat)
+
+    testEnv(env,
+            list(muRefCovariateDataFrame = structure(list(theta = character(0),
+    covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefCovariateEmpty = "tcl", muRefCurEval = structure(list(
+        parameter = c("tka", "eta.cl", "tcl", "tv", "eta.v"),
+        curEval = c("exp", "exp", "exp", "*", "exp"), low = c(NA_real_,
+        NA_real_, NA_real_, NA_real_, NA_real_), hi = c(NA_real_,
+        NA_real_, NA_real_, NA_real_, NA_real_)), row.names = c(NA,
+    -5L), class = "data.frame"), muRefDataFrame = structure(list(
+        theta = "tcl", eta = "eta.cl", level = "id"), row.names = c(NA,
+    -1L), class = "data.frame"), muRefDropParameters = structure(list(
+        parameter = character(0), term = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
+    muRefExtraEmpty = "tcl", nonMuEtas = "eta.v"))
+
   })
 
   test_that("test covariates", {
@@ -381,12 +448,15 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
 )), row.names = c(NA, -8L), class = "data.frame"), muRefCovariateEmpty = "tka",
     muRefCurEval = structure(list(parameter = c("eta.ka", "tka",
     "eta.cl", "tcl", "eta.v", "tv", "tvp"), curEval = c("exp",
-    "exp", "exp", "exp", "exp", "exp", "exp")), row.names = c(NA,
-    -7L), class = "data.frame"), muRefDataFrame = structure(list(
-        theta = c("tka", "tcl", "tv"), eta = c("eta.ka", "eta.cl",
-        "eta.v"), level = c("id", "id", "id")), row.names = c(NA,
-    -3L), class = "data.frame"), muRefDropParameters = structure(list(
-        parameter = character(0), term = character(0)), class = "data.frame", row.names = integer(0)),
+    "exp", "exp", "exp", "exp", "exp", "exp"), low = c(NA_real_,
+    NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_
+    ), hi = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_,
+    NA_real_, NA_real_)), row.names = c(NA, -7L), class = "data.frame"),
+    muRefDataFrame = structure(list(theta = c("tka", "tcl", "tv"
+    ), eta = c("eta.ka", "eta.cl", "eta.v"), level = c("id",
+    "id", "id")), row.names = c(NA, -3L), class = "data.frame"),
+    muRefDropParameters = structure(list(parameter = character(0),
+        term = character(0)), class = "data.frame", row.names = integer(0)),
     muRefExtra = structure(list(parameter = c("tcl", "tcl", "tv"
     ), extra = c("3", "log(wt/70) * cl.wt", "2")), row.names = c(NA,
     -3L), class = "data.frame"), muRefExtraEmpty = c("tka", "tvp"
@@ -405,12 +475,14 @@ list(muRefCovariateDataFrame = structure(list(theta = character(0),
       ## cp ~ add(add.sd)
     }), lmat)
 
-    testEnv(env, list(muRefCovariateDataFrame = structure(list(theta = c("tcl",                                                                         "tcl"),
-                                                               covariate = c("age", "sex"), covariateParameter = c("cl.age",
+    testEnv(env, list(muRefCovariateDataFrame = structure(list(theta = c("tcl",
+"tcl"), covariate = c("age", "sex"), covariateParameter = c("cl.age",
 "cl.sex")), row.names = 1:2, class = "data.frame"), muRefCovariateEmpty = c("tka",
 "tv"), muRefCurEval = structure(list(parameter = c("eta.ka",
 "tka", "eta.cl", "tcl", "eta.v", "tv"), curEval = c("exp", "exp",
-"exp", "exp", "", "")), row.names = c(NA, -6L), class = "data.frame"),
+"exp", "exp", "", ""), low = c(NA_real_, NA_real_, NA_real_,
+NA_real_, NA_real_, NA_real_), hi = c(NA_real_, NA_real_, NA_real_,
+NA_real_, NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
     muRefDataFrame = structure(list(theta = c("tka", "tcl"),
         eta = c("eta.ka", "eta.cl"), level = c("id", "id")), row.names = 1:2, class = "data.frame"),
     muRefDropParameters = structure(list(parameter = c("tv",
