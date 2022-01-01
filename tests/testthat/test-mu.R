@@ -499,8 +499,6 @@ NA_real_, NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
 
  })
 
-
-
 }, test="lvl2")
 
 ## ## Composite expressions should be extracted to their own lines

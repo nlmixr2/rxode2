@@ -8,16 +8,22 @@
   .env <- new.env(parent=emptyenv())
   .env$inIni <- FALSE
   .env$convertLabel <- FALSE
-  .regIni <- rex::rex(boundary, or("ini", "lotri"), "(", any_spaces, "{")
-  .regOther <- rex::rex(boundary, or(group("}", any_spaces, ")")), group(or("model"), "(", any_spaces, "{"))
+  .regIni <- rex::rex(boundary, or("ini", "lotri"), "(", any_spaces, "{", any_spaces)
+  .regOther1 <- rex::rex(any_spaces, "}", any_spaces, ")", any_spaces)
+  .regOther2 <- rex::rex(any_spaces, "model", any_spaces, "(", any_spaces, "{", any_spaces)
   .regCommentOnBlankLine <- "^ *#+ *(.*) *$"
   .regLabel <- "^( *[^\n\"]+) *#+ *(.*) *$"
   .ret <- vapply(src,
                  function(line) {
                    if (regexpr(.regIni, line, perl=TRUE) != -1) {
-                     .env$inIni <- TRUE
-                   } else if (regexpr(.regOther, line, perl=TRUE) != -1) {
-                     .env$inIni <- FALSE
+                     print(line)
+                     assign("inIni", TRUE, envir=.env)
+                   } else if (regexpr(.regOther1, line, perl=TRUE) != -1) {
+                     print(line)
+                     assign("inIni", FALSE, envir=.env)
+                   } else if (regexpr(.regOther2, line, perl=TRUE) != -1) {
+                     print(line)
+                     assign("inIni", FALSE, envir=.env)
                    } else if (.env$inIni) {
                      if (regexpr(.regCommentOnBlankLine, line) != -1) {
                      } else if (regexpr(.regLabel, line) != -1) {
