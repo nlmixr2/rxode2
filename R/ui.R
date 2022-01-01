@@ -16,13 +16,10 @@
   .ret <- vapply(src,
                  function(line) {
                    if (regexpr(.regIni, line, perl=TRUE) != -1) {
-                     print(line)
                      assign("inIni", TRUE, envir=.env)
                    } else if (regexpr(.regOther1, line, perl=TRUE) != -1) {
-                     print(line)
                      assign("inIni", FALSE, envir=.env)
                    } else if (regexpr(.regOther2, line, perl=TRUE) != -1) {
-                     print(line)
                      assign("inIni", FALSE, envir=.env)
                    } else if (.env$inIni) {
                      if (regexpr(.regCommentOnBlankLine, line) != -1) {
