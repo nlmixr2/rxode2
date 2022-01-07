@@ -278,5 +278,28 @@ rxode2Test({
 
   })
 
+  test_that("test constants are not considered a covariate ", {
+
+    f <- function() {
+      ini({
+        t.fub <- 1
+        cov.wt <- 0
+        eta.fub ~ 0.1
+        add.sd <- 0.01
+      })
+      model({
+        BP = 0.61;      # Blood:plasma partition coefficient
+        fup = 0.028;    # Fraction unbound in plasma
+        fub = fup/BP + t.fub + wt * cov.wt;   # Fraction unbound in blood
+        fub ~ add(add.sd)
+      })
+    }
+
+    f <- rxode2(f)
+
+    expect_equal(f$covariates, "wt")
+
+  })
+
 },
 test = "lvl2")

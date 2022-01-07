@@ -729,7 +729,7 @@
                 lhs=NULL,
                 theta=.theta,
                 eta=.eta,
-                cov=setdiff(.params, c(.theta, .eta)))
+                cov=setdiff(.params, c(.theta, .eta, names(rxInits(.mv)))))
 
   .env$param <- list()
   .env$body <- list()
