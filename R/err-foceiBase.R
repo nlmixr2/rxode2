@@ -249,22 +249,22 @@
     .p2 <- .enQuote(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "prop" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err == "pow" & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p2 <- .enQuote(env$iniDf$name[.w])
     } else {
-      stop("cannot find proportional standard deviation", call.=FALSE)
+      stop("cannot find pow standard deviation", call.=FALSE)
     }
   }
   if (!is.na(pred1$c)) {
     .p3 <- .enQuote(pred1$c)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "prop" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err == "pow" & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p3 <- .enQuote(env$iniDf$name[.w])
     } else {
-      stop("cannot find proportional standard deviation", call.=FALSE)
+      stop("cannot find pow exponent", call.=FALSE)
     }
   }
   if (pred1$addProp == "default") {
