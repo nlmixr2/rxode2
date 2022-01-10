@@ -5,7 +5,7 @@
 // https://codereview.stackexchange.com/questions/255344/case-insensitive-strncmp-for-ascii-chars-only-not-utf-8
 // using some of the faster assembly compiling options
 
-static uint8_t tolower_faster (const uint8_t* str)
+static char tolower_faster (const char* str)
 {
   return (*str>='A' && *str<='Z') ? (*str + 'a'-'A') : *str;
 }
@@ -36,8 +36,8 @@ static uint8_t tolower_faster (const uint8_t* str)
 int strncmpci(const char * s1, const char * s2, size_t num)
 {
 
-  const uint8_t* str1 = s1;
-  const uint8_t* str2 = s2;
+  const char* str1 = s1;
+  const char* str2 = s2;
   
   int ret_code = 0;
   size_t chars_compared = 0;
@@ -61,8 +61,8 @@ int strncmpci(const char * s1, const char * s2, size_t num)
       ret_code = tolower_faster(str1) - tolower_faster(str2);
       if (ret_code != 0)
         {
-	  // The 2 chars just compared don't match
-	  break;
+          // The 2 chars just compared don't match
+          break;
         }
       chars_compared++;
       str1++;
