@@ -67,10 +67,10 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .err <- .enQuote(paste0("err.", pred1$var))
-  .ret <- vector("list", 3)
-  .ret[[1]] <- bquote(.(.err) <- 0)
-  .ret[[2]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  .ret[[3]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  .ret <- vector("list", 2)
+  #.ret[[1]] <- bquote(.(.err) <- 0)
+  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1), .ret)
 }
 
