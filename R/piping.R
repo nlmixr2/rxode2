@@ -3,7 +3,7 @@
 #' @param ui Original UI object
 #' @return Copied UI object
 #' @author Matthew L. Fidler
-#' @noRd
+#' @export
 .copyUi <- function(ui) {
   .ret <- new.env(parent=emptyenv())
   lapply(ls(ui, envir=ui, all.names=TRUE), function(item){
@@ -109,7 +109,7 @@
 #'
 #' @author Matthew L. Fidler
 #'
-#' @noRd
+#' @export
 .quoteCallInfoLines <- function(callInfo, envir=parent.frame()) {
   .bracket <- rep(FALSE, length=length(callInfo))
   .env <- environment()

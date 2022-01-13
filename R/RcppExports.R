@@ -176,22 +176,58 @@ etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar =
     .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep)
 }
 
+#' Expand grid internal function
+#'
+#' @param c1 character vector of items to be expanded
+#' @param c2 second character vector of items to be expanded
+#' @param type 0 for a typical data frame, 1 for symengine sensitivity expansion
+#' @export
+#' @keywords internal
 rxExpandGrid_ <- function(c1, c2, type) {
     .Call(`_rxode2_rxExpandGrid_`, c1, c2, type)
 }
 
+#' Expand sensitivity
+#'
+#' @param state is the state to expand
+#' @param calcSens is the variables to calculate sensitivity
+#' @keywords internal
+#' @export
 rxExpandSens_ <- function(state, calcSens) {
     .Call(`_rxode2_rxExpandSens_`, state, calcSens)
 }
 
+#' Expand second order sensitivity
+#'
+#' @param state is the state to expand
+#' @param s1 is the variables to calculate sensitivity
+#' @param s2 is the variabs to calculate second order sensitivity
+#' @keywords internal
+#' @export
 rxExpandSens2_ <- function(state, s1, s2) {
     .Call(`_rxode2_rxExpandSens2_`, state, s1, s2)
 }
 
+#' Expand FEta
+#'
+#' @param state is the state to expand
+#' @param neta is the number of etas
+#' @param pred type of prediction 
+#' @keywords internal
+#' @export
 rxExpandFEta_ <- function(state, neta, pred) {
     .Call(`_rxode2_rxExpandFEta_`, state, neta, pred)
 }
 
+#' Rep R0 for foce
+#'
+#' @param number ETA to substitute
+#'
+#' @return Returns a string of R code to substitute the rx_r expression in the symengine environment .s
+#'
+#' @keywords internal
+#'
+#' @export
 rxRepR0_ <- function(neta) {
     .Call(`_rxode2_rxRepR0_`, neta)
 }

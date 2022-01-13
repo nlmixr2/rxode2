@@ -1,3 +1,12 @@
+#'  Internal Pruning function
+#'
+#'
+#' @param x List of quoted lines
+#' @param envir Environment where information is stored
+#' @return Pruned model code
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
 .rxPrune <- function(x, envir = parent.frame()) {
   if (is.name(x) || is.atomic(x)) {
     if (is.character(x)) {

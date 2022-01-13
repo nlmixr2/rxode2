@@ -484,7 +484,6 @@
 .muRefHandleSingleThetaMuRef <- function(.we, .wt, .names, .doubleNames, .extraItems, env) {
   # Here the mu reference is possible
   #print(.names)
-  #message("double names")
   #print(.doubleNames)
   if (length(.we) == 1) {
     # Simple theta/eta mu-referencing
@@ -593,6 +592,8 @@
     ## eta singlet, not mu referenced
     .muRefSetCurEval(.curEta, env)
     .muRefSetNonMuEta(.curEta, env)
+  } else if (any(.curEta == env$info$theta)) {
+    .muRefSetCurEval(.curEta, env)
   }
 }
 
@@ -617,11 +618,11 @@
     env$top <- FALSE
     y <- x
     for (.i in seq_along(y)) {
-      assign(".curEval", "", env)
       x <- y[[.i]]
+      assign(".curEval", "", env)
       if (identical(x[[1]], quote(`=`)) ||
             identical(x[[1]], quote(`~`))) {
-        .handleSingleEtaIfExists(x[[3]], env)
+        #.handleSingleEtaIfExists(x[[3]], env)
         if (.rxMuRefHasThetaEtaOrCov(x[[3]], env)){
           # This line has etas or covariates and might need to be
           # separated into mu-referenced line
@@ -683,6 +684,12 @@
     }
   } else {
     if (length(.w) == 0L) {
+      if (is.null(env$curLow)) {
+        env$curLow <- NA_real_
+      }
+      if (is.null(env$curHi)) {
+        env$curHi <- NA_real_
+      }
       env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=.curEval, low=env$curLow, hi=env$curHi))
     } else if (env$muRefCurEval$curEval[.w] != env$.curEval) {
       env$muRefCurEval$curEval[.w] <- .blankEval
@@ -722,7 +729,7 @@
                 lhs=NULL,
                 theta=.theta,
                 eta=.eta,
-                cov=setdiff(.params, c(.theta, .eta)))
+                cov=setdiff(.params, c(.theta, .eta, names(rxInits(.mv)))))
 
   .env$param <- list()
   .env$body <- list()
@@ -764,7 +771,7 @@
   .env$muRefDropParameters <- data.frame(parameter=character(0), term=character(0))
   .env$muRefCovariateEmpty <- NULL
   .env$nonMuEtas <- NULL
-  .env$cov <- .info$cov
+  .env$covariates <- .info$cov
   return(.env)
 }
 

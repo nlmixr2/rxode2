@@ -33,6 +33,15 @@ rxExpandGrid <- function(x, y, type = 0L) {
 }
 
 ## Assumes model is loaded.
+#'  Internal function for calculating the jacobian
+#'
+#'
+#' @param model symengine environment
+#' @param vars Variables
+#' @return Jacobian informat
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
 .rxJacobian <- function(model, vars = TRUE) {
   if (rxIs(vars, "logical")) {
     if (vars) {
@@ -79,14 +88,24 @@ rxExpandGrid <- function(x, y, type = 0L) {
 }
 
 ## Assumes .rxJacobian called on model c(state,vars)
+#'  Sensitivity for model
+#'
+#'
+#' @param model symengiE model environme
+#' @param vars Variables for single sensitivity
+#' @param vars2 if present, 2 parameter sensitivity
+#' @return Sensitivity
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
 .rxSens <- function(model, vars, vars2) {
   .state <- rxState(model)
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
     if (!missing(vars2)) {
-      .grd <- rxExpandSens2_(.state, vars, vars2)
+      .grd <- rxode2::serxExpandSens2_(.state, vars, vars2)
     } else {
-      .grd <- rxExpandSens_(.state, vars)
+      .grd <- rxode2::rxExpandSens_(.state, vars)
     }
     .malert("calculate sensitivities")
     rxProgress(dim(.grd)[1])
@@ -696,57 +715,7 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
     .s$..pred <- rxOptExpr(.s$..pred, "EBE model")
   }
 }
-#' Finalize inner rxode2 based on symengine saved info
-#'
-#' @param .s Symengine/rxode2 object
-#' @inheritParams rxSEinner
-#' @return Nothing
-#' @author Matthew L Fidler
-#' @noRd
-.rxFinalizeInner <- function(.s, sum.prod = FALSE,
-                             optExpression = TRUE) {
-  .rxErrEnvInit()
-  .prd <- get("rx_pred_", envir = .s)
-  .prd <- paste0("rx_pred_=", rxFromSE(.prd))
-  .r <- get("rx_r_", envir = .s)
-  .r <- paste0("rx_r_=", rxFromSE(.r))
-  .yj <- paste(get("rx_yj_", envir = .s))
-  .yj <- paste0("rx_yj_~", rxFromSE(.yj))
-  .lambda <- paste(get("rx_lambda_", envir = .s))
-  .lambda <- paste0("rx_lambda_~", rxFromSE(.lambda))
-  .hi <- paste(get("rx_hi_", envir = .s))
-  .hi <- paste0("rx_hi_~", rxFromSE(.hi))
-  .low <- paste(get("rx_low_", envir = .s))
-  .low <- paste0("rx_low_~", rxFromSE(.low))
-  .ddt <- .s$..ddt
-  if (is.null(.ddt)) .ddt <- character(0)
-  .sens <- .s$..sens
-  if (is.null(.sens)) .sens <- character(0)
-  .s$..inner <- paste(c(
-    .ddt,
-    .sens,
-    .yj,
-    .lambda,
-    .hi,
-    .low,
-    .prd,
-    .s$..HdEta,
-    .r,
-    .s$..REta,
-    .s$..stateInfo["statef"],
-    .s$..stateInfo["dvid"],
-    ""
-  ), collapse = "\n")
-  if (sum.prod) {
-    .malert("stabilizing round off errors in inner problem...")
-    .s$..inner <- rxSumProdModel(.s$..inner)
-    .msuccess("done")
-  }
-  if (optExpression) {
-    .s$..inner <- rxOptExpr(.s$..inner, "inner model")
-  }
-  .s$..inner <- paste0(.s$..stateInfo["state"], "\n", .s$..inner)
-}
+
 #' Generate FOCE without interaction
 #'
 #' @inheritParams rxSEinner

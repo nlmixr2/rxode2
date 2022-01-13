@@ -44,9 +44,11 @@ void qstrict0(SEXP nn, const char *what){
     Rf_errorcall(R_NilValue, "Must have %s, but is NA at position %i", what, pos);
   }
   pos = any_duplicated(nn, FALSE);
-  if (pos > 0)
+  
+  if (pos > 0) {
     UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have unique %s, but element %i is duplicated", what, pos);
+  }
   
   if (isNull(nn)) {
     UNPROTECT(1);

@@ -1,17 +1,52 @@
+#'  Internal messaging statements
+#'
+#' @param text Text
+#' @param ... Other arguments
+#' @param .envir Environment to evaluate in
+#' @return Nothing, called for side
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
 .minfo <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert_info(gettext(text), ..., .envir = .envir)
 }
-
+#' @export
+#' @rdname .minfo
 .malert <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert(gettext(text), ..., .envir = .envir)
 }
-
+#' @export
+#' @rdname .minfo
 .mwarn <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert_warning(gettext(text), ..., .envir = .envir)
 }
-
+#' @export
+#' @rdname .minfo
 .msuccess <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert_success(gettext(text), ..., .envir = .envir)
+}
+#' Internal function to tell if the linCmt() is the model variables
+#'
+#'
+#' @return 0 or 1
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
+.rxIsLinCmt <- function() {
+  .Call(`_rxode2_isLinCmt`)
+}
+#'  Internal function to generate the model variables for a linCmt() model
+#'
+#'
+#' @param lenState Length of the state
+#' @param vars Variables in the model
+#' @return Model variables of expanded linCmt model
+#' @author Matthew L. Fidler
+#' @export
+.rxLinCmtGen <- function(lenState, vars) {
+  rxGetModel(.Call(
+    `_rxode2_linCmtGen`,
+    lenState, vars, 1L, FALSE))
 }
 
 #' Unloads all rxode2 compiled DLLs
