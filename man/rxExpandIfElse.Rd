@@ -2,7 +2,7 @@
 % Please edit documentation in R/dsl.R
 \name{rxExpandIfElse}
 \alias{rxExpandIfElse}
-\title{Expand if/else clauses into mutiple different types of lines.}
+\title{Expand if/else clauses into multiple different types of lines.}
 \usage{
 rxExpandIfElse(model, removeInis = TRUE, removePrint = TRUE)
 }
@@ -26,7 +26,7 @@ logical conditions, the values are the lines that satisfy the
 logical conditions.
 }
 \description{
-Expand if/else clauses into mutiple different types of lines.
+Expand if/else clauses into multiple different types of lines.
 }
 \author{
 Matthew L. Fidler

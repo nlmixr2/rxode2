@@ -176,11 +176,11 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' @param paramsLine Params line, if not present.
 #' @param modelVars Return model vars instead of rxode2 statement
 #' @param cmtLines Include trailing `cmt` lines
-#' @param dvidLine Include trailing `dvid()` specificatioin
+#' @param dvidLine Include trailing `dvid()` specification
 #' @param lstExpr A list of expressions for model, or NULL.  When NULL
 #'   defaults to the model expressions accessible by
 #'   `uiModel$lstExpr`.
-#' @return quoted extression that can be evaluated to compiled rxode2
+#' @return quoted expression that can be evaluated to compiled rxode2
 #'   model
 #' @export
 #' @author Matthew L. Fidler

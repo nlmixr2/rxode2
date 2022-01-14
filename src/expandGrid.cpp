@@ -174,7 +174,7 @@ List rxExpandSens_(CharacterVector state, CharacterVector calcSens){
 //'
 //' @param state is the state to expand
 //' @param s1 is the variables to calculate sensitivity
-//' @param s2 is the variabs to calculate second order sensitivity
+//' @param s2 is the variables to calculate second order sensitivity
 //' @keywords internal
 //' @export
 //[[Rcpp::export]]

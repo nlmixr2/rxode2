@@ -116,7 +116,7 @@ regIni <- rex::rex(or(
   group(one_of("_."), "0"),
   "0", "(0)", "[0]", "{0}"
 ), end)
-#' Expand if/else clauses into mutiple different types of lines.
+#' Expand if/else clauses into multiple different types of lines.
 #'
 #'
 #' @param model Model can be a character, or a rxode2 model.  It needs

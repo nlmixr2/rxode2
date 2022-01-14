@@ -2,14 +2,14 @@
 % Please edit documentation in R/rxode2.R
 \name{.useUtf}
 \alias{.useUtf}
-\title{Internal function to figure out if this session supports unicode}
+\title{Internal function to figure out if this session supports Unicode}
 \usage{
 .useUtf()
 }
 \value{
-boolean indicating if this session supports unicode
+boolean indicating if this session supports Unicode
 }
 \description{
-Internal function to figure out if this session supports unicode
+Internal function to figure out if this session supports Unicode
 }
 \keyword{internal}
