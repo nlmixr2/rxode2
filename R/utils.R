@@ -49,42 +49,6 @@
     lenState, vars, 1L, FALSE))
 }
 
-#' Unloads all rxode2 compiled DLLs
-#'
-#' @return List of rxode2 dlls still loaded
-#'
-#' @return boolean of if all rxode2 dlls have been unloaded
-#'
-#' @examples
-#'
-#' print(rxUnloadAll())
-#' @export
-rxUnloadAll <- function() {
-  .Call(`_rxode2_rxUnloadAll_`) # nolint
-  .dll <- getLoadedDLLs()
-  .n <- names(.dll)
-  .n <- .n[regexpr("^rx_[a-f0-9]{32}", .n) != -1]
-  .ret <- lapply(.n, function(rx) {
-    .cur <- .dll[[rx]]
-    class(.cur) <- NULL
-    .num <- .rxModels[[.cur$path]]
-    if (is.null(.num)) {
-      dyn.unload(.cur$path)
-      return(NULL)
-    } else if (identical(.num, 0L)) {
-      dyn.unload(.cur$path)
-      return(NULL)
-    } else {
-      return(.cur$path)
-    }
-  })
-  if (length(.ret) == 0) {
-    return(invisible(.ret))
-  }
-  .ret <- .ret[[!is.null(.ret)]]
-  return(invisible(.ret))
-}
-
 .normalizePath <- function(path, ...) {
   ifelse(.Platform$OS.type == "windows",
     suppressWarnings(utils::shortPathName(normalizePath(path, ...))),
