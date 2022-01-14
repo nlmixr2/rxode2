@@ -992,8 +992,8 @@ setRxThreads <- function(threads = NULL, percent = NULL, throttle = NULL) {
 #' @export
 rxCores <- getRxThreads
 
-#' @export
 #' @rdname rxUnloadAll_
+#' @export
 rxUnloadAll <- function() {
   try(rxUnloadAll_(), silent = TRUE)
 }

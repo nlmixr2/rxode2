@@ -2,7 +2,7 @@
 % Please edit documentation in R/rxJacobian.R
 \name{.rxJacobian}
 \alias{.rxJacobian}
-\title{Internal function for calculating the jacobian}
+\title{Internal function for calculating the Jacobian}
 \usage{
 .rxJacobian(model, vars = TRUE)
 }
@@ -15,7 +15,7 @@
 Jacobian informat
 }
 \description{
-Internal function for calculating the jacobian
+Internal function for calculating the Jacobian
 }
 \author{
 Matthew L. Fidler

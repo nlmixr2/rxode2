@@ -7,7 +7,7 @@
 .rxSens(model, vars, vars2)
 }
 \arguments{
-\item{model}{symengiE model environme}
+\item{model}{symengine model environment}
 
 \item{vars}{Variables for single sensitivity}
 
