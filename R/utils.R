@@ -956,7 +956,15 @@ setRxThreads <- function(threads = NULL, percent = NULL, throttle = NULL) {
 #' @export
 rxCores <- getRxThreads
 
-#' @rdname rxUnloadAll_
+#' Unloads all rxode2 compiled DLLs
+#'
+#' @return List of rxode2 dlls still loaded
+#'
+#' @return boolean of if all rxode2 dlls have been unloaded
+#'
+#' @examples
+#'
+#' print(rxUnloadAll())
 #' @export
 rxUnloadAll <- function() {
   try(rxUnloadAll_(), silent = TRUE)
