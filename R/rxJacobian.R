@@ -6,7 +6,7 @@
 #' @param x first element (must be character)
 #' @param y second element (must be character)
 #' @param type Internal type=0L is traditional expand grid and
-#'     type=1L is jacobian expand grid (adds symbols)
+#'     type=1L is Jacobian expand grid (adds symbols)
 #' @return Expand grid
 #' @author Matthew Fidler
 #' @keywords internal
@@ -33,7 +33,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 }
 
 ## Assumes model is loaded.
-#'  Internal function for calculating the jacobian
+#'  Internal function for calculating the Jacobian
 #'
 #'
 #' @param model symengine environment
@@ -91,7 +91,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #'  Sensitivity for model
 #'
 #'
-#' @param model symengiE model environme
+#' @param model symengine model environment
 #' @param vars Variables for single sensitivity
 #' @param vars2 if present, 2 parameter sensitivity
 #' @return Sensitivity

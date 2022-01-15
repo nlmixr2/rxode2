@@ -881,9 +881,9 @@ rxChain2.EventTable <- function(obj, solvedObject) {
   get("is_latex_output", asNamespace("knitr"))()
   ## nocov end
 }
-#' Internal function to figure out if this session supports unicode
+#' Internal function to figure out if this session supports Unicode
 #'
-#' @return boolean indicating if this session supports unicode
+#' @return boolean indicating if this session supports Unicode
 #'
 #' @keywords internal
 #'

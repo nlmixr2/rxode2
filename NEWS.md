@@ -40,7 +40,7 @@
   from variables cannot be enforced with `rxode2.syntax.allow.dots`
   (was `RxODE.syntax.allow.dots`).
   
-* The mneumonic `et(rate=model)` and `et(dur=model)` mnumonics have
+* The mnemonic `et(rate=model)` and `et(dur=model)` mnemonics have
   been removed.  `rate` needs to be set to `-1` and `-2` manually instead.
 
 ## Additional features

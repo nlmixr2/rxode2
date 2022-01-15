@@ -29,14 +29,14 @@ rxCombineErrorLines(
 
 \item{cmtLines}{Include trailing \code{cmt} lines}
 
-\item{dvidLine}{Include trailing \code{dvid()} specificatioin}
+\item{dvidLine}{Include trailing \code{dvid()} specification}
 
 \item{lstExpr}{A list of expressions for model, or NULL.  When NULL
 defaults to the model expressions accessible by
 \code{uiModel$lstExpr}.}
 }
 \value{
-quoted extression that can be evaluated to compiled rxode2
+quoted expression that can be evaluated to compiled rxode2
 model
 }
 \description{

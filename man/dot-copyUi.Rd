@@ -2,7 +2,7 @@
 % Please edit documentation in R/piping.R
 \name{.copyUi}
 \alias{.copyUi}
-\title{This copies the rxode2 UI object so it can be modifed}
+\title{This copies the rxode2 UI object so it can be modified}
 \usage{
 .copyUi(ui)
 }
@@ -13,7 +13,7 @@
 Copied UI object
 }
 \description{
-This copies the rxode2 UI object so it can be modifed
+This copies the rxode2 UI object so it can be modified
 }
 \author{
 Matthew L. Fidler

@@ -196,7 +196,7 @@ plot(s, C2, log="y", ylab="Concentration")
 ```
 
 In this case, all the individuals are put on the plot in transparent
-greyscale and plot on the same pane.  This allows the places where
+grayscale and plot on the same pane.  This allows the places where
 more subjects are present to be darker.
 
 
