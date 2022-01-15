@@ -130,7 +130,8 @@ attr(rxUiGet.dvidLine, "desc") <- "dvid() line for model"
 rxUiGet.paramsLine <- function(x, ...) {
   .x <- x[[1]]
   .iniDf <- .x$iniDf
-  .params <- c(.iniDf[is.na(.iniDf$neta1) | .iniDf$neta1 == .iniDf$neta2, "name"], .x$cov)
+  .params <- c(.iniDf[is.na(.iniDf$neta1) | .iniDf$neta1 == .iniDf$neta2, "name"],
+               .x$covariates)
   eval(parse(text=paste0("quote(params(", paste(.params, collapse=", "), "))")))
 }
 attr(rxUiGet.paramsLine, "desc") <- "params() line for model"

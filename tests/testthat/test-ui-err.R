@@ -38,7 +38,7 @@ rxode2Test({
   .rx <- loadNamespace("rxode2")
 
   test_that("error when errors have too many arguments", {
-   expect_err2(rx$.errProcessExpression(quote({
+   expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -51,7 +51,7 @@ rxode2Test({
   })
 
   test_that("error when adding distributions that do not support the additive notation", {
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -64,7 +64,7 @@ rxode2Test({
   })
 
   test_that("error for specifying distributions that have multiple numbers of arguments", {
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -80,7 +80,7 @@ rxode2Test({
   })
 
   test_that("error when adding algebraic expressions to known distributional abbreviations", {
-    expect_error(rx$.errProcessExpression(quote({
+    expect_error(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -101,7 +101,7 @@ rxode2Test({
 
   test_that("non-numeric bounds for logitNorm and probitNorm", {
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -113,7 +113,7 @@ rxode2Test({
     }), lmat))
 
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -124,7 +124,7 @@ rxode2Test({
       cp ~ logitNorm(add.sd) + pow(pow.sd, pow) + boxCox(lambda) | cond
     }), lmat), NA)
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -135,7 +135,7 @@ rxode2Test({
       cp ~ logitNorm(add.sd, 0) + pow(pow.sd, pow) + boxCox(lambda) | cond
     }), lmat), NA)
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -147,7 +147,7 @@ rxode2Test({
     }), lmat), NA)
 
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -159,7 +159,7 @@ rxode2Test({
     }), lmat), NA)
 
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -170,7 +170,7 @@ rxode2Test({
       cp ~ logitNorm(add.sd, -Inf, Inf) + pow(pow.sd, pow) + boxCox(lambda) | cond
     }), lmat), NA)
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -365,7 +365,7 @@ rxode2Test({
                  testCombine("pow"))
 
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -378,7 +378,7 @@ rxode2Test({
 
     expect_equal(mod$predDf$errType, testCombine(c("pow", "add"))$errType)
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -391,7 +391,7 @@ rxode2Test({
 
     expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -404,7 +404,7 @@ rxode2Test({
 
     expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -417,7 +417,7 @@ rxode2Test({
 
     expect_equal(mod$predDf$errType, testCombine(c("add", "pow"))$errType)
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -431,7 +431,7 @@ rxode2Test({
     expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
 
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -448,7 +448,7 @@ rxode2Test({
 
    test_that("categorical expressions", {
 
-    expect_err2(rx$.errProcessExpression(quote({
+    expect_err2(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -459,7 +459,7 @@ rxode2Test({
       cp ~ c(add.sd, pow.sd, pow, lambda) | cond
     }), lmat), NA)
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -481,7 +481,7 @@ rxode2Test({
 
   test_that("theta/eta/eps problems", {
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -503,7 +503,7 @@ rxode2Test({
     expect_equal(mod$predDf[, c("a", "b", "c", "d", "e", "lambda")],
                  structure(list(a = "a", b = "b", c = "c", d = "d", e = "e", lambda = "l"), class = "data.frame", row.names = c(NA, -1L)))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -518,7 +518,7 @@ rxode2Test({
 
 
   test_that("no defined errors throw an error", {
-    expect_error(rx$.errProcessExpression(quote({
+    expect_error(.rx$.errProcessExpression(quote({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -558,7 +558,7 @@ rxode2Test({
       pdadd.err <- 10
     })
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr <- exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -590,7 +590,7 @@ rxode2Test({
     expect_equal(mod$predDf[, c("cond", "var", "dvid", "cmt")],
                  structure(list(cond = c("cp", "effect"), var = c("cp", "effect"), dvid = 1:2, cmt = 5:4), class = "data.frame", row.names = c(NA, -2L)))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr <- exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -621,7 +621,7 @@ rxode2Test({
                  structure(list(cond = c("center", "effect"), var = c("cp", "effect"), dvid = 1:2, cmt = 3:4),
                            class = "data.frame", row.names = c(NA, -2L)))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr <- exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -683,7 +683,7 @@ rxode2Test({
       pdadd.err <- 10
     })
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -713,7 +713,7 @@ rxode2Test({
                  structure(list(cond = c("cp", "pca"), var = c("cp", "effect"), dvid = 1:2, cmt = 5:6),
                            class = "data.frame", row.names = c(NA, -2L)))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -744,7 +744,7 @@ rxode2Test({
                  structure(list(cond = c("cp", "pca"), var = c("cp", "effect"), dvid = 1:2, cmt = 5:6),
                            class = "data.frame", row.names = c(NA, -2L)))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -806,7 +806,7 @@ rxode2Test({
       pdadd.err <- 10
     })
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -835,7 +835,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "chisq"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -864,7 +864,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "chisq"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -893,7 +893,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "dexp"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -922,7 +922,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("f", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -952,7 +952,7 @@ rxode2Test({
     expect_equal(paste(mod$predDf$distribution), c("f", "norm"))
 
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -981,7 +981,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "pois"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1010,7 +1010,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "pois"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1039,7 +1039,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "binom"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1068,7 +1068,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "binom"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1097,7 +1097,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("beta", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1126,7 +1126,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("beta", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1155,7 +1155,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("norm", "geom"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1185,7 +1185,7 @@ rxode2Test({
     expect_equal(paste(mod$predDf$distribution), c("norm", "geom"))
 
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1216,7 +1216,7 @@ rxode2Test({
 
     ## "unif", #11
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1245,7 +1245,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("unif", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1274,7 +1274,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("unif", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1303,7 +1303,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("weibull", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1332,7 +1332,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("weibull", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1362,7 +1362,7 @@ rxode2Test({
     expect_equal(paste(mod$predDf$distribution), c("ordinal", "norm"))
 
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1391,7 +1391,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("ordinal", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1420,7 +1420,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("t", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1480,7 +1480,7 @@ rxode2Test({
 
 
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1509,7 +1509,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("t", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
@@ -1538,7 +1538,7 @@ rxode2Test({
 
     expect_equal(paste(mod$predDf$distribution), c("t", "norm"))
 
-    rx$.errProcessExpression(quote({
+    .rx$.errProcessExpression(quote({
       ktr ~ exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)

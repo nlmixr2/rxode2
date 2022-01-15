@@ -239,7 +239,7 @@ List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s
   return out;  
 }
 
-//' Expand FEta
+//' Expand d(f)/d(eta)
 //'
 //' @param state is the state to expand
 //' @param neta is the number of etas

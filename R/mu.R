@@ -120,14 +120,6 @@
   }
 }
 
-.rxIsOp <- function(x) {
-  (identical(x[[1]], quote(`*`)) ||
-     identical(x[[1]], quote(`^`)) ||
-     identical(x[[1]], quote(`+`)) ||
-     identical(x[[1]], quote(`-`)) ||
-     identical(x[[1]], quote(`/`)))
-}
-
 .rxIsLogicalOp <- function(x) {
   (identical(x[[1]], quote(`==`)) ||
      identical(x[[1]], quote(`>`)) ||
