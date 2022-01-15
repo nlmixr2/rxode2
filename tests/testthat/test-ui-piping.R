@@ -1143,6 +1143,23 @@ rxode2Test({
         0.01, 0.2
       )))
     })
+
+    f <- function() {
+      ini({
+        ke <- 0.5
+        eta.ke ~ 0.04
+        prop.sd <- sqrt(0.1)
+      })
+      model({
+        ke <- ke * exp(eta.ke)
+        ipre <- 10 * exp(-ke * t)
+        ipre ~ prop(prop.sd)
+      })
+    }
+    f <- rxode2::rxode2(f)
+
+    expect_error(f %>% model(ipre ~ add(add.sd)) %>% ini(add.sd=sqrt(0.1)), NA)
+
   },
   test = "cran"
 )
