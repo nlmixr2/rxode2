@@ -150,7 +150,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 .goodFns <- c(".GlobalEnv", "package:rxode2", "package:nlmixr")
 .checkGood <- function(x) {
   .tmp <- suppressWarnings({
-    find(deparse1(substitute(x)))
+    utils::find(deparse1(substitute(x)))
   })
   if (!identical(.tmp, character())) {
     if (!any(.tmp == .goodFns)) {
