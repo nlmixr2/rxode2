@@ -678,7 +678,7 @@
   .blankEval <- ""
   if (inherits(set, "character")) {
     if (length(.w) == 0L) {
-      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=set, low=env$curLow, hi=curHi))
+      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=set, low=env$curLow, hi=env$curHi))
     } else {
       env$muRefCurEval$curEval[.w] <- set
     }

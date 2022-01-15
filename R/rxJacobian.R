@@ -103,7 +103,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
     if (!missing(vars2)) {
-      .grd <- rxode2::serxExpandSens2_(.state, vars, vars2)
+      .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
     } else {
       .grd <- rxode2::rxExpandSens_(.state, vars)
     }
@@ -714,73 +714,6 @@ rxGenSaem <- function(obj, predfn, pkpars = NULL, sum.prod = FALSE, optExpressio
   if (optExpression) {
     .s$..pred <- rxOptExpr(.s$..pred, "EBE model")
   }
-}
-
-#' Generate FOCE without interaction
-#'
-#' @inheritParams rxSEinner
-#' @return rxode2/symengine environment
-#' @author Matthew Fidler
-.rxGenFoce <- function(obj, predfn, pkpars = NULL, errfn = NULL,
-                       init = NULL, pred.minus.dv = TRUE,
-                       sum.prod = FALSE,
-                       optExpression = TRUE,
-                       promoteLinSens = TRUE,
-                       theta = FALSE,
-                       addProp = c("combined2", "combined1")) {
-  .s <- .rxGenHdEta(obj, predfn, pkpars, errfn, init, pred.minus.dv,
-    promoteLinSens = promoteLinSens, theta = theta,
-    addProp = addProp
-  )
-  .s$..REta <- NULL
-  ## Take etas from rx_r
-  eval(parse(text = rxRepR0_(.s$..maxEta)))
-  .rxFinalizeInner(.s, sum.prod, optExpression)
-  .rxFinalizePred(.s, sum.prod, optExpression)
-  .s$..outer <- NULL
-  return(.s)
-}
-
-#' Generate pieces for FOCEi inner problem
-#'
-#' @inheritParams rxSEinner
-#' @return rxode2/symengine environment
-#' @author Matthew L. Fidler
-#' @noRd
-.rxGenFocei <- function(obj, predfn, pkpars = NULL, errfn = NULL,
-                        init = NULL, pred.minus.dv = TRUE,
-                        sum.prod = FALSE,
-                        optExpression = TRUE,
-                        promoteLinSens = TRUE, theta = FALSE,
-                        addProp = c("combined2", "combined1")) {
-  .s <- .rxGenHdEta(obj, predfn, pkpars, errfn, init, pred.minus.dv,
-    promoteLinSens = promoteLinSens, theta = theta,
-    addProp = addProp
-  )
-  .stateVars <- rxState(.s)
-  .grd <- rxExpandFEta_(.stateVars, .s$..maxEta, FALSE)
-  if (.useUtf()) {
-    .malert("calculate \u2202(R\u00B2)/\u2202(\u03B7)")
-  } else {
-    .malert("calculate d(R^2)/d(eta)")
-  }
-  rxProgress(dim(.grd)[1])
-  on.exit({
-    rxProgressAbort()
-  })
-  .ret <- apply(.grd, 1, function(x) {
-    .l <- x["calc"]
-    .l <- eval(parse(text = .l))
-    .ret <- paste0(x["dfe"], "=", rxFromSE(.l))
-    rxTick()
-    return(.ret)
-  })
-  .s$..REta <- .ret
-  rxProgressStop()
-  .rxFinalizeInner(.s, sum.prod, optExpression)
-  .rxFinalizePred(.s, sum.prod, optExpression)
-  .s$..outer <- NULL
-  return(.s)
 }
 
 #' Generate pieces for EBE only problem
