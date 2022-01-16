@@ -260,7 +260,7 @@
     .p3 <- .enQuote(pred1$c)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "pow" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err == "pow2" & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p3 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -268,7 +268,7 @@
     }
   }
   if (pred1$addProp == "default") {
-    .addProp <- getOption("rxAddProp", "combined2")
+    .addProp <- rxGetControl(env, "addProp", getOption("rxode2.addProp", "combined2"))
   } else {
     .addProp <- pred1$addProp
   }
