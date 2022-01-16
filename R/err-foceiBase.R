@@ -140,7 +140,7 @@
     .p1 <- .enQuote(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "prop" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("prop", "propF", "propT") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -163,7 +163,7 @@
     .p1 <- .enQuote(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "pow" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("pow", "powF", "powT") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -173,7 +173,7 @@
   if (!is.na(pred1$c)) {
     .p2 <- .enQuote(pred1$c)
   } else {
-    .w <- which(env$iniDf$err == "pow2" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("pow2", "powF2", "powT2") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p2 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -207,7 +207,7 @@
     .p2 <- .enQuote(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "prop" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("prop", "propT", "propF") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p2 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -249,7 +249,7 @@
     .p2 <- .enQuote(pred1$b)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "pow" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("pow", "powF", "powT") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p2 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -260,7 +260,7 @@
     .p3 <- .enQuote(pred1$c)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err == "pow2" & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("pow2", "powF2", "powT2") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p3 <- .enQuote(env$iniDf$name[.w])
     } else {
