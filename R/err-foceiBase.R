@@ -215,7 +215,7 @@
     }
   }
   if (pred1$addProp == "default") {
-    .addProp <- getOption("rxAddProp", "combined2")
+    .addProp <- rxGetControl(env, "addProp", getOption("rxode2.addProp", "combined2"))
   } else {
     .addProp <- pred1$addProp
   }
