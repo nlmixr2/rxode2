@@ -120,10 +120,18 @@
 #' @author Matthew Fidler
 #' @noRd
 .rxGetVarianceForErrorPropOrPowF <- function(env, pred1) {
-  switch(as.character(pred1$errTypeF),
+  .f <- pred1$f
+  .type <- as.character(pred1$errTypeF)
+  if (.type == "f") {
+    if (is.na(.f)) {
+      stop("for propF() or powF(), f must be part of the model and not estimated",
+           call.=FALSE)
+    }
+  }
+  switch(.type,
          untransformed=quote(rx_pred_f_),
          transformed=quote(rx_pred_),
-         f=.enQuote(pred1$f),
+         f=.enQuote(.f),
          none=quote(rx_pred_f_))
 }
 
