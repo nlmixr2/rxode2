@@ -51,14 +51,8 @@ print(s2)
 ```
 
 While this is easy enough to do, it is a bit tedious.  If you have
-rxode2 setup appropriately, that is you have:
-
-- **Python** installed in your system
-- **sympy** installed in your system
-- **SnakeCharmR** installed in R
-
-You can use the computer algebra system sympy to calculate the
-Jacobian automatically.
+rxode2 setup appropriately, you can use the computer algebra system
+sympy to calculate the Jacobian automatically.
 
 This is done by the rxode2 option `calcJac` option:
 
