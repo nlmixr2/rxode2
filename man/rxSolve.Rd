@@ -643,7 +643,7 @@ rxode2 code blocks.
 
 \code{pairwise} uses the pairwise sum (fast, default)
 
-\code{fsum} uses Python's fsum function (most accurate)
+\code{fsum} uses the PreciseSum package's fsum function (most accurate)
 
 \code{kahan} uses Kahan correction
 

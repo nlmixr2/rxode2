@@ -174,7 +174,7 @@
 #'
 #' `pairwise` uses the pairwise sum (fast, default)
 #'
-#' `fsum` uses Python's fsum function (most accurate)
+#' `fsum` uses the PreciseSum package's fsum function (most accurate)
 #'
 #' `kahan` uses Kahan correction
 #'
