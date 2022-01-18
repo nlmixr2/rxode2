@@ -292,8 +292,10 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .rm2 <- setdiff(.old, .both)
   .new2 <- setdiff(.new, .both)
 
+  .new <- c(.new1, .new2)
+  .new <- setdiff(.new, rxui$mv0$lhs)
 
-  list(rm=c(.rm1, .rm2), new=c(.new1, .new2))
+  list(rm=c(.rm1, .rm2), new=.new)
 }
 
 #' Remove a single variable from the initialization data frame

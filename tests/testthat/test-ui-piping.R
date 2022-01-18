@@ -1160,6 +1160,31 @@ rxode2Test({
 
     expect_error(f %>% model(ipre ~ add(add.sd)) %>% ini(add.sd=sqrt(0.1)), NA)
 
+    f <- function() {
+      ini({
+        tke <- 0.5
+        eta.ke ~ 0.04
+        prop.sd <- sqrt(0.1)
+      })
+      model({
+        ke <- tke * exp(eta.ke)
+        ipre <- 10 * exp(-ke * t)
+        f2 <- ipre / (ipre + 5)
+        ipre ~ prop(prop.sd)
+      })
+    }
+
+
+    f <- rxode2(f)
+
+    trans <- function(f) {
+      f %>% model(ipre ~ propF(prop.sd, f2)) %>% ini(prop.sd=sqrt(0.1))
+    }
+
+    f2 <- trans(f)
+
+    expect_true(!any(f2$iniDf$name %in% c("f2")))
+
   },
   test = "cran"
 )
