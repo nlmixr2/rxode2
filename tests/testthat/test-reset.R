@@ -1,11 +1,9 @@
 rxode2Test(
   {
     if (requireNamespace("units", quietly = TRUE)) {
-      context("Test reset event EVID=3")
+      # Test reset event EVID=3
 
       ## 6.1
-      library(dplyr)
-
       mod <- rxode2({
         a <- 6
         b <- 0.6

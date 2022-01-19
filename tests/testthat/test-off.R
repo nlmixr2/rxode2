@@ -5,7 +5,7 @@ rxode2Test(
     ms <- c("liblsoda", "lsoda", "dop853")
 
     for (m in ms) {
-      context(sprintf("Test turning compartment off (%s)", m))
+      # context(sprintf("Test turning compartment off (%s)", m))
       mod1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01

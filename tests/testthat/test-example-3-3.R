@@ -3,9 +3,6 @@
 ## https://cran.r-project.org/web/packages/diffEq/vignettes/ODEinR.pdf Example #3
 rxode2Test(
   {
-    library(digest)
-    context("Example 3.3")
-
     rigid.txt <- "
 a1       = -2;
 a2       = 1.25;

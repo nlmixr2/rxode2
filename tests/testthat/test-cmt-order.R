@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    context("Compartment order & extra CMTs with cmt()")
-
     .rx <- loadNamespace("rxode2")
 
     load(test_path("warfarin.rda"))
@@ -25,13 +23,13 @@ rxode2Test(
 
       expect_equal(c("intestine", "blood"), rxState(mod))
 
-      expect_error(rxode2({
+      expect_error(expect_message(rxode2({
         a <- 6
         b <- 0.6
         cmt(matt) # cmt = 1 now
         d / dt(intestine) <- -a * intestine
         d / dt(blood) <- a * intestine - b * blood
-      }))
+      })))
 
       tmp <- rxode2({
         a <- 6
@@ -43,9 +41,8 @@ rxode2Test(
         d / dt(blood) <- a * intestine - b * blood
       })
       expect_equal(tmp$stateExtra, "matt")
-
-      context("Compartment melding with dvid")
-
+    })
+    test_that("Compartment melding with dvid", {
       w <- rxode2({
         ktr <- exp(tktr + eta.ktr)
         ka <- exp(tka + eta.ka)
@@ -382,7 +379,7 @@ rxode2Test(
         dvid(3, 4, 5, 6)
       })
 
-      context("warfarin inner test")
+      # context("warfarin inner test")
 
       data.pkpd <- warfarin
       data.pkpd$dvid <- as.integer(data.pkpd$dvid)
@@ -496,7 +493,7 @@ rxode2Test(
 
       expect_equal(class(tmp), "rxode2")
 
-      context("Check lhs allowed stateExtra while preserving lhs properties.")
+      # context("Check lhs allowed stateExtra while preserving lhs properties.")
 
       tmp <- rxode2({
         d / dt(depot) <- -ka * depot

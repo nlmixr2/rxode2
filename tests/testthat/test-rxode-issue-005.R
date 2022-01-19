@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Bad solve")
+    # context("Bad solve")
 
     model <- rxode2({
       C2 <- centr / V2

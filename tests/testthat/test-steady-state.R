@@ -48,7 +48,7 @@ rxode2Test(
         Cl / V
       })
 
-      context(sprintf("Steady state IV Bolus (%s)", m))
+      # context(sprintf("Steady state IV Bolus (%s)", m))
 
       test_that("Non steady state dose makes sense", {
         expect_equal(x2$C2[1], c0)
@@ -68,7 +68,7 @@ rxode2Test(
         })
       }
 
-      context(sprintf("Steady state Infusions (%s)", m))
+      # context(sprintf("Steady state Infusions (%s)", m))
 
       ## Need to test:
       ## - Fixed Infusion w/rate (check)
@@ -189,7 +189,7 @@ rxode2Test(
       }
 
       ## steady-state = 2 for bolus
-      context(sprintf("Bolus SS=2 (%s)", m))
+      # context(sprintf("Bolus SS=2 (%s)", m))
       test_that("bolus SS=2", {
         e2 <- et(amt = 20, ii = 24, ss = 2, time = 12) %>%
           et(seq(0, 24, length.out = 100))
@@ -215,7 +215,7 @@ rxode2Test(
           expect_equal(s1$C2 + s2$C2, s3$C2)
         }
       })
-      context(sprintf("IV Infusion SS=2 (%s)", m))
+      # context(sprintf("IV Infusion SS=2 (%s)", m))
       d <- 10
       ## Changing Bioavailability causes changes in these results...
       for (f in c(0.5, 1, 2)) {
@@ -315,7 +315,7 @@ rxode2Test(
         }
       }
 
-      context("Constant Infusion steady state")
+      # context("Constant Infusion steady state")
 
       test_that("constant infusion steady state", {
         ode.1cR <- rxode2({
@@ -330,11 +330,11 @@ rxode2Test(
 
         s <- rxSolve(ode.1cR, c(rateIn = 3), et(amt = 0, rate = 10, ss = 1))
 
-        expect_equal(s$C2[1], 10, tol = 1e-5)
+        expect_equal(s$C2[1], 10, tolerance = 1e-5)
 
         s <- rxSolve(ode.1cR, c(rateIn = 3), et(amt = 0, rate = -1, ss = 1))
 
-        expect_equal(s$C2[1], 3, tol = 1e-5)
+        expect_equal(s$C2[1], 3, tolerance = 1e-5)
       })
     }
   },

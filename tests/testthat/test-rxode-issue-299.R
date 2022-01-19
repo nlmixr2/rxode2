@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("Issue 299")
     test_that("issue #229", {
       model <- rxode2({
         cmt(SC_AKR)

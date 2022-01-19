@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("Test Issue #50")
     test_that("Issue #50", {
       .file <- test_path("rxodedemo_ode.txt")
 

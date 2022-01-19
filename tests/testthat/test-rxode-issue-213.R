@@ -1,7 +1,6 @@
 rxode2Test(
   {
-    context("1e+5 doesn't drop, Issue #213")
-    test_that("issue #213 doesn't drop patients", {
+    test_that("issue RxODE#213 doesn't drop patients, 1e+5 doesn't drop", {
       rx <- rxode2({
         ka <- .2
         BA <- 0.9

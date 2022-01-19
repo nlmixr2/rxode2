@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    context("User function tests")
-
     test_that("user function tests", {
       expect_error(rxode2("a=fun(d,b,c)"))
       expect_error(rxFromSE("Derivative(fun(a,b,c),a)"))

@@ -63,7 +63,7 @@ rxode2Test(
         "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
         "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-        "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
+        "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
         "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
         "sigmaList", "omegaList"
@@ -82,7 +82,7 @@ rxode2Test(
         "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
         "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-        "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
+        "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
         "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
         "omegaList"
@@ -100,7 +100,7 @@ rxode2Test(
         "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
         "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-        "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
+        "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
         "env", "model", "params", "inits", "t", "rxode2", "thetaMat"
       ))
@@ -117,7 +117,7 @@ rxode2Test(
         "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
         "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
         "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
-        "get.nobs", "get.EventTable", "get.dosing", "dll", "counts",
+        "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
         "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
         "env", "model", "params", "inits", "t", "rxode2"
       ))

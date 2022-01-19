@@ -5,7 +5,7 @@ rxode2Test(
     ms <- c("liblsoda", "lsoda", "dop853")
 
     for (m in ms) {
-      context(sprintf("Modeled rate (%s)", m))
+      # context(sprintf("Modeled rate (%s)", m))
 
       mod.rate <- rxode2({
         a <- 6
@@ -134,7 +134,7 @@ rxode2Test(
         expect_error(rxSolve(mod.dur, et, c(ri = 1, f = 1, li = 0.3), method = m))
       })
 
-      context(sprintf("Modeled duration (%s)", m))
+      # context(sprintf("Modeled duration (%s)", m))
 
       ## Now model duration
       et <- et(amt = 2 / 24 * 2, rate = -2) %>%
@@ -182,7 +182,7 @@ rxode2Test(
       })
     }
 
-    context("error when bioavaibility(state)+rate/dur, but maintain f(state) #216 #222")
+    # context("error when bioavaibility(state)+rate/dur, but maintain f(state) #216 #222")
 
     mod.rate <- rxode2({
       a <- 6

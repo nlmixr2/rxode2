@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    context("evid=3 solves")
-
     test_that("evid=3 reset time", {
       mod1 <- rxode2({
         KA <- 2.94E-01

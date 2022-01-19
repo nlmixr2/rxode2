@@ -1,10 +1,8 @@
 rxode2Test(
   {
-    require(rxode2)
-    context("Test Jacobian specification")
+    ## https://cran.r-project.org/web/packages/diffEq/vignettes/ODEinR.pdf p15
     require(digest)
 
-    ## https://cran.r-project.org/web/packages/diffEq/vignettes/ODEinR.pdf p15
     Vtpol <- rxode2("
 d/dt(y) = dy
 d/dt(dy) = mu*(1-y^2)*dy - y

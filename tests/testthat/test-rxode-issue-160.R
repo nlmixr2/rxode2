@@ -1,7 +1,6 @@
 rxode2Test(
   {
-    context("Issue #160; F w/ other compartments")
-    test_that("Bioavailability doesn't impact other cmts", {
+    test_that("Bioavailability doesn't impact other cmts (issue RxODE#160)", {
       rx <- rxode2({
         ka <- .2
         BA <- 0.9

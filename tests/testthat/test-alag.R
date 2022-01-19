@@ -21,8 +21,6 @@ rxode2Test(
 
       ms <- c("liblsoda", "lsoda", "dop853")
       for (m in ms) {
-        context(sprintf("Test absorption lag-time with IV dosing (%s)", m))
-
         obs <- units::set_units(seq(0, 10, by = 1 / 24), "days")
 
         et <- eventTable(time.units = "days")
@@ -32,12 +30,10 @@ rxode2Test(
           nbr.doses = 10, dosing.interval = 1
         )
 
-
         solve1 <- solve(mod, et, method = m)
-
         solve2 <- solve(mod2, et, method = m)
 
-        test_that("Solves with lag times are different", {
+        test_that(sprintf("Test absorption lag-time with IV dosing (%s): Solves with lag times are different", m), {
           expect_equal(obs, solve1$time)
           expect_equal(obs, solve2$time)
           expect_false(all(solve1$intestine == solve2$intestine))
@@ -53,31 +49,32 @@ rxode2Test(
 
         solve3 <- solve(mod, et, method = m)
 
-        test_that("Absorption lag shifts event by 2", {
+        test_that(sprintf("Test absorption lag-time with IV dosing (%s): Absorption lag shifts event by 2", m), {
           expect_equal(obs, solve3$time)
           expect_equal(solve3$intestine, solve2$intestine)
           expect_equal(solve3$blood, solve2$blood)
         })
 
-        context(sprintf("bad alag (%s)", m))
+        test_that(sprintf("bad alag (%s)", m), {
 
-        ## test bad solves -- These could depend on intestine indirectly so these are run-time errors
-        mod3 <- rxode2({
-          a <- 6
-          b <- 0.6
-          d / dt(intestine) <- -a * intestine
-          alag(intestine) <- 2 * intestine
-          d / dt(blood) <- a * intestine - b * blood
+          ## test bad solves -- These could depend on intestine indirectly so these are run-time errors
+          mod3 <- rxode2({
+            a <- 6
+            b <- 0.6
+            d / dt(intestine) <- -a * intestine
+            alag(intestine) <- 2 * intestine
+            d / dt(blood) <- a * intestine - b * blood
+          })
+
+          et <- eventTable(time.units = "days")
+          obs <- units::set_units(seq(0, 10, by = 1 / 24), "days")
+          et$add.sampling(obs)
+          et$add.dosing(
+            dose = 2 / 24, start.time = 0,
+            nbr.doses = 10, dosing.interval = 1
+          )
+          expect_error(solve(mod3, et))
         })
-
-        et <- eventTable(time.units = "days")
-        obs <- units::set_units(seq(0, 10, by = 1 / 24), "days")
-        et$add.sampling(obs)
-        et$add.dosing(
-          dose = 2 / 24, start.time = 0,
-          nbr.doses = 10, dosing.interval = 1
-        )
-        expect_error(solve(mod3, et))
       }
     }
   },

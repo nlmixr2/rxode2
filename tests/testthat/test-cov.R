@@ -3,7 +3,7 @@ rxode2Test(
     if (requireNamespace("units", quietly = TRUE)) {
       for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match precisely.
 
-        context(sprintf("Simple test for time-varying covariates (%s)", meth))
+        # context(sprintf("Simple test for time-varying covariates (%s)", meth))
 
         ode <- rxode2({
           b <- -1
@@ -199,7 +199,7 @@ rxode2Test(
           expect_false(isTRUE(all.equal(out, out2)))
         })
 
-        context(sprintf("Test First Assignment (%s)", meth))
+        # context(sprintf("Test First Assignment (%s)", meth))
 
         ## Assign a time-varying to a simple parameter
         .rxWithSink(t, {
@@ -212,7 +212,7 @@ rxode2Test(
         })
 
 
-        context(sprintf("Test Second Assignment (%s)", meth))
+        # context(sprintf("Test Second Assignment (%s)", meth))
 
         .rxWithSink(t, {
           out$a <- out3$a
@@ -223,7 +223,7 @@ rxode2Test(
           expect_equal(as.data.frame(out), as.data.frame(out3))
         })
 
-        context(sprintf("Covariate solve with data frame event table (%s)", meth))
+        # context(sprintf("Covariate solve with data frame event table (%s)", meth))
 
         ## Covariate solve for data frame
         d3 <- structure(list(
@@ -325,7 +325,7 @@ rxode2Test(
 
         tmp2 <- rxSolve(mod1, d3, par2, add.cov = TRUE, cores = 2, method = meth)
 
-        context(sprintf("Test NA extrapolation for %s solving", meth))
+        # context(sprintf("Test NA extrapolation for %s solving", meth))
         test_that("NA solve is the same", {
           for (i in c("id", "time", "A_centr", "A_periph", "A_circ", "A_prol", "A_tr1", "A_tr2", "A_tr3")) {
             expect_equal(tmp[[i]], tmp2[[i]])
@@ -353,7 +353,7 @@ rxode2Test(
         })
       }
 
-      context("time-varying covariates work with ODEs")
+      # context("time-varying covariates work with ODEs")
 
       test_that("time varying covariates lhs", {
         dfadvan <- structure(list(

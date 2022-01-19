@@ -3,7 +3,6 @@ rxode2Test(
     et <- et(1:10)
     et$b <- 1:10
 
-    context("lag() tests")
     test_that("lag()", {
       expect_error(rxode2({
         a <- lag()
@@ -110,8 +109,6 @@ rxode2Test(
       expect_equal(x1$a, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
     })
 
-    context("lead()")
-
     test_that("lead()", {
       expect_error(rxode2({
         a <- lead()
@@ -186,8 +183,6 @@ rxode2Test(
     })
 
 
-    context("first()")
-
     test_that("first()", {
       expect_error(rxode2({
         a <- first()
@@ -222,8 +217,6 @@ rxode2Test(
 
       expect_true(all(x1$a == 1))
     })
-
-    context("last()")
 
     test_that("last()", {
       expect_error(rxode2({
@@ -263,8 +256,6 @@ rxode2Test(
 
     et <- et(1:10)
     et$b <- 2^(1:10)
-
-    context("diff()")
 
     test_that("diff()", {
       expect_error(rxode2({
@@ -335,9 +326,7 @@ rxode2Test(
       expect_equal(x1$a, c(NA, NA, 6, 12, 24, 48, 96, 192, 384, 768))
     })
 
-    context("bad lag() types")
-
-    test_that("bad lag", {
+    test_that("bad lag() types", {
       expect_error(rxode2({
         a ~ c + d
         b <- lag(a)

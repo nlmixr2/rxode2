@@ -4,8 +4,7 @@ rxode2Test(
     dgs <- c("sqrt", "log", "identity")
     for (dg in dgs) {
       for (d in seq(1, rxSymInvCholN())) {
-        context(sprintf("Omega Cholesky %sx%s, %s", d, d, dg))
-        test_that("omega chol", {
+        test_that(sprintf("Omega Cholesky %sx%s, %s", d, d, dg), {
           ## Creating covariance matrix
           tmp <- matrix(rnorm(d^2), d, d)
           mcov <- tcrossprod(tmp, tmp)

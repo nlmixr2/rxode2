@@ -1,7 +1,4 @@
-require(rxode2)
-require(digest)
 rxode2Test({
-  context("evid=2 solves")
 
   mod <- rxode2("
 a = 6

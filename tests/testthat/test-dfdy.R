@@ -1,8 +1,5 @@
 rxode2Test(
   {
-    require(rxode2)
-    context("Test Jacobian (df/dy) parsing")
-
     Vtpol2 <- rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y

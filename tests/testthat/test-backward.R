@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    library(rxode2)
-    context("Test Backward Compatibility")
     ## Dynmodel routines
     ode <- "
    dose=200;

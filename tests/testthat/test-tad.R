@@ -1,6 +1,6 @@
 rxode2Test({
   if (requireNamespace("units", quietly = TRUE)) {
-    context("tad family of functions with odes")
+    # context("tad family of functions with odes")
     library(units)
 
     test_that("tad family works with ode", {
@@ -228,7 +228,7 @@ rxode2Test({
       })
     })
 
-    context("tad family of functions with linCmt()")
+    # context("tad family of functions with linCmt()")
 
     test_that("lincmt solution tad family", {
       sol.1c.ka <- rxode2({
@@ -304,7 +304,7 @@ rxode2Test({
       expect_equal(s$tafd, s$tafdc)
     })
 
-    context("tad family of functions with linCmt()/ode mix")
+    # context("tad family of functions with linCmt()/ode mix")
 
     test_that("ode mixed", {
       mod3 <- rxode2({

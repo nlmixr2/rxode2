@@ -1,8 +1,5 @@
 rxode2Test(
   {
-    context("Test rxode2 THETA/ETA support")
-    library(digest)
-
     rigid <- rxode2({
       y1(0) <- 1
       y2(0) <- 0
