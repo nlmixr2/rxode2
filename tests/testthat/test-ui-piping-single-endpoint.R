@@ -1,4 +1,4 @@
-test_that("single endpoint model", {
+test_that("single or multiple endpoint model", {
 
   # Test for rxode2 issue #17
   f <- function() {
@@ -24,6 +24,30 @@ test_that("single endpoint model", {
   expect_equal("lipre", .tmp$predDf$var)
 
   expect_error(f %>% model(PD ~ add(log.add.sd)))
+
+  fo <- function() {
+    ini({
+      tke <- 0.5
+      eta.ke ~ 0.04
+      prop.sd <- sqrt(0.1)
+    })
+    model({
+      ke <- tke * exp(eta.ke)
+      d/dt(ipre) <- -ke * ipre
+      f2 <- ipre / (ipre + 5)
+      f3 <- f2 * 3
+      lipre <- log(ipre)
+      ipre ~ prop(prop.sd)
+    })
+  }
+
+  fo <- rxode2(fo)
+
+  expect_equal("ipre", fo$predDf$var)
+  .tmp <- expect_warning(fo %>% model(lipre ~ add(log.add.sd)))
+  expect_equal("lipre", .tmp$predDf$var)
+
+  expect_error(fo %>% model(PD ~ add(log.add.sd)))
 
   pk.turnover.emax2 <- function() {
     ini({

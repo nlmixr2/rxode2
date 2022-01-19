@@ -97,8 +97,9 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
           if (.isNormOrTErrorExpression(.expr)) {
             # Make sure the lhs is included in the model prediction
             .var <- deparse1(expr)
-            if (!(.var %in% rxui$mv0$lhs)) {
-              stop("the variable '", .var, "' must be in the defined the model for this model piping",
+            .modelVars <- c(rxui$mv0$lhs, rxui$mv0$state)
+            if (!(.var %in% .modelVars)) {
+              stop("the variable '", .var, "' must be in the defined the model for piping this: '",deparse(.expr), "'",
                    call.=FALSE)
             }
           }
