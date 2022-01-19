@@ -62,7 +62,7 @@ Suggests:
     testthat,
     tidyr,
     usethis,
-    vdiffr,
+    vdiffr (>= 1.0),
     xgxr,
     pillar,
     tibble,

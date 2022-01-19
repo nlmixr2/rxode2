@@ -121,7 +121,7 @@ man/rmdhunks/rxode2-datasets.Rmd
 authors.md
 ^cran-comments\.md$
 ^authors\.md$
-tests/figs
+tests/testthat/_snaps/plot
 tests/testthat/test-plot.R
 tests/testthat/test-lincmt-parse.R
 
