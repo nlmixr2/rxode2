@@ -1,10 +1,9 @@
 rxode2Test(
   {
-    context("Issue #178: deactivate active compiled model")
     td <- tempdir()
 
     .rxWithWd(td, {
-      test_that("178", {
+      test_that("Issue #178: deactivate active compiled model", {
         ## Define model
         skip_on_os("solaris")
         skip_on_os("mac")

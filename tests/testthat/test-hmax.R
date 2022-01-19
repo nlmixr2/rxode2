@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    context("Solve with all zeros")
-
     evi <- structure(list(time = c(
       0,
       0, 0.5, 0.5, 0.969, 0.9833, 1, 1.5, 1.77253, 1.9333, 2, 2.5,

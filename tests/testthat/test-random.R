@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("normal random variables")
 
     warn1 <- function(code) {
       if (rxCores() == 1L) {
@@ -24,26 +23,26 @@ rxode2Test(
 
       f <- warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2))
 
-      expect_equal(mean(f$x1), 0, tol = 1e-2)
-      expect_equal(sd(f$x1), 1, tol = 1e-2)
+      expect_equal(mean(f$x1), 0, tolerance = 1e-2)
+      expect_equal(sd(f$x1), 1, tolerance = 1e-2)
 
-      expect_equal(mean(f$x2), 3, tol = 1e-2)
-      expect_equal(sd(f$x1), 1, tol = 1e-2)
+      expect_equal(mean(f$x2), 3, tolerance = 1e-2)
+      expect_equal(sd(f$x1), 1, tolerance = 1e-2)
 
 
-      expect_equal(mean(f$x3), 5, tol = 1e-2)
-      expect_equal(sd(f$x3), 2, tol = 1e-2)
+      expect_equal(mean(f$x3), 5, tolerance = 1e-2)
+      expect_equal(sd(f$x3), 2, tolerance = 1e-2)
 
       f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
 
-      expect_equal(mean(f2$x1), 0, tol = 1e-2)
-      expect_equal(sd(f2$x1), 1, tol = 1e-2)
+      expect_equal(mean(f2$x1), 0, tolerance = 1e-2)
+      expect_equal(sd(f2$x1), 1, tolerance = 1e-2)
 
-      expect_equal(mean(f2$x2), 3, tol = 1e-2)
-      expect_equal(sd(f2$x1), 1, tol = 1e-2)
+      expect_equal(mean(f2$x2), 3, tolerance = 1e-2)
+      expect_equal(sd(f2$x1), 1, tolerance = 1e-2)
 
-      expect_equal(mean(f2$x3), 5, tol = 1e-2)
-      expect_equal(sd(f2$x3), 2, tol = 1e-2)
+      expect_equal(mean(f2$x3), 5, tolerance = 1e-2)
+      expect_equal(sd(f2$x3), 2, tolerance = 1e-2)
 
       expect_error(rxode2({
         x4 <- rnorm(a, b, c, d)
@@ -67,12 +66,11 @@ rxode2Test(
 
 
       x <- rxnorm(n = 1e5)
-      expect_equal(mean(x), 0, tol = 0.01)
+      expect_equal(mean(x), 0, tolerance = 0.01)
 
-      expect_equal(sd(x), 1, tol = 0.01)
+      expect_equal(sd(x), 1, tolerance = 0.01)
     })
 
-    context("rnormV")
     test_that("rnormV", {
       set.seed(1024)
 
@@ -106,10 +104,9 @@ rxode2Test(
 
       x <- rxnorm(n = 1e4)
 
-      expect_equal(mean(x), 0, tol = 0.1)
+      expect_equal(mean(x), 0, tolerance = 0.1)
     })
 
-    context("binomial tests")
     test_that("rbinom", {
       rx <- rxode2({
         x1 <- rbinom(4, 0.5)
@@ -124,15 +121,15 @@ rxode2Test(
       expect_equal(max(f$x1), 4)
       expect_equal(min(f$x1), 0)
       expect_true(all(round(f$x1) == f$x1))
-      expect_equal(mean(f$x1), 4 * 0.5, tol = 1e-2)
-      expect_equal(sd(f$x1), sqrt(4 * 0.5 * 0.5), tol = 1e-2)
+      expect_equal(mean(f$x1), 4 * 0.5, tolerance = 1e-2)
+      expect_equal(sd(f$x1), sqrt(4 * 0.5 * 0.5), tolerance = 1e-2)
 
       expect_equal(max(f$x2), 10)
       expect_true(min(f$x2) > 0)
       expect_true(all(round(f$x2) == f$x2))
 
-      expect_equal(mean(f$x2), 10 * 0.75, tol = 1e-2)
-      expect_equal(sd(f$x2), sqrt(10 * 0.75 * 0.25), tol = 1e-2)
+      expect_equal(mean(f$x2), 10 * 0.75, tolerance = 1e-2)
+      expect_equal(sd(f$x2), sqrt(10 * 0.75 * 0.25), tolerance = 1e-2)
 
       ## Make sure seeds are reproducible
       ev <- et(1, id = 1:10)
@@ -162,8 +159,6 @@ rxode2Test(
         x1 <- rbinom(a, b, c)
       }))
     })
-
-    context("Cauchy random numbers")
 
     test_that("rcauchy", {
       set.seed(1024)
@@ -201,7 +196,6 @@ rxode2Test(
       }))
     })
 
-    context("rchisq tests")
     test_that("rchisq", {
       rx <- rxode2({
         x1 <- rchisq(15)
@@ -213,11 +207,11 @@ rxode2Test(
       set.seed(1024)
       f <- warn1(rxSolve(rx, ev, cores = 2))
 
-      expect_equal(mean(f$x1), 15, tol = 0.1)
-      expect_equal(sd(f$x1), sqrt(2 * 15), tol = 0.1)
+      expect_equal(mean(f$x1), 15, tolerance = 0.1)
+      expect_equal(sd(f$x1), sqrt(2 * 15), tolerance = 0.1)
 
-      expect_equal(mean(f$x2), 20, tol = 0.1)
-      expect_equal(sd(f$x2), sqrt(2 * 20), tol = 0.1)
+      expect_equal(mean(f$x2), 20, tolerance = 0.1)
+      expect_equal(sd(f$x2), sqrt(2 * 20), tolerance = 0.1)
 
       ## Seed tests
 
@@ -247,8 +241,6 @@ rxode2Test(
       }))
     })
 
-    context("rexp tests")
-
     test_that("rexp tests", {
       rx <- rxode2({
         x1 <- rexp(0.5)
@@ -260,11 +252,11 @@ rxode2Test(
       set.seed(1024)
       f <- warn1(rxSolve(rx, ev, cores = 2))
 
-      expect_equal(mean(f$x1), 2, tol = 0.1)
-      expect_equal(sd(f$x1), sqrt(1 / (0.5 * 0.5)), tol = 0.1)
+      expect_equal(mean(f$x1), 2, tolerance = 0.1)
+      expect_equal(sd(f$x1), sqrt(1 / (0.5 * 0.5)), tolerance = 0.1)
 
-      expect_equal(mean(f$x2), 1, tol = 0.1)
-      expect_equal(sd(f$x2), 1, tol = 0.1)
+      expect_equal(mean(f$x2), 1, tolerance = 0.1)
+      expect_equal(sd(f$x2), 1, tolerance = 0.1)
 
       ## Seed tests
 
@@ -289,8 +281,6 @@ rxode2Test(
       }))
     })
 
-    context("rf tests")
-
     test_that("rf tests", {
       rx <- rxode2({
         x1 <- rf(10, 20)
@@ -310,11 +300,11 @@ rxode2Test(
         return(d2 / (d2 - 2))
       }
 
-      expect_equal(mean(f$x1), mf(20), tol = 0.01)
-      expect_equal(sd(f$x1), sf(10, 20), tol = 0.01)
+      expect_equal(mean(f$x1), mf(20), tolerance = 0.01)
+      expect_equal(sd(f$x1), sf(10, 20), tolerance = 0.01)
 
-      expect_equal(mean(f$x2), mf(40), tol = 0.01)
-      expect_equal(sd(f$x2), sf(30, 40), tol = 0.01)
+      expect_equal(mean(f$x2), mf(40), tolerance = 0.01)
+      expect_equal(sd(f$x2), sf(30, 40), tolerance = 0.01)
 
       ## Seed tests
 
@@ -347,8 +337,6 @@ rxode2Test(
       }))
     })
 
-    context("rgamma tests")
-
     test_that("rgamma tests", {
       rx <- rxode2({
         x1 <- rgamma(9, 0.5)
@@ -364,9 +352,9 @@ rxode2Test(
         sqrt(k / (theta^2))
       }
 
-      expect_equal(sd(f$x1), sgamma(9, 0.5), tol = 0.01)
+      expect_equal(sd(f$x1), sgamma(9, 0.5), tolerance = 0.01)
 
-      expect_equal(sd(f$x2), sgamma(7.5), tol = 0.01)
+      expect_equal(sd(f$x2), sgamma(7.5), tolerance = 0.01)
 
       ## Seed tests
 
@@ -395,8 +383,6 @@ rxode2Test(
       }))
     })
 
-    context("rbeta tests")
-
     test_that("rbeta tests", {
       rx <- rxode2({
         x1 <- rbeta(2, 5)
@@ -416,11 +402,11 @@ rxode2Test(
         sqrt(a * b / ((a + b)^2 * (a + b + 1)))
       }
 
-      expect_equal(mean(f$x1), mbeta(2, 5), tol = 0.01)
-      expect_equal(sd(f$x1), sbeta(2, 5), tol = 0.01)
+      expect_equal(mean(f$x1), mbeta(2, 5), tolerance = 0.01)
+      expect_equal(sd(f$x1), sbeta(2, 5), tolerance = 0.01)
 
-      expect_equal(mean(f$x2), mbeta(2, 2), tol = 0.01)
-      expect_equal(sd(f$x2), sbeta(2, 2), tol = 0.01)
+      expect_equal(mean(f$x2), mbeta(2, 2), tolerance = 0.01)
+      expect_equal(sd(f$x2), sbeta(2, 2), tolerance = 0.01)
 
       ## Seed tests
 
@@ -452,8 +438,6 @@ rxode2Test(
         x1 <- rbeta()
       }))
     })
-
-    context("rgeom tests")
 
     test_that("rgeom tests", {
       rx <- rxode2({
@@ -493,8 +477,6 @@ rxode2Test(
       }))
     })
 
-    context("rpois tests")
-
     test_that("rpois", {
       rx <- rxode2({
         x1 <- rpois(1)
@@ -506,11 +488,11 @@ rxode2Test(
       set.seed(1024)
       f <- warn1(rxSolve(rx, ev, cores = 2))
 
-      expect_equal(mean(f$x1), 1, tol = 0.01)
-      expect_equal(sd(f$x1), 1, tol = 0.01)
+      expect_equal(mean(f$x1), 1, tolerance = 0.01)
+      expect_equal(sd(f$x1), 1, tolerance = 0.01)
 
-      expect_equal(mean(f$x2), 2, tol = 0.01)
-      expect_equal(sd(f$x2), sqrt(2), tol = 0.01)
+      expect_equal(mean(f$x2), 2, tolerance = 0.01)
+      expect_equal(sd(f$x2), sqrt(2), tolerance = 0.01)
       ## Seed tests
 
       ## Make sure seeds are reproducible
@@ -538,8 +520,6 @@ rxode2Test(
       }))
     })
 
-    context("rt tests")
-
     test_that("rt", {
       rx <- rxode2({
         x1 <- rt(15)
@@ -551,11 +531,11 @@ rxode2Test(
       set.seed(1024)
       f <- warn1(rxSolve(rx, ev, cores = 2))
 
-      expect_equal(mean(f$x1), 0, tol = 0.1)
-      expect_equal(sd(f$x1), sqrt(15 / (15 - 2)), tol = 0.1)
+      expect_equal(mean(f$x1), 0, tolerance = 0.1)
+      expect_equal(sd(f$x1), sqrt(15 / (15 - 2)), tolerance = 0.1)
 
-      expect_equal(mean(f$x2), 0, tol = 0.1)
-      expect_equal(sd(f$x2), sqrt(20 / (20 - 2)), tol = 0.1)
+      expect_equal(mean(f$x2), 0, tolerance = 0.1)
+      expect_equal(sd(f$x2), sqrt(20 / (20 - 2)), tolerance = 0.1)
 
       ## Seed tests
 
@@ -585,8 +565,6 @@ rxode2Test(
       }))
     })
 
-    context("runif tests")
-
     test_that("runif", {
       set.seed(1024)
 
@@ -601,25 +579,25 @@ rxode2Test(
 
       f <- warn1(rxSolve(rx, ev, c(a = 0.5, b = 0.25, c = 0.75), cores = 2))
 
-      expect_equal(mean(f$x1), 0.5, tol = 1e-2)
-      expect_equal(sd(f$x1), sqrt(1 / 12), tol = 1e-2)
+      expect_equal(mean(f$x1), 0.5, tolerance = 1e-2)
+      expect_equal(sd(f$x1), sqrt(1 / 12), tolerance = 1e-2)
 
-      expect_equal(mean(f$x2), 0.5 * (0.5 + 1), tol = 1e-2)
-      expect_equal(sd(f$x2), sqrt((1 - 0.5)^2 / 12), tol = 1e-2)
+      expect_equal(mean(f$x2), 0.5 * (0.5 + 1), tolerance = 1e-2)
+      expect_equal(sd(f$x2), sqrt((1 - 0.5)^2 / 12), tolerance = 1e-2)
 
-      expect_equal(mean(f$x3), 0.5 * (0.25 + 0.75), tol = 1e-2)
-      expect_equal(sd(f$x3), sqrt((0.75 - 0.25)^2 / 12), tol = 1e-2)
+      expect_equal(mean(f$x3), 0.5 * (0.25 + 0.75), tolerance = 1e-2)
+      expect_equal(sd(f$x3), sqrt((0.75 - 0.25)^2 / 12), tolerance = 1e-2)
 
       f2 <- rxSolve(rx, ev, c(a = 0.5, b = 0.25, c = 0.75), cores = 1)
 
-      expect_equal(mean(f2$x1), 0.5, tol = 1e-2)
-      expect_equal(sd(f2$x1), sqrt(1 / 12), tol = 1e-2)
+      expect_equal(mean(f2$x1), 0.5, tolerance = 1e-2)
+      expect_equal(sd(f2$x1), sqrt(1 / 12), tolerance = 1e-2)
 
-      expect_equal(mean(f2$x2), 0.5 * (0.5 + 1), tol = 1e-2)
-      expect_equal(sd(f2$x2), sqrt((1 - 0.5)^2 / 12), tol = 1e-2)
+      expect_equal(mean(f2$x2), 0.5 * (0.5 + 1), tolerance = 1e-2)
+      expect_equal(sd(f2$x2), sqrt((1 - 0.5)^2 / 12), tolerance = 1e-2)
 
-      expect_equal(mean(f2$x3), 0.5 * (0.25 + 0.75), tol = 1e-2)
-      expect_equal(sd(f2$x3), sqrt((0.75 - 0.25)^2 / 12), tol = 1e-2)
+      expect_equal(mean(f2$x3), 0.5 * (0.25 + 0.75), tolerance = 1e-2)
+      expect_equal(sd(f2$x3), sqrt((0.75 - 0.25)^2 / 12), tolerance = 1e-2)
 
       expect_error(rxode2({
         x4 <- runif(a, b, c, d)
@@ -642,8 +620,6 @@ rxode2Test(
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
     })
 
-
-    context("rweibull tests")
 
     test_that("rweibull tests", {
       rx <- rxode2({
@@ -669,11 +645,11 @@ rxode2Test(
         - (gamma(1 + 1 / k))^2))
       }
 
-      expect_equal(mean(f$x1), mweibull(9, 0.5), tol = 0.01)
-      expect_equal(sd(f$x1), sweibull(9, 0.5), tol = 0.01)
+      expect_equal(mean(f$x1), mweibull(9, 0.5), tolerance = 0.01)
+      expect_equal(sd(f$x1), sweibull(9, 0.5), tolerance = 0.01)
 
-      expect_equal(mean(f$x2), mweibull(7.5), tol = 0.01)
-      expect_equal(sd(f$x2), sweibull(7.5), tol = 0.01)
+      expect_equal(mean(f$x2), mweibull(7.5), tolerance = 0.01)
+      expect_equal(sd(f$x2), sweibull(7.5), tolerance = 0.01)
 
       ## Seed tests
 
@@ -701,8 +677,6 @@ rxode2Test(
         x1 <- rweibull()
       }))
     })
-
-    context("individual random number generation")
 
     test_that("individual random variable tests", {
       rx <- rxode2({
@@ -795,7 +769,6 @@ rxode2Test(
       }
     })
 
-    context("simeps()")
     test_that("simeps", {
       rx1 <- rxode2({
         c <- 0 + err
@@ -889,8 +862,6 @@ rxode2Test(
       expect_true(f1$c[1] != 0)
     })
 
-    context("simeta()")
-
     test_that("simeta", {
       rx <- rxode2({
         wt <- 70 * exp(eta.wt)
@@ -928,8 +899,6 @@ rxode2Test(
       expect_equal(length(unique(f$wt)), 4 * 3)
     })
 
-    context("r exports")
-
     test_that("random variables work in R alone", {
       set.seed(1024)
 
@@ -938,26 +907,26 @@ rxode2Test(
       expect_true(is.numeric(rxcauchy()))
 
       p <- rxpois(2, n = 30000)
-      expect_equal(mean(p), 2, tol = 0.01)
-      expect_equal(sd(p), sqrt(2), tol = 0.01)
+      expect_equal(mean(p), 2, tolerance = 0.01)
+      expect_equal(sd(p), sqrt(2), tolerance = 0.01)
 
       r <- rxt(15, n = 30000)
-      expect_equal(mean(r), 0, tol = 0.1)
-      expect_equal(sd(r), sqrt(15 / (15 - 2)), tol = 0.1)
+      expect_equal(mean(r), 0, tolerance = 0.1)
+      expect_equal(sd(r), sqrt(15 / (15 - 2)), tolerance = 0.1)
 
       r <- rxbinom(4, 0.5, n = 30000)
       expect_equal(max(r), 4)
       expect_equal(min(r), 0)
-      expect_equal(mean(r), 4 * 0.5, tol = 1e-2)
-      expect_equal(sd(r), sqrt(4 * 0.5 * 0.5), tol = 1e-2)
+      expect_equal(mean(r), 4 * 0.5, tolerance = 1e-2)
+      expect_equal(sd(r), sqrt(4 * 0.5 * 0.5), tolerance = 1e-2)
 
       chi <- rxchisq(15, n = 30000)
-      expect_equal(mean(chi), 15, tol = 0.1)
-      expect_equal(sd(chi), sqrt(2 * 15), tol = 0.1)
+      expect_equal(mean(chi), 15, tolerance = 0.1)
+      expect_equal(sd(chi), sqrt(2 * 15), tolerance = 0.1)
 
       xp <- rxexp(0.5, n = 30000)
-      expect_equal(mean(xp), 2, tol = 0.1)
-      expect_equal(sd(xp), sqrt(1 / (0.5 * 0.5)), tol = 0.1)
+      expect_equal(mean(xp), 2, tolerance = 0.1)
+      expect_equal(sd(xp), sqrt(1 / (0.5 * 0.5)), tolerance = 0.1)
 
       f <- rxf(30, 40, n = 30000)
 
@@ -969,8 +938,8 @@ rxode2Test(
         return(d2 / (d2 - 2))
       }
 
-      expect_equal(mean(f), mf(40), tol = 0.01)
-      expect_equal(sd(f), sf(30, 40), tol = 0.01)
+      expect_equal(mean(f), mf(40), tolerance = 0.01)
+      expect_equal(sd(f), sf(30, 40), tolerance = 0.01)
 
       x2 <- rxgamma(7.5, n = 30000)
 
@@ -978,7 +947,7 @@ rxode2Test(
         sqrt(k / (theta^2))
       }
 
-      ## expect_equal(sd(x2), sgamma(7.5), tol = 0.01)
+      ## expect_equal(sd(x2), sgamma(7.5), tolerance = 0.01)
 
       x2 <- rxbeta(2, 2, n = 30000)
 
@@ -990,8 +959,8 @@ rxode2Test(
         sqrt(a * b / ((a + b)^2 * (a + b + 1)))
       }
 
-      expect_equal(mean(x2), mbeta(2, 2), tol = 0.01)
-      expect_equal(sd(x2), sbeta(2, 2), tol = 0.01)
+      expect_equal(mean(x2), mbeta(2, 2), tolerance = 0.01)
+      expect_equal(sd(x2), sbeta(2, 2), tolerance = 0.01)
 
       x2 <- rxgeom(0.1, n = 30000)
 
@@ -999,13 +968,13 @@ rxode2Test(
 
       x2 <- rxpois(2, n = 30000)
 
-      expect_equal(mean(x2), 2, tol = 0.01)
-      expect_equal(sd(x2), sqrt(2), tol = 0.01)
+      expect_equal(mean(x2), 2, tolerance = 0.01)
+      expect_equal(sd(x2), sqrt(2), tolerance = 0.01)
 
       x2 <- rxunif(0.5, n = 30000)
 
-      expect_equal(mean(x2), 0.5 * (0.5 + 1), tol = 1e-2)
-      expect_equal(sd(x2), sqrt((1 - 0.5)^2 / 12), tol = 1e-2)
+      expect_equal(mean(x2), 0.5 * (0.5 + 1), tolerance = 1e-2)
+      expect_equal(sd(x2), sqrt((1 - 0.5)^2 / 12), tolerance = 1e-2)
 
       x2 <- rxweibull(7.5, n = 30000)
 
@@ -1022,8 +991,8 @@ rxode2Test(
         - (gamma(1 + 1 / k))^2))
       }
 
-      expect_equal(mean(x2), mweibull(7.5), tol = 0.01)
-      expect_equal(sd(x2), sweibull(7.5), tol = 0.01)
+      expect_equal(mean(x2), mweibull(7.5), tolerance = 0.01)
+      expect_equal(sd(x2), sweibull(7.5), tolerance = 0.01)
     })
   },
   test = "norm"

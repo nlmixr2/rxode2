@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    context("Mtime support")
-
     mod <- rxode2({
       ka <- 0.04
       kel <- 0.6

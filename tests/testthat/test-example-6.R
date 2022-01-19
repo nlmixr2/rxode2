@@ -2,9 +2,6 @@
 rxode2Test(
   {
     if (requireNamespace("units", quietly = TRUE)) {
-      require(rxode2)
-      context("Example 6")
-      require(digest)
 
       inf.dat <- structure(list(
         time = structure(c(

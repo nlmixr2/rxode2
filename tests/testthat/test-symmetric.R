@@ -1,9 +1,7 @@
 ## test ODE parsing for syntax errors
 rxode2Test(
   {
-    library(rxode2)
-
-    context("Test errors with non-symmetric matrices")
+    # context("Test errors with non-symmetric matrices")
     set.seed(42)
     ## Jauslin's IGI (ogtt) model
     ode <- "
@@ -79,13 +77,12 @@ rxode2Test(
 
     et <- et %>% et(id = 1:7)
 
-    test_that(
-      "non-symmetric omegas throw errors",
+    test_that("non-symmetric omegas throw errors", {
       expect_error(
         rxSolve(mod, theta, et, omega = list(omega1, omega2, omega3, omega4)),
         "omega.*symmetric"
       )
-    )
+    })
 
     test_that("non-symmetric sigmas throw errors", {
       expect_error(
@@ -121,13 +118,12 @@ rxode2Test(
       eta.Cli ~ 0.0852
     })
 
-    test_that(
-      "non-symmetric sigmas throw errors",
+    test_that("non-symmetric sigmas throw errors", {
       expect_error(
         rxSolve(mod, theta, et, thetaMat = tM, omega = omega),
         "thetaMat.*symmetric"
       )
-    )
+    })
   },
   test = "parsing"
 )

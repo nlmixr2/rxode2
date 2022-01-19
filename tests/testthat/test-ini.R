@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    library(rxode2)
-    context("Test Inis")
     m1 <- rxode2({
       C2 <- centr / V2
       C3 <- peri / V3
@@ -11,13 +9,12 @@ rxode2Test(
       d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
     })
 
-    test_that(
-      "blank names works",
+    test_that("blank names works", {
       expect_equal(
         suppressWarnings(rxInits(m1, c(0, 0, 0, 1), rxState(m1), 0)),
         structure(c(0, 0, 0, 1), .Names = c("depot", "centr", "peri", "eff"))
       )
-    )
+    })
 
     out <- rxode2("ini = 1; fun_ini = 2; fun = 4; addit = ini + fun_ini + pi + no_ini")
 
@@ -130,13 +127,12 @@ rxode2Test(
         d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
       })
 
-      test_that(
-        "blank names works",
+      test_that("blank names works", {
         expect_equal(
           suppressWarnings(rxInits(m1, c(0, 0, 0, 1), rxState(m1), 0)),
           structure(c(0, 0, 0, 1), .Names = c("depot", "centr", "peri", "eff"))
         )
-      )
+      })
     })
 
     .rxWithOptions(list(rxode2.syntax.allow.ini = TRUE), {

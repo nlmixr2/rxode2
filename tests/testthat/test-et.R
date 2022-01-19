@@ -11,7 +11,7 @@ rxode2Test(
         "base::order",
         "data.table::forder"
       )
-      context(sprintf("Test event Table et(...) sort:%s", radix))
+      # context(sprintf("Test event Table et(...) sort:%s", radix))
       if (requireNamespace("units", quietly = TRUE)) {
         library(units)
       }
@@ -448,21 +448,18 @@ rxode2Test(
         expect_error(et(list(c(1, 0))))
         expect_error(et(list(c(0, 1, 2))))
       })
-      context("until is inclusive")
       test_that("until is inclusive", {
         expect_equal(et(amt = 1, time = 50, until = 57.5, ii = 1.5)$addl, 5)
         expect_equal(et(amt = 1, time = 50, until = 57.49999, ii = 1.5)$addl, 4)
         expect_equal(et(amt = 1, time = 50, until = 57.50001, ii = 1.5)$addl, 5)
       })
 
-      context("et Expected errors")
-      test_that("et errors", {
+      test_that("et expected errors", {
         expect_error(et(list(c(2, 1), c(3, 4)), amt = 3))
         expect_error(et(list(c(1, 2), 3, c(1, 2, 3)), amt = 3))
         expect_error(et(list(c(1, 2), 3, TRUE), amt = 3))
       })
 
-      context("et steady state constant infusion")
       test_that("et steady state constant infusion", {
         expect_error(et(amt = 0, rate = 10, ii = 0, ss = 2))
         expect_error(et(amt = 0, rate = 10, ii = 2, ss = 1))
@@ -480,8 +477,6 @@ rxode2Test(
         expect_equal(t1, t2)
       })
 
-      context("et addl")
-
       test_that("et addl expand", {
         ev <- et(amt = 3, ii = 24, until = 120)
         tmp <- etExpand(ev)
@@ -492,15 +487,6 @@ rxode2Test(
       })
 
       ev <- et(amt = 3, ii = 24, until = 120) %>% et(amt = 3, rate = dur)
-
-      context("conversion to common data frame types")
-      ## test_that("data.table conversion", {
-      ##     library(data.table)
-      ##     tmp <- data.table(ev)
-      ##     expect_equal(names(tmp), c("time", "amt", "rate", "ii", "addl", "evid"))
-      ##     expect_false(inherits(tmp$rate, "rxRateDur"))
-      ##     expect_false(inherits(tmp$evid, "rxEvid"))
-      ## })
 
       test_that("data.frame conversion", {
         tmp <- data.frame(ev)
@@ -517,9 +503,7 @@ rxode2Test(
       })
     }
 
-    context("seq() arguments work; See #97")
-
-    test_that("seq() args", {
+    test_that("seq() args work; see #97", {
       et1 <- et() %>% add.sampling(seq(0, 24, by = 3))
 
       et2 <- et(from = 0, to = 24, by = 3)
@@ -540,8 +524,7 @@ rxode2Test(
       expect_error(et(dur = 4, duration = 5))
     })
 
-    context("Issue #192 zero dose")
-    test_that("dose=0 is OK", {
+    test_that("dose=0 is OK; see #192", {
       ev1 <- et(amt = 0, time = 10)
       ev2 <- eventTable()
       ev2$add.dosing(dose = 0, start.time = 10)
@@ -549,13 +532,11 @@ rxode2Test(
       expect_equal(ev1, ev2)
     })
 
-    context("Issue #236 math in to/from")
-    test_that("Issue #236", {
+    test_that("Issue #236 math in to/from", {
       expect_error(et(from = 0, to = 168 * 2 * 6, length.out = 168 * 2 * 6 + 1), NA)
     })
 
-    context("Issue #257 -- numeric cmt vectorized")
-    test_that("Issue #257", {
+    test_that("Issue #257 numeric cmt vectorized", {
       ds4 <- c(1, 2, 3, 4)
       rate <- c(1.5, 2.5, 3.5, 4.5)
       expect_error(et() %>% et(amt = ds4, rate = rate, cmt = 4), NA)

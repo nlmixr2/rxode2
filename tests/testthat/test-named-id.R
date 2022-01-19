@@ -1,5 +1,5 @@
 rxode2Test({
-  context("test id==\"item\"")
+  # test id=="item"
 
   f1 <- rxode2({
     a <- 1
@@ -134,7 +134,7 @@ rxode2Test({
     expect_equal(ref$a, c(3, 1))
   })
 
-  context("test cmt==\"item\"/no.")
+  # test cmt=="item"/no.
 
   f3 <- rxode2({
     a <- 3

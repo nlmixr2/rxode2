@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("tests the internal df repetition routines")
+    test_that("tests the internal df repetition routines", {
 
     .rx <- loadNamespace("rxode2")
 
@@ -55,6 +55,7 @@ rxode2Test(
     expect_equal(expand3$a1, expand$a1)
     expect_equal(expand3$b1, expand$b1)
     expect_equal(expand3$c1, expand$c1)
+  })
   },
   test = "lvl2"
 )

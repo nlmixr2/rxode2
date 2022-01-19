@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    require(rxode2)
-    context("Get Index")
     rigid.txt <- "
 y1(0)    = 1
 y2(0)    = 0

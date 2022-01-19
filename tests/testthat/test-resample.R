@@ -51,9 +51,7 @@ rxode2Test(
     e$WT <- e$WT + e$time / 30
     e$CRCL <- e$CRCL + e$time / 30
 
-    context("test resampleID behavior")
-
-    test_that("resampleID", {
+    test_that("test resampleID behavior", {
       for (nStud in c(1, 2)) {
         f1 <- rxSolve(m1, e,
           ## Lotri uses lower-triangular matrix rep. for named matrix
@@ -220,7 +218,7 @@ rxode2Test(
     })
 
 
-    context("resample tests; time invariant")
+    # resample tests; time invariant
 
     nsub <- 30
     # Simulate Weight based on age and gender
@@ -320,59 +318,68 @@ rxode2Test(
 
         ## Now try icov option
 
-        f1 <- rxSolve(m1, e2,
-          iCov = cov.df,
-          ## Lotri uses lower-triangular matrix rep. for named matrix
-          omega = lotri(
-            eta.cl ~ .306,
-            eta.q ~ 0.0652,
-            eta.v1 ~ .567,
-            eta.v2 ~ .191
-          ),
-          sigma = lotri(err.sd ~ 0.5), addCov = TRUE
-        )
+        f1 <-
+	  expect_warning(
+	    rxSolve(m1, e2,
+              iCov = cov.df,
+              ## Lotri uses lower-triangular matrix rep. for named matrix
+              omega = lotri(
+                eta.cl ~ .306,
+                eta.q ~ 0.0652,
+                eta.v1 ~ .567,
+                eta.v2 ~ .191
+              ),
+              sigma = lotri(err.sd ~ 0.5), addCov = TRUE
+            )
+	  )
 
         expect_equal(f1$mWT, f1$WT)
         expect_equal(f1$mCRCL, f1$CRCL)
 
-        f2 <- rxSolve(m1, e2,
-          iCov = cov.df,
-          ## Lotri uses lower-triangular matrix rep. for named matrix
-          omega = lotri(
-            eta.cl ~ .306,
-            eta.q ~ 0.0652,
-            eta.v1 ~ .567,
-            eta.v2 ~ .191
-          ),
-          sigma = lotri(err.sd ~ 0.5), addCov = TRUE,
-          resample = c("SEX", "WT", "CRCL"),
-          resampleID = resampleID
-        )
+        f2 <-
+	  expect_warning(
+	    rxSolve(m1, e2,
+              iCov = cov.df,
+              ## Lotri uses lower-triangular matrix rep. for named matrix
+              omega = lotri(
+                eta.cl ~ .306,
+                eta.q ~ 0.0652,
+                eta.v1 ~ .567,
+                eta.v2 ~ .191
+              ),
+              sigma = lotri(err.sd ~ 0.5), addCov = TRUE,
+              resample = c("SEX", "WT", "CRCL"),
+              resampleID = resampleID
+            )
+          )
 
         expect_equal(f2$mWT, f2$WT)
         expect_equal(f2$mCRCL, f2$CRCL)
 
-        f3 <- rxSolve(m1, e2,
-          iCov = cov.df,
-          ## Lotri uses lower-triangular matrix rep. for named matrix
-          omega = lotri(
-            eta.cl ~ .306,
-            eta.q ~ 0.0652,
-            eta.v1 ~ .567,
-            eta.v2 ~ .191
-          ),
-          sigma = lotri(err.sd ~ 0.5),
-          keep = c("SEX", "WT", "CRCL"),
-          resample = c("SEX", "WT", "CRCL"),
-          resampleID = resampleID
-        )
+        f3 <-
+	  expect_warning(
+	    rxSolve(m1, e2,
+              iCov = cov.df,
+              ## Lotri uses lower-triangular matrix rep. for named matrix
+              omega = lotri(
+                eta.cl ~ .306,
+                eta.q ~ 0.0652,
+                eta.v1 ~ .567,
+                eta.v2 ~ .191
+              ),
+              sigma = lotri(err.sd ~ 0.5),
+              keep = c("SEX", "WT", "CRCL"),
+              resample = c("SEX", "WT", "CRCL"),
+              resampleID = resampleID
+            )
+          )
 
         expect_equal(f3$mWT, f3$WT)
         expect_equal(f3$mCRCL, f3$CRCL)
       }
     })
 
-    context("resample tests; time varying")
+    # resample tests; time varying
 
     # Make these time-varying covariates
 

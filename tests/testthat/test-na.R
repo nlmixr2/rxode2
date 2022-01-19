@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("NA tests")
+    # NA tests
 
     test_that("can assign NA", {
       mod1 <- rxode2("a=NA;\nb=2;\nc=a+b")
@@ -25,7 +25,7 @@ rxode2Test(
     })
 
 
-    context("Inf tests")
+    # Inf tests
 
     test_that("can assign Inf", {
       mod1 <- rxode2("a=Inf;\nb=2;\nc=a+b")
@@ -96,7 +96,7 @@ rxode2Test(
       expect_equal(ret$c, 3 + 2 + exp(3))
     })
 
-    context("NaN tests")
+    # NaN tests
 
     test_that("can assign NaN", {
       mod1 <- rxode2("a=NaN;\nb=2;\nc=a+b")

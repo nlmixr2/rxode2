@@ -1,7 +1,6 @@
 rxode2Test(
   {
-    context("Test PreciseSums::fsum")
-    test_that("Fsum", {
+    test_that("PreciseSums::fsum", {
       et <- eventTable() %>%
         add.sampling(0)
 

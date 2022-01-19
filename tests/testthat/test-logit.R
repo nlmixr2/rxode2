@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("logit tests")
+    test_that("logit tests", {
     expect_equal(
       rxToSE("logit(a)"),
       "-log(1/(a)-1)"
@@ -55,8 +55,9 @@ rxode2Test(
     expect_error(logit(0.5, c(1, 2)))
     expect_error(logit(0.5, 0, c(1, 2)))
     expect_error(logit(0.5, 1, -2))
+    })
 
-    context("expit")
+    test_that("expit", {
 
     expect_equal(
       rxToSE("expit(a)"),
@@ -114,6 +115,7 @@ rxode2Test(
     expect_error(expit(0.5, c(1, 2)))
     expect_error(expit(0.5, 0, c(1, 2)))
     expect_error(expit(0.5, 1, -2))
+    })
   },
   test = "lvl2"
 )

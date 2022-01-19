@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("locking tests")
+    # locking tests
 
     ode <- rxode2({
       a <- -8 / 3

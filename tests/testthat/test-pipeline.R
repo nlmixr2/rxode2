@@ -1,7 +1,6 @@
 rxode2Test(
   {
-    library(rxode2)
-    context("Test pipeline style of interacting with rxode2")
+    # Test pipeline style of interacting with rxode2
 
     mod <- rxode2({
       eff(0) <- 1

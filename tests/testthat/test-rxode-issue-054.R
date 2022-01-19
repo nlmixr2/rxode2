@@ -1,8 +1,7 @@
 rxode2Test(
   {
-    context("Conditional statements")
     ## else if is actually already supported...
-    test_that("else if", {
+    test_that("Conditional statements: else if", {
       m <- rxode2({
         if (cnd <= 1) {
           a <- 1.0
@@ -34,7 +33,7 @@ rxode2Test(
       expect_equal(tmp$a, 100)
     })
 
-    test_that("ifelse", {
+    test_that("Conditional statements: ifelse", {
       m <- rxode2({
         a <- ifelse(cnd <= 1, 1.0, ifelse(cnd <= 2, 2, ifelse(cnd <= 3, 3, 100)))
         tmp <- cnd
@@ -57,7 +56,7 @@ rxode2Test(
       expect_equal(tmp$a, 100)
     })
 
-    test_that("embedded logical expressions", {
+    test_that("Conditional statements: embedded logical expressions", {
       m <- rxode2({
         a <- (cnd == 1) * 1.0 + (cnd == 2) * 2 + (cnd == 3) * 3
         tmp <- cnd
@@ -80,7 +79,7 @@ rxode2Test(
       expect_equal(tmp$a, 0)
     })
 
-    test_that("ifelse with assignments", {
+    test_that("Conditional statements: ifelse with assignments", {
       m <- rxode2({
         ifelse(cnd <= 1, a = 1.0, a = 2.0)
         tmp <- cnd
@@ -107,13 +106,12 @@ rxode2Test(
       expect_equal(tmp$tmp, 2)
       expect_equal(tmp$a, 2)
     })
-    ##
-    context("Pruning checks")
+
     test_that("prune checks", {
       tmp <- "C2=centr/V;\nC3=peri/V2;\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL*C2-Q*C2+Q*C3;\nd/dt(peri)=Q*C2-Q*C3;\nC4=CMT;\nif(CMT==1){\nprd=depot;\n}\nif(CMT==2){\nprd=centr;\n}\nif(CMT==3){\nprd=peri;\n}\n"
       expect_equal(rxPrune(tmp), "C2=centr/V\nC3=peri/V2\nd/dt(depot)=-KA*depot\nd/dt(centr)=KA*depot-CL*C2-Q*C2+Q*C3\nd/dt(peri)=Q*C2-Q*C3\nC4=CMT\nprd=(CMT==1)*(depot)\nprd=(CMT==2)*(centr)+(1-((CMT==2)))*(prd)\nprd=(CMT==3)*(peri)+(1-((CMT==3)))*(prd)")
 
-      ## Advanced context pruining:
+      ## Advanced # context pruining:
       m <- rxode2({
         if (cnd <= 1) {
           a <- 1.0
@@ -394,8 +392,6 @@ rxode2Test(
       expect_equal(tmp$tmp, 4)
       expect_equal(tmp$a, 100)
     })
-
-    context("cimet pruning checks")
 
     test_that("cimet pruning checks", {
       cimet.1 <- rxode2({

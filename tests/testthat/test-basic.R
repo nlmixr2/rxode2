@@ -3,7 +3,6 @@ rxode2Test(
     td <- tempdir()
 
     .rxWithWd(td, {
-      context("Basic Tests")
       test.dir <- tempfile("Rx_base-")
       dir.create(test.dir)
       ode <- "d/dt(y) = r * y * (1.0 - y/K);"

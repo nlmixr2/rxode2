@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Test Issue #163 -- Keep doesn't work with iCov")
+    # Test Issue RxODE#163 -- Keep doesn't work with iCov
 
     set.seed(100)
 

@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Individual keep AGE==AGE2")
+    # Individual keep AGE==AGE2
 
     TVQ <- 4
     TVV3 <- 7

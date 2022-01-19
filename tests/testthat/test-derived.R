@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("v1 rate constants")
     test_that("v1 rate constants", {
       p1 <- rxDerived(v1 = 8, k = 0.5, digits = 3)
       expect_equal(
@@ -43,7 +42,6 @@ rxode2Test(
       ))
     })
 
-    context("Volumes and clearances")
     test_that("Volumes and clearances", {
       p1 <- rxDerived(v1 = 8.0, cl = 4.0, digits = 3)
 

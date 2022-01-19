@@ -167,7 +167,6 @@ rxode2Test(
         return(x)
       }
 
-    context("cholperm")
     test_that("cholperm", {
       set.seed(12)
       d <- 5
@@ -206,7 +205,6 @@ rxode2Test(
       ## microbenchmark::microbenchmark(microbenchmark::cholperm(mcov, -2 * (1:5), -(1:5)), rxCholperm(mcov, -2 * (1:5), -(1:5)))
     })
 
-    context("gradpsi")
     test_that("gradpsi", {
       set.seed(12)
       d <- 5
@@ -268,8 +266,6 @@ rxode2Test(
     })
 
 
-    context("nleq")
-
     test_that("nleq", {
       set.seed(12)
       d <- 5
@@ -295,8 +291,6 @@ rxode2Test(
 
       expect_equal(.rx$rxNleq(r2$l, r2$u, r2$L), nleq(r2$l, r2$u, r2$L))
     })
-
-    context("rxMvnrnd")
 
     test_that("rxMvnrnd", {
       set.seed(12)

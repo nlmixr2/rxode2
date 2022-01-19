@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("Test modelvars")
     rigid.txt <- "
 y1(0)    = 1
 y2(0)    = 0

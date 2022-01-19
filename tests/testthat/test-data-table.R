@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("Data Table & tibble output")
     test_that("data.table", {
       for (rt in c("data.table", "tbl")) {
         mod <- rxode2({

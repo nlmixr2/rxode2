@@ -89,14 +89,12 @@ rxode2Test({
 
     expect_equal(as.data.frame(rx_301_1[,c("time","IPRED")]),
                  as.data.frame(run301_tab[run301_tab$ID == 1,c("time","IPRED")]),
-                 tol=1e-5)
+                 tolerance = 1e-5)
 
     expect_equal(as.data.frame(rx_302_1[,c("time","IPRED")]),
                  as.data.frame(run302_tab[run302_tab$ID == 1,c("time","IPRED")]),
-                 tol=1e-5)
+                 tolerance = 1e-5)
 
   })
-
-
 },
 test="lvl2")

@@ -1,10 +1,6 @@
 rxode2Test(
   {
-    library(rxode2)
-    library(dplyr)
-    library(digest)
-
-    context("rxSolve right handed differental equations")
+    # rxSolve right handed differental equations
 
     rxSetIni0(FALSE)
 

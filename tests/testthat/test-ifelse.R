@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("If/Else expansion tests")
     rx1 <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z

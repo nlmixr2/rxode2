@@ -11,7 +11,7 @@ rxode2Test(
         "base::order",
         "data.table::forder"
       )
-      context(sprintf("etTrans checks (radix: %s)", radix))
+      # context(sprintf("etTrans checks (radix: %s)", radix))
       rxSetIni0(FALSE)
 
       mod <- rxode2("
@@ -348,8 +348,7 @@ d/dt(blood)     = a*intestine - b*blood
       })
 
       ## Test mixed classic rxode2 and NONMEM inputs
-      context("Mix rxode2 EVIDs and NONMEM EVIDs")
-      test_that("mixed EVID/data gives a warning", {
+      test_that("mixed rxode2/NONMEM EVID/data gives a warning", {
         mod <- rxode2({
           d1 <- exp(td1 + eta.d1)
           cl <- exp(tcl + eta.cl)
@@ -394,11 +393,9 @@ d/dt(blood)     = a*intestine - b*blood
         expect_warning(etTrans(d, mod), "'ss'")
       })
 
-      context("DV=NA test, Issue #106")
-
       mod <- rxode2("    x1(0) = x10\n    d/dt(x1) = a * x1\n    Volume = x1;\ncmt(Volume);\n\n    nlmixr_pred <- Volume")
 
-      test_that("DV=NA", {
+      test_that("DV=NA; issue #106", {
         RawData2 <- data.frame(
           ID = c(1, 1, 1, 1, 2, 2, 2, 2),
           TIME = c(0, 3, 4, 5, 0, 3, 4, 5),
@@ -477,9 +474,7 @@ d/dt(blood)     = a*intestine - b*blood
         expect_equal(dat3$AMT, c(0, NA, NA, NA, NA, 0, NA, NA, NA, NA))
       })
 
-      context("X(0)=ini at zero or elsewhere (#105)")
-
-      test_that("X(0) should be at time zero", {
+      test_that("X(0) should be at time zero; see issue #105", {
         mod <- rxode2("    x1(0) = x10\n    d/dt(x1) = a * x1\n    Volume = x1;\ncmt(Volume);\n\n    nlmixr_pred <- Volume")
 
         rxSetIni0(FALSE)
@@ -550,8 +545,6 @@ d/dt(blood)     = a*intestine - b*blood
         expect_equal(attr(class(ret), ".rxode2.lst")$limitAdd, 1L)
       })
 
-      context("Constant infusion taken to steady state")
-
       test_that("rxode2 constant infusion taken to steady state", {
         trn1 <- etTrans(et(amt = 0, rate = 10, ss = 1), mod, keepDosingOnly = TRUE) %>% as.data.frame()
         expect_equal(structure(list(
@@ -577,7 +570,9 @@ d/dt(blood)     = a*intestine - b*blood
         events2 <- lst$events
         events2 <- events2[, names(events2) != "CENS"]
 
-        t0 <- expect_warning(etTrans(events2, rxode2(lst$object), FALSE, FALSE, FALSE, FALSE, NULL, character(0)))
+        # suppressWarnings() is used on the outside because the rxSetIni0(FALSE)
+        # warning only occurs once per session
+        t0 <- suppressWarnings(etTrans(events2, rxode2(lst$object), FALSE, FALSE, FALSE, FALSE, NULL, character(0)))
         expect_true(inherits(t0, "rxEtTran"))
 
         t1 <- etTrans(events2, rxode2(lst$object), FALSE, FALSE, FALSE, TRUE, NULL, character(0))
@@ -604,7 +599,13 @@ d/dt(blood)     = a*intestine - b*blood
           cp <- linCmt()
         })
 
-        tmp <- expect_warning(etTrans(dat, mod))
+        # suppressWarnings() is used on the outside because the rxSetIni0(FALSE)
+	# warning only occurs once per session
+        tmp <-
+	  suppressWarnings(expect_warning(expect_warning(
+	    etTrans(dat, mod)),
+	    regexp="IDs without observations dropped")
+	  )
         lvls <- c(
           "32", "33", "35", "36", "37", "40", "41", "42", "43", "47",
           "48", "49", "50", "51", "54", "55", "57", "59", "61", "62", "63",

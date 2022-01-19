@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Working Directory + Model Name (Issue #4)")
+    # Working Directory + Model Name (Issue RxODE#4)
 
     model_text <- "
   C2 = centr/V2;

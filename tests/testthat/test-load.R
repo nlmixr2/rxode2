@@ -1,7 +1,6 @@
 rxode2Test(
   {
-    require(rxode2)
-    context("Test loading, and unloading of models")
+    # Test loading, and unloading of models
 
     rigid.txt <- "
 y1(0)    = 1
