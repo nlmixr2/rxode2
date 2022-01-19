@@ -1056,14 +1056,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 
 #' Determine if expression is a rxode2 error expression
 #'
-#'
 #' Currently only handles simple error expressions, not n2ll(var) ~ ...
 #'
 #' @param expr Expression to test
 #' @return Boolean that says if the expression is an error expression or not
 #' @author Matthew L. Fidler
 #' @examples
-#' .isErrorExpression()
+#'
+#' .isErrorExpression(quote(ipre~add(add.sd)))
+#' .isErrorExpression(quote(ipre~add(add.sd)+3))
+#'
+#' @noRd
 .isErrorExpression <- function(expr) {
   if (!identical(expr[[1]], quote(`~`))) return(FALSE)
   .pre <- allNames(expr[[2]])
