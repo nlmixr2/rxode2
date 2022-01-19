@@ -158,7 +158,7 @@
   return(bquote((.(.f))^2*(.(.p1))^2))
 }
 
-#' Get the Variance for the additive + prop error
+#' Get the Variance for pow error model
 #'
 #' @param env Environment for the parsed model
 #' @param pred1 The `data.frame` of the current error
@@ -167,10 +167,10 @@
 #' @noRd
 .rxGetVarianceForErrorPow <- function(env, pred1) {
   .f <- .rxGetVarianceForErrorPropOrPowF(env, pred1)
+  .cnd <- pred1$cond
   if (!is.na(pred1$b)) {
     .p1 <- .enQuote(pred1$b)
   } else {
-    .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("pow", "powF", "powT") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- .enQuote(env$iniDf$name[.w])
