@@ -1565,7 +1565,19 @@ rxode2Test({
       effect ~ add(pdadd.err) | pca
     }), lmat2) -> mod
 
+
   })
 
+  test_that(".isErrorExpression", {
+
+    expect_false(.rx$.isErrorExpression(quote(lipre~add(add.err) + 3*x | matt)))
+    expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) | matt)))
+    expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) + prop(prop.sd) + boxCox(lambda)| matt)))
+    expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) + prop(prop.sd) + boxCox(lambda))))
+    expect_false(.rx$.isErrorExpression(quote(lipre <- add(add.err) + prop(prop.sd) + boxCox(lambda))))
+    expect_false(.rx$.isErrorExpression(quote(lipre + 2 <- add(add.err) + prop(prop.sd) + boxCox(lambda))))
+
+
+  })
 
  }, test="lvl2")
