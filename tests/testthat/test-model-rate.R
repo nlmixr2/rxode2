@@ -1,7 +1,6 @@
 rxode2Test(
   {
     library(dplyr)
-    library(testthat)
     ms <- c("liblsoda", "lsoda", "dop853")
 
     for (m in ms) {
