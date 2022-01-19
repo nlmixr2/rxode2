@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Testing solving with ID(s) in the dataset")
+    # context("Testing solving with ID(s) in the dataset")
 
     test_that("simple solving with ID(s) in the dataset", {
       theoSd <- readRDS("theoSd.rds")
@@ -222,9 +222,9 @@ rxode2Test(
 
       iCov2 <- iCov[order(-iCov$id), ]
 
-      expect_error(rxSolve(mod, d, iCov = iCov))
+      suppressWarnings(expect_error(rxSolve(mod, d, iCov = iCov)))
 
-      expect_error(rxSolve(mod, d, iCov = iCov2))
+      suppressWarnings(expect_error(rxSolve(mod, d, iCov = iCov2)))
 
       iCov$id <- letters[iCov$id]
       iCov2$id <- letters[iCov2$id]

@@ -1,7 +1,6 @@
 rxode2Test(
   {
-    context("seq test for rxSolve")
-    test_that("seq tests", {
+    test_that("seq test for rxSolve", {
       m1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
@@ -49,8 +48,7 @@ rxode2Test(
       expect_error(rxSolve(m1, ev, from = 1, to = 10, length.out = 10:11), "'length.out'")
     })
 
-    context("seq test for et")
-    test_that("et seq", {
+    test_that("seq test for et", {
       expect_error(et(1, 2, 3))
       expect_equal(et(1, 10)$time, seq(1, 10))
       expect_equal(et(1)$time, seq(1))

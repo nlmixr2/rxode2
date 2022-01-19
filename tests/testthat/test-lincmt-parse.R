@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("duplicate central/depot #246")
+    # duplicate central/depot #246
 
     test_that("error with ambiguous central/depot", {
       expect_error(rxode2({
@@ -133,7 +133,7 @@ rxode2Test(
       }
     }
 
-    context("Cl style translations")
+    # context("Cl style translations")
     apply(tran1, 1, .fun)
 
     .clDf <- do.call(rbind, .clDf)
@@ -224,7 +224,7 @@ rxode2Test(
     }
 
     .kDf <- list()
-    context("Kel style translations")
+    # context("Kel style translations")
     apply(tran2, 1, .fun)
 
     .kDf <- do.call(rbind, .kDf)
@@ -289,7 +289,7 @@ rxode2Test(
     }
 
     .kAlpha <- list()
-    context("alpha/V style translations")
+    # context("alpha/V style translations")
     apply(tran3, 1, .fun)
 
     tran4 <- expand.grid(
@@ -363,7 +363,7 @@ rxode2Test(
       }
     }
 
-    context("alpha/A style translations")
+    # context("alpha/A style translations")
     apply(tran4, 1, .fun)
   },
   test = "parseLincmt"

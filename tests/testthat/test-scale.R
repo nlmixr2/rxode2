@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Test Scaling Factors")
+    # Test Scaling Factors
     ode <-
       rxode2({
         b <- -1

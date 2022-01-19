@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("test newind flag")
+    # test newind flag
     ode.1c <- rxode2({
       V <- 20
       Cl <- 1

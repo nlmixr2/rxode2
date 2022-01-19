@@ -1,11 +1,5 @@
 rxode2Test(
   {
-    library(rxode2)
-    library(dplyr)
-    library(digest)
-
-    context("rxSolve objects behave as data-frames")
-
     ## rxode2 instance 1
     m1 <-
       rxode2(
@@ -48,7 +42,7 @@ rxode2Test(
     })
 
     o1.df <- as.data.frame(o1.first)
-    o1.df2 <- as_tibble(o1.first)
+    o1.df2 <- tibble::as_tibble(o1.first)
 
     test_that("Numeric Data frame lookup operators [] make sense", {
       expect_equal(o1.first[], o1.df[])
@@ -62,7 +56,7 @@ rxode2Test(
     })
 
     test_that("as_data_frame produces reasonable results.", {
-      expect_equal(as_tibble(o1.df), o1.df2)
+      expect_equal(tibble::as_tibble(o1.df), o1.df2)
     })
 
     test_that("Character data frame lookup operators [] make sense", {

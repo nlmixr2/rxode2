@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Dual lhs/param values (Issue #135)")
+    # Dual lhs/param values (Issue #135)
 
     test_that("Two defined variables", {
       mod1 <- rxode2({

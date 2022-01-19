@@ -1,7 +1,7 @@
 ## test ODE parsing for syntax errors
 rxode2Test(
   {
-    context("Test Parsing of models")
+    # Test Parsing of models
 
     badParse <- function(desc, code) {
       test_that(desc, {

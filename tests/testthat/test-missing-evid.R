@@ -16,7 +16,7 @@ rxode2Test(
       d <- 3
 
       for (m in c("liblsoda", "lsoda", "dop853")) {
-        context(sprintf("missing evid tests for %s", m))
+        test_that(sprintf("missing evid tests for %s", m), {
         for (dur in c(0.5, 1)) {
           for (ii in seq(2, 24, by = 2)) {
             et <- et() %>%
@@ -67,6 +67,7 @@ rxode2Test(
             expect_equal(data.frame(x2), data.frame(x3))
           }
         }
+	})
       }
     })
   },

@@ -7,16 +7,14 @@ rxode2Test(
       )
     }
 
+    skip_if_not_installed("microbenchmark")
     x <- microbenchmark::microbenchmark(rxExpandGrid(letters, letters), expand.grid.jc(letters, letters))
 
-    library(dplyr)
-
     x <- as.data.frame(x) %>%
-      group_by(expr) %>%
-      summarize(x = median(time)) %>%
-      arrange(expr)
+      dplyr::group_by(expr) %>%
+      dplyr::summarize(x = median(time)) %>%
+      dplyr::arrange(expr)
 
-    ## context("Faster Expand Grid")
     ## test_that("rxExpandGrid is faster that expand.grid.jc", {
     ##     expect_true(x$x[1] < x$x[2]);
     ## })
@@ -39,9 +37,9 @@ rxode2Test(
     )
 
     x <- as.data.frame(x) %>%
-      group_by(expr) %>%
-      summarize(x = median(time)) %>%
-      arrange(expr)
+      dplyr::group_by(expr) %>%
+      dplyr::summarize(x = median(time)) %>%
+      dplyr::arrange(expr)
 
     test_that("rxExpandGrid is faster than printing out letters", {
       expect_true(x$x[1] < x$x[2])

@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Logical expressons test")
+    # Logical expressons test
 
     .rx <- loadNamespace("rxode2")
 
@@ -8,15 +8,13 @@ rxode2Test(
       mod <- rxModelVars(model)
 
       if (match) {
-        test_that(
-          sprintf("%s includes %s", model, syntax),
+        test_that(sprintf("%s includes %s", model, syntax), {
           expect_true(regexpr(syntax, .rx$.rxGetParseModel(), fixed = TRUE) != -1)
-        )
+        })
       } else {
-        test_that(
-          sprintf("%s dose not include %s", model, syntax),
+        test_that(sprintf("%s dose not include %s", model, syntax), {
           expect_false(regexpr(syntax, .rx$.rxGetParseModel(), fixed = TRUE) != -1)
-        )
+        })
       }
     }
 

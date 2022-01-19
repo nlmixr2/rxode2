@@ -1,7 +1,7 @@
 rxode2Test(
   {
     test_that("Matrix exponential alone works", {
-      context("Test inductive linearization")
+      # Test inductive linearization
 
       ## Case 1 ME alone from wikipedia
       mod <- rxode2(
@@ -19,7 +19,7 @@ rxode2Test(
       m <- rxSolve(mod, et(seq(0, 24, length.out = 50)), method = "indLin")
       m2 <- rxSolve(mod, et(seq(0, 24, length.out = 50)), method = "lsoda")
 
-      expect_equal(as.data.frame(m), as.data.frame(m2), tol = 1e-5)
+      expect_equal(as.data.frame(m), as.data.frame(m2), tolerance = 1e-5)
 
       ## Now do without indLin in the rxode2
 
@@ -36,7 +36,7 @@ rxode2Test(
       m2 <- rxSolve(mod, et(seq(0, 24, length.out = 50)), method = "lsoda")
 
       ## FIXME
-      ## expect_equal(as.data.frame(m), as.data.frame(m2), tol = 1e-5)
+      ## expect_equal(as.data.frame(m), as.data.frame(m2), tolerance = 1e-5)
 
 
       ## Case 2 ME alone with inhomogenous systems
@@ -59,7 +59,7 @@ rxode2Test(
       ## gridExtra::grid.arrange(plot(m), plot(m2))
 
       ## FIXME?
-      ## expect_equal(as.data.frame(m), as.data.frame(m2), tol=1e-5)
+      ## expect_equal(as.data.frame(m), as.data.frame(m2), tolerance =1e-5)
 
       mod <- rxode2("
 a = 6
@@ -80,7 +80,7 @@ d/dt(blood)     = a*intestine - b*blood
 
       pk2 <- rxSolve(mod, et, method = "liblsoda")
 
-      expect_equal(as.data.frame(pk), as.data.frame(pk2), tol = 1e-5)
+      expect_equal(as.data.frame(pk), as.data.frame(pk2), tolerance = 1e-5)
 
       ## plot(microbenchmark::microbenchmark(rxSolve(mod,et, method="indLin",indLinMatExpType=1L),rxSolve(mod,et, method="indLin",indLinMatExpType=2L), rxSolve(mod,et, method="indLin",indLinMatExpType=3L), rxSolve(mod,et, method="lsoda")), log="y")
 
@@ -95,7 +95,7 @@ d/dt(blood)     = a*intestine - b*blood
 
       pk2 <- rxSolve(mod, et2, method = "liblsoda")
 
-      expect_equal(as.data.frame(pk), as.data.frame(pk2), tol = 1e-5)
+      expect_equal(as.data.frame(pk), as.data.frame(pk2), tolerance = 1e-5)
 
       ## Inductive linearization
       mmModel <- rxode2(
@@ -199,7 +199,7 @@ d/dt(blood)     = a*intestine - b*blood
 
       ## gridExtra::grid.arrange(plot(pk), plot(pk2))
 
-      expect_equal(as.data.frame(pk), as.data.frame(pk2), tol = 7e-5)
+      expect_equal(as.data.frame(pk), as.data.frame(pk2), tolerance = 7e-5)
 
       mmModel <- rxode2(
         {
@@ -219,7 +219,7 @@ d/dt(blood)     = a*intestine - b*blood
 
       ## gridExtra::grid.arrange(plot(pk), plot(pk2))
       ## These are not equal...
-      ## expect_equal(as.data.frame(pk), as.data.frame(pk2), tol=7e-5)
+      ## expect_equal(as.data.frame(pk), as.data.frame(pk2), tolerance =7e-5)
 
       ## plot(microbenchmark::microbenchmark(rxSolve(mmModel,et, method="indLin",indLinMatExpType=1L),rxSolve(mmModel,et, method="indLin",indLinMatExpType=2L), rxSolve(mmModel,et, method="indLin",indLinMatExpType=3L), rxSolve(mmModel,et, method="lsoda")), log="y")
 
@@ -302,11 +302,11 @@ d/dt(blood)     = a*intestine - b*blood
 
       ##
 
-      expect_equal(as.data.frame(s1), as.data.frame(s2), tol = 1e-5)
+      expect_equal(as.data.frame(s1), as.data.frame(s2), tolerance = 1e-5)
 
       s1 <- rxSolve(van, et, c(mu = 1), method = "lsoda")
       s2 <- rxSolve(van, et, c(mu = 1), method = "indLin")
-      ## expect_equal(as.data.frame(s1), as.data.frame(s2), tol=1e-4)
+      ## expect_equal(as.data.frame(s1), as.data.frame(s2), tolerance =1e-4)
       ## s3 <- rxSolve(van, et, c(mu=1), method="dop853")
 
       ## library(dplyr)
@@ -330,7 +330,7 @@ d/dt(blood)     = a*intestine - b*blood
       ##     return(ret)
       ## }
 
-      ## expect_equal(as.data.frame(s1), as.data.frame(s2), tol=1e-4)
+      ## expect_equal(as.data.frame(s1), as.data.frame(s2), tolerance =1e-4)
 
       ## gridExtra::grid.arrange(plot(s1), plot(s2), plot(s3))
 

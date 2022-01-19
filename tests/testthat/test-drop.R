@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("'drop' test")
+    test_that("'drop' test", {
 
     ode <- rxode2("
          d/dt(X) = a*X + Y*Z;
@@ -54,6 +54,7 @@ rxode2Test(
       events = et, inits = c(X = 1, Y = 1, Z = 1),
       drop = "time"
     ))
+    })
   },
   test = "cran"
 )

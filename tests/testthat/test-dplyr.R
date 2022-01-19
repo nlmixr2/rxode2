@@ -1,10 +1,7 @@
 rxode2Test(
   {
-    library(rxode2)
+    # Make sure solved rxSolve work with dplyr objects
     library(dplyr)
-    library(digest)
-
-    context("Make sure solved rxSolve work with dplyr objects")
 
     ## rxode2 instance 1
     m1 <-

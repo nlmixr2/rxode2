@@ -54,27 +54,27 @@ rxode2Test(
         linCmtSens = sens
       )
 
-      context(sprintf("Test steady state solutions 1 cmt (%s)", .txt))
+      # context(sprintf("Test steady state solutions 1 cmt (%s)", .txt))
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsB)
       s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsB, sensType = sensType)
-      test_that("one compartment bolus steady state", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+      test_that(sprintf("one compartment bolus steady state (%s)", .txt), {
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI)
       s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsI, sensType = sensType)
-      test_that("one compartment infusion tau steady state", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+      test_that(sprintf("one compartment infusion tau steady state (%s)", .txt), {
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR)
       s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsR, sensType = sensType)
-      test_that("one compartment infusion steady state", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+      test_that(sprintf("one compartment infusion steady state (%s)", .txt), {
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
-      context(sprintf("Test steady state solutions 2 cmt (%s)", .txt))
+      # context(sprintf("Test steady state solutions 2 cmt (%s)", .txt))
 
       ode.2c <- rxode2(
         {
@@ -96,22 +96,22 @@ rxode2Test(
       o2 <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSsB)
       s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsB, sensType = sensType)
       test_that("two compartment bolus steady state", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSsI)
       s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsI, sensType = sensType)
       test_that("two compartment infusion steady state, tau", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSsR)
       s2 <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = etSsR, sensType = sensType)
       test_that("two compartment infusion steady state", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
-      context(sprintf("Test steady state solutions 3 cmt (%s)", .txt))
+      # context(sprintf("Test steady state solutions 3 cmt (%s)", .txt))
 
       ode.3c <- rxode2(
         {
@@ -135,22 +135,22 @@ rxode2Test(
       o3 <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsB)
       s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsB, sensType = sensType)
       test_that("three compartment bolus steady state", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsI)
       s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsI, sensType = sensType)
       test_that("three compartment bolus steady state", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsR)
       s3 <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsR, sensType = sensType)
       test_that("three compartment bolus steady state", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
-      context(sprintf("Test steady state solutions 1 cmt ka (%s)", .txt))
+      # context(sprintf("Test steady state solutions 1 cmt ka (%s)", .txt))
 
       ode.1c.ka <- rxode2(
         {
@@ -171,19 +171,19 @@ rxode2Test(
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB)
       s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB, sensType = sensType)
       test_that("one compartment bolus steady state to depot compartment", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI)
       s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI, sensType = sensType)
       test_that("one compartment infusion steady state to depot compartment, tau", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR)
       s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR, sensType = sensType)
       test_that("one compartment infusion steady state to depot compartment", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       etSsB2 <- et() %>%
@@ -203,22 +203,22 @@ rxode2Test(
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB2)
       s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB2, sensType = sensType)
       test_that("one compartment bolus steady state to central compartment", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI2)
       s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI2, sensType = sensType)
       test_that("one compartment infusion steady state to central compartment, tau", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
       o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR2)
       s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR2, sensType = sensType)
       test_that("one compartment infusion steady state to central compartment", {
-        expect_equal(o1$C2, s1$C2, tol = tol)
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
-      context(sprintf("Test steady state solutions 2 cmt ka (%s)", .txt))
+      # context(sprintf("Test steady state solutions 2 cmt ka (%s)", .txt))
 
       ode.2c.ka <- rxode2(
         {
@@ -241,42 +241,42 @@ rxode2Test(
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB)
       s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB, sensType = sensType)
       test_that("two compartment bolus steady state to depot compartment", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI)
       s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI, sensType = sensType)
       test_that("two compartment infusion steady state to depot compartment, tau", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR)
       s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR, sensType = sensType)
       test_that("two compartment infusion steady state to depot compartment, tau", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB2)
       s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB2, sensType = sensType)
       test_that("two compartment bolus steady state to central compartment", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI2)
       s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI2, sensType = sensType)
       test_that("two compartment infusion steady state to central compartment, tau", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
 
       o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR2)
       s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR2, sensType = sensType)
       test_that("two compartment infusion steady state to central compartment", {
-        expect_equal(o2$C2, s2$C2, tol = tol)
+        expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
-      context(sprintf("Test steady state solutions 3 cmt ka (%s)", .txt))
+      # context(sprintf("Test steady state solutions 3 cmt ka (%s)", .txt))
 
       ode.3c.ka <- rxode2({
         C2 <- centr / V
@@ -298,41 +298,41 @@ rxode2Test(
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
       s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB, sensType = sensType)
       test_that("three compartment bolus steady state to depot compartment", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
       s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI, sensType = sensType)
       test_that("three compartment infusion steady state to depot compartment, tau", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR)
       s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR, sensType = sensType)
       test_that("three compartment infusion steady state to depot compartment", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       ## B2
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2)
       s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2, sensType = sensType)
       test_that("three compartment bolus steady state to central compartment", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2)
       s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2, sensType = sensType)
       test_that("three compartment infusion steady state to central compartment, tau", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2)
       s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2, sensType = sensType)
       test_that("three compartment infusion steady state to central compartment", {
-        expect_equal(o3$C2, s3$C2, tol = tol)
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
-      context(sprintf("Test the solved equations 1 cmt (%s)", .txt))
+      # context(sprintf("Test the solved equations 1 cmt (%s)", .txt))
 
       et <- eventTable() %>%
         add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
@@ -368,7 +368,7 @@ rxode2Test(
 
       goodP(ode.1cs)
 
-      context(sprintf("Test the solved equations 2 cmt (%s)", .txt))
+      # context(sprintf("Test the solved equations 2 cmt (%s)", .txt))
 
       ode.2cK <- rxode2(
         {
@@ -532,9 +532,9 @@ rxode2Test(
 
       s.1c <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et, sensType = sensType)
 
-      s.2cK <- ode.2cK %>% solve(theta = c(20, 25, KA = 2), events = et, sensType = sensType)
-      s.2cA1 <- ode.2cA1 %>% solve(theta = c(20, 25, KA = 2), events = et, sensType = sensType)
-      s.2cA2 <- ode.2cA2 %>% solve(theta = c(20, 25, KA = 2), events = et, sensType = sensType)
+      s.2cK <- ode.2cK %>% solve(theta = unname(c(20, 25, KA = 2)), events = et, sensType = sensType)
+      s.2cA1 <- ode.2cA1 %>% solve(theta = unname(c(20, 25, KA = 2)), events = et, sensType = sensType)
+      s.2cA2 <- ode.2cA2 %>% solve(theta = unname(c(20, 25, KA = 2)), events = et, sensType = sensType)
 
       test_that("1 compartment oral solved models and ODEs same.", {
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
@@ -660,12 +660,12 @@ rxode2Test(
 
       s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q1 = 10), events = et, sensType = sensType)
 
-      s.2cK <- sol.2cK %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+      s.2cK <- sol.2cK %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
 
-      s.2cA1 <- sol.2cA1 %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+      s.2cA1 <- sol.2cA1 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
 
-      s.2cA2 <- sol.2cA2 %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
-      s.2cA3 <- sol.2cA3 %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10), events = et, sensType = sensType)
+      s.2cA2 <- sol.2cA2 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
+      s.2cA3 <- sol.2cA3 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10)), events = et, sensType = sensType)
 
       test_that("2 compartment solved models and ODEs same.", {
         expect_equal(s.2cK$C2, s.2c$C2, tolerance = tol)
@@ -816,12 +816,12 @@ rxode2Test(
 
       o.2c <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et, sensType = sensType)
       s.2c <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = et, sensType = sensType)
-      s.2cK <- sol.2cK %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3), events = et, sensType = sensType)
-      s.2cA1 <- sol.2cA1 %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3), events = et, sensType = sensType)
-      s.2cA2 <- sol.2cA2 %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3), events = et, sensType = sensType)
-      s.2cA3 <- sol.2cA3 %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3), events = et, sensType = sensType)
-      s.2cSS <- sol.2cSS %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3), events = et, sensType = sensType)
-      s.2cT <- sol.2cT %>% solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3), events = et, sensType = sensType)
+      s.2cK <- sol.2cK %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
+      s.2cA1 <- sol.2cA1 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
+      s.2cA2 <- sol.2cA2 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
+      s.2cA3 <- sol.2cA3 %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
+      s.2cSS <- sol.2cSS %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
+      s.2cT <- sol.2cT %>% solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, ka = 0.3)), events = et, sensType = sensType)
 
       test_that("2 compartment oral solved models and ODEs same.", {
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
@@ -841,7 +841,7 @@ rxode2Test(
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
       })
 
-      context(sprintf("Test the solved equations 3 cmt (%s)", .txt))
+      # context(sprintf("Test the solved equations 3 cmt (%s)", .txt))
 
       ode.3c <- rxode2({
         C2 <- centr / V
@@ -953,13 +953,13 @@ rxode2Test(
         solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
 
       s.3cK <- sol.3cK %>%
-        solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
       s.3cA1 <- sol.3cA1 %>%
-        solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
       s.3cVp <- sol.3cVp %>%
-        solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
       s.3cVt <- sol.3cVt %>%
-        solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400)), events = et, sensType = sensType)
 
       test_that("3 compartment solved models and ODEs same.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1060,9 +1060,9 @@ rxode2Test(
       s.3c <- sol.3c.ka %>%
         solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et, sensType = sensType)
       s.3cK <- sol.3cK %>%
-        solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3)), events = et, sensType = sensType)
       s.3cA1 <- sol.3cA1 %>%
-        solve(theta = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = et, sensType = sensType)
+        solve(theta = unname(c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3)), events = et, sensType = sensType)
 
       test_that("3 compartment oral solved models and ODEs same.", {
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
@@ -1080,7 +1080,7 @@ rxode2Test(
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
-      context(sprintf("Infusion Models 1 cmt (%s)", .txt))
+      # context(sprintf("Infusion Models 1 cmt (%s)", .txt))
 
       et <- eventTable() %>%
         add.dosing(dose = 3, rate = 1.5, nbr.doses = 6, dosing.interval = 8) %>%
@@ -1148,7 +1148,7 @@ rxode2Test(
         expect_equal(o.1c$C2, s.2c$C2, tolerance = tol)
       })
 
-      context(sprintf("Infusion Models 2 cmt (%s)", .txt))
+      # context(sprintf("Infusion Models 2 cmt (%s)", .txt))
 
       ode.2c <- rxode2({
         C2 <- centr / V
@@ -1184,7 +1184,7 @@ rxode2Test(
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
       })
 
-      context(sprintf("Infusion Models 3 cmt (%s)", .txt))
+      # context(sprintf("Infusion Models 3 cmt (%s)", .txt))
 
       ode.3c <- rxode2({
         C2 <- centr / V
@@ -1222,7 +1222,7 @@ rxode2Test(
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
-      context(sprintf("Infusion + Bolus 1 cmt (%s)", .txt))
+      # context(sprintf("Infusion + Bolus 1 cmt (%s)", .txt))
 
       et <- eventTable() %>%
         add.dosing(dose = 3, rate = 1.5, nbr.doses = 6, dosing.interval = 8) %>%
@@ -1272,7 +1272,7 @@ rxode2Test(
         expect_equal(o.1c$C2, s.2c$C2, tolerance = tol)
       })
 
-      context(sprintf("Infusion + Bolus 2 cmt (%s)", .txt))
+      # context(sprintf("Infusion + Bolus 2 cmt (%s)", .txt))
 
       ode.2c <- rxode2({
         C2 <- centr / V
@@ -1299,7 +1299,7 @@ rxode2Test(
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
       })
 
-      context(sprintf("Infusion + Bolus 3 cmt (%s)", .txt))
+      # context(sprintf("Infusion + Bolus 3 cmt (%s)", .txt))
 
       ode.3c <- rxode2({
         C2 <- centr / V
@@ -1328,7 +1328,7 @@ rxode2Test(
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
-      context(sprintf("Oral + Infusion + Bolus Models 1 cmt (%s)", .txt))
+      # context(sprintf("Oral + Infusion + Bolus Models 1 cmt (%s)", .txt))
 
       et <- eventTable() %>%
         add.dosing(dose = 3, rate = 1.5, nbr.doses = 3, dosing.interval = 16, cmt = 2) %>%
@@ -1358,7 +1358,7 @@ rxode2Test(
         expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
       })
 
-      context(sprintf("Oral + Infusion + Bolus Models 2 cmt (%s)", .txt))
+      # context(sprintf("Oral + Infusion + Bolus Models 2 cmt (%s)", .txt))
 
       ode.2c.ka <- rxode2({
         C2 <- centr / V
@@ -1386,7 +1386,7 @@ rxode2Test(
         expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
       })
 
-      context(sprintf("Oral + Infusion + Bolus Models 3 cmt (%s)", .txt))
+      # context(sprintf("Oral + Infusion + Bolus Models 3 cmt (%s)", .txt))
 
       ode.3c.ka <- rxode2({
         C2 <- centr / V
@@ -1416,7 +1416,7 @@ rxode2Test(
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
-      context(sprintf("Modeled bio-availability 1 cmt (%s)", .txt))
+      # context(sprintf("Modeled bio-availability 1 cmt (%s)", .txt))
 
       et <- eventTable() %>%
         add.dosing(dose = 3, rate = 1.5, nbr.doses = 3, dosing.interval = 16, cmt = 2) %>%
@@ -1455,7 +1455,7 @@ rxode2Test(
         }
       }
 
-      context(sprintf("Modeled bio-availability 2 cmt (%s)", .txt))
+      # context(sprintf("Modeled bio-availability 2 cmt (%s)", .txt))
 
       ode.2c.ka <- rxode2(
         {
@@ -1493,7 +1493,7 @@ rxode2Test(
         }
       }
 
-      context(sprintf("Modeled bio-availability 3 cmt (%s)", .txt))
+      # context(sprintf("Modeled bio-availability 3 cmt (%s)", .txt))
 
       ode.3c.ka <- rxode2({
         C2 <- centr / V
@@ -1536,7 +1536,7 @@ rxode2Test(
         }
       }
 
-      context(sprintf("Modeled lag time 1 cmt (%s)", .txt))
+      # context(sprintf("Modeled lag time 1 cmt (%s)", .txt))
 
       et <- eventTable() %>%
         add.dosing(dose = 3, rate = 1.5, nbr.doses = 3, dosing.interval = 16, cmt = 2) %>%
@@ -1576,7 +1576,7 @@ rxode2Test(
         }
       }
 
-      context(sprintf("Modeled lag time 2 cmt (%s)", .txt))
+      # context(sprintf("Modeled lag time 2 cmt (%s)", .txt))
 
       ode.2c.ka <- rxode2({
         C2 <- centr / V
@@ -1611,7 +1611,7 @@ rxode2Test(
         }
       }
 
-      context(sprintf("Modeled lag time 3 cmt (%s)", .txt))
+      # context(sprintf("Modeled lag time 3 cmt (%s)", .txt))
 
       ode.3c.ka <- rxode2(
         {
@@ -1655,7 +1655,7 @@ rxode2Test(
         }
       }
 
-      context(sprintf("Modeled rate 1 cmt (%s)", .txt))
+      # context(sprintf("Modeled rate 1 cmt (%s)", .txt))
 
       ode.1c <- rxode2({
         C2 <- center / V
@@ -1685,7 +1685,7 @@ rxode2Test(
         })
       }
 
-      context(sprintf("Modeled rate 2 cmt (%s)", .txt))
+      # context(sprintf("Modeled rate 2 cmt (%s)", .txt))
 
       ode.2c <- rxode2(
         {
@@ -1716,7 +1716,7 @@ rxode2Test(
         })
       }
 
-      context(sprintf("Modeled rate 3 cmt (%s)", .txt))
+      # context(sprintf("Modeled rate 3 cmt (%s)", .txt))
 
       ode.3c <- rxode2({
         C2 <- centr / V
@@ -1748,7 +1748,7 @@ rxode2Test(
         })
       }
 
-      context(sprintf("Modeled duration 1 cmt (%s)", .txt))
+      # context(sprintf("Modeled duration 1 cmt (%s)", .txt))
 
       ode.1c <- rxode2({
         C2 <- center / V
@@ -1778,7 +1778,7 @@ rxode2Test(
         })
       }
 
-      context(sprintf("Modeled duration 2 cmt (%s)", .txt))
+      # context(sprintf("Modeled duration 2 cmt (%s)", .txt))
 
       ode.2c <- rxode2({
         C2 <- centr / V
@@ -1806,7 +1806,7 @@ rxode2Test(
         })
       }
 
-      context(sprintf("Modeled duration 3 cmt (%s)", .txt))
+      # context(sprintf("Modeled duration 3 cmt (%s)", .txt))
 
       ode.3c <- rxode2({
         C2 <- centr / V
@@ -1837,7 +1837,7 @@ rxode2Test(
       }
 
       test_that("central should throw error", {
-        expect_error(rxode2({
+        expect_error(expect_message(rxode2({
           C2 <- centr / V
           C3 <- peri / V2
           d / dt(depot) <- -KA * depot
@@ -1846,11 +1846,11 @@ rxode2Test(
           alag(depot) <- lagDepot
           alag(centr) <- lagCenter
           alag(central) <- matt
-        }))
+        })))
       })
 
       test_that("depot should throw error", {
-        expect_error(rxode2({
+        expect_error(expect_message(rxode2({
           C2 <- centr / V
           C3 <- peri / V2
           d / dt(dep) <- -KA * dep
@@ -1859,7 +1859,7 @@ rxode2Test(
           alag(dep) <- lagDepot
           alag(centr) <- lagCenter
           alag(depot) <- matt
-        }))
+        })))
       })
 
       ode.1cs2 <- rxode2(
@@ -1886,7 +1886,7 @@ rxode2Test(
         expect_equal(s.1c$time[1:4], c(0, 0.5, 1, 1.75))
       })
 
-      context(sprintf("evid=3 (%s)", .txt))
+      # context(sprintf("evid=3 (%s)", .txt))
 
       test_that(sprintf("evid==3 (%s)", .txt), {
         ode.1c <- rxode2(
@@ -1912,19 +1912,18 @@ rxode2Test(
         o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = et)
         s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = et, sensType = sensType)
 
-        expect_equal(o1$C2, s1$C2, tol = tol)
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
     }
     if (length(types) > 1) {
-      test_that(
-        "double linCmt has error",
-        expect_error(rxode2({
+      test_that("double linCmt has error", {
+        expect_error(expect_message(rxode2({
           C2 <- linCmt(CL, V)
           C2 <- linCmt(CL, V)
-        }))
-      )
+        })))
+      })
 
-      context(sprintf("Steady State Infusions (%s)", .txt))
+      # context(sprintf("Steady State Infusions (%s)", .txt))
 
       test_that("Steady state IV infusion", {
         ev <- et(amt = 0, ss = 1, rate = 10000 / 8)
@@ -1987,9 +1986,7 @@ rxode2Test(
         expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
       })
 
-      context("Issue #258")
-
-      test_that("Issue #258", {
+      test_that("Issue RxODE#258", {
         m258 <- rxode2(
           {
             ka <- 1
@@ -2021,7 +2018,7 @@ rxode2Test(
           et(0, 250, by = 0.1) %>%
           rxSolve()
 
-        expect_equal(s1$Conc, s2$Conc, tol = tol)
+        expect_equal(s1$Conc, s2$Conc, tolerance = tol)
       })
 
 

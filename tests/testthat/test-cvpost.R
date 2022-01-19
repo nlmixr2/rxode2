@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    context("Test simulation cvPost functions")
-
     test_that("single cvPost draw makes sense", {
       draw1 <- cvPost(3, matrix(c(1, .3, .3, 1), 2, 2))
       expect_true(inherits(draw1, "matrix"))
@@ -53,7 +51,6 @@ rxode2Test(
 
       expect_equal(lkj, lkjTn)
     })
-    context("rinvchisq")
     test_that("rinvchisq produces proper output", {
       expect_equal(length(rinvchisq(3, 4, 1)), 3) ## Scale = 1, degrees of freedom = 4
       expect_equal(length(rinvchisq(3, 4, 1)), 3) ## Scale = 1, degrees of freedom = 4

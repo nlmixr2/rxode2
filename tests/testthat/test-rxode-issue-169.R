@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Test Issue #169 -- NAs everywhere")
+    # context("Test Issue #169 -- NAs everywhere")
     test_that("Test Issue #169", {
       Book4 <- readRDS(test_path("test-issue-169.rds"))
       mod1 <- rxode2({

@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("rxMvn")
     ## Tests adapted from
     ## https://github.com/cran/mvtnorm/blob/master/tests/rmvnorm.R
     test_that("mvtnormal simulations make sense", {

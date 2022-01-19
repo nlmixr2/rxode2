@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("lhs for different compartments make sense")
+    # lhs for different compartments make sense
 
     et <- et() %>%
       et(amt = 3, addl = 5, ii = 8, cmt = "depot") %>%

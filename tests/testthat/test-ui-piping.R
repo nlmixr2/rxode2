@@ -282,9 +282,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -322,9 +322,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -362,9 +362,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -402,9 +402,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -442,9 +442,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -482,9 +482,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -522,9 +522,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -565,9 +565,9 @@ rxode2Test({
   # look at duplicate lines
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -609,9 +609,9 @@ rxode2Test({
   # look at duplicate lines
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -653,9 +653,9 @@ rxode2Test({
   # look at duplicate lag()
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -699,9 +699,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -763,17 +763,25 @@ rxode2Test({
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
 
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE))
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE))
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE))
-
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
+      regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
+    )
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
+      regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
+    )
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
+      regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
+    )
   })
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl + eta.v ~ sd(cor(0.3,
                               -0.7, 0.1))
@@ -825,17 +833,26 @@ rxode2Test({
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
 
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE))
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE))
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE))
+    expect_warning(expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
+      regexp="unfix.*eta.cl"), regexp="unfix.*eta.cl,eta.v"), regexp="unfix.*eta.v"
+    )
+    expect_warning(expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
+      regexp="unfix.*eta.cl"), regexp="unfix.*eta.cl,eta.v"), regexp="unfix.*eta.v"
+    )
+    expect_warning(expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
+      regexp="unfix.*eta.cl"), regexp="unfix.*eta.cl,eta.v"), regexp="unfix.*eta.v"
+    )
 
   })
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl + eta.v ~ fix(sd(cor(0.3,
                                   -0.7, 0.1)))
@@ -884,9 +901,18 @@ rxode2Test({
     testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
     testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, TRUE)
 
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE))
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE))
-    expect_warning(testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE))
+    expect_warning(expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
+      regexp="fix.*eta.cl"), regexp="fix.*eta.cl,eta.v"), regexp="fix.*eta.v"
+    )
+    expect_warning(expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
+      regexp="fix.*eta.cl"), regexp="fix.*eta.cl,eta.v"), regexp="fix.*eta.v"
+    )
+    expect_warning(expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
+      regexp="fix.*eta.cl"), regexp="fix.*eta.cl,eta.v"), regexp="fix.*eta.v"
+    )
 
     testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE)
     testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE)
@@ -907,9 +933,9 @@ rxode2Test({
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45 # Log V
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -955,7 +981,7 @@ rxode2Test({
 
   test_that("UI updates work correctly", {
 
-    context("update: Multiple component change with c()")
+    # context("update: Multiple component change with c()")
 
       testUi(
         f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), c(tcl = 3, tv = 4)),
@@ -963,7 +989,7 @@ rxode2Test({
         c("eta.ka", "eta.cl"),
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7))
 
-      context("update: Multiple component change with list()")
+      # context("update: Multiple component change with list()")
 
       testUi(
         f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), list(tcl = 3, tv = 4)),
@@ -972,7 +998,7 @@ rxode2Test({
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
       )
 
-      context("update: Multiple component change with assigned .tmp=list()")
+      # context("update: Multiple component change with assigned .tmp=list()")
 
       .tmp <- list(tcl = 3, tv = 4)
       .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp)
@@ -984,7 +1010,7 @@ rxode2Test({
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
       )
 
-      context("update: Multiple component change with assigned .tmp=c()")
+      # context("update: Multiple component change with assigned .tmp=c()")
 
       .tmp <- c(tcl = 3, tv = 4)
       .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp)
@@ -996,7 +1022,7 @@ rxode2Test({
         c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
       )
 
-      context("update: Multiple component change with assigned .tmp={}")
+      # context("update: Multiple component change with assigned .tmp={}")
 
       .tmp <- quote({
         ka <- exp(tka)
@@ -1034,9 +1060,9 @@ rxode2Test({
       ## Now test linCmt() issue #166
       one.cmt <- function() {
         ini({
-          tka <- 0.45 # Log Ka
-          tcl <- 1 # Log Cl
-          tv <- 3.45 # Log V
+          tka <- 0.45 ; label("Log Ka")
+          tcl <- 1 ; label("Log Cl")
+          tv <- 3.45 ; label("Log V")
           eta.ka ~ 0.6
           eta.cl ~ 0.3
           eta.v ~ 0.1
@@ -1058,7 +1084,7 @@ rxode2Test({
 
     })
 
-    context("piping looks through parent environments")
+    # context("piping looks through parent environments")
 
     test_that("Looks through prior frames for the correct object", {
 
@@ -1079,9 +1105,9 @@ rxode2Test({
 
     one.compartment <- function() {
       ini({
-        tka <- 0.45 # Log Ka
-        tcl <- 1 # Log Cl
-        tv <- 3.45 # Log V
+        tka <- 0.45 ; label("Log Ka")
+        tcl <- 1 ; label("Log Cl")
+        tv <- 3.45 ; label("Log V")
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1

@@ -1,9 +1,6 @@
 ## rxode2Test(
 ##   {
 ##     options(rxode2.unload.unused = TRUE)
-##     library(rxode2)
-##     library(testthat)
-##     context("Garbage collection")
 ##     test_that("Check garbage collection unloads DLLs", {
 ##       options(rxode2.unload.unused = TRUE)
 

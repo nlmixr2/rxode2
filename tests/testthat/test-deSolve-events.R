@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    context("deSolve event")
     test_that("deSolve events", {
       ## Data frame event from deSolve vignette
 

@@ -1,10 +1,8 @@
 rxode2Test(
   {
-    context("rxIs")
     test_that("rxIs tests", {
-      library(dplyr)
       dat <- readRDS(test_path("test-data-setup.rds"))
-      dat <- as_tibble(dat)
+      dat <- tibble::as_tibble(dat)
       expect_true(rxIs(dat, "data.frame"))
       expect_true(rxIs(dat, "tbl"))
       expect_true(rxIs(dat, "tbl_df"))

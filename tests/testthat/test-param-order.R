@@ -1,6 +1,4 @@
 rxode2Test({
-  context("param order")
-
   test_that("param order", {
     mod <- rxode2({
       a <- 6

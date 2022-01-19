@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Removing dlls")
+    # Removing dlls
     ode <- rxode2({
       b <- -1
       d / dt(X) <- a * X + Y * Z

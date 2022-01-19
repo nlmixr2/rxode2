@@ -1,16 +1,16 @@
 ## Adapted from https://github.com/biobakery/banocc/blob/master/tests/testthat/test_utils_rlkj.R
 rxode2Test(
   {
-    context("Utilities - rLKJ1")
+    # context("Utilities - rLKJ1")
     d_vals <- c(2, 5) # seq(2, 200, 10)
     eta_vals <- c(1, 50) # seq(1, 200, 10)
 
     test_that("rLKJ1 returns a matrix", {
       for (d in d_vals) {
         for (eta in eta_vals) {
-          eval(bquote(expect_is(rLKJ1(d = .(d), eta = .(eta)), "matrix")))
+          eval(bquote(expect_true(is.matrix(rLKJ1(d = .(d), eta = .(eta))))))
           eval(bquote(
-            expect_is(rLKJ1(d = .(d), eta = .(eta), cholesky = TRUE), "matrix")
+            expect_true(is.matrix(rLKJ1(d = .(d), eta = .(eta), cholesky = TRUE)))
           ))
         }
       }
@@ -198,16 +198,16 @@ rxode2Test(
       }
     })
 
-    context("Utilities - invWR1d")
+    # context("Utilities - invWR1d")
     nu_vals <- c(4.5, 50)
     d_vals <- c(2, 5)
 
     test_that("invWR1d returns a matrix", {
       for (d in d_vals) {
         for (nu in nu_vals) {
-          eval(bquote(expect_is(invWR1d(d = .(d), nu = .(nu)), "matrix")))
+          expect_true(is.matrix(eval(bquote(invWR1d(d = .(d), nu = .(nu))))))
           eval(bquote(
-            expect_is(invWR1d(d = .(d), nu = .(nu)), "matrix")
+            expect_true(is.matrix(invWR1d(d = .(d), nu = .(nu))))
           ))
         }
       }

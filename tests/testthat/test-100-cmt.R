@@ -1,7 +1,5 @@
 rxode2Test(
   {
-    context("Use of initial conditions works")
-
     mod <- rxode2(paste(sprintf("d/dt(amt%s) = -k1*amt%s", 1:105, 1:105), collapse = ";"))
 
     et <- eventTable() %>% add.sampling(0:180)
@@ -20,8 +18,6 @@ rxode2Test(
     for (i in 1:105) {
       et$add.dosing(10, dosing.to = i, start.time = 0)
     }
-
-    context("Use of events work")
 
     dat <- mod %>% rxSolve(et, c(k1 = 0.1))
 

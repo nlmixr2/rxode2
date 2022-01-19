@@ -2,8 +2,7 @@
 ## C symbols and operations don't conflict.
 rxode2Test(
   {
-    library(rxode2)
-    context("Make sure C operations and symbols don't conflict")
+    # Make sure C operations and symbols don't conflict
 
     test.dir <- tempfile("Rxmult-")
 

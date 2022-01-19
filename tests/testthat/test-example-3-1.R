@@ -9,7 +9,7 @@ rxode2Test(
     ode <- rxode2(model = "d/dt(y) = r * y * (1.0 - y/K);")
     .rxWithOptions(list(digits = 6), {
       for (meth in ms) {
-        context(sprintf("Example 3-1 (%s)", meth))
+        # context(sprintf("Example 3-1 (%s)", meth))
 
         ## create event table with times at which we observe the system
         et <- eventTable(time.units = NA)

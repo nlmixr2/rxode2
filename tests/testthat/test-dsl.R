@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Test symengine<->rxode2 dsl")
+    # Test symengine<->rxode2 dsl
 
     test_that("d/dt(x) parsing", {
       expect_equal(rxToSE(d / dt(matt)), "rx__d_dt_matt__")
@@ -334,7 +334,7 @@ rxode2Test(
       )
     })
 
-    context("Test factor expansion by `rxSplitPlusQ'")
+    # Test factor expansion by `rxSplitPlusQ'
     test_that("rxSplitPlusQ", {
       expect_equal(rxSplitPlusQ(quote(a * exp(b + c) + d * log(e - f) - g * f)), c("a * exp(b + c)", "d * log(e - f)", "- g * f"))
       expect_equal(rxSplitPlusQ(quote(-a * exp(b + c) + d * log(e - f) - g * f)), c("-a * exp(b + c)", "d * log(e - f)", "- g * f"))
@@ -344,7 +344,7 @@ rxode2Test(
       expect_equal(rxSplitPlusQ(quote(0)), "0")
     })
 
-    context("Test Error DSLs")
+    # Test Error DSLs
 
     pk <- function() {
       KA <- exp(THETA[1])

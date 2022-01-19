@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    context("Test large model compiles")
+    # Test large model compiles (RxODE#117)
 
     mod <- rxode2("
 ##### define heart failure parameters. Allow them to increase from baseline over time #####

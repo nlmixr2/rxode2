@@ -2,7 +2,7 @@ rxode2Test(
   {
     .rx <- loadNamespace("rxode2")
 
-    context("Nesting tests")
+    # Nesting tests
 
     mod <- rxode2({
       eff(0) <- 1
