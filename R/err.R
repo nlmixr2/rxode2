@@ -1059,6 +1059,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' Currently only handles simple error expressions, not n2ll(var) ~ ...
 #'
 #' @param expr Expression to test
+#' @param predDf Return the predDf for the single expression
 #' @return Boolean that says if the expression is an error expression or not
 #' @author Matthew L. Fidler
 #' @examples
@@ -1067,7 +1068,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' .isErrorExpression(quote(ipre~add(add.sd)+3))
 #'
 #' @noRd
-.isErrorExpression <- function(expr) {
+.isErrorExpression <- function(expr, predDf=FALSE) {
   if (!identical(expr[[1]], quote(`~`))) return(FALSE)
   .pre <- allNames(expr[[2]])
   if (length(.pre) != 1L) return(FALSE)
@@ -1077,5 +1078,15 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                              "\n})"))))
   .env <- try(.errProcessExpression(.mod, .ini), silent=TRUE)
   if (inherits(.env, "try-error")) return(FALSE)
+  if (predDf) return(.env)
   (.pre == .env$predDf$var)
+}
+#'  Is Normal or t distribution model specification?
+#'
+#' @param expr Expression
+#' @return TRUE if this is a normal/t model, FALSE otherwise
+#' @author Matthew L. Fidler
+#' @noRd
+.isNormOrTErrorExpression <- function(expr) {
+  any(.isErrorExpression(expr, predDf=TRUE)$predDf$distribution == c("norm", "t"))
 }

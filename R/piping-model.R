@@ -78,12 +78,13 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
 #'   error is defined in the model.
 #' @param origLines This is a list of lines in the `model({})` block
 #'   of the equation.
+#' @param rxui the UI model
 #' @return `NULL` for duplicated lines, otherwise the line number (if
 #'   it is found) and `NA` if it is not found.
 #' @author Matthew L. Fidler
 #' @noRd
 .getModelineFromExperssionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
-                                                        errLines, origLines) {
+                                                        errLines, origLines, rxui) {
   .ret <- NA_integer_
   .multipleEndpointModel <- length(errLines) != 1L
   for (.i in seq_along(origLines)) {
@@ -93,8 +94,18 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
       .expr <- origLines[[.i]]
       if (!.multipleEndpointModel) {
         if (is.na(.ret)) {
-          warning("with single endpoint model prediction '", deparse1(.expr[[2]]), "' is changed to '", expr, "'",
-                  call.=FALSE)
+          if (.isNormOrTErrorExpression(.expr)) {
+            # Make sure the lhs is included in the model prediction
+            .var <- deparse1(expr)
+            if (!(.var %in% rxui$mv0$lhs)) {
+              stop("the variable '", .var, "' must be in the defined the model for this model piping",
+                   call.=FALSE)
+            }
+          }
+          if (!identical(.expr[[2]], expr)) {
+            warning("with single endpoint model prediction '", deparse1(.expr[[2]]), "' is changed to '", expr, "'",
+                    call.=FALSE)
+          }
           .ret <- .i
         } else {
           return(NULL)
@@ -182,7 +193,7 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
   .origLines <- rxui$lstExpr
   .errLines <- rxui$predDf$line
   .expr3 <- .getModelLineEquivalentLhsExpression(lhsExpr)
-  .ret <- .getModelineFromExperssionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines)
+  .ret <- .getModelineFromExperssionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui)
   if (is.null(.ret)) {
     return(NULL)
   } else if (!is.na(.ret)) {
@@ -219,8 +230,8 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
       .isErr <- .isErrorExpression(line)
       .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr)
       if (.isErr && is.na(.ret)) {
-        .isErr <- FALSE
-        .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr)
+        stop("the error '", deparse1(line[[2]]), "' is not in the multiple-endpoint model and cannot be modified",
+             call.=FALSE)
       }
       if (is.null(.ret)) {
         assign(".err",
