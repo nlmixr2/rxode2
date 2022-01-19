@@ -85,12 +85,21 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
 .getModelineFromExperssionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
                                                         errLines, origLines) {
   .ret <- NA_integer_
+  .multipleEndpointModel <- length(errLines) != 1L
   for (.i in seq_along(origLines)) {
     .isErrorLine <- .i %in% errLines
     if ((useErrorLine && .isErrorLine) ||
           (!useErrorLine && !.isErrorLine)) {
       .expr <- origLines[[.i]]
-      if (identical(.expr[[2]], expr)) {
+      if (!.multipleEndpointModel) {
+        if (is.na(.ret)) {
+          warning("with single endpoint model prediction '", deparse1(.expr[[2]]), "' is changed to '", expr, "'",
+                  call.=FALSE)
+          .ret <- .i
+        } else {
+          return(NULL)
+        }
+      } else if (identical(.expr[[2]], expr)) {
         if (is.na(.ret)) {
           .ret <- .i
         } else {
@@ -207,7 +216,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
       .iniHandleFixOrUnfix(line, rxui, envir=envir)
     } else {
-      .isErr <- identical(line[[1]], quote(`~`))
+      .isErr <- .isErrorExpression(line)
       .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr)
       if (.isErr && is.na(.ret)) {
         .isErr <- FALSE
