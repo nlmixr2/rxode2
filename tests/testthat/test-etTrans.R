@@ -1,5 +1,6 @@
 rxode2Test(
-  {
+{
+
     .rx <- loadNamespace("rxode2")
 
     for (radi in 1:2) {
@@ -580,6 +581,7 @@ d/dt(blood)     = a*intestine - b*blood
       })
 
       test_that("etTrans drop levels are correct", {
+
         dat <- readRDS(test_path("etTrans-drop.rds"))
 
         mod <- rxode2({
@@ -601,11 +603,8 @@ d/dt(blood)     = a*intestine - b*blood
 
         # suppressWarnings() is used on the outside because the rxSetIni0(FALSE)
 	# warning only occurs once per session
-        tmp <-
-	  suppressWarnings(expect_warning(expect_warning(
-	    etTrans(dat, mod)),
-	    regexp="IDs without observations dropped")
-	  )
+        tmp <- expect_warning(expect_warning(etTrans(dat, mod), regexp="while censoring is included"),
+                              regexp="IDs without observations")
         lvls <- c(
           "32", "33", "35", "36", "37", "40", "41", "42", "43", "47",
           "48", "49", "50", "51", "54", "55", "57", "59", "61", "62", "63",
