@@ -22,16 +22,12 @@
       call. = FALSE
     )
   }
+
   if (requireNamespace("pillar", quietly = TRUE)) {
     .s3register("pillar::type_sum", "rxEvid")
     .s3register("pillar::type_sum", "rxRateDur")
     .s3register("pillar::pillar_shaft", "rxEvid")
     .s3register("pillar::pillar_shaft", "rxRateDur")
-    .s3register("pillar::type_sum", "units")
-    .s3register("pillar::type_sum", "mixed_units")
-    .s3register("pillar::pillar_shaft", "units")
-    .s3register("pillar::pillar_shaft", "mixed_units")
-    .s3register("pillar::format_type_sum", "type_sum_units")
   }
   if (requireNamespace("tibble", quietly = TRUE)) {
     .s3register("tibble::as_tibble", "rxEt")
@@ -46,12 +42,6 @@
     .s3register("units::drop_units", "rxSolve")
     .s3register("units::units<-", "rxEvid")
     assignInMyNamespace(".hasUnits", TRUE)
-    .units <- loadNamespace("units")
-    assignInMyNamespace("type_sum.units", .units$type_sum.units)
-    assignInMyNamespace("format_type_sum.type_sum_units", .units$format_type_sum.type_sum_units)
-    assignInMyNamespace("pillar_shaft.units", .units$pillar_shaft.units)
-    assignInMyNamespace("type_sum.mixed_units", .units$type_sum.mixed_units)
-    assignInMyNamespace("pillar_shaft.mixed_units", .units$pillar_shaft.mixed_units)
   } else {
     assignInMyNamespace(".hasUnits", FALSE)
   }

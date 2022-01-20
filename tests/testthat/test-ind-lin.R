@@ -275,23 +275,22 @@ d/dt(blood)     = a*intestine - b*blood
       s2 <- rxSolve(van1, et, c(mu = 1000), method = "indLin")
       ## s3 <- rxSolve(van, et, c(mu=1000), method="dop853")
 
-      library(ggplot2)
 
-      f <- function(mu = 1, ...) {
-        s1 <- rxSolve(van1, et, c(mu = mu), method = "lsoda") %>% plot() +
-          ggtitle(sprintf("Lsoda mu=%s", mu))
-        s2 <- rxSolve(van1, et, c(mu = mu), method = "indLin", ...) %>% plot() +
-          ggtitle(sprintf("indLin1 mu=%s", mu))
-        s3 <- rxSolve(van3, et, c(mu = mu), method = "indLin", ...) %>% plot() +
-          ggtitle(sprintf("indLin3 mu=%s", mu))
-        ## s4 <- rxSolve(van3, et, c(mu=mu), method="indLin", ...) %>% plot() +
-        ##     ggtitle(sprintf("indLin3 mu=%s", mu))
-        s4 <- rxSolve(van3, et, c(mu = mu), method = "dop853", ...) %>% plot() +
-          ggtitle(sprintf("dop853 mu=%s", mu))
-        gridExtra::grid.arrange(s1, s2, s3, s4)
-      }
+      ## f <- function(mu = 1, ...) {
+      ##   s1 <- rxSolve(van1, et, c(mu = mu), method = "lsoda") %>% plot() +
+      ##     ggtitle(sprintf("Lsoda mu=%s", mu))
+      ##   s2 <- rxSolve(van1, et, c(mu = mu), method = "indLin", ...) %>% plot() +
+      ##     ggtitle(sprintf("indLin1 mu=%s", mu))
+      ##   s3 <- rxSolve(van3, et, c(mu = mu), method = "indLin", ...) %>% plot() +
+      ##     ggtitle(sprintf("indLin3 mu=%s", mu))
+      ##   ## s4 <- rxSolve(van3, et, c(mu=mu), method="indLin", ...) %>% plot() +
+      ##   ##     ggtitle(sprintf("indLin3 mu=%s", mu))
+      ##   s4 <- rxSolve(van3, et, c(mu = mu), method = "dop853", ...) %>% plot() +
+      ##     ggtitle(sprintf("dop853 mu=%s", mu))
+      ##   gridExtra::grid.arrange(s1, s2, s3, s4)
+      ## }
 
-      ## library(animation)
+      ## uses library animation
       ## saveGIF({
       ##     for (i in seq(0.1, 15, by=0.1)){
       ##         print(f(mu=i))
@@ -308,9 +307,6 @@ d/dt(blood)     = a*intestine - b*blood
       s2 <- rxSolve(van, et, c(mu = 1), method = "indLin")
       ## expect_equal(as.data.frame(s1), as.data.frame(s2), tolerance =1e-4)
       ## s3 <- rxSolve(van, et, c(mu=1), method="dop853")
-
-      ## library(dplyr)
-      ## library(ggplot2)
 
       ## s1 %>% rename(y.lsoda=y, dy.lsoda=dy) %>%
       ##     merge(s2) %>% mutate(y.diff=y.lsoda - y) %>%

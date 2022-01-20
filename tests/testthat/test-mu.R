@@ -47,7 +47,6 @@ rxode2Test({
 
   testEnv <- function(env, ref) {
     lapply(names(ref), function(n) {
-      message(n)
       expect_equal(get(n, envir=env), ref[[n]])
     })
     invisible()

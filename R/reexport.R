@@ -1,23 +1,3 @@
-type_sum.units <- function(x, ...) {
-  stop("needs units")
-}
-
-format_type_sum.type_sum_units <- function(x, width, ...) {
-  stop("needs units")
-}
-
-pillar_shaft.units <- function(x, ...) {
-  stop("needs units")
-}
-
-type_sum.mixed_units <- function(x, ...) {
-  stop("needs units")
-}
-
-pillar_shaft.mixed_units <- function(x, ...) {
-  stop("needs units")
-}
-
 #' @export
 scale_type <- ggplot2::scale_type
 

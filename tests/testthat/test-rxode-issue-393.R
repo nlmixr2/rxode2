@@ -1,7 +1,10 @@
 rxode2Test(
-  {
-    if (file.exists("test-issue-393.qs")) {
-      d <- qs::qread("test-issue-393.qs")
+{
+  filePath <- test_path("test-issue-393.qs")
+
+  if (file.exists(filePath)) {
+
+      d <- qs::qread(filePath)
 
       mod1 <- rxode2({
         #  CLH = THETA[1];

@@ -1,7 +1,9 @@
 rxode2Test(
   {
     test_that("mdv means EVID=2 when amt=0", {
-      theoSd <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      theoSd <- qs::qread(test_path("theoSd.qs"))
+
       d <- theoSd[, names(theoSd) != "EVID"]
       d$MDV <- ifelse(d$AMT == 0, 0, 1)
       d <- d[, names(d) != "WT"]

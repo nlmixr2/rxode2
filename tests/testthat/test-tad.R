@@ -1,7 +1,6 @@
 rxode2Test({
   if (requireNamespace("units", quietly = TRUE)) {
     # context("tad family of functions with odes")
-    library(units)
 
     test_that("tad family works with ode", {
       mod1 <- rxode2({
@@ -336,7 +335,7 @@ rxode2Test({
 
       ## Create data frame of 8 am dosing for the first dose This is done
       ## with base R but it can be done with dplyr or data.table
-      ev$ctime <- (ev$time + set_units(8, hr)) %% 24
+      ev$ctime <- (ev$time + units::set_units(8, hr)) %% 24
 
       x <- rxSolve(mod3, ev)
 
@@ -351,7 +350,7 @@ rxode2Test({
 
       ## Create data frame of 8 am dosing for the first dose This is done
       ## with base R but it can be done with dplyr or data.table
-      ev$ctime <- (ev$time + set_units(8, hr)) %% 24
+      ev$ctime <- (ev$time + units::set_units(8, hr)) %% 24
 
       x <- rxSolve(mod3, ev, addDosing = TRUE)
 

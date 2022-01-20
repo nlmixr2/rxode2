@@ -1,6 +1,6 @@
 rxode2Test(
   {
-    tol <- 5e-6 ## Current difference for all equations
+    tol <- 5e-5 ## Current difference for all equations
     type <- 2
 
     types <- 1:4

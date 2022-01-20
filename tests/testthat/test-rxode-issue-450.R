@@ -113,7 +113,6 @@ rxode2Test({
 
       expect_equal(theta, unlist(bar3x$params[bar3x$params$sim.id == id, -1]))
 
-      ## library(ggplot2)
       ## tmp  <- rbind(data.frame(res.id, type="for"), data.frame(bar3x[bar3x$sim.id == id,], type="single"))
       ## ggplot(tmp, aes(time, C2, col=type)) + geom_line()
 

@@ -29,8 +29,7 @@ rxode2Test(
             .Dim = c(21L, 3L), .Dimnames = list(NULL, c("time", "x", "y"))
           ),
           4
-        )
-      )
+        ), tolerance=1e-3)
     })
   },
   test = "lvl2"

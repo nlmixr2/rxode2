@@ -3,7 +3,8 @@ rxode2Test(
     # context("Testing solving with ID(s) in the dataset")
 
     test_that("simple solving with ID(s) in the dataset", {
-      theoSd <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      theoSd <- qs::qread(test_path("theoSd.qs"))
       d <- theoSd[, names(theoSd) != "EVID"]
       d <- d[d$ID != 10, ]
 
@@ -38,7 +39,8 @@ rxode2Test(
     })
 
     test_that("Test giving IDs to data-frames", {
-      d <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      d <- qs::qread(test_path("theoSd.qs"))
       d$ID <- paste(d$ID)
 
       mod <- rxode2({
@@ -81,7 +83,8 @@ rxode2Test(
 
       ## Now add an id to the dataset
 
-      d <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      d <- qs::qread(test_path("theoSd.qs"))
       d$ID <- paste(d$ID)
 
       parData <- data.frame(
@@ -103,7 +106,8 @@ rxode2Test(
       expect_equal(levels(tmp2$id), levels(tmp2$params$id))
 
       ## Now try letters
-      d <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      d <- qs::qread(test_path("theoSd.qs"))
       d$ID <- letters[d$ID]
 
       parData <- data.frame(
@@ -151,7 +155,8 @@ rxode2Test(
     })
 
     test_that("test iCov ID", {
-      d <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      d <- qs::qread(test_path("theoSd.qs"))
       d$ID <- paste(d$ID)
 
       mod <- rxode2({
@@ -195,7 +200,8 @@ rxode2Test(
 
       ## Now add an id to the dataset
 
-      d <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      d <- qs::qread(test_path("theoSd.qs"))
       d$ID <- paste(d$ID)
       d <- d[, names(d) != "WT"]
 
@@ -214,7 +220,9 @@ rxode2Test(
       expect_equal(tmp2$cwt, tmp2$wt)
 
       ## Now try letters
-      d <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      d <- qs::qread(test_path("theoSd.qs"))
+
       d <- d[, names(d) != "WT"]
       d$ID <- letters[d$ID]
 
@@ -250,7 +258,9 @@ rxode2Test(
     })
 
     test_that("id is retained as an integer", {
-      theoSd <- readRDS("theoSd.rds")
+      skip_if(!file.exists(test_path("theoSd.qs")))
+      theoSd <- qs::qread(test_path("theoSd.qs"))
+
       d <- theoSd[, names(theoSd) != "EVID"]
       d <- d[d$ID != 10, ]
 
