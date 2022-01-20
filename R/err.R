@@ -1059,7 +1059,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' Currently only handles simple error expressions, not n2ll(var) ~ ...
 #'
 #' @param expr Expression to test
-#' @param predDf Return the predDf for the single expression
+#' @param uiEnv Return the uiEnv for the single expression
 #' @return Boolean that says if the expression is an error expression or not
 #' @author Matthew L. Fidler
 #' @examples
@@ -1068,18 +1068,26 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' .isErrorExpression(quote(ipre~add(add.sd)+3))
 #'
 #' @noRd
-.isErrorExpression <- function(expr, predDf=FALSE) {
+.isErrorExpression <- function(expr, uiEnv=FALSE) {
   if (!identical(expr[[1]], quote(`~`))) return(FALSE)
-  .pre <- allNames(expr[[2]])
-  if (length(.pre) != 1L) return(FALSE)
-  .mod <- eval(parse(text=paste0("quote({", .pre, "=1+2\n", deparse1(expr), "})")))
+  if (identical(expr[[2]], quote(linCmt()))) {
+    .pre <- "linCmt()"
+    .var <- "cl=abc\nv=d\nrxDummyVarNotUsedInModel"
+    .lin <- TRUE
+  } else {
+    .pre <- allNames(expr[[2]])
+    if (length(.pre) != 1L) return(FALSE)
+    .var <- .pre
+    .lin <- FALSE
+  }
+  .mod <- eval(parse(text=paste0("quote({", .var, "=1+2\n", deparse1(expr), "})")))
   .ini <- as.data.frame(eval(parse(text=paste0("lotri({\n",
                              paste(paste(allNames(expr[[3]]), "<- 1"), collapse="\n"),
                              "\n})"))))
   .env <- try(.errProcessExpression(.mod, .ini), silent=TRUE)
   if (inherits(.env, "try-error")) return(FALSE)
-  if (predDf) return(.env)
-  (.pre == .env$predDf$var)
+  if (uiEnv) return(.env)
+  ifelse(.lin, "rxLinCmt" == .env$predDf$var, .pre == .env$predDf$var)
 }
 #'  Is Normal or t distribution model specification?
 #'
@@ -1088,5 +1096,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @author Matthew L. Fidler
 #' @noRd
 .isNormOrTErrorExpression <- function(expr) {
-  any(.isErrorExpression(expr, predDf=TRUE)$predDf$distribution == c("norm", "t"))
+  .env <- .isErrorExpression(expr, TRUE)
+  if (inherits(.env, "logical")) return(FALSE)
+  any(.env$predDf$distribution == c("norm", "t"))
 }

@@ -1576,6 +1576,7 @@ rxode2Test({
     expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) + prop(prop.sd) + boxCox(lambda))))
     expect_false(.rx$.isErrorExpression(quote(lipre <- add(add.err) + prop(prop.sd) + boxCox(lambda))))
     expect_false(.rx$.isErrorExpression(quote(lipre + 2 <- add(add.err) + prop(prop.sd) + boxCox(lambda))))
+    expect_true(.rx$.isErrorExpression(quote(linCmt() ~ add(add.err) + prop(prop.err))))
 
 
   })

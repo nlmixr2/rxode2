@@ -92,7 +92,21 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
     if ((useErrorLine && .isErrorLine) ||
           (!useErrorLine && !.isErrorLine)) {
       .expr <- origLines[[.i]]
-      if (!.multipleEndpointModel) {
+      if (identical(.expr[[2]], expr)) {
+        if (is.na(.ret)) {
+          .ret <- .i
+        } else {
+          return(NULL)
+        }
+      } else if (!is.null(altExpr)) {
+        if (identical(.expr[[2]], altExpr)) {
+          if (is.na(.ret)) {
+            .ret <- .i
+          } else {
+            return(NULL)
+          }
+        }
+      } else if (useErrorLine  && !.multipleEndpointModel) {
         if (is.na(.ret)) {
           if (.isNormOrTErrorExpression(.expr)) {
             # Make sure the lhs is included in the model prediction
@@ -110,20 +124,6 @@ model.rxUi <- function(x, ..., envir=parent.frame()) {
           .ret <- .i
         } else {
           return(NULL)
-        }
-      } else if (identical(.expr[[2]], expr)) {
-        if (is.na(.ret)) {
-          .ret <- .i
-        } else {
-          return(NULL)
-        }
-      } else if (!is.null(altExpr)) {
-        if (identical(.expr[[2]], altExpr)) {
-          if (is.na(.ret)) {
-            .ret <- .i
-          } else {
-            return(NULL)
-          }
         }
       }
     }
