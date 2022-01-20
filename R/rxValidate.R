@@ -22,7 +22,7 @@ rxValidate <- function(type = NULL) {
   .rxWithOptions(list(testthat.progress.max_fails = 10000000000), {
     path <- file.path(system.file("tests", package = "rxode2"), "testthat")
     .rxWithWd(path, {
-      try(testthat::test_dir(path, filter = .filter))
+      try(devtools::test(path, filter = .filter))
       message("================================================================================")
       print(proc.time() - pt)
       message("================================================================================")
