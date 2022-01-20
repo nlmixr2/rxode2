@@ -2,9 +2,11 @@ rxode2Test({
 
     .rx <- loadNamespace("rxode2")
 
-    if (file.exists("warfarin.qs")) {
+    filePath <- test_path("warfarin.qs")
 
-      warfarin <- qs::qread("warfarin.qs")
+    if (file.exists(filePath)) {
+
+      warfarin <- qs::qread(filePath)
 
       test_that("cmt() syntax makes sense", {
         mod <- rxode2({

@@ -1,25 +1,31 @@
 rxode2Test(
-  {
-    test_that("data.table", {
-      for (rt in c("data.table", "tbl")) {
-        mod <- rxode2({
-          d / dt(intestine) <- -a * intestine
-          d / dt(blood) <- a * intestine - b * blood
-        })
+{
+  test_that("data.table", {
+    for (rt in c("data.table", "tbl")) {
+      mod <- rxode2({
+        d / dt(intestine) <- -a * intestine
+        d / dt(blood) <- a * intestine - b * blood
+      })
 
-        et <- eventTable(time.units = "days")
-        et$add.sampling(seq(0, 10, length.out = 50))
-        et$add.dosing(
-          dose = 2 / 24, rate = 2, strt.time = 0,
-          nbr.doses = 10, dosing.interval = 1
-        )
+      et <- eventTable(time.units = "days")
+      et$add.sampling(seq(0, 10, length.out = 50))
+      et$add.dosing(
+        dose = 2 / 24, rate = 2, strt.time = 0,
+        nbr.doses = 10, dosing.interval = 1
+      )
 
-        p <- data.frame(a = 6, b = seq(0.4, 0.9, length.out = 4))
+      p <- data.frame(a = 6, b = seq(0.4, 0.9, length.out = 4))
 
-        p2 <- rxSolve(mod, p, et, cores = 1, returnType = rt)
+      p2 <- rxSolve(mod, p, et, cores = 1, returnType = rt)
 
-        expect_true(inherits(p2, rt))
-        dat <- readRDS(file = test_path("test-data-setup.rds"))
+      expect_true(inherits(p2, rt))
+
+      dataFile <- test_path("test-data-setup.qs")
+
+      if (file.exists(dataFile)) {
+
+        dat <- qs::qread(dataFile)
+
         mod2 <- rxode2({
           C2 <- centr / V2
           C3 ~ peri / V3
@@ -78,7 +84,8 @@ rxode2Test(
 
         expect_true(inherits(pk8, rt))
       }
-    })
-  },
-  test = "lvl2"
+    }
+  })
+},
+test = "lvl2"
 )

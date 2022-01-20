@@ -1,7 +1,8 @@
 rxode2Test(
   {
     test_that("rxIs tests", {
-      dat <- readRDS(test_path("test-data-setup.rds"))
+      skip_if(!file.exists(test_path("test-data-setup.qs")))
+      dat <- qs::qread(test_path("test-data-setup.qs"))
       dat <- tibble::as_tibble(dat)
       expect_true(rxIs(dat, "data.frame"))
       expect_true(rxIs(dat, "tbl"))
