@@ -202,7 +202,7 @@ rxode2Test(
 
       ## Check adding different units of time, rate, amt work
       if (requireNamespace("units", quietly = TRUE)) {
-        et3 <- et3 %>% set_units(mg)
+        et3 <- et3 %>% units::set_units(mg)
         ## Make sure units are right.
 
 
@@ -211,16 +211,16 @@ rxode2Test(
             add.sampling(seq(0, 24, by = 3)) %>%
             add.dosing(1, 3) %>%
             et(rate = 3, amt = 2, time = 120)
-          e2 <- e %>% et(amt = set_units(0.0003, "lb"), time = 0.5)
-          expect_equal(e2$amt[e2$time == set_units(0.5, hr)], set_units(set_units(0.0003, lb), mg))
-          e2 <- e %>% et(set_units(30, min))
-          expect_true(any(e2$time == set_units(0.5, hr)))
-          e2 <- e %>% et(time = 0.25, rate = set_units(30, ug / min), amt = set_units(4, ug))
-          tmp <- e2[e2$time == set_units(0.25, hr), ]
-          expect_equal(set_units(1.8, mg / h), tmp$rate)
-          expect_equal(set_units(0.004, mg), tmp$amt)
-          e2 <- e %>% et(time = 0.25, ii = set_units(30, min), amt = 4, addl = 4)
-          expect_equal(e2$ii[e2$time == set_units(0.25, hr)], set_units(0.5, hr))
+          e2 <- e %>% et(amt = units::set_units(0.0003, "lb"), time = 0.5)
+          expect_equal(e2$amt[e2$time == units::set_units(0.5, hr)], units::set_units(units::set_units(0.0003, lb), mg))
+          e2 <- e %>% et(units::set_units(30, min))
+          expect_true(any(e2$time == units::set_units(0.5, hr)))
+          e2 <- e %>% et(time = 0.25, rate = units::set_units(30, ug / min), amt = units::set_units(4, ug))
+          tmp <- e2[e2$time == units::set_units(0.25, hr), ]
+          expect_equal(units::set_units(1.8, mg / h), tmp$rate)
+          expect_equal(units::set_units(0.004, mg), tmp$amt)
+          e2 <- e %>% et(time = 0.25, ii = units::set_units(30, min), amt = 4, addl = 4)
+          expect_equal(e2$ii[e2$time == units::set_units(0.25, hr)], units::set_units(0.5, hr))
 
           ## Check importing wrong different ii and time units as well as different rate units work.
           e <- et(amount.units = "mg", time_units = "hr") %>%
@@ -229,8 +229,8 @@ rxode2Test(
             et(rate = 3, amt = 2, time = 120)
 
           etDf <- as.data.frame(e)
-          etDf$rate <- set_units(etDf$rate, ug / s)
-          etDf$ii <- set_units(etDf$ii, min)
+          etDf$rate <- units::set_units(etDf$rate, ug / s)
+          etDf$ii <- units::set_units(etDf$ii, min)
 
           et <- et()
           et$import.EventTable(etDf)
@@ -537,19 +537,19 @@ rxode2Test(
     if (requireNamespace("units", quietly = TRUE)) {
       test_that("etRep #313", {
         sch1 <- et(timeUnits = "hr") %>%
-          et(amt = 100, ii = 24, until = set_units(2, "days"))
+          et(amt = 100, ii = 24, until = units::set_units(2, "days"))
 
-        toto <- rep(sch1, times = 10, wait = set_units(19, "days"))
+        toto <- rep(sch1, times = 10, wait = units::set_units(19, "days"))
 
         expect_equal(toto$time, seq(0, by = 504, length.out = 10))
 
         sch1 <- et(timeUnits = "hr") %>%
-          et(amt = 100, ii = 24, until = set_units(2, "days")) %>%
+          et(amt = 100, ii = 24, until = units::set_units(2, "days")) %>%
           etExpand()
 
         toto1 <- etExpand(toto)
 
-        toto <- expect_warning(rep(sch1, times = 10, wait = set_units(19, "days")))
+        toto <- expect_warning(rep(sch1, times = 10, wait = units::set_units(19, "days")))
       })
     }
 

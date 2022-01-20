@@ -275,7 +275,7 @@ d/dt(blood)     = a*intestine - b*blood
       s2 <- rxSolve(van1, et, c(mu = 1000), method = "indLin")
       ## s3 <- rxSolve(van, et, c(mu=1000), method="dop853")
 
-i
+
       ## f <- function(mu = 1, ...) {
       ##   s1 <- rxSolve(van1, et, c(mu = mu), method = "lsoda") %>% plot() +
       ##     ggtitle(sprintf("Lsoda mu=%s", mu))
