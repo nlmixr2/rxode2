@@ -1,4 +1,3 @@
-Sys.setenv("R_TESTS" = "")
 library(rxode2)
 library(testthat)
 test_check("rxode2")

@@ -1,5 +1,7 @@
 rxode2Test(
-  {
+{
+
+
     ## Dynmodel routines
     ode <- "
    dose=200;
@@ -164,11 +166,11 @@ rxode2Test(
     test_that("Add sampling makes sense", {
       ## Piping does not update object, like dplyr.
       tmp <- x %>% add.sampling(0.5)
-      expect_equal(tmp$time[2], 0.5)
-      expect_equal(x$time[2], 1)
+      expect_equal(as.numeric(tmp$time[2]), 0.5)
+      expect_equal(as.numeric(x$time[2]), 1)
       ## $ access updates object.
       x$add.sampling(0.5)
-      expect_equal(x$time[2], 0.5)
+      expect_equal(as.numeric(x$time[2]), 0.5)
     })
 
     x <- solve(mod1, theta, ev, inits)
@@ -187,8 +189,8 @@ rxode2Test(
 
     test_that("Changing sampling makes sense.", {
       expect_equal(length(x$t), 20)
-      expect_equal(min(x$t), 0)
-      expect_equal(max(x$t), 5)
+      expect_equal(as.numeric(min(x$t)), 0)
+      expect_equal(as.numeric(max(x$t)), 5)
     })
 
     x <- solve(mod1, theta, ev, inits)
