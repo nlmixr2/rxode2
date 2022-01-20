@@ -1,4 +1,3 @@
-require(dplyr)
 rxode2Test(
   {
     .rx <- loadNamespace("rxode2")
@@ -12,12 +11,6 @@ rxode2Test(
         "data.table::forder"
       )
       # context(sprintf("Test event Table et(...) sort:%s", radix))
-      if (requireNamespace("units", quietly = TRUE)) {
-        library(units)
-      }
-      library(dplyr)
-
-
       et <- et()
 
       test_that("Empty event table check", {
@@ -214,7 +207,6 @@ rxode2Test(
 
 
         test_that("units tests", {
-          library(units)
           e <- et(amount.units = "mg", time_units = "hr") %>%
             add.sampling(seq(0, 24, by = 3)) %>%
             add.dosing(1, 3) %>%
@@ -363,7 +355,7 @@ rxode2Test(
 
         e4 <- rbind(e1, e2, e3)
         expect_equal(
-          e4 %>% select(id, time, amt, ii, addl) %>% as.data.frame(),
+          e4 %>% dplyr::select(id, time, amt, ii, addl) %>% as.data.frame(),
           structure(list(
             id = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 4L, 5L),
             time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -378,7 +370,7 @@ rxode2Test(
 
         e4 <- rbind(e1, e2, e3, id = "unique")
         expect_equal(
-          e4 %>% select(id, time, amt, ii, addl) %>% as.data.frame(),
+          e4 %>% dplyr::select(id, time, amt, ii, addl) %>% as.data.frame(),
           structure(list(
             id = 1:10,
             time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),

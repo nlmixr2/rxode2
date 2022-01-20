@@ -14,14 +14,13 @@ rxode2Test(
       mCRCL <- CRCL
     })
 
-    library(dplyr)
     # Make non-random covariates for testing
     AGE <- round(seq(18, 18 + 29))
     SEX <- c(rep(0, 15), rep(1, 15))
     WT <- seq(60, 60 + 29)
     CRCL <- seq(30, 30 + 29)
     ## id is in lower case to match the event table
-    cov.df <- tibble(id = seq_along(AGE), AGE = AGE, SEX = SEX, WT = WT, CRCL = CRCL)
+    cov.df <- dplyr::tibble(id = seq_along(AGE), AGE = AGE, SEX = SEX, WT = WT, CRCL = CRCL)
 
     s <- c(0, 0.25, 0.5, 0.75, 1, 1.5, seq(2, 24, by = 1))
     ## Add 10% diff
@@ -39,7 +38,7 @@ rxode2Test(
       as.data.frame() %>%
       ## Merge the event table with the covarite information
       merge(cov.df, by = "id") %>%
-      as_tibble()
+      dplyr::as_tibble()
 
     e2 <- et() %>%
       ## Specify the id and weight based dosing from covariate data.frame
@@ -231,7 +230,7 @@ rxode2Test(
     WT <- ifelse(SEX == 1, WTf, WTm)
     CRCL <- round(runif(nsub, 30, 140))
     ## id is in lower case to match the event table
-    cov.df <- tibble(id = seq_along(AGE), AGE = AGE, SEX = SEX, WT = WT, CRCL = CRCL)
+    cov.df <- dplyr::tibble(id = seq_along(AGE), AGE = AGE, SEX = SEX, WT = WT, CRCL = CRCL)
 
     s <- c(0, 0.25, 0.5, 0.75, 1, 1.5, seq(2, 24, by = 1))
     ## Add 10% diff
@@ -249,7 +248,7 @@ rxode2Test(
       as.data.frame() %>%
       ## Merge the event table with the covarite information
       merge(cov.df, by = "id") %>%
-      as_tibble()
+      dplyr::as_tibble()
 
     e2 <- et(time.units = "hr") %>%
       ## Specify the id and weight based dosing from covariate data.frame

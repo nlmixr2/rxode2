@@ -1,6 +1,5 @@
 rxode2Test(
   {
-    library(dplyr)
 
     ms <- c("liblsoda", "lsoda", "dop853")
 
@@ -31,8 +30,8 @@ rxode2Test(
       x <- rxSolve(mod1, et, method = m)
 
       test_that("off works correctly", {
-        expect_equal((x %>% filter(time == 4.5))$depot, 0)
-        expect_false((x %>% filter(time == 4.5))$centr == 0)
+        expect_equal((x %>% dplyr::filter(time == 4.5))$depot, 0)
+        expect_false((x %>% dplyr::filter(time == 4.5))$centr == 0)
       })
     }
   },
