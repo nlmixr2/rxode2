@@ -486,17 +486,17 @@ rxode2Test(
         expect_equal(ev$time, c(0, 24, 48, 72, 96, 120))
       })
 
-      ev <- et(amt = 3, ii = 24, until = 120) %>% et(amt = 3, rate = dur)
+      ev2 <- et(amt = 3, ii = 24, until = 120) %>% et(amt = 3, rate = 7)
 
       test_that("data.frame conversion", {
-        tmp <- data.frame(ev)
+        tmp <- data.frame(ev2)
         expect_equal(names(tmp), c("time", "amt", "rate", "ii", "addl", "evid"))
         expect_false(inherits(tmp$rate, "rxRateDur"))
         expect_false(inherits(tmp$evid, "rxEvid"))
       })
 
       test_that("tibble conversion", {
-        tmp <- tibble::as_tibble(ev)
+        tmp <- tibble::as_tibble(ev2)
         expect_equal(names(tmp), c("time", "amt", "rate", "ii", "addl", "evid"))
         expect_false(inherits(tmp$rate, "rxRateDur"))
         expect_false(inherits(tmp$evid, "rxEvid"))
@@ -529,7 +529,7 @@ rxode2Test(
       ev2 <- eventTable()
       ev2$add.dosing(dose = 0, start.time = 10)
 
-      expect_equal(ev1, ev2)
+      expect_equal(as.data.frame(ev1), as.data.frame(ev2))
     })
 
     test_that("Issue #236 math in to/from", {
