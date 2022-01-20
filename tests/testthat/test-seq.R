@@ -1,6 +1,7 @@
 rxode2Test(
   {
     test_that("seq test for rxSolve", {
+
       m1 <- rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
@@ -29,6 +30,7 @@ rxode2Test(
       ev <- eventTable(amount.units = "mg", time.units = "hr")
 
       ev$add.dosing(dose = 10000, nbr.doses = 3) # loading doses
+
       ev <- ev %>%
         add.dosing(dose = 5000, nbr.doses = 14, dosing.interval = 12) # maintenance
 
@@ -37,10 +39,10 @@ rxode2Test(
       expect_equal(length(t1$time), 10)
 
       t1 <- rxSolve(m1, ev, from = 1, to = 10, length.out = 10)
-      expect_equal(t1$time, 1:10)
+      expect_equal(as.integer(t1$time), 1:10)
 
       t1 <- rxSolve(m1, ev, from = 1, to = 10, by = 0.5)
-      expect_equal(t1$time, seq(1, 10, by = 0.5))
+      expect_equal(as.numeric(t1$time), seq(1, 10, by = 0.5))
 
       expect_error(rxSolve(m1, ev, from = 1:2, to = 10, by = 0.5), "'from'")
       expect_error(rxSolve(m1, ev, from = 1, to = 10:11, by = 0.5), "'to'")
