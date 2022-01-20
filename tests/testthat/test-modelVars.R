@@ -1,5 +1,7 @@
 rxode2Test(
-  {
+{
+
+  rxClean()
     rigid.txt <- "
 y1(0)    = 1
 y2(0)    = 0
