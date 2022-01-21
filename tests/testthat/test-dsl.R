@@ -401,119 +401,137 @@ test_that("linCmt promotion and derivatives", {
     expect_equal(rxFromSE(.tmp), paste0("linCmtB(rx__PTR__,t,0,3,1,", i, ",p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15)"))
   }
 })
-## min/max testing
-expect_error(rxFromSE("Derivative(max(a,b,c), a)"), NA)
-expect_equal(rxToSE("min(a,b,c)"), "min(a,b,c)")
-expect_equal(rxToSE("max(a,b,c)"), "max(a,b,c)")
-## sum/prod testing
-expect_equal(rxToSE("sum(a,b,c)"), "((a)+(b)+(c))")
-expect_equal(rxToSE("prod(a,b,c)"), "((a)*(b)*(c))")
 
-## tlast
-expect_error(rxToSE("tlast(matt+3)"))
-expect_error(rxToSE("tlast(matt, 3)"))
-expect_equal(rxToSE("tlast(matt)"), "tlast(matt)")
-expect_equal(rxToSE("tlast()"), "tlast()")
-expect_equal(rxFromSE("Derivative(tlast(matt), matt)"), "0")
-expect_equal(rxFromSE("tlast(matt)"), "tlast(matt)")
+test_that("min/max testing", {
+  expect_error(rxFromSE("Derivative(max(a,b,c), a)"), NA)
+  expect_equal(rxToSE("min(a,b,c)"), "min(a,b,c)")
+  expect_equal(rxToSE("max(a,b,c)"), "max(a,b,c)")
+})
 
-expect_error(rxFromSE("tlast(matt,2)"))
-expect_equal(rxFromSE("tlast(matt)"), "tlast(matt)")
-expect_equal(rxFromSE("tlast()"), "tlast()")
+test_that("sum/prod testing", {
+  expect_equal(rxToSE("sum(a,b,c)"), "((a)+(b)+(c))")
+  expect_equal(rxToSE("prod(a,b,c)"), "((a)*(b)*(c))")
+})
 
-## tfirst
-expect_error(rxToSE("tfirst(matt+3)"))
-expect_error(rxToSE("tfirst(matt, 3)"))
-expect_equal(rxToSE("tfirst(matt)"), "tfirst(matt)")
-expect_equal(rxToSE("tfirst()"), "tfirst()")
-expect_equal(rxFromSE("Derivative(tfirst(matt), matt)"), "0")
-expect_equal(rxFromSE("tfirst(matt)"), "tfirst(matt)")
+test_that("tlast", {
+  expect_error(rxToSE("tlast(matt+3)"))
+  expect_error(rxToSE("tlast(matt, 3)"))
+  expect_equal(rxToSE("tlast(matt)"), "tlast(matt)")
+  expect_equal(rxToSE("tlast()"), "tlast()")
+  expect_equal(rxFromSE("Derivative(tlast(matt), matt)"), "0")
+  expect_equal(rxFromSE("tlast(matt)"), "tlast(matt)")
 
-expect_error(rxFromSE("tfirst(matt,2)"))
-expect_equal(rxFromSE("tfirst(matt)"), "tfirst(matt)")
-expect_equal(rxFromSE("tfirst()"), "tfirst()")
+  expect_error(rxFromSE("tlast(matt,2)"))
+  expect_equal(rxFromSE("tlast(matt)"), "tlast(matt)")
+  expect_equal(rxFromSE("tlast()"), "tlast()")
+})
 
-# dosenum
-expect_error(rxToSE("dosenum(a)"))
-expect_equal(rxToSE("dosenum()"), "dosenum()")
-expect_equal(rxFromSE("dosenum()"), "dosenum()")
+test_that("tfirst", {
+  expect_error(rxToSE("tfirst(matt+3)"))
+  expect_error(rxToSE("tfirst(matt, 3)"))
+  expect_equal(rxToSE("tfirst(matt)"), "tfirst(matt)")
+  expect_equal(rxToSE("tfirst()"), "tfirst()")
+  expect_equal(rxFromSE("Derivative(tfirst(matt), matt)"), "0")
+  expect_equal(rxFromSE("tfirst(matt)"), "tfirst(matt)")
 
-# tad()
-expect_equal(rxToSE("tad()"), "(t-tlast())")
-expect_equal(rxToSE("tad(matt)"), "(t-tlast(matt))")
-expect_error(rxToSE("tad(matt,f)"))
-expect_error(rxToSE("tad(matt+f)"))
+  expect_error(rxFromSE("tfirst(matt,2)"))
+  expect_equal(rxFromSE("tfirst(matt)"), "tfirst(matt)")
+  expect_equal(rxFromSE("tfirst()"), "tfirst()")
+})
 
-# tafd()
-expect_equal(rxToSE("tafd()"), "(t-tfirst())")
-expect_equal(rxToSE("tafd(matt)"), "(t-tfirst(matt))")
-expect_error(rxToSE("tafd(matt,f)"))
-expect_error(rxToSE("tafd(matt+f)"))
+test_that("dosenum", {
+  expect_error(rxToSE("dosenum(a)"))
+  expect_equal(rxToSE("dosenum()"), "dosenum()")
+  expect_equal(rxFromSE("dosenum()"), "dosenum()")
+})
 
-# lag()
-expect_error(rxToSE("lag()"))
-expect_equal(rxToSE("lag(b)"), "lag(b)")
-expect_error(rxToSE("lag(b+3)"))
-expect_equal(rxToSE("lag(b, 3)"), "lag(b, 3)")
-expect_error(rxToSE("lag(b, c)"))
-expect_error(rxToSE("lag(b, 3+4)"))
-expect_equal(rxFromSE("Derivative(lag(a,b), a)"), "0")
-expect_equal(rxFromSE("Derivative(lag(a,b), b)"), "0")
-expect_equal(rxFromSE("Derivative(lag(a), a)"), "0")
-expect_equal(rxFromSE("lag(a,b)"), "lag(a,b)")
-expect_equal(rxFromSE("lag(a)"), "lag(a)")
+test_that("tad()", {
+  expect_equal(rxToSE("tad()"), "(t-tlast())")
+  expect_equal(rxToSE("tad(matt)"), "(t-tlast(matt))")
+  expect_error(rxToSE("tad(matt,f)"))
+  expect_error(rxToSE("tad(matt+f)"))
+})
 
-# lead()
-expect_error(rxToSE("lead()"))
-expect_equal(rxToSE("lead(b)"), "lead(b)")
-expect_error(rxToSE("lead(b+3)"))
-expect_equal(rxToSE("lead(b, 3)"), "lead(b, 3)")
-expect_error(rxToSE("lead(b, c)"))
-expect_error(rxToSE("lead(b, 3+4)"))
-expect_equal(rxFromSE("Derivative(lead(a,b), a)"), "0")
-expect_equal(rxFromSE("Derivative(lead(a,b), b)"), "0")
-expect_equal(rxFromSE("Derivative(lead(a), a)"), "0")
-expect_equal(rxFromSE("lead(a,b)"), "lead(a,b)")
-expect_equal(rxFromSE("lead(a)"), "lead(a)")
+test_that("tafd()", {
+  expect_equal(rxToSE("tafd()"), "(t-tfirst())")
+  expect_equal(rxToSE("tafd(matt)"), "(t-tfirst(matt))")
+  expect_error(rxToSE("tafd(matt,f)"))
+  expect_error(rxToSE("tafd(matt+f)"))
+})
 
-# first
-expect_error(rxToSE("first()"))
-expect_equal(rxToSE("first(v)"), "first(v)")
-expect_equal(rxFromSE("Derivative(first(a),a)"), "0")
-expect_equal(rxFromSE("first(v)"), "first(v)")
+test_that("lag()", {
+  expect_error(rxToSE("lag()"))
+  expect_equal(rxToSE("lag(b)"), "lag(b)")
+  expect_error(rxToSE("lag(b+3)"))
+  expect_equal(rxToSE("lag(b, 3)"), "lag(b, 3)")
+  expect_error(rxToSE("lag(b, c)"))
+  expect_error(rxToSE("lag(b, 3+4)"))
+  expect_equal(rxFromSE("Derivative(lag(a,b), a)"), "0")
+  expect_equal(rxFromSE("Derivative(lag(a,b), b)"), "0")
+  expect_equal(rxFromSE("Derivative(lag(a), a)"), "0")
+  expect_equal(rxFromSE("lag(a,b)"), "lag(a,b)")
+  expect_equal(rxFromSE("lag(a)"), "lag(a)")
+})
 
-# last
-expect_error(rxToSE("last()"))
-expect_equal(rxToSE("last(v)"), "last(v)")
-expect_equal(rxFromSE("Derivative(last(a),a)"), "0")
-expect_equal(rxFromSE("last(v)"), "last(v)")
+test_that("lead()", {
+  expect_error(rxToSE("lead()"))
+  expect_equal(rxToSE("lead(b)"), "lead(b)")
+  expect_error(rxToSE("lead(b+3)"))
+  expect_equal(rxToSE("lead(b, 3)"), "lead(b, 3)")
+  expect_error(rxToSE("lead(b, c)"))
+  expect_error(rxToSE("lead(b, 3+4)"))
+  expect_equal(rxFromSE("Derivative(lead(a,b), a)"), "0")
+  expect_equal(rxFromSE("Derivative(lead(a,b), b)"), "0")
+  expect_equal(rxFromSE("Derivative(lead(a), a)"), "0")
+  expect_equal(rxFromSE("lead(a,b)"), "lead(a,b)")
+  expect_equal(rxFromSE("lead(a)"), "lead(a)")
+})
 
-# diff
-expect_error(rxToSE("diff()"))
-expect_equal(rxToSE("diff(v)"), "diff(v)")
-expect_equal(rxFromSE("Derivative(diff(a),a)"), "0")
-expect_equal(rxFromSE("diff(v)"), "diff(v)")
+test_that("first", {
+  expect_error(rxToSE("first()"))
+  expect_equal(rxToSE("first(v)"), "first(v)")
+  expect_equal(rxFromSE("Derivative(first(a),a)"), "0")
+  expect_equal(rxFromSE("first(v)"), "first(v)")
+})
 
-# is.nan
-expect_error(rxToSE("is.nan()"))
-expect_equal(rxToSE("is.nan(v)"), "is.nan(v)")
-expect_equal(rxFromSE("Derivative(is.nan(a),a)"), "0")
-expect_equal(rxFromSE("is.nan(v)"), "is.nan(v)")
+test_that("last", {
+  expect_error(rxToSE("last()"))
+  expect_equal(rxToSE("last(v)"), "last(v)")
+  expect_equal(rxFromSE("Derivative(last(a),a)"), "0")
+  expect_equal(rxFromSE("last(v)"), "last(v)")
+})
 
-# is.na
-expect_error(rxToSE("is.na()"))
-expect_equal(rxToSE("is.na(v)"), "is.na(v)")
-expect_equal(rxFromSE("Derivative(is.na(a),a)"), "0")
-expect_equal(rxFromSE("is.na(v)"), "is.na(v)")
+test_that("diff", {
+  expect_error(rxToSE("diff()"))
+  expect_equal(rxToSE("diff(v)"), "diff(v)")
+  expect_equal(rxFromSE("Derivative(diff(a),a)"), "0")
+  expect_equal(rxFromSE("diff(v)"), "diff(v)")
+})
 
-# is.finite
-expect_error(rxToSE("is.finite()"))
-expect_equal(rxToSE("is.finite(v)"), "is.finite(v)")
-expect_equal(rxFromSE("Derivative(is.finite(a),a)"), "0")
-expect_equal(rxFromSE("is.finite(v)"), "is.finite(v)")
+test_that("is.nan", {
+  expect_error(rxToSE("is.nan()"))
+  expect_equal(rxToSE("is.nan(v)"), "is.nan(v)")
+  expect_equal(rxFromSE("Derivative(is.nan(a),a)"), "0")
+  expect_equal(rxFromSE("is.nan(v)"), "is.nan(v)")
+})
 
-# is.infinite
-expect_error(rxToSE("is.infinite()"))
-expect_equal(rxToSE("is.infinite(v)"), "is.infinite(v)")
-expect_equal(rxFromSE("Derivative(is.infinite(a),a)"), "0")
-expect_equal(rxFromSE("is.infinite(v)"), "is.infinite(v)")
+test_that("is.na", {
+  expect_error(rxToSE("is.na()"))
+  expect_equal(rxToSE("is.na(v)"), "is.na(v)")
+  expect_equal(rxFromSE("Derivative(is.na(a),a)"), "0")
+  expect_equal(rxFromSE("is.na(v)"), "is.na(v)")
+})
+
+test_that("is.finite", {
+  expect_error(rxToSE("is.finite()"))
+  expect_equal(rxToSE("is.finite(v)"), "is.finite(v)")
+  expect_equal(rxFromSE("Derivative(is.finite(a),a)"), "0")
+  expect_equal(rxFromSE("is.finite(v)"), "is.finite(v)")
+})
+
+test_that("is.infinite", {
+  expect_error(rxToSE("is.infinite()"))
+  expect_equal(rxToSE("is.infinite(v)"), "is.infinite(v)")
+  expect_equal(rxFromSE("Derivative(is.infinite(a),a)"), "0")
+  expect_equal(rxFromSE("is.infinite(v)"), "is.infinite(v)")
+})
