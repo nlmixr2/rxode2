@@ -34,15 +34,15 @@ d/dt(blood)     = a*intestine - b*blood
   
   test_that("error for empty data", {
     expect_error(suppressWarnings({
-      .rx$etTrans(et, mod)
+      etTrans(et, mod)
     }))
   })
   
-  ett1 <- .rx$etTrans(et, mod, keepDosingOnly = TRUE)
+  ett1 <- etTrans(et, mod, keepDosingOnly = TRUE)
   tmp1 <- sort(unique(ett1$EVID))
   
   et$cmt <- factor(et$cmt)
-  ett2 <- .rx$etTrans(et, mod, keepDosingOnly = TRUE)
+  ett2 <- etTrans(et, mod, keepDosingOnly = TRUE)
   
   test_that("factor and character give same compartment information", {
     expect_equal(attr(class(ett2), ".rxode2.lst")$cmtInfo, attr(class(ett1), ".rxode2.lst")$cmtInfo)
@@ -58,7 +58,7 @@ d/dt(blood)     = a*intestine - b*blood
   et$cmt <- paste(et$cmt)
   et$cmt[1:2] <- NA_character_
   
-  ett1 <- rxode2::etTrans(et, mod, keepDosingOnly = TRUE, addCmt = TRUE)
+  ett1 <- etTrans(et, mod, keepDosingOnly = TRUE, addCmt = TRUE)
   
   test_that("string NA gives 1 for default compartment", {
     expect_equal(ett1$EVID, ett2$EVID)
@@ -66,7 +66,7 @@ d/dt(blood)     = a*intestine - b*blood
   
   et <- et0
   et$cmt[1:2] <- NA_integer_
-  ett2 <- .rx$etTrans(et, mod, keepDosingOnly = TRUE, addCmt = TRUE)
+  ett2 <- etTrans(et, mod, keepDosingOnly = TRUE, addCmt = TRUE)
   
   test_that("factor NA gives 1 for default compartment", {
     expect_equal(ett2$EVID, ett1$EVID)
@@ -76,7 +76,7 @@ d/dt(blood)     = a*intestine - b*blood
   
   et$cmt[1:2] <- NA_integer_
   
-  ett2 <- .rx$etTrans(et, mod, keepDosingOnly = TRUE, addCmt = TRUE)
+  ett2 <- etTrans(et, mod, keepDosingOnly = TRUE, addCmt = TRUE)
   
   test_that("factor NA gives 1 for default compartment", {
     expect_equal(ett2$EVID[1:2], ett1$EVID[1:2])
@@ -93,9 +93,9 @@ d/dt(blood)     = a*intestine - b*blood
     as.data.frame()
   
   test_that("error for negative non ODE compartments", {
-    expect_error(.rx$etTrans(et, mod, keepDosingOnly = TRUE))
+    expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
     et$cmt <- factor(et$cmt)
-    expect_error(.rx$etTrans(et, mod, keepDosingOnly = TRUE))
+    expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
   })
   
   et <- eventTable()
@@ -110,9 +110,9 @@ d/dt(blood)     = a*intestine - b*blood
     as.data.frame()
   
   test_that("error for negative non ODE compartments after defined compartment", {
-    expect_error(.rx$etTrans(et, mod, keepDosingOnly = TRUE))
+    expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
     et$cmt <- factor(et$cmt)
-    expect_error(.rx$etTrans(et, mod, keepDosingOnly = TRUE))
+    expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
   })
   
   et <- et() %>% et(amt = 3, time = 0.24, evid = 4)
@@ -120,7 +120,7 @@ d/dt(blood)     = a*intestine - b*blood
   test_that("EVID=4 makes sense", {
     expect_warning(
       expect_equal(
-        .rx$etTrans(et, mod, keepDosingOnly = TRUE)$EVID,
+        etTrans(et, mod, keepDosingOnly = TRUE)$EVID,
         c(3L, 101L)
       )
     )
@@ -530,14 +530,14 @@ d/dt(blood)     = a*intestine - b*blood
     tmp$cens <- 0
     tmp$cens[1] <- 2
     
-    expect_error(.rx$etTrans(tmp, mod))
+    expect_error(etTrans(tmp, mod))
     
     tmp <- et
     tmp$cens <- 0
     tmp$dv <- 3
     tmp$cens[2] <- 1
     
-    ret <- suppressWarnings(rxode2::etTrans(tmp, mod))
+    ret <- suppressWarnings(etTrans(tmp, mod))
     expect_false(any(names(ret) == "CENS"))
     expect_equal(attr(class(ret), ".rxode2.lst")$censAdd, 0L)
     expect_equal(attr(class(ret), ".rxode2.lst")$limitAdd, 0L)
@@ -548,14 +548,14 @@ d/dt(blood)     = a*intestine - b*blood
     tmp$cens <- 0
     tmp$cens[1] <- 1
     
-    ret <- rxode2::etTrans(tmp, mod)
+    ret <- etTrans(tmp, mod)
     expect_true(any(names(ret) == "CENS"))
     expect_equal(attr(class(ret), ".rxode2.lst")$censAdd, 1L)
     expect_equal(attr(class(ret), ".rxode2.lst")$limitAdd, 0L)
     
     tmp$limit <- 0
     
-    ret <- rxode2::etTrans(tmp, mod)
+    ret <- etTrans(tmp, mod)
     expect_true(any(names(ret) == "CENS"))
     expect_true(any(names(ret) == "LIMIT"))
     expect_equal(attr(class(ret), ".rxode2.lst")$censAdd, 1L)

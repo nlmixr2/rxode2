@@ -175,7 +175,7 @@ d/dt(blood)     = a*intestine - b*blood
                 et(time = 0.2, cmt = "-intestine") %>%
                 as.data.frame()
 
-              ett1 <- .rx$etTrans(et, mod, keepDosingOnly = TRUE)
+              ett1 <- etTrans(et, mod, keepDosingOnly = TRUE)
 
               print(ett1)
 
