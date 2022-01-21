@@ -141,7 +141,7 @@ test_that("Compartment melding with dvid", {
   
   w2 <- warfarin
   w2$dvid <- as.integer(w2$dvid) * 10
-  tmp <- expect_warning(etTrans(w2, w, addCmt = TRUE))
+  expect_warning(tmp <- etTrans(w2, w, addCmt = TRUE))
   expect_equal(
     tmp$CMT[tmp$ID == 1],
     c(
