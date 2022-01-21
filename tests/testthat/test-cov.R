@@ -405,9 +405,7 @@ test_that("time varying covariates lhs", {
     d / dt(matt) <- 0
   })
   
-  x1 <- rxSolve(mod, dfadvan, keep = "CLCR")
-  
-  x2 <- expect_warning(rxSolve(mod2, dfadvan, keep = "CRCL"))
-  
+  x1 <- rxSolve(mod, dfadvan, keep = "CL")
+  x2 <- rxSolve(mod2, dfadvan, keep = "CL")
   expect_equal(x1$CL, x2$CL)
 })
