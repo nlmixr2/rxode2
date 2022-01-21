@@ -28,7 +28,4 @@ d/dt(y3) = a3*y1*y2
   rigid_compare <- rxModelVars(rigid)
   rigid_compare <- rigid_compare[setdiff(names(rigid_compare), "timeId")]
   expect_equal(rigid0_compare, rigid_compare)
-  # This save file is used to build documentation:
-  # vignettes/rxode2-model-types.html#solved-compartment-models
-  saveRDS(list(rigid0, rxModelVars(rigid)), "~/both.rds")
 })
