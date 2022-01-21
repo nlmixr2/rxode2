@@ -16,14 +16,25 @@ test_that("test additive error with functions make sense", {
     })
   }
 
+  .rx <- loadNamespace("rxode2")
+
+  f %>%
+    model(ipre ~ add(add.sd)) ->
+    tmp1
+
+  expect_equal(.rx$.rxGetVarianceForErrorAdd(tmp1, tmp1$predDf),
+               quote((add.sd) ^ 2))
+
+
+
   f %>%
     model(ipre ~ add(f2)) ->
     tmp2
 
-  .rx <- loadNamespace("rxode2")
 
-  expect_equal(.rx$.rxGetVarianceForErrorAdd(tmp, tmp2$predDf),
+  expect_equal(.rx$.rxGetVarianceForErrorAdd(tmp2, tmp2$predDf),
                quote((f2) ^ 2))
+
 
 
 })
