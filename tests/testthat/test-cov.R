@@ -13,7 +13,7 @@ for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match pr
   })
   
   et <- eventTable(time.units = "hr") # default time units
-  et$add.sampling(seq(from = 0, to = 100, by = 0.01))
+  et$add.sampling(seq(from = 0, to = 10, by = 0.5))
   
   cov <- data.frame(c = et$get.EventTable()$time + units::set_units(1, h))
   
