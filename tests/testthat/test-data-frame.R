@@ -26,17 +26,16 @@ test_that("rxode2 event table 1 was created", {
   expect_equal(length(et1$get.dosing()[, 1]), 1)
 })
 
-o1.first <- NULL
-test_that("", {
-  expect_warning(o1.first <<- rxSolve(m1,
-                                      params = c(
-                                        KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
-                                        Kin = 1.0, Kout = 1.0, EC50 = 200.0
-                                      ),
-                                      events = et1,
-                                      inits = c(0, 0, 0, 1)
+o1.first <-
+  suppressWarnings(rxSolve(
+    m1,
+    params = c(
+      KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
+      Kin = 1.0, Kout = 1.0, EC50 = 200.0
+    ),
+    events = et1,
+    inits = c(0, 0, 0, 1)
   ))
-})
 
 o1.df <- as.data.frame(o1.first)
 o1.df2 <- tibble::as_tibble(o1.first)
