@@ -121,7 +121,12 @@ d/dt(blood)     = a*intestine - b*blood
     et <- et() %>% et(amt = 3, time = 0.24, evid = 4)
 
     test_that("EVID=4 makes sense", {
-      expect_equal(expect_warning(.rx$etTrans(et, mod, keepDosingOnly = TRUE)$EVID), c(3L, 101L))
+      expect_warning(
+        expect_equal(
+          .rx$etTrans(et, mod, keepDosingOnly = TRUE)$EVID,
+          c(3L, 101L)
+        )
+      )
     })
 
 
@@ -205,7 +210,7 @@ d/dt(blood)     = a*intestine - b*blood
     t <- test_path("theoSd.qs")
 
     if (file.exists(t)) {
-      theoSd <- qs::qread("theoSd.qs")
+      theoSd <- qs::qread(t)
 
 
       d <- theoSd[, names(theoSd) != "EVID"]
@@ -498,7 +503,7 @@ d/dt(blood)     = a*intestine - b*blood
         TIME = c(3, 4, 5, 3, 4, 5),
         DV = c(30, 80, 250, 40, 150, 400)
       )
-      dat1 <- expect_warning(etTrans(RawData2, mod))
+      expect_warning(dat1 <- etTrans(RawData2, mod))
 
       expect_equal(dat1$TIME, RawData2$TIME)
 
@@ -535,7 +540,7 @@ d/dt(blood)     = a*intestine - b*blood
       tmp$dv <- 3
       tmp$cens[2] <- 1
 
-      ret <- expect_warning(rxode2::etTrans(tmp, mod))
+      ret <- suppressWarnings(rxode2::etTrans(tmp, mod))
       expect_false(any(names(ret) == "CENS"))
       expect_equal(attr(class(ret), ".rxode2.lst")$censAdd, 0L)
       expect_equal(attr(class(ret), ".rxode2.lst")$limitAdd, 0L)
@@ -617,8 +622,10 @@ d/dt(blood)     = a*intestine - b*blood
 
       # suppressWarnings() is used on the outside because the rxSetIni0(FALSE)
       # warning only occurs once per session
-      tmp <- expect_warning(expect_warning(etTrans(dat, mod), regexp="while censoring is included"),
-                            regexp="IDs without observations")
+      suppressWarnings(expect_warning(expect_warning(
+        tmp <- etTrans(dat, mod),
+        regexp="while censoring is included"), regexp="IDs without observations"
+      ))
       lvls <- c(
         "32", "33", "35", "36", "37", "40", "41", "42", "43", "47",
         "48", "49", "50", "51", "54", "55", "57", "59", "61", "62", "63",
