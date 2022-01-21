@@ -99,15 +99,16 @@
 #' @noRd
 .rxGetVarianceForErrorAdd <- function(env, pred1) {
   if (!is.na(pred1$a)) {
-    return(.enQuote(pred1$a))
-  }
-  .cnd <- pred1$cond
-  .w <- which(env$iniDf$err %in% c("add", "lnorm") & env$iniDf$condition == .cnd)
-  if (length(.w) == 1L) {
-    .p1 <- .enQuote(env$iniDf$name[.w])
+    .p1 <- .enQuote(pred1$a)
   } else {
-    stop("cannot find additive standard deviation for '", .cnd, "'",
-         ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
+    .cnd <- pred1$cond
+    .w <- which(env$iniDf$err %in% c("add", "lnorm") & env$iniDf$condition == .cnd)
+    if (length(.w) == 1L) {
+      .p1 <- .enQuote(env$iniDf$name[.w])
+    } else {
+      stop("cannot find additive standard deviation for '", .cnd, "'",
+           ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
+    }
   }
   bquote((.(.p1)) ^ 2)
 }
