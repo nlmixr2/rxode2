@@ -31,12 +31,6 @@ test_that(".DollarNames", {
     )
   )
   
-  .rxSolve <- function(...) {
-    suppressWarnings({
-      rxSolve(...)
-    })
-  }
-  
   p <- data.frame(a = 6, b = seq(0.4, 0.9, length.out = 4))
   
   ## "Study" Differences
@@ -47,14 +41,16 @@ test_that(".DollarNames", {
   dimnames(sigma) <- list(c("err1", "err2"), c("err1", "err2"))
   
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")), dfSub = 100, dfObs = 100,
-  nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
-  )
-  
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(
+        KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
+        Kin = 1, Kout = 1, EC50 = 200
+      ),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")), dfSub = 100, dfObs = 100,
+      nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
+    )) 
   expect_equal(.DollarNames(pk4, ""), c(
     "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
     "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
@@ -66,13 +62,16 @@ test_that(".DollarNames", {
   ))
   
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")), dfSub = 100,
-  nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
-  )
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(
+        KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
+        Kin = 1, Kout = 1, EC50 = 200
+      ),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")), dfSub = 100,
+      nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
+    ))
   
   expect_equal(.DollarNames(pk4, ""), c(
     "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
@@ -84,13 +83,16 @@ test_that(".DollarNames", {
     "omegaList"
   ))
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
-  )
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(
+        KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
+        Kin = 1, Kout = 1, EC50 = 200
+      ),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
+    ))
   
   expect_equal(.DollarNames(pk4, ""), c(
     "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
@@ -101,13 +103,16 @@ test_that(".DollarNames", {
     "env", "model", "params", "inits", "t", "rxode2", "thetaMat"
   ))
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, nStud = 8, sigma = sigma, ev, cores = 1
-  )
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(
+        KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
+        Kin = 1, Kout = 1, EC50 = 200
+      ),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, nStud = 8, sigma = sigma, ev, cores = 1
+    ))
   
   expect_equal(.DollarNames(pk4, ""), c(
     "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
