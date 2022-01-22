@@ -46,13 +46,14 @@ test_that("Test giving IDs to data-frames", {
     cp <- linCmt()
   })
   
-  set.seed(100)
-  parData <- data.frame(
-    id = 1:12, tka = 1 + rnorm(12, sd = 0.01),
-    tcl = 2 + rnorm(12, sd = 0.01),
-    tv = 3 + rnorm(12, sd = 0.01)
-  )
-  
+  withr::with_seed(
+    42,
+    parData <- data.frame(
+      id = 1:12, tka = 1 + rnorm(12, sd = 0.01),
+      tcl = 2 + rnorm(12, sd = 0.01),
+      tv = 3 + rnorm(12, sd = 0.01)
+    )
+  )  
   parData2 <- parData[order(-parData$id), ]
   
   tmp1 <- rxSolve(mod, d, parData)
@@ -164,8 +165,10 @@ test_that("test iCov ID", {
     cp <- linCmt()
   })
   
-  set.seed(100)
-  iCov <- data.frame(id = 1:12, wt = 70 + rnorm(12, sd = 3))
+  withr::with_seed(
+    42,
+    iCov <- data.frame(id = 1:12, wt = 70 + rnorm(12, sd = 3))
+  )
   iCov2 <- iCov[order(-iCov$id), ]
   
   expect_error(rxSolve(mod, d, iCov = iCov, keep = "wt"))

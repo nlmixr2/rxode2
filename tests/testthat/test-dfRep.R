@@ -17,12 +17,13 @@ test_that("tests the internal df repetition routines", {
   
   d <- 4
   
-  set.seed(42)
-  matL <- lapply(1:4, function(...) {
-    tmp <- matrix(rnorm(d^2), d, d)
-    tcrossprod(tmp, tmp)
-  })
-  
+  withr::with_seed(
+    42,
+    matL <- lapply(1:4, function(...) {
+      tmp <- matrix(rnorm(d^2), d, d)
+      tcrossprod(tmp, tmp)
+    })
+  )
   
   theta <- data.frame(
     a = as.double(1:4), b = as.double(5:8),

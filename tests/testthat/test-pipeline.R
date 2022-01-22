@@ -12,61 +12,69 @@ mod <- rxode2({
 })
 
 fun <- function(type) {
-  set.seed(12)
-  p1 <- mod %>%
-    rxParams(
-      params = c(
-        KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-        Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-        Kin = 1, Kout = 1, EC50 = 200
-      ),
-      inits = c(eff = 1),
-      omega = lotri(eta.Cl ~ 0.4^2)
-    ) %>%
-    et(amountUnits = "mg", timeUnits = "hours") %>%
-    et(amt = 10000, cmt = 2, ii = 12, until = 48) %>%
-    et(seq(0, 48, length.out = 100))
-  if (type == "rxSolve") {
-    p1 <- p1 %>%
-      rxSolve(nSub = 30)
-  } else if (type == "solve") {
-    p1 <- p1 %>%
-      solve(nSub = 30)
-  } else if (type == "simulate") {
-    p1 <- p1 %>%
-      simulate(nSub = 30)
-  } else if (type == "predict") {
-    p1 <- p1 %>%
-      predict(nSub = 30)
-  }
+  withr::with_seed(
+    42,
+    {
+      p1 <- mod %>%
+        rxParams(
+          params = c(
+            KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
+            Q = 1.05E+01, V3 = 2.97E+02, # peripheral
+            Kin = 1, Kout = 1, EC50 = 200
+          ),
+          inits = c(eff = 1),
+          omega = lotri(eta.Cl ~ 0.4^2)
+        ) %>%
+        et(amountUnits = "mg", timeUnits = "hours") %>%
+        et(amt = 10000, cmt = 2, ii = 12, until = 48) %>%
+        et(seq(0, 48, length.out = 100))
+      if (type == "rxSolve") {
+        p1 <- p1 %>%
+          rxSolve(nSub = 30)
+      } else if (type == "solve") {
+        p1 <- p1 %>%
+          solve(nSub = 30)
+      } else if (type == "simulate") {
+        p1 <- p1 %>%
+          simulate(nSub = 30)
+      } else if (type == "predict") {
+        p1 <- p1 %>%
+          predict(nSub = 30)
+      }
+    }
+  )
   ##
-  set.seed(12)
-  p2 <- mod %>%
-    et(amountUnits = "mg", timeUnits = "hours") %>%
-    et(amt = 10000, cmt = 2, ii = 12, until = 48) %>%
-    et(seq(0, 48, length.out = 100)) %>%
-    rxParams(
-      params = c(
-        KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-        Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-        Kin = 1, Kout = 1, EC50 = 200
-      ),
-      inits = c(eff = 1),
-      omega = lotri(eta.Cl ~ 0.4^2)
-    )
-  if (type == "rxSolve") {
-    p2 <- p2 %>%
-      rxSolve(nSub = 30)
-  } else if (type == "solve") {
-    p2 <- p2 %>%
-      solve(nSub = 30)
-  } else if (type == "simulate") {
-    p2 <- p2 %>%
-      simulate(nSub = 30)
-  } else if (type == "predict") {
-    p2 <- p2 %>%
-      predict(nSub = 30)
-  }
+  withr::with_seed(
+    42,
+    {
+      p2 <- mod %>%
+        et(amountUnits = "mg", timeUnits = "hours") %>%
+        et(amt = 10000, cmt = 2, ii = 12, until = 48) %>%
+        et(seq(0, 48, length.out = 100)) %>%
+        rxParams(
+          params = c(
+            KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
+            Q = 1.05E+01, V3 = 2.97E+02, # peripheral
+            Kin = 1, Kout = 1, EC50 = 200
+          ),
+          inits = c(eff = 1),
+          omega = lotri(eta.Cl ~ 0.4^2)
+        )
+      if (type == "rxSolve") {
+        p2 <- p2 %>%
+          rxSolve(nSub = 30)
+      } else if (type == "solve") {
+        p2 <- p2 %>%
+          solve(nSub = 30)
+      } else if (type == "simulate") {
+        p2 <- p2 %>%
+          simulate(nSub = 30)
+      } else if (type == "predict") {
+        p2 <- p2 %>%
+          predict(nSub = 30)
+      }
+    }
+  )
   test_that(sprintf(
     "mod > et > rxParams > %s == mod > rxParams > et > %s",
     type, type
@@ -79,7 +87,6 @@ fun("rxSolve")
 fun("solve")
 fun("simulate")
 fun("predict")
-
 
 p1 <- mod %>%
   rxParams(

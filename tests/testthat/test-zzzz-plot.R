@@ -56,17 +56,25 @@ test_that("plot tests", {
     et(seq(0, 48, length.out = 200)) %>%
     et(id = 1:4)
   
-  set.seed(32)
-  s2 <- rxSolve(m1, ev, params = data.frame(KA = 0.294 * exp(rnorm(4)), 18.6 * exp(rnorm(4))))
+  withr::with_seed(
+    42,
+    s2 <- rxSolve(m1, ev, params = data.frame(KA = 0.294 * exp(rnorm(4)), 18.6 * exp(rnorm(4))))
+  )
   
-  set.seed(32)
-  s2R <- rxSolve(m1, evR4, params = data.frame(KA = 0.294 * exp(rnorm(4)), 18.6 * exp(rnorm(4))))
+  withr::with_seed(
+    42,
+    s2R <- rxSolve(m1, evR4, params = data.frame(KA = 0.294 * exp(rnorm(4)), 18.6 * exp(rnorm(4))))
+  )
   
-  set.seed(32)
-  s20 <- rxSolve(m1, ev, params = data.frame(KA = 0.294 * exp(rnorm(20)), 18.6 * exp(rnorm(20))))
+  withr::with_seed(
+    42,
+    s20 <- rxSolve(m1, ev, params = data.frame(KA = 0.294 * exp(rnorm(20)), 18.6 * exp(rnorm(20))))
+  )
   
-  set.seed(32)
-  s20R <- rxSolve(m1, evR4, params = data.frame(KA = 0.294 * exp(rnorm(20)), 18.6 * exp(rnorm(20))))
+  withr::with_seed(
+    42,
+    s20R <- rxSolve(m1, evR4, params = data.frame(KA = 0.294 * exp(rnorm(20)), 18.6 * exp(rnorm(20))))
+  )
   
   m2 <- rxode2({
     KA <- 2.94E-01

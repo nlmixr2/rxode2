@@ -140,8 +140,10 @@
           summary(mod)
           str(mod)
           
-          set.seed(42)
-          tmp <- matrix(rnorm(5^2), 5, 5)
+          withr::with_seed(
+            42,
+            tmp <- matrix(rnorm(5^2), 5, 5)
+          )
           mcov <- tcrossprod(tmp, tmp)
           v <- rxSymInvCholCreate(mcov, "sqrt")
           
