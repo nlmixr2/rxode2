@@ -1,15 +1,15 @@
 # rxode2
 
 ## Breaking changes
- 
+
 * For simulations, `$simulationSigma` now assumes a diagonal matrix.
   The sigma values are assumed to be standard normal, and uncorrelated
   between endpoints.  Simulation with uncertainty will still draw from
   this identity diagonal matrix
-  
+
 * Solved objects now access the underlying rxode model with `$rxode2`
   instead of `$rxode`
-  
+
 * Since this change names, `rxode2`, `rxode` and `RxODE` all perform
   the same function.
 
@@ -39,19 +39,22 @@
   `state.name` works in R. Therefore, "pure" syntax of excluding `.` values
   from variables cannot be enforced with `rxode2.syntax.allow.dots`
   (was `RxODE.syntax.allow.dots`).
-  
+
 * The mnemonic `et(rate=model)` and `et(dur=model)` mnemonics have
   been removed.  `rate` needs to be set to `-1` and `-2` manually instead.
+
+* The function `rxode2Test()` has been removed in favor of using testthat
+  directly.
 
 ## Additional features
 
 * The UI functions of `nlmixr` have been ported to work in `rxode2`
   directly.
 
-* `rxModelVars({})` is now supported. 
+* `rxModelVars({})` is now supported.
 
 ## Internal changes
-  
+
 * Strict R headers are enforced more places
 
 * Since there are many changes that could be incompatible, this
@@ -75,7 +78,7 @@
 
 * As requested by CRAN, change fortran and C binding for BLAS an LINPACK
 
-# RxODE 1.1.1 
+# RxODE 1.1.1
 
 * Fix the LTO issue that CRAN identified.
 
@@ -130,7 +133,7 @@
 * Instead of storing each dose information sequentially, store dose
   information at the same index of the `evid` defining the dose.  This
   memory rewrite is to fix the issue #435.
-  
+
 * Start using strict headers as it is required for the forthcoming
   release of `Rcpp`.  Thanks to Dirk Eddelbuettel for some of the
   fixes and alerting us to this change.
@@ -139,24 +142,24 @@
 
 * Issue a warning when either `dur()` or `rate()` is in the model but
   the modeled rate and duration is not included in the event table.
-  
+
 * When the data requires a modeled rate and modeled duration but it is
   not in the model, warn about the mismatch in data
-  
+
 * Added a back-door for debugging. If you specify
   `options(RxODE.debug=TRUE)` then each solve saves the solving
   information to the file `"last-rxode.qs"` before actually solving
   the system.
-  
+
 * Only will try to solve RxODE problems on compatible models; If the
   model is not supported it will throw an error instead of crashing
   (See #449)
-  
+
 * Turn off parallel ODE solving whenever the system needs to sort
   times based on model dosing.  Currently this type of solving is not
   thread safe.
-  
-* Update timsort headers to latest version. 
+
+* Update timsort headers to latest version.
 
 # RxODE 1.0.9
 
