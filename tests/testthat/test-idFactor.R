@@ -1,5 +1,3 @@
-# context("Testing solving with ID(s) in the dataset")
-
 test_that("simple solving with ID(s) in the dataset", {
   skip_if(!file.exists(test_path("theoSd.qs")))
   theoSd <- qs::qread(test_path("theoSd.qs"))
@@ -19,7 +17,7 @@ test_that("simple solving with ID(s) in the dataset", {
   d$ID <- paste(d$ID)
   
   tmp <- rxSolve(mod, d)
-  expect_true(inherits(tmp$id, "factor"))
+  expect_s3_class(tmp$id, "factor")
   ## Notice 10 is missing.
   expect_equal(levels(tmp$id), c("1", "2", "3", "4", "5", "6", "7", "8", "9", "11", "12"))
   
@@ -75,9 +73,9 @@ test_that("Test giving IDs to data-frames", {
   ## Now drop an id from the dataset
   d <- d[d$ID != 10, ]
   
-  tmp1 <- expect_warning(rxSolve(mod, d, parData))
+  expect_warning(tmp1 <- rxSolve(mod, d, parData))
   
-  tmp2 <- expect_warning(rxSolve(mod, d, parData2))
+  expect_warning(tmp2 <- rxSolve(mod, d, parData2))
   
   ## Now add an id to the dataset
   
@@ -93,9 +91,8 @@ test_that("Test giving IDs to data-frames", {
   
   parData2 <- parData[order(-parData$id), ]
   
-  tmp1 <- expect_warning(rxSolve(mod, d, parData))
-  
-  tmp2 <- expect_warning(rxSolve(mod, d, parData2))
+  expect_warning(tmp1 <- rxSolve(mod, d, parData))
+  expect_warning(tmp2 <- rxSolve(mod, d, parData2))
   
   expect_equal(data.frame(tmp1), data.frame(tmp2))
   expect_equal(data.frame(tmp1$params), data.frame(tmp2$params))
@@ -123,9 +120,8 @@ test_that("Test giving IDs to data-frames", {
   parData$id <- letters[parData$id]
   parData2$id <- letters[parData2$id]
   
-  tmp1 <- expect_warning(rxSolve(mod, d, parData))
-  
-  tmp2 <- expect_warning(rxSolve(mod, d, parData2))
+  expect_warning(tmp1 <- rxSolve(mod, d, parData))
+  expect_warning(tmp2 <- rxSolve(mod, d, parData2))
   
   expect_equal(data.frame(tmp1), data.frame(tmp2))
   expect_equal(data.frame(tmp1$params), data.frame(tmp2$params))
@@ -143,11 +139,11 @@ test_that("Test giving IDs to data-frames", {
   
   parData$ID <- letters[parData$id]
   
-  tmp1 <- expect_warning(rxSolve(mod, d, parData))
+  expect_warning(tmp1 <- rxSolve(mod, d, parData))
   
   parData2 <- parData[order(-parData$id), ]
   
-  tmp2 <- expect_warning(rxSolve(mod, d, parData2))
+  expect_warning(tmp2 <- rxSolve(mod, d, parData2))
   
   expect_false(all(tmp1$params$tka == tmp2$params$tka))
 })
@@ -187,8 +183,8 @@ test_that("test iCov ID", {
   ## Now drop an id from the dataset
   d <- d[d$ID != "10", ]
   
-  tmp1 <- expect_warning(rxSolve(mod, d, iCov = iCov, keep = "wt"))
-  tmp2 <- expect_warning(rxSolve(mod, d, iCov = iCov2, keep = "wt"))
+  expect_warning(tmp1 <- rxSolve(mod, d, iCov = iCov, keep = "wt"))
+  expect_warning(tmp2 <- rxSolve(mod, d, iCov = iCov2, keep = "wt"))
   
   expect_equal(data.frame(tmp1), data.frame(tmp2))
   expect_equal(data.frame(tmp1$params), data.frame(tmp2$params))
@@ -207,9 +203,9 @@ test_that("test iCov ID", {
   
   iCov2 <- iCov[order(-iCov$id), ]
   
-  tmp1 <- expect_warning(rxSolve(mod, d, iCov = iCov, keep = "wt"))
+  expect_warning(tmp1 <- rxSolve(mod, d, iCov = iCov, keep = "wt"))
   
-  tmp2 <- expect_warning(rxSolve(mod, d, iCov = iCov2, keep = "wt"))
+  expect_warning(tmp2 <- rxSolve(mod, d, iCov = iCov2, keep = "wt"))
   
   expect_equal(data.frame(tmp1), data.frame(tmp2))
   expect_equal(data.frame(tmp1$params), data.frame(tmp2$params))
@@ -235,8 +231,8 @@ test_that("test iCov ID", {
   iCov$id <- letters[iCov$id]
   iCov2$id <- letters[iCov2$id]
   
-  tmp1 <- expect_warning(rxSolve(mod, d, iCov = iCov, keep = "wt"))
-  tmp2 <- expect_warning(rxSolve(mod, d, iCov = iCov2, keep = "wt"))
+  expect_warning(tmp1 <- rxSolve(mod, d, iCov = iCov, keep = "wt"))
+  expect_warning(tmp2 <- rxSolve(mod, d, iCov = iCov2, keep = "wt"))
   
   expect_equal(data.frame(tmp1), data.frame(tmp2))
   expect_equal(data.frame(tmp1$params), data.frame(tmp2$params))

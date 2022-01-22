@@ -25,7 +25,6 @@ dy(0) = 0
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 ")
 
-
 et <- eventTable()
 et$add.sampling(seq(0, 30, by = 0.01))
 
@@ -54,7 +53,6 @@ test_that("No User jacobian are called.", {
 ## })
 
 counts0 <- counts
-
 
 stiff <- solve(Vtpol2, et)
 ## plot(stiff$time,stiff$y,type="l")

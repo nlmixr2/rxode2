@@ -36,7 +36,7 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 ")
 
 test_that("Doubled jacobain will compile correctly", {
-  expect_equal(class(tmp), "rxode2")
+  expect_s3_class(tmp, "rxode2")
 })
 
 test_that("Jacobian and sensitivity not specified.", {

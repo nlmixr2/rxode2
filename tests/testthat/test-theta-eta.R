@@ -80,6 +80,6 @@ eta <- rxode2({
 })
 
 test_that("theta/eta only parsing works", {
-  expect_equal(class(theta), "rxode2")
-  expect_equal(class(eta), "rxode2")
+  expect_s3_class(theta, "rxode2")
+  expect_s3_class(eta, "rxode2")
 })

@@ -115,7 +115,7 @@ tran1 <- expand.grid(
     test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(x), collapse = ", ")), {
       assign(".rx", .rx, globalenv())
       .rx <- rxode2(.rx)
-      expect_true(inherits(.rx, "rxode2"))
+      expect_s3_class(.rx, "rxode2")
       .tmp <- na.omit(c(x["Ka"], sort(c(.v1, .v2))))
       .tmp <- c(.tmp, rep("", 7 - length(.tmp)))
       names(.tmp) <- paste0("par", seq_along(.tmp))
@@ -205,7 +205,7 @@ tran2 <- expand.grid(
     if (.good) {
       test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
         .rx <- rxode2(.rx)
-        expect_true(inherits(.rx, "rxode2"))
+        expect_s3_class(.rx, "rxode2")
         .tmp <- c(.v1, rep("", 7 - length(.v1)))
         names(.tmp) <- paste0("par", seq_along(.tmp))
         .tmp["ncmt"] <- .ncmt
@@ -270,7 +270,7 @@ tran3 <- expand.grid(
     if (.good) {
       test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
         .rx <- rxode2(.rx)
-        expect_true(inherits(.rx, "rxode2"))
+        expect_s3_class(.rx, "rxode2")
         .tmp <- c(.v1, rep("", 7 - length(.v1)))
         names(.tmp) <- paste0("par", seq_along(.tmp))
         .tmp["ncmt"] <- .ncmt
@@ -345,7 +345,7 @@ tran4 <- expand.grid(
     if (.good) {
       test_that(sprintf("linCmt() successful with parameters: %s", paste(na.omit(.v1), collapse = ", ")), {
         .rx <- rxode2(.rx)
-        expect_true(inherits(.rx, "rxode2"))
+        expect_s3_class(.rx, "rxode2")
         .tmp <- c(.v1, rep("", 7 - length(.v1)))
         names(.tmp) <- paste0("par", seq_along(.tmp))
         .tmp["ncmt"] <- .ncmt

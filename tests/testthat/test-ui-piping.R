@@ -1036,7 +1036,7 @@ test_that("UI updates work correctly", {
     linCmt() ~ add(add.err) + prop(prop.err)
   })
   
-  expect_true(inherits(.ui, "rxUi"))
+  expect_s3_class(.ui, "rxUi")
 })
 
 # piping looks through parent environments
@@ -1046,7 +1046,7 @@ test_that("Looks through prior frames for the correct object", {
     rxode2(update(fit, tka = kainit))
   })
   
-  expect_true(inherits(fits, "list"))
+  expect_type(fits, "list")
   expect_error(lapply(seq(-1, -0.1, 0.1), function(kainit) {
     rxode2(update(fit, tka = matt))
   }))

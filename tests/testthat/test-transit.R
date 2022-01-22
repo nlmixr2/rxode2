@@ -202,10 +202,10 @@ test_that("transit can be a variable or ODE", {
 d/dt(transit) = -3
 ")
   
-  expect_true(inherits(mod, "rxode2"))
+  expect_s3_class(mod, "rxode2")
   
   mod <- rxode2("
 transit = matt + fun
 ")
-  expect_true(inherits(mod, "rxode2"))
+  expect_s3_class(mod, "rxode2")
 })

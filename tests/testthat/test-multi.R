@@ -20,7 +20,7 @@ m1 <-
   )
 
 test_that("rxode2 instance 1 is created", {
-  expect_equal(class(m1), "rxode2")
+  expect_s3_class(m1, "rxode2")
 })
 
 et1 <- eventTable(amount.units = "ug", time.units = "hours")
@@ -29,7 +29,7 @@ et1$add.sampling(0:24)
 et1$add.sampling(seq(from = 24 + 8, to = 5 * 24, by = 8))
 
 test_that("rxode2 event table 1 was created", {
-  expect_true(inherits(et1, "rxEt"))
+  expect_s3_class(et1, "rxEt")
   expect_equal(et1$get.nobs(), 37)
   expect_equal(length(et1$get.dosing()[, 1]), 1)
 })
@@ -61,14 +61,14 @@ m2 <-
   )
 
 test_that("rxode2 instance 2 was created", {
-  expect_equal(class(m1), "rxode2")
+  expect_s3_class(m1, "rxode2")
 })
 
 et2 <- eventTable(time.units = NA)
 et2$add.sampling(seq(from = 0, to = 20, by = 0.2))
 
 test_that("rxode2 event table 2 was created", {
-  expect_true(inherits(et1, "rxEt"))
+  expect_s3_class(et1, "rxEt")
   expect_equal(et2$get.nobs(), 101)
   expect_equal(length(et2$get.dosing()[, 1]), 0)
 })
@@ -92,14 +92,14 @@ m3 <-
   )
 
 test_that("rxode2 instance 3 is created", {
-  expect_equal(class(m3), "rxode2")
+  expect_s3_class(m3, "rxode2")
 })
 
 et3 <- eventTable() # default time units
 et3$add.sampling(seq(from = 0, to = 100, by = 0.01))
 
 test_that("rxode2 instance 3 event table is created", {
-  expect_true(inherits(et3, "rxEt"))
+  expect_s3_class(et3, "rxEt")
   expect_equal(et3$get.nobs(), 10001)
 })
 

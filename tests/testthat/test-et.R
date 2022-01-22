@@ -12,7 +12,7 @@ for (radi in c(1, 2)) {
   et <- et()
   
   test_that("Empty event table check", {
-    ## expect_equal(class(et$env),"rxHidden")
+    ## expect_s3_class(et$env,"rxHidden")
     expect_equal(et$nobs, 0L)
     expect_equal(et$ndose, 0L)
     expect_equal(et$get.EventTable(), NULL)
@@ -25,7 +25,7 @@ for (radi in c(1, 2)) {
   test_that("10 sample items", {
     expect_equal(et$nobs, 10L)
     expect_equal(et$ndose, 0L)
-    expect_equal(class(et$get.EventTable()), "data.frame")
+    expect_s3_class(et$get.EventTable(), "data.frame")
     expect_true(is(et, "rxEt"))
     expect_false(et$show["id"])
     expect_false(et$show["cmt"])
@@ -38,7 +38,7 @@ for (radi in c(1, 2)) {
   test_that("compartment check", {
     expect_equal(et$nobs, 10L)
     expect_equal(et$ndose, 0L)
-    expect_equal(class(et$get.EventTable()), "data.frame")
+    expect_s3_class(et$get.EventTable(), "data.frame")
     expect_true(is(et, "rxEt"))
     expect_false(et$show["id"])
     expect_true(et$show["cmt"])
@@ -50,7 +50,7 @@ for (radi in c(1, 2)) {
   test_that("compartment check", {
     expect_equal(et$nobs, 10L)
     expect_equal(et$ndose, 0L)
-    expect_equal(class(et$get.EventTable()), "data.frame")
+    expect_s3_class(et$get.EventTable(), "data.frame")
     expect_true(is(et, "rxEt"))
     expect_false(et$show["id"])
     expect_true(et$show["cmt"])
@@ -66,7 +66,7 @@ for (radi in c(1, 2)) {
   test_that("Observation only table check", {
     expect_equal(et1$nobs, 100L)
     expect_equal(et1$ndose, 0L)
-    expect_equal(class(et1$get.EventTable()), "data.frame")
+    expect_s3_class(et1$get.EventTable(), "data.frame")
     expect_true(is(et1, "rxEt"))
     expect_true(et1$show["id"])
     expect_false(et1$show["cmt"])
@@ -80,7 +80,7 @@ for (radi in c(1, 2)) {
   test_that("compartment check", {
     expect_equal(et2$nobs, 10L)
     expect_equal(et2$ndose, 0L)
-    expect_equal(class(et2$get.EventTable()), "data.frame")
+    expect_s3_class(et2$get.EventTable(), "data.frame")
     expect_true(is(et, "rxEt"))
     expect_true(et2$show["id"])
     expect_false(et2$show["cmt"])
@@ -190,7 +190,7 @@ for (radi in c(1, 2)) {
   test_that("Observation only table check", {
     expect_equal(et1$nobs, 100L)
     expect_equal(et1$ndose, 0L)
-    expect_equal(class(et1$get.EventTable()), "data.frame")
+    expect_s3_class(et1$get.EventTable(), "data.frame")
     expect_true(is(et1, "rxEt"))
     expect_true(et1$show["id"])
     expect_false(et1$show["cmt"])

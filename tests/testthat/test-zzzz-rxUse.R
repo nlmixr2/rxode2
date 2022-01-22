@@ -36,9 +36,9 @@ test_that("build package", {
   ## expect_error(mod, NA)
   ## expect_error(mod2, NA)
   
-  ## expect_true(inherits(mod, "rxode2"))
+  ## expect_s3_class(mod, "rxode2")
   
-  ## expect_true(inherits(mod2, "rxode2"))
+  ## expect_s3_class(mod2, "rxode2")
   
   ## solve2 <- rxSolve(mod, et, returnType = "data.frame")
   

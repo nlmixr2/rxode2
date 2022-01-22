@@ -89,11 +89,11 @@ test_that("occasions", {
   
   expect_equal(.ni$below, c(eye = 2L, occ = 2L))
   expect_equal(.ni$above, c(inv = 2L))
-  expect_true(inherits(.ni$data$eye, "factor"))
+  expect_s3_class(.ni$data$eye, "factor")
   expect_equal(attr(.ni$data$eye, "nu"), 40L)
-  expect_true(inherits(.ni$data$inv, "factor"))
+  expect_s3_class(.ni$data$inv, "factor")
   expect_equal(attr(.ni$data$inv, "nu"), NULL)
-  expect_true(inherits(.ni$data$occ, "factor"))
+  expect_s3_class(.ni$data$occ, "factor")
   expect_equal(attr(.ni$data$occ, "nu"), 40L)
   
   expect_equal(.ni$extraTheta, 4)
@@ -282,7 +282,7 @@ test_that("occasions", {
   expect_equal(.ni$above, structure(integer(0), .Names = character(0)))
   expect_equal(.ni$below, structure(integer(0), .Names = character(0)))
   expect_equal(.ni$idName, "id")
-  expect_true(inherits(.ni$omega, "lotri"))
+  expect_s3_class(.ni$omega, "lotri")
   expect_equal(names(.ni$omega), "id")
   
   .en <- .rx$rxExpandNesting(mod, .ni)

@@ -480,8 +480,6 @@ test_that("Compartment melding with dvid", {
   ## TEST NA cmt/dvid w/factors
   ## TEST NA strings for cmt/dvid
   
-  
-  
   tmp <- rxode2({
     d / dt(depot) <- -ka * depot
     d / dt(center) <- ka * depot - cl / v * center

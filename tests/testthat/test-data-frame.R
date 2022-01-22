@@ -11,7 +11,7 @@ m1 <-
   )
 
 test_that("rxode2 instance 1 is created", {
-  expect_equal(class(m1), "rxode2")
+  expect_s3_class(m1, "rxode2")
 })
 
 et1 <- eventTable(amount.units = "ug", time.units = "hours")
@@ -67,7 +67,7 @@ test_that("Character data frame assignment operators [] make sense", {
   o1.assign[, "depot"] <- 0
   expect_equal(rep(0, times = length(as.data.frame(o1.assign)[, 1])), as.data.frame(o1.assign)[, "depot"])
   expect_equal(rep(0, times = length(o1.assign$depot)), o1.assign$depot)
-  expect_false(any(as.vector(class(o1.assign)) == "rxSolve"))
+  expect_false(any(class(o1.assign) == "rxSolve"))
 })
 
 test_that("Numeric data frame lookup operators [[]] make sense", {
@@ -90,7 +90,7 @@ test_that("Character data frame assignment operators [[]] make sense", {
   o1.assign[["depot"]] <- 0
   expect_equal(rep(0, times = length(as.data.frame(o1.assign)[, 1])), as.data.frame(o1.assign)[["depot"]])
   expect_equal(rep(0, times = length(o1.assign$depot)), o1.assign$depot)
-  expect_false(any(as.vector(class(o1.assign)) == "rxSolve"))
+  expect_false(any(class(o1.assign) == "rxSolve"))
 })
 
 test_that("Character data frame lookup operators $ make sense", {
@@ -104,7 +104,7 @@ test_that("Character data frame assignment operators $ make sense", {
   o1.assign$depot <- 0
   expect_equal(rep(0, times = length(as.data.frame(o1.assign)[, 1])), as.data.frame(o1.assign)$depot)
   expect_equal(rep(0, times = length(o1.assign$depot)), o1.assign$depot)
-  expect_false(any(as.vector(class(o1.assign)) == "rxSolve"))
+  expect_false(any(class(o1.assign) == "rxSolve"))
 })
 
 test_that("rownames lookup & assignment makes sense", {

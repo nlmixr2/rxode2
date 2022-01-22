@@ -25,7 +25,6 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
   
   pk2 <- .rxSolve(mod, p, et, cores = 2, method = meth) # CRAN requirement of at most 2 cores.
   
-  
   test_that("Parallel Solve gives same results a single threaded solve", {
     expect_equal(as.data.frame(pk1), as.data.frame(pk2))
   })
@@ -60,7 +59,6 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
   omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
   nSub = 4, ev, sigma = sigma, cores = 2, method = meth,
   )
-  
   
   pk3a <- .rxSolve(mod2, c(
     KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
@@ -218,29 +216,29 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
   
   test_that("Can solve the system.", {
     expect_true(rxIs(pk2, "data.frame"))
-    expect_equal(class(pk2$thetaMat), "NULL")
-    expect_equal(class(pk2$omegaList), "NULL")
-    expect_equal(class(pk2$sigmaList), "NULL")
+    expect_null(pk2$thetaMat)
+    expect_null(pk2$omegaList)
+    expect_null(pk2$sigmaList)
     expect_true(rxIs(pk3, "data.frame"))
-    expect_equal(class(pk3$thetaMat), "NULL")
-    expect_equal(class(pk3$omegaList), "NULL")
-    expect_equal(class(pk3$sigmaList), "NULL")
+    expect_null(pk3$thetaMat)
+    expect_null(pk3$omegaList)
+    expect_null(pk3$sigmaList)
     expect_true(rxIs(pk4, "data.frame"))
     expect_true(is(pk4$thetaMat, "matrix"))
-    expect_equal(class(pk4$omegaList), "NULL")
-    expect_equal(class(pk4$sigmaList), "NULL")
+    expect_null(pk4$omegaList)
+    expect_null(pk4$sigmaList)
     expect_true(rxIs(pk5, "data.frame"))
     expect_true(is(pk5$thetaMat, "matrix"))
-    expect_equal(class(pk5$omegaList), "NULL")
-    expect_equal(class(pk5$sigmaList), "NULL")
+    expect_null(pk5$omegaList)
+    expect_null(pk5$sigmaList)
     expect_true(rxIs(pk6, "data.frame"))
     expect_true(is(pk6$thetaMat, "matrix"))
-    expect_equal(class(pk6$omegaList), "list")
-    expect_equal(class(pk6$sigmaList), "list")
+    expect_type(pk6$omegaList, "list")
+    expect_type(pk6$sigmaList, "list")
     expect_true(rxIs(pk7, "data.frame"))
-    expect_true(is(pk7$thetaMat, "matrix"))
-    expect_equal(class(pk7$omegaList), "list")
-    expect_equal(class(pk7$sigmaList), "list")
+    expect_true(is.matrix(pk7$thetaMat))
+    expect_type(pk7$omegaList, "list")
+    expect_type(pk7$sigmaList, "list")
   })
 }
 

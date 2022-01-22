@@ -17,7 +17,7 @@ goodParse <- function(desc, code) {
     on.exit(unlink(tmp))
     .rxWithSinkBoth(tmp, {
       rx <- rxode2(code)
-      expect_equal(class(rx), "rxode2")
+      expect_s3_class(rx, "rxode2")
       rxDelete(rx)
     })
   })

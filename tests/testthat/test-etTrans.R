@@ -590,10 +590,10 @@ d/dt(blood)     = a*intestine - b*blood
     # suppressWarnings() is used on the outside because the rxSetIni0(FALSE)
     # warning only occurs once per session
     t0 <- suppressWarnings(etTrans(events2, rxode2(lst$object), FALSE, FALSE, FALSE, FALSE, NULL, character(0)))
-    expect_true(inherits(t0, "rxEtTran"))
+    expect_s3_class(t0, "rxEtTran")
     
     t1 <- etTrans(events2, rxode2(lst$object), FALSE, FALSE, FALSE, TRUE, NULL, character(0))
-    expect_true(inherits(t1, "rxEtTran"))
+    expect_s3_class(t1, "rxEtTran")
   })
   
   test_that("etTrans drop levels are correct", {
@@ -678,8 +678,8 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(sort(unique(t$d.cp)), c(0, 1))
     expect_equal(sort(unique(t$d.pca)), c(0, 1))
     
-    expect_true(inherits(t$sex, "factor"))
-    expect_true(inherits(t$dvid, "factor"))
+    expect_s3_class(t$sex, "factor")
+    expect_s3_class(t$dvid, "factor")
     
     expect_equal(as.double((t$sex == "male") * 1), t$sm)
     expect_equal(as.double((t$sex == "female") * 1), t$sf)
@@ -700,8 +700,8 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(sort(unique(t$d.cp)), c(0, 1))
     expect_equal(sort(unique(t$d.pca)), c(0, 1))
     
-    expect_true(inherits(t$sex, "factor"))
-    expect_true(inherits(t$dvid, "factor"))
+    expect_s3_class(t$sex, "factor")
+    expect_s3_class(t$dvid, "factor")
     
     expect_equal(as.double((t$sex == "male") * 1), t$sm)
     expect_equal(as.double((t$sex == "female") * 1), t$sf)

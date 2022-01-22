@@ -15,7 +15,7 @@ test_that("lag()", {
     a <- lag(b, 3)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -25,7 +25,7 @@ test_that("lag()", {
     a <- lag(b, 3)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -35,7 +35,7 @@ test_that("lag()", {
     a <- lag(b, -1)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -45,7 +45,7 @@ test_that("lag()", {
     a <- lag(b, 0)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -55,7 +55,7 @@ test_that("lag()", {
     a <- lag(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -66,7 +66,7 @@ test_that("lag()", {
     c <- lag(a)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -77,7 +77,7 @@ test_that("lag()", {
     c <- lag(a, 1)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -89,7 +89,7 @@ test_that("lag()", {
     c <- lead(a, -1)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -100,7 +100,7 @@ test_that("lag()", {
     a <- lag(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -121,7 +121,7 @@ test_that("lead()", {
     a <- lead(b, 3)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -131,7 +131,7 @@ test_that("lead()", {
     a <- lead(b, 3)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -141,7 +141,7 @@ test_that("lead()", {
     a <- lead(b, -1)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -151,7 +151,7 @@ test_that("lead()", {
     a <- lead(b, 0)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -162,7 +162,7 @@ test_that("lead()", {
     a <- lead(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -173,7 +173,7 @@ test_that("lead()", {
     a <- lead(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -198,7 +198,7 @@ test_that("first()", {
     a <- first(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -209,7 +209,7 @@ test_that("first()", {
     a <- first(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -233,7 +233,7 @@ test_that("last()", {
     a <- last(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -244,7 +244,7 @@ test_that("last()", {
     a <- last(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -284,7 +284,7 @@ test_that("diff()", {
     a <- diff(b)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -296,7 +296,7 @@ test_that("diff()", {
     a <- diff(c)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -307,7 +307,7 @@ test_that("diff()", {
     a <- diff(c, 1)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
@@ -317,7 +317,7 @@ test_that("diff()", {
     a <- diff(b, 2)
   })
   
-  expect_true(inherits(m1, "rxode2"))
+  expect_s3_class(m1, "rxode2")
   
   x1 <- m1 %>% rxSolve(et)
   
