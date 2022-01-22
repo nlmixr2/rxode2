@@ -1,31 +1,30 @@
-rxode2Test({
-  test_that("param order", {
-    mod <- rxode2({
-      a <- 6
-      b <- 0.6
-      cmt(blood) # cmt = 1 now
-      d / dt(intestine) <- -a * intestine
-      d / dt(blood) <- a * intestine - b * blood
-    })
-
-    expect_equal(rxModelVars(mod)$param, c("a", "b"))
+test_that("param order", {
+  mod <- rxode2({
+    a <- 6
+    b <- 0.6
+    cmt(blood) # cmt = 1 now
+    d / dt(intestine) <- -a * intestine
+    d / dt(blood) <- a * intestine - b * blood
   })
+  
+  expect_equal(rxModelVars(mod)$param, c("a", "b"))
+})
 
-  test_that("param order rev", {
-    mod2 <- rxode2({
-      param(b, a)
-      a <- 6
-      b <- 0.6
-      cmt(blood) # cmt = 1 now
-      d / dt(intestine) <- -a * intestine
-      d / dt(blood) <- a * intestine - b * blood
-    })
-
-    expect_equal(rxModelVars(mod2)$param, c("b", "a"))
+test_that("param order rev", {
+  mod2 <- rxode2({
+    param(b, a)
+    a <- 6
+    b <- 0.6
+    cmt(blood) # cmt = 1 now
+    d / dt(intestine) <- -a * intestine
+    d / dt(blood) <- a * intestine - b * blood
   })
+  
+  expect_equal(rxModelVars(mod2)$param, c("b", "a"))
+})
 
-  test_that("large params()", {
-    tmp <- expect_error(rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
+test_that("large params()", {
+  tmp <- expect_error(rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
 cmt(depot)
 cmt(gut)
 cmt(center)
@@ -44,10 +43,9 @@ rx_pred_=effect*(rx_expr_0)+rx_expr_4*(CMT==5)*(1-(rx_expr_0))
 cmt(cp)
 cmt(pca)
 dvid(5, 6)"), NA)
-
-    expect_equal(rxModelVars(tmp)$param, c(
-      "tktr", "tka", "tcl", "tv", "poplogit", "tec50", "tkout", "te0",
-      "CMT"
-    ))
-  })
+  
+  expect_equal(rxModelVars(tmp)$param, c(
+    "tktr", "tka", "tcl", "tv", "poplogit", "tec50", "tkout", "te0",
+    "CMT"
+  ))
 })
