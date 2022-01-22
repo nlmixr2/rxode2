@@ -26,7 +26,7 @@ for (m in c("liblsoda", "lsoda", "dop853")) {
         et <- data.frame(et)
         et <- et[, names(et) != "evid"]
         
-        x3 <- expect_warning(solve(ode.1c, et, method = m, maxsteps = 10000), NA)
+        expect_warning(x3 <- solve(ode.1c, et, method = m, maxsteps = 10000), NA)
         
         expect_equal(data.frame(x2), data.frame(x3))
         
@@ -46,7 +46,7 @@ for (m in c("liblsoda", "lsoda", "dop853")) {
         et <- data.frame(et)
         et <- et[, names(et) != "evid"]
         
-        x3 <- expect_warning(solve(ode.1c, et, method = m, maxsteps = 10000), NA)
+        expect_warning(x3 <- solve(ode.1c, et, method = m, maxsteps = 10000), NA)
         
         expect_equal(data.frame(x2), data.frame(x3))
         
@@ -59,7 +59,7 @@ for (m in c("liblsoda", "lsoda", "dop853")) {
         et <- data.frame(et)
         et <- et[, names(et) != "evid"]
         
-        x3 <- expect_warning(solve(ode.1c, et, method = m, maxsteps = 10000), NA)
+        expect_warning(x3 <- solve(ode.1c, et, method = m, maxsteps = 10000), NA)
         
         expect_equal(data.frame(x2), data.frame(x3))
       }

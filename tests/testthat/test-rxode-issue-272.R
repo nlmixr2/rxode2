@@ -29,6 +29,6 @@ test_that("issue RxODE#272 and RxODE#273", {
     et(time = 6, cmt = "-depot", evid = 2, ii = 12, addl = 3) %>%
     et(seq(0, 24, length.out = 100))
   
-  s <- expect_error(rxSolve(m1, ev), NA)
+  expect_error(s <- rxSolve(m1, ev), NA)
   expect_false(s$C2[3] == 0) # 273
 })

@@ -166,7 +166,6 @@ test_that("warning for unsorted data with evid=3", {
   
   et$time[5] <- 9
   
-  x <- expect_warning(rxSolve(mod1, et))
-  
+  expect_warning(x <- rxSolve(mod1, et))
   expect_false(any(names(x) == "resetno"))
 })

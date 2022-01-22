@@ -25,14 +25,14 @@ test_that("rate and duration data mismatches; Issue RxODE#445", {
   ### check whether infusion duration was considered in simulation
   
   theta2 <- c(D = TV_D * 10, CLr = TV_CLr, CLnr = TV_CLnr, Vc = TV_Vc, Vp = TV_Vp, Q = TV_Q, alag = TV_alag)
-  #sim2 <- expect_warning(rxSolve(mod, theta2, ev), "dur()")
+  #expect_warning(sim2 <- rxSolve(mod, theta2, ev), "dur()")
   
   
   ev2 <- et(amt = 2, cmt = "central", ii = 24, addl = 4, rate = -2) %>%
     et(seq(0, 120, 0.1))
   
   theta2 <- c(D = TV_D * 10, CLr = TV_CLr, CLnr = TV_CLnr, Vc = TV_Vc, Vp = TV_Vp, Q = TV_Q, alag = TV_alag)
-  sim2 <- expect_warning(rxSolve(mod, theta2, ev2), NA)
+  expect_warning(sim2 <- rxSolve(mod, theta2, ev2), NA)
   
   mod <- rxode2({
     CL <- CLr + CLnr
@@ -44,11 +44,11 @@ test_that("rate and duration data mismatches; Issue RxODE#445", {
   })
   
   theta2 <- c(D = TV_D * 10, CLr = TV_CLr, CLnr = TV_CLnr, Vc = TV_Vc, Vp = TV_Vp, Q = TV_Q, alag = TV_alag)
-  #sim2 <- expect_warning(rxSolve(mod, theta2, ev), "rate()")
+  #expect_warning(sim2 <- rxSolve(mod, theta2, ev), "rate()")
   
   ev3 <- et(amt = 2, cmt = "central", ii = 24, addl = 4, rate = -1) %>%
     et(seq(0, 120, 0.1))
   
   theta2 <- c(D = TV_D * 10, CLr = TV_CLr, CLnr = TV_CLnr, Vc = TV_Vc, Vp = TV_Vp, Q = TV_Q, alag = TV_alag)
-  sim2 <- expect_warning(rxSolve(mod, theta2, ev3), NA)
+  expect_warning(sim2 <- rxSolve(mod, theta2, ev3), NA)
 })

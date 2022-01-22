@@ -24,7 +24,7 @@ test_that("param order rev", {
 })
 
 test_that("large params()", {
-  tmp <- expect_error(rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
+  expect_error(tmp <- rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
 cmt(depot)
 cmt(gut)
 cmt(center)

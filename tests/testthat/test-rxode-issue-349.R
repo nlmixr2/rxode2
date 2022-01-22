@@ -43,10 +43,15 @@ test_that("Zero variances; RxODE#299", {
   tMat <- matrix(0, 8, 8)
   dimnames(tMat) <- list(NULL, names(theta))
   
-  x <- expect_error(rxSolve(mod, theta, ev,
-                            omega = omega, nSub = 100, sigma = sigma, thetaMat = tMat, nStud = 10,
-                            dfSub = 10, dfObs = 100
-  ), NA)
+  expect_error(
+    x <-
+      rxSolve(
+        mod, theta, ev,
+        omega = omega, nSub = 100, sigma = sigma, thetaMat = tMat, nStud = 10,
+        dfSub = 10, dfObs = 100
+      ),
+    NA
+  )
   
   expect_true(.rx$isNullZero(x$thetaMat))
   expect_true(.rx$isNullZero(x$omegaList))

@@ -547,7 +547,7 @@ if (requireNamespace("units", quietly = TRUE)) {
     
     toto1 <- etExpand(toto)
     
-    toto <- expect_warning(rep(sch1, times = 10, wait = units::set_units(19, "days")))
+    expect_warning(toto <- rep(sch1, times = 10, wait = units::set_units(19, "days")))
   })
 }
 
