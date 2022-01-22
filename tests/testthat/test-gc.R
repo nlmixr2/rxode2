@@ -1,5 +1,3 @@
-## rxode2Test(
-##   {
 ##     options(rxode2.unload.unused = TRUE)
 ##     test_that("Check garbage collection unloads DLLs", {
 ##       options(rxode2.unload.unused = TRUE)
@@ -28,6 +26,3 @@
 ##       options(rxode2.unload.unused = FALSE)
 ##     })
 ##     options(rxode2.unload.unused = FALSE)
-##   },
-##   test = "lvl2"
-## )
