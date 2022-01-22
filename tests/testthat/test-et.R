@@ -199,45 +199,41 @@ for (radi in c(1, 2)) {
   })
   
   ## Check adding different units of time, rate, amt work
-  if (requireNamespace("units", quietly = TRUE)) {
-    et3 <- et3 %>% units::set_units(mg)
+  test_that("units tests", {
+    skip_if_not_installed("units")
     ## Make sure units are right.
+    et3 <- et3 %>% units::set_units(mg)
+    e <- et(amount.units = "mg", time_units = "hr") %>%
+      add.sampling(seq(0, 24, by = 3)) %>%
+      add.dosing(1, 3) %>%
+      et(rate = 3, amt = 2, time = 120)
+    e2 <- e %>% et(amt = units::set_units(0.0003, "lb"), time = 0.5)
+    expect_equal(e2$amt[e2$time == units::set_units(0.5, hr)], units::set_units(units::set_units(0.0003, lb), mg))
+    e2 <- e %>% et(units::set_units(30, min))
+    expect_true(any(e2$time == units::set_units(0.5, hr)))
+    e2 <- e %>% et(time = 0.25, rate = units::set_units(30, ug / min), amt = units::set_units(4, ug))
+    tmp <- e2[e2$time == units::set_units(0.25, hr), ]
+    expect_equal(units::set_units(1.8, mg / h), tmp$rate)
+    expect_equal(units::set_units(0.004, mg), tmp$amt)
+    e2 <- e %>% et(time = 0.25, ii = units::set_units(30, min), amt = 4, addl = 4)
+    expect_equal(e2$ii[e2$time == units::set_units(0.25, hr)], units::set_units(0.5, hr))
     
+    ## Check importing wrong different ii and time units as well as different rate units work.
+    e <- et(amount.units = "mg", time_units = "hr") %>%
+      add.sampling(seq(0, 24, by = 3)) %>%
+      add.dosing(1, 3) %>%
+      et(rate = 3, amt = 2, time = 120)
     
-    test_that("units tests", {
-      e <- et(amount.units = "mg", time_units = "hr") %>%
-        add.sampling(seq(0, 24, by = 3)) %>%
-        add.dosing(1, 3) %>%
-        et(rate = 3, amt = 2, time = 120)
-      e2 <- e %>% et(amt = units::set_units(0.0003, "lb"), time = 0.5)
-      expect_equal(e2$amt[e2$time == units::set_units(0.5, hr)], units::set_units(units::set_units(0.0003, lb), mg))
-      e2 <- e %>% et(units::set_units(30, min))
-      expect_true(any(e2$time == units::set_units(0.5, hr)))
-      e2 <- e %>% et(time = 0.25, rate = units::set_units(30, ug / min), amt = units::set_units(4, ug))
-      tmp <- e2[e2$time == units::set_units(0.25, hr), ]
-      expect_equal(units::set_units(1.8, mg / h), tmp$rate)
-      expect_equal(units::set_units(0.004, mg), tmp$amt)
-      e2 <- e %>% et(time = 0.25, ii = units::set_units(30, min), amt = 4, addl = 4)
-      expect_equal(e2$ii[e2$time == units::set_units(0.25, hr)], units::set_units(0.5, hr))
-      
-      ## Check importing wrong different ii and time units as well as different rate units work.
-      e <- et(amount.units = "mg", time_units = "hr") %>%
-        add.sampling(seq(0, 24, by = 3)) %>%
-        add.dosing(1, 3) %>%
-        et(rate = 3, amt = 2, time = 120)
-      
-      etDf <- as.data.frame(e)
-      etDf$rate <- units::set_units(etDf$rate, ug / s)
-      etDf$ii <- units::set_units(etDf$ii, min)
-      
-      et <- et()
-      et$import.EventTable(etDf)
-      
-      
-      expect_equal(et$ii, e$ii)
-      expect_equal(et$rate, e$rate)
-    })
-  }
+    etDf <- as.data.frame(e)
+    etDf$rate <- units::set_units(etDf$rate, ug / s)
+    etDf$ii <- units::set_units(etDf$ii, min)
+    
+    et <- et()
+    et$import.EventTable(etDf)
+
+    expect_equal(et$ii, e$ii)
+    expect_equal(et$rate, e$rate)
+  })
   
   test_that("seq works with wait", {
     e1 <- et(amt = 100, ii = 24, addl = 6)
@@ -532,24 +528,23 @@ test_that("Issue #257 numeric cmt vectorized", {
   expect_error(et() %>% et(amt = ds4, rate = rate, cmt = 4), NA)
 })
 
-if (requireNamespace("units", quietly = TRUE)) {
-  test_that("etRep #313", {
-    sch1 <- et(timeUnits = "hr") %>%
-      et(amt = 100, ii = 24, until = units::set_units(2, "days"))
-    
-    toto <- rep(sch1, times = 10, wait = units::set_units(19, "days"))
-    
-    expect_equal(toto$time, seq(0, by = 504, length.out = 10))
-    
-    sch1 <- et(timeUnits = "hr") %>%
-      et(amt = 100, ii = 24, until = units::set_units(2, "days")) %>%
-      etExpand()
-    
-    toto1 <- etExpand(toto)
-    
-    expect_warning(toto <- rep(sch1, times = 10, wait = units::set_units(19, "days")))
-  })
-}
+test_that("etRep #313", {
+  skip_if_not_installed("units")
+  sch1 <- et(timeUnits = "hr") %>%
+    et(amt = 100, ii = 24, until = units::set_units(2, "days"))
+  
+  toto <- rep(sch1, times = 10, wait = units::set_units(19, "days"))
+  
+  expect_equal(toto$time, seq(0, by = 504, length.out = 10))
+  
+  sch1 <- et(timeUnits = "hr") %>%
+    et(amt = 100, ii = 24, until = units::set_units(2, "days")) %>%
+    etExpand()
+  
+  toto1 <- etExpand(toto)
+  
+  expect_warning(toto <- rep(sch1, times = 10, wait = units::set_units(19, "days")))
+})
 
 test_that("'by' and 'length.out'", {
   expect_error(et(0, 3, by = 0.5, length.out = 3))
