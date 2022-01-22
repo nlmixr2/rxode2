@@ -1,9 +1,10 @@
 warn1 <- function(code) {
   if (rxCores() == 1L) {
-    force(code)
+    x <- force(code)
   } else {
-    expect_warning(force(code))
+    expect_warning(x <- force(code))
   }
+  x
 }
 
 test_that("rnorm", {
