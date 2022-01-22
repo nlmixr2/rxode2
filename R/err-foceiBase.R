@@ -231,7 +231,7 @@
   if (.addProp == "combined2") {
     return(bquote((.(.p1))^2+ (.(.f))^2*(.(.p2))^2))
   } else {
-    return(bquote( ( (.(.p1)) + abs(.(.f))* (.(.p2)) ) ^ 2))
+    return(bquote( ( (.(.p1)) + (.(.f)) * (.(.p2)) ) ^ 2))
   }
 }
 
@@ -282,9 +282,9 @@
     .addProp <- pred1$addProp
   }
   if (.addProp == "combined2") {
-    return(bquote((.(.p1))^2 + (abs(.(.f)))^(2 * .(.p3)) * (.(.p2))^2))
+    return(bquote((.(.p1))^2 + (.(.f))^(2 * .(.p3)) * (.(.p2))^2))
   } else {
-    return(bquote( ( (.(.p1)) + (abs(.(.f)))^(.(.p3))* (.(.p2)) ) ^ 2))
+    return(bquote( ( (.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2)) ) ^ 2))
   }
 }
 
