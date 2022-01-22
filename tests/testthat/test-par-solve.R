@@ -1,12 +1,6 @@
 for (meth in c("dop853", "liblsoda", "lsoda")) {
   # context(sprintf("Test Parallel/Multi-subject Solve (%s)", meth))
   
-  .rxSolve <- function(...) {
-    suppressWarnings({
-      rxSolve(...)
-    })
-  }
-  
   mod <- rxode2({
     d / dt(intestine) <- -a * intestine
     d / dt(blood) <- a * intestine - b * blood
@@ -21,9 +15,9 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
   
   p <- data.frame(a = 6, b = seq(0.4, 0.9, length.out = 4))
   
-  pk1 <- .rxSolve(mod, p, et, cores = 1, method = meth)
+  pk1 <- suppressWarnings(rxSolve(mod, p, et, cores = 1, method = meth))
   
-  pk2 <- .rxSolve(mod, p, et, cores = 2, method = meth) # CRAN requirement of at most 2 cores.
+  pk2 <- suppressWarnings(rxSolve(mod, p, et, cores = 2, method = meth)) # CRAN requirement of at most 2 cores.
   
   test_that("Parallel Solve gives same results a single threaded solve", {
     expect_equal(as.data.frame(pk1), as.data.frame(pk2))
@@ -52,29 +46,29 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
   sigma <- diag(2) * 0.05
   dimnames(sigma) <- list(c("err1", "err2"), c("err1", "err2"))
   
-  pk3 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, sigma = sigma, cores = 2, method = meth,
-  )
+  pk3 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, sigma = sigma, cores = 2, method = meth,
+    ))
   
-  pk3a <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, sigma = sigma, cores = 2, method = meth, addDosing = TRUE
-  )
+  pk3a <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, sigma = sigma, cores = 2, method = meth, addDosing = TRUE
+    ))
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, sigma = sigma, cores = 1, method = meth
-  )
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, sigma = sigma, cores = 1, method = meth
+    ))
   
   test_that("Can solve the system.", {
     expect_true(rxIs(pk3, "data.frame"))
@@ -99,21 +93,21 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
     pk <- prod(C2, exp(e2))
   })
   
-  pk3 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, sigma = sigma, cores = 2, method = meth
-  )
+  pk3 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, sigma = sigma, cores = 2, method = meth
+    ))
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, sigma = sigma, cores = 1, method = meth
-  )
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, sigma = sigma, cores = 1, method = meth
+    ))
   
   test_that("Can solve the system.", {
     expect_false(all(pk3$pk == 0))
@@ -137,21 +131,21 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
     pk <- C2 * exp(e2)
   })
   
-  pk3 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, sigma = sigma, cores = 2, method = meth
-  )
+  pk3 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, sigma = sigma, cores = 2, method = meth
+    ))
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, sigma = sigma, cores = 1, method = meth
-  )
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, sigma = sigma, cores = 1, method = meth
+    ))
   
   test_that("Can solve the system.", {
     expect_false(all(pk3$pk == 0))
@@ -160,59 +154,59 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
     expect_true(rxIs(pk4, "data.frame"))
   })
   
-  pk2 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200, err1 = 0, err2 = 0
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, cores = 1, method = meth
-  )
+  pk2 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200, err1 = 0, err2 = 0),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, cores = 1, method = meth
+    ))
   
-  pk3 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200, err1 = 0, err2 = 0
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, ev, cores = 2, method = meth
-  )
+  pk3 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200, err1 = 0, err2 = 0),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, ev, cores = 2, method = meth
+    ))
   
   ## "Study" Differences
   thetaMat <- diag(3) * 0.01
   dimnames(thetaMat) <- list(NULL, c("KA", "TCL", "V2"))
   
-  pk4 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 1, method = meth
-  )
+  pk4 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 1, method = meth
+    ))
   
-  pk5 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 2, method = meth
-  )
+  pk5 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 2, method = meth
+    ))
   
-  pk6 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 1, dfSub = 4, dfObs = 4,
-  method = meth
-  )
+  pk6 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 1, dfSub = 4, dfObs = 4,
+      method = meth
+    ))
   
-  pk7 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 2, dfSub = 4, dfObs = 4,
-  method = meth
-  )
+  pk7 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      nSub = 4, nStud = 4, thetaMat = thetaMat, sigma = sigma, ev, cores = 2, dfSub = 4, dfObs = 4,
+      method = meth
+    ))
   
   test_that("Can solve the system.", {
     expect_true(rxIs(pk2, "data.frame"))
@@ -247,45 +241,45 @@ test_that("Can solve the system.", {
   skip_if(!file.exists(test_path("test-data-setup.qs")))
   dat <- qs::qread(test_path("test-data-setup.qs"))
   
-  pk7a <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  sigma = sigma, dat, cores = 1, method = meth
-  )
+  pk7a <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      sigma = sigma, dat, cores = 1, method = meth
+    ))
   
-  pk8 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 1, method = meth
-  )
+  pk8 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 1, method = meth
+    ))
   
-  pk9 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 2, method = meth
-  )
+  pk9 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 2, method = meth
+    ))
   
-  pk10 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 2, method = meth, simVariability = FALSE
-  )
+  pk10 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 2, method = meth, simVariability = FALSE
+    ))
   
-  pk11 <- .rxSolve(mod2, c(
-    KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
-  ),
-  omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
-  thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 1, method = meth, simVariability = FALSE
-  )
+  pk11 <-
+    suppressWarnings(rxSolve(
+      mod2,
+      c(KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02, Kin = 1, Kout = 1, EC50 = 200),
+      omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")),
+      thetaMat = thetaMat, sigma = sigma, dat, nStud = 4, cores = 1, method = meth, simVariability = FALSE
+    ))
   
   expect_true(rxIs(pk8, "data.frame"))
   expect_true(rxIs(pk9, "data.frame"))
