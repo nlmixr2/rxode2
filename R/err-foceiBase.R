@@ -99,15 +99,16 @@
 #' @noRd
 .rxGetVarianceForErrorAdd <- function(env, pred1) {
   if (!is.na(pred1$a)) {
-    return(.enQuote(pred1$a))
-  }
-  .cnd <- pred1$cond
-  .w <- which(env$iniDf$err %in% c("add", "lnorm") & env$iniDf$condition == .cnd)
-  if (length(.w) == 1L) {
-    .p1 <- .enQuote(env$iniDf$name[.w])
+    .p1 <- .enQuote(pred1$a)
   } else {
-    stop("cannot find additive standard deviation for '", .cnd, "'",
-         ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
+    .cnd <- pred1$cond
+    .w <- which(env$iniDf$err %in% c("add", "lnorm") & env$iniDf$condition == .cnd)
+    if (length(.w) == 1L) {
+      .p1 <- .enQuote(env$iniDf$name[.w])
+    } else {
+      stop("cannot find additive standard deviation for '", .cnd, "'",
+           ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
+    }
   }
   bquote((.(.p1)) ^ 2)
 }
@@ -155,7 +156,7 @@
       stop("cannot find proportional standard deviation", call.=FALSE)
     }
   }
-  return(bquote((.(.f))^2*(.(.p1))^2))
+  return(bquote((.(.f) * .(.p1))^2))
 }
 
 #' Get the Variance for pow error model
@@ -188,7 +189,7 @@
       stop("cannot find exponent of power expression", call.=FALSE)
     }
   }
-  bquote((.(.f))^(2 * .(.p2))*(.(.p1))^2)
+  bquote(((.(.f))^(.(.p2)) * .(.p1))^2)
 }
 
 #' Get Variance for proportional error
@@ -281,7 +282,7 @@
     .addProp <- pred1$addProp
   }
   if (.addProp == "combined2") {
-    return(bquote((.(.p1))^2 + (.(.f))^(2 * .(.p3)) * (.(.p2))^2))
+    return(bquote( (.(.p1))^2 + ( (.(.f))^(.(.p3)) )^2 * (.(.p2))^2))
   } else {
     return(bquote( ( (.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2)) ) ^ 2))
   }
