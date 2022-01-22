@@ -1,6 +1,4 @@
-
 .rx <- loadNamespace("rxode2")
-
 
 f <- function() {
   ini({
@@ -33,8 +31,6 @@ test_that("constant error model tests", {
   expect_equal(v1(tmp1),
                quote((add.sd) ^ 2))
 
-
-
   f %>%
     model(ipre ~ add(f2)) ->
     tmp2
@@ -42,7 +38,6 @@ test_that("constant error model tests", {
 
   expect_equal(v1(tmp2),
                quote((f2) ^ 2))
-
 })
 
 test_that("prop model tests", {
@@ -90,7 +85,6 @@ test_that("prop model tests", {
 
   expect_equal(v1(tmp2),
                quote((f3 * f2) ^ 2))
-
 })
 
 test_that("power models", {
@@ -148,7 +142,6 @@ test_that("power models", {
 
   expect_equal(v1(tmp1),
                quote(((f3)^(lipre) * f2)^2))
-
 })
 
 test_that("add+prop combined1", {
@@ -234,14 +227,12 @@ test_that("add+prop combined1", {
   expect_equal(v1(tmp1),
                quote(((add.sd) + (f3) * (lipre))^2))
 
-
   f %>%
     model(ipre ~ add(lipre) + propF(f2, f3) + combined1()) ->
     tmp1
 
   expect_equal(v1(tmp1),
                quote(((lipre) + (f3) * (f2))^2))
-
 })
 
 
@@ -335,7 +326,6 @@ test_that("add+pow combined1", {
 
   expect_equal(v1(tmp1),
                quote(((lipre) + (f3) ^ (c)* (f2))^2))
-
 })
 
 # combined2
@@ -429,7 +419,6 @@ test_that("add+prop combined2", {
 
   expect_equal(v1(tmp1),
                quote((lipre)^2 + (f3)^2 * (f2)^2))
-
 })
 
 
@@ -516,12 +505,10 @@ test_that("add+pow combined2", {
   expect_equal(v1(tmp1),
                quote((add.sd)^2 + ((f3)^(c))^2 * (lipre)^2))
 
-
   f %>%
     model(ipre ~ add(lipre) + powF(f2, c, f3) + combined2()) ->
     tmp1
 
   expect_equal(v1(tmp1),
                quote((lipre)^2 + ((f3)^(c))^2 * (f2)^2))
-
 })

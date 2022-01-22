@@ -1,6 +1,6 @@
-rxode2Test(
+withr::with_seed(
+  42,
   {
-    set.seed(42)
     dgs <- c("sqrt", "log", "identity")
     for (dg in dgs) {
       for (d in seq(1, rxSymInvCholN())) {
@@ -19,8 +19,8 @@ rxode2Test(
           expect_equal(length(v$d.omegaInv), v$ntheta, tolerance = 1e-4)
           expect_equal(length(v$d.D.omegaInv), v$ntheta, tolerance = 1e-4)
           ## This is to make sure there is no run-time error in calculation
-          expect_true(inherits(v$tr.28, "numeric"))
-          expect_true(inherits(v$omega.47, "list"))
+          expect_type(v$tr.28, "double")
+          expect_type(v$omega.47, "list")
           if (d != 1) {
             expect_error(v$theta <- 3)
           } else {
@@ -28,7 +28,7 @@ rxode2Test(
           }
         })
       }
-
+      
       test_that("diagonal indicator give correct values", {
         tmp <- rxSymInvCholCreate(matrix(c(1, 0.9, 0, 0.9, 1, 0, 0, 0, 1), ncol = 3))
         expect_equal(tmp$theta.diag, c(TRUE, FALSE, TRUE, TRUE))
@@ -36,6 +36,5 @@ rxode2Test(
         expect_equal(tmp$theta.diag, c(TRUE, FALSE, TRUE))
       })
     }
-  },
-  test = "lvl2"
+  }
 )

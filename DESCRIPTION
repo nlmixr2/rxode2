@@ -63,6 +63,7 @@ Suggests:
     tidyr,
     usethis,
     vdiffr (>= 1.0),
+    withr,
     xgxr,
     pillar,
     tibble,

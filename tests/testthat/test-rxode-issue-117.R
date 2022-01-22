@@ -1,8 +1,6 @@
-rxode2Test(
-  {
-    # Test large model compiles (RxODE#117)
+# Test large model compiles (RxODE#117)
 
-    mod <- rxode2("
+mod <- rxode2("
 ##### define heart failure parameters. Allow them to increase from baseline over time #####
 if (Heart_failure_link == 1) {
 R_art0		  = (R_art0_initial-R_art0_initial*heart_failure_resistance_aorta_scale)/exp(sim_time/(24*5))+R_art0_initial*heart_failure_resistance_aorta_scale;
@@ -1524,9 +1522,6 @@ d/dt(Net_oncotic_pressure_diff) = C_renal_CV_timescale*C_cycle2*(Net_oncotic_pre
 d/dt(RISF) = tubular_reabsorption - capillary_filtration;
 ")
 
-    test_that("large models compile", {
-      expect_true(inherits(mod, "rxode2"))
-    })
-  },
-  test = "lvl2"
-)
+test_that("large models compile", {
+  expect_s3_class(mod, "rxode2")
+})
