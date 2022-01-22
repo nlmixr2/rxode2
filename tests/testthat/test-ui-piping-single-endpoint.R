@@ -20,7 +20,7 @@ test_that("single or multiple endpoint model", {
   f <- rxode2(f)
 
   expect_equal("ipre", f$predDf$var)
-  .tmp <- expect_warning(f %>% model(lipre ~ add(log.add.sd)))
+  expect_warning(.tmp <- f %>% model(lipre ~ add(log.add.sd)))
   expect_equal("lipre", .tmp$predDf$var)
 
   expect_error(f %>% model(PD ~ add(log.add.sd)))
@@ -44,7 +44,7 @@ test_that("single or multiple endpoint model", {
   fo <- rxode2(fo)
 
   expect_equal("ipre", fo$predDf$var)
-  .tmp <- expect_warning(fo %>% model(lipre ~ add(log.add.sd)))
+  expect_warning(.tmp <- fo %>% model(lipre ~ add(log.add.sd)))
   expect_equal("lipre", .tmp$predDf$var)
 
   expect_error(fo %>% model(PD ~ add(log.add.sd)))
@@ -107,5 +107,4 @@ test_that("single or multiple endpoint model", {
 
   expect_error(multiple %>% model(PD ~ add(add.sd)))
   expect_error(multiple %>% model(effect ~ add(add.sd)), NA)
-
 })
