@@ -18,7 +18,7 @@ d/dt(y) = -1.0*(d/dt(x)+d/dt(z))
 
     ## print(o1);
     test_that("rxSolve produces the correct results for rhs", {
-      o1 <- expect_warning(rxSolve(orhs, et))
+      expect_warning(o1 <- rxSolve(orhs, et))
 
       ## expect_warning(rxSolve(orhs,et),"The initial conditions are at t = 0.4 instead of t = 0.")
       expect_equal(round(as.data.frame(o1), 4),
