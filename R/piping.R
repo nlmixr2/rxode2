@@ -6,7 +6,7 @@
 #' @export
 .copyUi <- function(ui) {
   .ret <- new.env(parent=emptyenv())
-  lapply(ls(ui, envir=ui, all.names=TRUE), function(item){
+  lapply(ls(envir=ui, all.names=TRUE), function(item){
     assign(item, get(item, envir=ui), envir=.ret)
   })
   class(.ret) <- class(ui)
