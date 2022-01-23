@@ -11,7 +11,13 @@ d/dt(eff) = Kin - Kout(1-C2/(EC50+C2))*eff;")
   sink()
   
   expect_true(file.exists(.file))
-  m1 <- try(rxode2(filename = .file, modName = test_path("m1")))
+  suppressMessages(
+    m1 <-
+      try(
+        rxode2(filename = .file, modName = test_path("m1")),
+        silent=TRUE
+      )
+  )
   expect_false(is(class(m1), "rxode2"))
   expect_true(file.exists(.file))
   

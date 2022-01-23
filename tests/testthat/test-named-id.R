@@ -105,13 +105,14 @@ test_that("id2", {
   expect_equal(ref$a, c(2, 1))
 })
 
-expect_error(rxode2({
-  a <- 1
-  if (id == 100) {
-    a <- 2
-  }
-}))
-
+test_that("id equality error", {
+  suppressMessages(expect_error(rxode2({
+    a <- 1
+    if (id == 100) {
+      a <- 2
+    }
+  })))
+})
 
 f1 <- rxode2({
   a <- 1 + (id == "100") * 2

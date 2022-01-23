@@ -42,7 +42,6 @@ test_that("Keep initilizations if needed.", {
   )
 })
 
-
 ## Compound if/then
 rx3 <- rxode2({
   b <- -1
@@ -178,16 +177,8 @@ ode <- "
    d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
 "
 
-
 ode1 <- rxode2(ode)
-
-ode2 <- rxode2(ode, calcSens = TRUE, collapseModel = TRUE)
-
-## No longer true or needed...
-## test_that("LHS variables can be removed", {
-##     expect_true(length(rxLhs(ode1)) > 1);
-##     expect_true(length(rxLhs(ode2)) == 0);
-## })
+ode2 <- suppressMessages(rxode2(ode, calcSens = TRUE, collapseModel = TRUE))
 
 ode3 <- rxode2({
   if (route == 1) {
@@ -202,9 +193,9 @@ ode3 <- rxode2({
   d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
 })
 
-ode4 <- rxode2(ode3, calcSens = TRUE, collapseModel = TRUE)
+ode4 <- suppressMessages(rxode2(ode3, calcSens = TRUE, collapseModel = TRUE))
 
-ode5 <- rxode2(ode3, calcSens = TRUE)
+ode5 <- suppressMessages(rxode2(ode3, calcSens = TRUE))
 
 ## test_that("LHS variables can be removed", {
 ##     expect_true(length(rxLhs(ode3)) > 1);

@@ -93,12 +93,12 @@ test_that("expit", {
     b <- expit(a, 0.5, 1.5)
   })
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     b <- expit()
-  }))
-  expect_error(rxode2({
+  })))
+  suppressMessages(expect_error(rxode2({
     b <- expit(a, b, c, d)
-  }))
+  })))
   
   expect_equal(
     expit(seq(-4, 4, length.out = 10), 0.5, 1.5),

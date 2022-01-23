@@ -8,7 +8,7 @@ withr::with_seed(
           ## Creating covariance matrix
           tmp <- matrix(rnorm(d^2), d, d)
           mcov <- tcrossprod(tmp, tmp)
-          v <- rxSymInvCholCreate(mcov, dg)
+          v <- suppressMessages(rxSymInvCholCreate(mcov, dg))
           expect_equal(v$ntheta, sum((lower.tri(mcov, TRUE)) * 1))
           expect_equal(length(v$xType), sum((lower.tri(mcov, TRUE)) * 1))
           expect_equal(v$omega, mcov, tolerance = 1e-4)

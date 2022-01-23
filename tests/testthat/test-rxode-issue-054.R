@@ -142,7 +142,7 @@ test_that("prune checks", {
   expect_equal(tmp$tmp, 4)
   expect_equal(tmp$a, 100)
   
-  m <- rxode2(rxOptExpr(rxNorm(m)))
+  m <- suppressMessages(rxode2(rxOptExpr(rxNorm(m))))
   
   tmp <- rxSolve(m, c(cnd = 1), et(0.1))
   expect_equal(tmp$tmp, 1)
@@ -208,7 +208,7 @@ test_that("prune checks", {
   expect_equal(tmp$tmp, 4)
   expect_equal(tmp$a, 100)
   
-  m <- rxode2(rxOptExpr(rxNorm(m)))
+  m <- suppressMessages(rxode2(rxOptExpr(rxNorm(m))))
   
   tmp <- rxSolve(m, c(cnd = 1), et(0.1))
   expect_equal(tmp$tmp, 1)
@@ -249,7 +249,7 @@ test_that("prune checks", {
   expect_equal(tmp$tmp, 4)
   expect_equal(tmp$a, 100)
   
-  m <- rxode2(rxOptExpr(rxNorm(m)))
+  m <- suppressMessages(rxode2(rxOptExpr(rxNorm(m))))
   
   tmp <- rxSolve(m, c(cnd = 1), et(0.1))
   expect_equal(tmp$tmp, 1)
@@ -283,7 +283,7 @@ test_that("prune checks", {
   expect_equal(tmp$tmp, 2)
   expect_equal(tmp$a, 2)
   
-  m <- rxode2(rxOptExpr(rxNorm(m)))
+  m <- suppressMessages(rxode2(rxOptExpr(rxNorm(m))))
   
   tmp <- rxSolve(m, c(cnd = 1), et(0.1))
   expect_equal(tmp$tmp, 1)
@@ -308,7 +308,7 @@ test_that("prune checks", {
   expect_equal(tmp$tmp, 2)
   expect_equal(tmp$a, 2)
   
-  m <- rxode2(rxOptExpr(rxNorm(m)))
+  m <- suppressMessages(rxode2(rxOptExpr(rxNorm(m))))
   
   tmp <- rxSolve(m, c(cnd = 1), et(0.1))
   expect_equal(tmp$tmp, 1)
@@ -341,7 +341,7 @@ test_that("prune checks", {
   expect_equal(tmp$tmp, 4)
   expect_equal(tmp$a, 0)
   
-  m <- rxode2(rxOptExpr(rxNorm(m)))
+  m <- suppressMessages(rxode2(rxOptExpr(rxNorm(m))))
   
   tmp <- rxSolve(m, c(cnd = 1), et(0.1))
   expect_equal(tmp$tmp, 1)
@@ -372,7 +372,7 @@ test_that("prune checks", {
     tmp <- cnd
   })
   
-  m <- rxode2(rxOptExpr(rxPrune(m)))
+  m <- suppressMessages(rxode2(rxOptExpr(rxPrune(m))))
   
   tmp <- rxSolve(m, c(cnd = 1, `THETA[1]` = 1), et(0.1))
   expect_equal(tmp$tmp, 1)
@@ -439,7 +439,7 @@ test_that("cimet pruning checks", {
   
   expect_equal(s1$cp, s2$cp)
   
-  cimet.3 <- rxode2(rxOptExpr(rxPrune(cimet.1)))
+  cimet.3 <- suppressMessages(rxode2(rxOptExpr(rxPrune(cimet.1))))
   
   s3 <- rxSolve(cimet.3, et)
   
