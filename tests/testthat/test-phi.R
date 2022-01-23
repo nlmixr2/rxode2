@@ -38,13 +38,13 @@ test_that("phi/pnorm/qnorm", {
     pnorm(as.double(1:3), 0.5, 2)
   )
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     o <- pnorm()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     o <- pnorm(a, b, c, d)
-  }))
+  })))
   
   o <- rxode2({
     o <- qnorm(a)
@@ -73,13 +73,13 @@ test_that("phi/pnorm/qnorm", {
     suppressWarnings(qnorm(as.double(1:3), 0.5, 2))
   )
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     o <- qnorm()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     o <- qnorm(a, b, c, d)
-  }))
+  })))
   
   m <- rxode2({
     o <- pnorm(a)
