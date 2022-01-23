@@ -49,18 +49,17 @@ test_that("rnorm", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
-  
   
   x <- rxnorm(n = 1e5)
   expect_equal(mean(x), 0, tolerance = 0.01)
@@ -86,15 +85,15 @@ test_that("rnormV", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -113,7 +112,7 @@ test_that("rbinom", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   expect_equal(max(f$x1), 4)
   expect_equal(min(f$x1), 0)
@@ -132,15 +131,15 @@ test_that("rbinom", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -169,22 +168,22 @@ test_that("rcauchy", {
   
   ev <- et(1, id = 1:100)
   
-  f <- warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2)))
   ## Seed tests
   
   ## Make sure seeds are reproducible
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -202,7 +201,7 @@ test_that("rchisq", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   expect_equal(mean(f$x1), 15, tolerance = 0.1)
   expect_equal(sd(f$x1), sqrt(2 * 15), tolerance = 0.1)
@@ -216,15 +215,15 @@ test_that("rchisq", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -247,7 +246,7 @@ test_that("rexp tests", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   expect_equal(mean(f$x1), 2, tolerance = 0.1)
   expect_equal(sd(f$x1), sqrt(1 / (0.5 * 0.5)), tolerance = 0.1)
@@ -261,15 +260,15 @@ test_that("rexp tests", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -287,7 +286,7 @@ test_that("rf tests", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   sf <- function(d1, d2) {
     sqrt((2 * d2^2 * (d1 + d2 - 2)) / (d1 * (d2 - 2)^2 * (d2 - 4)))
@@ -309,15 +308,15 @@ test_that("rf tests", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -343,7 +342,7 @@ test_that("rgamma tests", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   sgamma <- function(k, theta = 1) {
     sqrt(k / (theta^2))
@@ -359,15 +358,15 @@ test_that("rgamma tests", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -389,7 +388,7 @@ test_that("rbeta tests", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   
   mbeta <- function(a, b) {
@@ -411,15 +410,15 @@ test_that("rbeta tests", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -445,7 +444,7 @@ test_that("rgeom tests", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   # expect_equal(median(f$x1), -ceiling(1 / log2(1 - 0.5)))
   expect_equal(median(f$x2), -ceiling(1 / log2(1 - 0.1)))
@@ -453,15 +452,15 @@ test_that("rgeom tests", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -483,7 +482,7 @@ test_that("rpois", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   expect_equal(mean(f$x1), 1, tolerance = 0.01)
   expect_equal(sd(f$x1), 1, tolerance = 0.01)
@@ -496,15 +495,15 @@ test_that("rpois", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -526,7 +525,7 @@ test_that("rt", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   expect_equal(mean(f$x1), 0, tolerance = 0.1)
   expect_equal(sd(f$x1), sqrt(15 / (15 - 2)), tolerance = 0.1)
@@ -540,15 +539,15 @@ test_that("rt", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -574,7 +573,7 @@ test_that("runif", {
   
   ev <- et(1, id = 1:30000)
   
-  f <- warn1(rxSolve(rx, ev, c(a = 0.5, b = 0.25, c = 0.75), cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, c(a = 0.5, b = 0.25, c = 0.75), cores = 2)))
   
   expect_equal(mean(f$x1), 0.5, tolerance = 1e-2)
   expect_equal(sd(f$x1), sqrt(1 / 12), tolerance = 1e-2)
@@ -585,7 +584,7 @@ test_that("runif", {
   expect_equal(mean(f$x3), 0.5 * (0.25 + 0.75), tolerance = 1e-2)
   expect_equal(sd(f$x3), sqrt((0.75 - 0.25)^2 / 12), tolerance = 1e-2)
   
-  f2 <- rxSolve(rx, ev, c(a = 0.5, b = 0.25, c = 0.75), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 0.5, b = 0.25, c = 0.75), cores = 1))
   
   expect_equal(mean(f2$x1), 0.5, tolerance = 1e-2)
   expect_equal(sd(f2$x1), sqrt(1 / 12), tolerance = 1e-2)
@@ -604,15 +603,15 @@ test_that("runif", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 })
@@ -627,7 +626,7 @@ test_that("rweibull tests", {
   ev <- et(1, id = 1:30000)
   
   set.seed(1024)
-  f <- warn1(rxSolve(rx, ev, cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, cores = 2)))
   
   mweibull <- function(shape, scale = 1) {
     lambda <- scale
@@ -654,15 +653,15 @@ test_that("rweibull tests", {
   ev <- et(1, id = 1:10)
   
   set.seed(1)
-  f <- rxSolve(rx, ev, cores = 1)
+  f <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   set.seed(1)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   expect_equal(as.data.frame(f), as.data.frame(f2))
   
   ## Make sure different seed value gives different result
   set.seed(2)
-  f2 <- rxSolve(rx, ev, cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, cores = 1))
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
@@ -711,7 +710,7 @@ test_that("individual random variable tests", {
   
   ev <- et(c(1, 2), id = 1:5)
   
-  f <- warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2)))
   
   expect_equal(sum(duplicated(f$x0)), 0)
   
@@ -755,7 +754,7 @@ test_that("individual random variable tests", {
   
   ev <- et(c(1, 2), id = 1:5)
   
-  f <- warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2)))
   
   expect_equal(sum(duplicated(f$x0)), 0)
   
@@ -775,7 +774,7 @@ test_that("simeps", {
   e <- et(0, 10)
   
   set.seed(10)
-  f1 <- rxSolve(rx1, e, sigma = lotri(err ~ 1))
+  f1 <- suppressMessages(rxSolve(rx1, e, sigma = lotri(err ~ 1)))
   
   expect_true(f1$c[1] != 0)
   
@@ -791,7 +790,7 @@ test_that("simeps", {
   })
   
   set.seed(10)
-  f2 <- rxSolve(rx, e, sigma = lotri(err ~ 1))
+  f2 <- suppressMessages(rxSolve(rx, e, sigma = lotri(err ~ 1)))
   
   expect_true(f2$c[1] != 0)
   
@@ -808,14 +807,14 @@ test_that("simeps", {
   
   
   set.seed(10)
-  f1 <- rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 3)
+  f1 <- suppressMessages(rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 3))
   
   expect_true(all(f1$c > 0))
   
   expect_true(f1$c[1] != 0)
   
   set.seed(10)
-  f2 <- rxSolve(rx1, e, sigma = lotri(err ~ 1), nStud = 3)
+  f2 <- suppressMessages(rxSolve(rx1, e, sigma = lotri(err ~ 1), nStud = 3))
   
   expect_false(all(f2$c > 0))
   
@@ -828,7 +827,7 @@ test_that("simeps", {
   expect_equal(f3$c.x, f3$c.y)
   
   set.seed(10)
-  f1 <- rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 3, dfObs = 100)
+  f1 <- suppressMessages(rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 3, dfObs = 100))
   
   expect_true(all(f1$c > 0))
   
@@ -836,7 +835,7 @@ test_that("simeps", {
   
   
   set.seed(10)
-  f2 <- rxSolve(rx1, e, sigma = lotri(err ~ 1), nStud = 3, dfObs = 100)
+  f2 <- suppressMessages(rxSolve(rx1, e, sigma = lotri(err ~ 1), nStud = 3, dfObs = 100))
   
   expect_false(all(f2$c > 0))
   
@@ -852,7 +851,7 @@ test_that("simeps", {
   expect_false(identical(f3b$c.y, f3$c.y))
   
   ## Check to make sure that this only accesses the
-  f1 <- rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 3)
+  f1 <- suppressMessages(rxSolve(rx, e, sigma = lotri(err ~ 1), nStud = 3))
   
   expect_true(all(f1$c > 0))
   
@@ -873,14 +872,14 @@ test_that("simeta", {
   
   e <- et(1:2, id = 1:4)
   
-  f <- rxSolve(rx, e, omega = lotri(eta.wt ~ 0.1^2))
+  f <- suppressMessages(rxSolve(rx, e, omega = lotri(eta.wt ~ 0.1^2)))
   
   expect_true(all(f$wt > 60))
   expect_true(all(f$wt < 80))
   
   expect_equal(length(unique(f$wt)), 4)
   
-  f <- rxSolve(rx, e, omega = lotri(eta.wt ~ 0.5^2), nStud = 10)
+  f <- suppressMessages(rxSolve(rx, e, omega = lotri(eta.wt ~ 0.5^2), nStud = 10))
   
   expect_true(all(f$wt > 60))
   expect_true(all(f$wt < 80))
@@ -888,7 +887,7 @@ test_that("simeta", {
   expect_equal(length(unique(f$wt)), 4 * 10)
   
   ## this one should work
-  f <- rxSolve(rx, e, omega = lotri(eta.wt ~ 0.5^2), nStud = 3, dfSub = 40)
+  f <- suppressMessages(rxSolve(rx, e, omega = lotri(eta.wt ~ 0.5^2), nStud = 3, dfSub = 40))
   
   expect_true(all(f$wt > 60))
   expect_true(all(f$wt < 80))
