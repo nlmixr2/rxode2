@@ -261,7 +261,7 @@ et.default <- function(x, ..., time, amt, evid, cmt, ii, addl,
   }
   if (!missing(by)) {
     force(by)
-    checkmate::assertNumeric(by, finite = TRUE, max.len = 1, any.missing = FALSE, min = 0)
+    checkmate::assertNumeric(by, finite = TRUE, max.len = 1, any.missing = FALSE, min.len = 0)
     if (!missing(length.out)) {
       stop("cannot supply both 'by' and 'length.out'", call. = FALSE)
     }
