@@ -14,15 +14,15 @@
 #include "handle_evid.h"
 #include "getTime.h"
 extern "C" {
-  #include "dop853.h"
-  #include "common.h"
-  #include "lsoda.h"
+#include "dop853.h"
+#include "common.h"
+#include "lsoda.h"
 }
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = op->neq*(ind->n_all_times); j--;){ \
-    ind->solve[j] = NA_REAL;\
-  } \
-  op->badSolve = 1; \
+    ind->solve[j] = NA_REAL;                                            \
+  }                                                                     \
+  op->badSolve = 1;                                                     \
   i = ind->n_all_times-1; // Get out of here!
 // Yay easy parallel support
 // For Mac, see: http://thecoatlessprofessor.com/programming/openmp-in-r-on-os-x/ (as far as I can tell)
@@ -164,7 +164,6 @@ void printErr(int err, int id){
   if (err & 8388608){
     RSprintf(" Rate is zero/negative\n");
   }
-  
 }
 
 rx_solving_options op_global;
@@ -202,12 +201,12 @@ extern "C" int par_progress(int c, int n, int d, int cores, clock_t t0, int stop
       par_progress_1=0;
     }
     if (c <= n && ((!par_progress_1 && progress == 1.0) ||
-		   ((double)(clock() - _lastT0))/CLOCKS_PER_SEC > par_progress__)){
+                   ((double)(clock() - _lastT0))/CLOCKS_PER_SEC > par_progress__)){
       if (progress == 1.0){
-	par_progress_1=1;
+        par_progress_1=1;
       }
       if (std::isnan(progress)) {
-	progress=0.0;
+        progress=0.0;
       }
       int nticks= (int)(progress * 50);
       int curTicks = d;
@@ -220,85 +219,85 @@ extern "C" int par_progress(int c, int n, int d, int cores, clock_t t0, int stop
       
       if (isSupported == -1){
       } else if (isSupported == 0){
-	int i;
-	for (i = curTicks; i < nticks; i++){
-	  if (i == 0) {
-	    RSprintf("[");
-	  } else if (i % 5 == 0) {
-	    RSprintf("|");
-	  } else {
-	    RSprintf("=");
-	  }
-	}
-	if (nticks == 50){
-	  if (!par_progress_0){
-	    par_progress_0 = 1;
-	    RSprintf("] ");
-	    _lastT0 = clock();
-	    clock_t t = _lastT0 - t0;
-	    double ts = ((double)t)/CLOCKS_PER_SEC;
-	    if (ts < 60){
-	      RSprintf("0:00:%02.f ", std::floor(ts));
-	    } else {
-	      double f = std::floor(ts/60);
-	      double s = ts-f*60;
-	      if (f >= 60){
-		double h = std::floor(f/60);
-		f = f-h*60;
-		RSprintf("%.0f:%02.f:%02.f ", h, f, std::floor(s));
-	      } else {
-		RSprintf("0:%02.f:%02.f ", f, std::floor(s));
-	      }
-	    }
-	    RSprintf("\n");
-	  }
-	}
+        int i;
+        for (i = curTicks; i < nticks; i++){
+          if (i == 0) {
+            RSprintf("[");
+          } else if (i % 5 == 0) {
+            RSprintf("|");
+          } else {
+            RSprintf("=");
+          }
+        }
+        if (nticks == 50){
+          if (!par_progress_0){
+            par_progress_0 = 1;
+            RSprintf("] ");
+            _lastT0 = clock();
+            clock_t t = _lastT0 - t0;
+            double ts = ((double)t)/CLOCKS_PER_SEC;
+            if (ts < 60){
+              RSprintf("0:00:%02.f ", std::floor(ts));
+            } else {
+              double f = std::floor(ts/60);
+              double s = ts-f*60;
+              if (f >= 60){
+                double h = std::floor(f/60);
+                f = f-h*60;
+                RSprintf("%.0f:%02.f:%02.f ", h, f, std::floor(s));
+              } else {
+                RSprintf("0:%02.f:%02.f ", f, std::floor(s));
+              }
+            }
+            RSprintf("\n");
+          }
+        }
       } else {
-	if (!par_progress_0){
-	  RSprintf("\r");
-	  int i;
-	  for (i = 0; i < nticks; i++){
-	    if (i == 0) {
-	      RSprintf("[");
-	    } else if (i % 5 == 0) {
-	      RSprintf("|");
-	    } else {
-	      RSprintf("=");
-	    }
-	  }
-	  if (nticks < 50) {
-	    RSprintf(">");
-	  }
-	  else {
-	    par_progress_0 = 1;
-	  }
-	  for (i = nticks+1; i < 50; i++){
-	    RSprintf("-");
-	  }
-	  RSprintf("] ");
-	  if (nticks < 50) RSprintf(" ");
-	  RSprintf("%02.f%%; ",100*progress,cores);
-	  _lastT0 = clock();
-	  clock_t t = _lastT0 - t0;
-	  double ts = ((double)t)/CLOCKS_PER_SEC;
-	  if (ts < 60){
-	    RSprintf("0:00:%02.f ", std::floor(ts));
-	  } else {
-	    double f = std::floor((double)(ts/60.0));
-	    double s = ts-f*60;
-	    if (f >= 60){
-	      double h = std::floor(f/60);
-	      f = f-h*60;
-	      RSprintf("%.0f:%02.f:%02.f ", h, f, std::floor(s));
-	    } else {
-	      RSprintf("0:%02.f:%02.f ", f, std::floor(s));
-	    }
-	  }
-	  if (stop){
-	    RSprintf("Stopped Calculation!\n");
-	  }
-	  par_flush_console();
-	}
+        if (!par_progress_0){
+          RSprintf("\r");
+          int i;
+          for (i = 0; i < nticks; i++){
+            if (i == 0) {
+              RSprintf("[");
+            } else if (i % 5 == 0) {
+              RSprintf("|");
+            } else {
+              RSprintf("=");
+            }
+          }
+          if (nticks < 50) {
+            RSprintf(">");
+          }
+          else {
+            par_progress_0 = 1;
+          }
+          for (i = nticks+1; i < 50; i++){
+            RSprintf("-");
+          }
+          RSprintf("] ");
+          if (nticks < 50) RSprintf(" ");
+          RSprintf("%02.f%%; ",100*progress,cores);
+          _lastT0 = clock();
+          clock_t t = _lastT0 - t0;
+          double ts = ((double)t)/CLOCKS_PER_SEC;
+          if (ts < 60){
+            RSprintf("0:00:%02.f ", std::floor(ts));
+          } else {
+            double f = std::floor((double)(ts/60.0));
+            double s = ts-f*60;
+            if (f >= 60){
+              double h = std::floor(f/60);
+              f = f-h*60;
+              RSprintf("%.0f:%02.f:%02.f ", h, f, std::floor(s));
+            } else {
+              RSprintf("0:%02.f:%02.f ", f, std::floor(s));
+            }
+          }
+          if (stop){
+            RSprintf("Stopped Calculation!\n");
+          }
+          par_flush_console();
+        }
       }
       return nticks;
     }
@@ -343,14 +342,14 @@ extern "C" SEXP _rxProgressStop(SEXP clear){
     int doIt=isProgSupported();
     if (doIt == -1){
     } else if (isRstudio() || doIt==0){
-      Rprintf("\n");
+      RSprintf("\n");
     } else {
       RSprintf("\r                                                                                 \r");
     }
   } else {
     int doIt=isProgSupported();
     if (isRstudio() || doIt == 0){
-      Rprintf("\n");
+      RSprintf("\n");
     }
   }
   rxt.d = rxt.n;
@@ -383,8 +382,8 @@ extern "C" void rxOptionsIniEnsure(int mx){
 }
 
 extern "C" int compareFactorVal(int val,
-		     const char *valStr,
-		     const char *cmpValue){
+                                const char *valStr,
+                                const char *cmpValue){
   rx_solve *rx=(&rx_global);
   int base = 0, curLen=  rx->factorNs[0], curG=0;
   if (val <= 0) {
@@ -394,7 +393,7 @@ extern "C" int compareFactorVal(int val,
     // For ID these are zero
     if (val-1 < curLen){
       if (val-1 >= rx->factors.n) {
-	return 0;
+        return 0;
       }
       return (!strcmp(rx->factors.line[val-1], cmpValue));
     } else {
@@ -408,10 +407,10 @@ extern "C" int compareFactorVal(int val,
       !strcmp(valStr, "Cmt")) {
     if (val-1 < curLen){
       if (base+val-1 >= rx->factors.n) {
-	return 0;
+        return 0;
       }
       return (!strcmp(rx->factors.line[base+val-1],
-		      cmpValue));
+                      cmpValue));
     } else {
       return 0;
     }
@@ -423,12 +422,12 @@ extern "C" int compareFactorVal(int val,
     curLen = rx->factorNs[curG];
     if (!strncmpci(valStr, curFactor, strlen(valStr))) {
       if (val-1 < curLen){
-	if (base+val-1 >= rx->factors.n) {
-	  return 0;
-	}
-	return (!strcmp(rx->factors.line[base+val-1], cmpValue));
+        if (base+val-1 >= rx->factors.n) {
+          return 0;
+        }
+        return (!strcmp(rx->factors.line[base+val-1], cmpValue));
       } else {
-	return 0;
+        return 0;
       }
     }
     base += curLen;
@@ -474,7 +473,7 @@ t_IndF IndF = NULL;
 
 
 static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
-			     rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
+                             rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
     if (err_msg != NULL) {
       int cid = -*idid-1;
@@ -583,11 +582,11 @@ extern "C" void rxClearFuns(){
 }
 
 extern "C" void F77_NAME(dlsoda)(
-				 void (*)(int *, double *, double *, double *),
-				 int *, double *, double *, double *, int *, double *, double *,
-				 int *, int *, int *, double *,int *,int *, int *,
-				 void (*)(int *, double *, double *, int *, int *, double *, int *),
-				 int *);
+                                 void (*)(int *, double *, double *, double *),
+                                 int *, double *, double *, double *, int *, double *, double *,
+                                 int *, int *, int *, double *,int *,int *, int *,
+                                 void (*)(int *, double *, double *, int *, int *, double *, int *),
+                                 int *);
 
 extern "C" rx_solve *getRxSolve2_(){
   return &rx_global;
@@ -606,7 +605,7 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
 
 
 extern "C" void radix_r(const int from, const int to, const int radix,
-			rx_solving_options_ind *ind, rx_solve *rx);
+                        rx_solving_options_ind *ind, rx_solve *rx);
 extern "C" void calcNradix(int *nbyte, int *nradix, int *spare, uint64_t *maxD, uint64_t *minD);
 
 extern "C" uint64_t dtwiddle(const void *p, int i);
@@ -637,7 +636,7 @@ extern "C" void sortRadix(rx_solving_options_ind *ind){
       ind->ixds++;
     } else {
       if (ind->evid[i] == 3) {
-	ind->curShift -= rx->maxShift;
+        ind->curShift -= rx->maxShift;
       }
       time[i] = getTime__(ind->ix[i], ind, 1);
     }
@@ -661,15 +660,15 @@ extern "C" void sortRadix(rx_solving_options_ind *ind){
     // Allocate more space if needed
     for (int b = 0; b < nbyte; b++){
       if (key[b] == NULL) {
-	key[b] = (uint8_t *)calloc(rx->maxAllTimes+1, sizeof(uint8_t));
+        key[b] = (uint8_t *)calloc(rx->maxAllTimes+1, sizeof(uint8_t));
       }
     }
     for (int i = 0; i < ind->n_all_times; i++) {
       uint64_t elem = all[i] - minD;
       elem <<= spare;
       for (int b= nbyte-1; b>0; b--) {
-	key[b][i] = (uint8_t)(elem & 0xff);
-	elem >>= 8;
+        key[b][i] = (uint8_t)(elem & 0xff);
+        elem >>= 8;
       }
       // rxode2 uses key[0][i] = 0 | (uint8_t)(elem & 0xff) instead of
       //  key[0][i] |= (uint8_t)(elem & 0xff)
@@ -684,7 +683,7 @@ extern "C" void sortRadix(rx_solving_options_ind *ind){
 
 
 static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
-			     t_update_inis u_inis) {
+                             t_update_inis u_inis) {
   ind->ixds = ind->idx = ind->_update_par_ptr_in = 0; // reset dosing
   ind->id=solveid;
   ind->cacheME=0;
@@ -723,7 +722,7 @@ static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind
 }
 
 extern "C" int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
-			   t_update_inis u_inis) {
+                           t_update_inis u_inis) {
   return iniSubject(solveid, inLhs, ind, op, rx, u_inis);
 }
 
@@ -736,42 +735,42 @@ int checkInterrupt() {
 }
 
 static const char *err_msg_ls[] =
-    {
-      "excess work done on this call (perhaps wrong jt).",
-      "excess accuracy requested (tolerances too small).",
-      "illegal input detected (see printed message).",
-      "repeated error test failures (check all inputs).",
-      "repeated convergence failures (perhaps bad jacobian supplied or wrong choice of jt or tolerances).",
-      "error weight became zero during problem. (solution component i vanished, and atol or atol(i) = 0.)",
-      "work space insufficient to finish (see messages)."
-    };
+  {
+    "excess work done on this call (perhaps wrong jt).",
+    "excess accuracy requested (tolerances too small).",
+    "illegal input detected (see printed message).",
+    "repeated error test failures (check all inputs).",
+    "repeated convergence failures (perhaps bad jacobian supplied or wrong choice of jt or tolerances).",
+    "error weight became zero during problem. (solution component i vanished, and atol or atol(i) = 0.)",
+    "work space insufficient to finish (see messages)."
+  };
 
 //dummy solout fn
 extern "C" void solout(long int nr, double t_old, double t, double *y, int *nptr, int *irtrn){}
 
 extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, double tf,
-		      double *InfusionRate_, int *on_, 
-		      t_ME ME, t_IndF  IndF);
+                      double *InfusionRate_, int *on_, 
+                      t_ME ME, t_IndF  IndF);
 
 void solveSS_1(int *neq, 
-	       int *BadDose,
-	       double *InfusionRate,
-	       double *dose,
-	       double *yp,
-	       int do_transit_abs,
-	       double xout, double xp, int id,
-	       int *i, int nx,
-	       int *istate,
-	       rx_solving_options *op,
-	       rx_solving_options_ind *ind,
-	       t_update_inis u_inis,
-	       void *ctx){
+               int *BadDose,
+               double *InfusionRate,
+               double *dose,
+               double *yp,
+               int do_transit_abs,
+               double xout, double xp, int id,
+               int *i, int nx,
+               int *istate,
+               rx_solving_options *op,
+               rx_solving_options_ind *ind,
+               t_update_inis u_inis,
+               void *ctx){
   int idid;
   int itol=0;
   switch(op->stiff){
   case 3:
     idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on, 
-		  ME, IndF);
+                  ME, IndF);
     if (idid <= 0) {
       /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
       ind->rc[0] = idid;
@@ -808,9 +807,9 @@ void solveSS_1(int *neq,
     break;
   case 1:
     F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
-		     &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-		     istate, &giopt, global_rworkp,
-		     &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+                     &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                     istate, &giopt, global_rworkp,
+                     &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
     if (*istate <= 0) {
       RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
       ind->rc[0] = -2019;/* *istate; */
@@ -832,30 +831,30 @@ void solveSS_1(int *neq,
     break;
   case 0:
     idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-		  dydt,       /* function computing the value of f(x,y) */
-		  xp,           /* initial x-value */
-		  yp,           /* initial values for y */
-		  xout,         /* final x-value (xend-x may be positive or negative) */
-		  &(op->RTOL),          /* relative error tolerance */
-		  &(op->ATOL),          /* absolute error tolerance */
-		  itol,         /* switch for rtoler and atoler */
-		  solout,         /* function providing the numerical solution during integration */
-		  0,         /* switch for calling solout */
-		  NULL,           /* messages stream */
-		  DBL_EPSILON,    /* rounding unit */
-		  0,              /* safety factor */
-		  0,              /* parameters for step size selection */
-		  0,
-		  0,              /* for stabilized step size control */
-		  0,              /* maximal step size */
-		  0,            /* initial step size */
-		  op->mxstep,            /* maximal number of allowed steps */
-		  1,            /* switch for the choice of the coefficients */
-		  -1,                     /* test for stiffness */
-		  0,                      /* number of components for which dense outpout is required */
-		  NULL,           /* indexes of components for which dense output is required, >= nrdens */
-		  0                       /* declared length of icon */
-		  );
+                  dydt,       /* function computing the value of f(x,y) */
+                  xp,           /* initial x-value */
+                  yp,           /* initial values for y */
+                  xout,         /* final x-value (xend-x may be positive or negative) */
+                  &(op->RTOL),          /* relative error tolerance */
+                  &(op->ATOL),          /* absolute error tolerance */
+                  itol,         /* switch for rtoler and atoler */
+                  solout,         /* function providing the numerical solution during integration */
+                  0,         /* switch for calling solout */
+                  NULL,           /* messages stream */
+                  DBL_EPSILON,    /* rounding unit */
+                  0,              /* safety factor */
+                  0,              /* parameters for step size selection */
+                  0,
+                  0,              /* for stabilized step size control */
+                  0,              /* maximal step size */
+                  0,            /* initial step size */
+                  op->mxstep,            /* maximal number of allowed steps */
+                  1,            /* switch for the choice of the coefficients */
+                  -1,                     /* test for stiffness */
+                  0,                      /* number of components for which dense outpout is required */
+                  NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                  0                       /* declared length of icon */
+                  );
     if (idid < 0) {
       ind->rc[0] = -2019;
       // Bad Solve => NA
@@ -878,25 +877,25 @@ void solveSS_1(int *neq,
 }
 
 void handleSS(int *neq,
-	      int *BadDose,
-	      double *InfusionRate,
-	      double *dose,
-	      double *yp,
-	      int do_transit_abs,
-	      double xout, double xp, int id,
-	      int *i, int nx,
-	      int *istate,
-	      rx_solving_options *op,
-	      rx_solving_options_ind *ind,
-	      t_update_inis u_inis,
-	      void *ctx){
+              int *BadDose,
+              double *InfusionRate,
+              double *dose,
+              double *yp,
+              int do_transit_abs,
+              double xout, double xp, int id,
+              int *i, int nx,
+              int *istate,
+              rx_solving_options *op,
+              rx_solving_options_ind *ind,
+              t_update_inis u_inis,
+              void *ctx){
   rx_solve *rx = &rx_global;
   int j;
   int doSS2=0;
   int doSSinf=0;
   /* Rprintf("evid: %d\n", ind->evid[ind->ixds-1]); */
   if (((ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS) &&
-      getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
+       getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
     ind->doSS=1;
     ind->ixds--; // This dose stays in place; Reverse dose
     if (ind->wh0 == EVID0_SS2){
@@ -912,24 +911,24 @@ void handleSS(int *neq,
       infBixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
       for (j = ind->ixds+1; j < ind->ndoses; j++){
-	if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds)){
-	  getWh(ind->evid[ind->idose[j]], &wh, &cmt, &wh100, &whI, &wh0);
-	  if (whI == oldI && cmt == ind->cmt){
-	    dur = getTime_(ind->idose[j], ind) -
-	      getTime_(ind->ix[*i], ind);
-	    dur2 = getIiNumber(ind, ind->ixds) - dur;
-	    /* Rprintf("000; dur: %f; dur2: %f; ii: %f;\n", dur, dur2, getIiNumber(ind, ind->ixds)); */
-	    infEixds = j;
-	    break;
-	  }
-	}
+        if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds)){
+          getWh(ind->evid[ind->idose[j]], &wh, &cmt, &wh100, &whI, &wh0);
+          if (whI == oldI && cmt == ind->cmt){
+            dur = getTime_(ind->idose[j], ind) -
+              getTime_(ind->ix[*i], ind);
+            dur2 = getIiNumber(ind, ind->ixds) - dur;
+            /* Rprintf("000; dur: %f; dur2: %f; ii: %f;\n", dur, dur2, getIiNumber(ind, ind->ixds)); */
+            infEixds = j;
+            break;
+          }
+        }
       }
     } else if (ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
       // These are right next to another.
       infBixds = ind->ixds;
       infEixds = ind->ixds+1;
       dur = getTime_(ind->idose[infEixds], ind) -
-	getTime_(ind->idose[infBixds],ind);
+        getTime_(ind->idose[infBixds],ind);
       dur2 = getIiNumber(ind, ind->ixds) - dur;
     }
     /* bi = *i; */
@@ -937,15 +936,15 @@ void handleSS(int *neq,
     } else if (ind->whI == EVIDF_INF_RATE || ind->whI == EVIDF_INF_DUR || ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
       ei = *i;
       while(ind->ix[ei] != ind->idose[infEixds] && ei < ind->n_all_times){
-	ei++;
+        ei++;
       }
       if (ind->ix[ei] != ind->idose[infEixds]){
-	/* Rf_errorcall(R_NilValue, "Cannot figure out infusion end time."); */
-	if (!(ind->err & 8388608)){
-	  ind->err += 8388608;
-	  /* Rf_errorcall(R_NilValue, "Rate is zero/negative"); */
-	}
-	return;
+        /* Rf_errorcall(R_NilValue, "Cannot figure out infusion end time."); */
+        if (!(ind->err & 8388608)){
+          ind->err += 8388608;
+          /* Rf_errorcall(R_NilValue, "Rate is zero/negative"); */
+        }
+        return;
       }
     }
     // First Reset
@@ -969,191 +968,191 @@ void handleSS(int *neq,
       ind->idx=*i;
       // Rate is fixed, so modifying bio-availability doesn't change duration.
       if (ind->whI == EVIDF_MODEL_RATE_ON){
-	rate  = getRate(ind, ind->id, ind->cmt, 0.0,
-			ind->all_times[ind->idose[ind->ixds]]);
+        rate  = getRate(ind, ind->id, ind->cmt, 0.0,
+                        ind->all_times[ind->idose[ind->ixds]]);
       } else {
-	rate = getDoseNumber(ind, ind->ixds);
+        rate = getDoseNumber(ind, ind->ixds);
       }
       ind->InfusionRate[ind->cmt] = rate;
       ind->on[ind->cmt] = 1;
       double infStep = op->infSSstep, a1=1.0, t1=xp2+1.0;
       // Based on http://www.rxkinetics.com/theo.html -- Chiou method
       for (j = 0; j < op->maxSS; j++){
-	if (j == 0) xout2 = xp2+1.; // the first level drawn one hour after infusion
-	else xout2 = xp2+infStep; 
-	solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
-		  xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-	canBreak=1;
-	if (j <= op->minSS -1){
-	  for (k = neq[0]; k--;) {
-	    ind->solveLast[k] = yp[k];
-	  }
-	  if (j == 0) {
-	    a1 = yp[ind->cmt];
-	  }
-	  canBreak=0;
-	} else {
-	  for (k = neq[0]; k--;){
-	    if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-	      canBreak=0;
-	    }
-	    ind->solveLast[k] = yp[k];
-	  }
-	  if (canBreak){
-	    ind->InfusionRate[ind->cmt] = 0.0;
-	    break;
-	  } else {
-	    // Assumes that this is at least one half life.
-	    double a2 = yp[ind->cmt];	  
-	    infStep = max2(infStep,M_LN2/(rate/(a1+a2) + 2*(a1-a2)/((a1+a2)*(xout-t1))));
-	  }
-	}
-	xp2=xout;
-	*istate=1;
+        if (j == 0) xout2 = xp2+1.; // the first level drawn one hour after infusion
+        else xout2 = xp2+infStep; 
+        solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+                  xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        canBreak=1;
+        if (j <= op->minSS -1){
+          for (k = neq[0]; k--;) {
+            ind->solveLast[k] = yp[k];
+          }
+          if (j == 0) {
+            a1 = yp[ind->cmt];
+          }
+          canBreak=0;
+        } else {
+          for (k = neq[0]; k--;){
+            if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+              canBreak=0;
+            }
+            ind->solveLast[k] = yp[k];
+          }
+          if (canBreak){
+            ind->InfusionRate[ind->cmt] = 0.0;
+            break;
+          } else {
+            // Assumes that this is at least one half life.
+            double a2 = yp[ind->cmt];	  
+            infStep = max2(infStep,M_LN2/(rate/(a1+a2) + 2*(a1-a2)/((a1+a2)*(xout-t1))));
+          }
+        }
+        xp2=xout;
+        *istate=1;
       }
     } else if (dur == 0){
       // Oral or Steady State Infusion
       for (j = 0; j < op->maxSS; j++){
-	ind->idx=*i;
-	xout2 = xp2+ind->ii[ind->idx];
-	// Use "real" xout for handle_evid functions.
-	handle_evid(ind->evid[ind->ix[*i]], neq[0],
-		    BadDose, InfusionRate, dose, yp,
-		    op->do_transit_abs, xout, neq[1], ind);
-	// yp is last solve or y0
-	solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
-		  xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-	ind->ixds--; // This dose stays in place
-	canBreak=1;
-	if (j <= op->minSS -1){
-	  if (ind->rc[0]== -2019){
-	    badSolveExit(*i);
-	    break;
-	  }
- 	  for (k = op->neq; k--;) {
-	    ind->solveLast[k] = yp[k];
-	  }
-	  canBreak=0;
-	} else if (j >= op->minSS){
-	  if (ind->rc[0] == -2019){
-	    for (k = neq[0]; k--;) {
-	      yp[k] = ind->solveLast[k];
-	    }
-	    ind->rc[0] = 2019;
-	    break;
-	  }
-	  for (k = neq[0]; k--;){
-	    if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-	      canBreak=0;
-	    }
-	    ind->solveLast[k] = yp[k];
-	  }
-	  if (canBreak){
-	    break;
-	  }
-	}
-	*istate=1;
-	xp2 = xout2;
+        ind->idx=*i;
+        xout2 = xp2+ind->ii[ind->idx];
+        // Use "real" xout for handle_evid functions.
+        handle_evid(ind->evid[ind->ix[*i]], neq[0],
+                    BadDose, InfusionRate, dose, yp,
+                    op->do_transit_abs, xout, neq[1], ind);
+        // yp is last solve or y0
+        solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+                  xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        ind->ixds--; // This dose stays in place
+        canBreak=1;
+        if (j <= op->minSS -1){
+          if (ind->rc[0]== -2019){
+            badSolveExit(*i);
+            break;
+          }
+          for (k = op->neq; k--;) {
+            ind->solveLast[k] = yp[k];
+          }
+          canBreak=0;
+        } else if (j >= op->minSS){
+          if (ind->rc[0] == -2019){
+            for (k = neq[0]; k--;) {
+              yp[k] = ind->solveLast[k];
+            }
+            ind->rc[0] = 2019;
+            break;
+          }
+          for (k = neq[0]; k--;){
+            if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+              canBreak=0;
+            }
+            ind->solveLast[k] = yp[k];
+          }
+          if (canBreak){
+            break;
+          }
+        }
+        *istate=1;
+        xp2 = xout2;
       }
     } else {
       if (dur >= getIiNumber(ind, ind->ixds)){
-	ind->wrongSSDur=1;
-	// Bad Solve => NA
-	badSolveExit(*i);
+        ind->wrongSSDur=1;
+        // Bad Solve => NA
+        badSolveExit(*i);
       } else if (ind->err){
-	printErr(ind->err, ind->id);
-	badSolveExit(*i);
+        printErr(ind->err, ind->id);
+        badSolveExit(*i);
       } else {
-	// Infusion
-	for (j = 0; j < op->maxSS; j++){
-	  // Turn on Infusion, solve (0-dur)
-	  canBreak=1;
-	  xout2 = xp2+dur;
-	  ind->idx=*i;
-	  ind->ixds = infBixds;
-	  handle_evid(ind->evid[ind->idose[infBixds]], neq[0],
-		      BadDose, InfusionRate, dose, yp,
-		      op->do_transit_abs, xout, neq[1], ind);
-	  // yp is last solve or y0
-	  *istate=1;
-	  // yp is last solve or y0
-	  solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
-		    xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-	  xp2 = xout2;
-	  // Turn off Infusion, solve (dur-ii)
-	  xout2 = xp2+dur2;
-	  ind->ixds = infEixds;
-	  ind->idx=ei;
-	  handle_evid(ind->evid[ind->idose[infEixds]], neq[0],
-		      BadDose, InfusionRate, dose, yp,
-		      op->do_transit_abs, xout+dur, neq[1], ind);
-	  if (j <= op->minSS -1){
-	    if (ind->rc[0]== -2019){
-	      badSolveExit(*i);
-	      break;
-	    }
-	    for (k = neq[0]; k--;) {
-	      ind->solveLast[k] = yp[k];
-	    }
-	    canBreak=0;
-	  } else if (j >= op->minSS){
-	    if (ind->rc[0]== -2019){
-	      if (op->strictSS){
-		badSolveExit(*i);
+        // Infusion
+        for (j = 0; j < op->maxSS; j++){
+          // Turn on Infusion, solve (0-dur)
+          canBreak=1;
+          xout2 = xp2+dur;
+          ind->idx=*i;
+          ind->ixds = infBixds;
+          handle_evid(ind->evid[ind->idose[infBixds]], neq[0],
+                      BadDose, InfusionRate, dose, yp,
+                      op->do_transit_abs, xout, neq[1], ind);
+          // yp is last solve or y0
+          *istate=1;
+          // yp is last solve or y0
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+                    xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+          xp2 = xout2;
+          // Turn off Infusion, solve (dur-ii)
+          xout2 = xp2+dur2;
+          ind->ixds = infEixds;
+          ind->idx=ei;
+          handle_evid(ind->evid[ind->idose[infEixds]], neq[0],
+                      BadDose, InfusionRate, dose, yp,
+                      op->do_transit_abs, xout+dur, neq[1], ind);
+          if (j <= op->minSS -1){
+            if (ind->rc[0]== -2019){
+              badSolveExit(*i);
+              break;
+            }
+            for (k = neq[0]; k--;) {
+              ind->solveLast[k] = yp[k];
+            }
+            canBreak=0;
+          } else if (j >= op->minSS){
+            if (ind->rc[0]== -2019){
+              if (op->strictSS){
+                badSolveExit(*i);
               } else {
                 for (k = neq[0]; k--;){
                   yp[k] = ind->solveLast[k];
                 }
                 ind->rc[0] = 2019;
               }
-	    }
-	    for (k = neq[0]; k--;) {
-	      ind->solveLast[k] = yp[k];
-	      if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-		canBreak=0;
-	      }
-	    }
-	  }
-	  // yp is last solve or y0
-	  *istate=1;
-	  solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
-		    xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-	  if (j <= op->minSS -1){
-	    if (ind->rc[0]== -2019){
-	      badSolveExit(*i);
-	      break;
-	    }
-	    for (k = neq[0]; k--;){
-	      ind->solveLast2[k] = yp[k];
-	    }
-	    canBreak=0;
-	  } else if (j >= op->minSS){
-	    if (ind->rc[0]== -2019){
-	      if (op->strictSS){
-		badSolveExit(*i);
+            }
+            for (k = neq[0]; k--;) {
+              ind->solveLast[k] = yp[k];
+              if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+                canBreak=0;
+              }
+            }
+          }
+          // yp is last solve or y0
+          *istate=1;
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+                    xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+          if (j <= op->minSS -1){
+            if (ind->rc[0]== -2019){
+              badSolveExit(*i);
+              break;
+            }
+            for (k = neq[0]; k--;){
+              ind->solveLast2[k] = yp[k];
+            }
+            canBreak=0;
+          } else if (j >= op->minSS){
+            if (ind->rc[0]== -2019){
+              if (op->strictSS){
+                badSolveExit(*i);
               } else {
-		for (k = neq[0]; k--;){
+                for (k = neq[0]; k--;){
                   yp[k] = ind->solveLast2[k];
                 }
-		ind->rc[0] = 2019;
+                ind->rc[0] = 2019;
               }
-	      break;
-	    }
-	    for (k = neq[0]; k--;){
-	      if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
-		  canBreak=0;
-	      }
-	      ind->solveLast2[k] = yp[k];
-	    }
-	    if (canBreak){
-	      break;
-	    }
-	  }
-	  xp2 = xout2;
-	}
-	*istate=1;
-	ind->idx=*i;
-	ind->ixds = infBixds;
+              break;
+            }
+            for (k = neq[0]; k--;){
+              if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
+                canBreak=0;
+              }
+              ind->solveLast2[k] = yp[k];
+            }
+            if (canBreak){
+              break;
+            }
+          }
+          xp2 = xout2;
+        }
+        *istate=1;
+        ind->idx=*i;
+        ind->ixds = infBixds;
       }
     }
 	  
@@ -1164,8 +1163,8 @@ void handleSS(int *neq,
     ind->idx=*i;
     if (!doSSinf){
       handle_evid(ind->evid[ind->ix[*i]], neq[0],
-		  BadDose, InfusionRate, dose, yp,
-		  op->do_transit_abs, xout, neq[1], ind);
+                  BadDose, InfusionRate, dose, yp,
+                  op->do_transit_abs, xout, neq[1], ind);
     }
     ind->doSS=0;
   }
@@ -1175,7 +1174,7 @@ void handleSS(int *neq,
 // Inductive linearization routines
 
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
-			t_update_inis u_inis, t_ME ME, t_IndF IndF) {
+                            t_update_inis u_inis, t_ME ME, t_IndF IndF) {
   clock_t t0 = clock();
   assignFuns();
   int i;
@@ -1210,39 +1209,39 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     yp = getSolve(i);
     if(ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
-	*rc = -1000;
-	// Bad Solve => NA
-	badSolveExit(i);
+        *rc = -1000;
+        // Bad Solve => NA
+        badSolveExit(i);
       } else {
-	idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on, 
-		      ME, IndF);
-	xoutp=xout;
-	postSolve(&idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
+        idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on, 
+                      ME, IndF);
+        xoutp=xout;
+        postSolve(&idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
       }
     }
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
       if (ind->evid[ind->ix[i]] == 3){
-	ind->curShift -= rx->maxShift;
-	for (j = neq[0]; j--;) {
-	  ind->InfusionRate[j] = 0;
-	  ind->on[j] = 1;
-	  ind->cacheME=0;
-	}
-	memcpy(yp,inits, neq[0]*sizeof(double));
-	u_inis(neq[1], yp); // Update initial conditions @ current time
-	if (rx->istateReset) idid = 1;
-	xp=xout;
-	ind->ixds++;
+        ind->curShift -= rx->maxShift;
+        for (j = neq[0]; j--;) {
+          ind->InfusionRate[j] = 0;
+          ind->on[j] = 1;
+          ind->cacheME=0;
+        }
+        memcpy(yp,inits, neq[0]*sizeof(double));
+        u_inis(neq[1], yp); // Update initial conditions @ current time
+        if (rx->istateReset) idid = 1;
+        xp=xout;
+        ind->ixds++;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-	handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
-		 xp, ind->id, &i, nx, &idid, op, ind, u_inis, NULL);
-	if (ind->wh0 == 30){
-	  yp[ind->cmt] = inits[ind->cmt];
-	}
-	if (rx->istateReset) idid = 1;
-	xp = xout;
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+                 xp, ind->id, &i, nx, &idid, op, ind, u_inis, NULL);
+        if (ind->wh0 == 30){
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        if (rx->istateReset) idid = 1;
+        xp = xout;
       }
       if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
       calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
@@ -1253,7 +1252,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
 }
 
 extern "C" void ind_indLin(rx_solve *rx,
-			 int solveid, t_update_inis u_inis, t_ME ME, t_IndF IndF){
+                           int solveid, t_update_inis u_inis, t_ME ME, t_IndF IndF){
   assignFuns();
   rx_solving_options *op = &op_global;
   ind_indLin0(rx, op, solveid, u_inis, ME, IndF);
@@ -1278,7 +1277,7 @@ extern "C" void par_indLin(rx_solve *rx){
     if (abort == 0){
       ind_indLin(rx, solveid, update_inis, ME, IndF);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
-	curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
+        curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
       }
     }
   }
@@ -1293,7 +1292,7 @@ extern "C" void par_indLin(rx_solve *rx){
 // ================================================================================
 // liblsoda
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid, 
-			      t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
+                              t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
   clock_t t0 = clock();
   int i;
   int neq[2];
@@ -1347,37 +1346,37 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     xout = getTime_(ind->ix[i], ind);
     if(ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
-	*rc = -1000;
-	// Bad Solve => NA
-	badSolveExit(i);
+        *rc = -1000;
+        // Bad Solve => NA
+        badSolveExit(i);
       } else {
-	lsoda(ctx, yp, &xp, xout);
-	postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+        lsoda(ctx, yp, &xp, xout);
+        postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
       }
     }
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
       if (ind->evid[ind->ix[i]] == 3){
-	ind->curShift -= rx->maxShift;
-	for (j = neq[0]; j--;) {
-	  ind->InfusionRate[j] = 0;
-	  ind->on[j] = 1;
-	  ind->cacheME=0;
-	}
-	memcpy(yp,inits, neq[0]*sizeof(double));
-	u_inis(neq[1], yp); // Update initial conditions @ current time
-	if (rx->istateReset) ctx->state = 1;
-	xp=xout;
-	ind->ixds++;
+        ind->curShift -= rx->maxShift;
+        for (j = neq[0]; j--;) {
+          ind->InfusionRate[j] = 0;
+          ind->on[j] = 1;
+          ind->cacheME=0;
+        }
+        memcpy(yp,inits, neq[0]*sizeof(double));
+        u_inis(neq[1], yp); // Update initial conditions @ current time
+        if (rx->istateReset) ctx->state = 1;
+        xp=xout;
+        ind->ixds++;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-	handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
-		 xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx);
-	if (ind->wh0 == 30){
-	  yp[ind->cmt] = inits[ind->cmt];
-	}
-	if (rx->istateReset) ctx->state = 1;
-	xp = xout;
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+                 xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx);
+        if (ind->wh0 == 30){
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        if (rx->istateReset) ctx->state = 1;
+        xp = xout;
       }
       if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
       calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
@@ -1392,7 +1391,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
 }
 
 extern "C" void ind_liblsoda(rx_solve *rx, int solveid, 
-			 t_dydt_liblsoda dydt, t_update_inis u_inis){
+                             t_dydt_liblsoda dydt, t_update_inis u_inis){
   rx_solving_options *op = &op_global;
   struct lsoda_opt_t opt = {0};
   opt.ixpr = 0; // No extra printing...
@@ -1450,20 +1449,20 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
   for (int thread=0; thread < cores; thread++) {
     for (int solveid = thread; solveid < nsim*nsub; solveid+=cores){
       if (abort == 0){
-	ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
-	if (displayProgress && thread == 0) {
+        ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
+        if (displayProgress && thread == 0) {
 #pragma omp critical
-	  cur++;
+          cur++;
 #ifdef _OPENMP
-	  if (omp_get_thread_num() == 0) // only in master thread!
+          if (omp_get_thread_num() == 0) // only in master thread!
 #endif
-	    {
-	      curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
-	      if (abort == 0){
-		if (checkInterrupt()) abort =1;
-	      }
-	    }
-	}
+            {
+              curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
+              if (abort == 0){
+                if (checkInterrupt()) abort =1;
+              }
+            }
+        }
       }
     }
   }
@@ -1478,7 +1477,7 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
     int doIt = isProgSupported();
     if (doIt == -1){
     } else if (isRstudio() || doIt == 0){
-      Rprintf("\n");
+      RSprintf("\n");
     } else {
       RSprintf("\r                                                                                \r");
     }
@@ -1524,16 +1523,16 @@ extern "C" void par_liblsoda(rx_solve *rx){
       ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
       if (displayProgress){
 #pragma omp critical
-	  cur++;
+        cur++;
 #ifdef _OPENMP
-	  if (omp_get_thread_num() == 0) // only in master thread!
+        if (omp_get_thread_num() == 0) // only in master thread!
 #endif
-	    {
-	      curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
-	      if (abort == 0){
-		if (checkInterrupt()) abort =1;
-	      }
-	    }
+          {
+            curTick = par_progress(cur, nsim*nsub, curTick, cores, t0, 0);
+            if (abort == 0){
+              if (checkInterrupt()) abort =1;
+            }
+          }
       }
     }
   }
@@ -1548,7 +1547,7 @@ extern "C" void par_liblsoda(rx_solve *rx){
     int doIt = isProgSupported();
     if (doIt == -1){
     } else if (isRstudio() || doIt == 0){
-      Rprintf("\n");
+      RSprintf("\n");
     } else {
       RSprintf("\r                                                                                \r");
     }
@@ -1641,9 +1640,9 @@ extern "C" void rxFreeLast(){
 }
 
 extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, double *rwork, int lrw, int *iwork, int liw, int jt,
-                       t_dydt_lsoda_dum dydt_lsoda,
-                       t_update_inis u_inis,
-                       t_jdum_lsoda jdum){
+                           t_dydt_lsoda_dum dydt_lsoda,
+                           t_update_inis u_inis,
+                           t_jdum_lsoda jdum){
   clock_t t0 = clock();
   rx_solving_options_ind *ind;
   double *yp;
@@ -1684,38 +1683,38 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     xout = getTime_(ind->ix[i], ind);
     if (ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
-	ind->rc[0] = -1000;
-	// Bad Solve => NA
-	badSolveExit(i);
+        ind->rc[0] = -1000;
+        // Bad Solve => NA
+        badSolveExit(i);
       } else {
-	F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-			 &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-	postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
-	//dadt_counter = 0;
+        F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                         &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+        postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+        //dadt_counter = 0;
       }
     }
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
       if (ind->evid[ind->ix[i]] == 3){
-	ind->curShift -= rx->maxShift;
-	for (j = neq[0]; j--;) {
-	  ind->InfusionRate[j] = 0;
-	  ind->on[j] = 1;
-	}
-	memcpy(yp, op->inits, neq[0]*sizeof(double));
-	u_inis(neq[1], yp); // Update initial conditions @ current time
-	if (rx->istateReset) istate = 1;
-	ind->ixds++;
-	xp = xout;
+        ind->curShift -= rx->maxShift;
+        for (j = neq[0]; j--;) {
+          ind->InfusionRate[j] = 0;
+          ind->on[j] = 1;
+        }
+        memcpy(yp, op->inits, neq[0]*sizeof(double));
+        u_inis(neq[1], yp); // Update initial conditions @ current time
+        if (rx->istateReset) istate = 1;
+        ind->ixds++;
+        xp = xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-	handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
-		 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
-	if (ind->wh0 == 30){
-	  ind->solve[ind->cmt] = op->inits[ind->cmt];
-	}
-	if (rx->istateReset) istate = 1;
-	xp = xout;
+        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        if (ind->wh0 == 30){
+          ind->solve[ind->cmt] = op->inits[ind->cmt];
+        }
+        if (rx->istateReset) istate = 1;
+        xp = xout;
       }
       // Copy to next solve so when assigned to yp=ind->solve[neq[0]*i]; it will be the prior values
       if (i+1 != ind->n_all_times) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
@@ -1726,8 +1725,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 }
 
 extern "C" void ind_lsoda(rx_solve *rx, int solveid,
-                      t_dydt_lsoda_dum dydt_ls, t_update_inis u_inis, t_jdum_lsoda jdum,
-		      int cjt){
+                          t_dydt_lsoda_dum dydt_ls, t_update_inis u_inis, t_jdum_lsoda jdum,
+                          int cjt){
   int neq[2];
   neq[0] = op_global.neq;
   neq[1] = 0;
@@ -1768,12 +1767,12 @@ extern "C" void par_lsoda(rx_solve *rx){
   int abort = 0;
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
     ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
-	       dydt_lsoda_dum, update_inis, jdum_lsoda);
+               dydt_lsoda_dum, update_inis, jdum_lsoda);
     if (displayProgress){ // Can only abort if it is long enough to display progress.
       curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
       if (checkInterrupt()){
-	abort =1;
-	break;
+        abort =1;
+        break;
       }
     }
   }
@@ -1785,8 +1784,8 @@ extern "C" void par_lsoda(rx_solve *rx){
 }
 
 extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, 
-                     t_dydt c_dydt,
-                     t_update_inis u_inis) {
+                         t_dydt c_dydt,
+                         t_update_inis u_inis) {
   clock_t t0 = clock();
   double rtol=op->RTOL, atol=op->ATOL;
   int itol=0;           //0: rtol/atol scalars; 1: rtol/atol vectors
@@ -1833,36 +1832,36 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     if (ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
-	printErr(ind->err, ind->id);
-	*rc = idid;
-	// Bad Solve => NA
-	badSolveExit(i);
+        printErr(ind->err, ind->id);
+        *rc = idid;
+        // Bad Solve => NA
+        badSolveExit(i);
       } else {
-	idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-		      c_dydt,       /* function computing the value of f(x,y) */
-		      xp,           /* initial x-value */
-		      yp,           /* initial values for y */
-		      xout,         /* final x-value (xend-x may be positive or negative) */
-		      &rtol,          /* relative error tolerance */
-		      &atol,          /* absolute error tolerance */
-		      itol,         /* switch for rtoler and atoler */
-		      solout,         /* function providing the numerical solution during integration */
-		      iout,         /* switch for calling solout */
-		      NULL,           /* messages stream */
-		      DBL_EPSILON,    /* rounding unit */
-		      0,              /* safety factor */
-		      0,              /* parameters for step size selection */
-		      0,
-		      0,              /* for stabilized step size control */
-		      0,              /* maximal step size */
-		      0,            /* initial step size */
-		      op->mxstep, /* maximal number of allowed steps */
-		      1,            /* switch for the choice of the coefficients */
-		      -1,                     /* test for stiffness */
-		      0,                      /* number of components for which dense outpout is required */
-		      NULL,           /* indexes of components for which dense output is required, >= nrdens */
-		      0                       /* declared length of icon */
-		      );
+        idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
+                      c_dydt,       /* function computing the value of f(x,y) */
+                      xp,           /* initial x-value */
+                      yp,           /* initial values for y */
+                      xout,         /* final x-value (xend-x may be positive or negative) */
+                      &rtol,          /* relative error tolerance */
+                      &atol,          /* absolute error tolerance */
+                      itol,         /* switch for rtoler and atoler */
+                      solout,         /* function providing the numerical solution during integration */
+                      iout,         /* switch for calling solout */
+                      NULL,           /* messages stream */
+                      DBL_EPSILON,    /* rounding unit */
+                      0,              /* safety factor */
+                      0,              /* parameters for step size selection */
+                      0,
+                      0,              /* for stabilized step size control */
+                      0,              /* maximal step size */
+                      0,            /* initial step size */
+                      op->mxstep, /* maximal number of allowed steps */
+                      1,            /* switch for the choice of the coefficients */
+                      -1,                     /* test for stiffness */
+                      0,                      /* number of components for which dense outpout is required */
+                      NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                      0                       /* declared length of icon */
+                      );
       }
       postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
       xp = xRead();
@@ -1871,23 +1870,23 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     if (!op->badSolve){
       ind->idx = i;
       if (ind->evid[ind->ix[i]] == 3){
-	ind->curShift -= rx->maxShift;
-	for (j = neq[0]; j--;) {
-	  ind->InfusionRate[j] = 0;
-	  ind->on[j] = 1;
-	  ind->cacheME=0;
-	}
-	memcpy(yp, op->inits, neq[0]*sizeof(double));
-	u_inis(neq[1], yp); // Update initial conditions @ current time
-	ind->ixds++;
-	xp=xout;
+        ind->curShift -= rx->maxShift;
+        for (j = neq[0]; j--;) {
+          ind->InfusionRate[j] = 0;
+          ind->on[j] = 1;
+          ind->cacheME=0;
+        }
+        memcpy(yp, op->inits, neq[0]*sizeof(double));
+        u_inis(neq[1], yp); // Update initial conditions @ current time
+        ind->ixds++;
+        xp=xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-	handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
-		 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
-	if (ind->wh0 == 30){
-	  yp[ind->cmt] = inits[ind->cmt];
-	}
-	xp = xout;
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+        if (ind->wh0 == 30){
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        xp = xout;
       }
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
       if (i+1 != nx) memcpy(getSolve(i+1), getSolve(i), neq[0]*sizeof(double));
@@ -1898,7 +1897,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
 }
 
 extern "C" void ind_dop(rx_solve *rx, int solveid,
-		    t_dydt c_dydt, t_update_inis u_inis){
+                        t_dydt c_dydt, t_update_inis u_inis){
   rx_solving_options *op = &op_global;
   int neq[2];
   neq[0] = op->neq;
@@ -1939,7 +1938,7 @@ void par_dop(rx_solve *rx){
     int doIt = isProgSupported();
     if (doIt == -1){
     } else if (isRstudio() || doIt == 0){
-      Rprintf("\n");
+      RSprintf("\n");
     } else {
       RSprintf("\r                                                                                \r");
     }
@@ -1947,10 +1946,10 @@ void par_dop(rx_solve *rx){
 }
 
 extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
-	       t_dydt_liblsoda dydt_lls,
-	       t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
-	       t_dydt c_dydt, t_update_inis u_inis,
-	       int jt){
+                          t_dydt_liblsoda dydt_lls,
+                          t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
+                          t_dydt c_dydt, t_update_inis u_inis,
+                          int jt){
   par_progress_1=0;
   _isRstudio = isRstudio();
   setRstudioPrint(_isRstudio);
@@ -2048,7 +2047,7 @@ extern "C" SEXP getDfLevels(const char *item, rx_solve *rx){
     if (!strncmpci(item, curFactor, strlen(item))) {
       SEXP lvl = PROTECT(allocVector(STRSXP, curLen));
       for (int j = 0; j < curLen; j++){
-	SET_STRING_ELT(lvl, j, mkChar(rx->factors.line[base+j]));
+        SET_STRING_ELT(lvl, j, mkChar(rx->factors.line[base+j]));
       }
       SEXP val = PROTECT(allocVector(INTSXP, rx->nr));
       setAttrib(val, R_LevelsSymbol, lvl);
@@ -2080,23 +2079,23 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
       ntimes = ind->n_all_times;
       di = 0;
       for (int i = 0; i < ntimes; i++){
-	evid = ind->evid[ind->ix[i]];
-	if (evid == 9) continue; // not output in NONMEM
-	if (isDose(evid)) {
-	  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-	  if (whI == 7  || whI == 6){
-	    di++;
-	    continue;
-	  }
-	  if (getDoseNumber(ind, di) <= 0) {
-	    di++;
-	    continue;
-	  }
-	  di++;
-	  rx->nr++;
-	} else if (isObs(evid)) {
-	  rx->nr++;
-	}
+        evid = ind->evid[ind->ix[i]];
+        if (evid == 9) continue; // not output in NONMEM
+        if (isDose(evid)) {
+          getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+          if (whI == 7  || whI == 6){
+            di++;
+            continue;
+          }
+          if (getDoseNumber(ind, di) <= 0) {
+            di++;
+            continue;
+          }
+          di++;
+          rx->nr++;
+        } else if (isObs(evid)) {
+          rx->nr++;
+        }
       }
     }
   }
@@ -2271,341 +2270,341 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       par_ptr = ind->par_ptr;
       di = 0;
       if (ind->allCovWarn && csim == 0){
-	warning(_("one or more covariates were all 'NA' for subject 'id=%d'"), csub+1);
+        warning(_("one or more covariates were all 'NA' for subject 'id=%d'"), csub+1);
       }
       for (i = 0; i < ntimes; i++){
-	ind->idx = i;
-	if (evid == 3) {
-	  ind->curShift -= rx->maxShift;
-	  resetno++;
-	}
-	double curT = getTime_(ind->ix[ind->idx], ind);
-        evid = ind->evid[ind->ix[ind->idx]];
-	if (evid == 9) continue;
-	if (isDose(evid)){
-	  getWh(ind->evid[ind->ix[i]], &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
-	  handleTlastInline(&curT, ind);
-	}
-	if (updateErr){
-	  for (j=0; j < errNcol; j++){
-	    // The error pointer is updated if needed
-	    par_ptr[svar[j]] = errs[errNrow*j+kk];
-	  }
-	  if ((doDose && evid!= 9) || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)){
-	    // Only increment if this is an observation or of this a
-	    // simulation that requests dosing information too.
-            kk++;
-	  }
+        ind->idx = i;
+        if (evid == 3) {
+          ind->curShift -= rx->maxShift;
+          resetno++;
         }
-	if (nlhs){
-	  calc_lhs(neq[1], curT, getSolve(i), ind->lhs);
-	}
-	if (subsetEvid == 1){
-	  if (isObs(evid) && evid >= 10) continue;
-	  if (isDose(evid)){
-	    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-	    if (whI == 7 || whI == 6){
-	      dullRate=0;
-	      di++;
-	      continue;
-	    }
-	    if (getDoseNumber(ind, di) <= 0){
-	      di++;
-	      continue;
-	    }
-	  }
-	}
+        double curT = getTime_(ind->ix[ind->idx], ind);
+        evid = ind->evid[ind->ix[ind->idx]];
+        if (evid == 9) continue;
+        if (isDose(evid)){
+          getWh(ind->evid[ind->ix[i]], &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
+          handleTlastInline(&curT, ind);
+        }
+        if (updateErr){
+          for (j=0; j < errNcol; j++){
+            // The error pointer is updated if needed
+            par_ptr[svar[j]] = errs[errNrow*j+kk];
+          }
+          if ((doDose && evid!= 9) || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)){
+            // Only increment if this is an observation or of this a
+            // simulation that requests dosing information too.
+            kk++;
+          }
+        }
+        if (nlhs){
+          calc_lhs(neq[1], curT, getSolve(i), ind->lhs);
+        }
+        if (subsetEvid == 1){
+          if (isObs(evid) && evid >= 10) continue;
+          if (isDose(evid)){
+            getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+            if (whI == 7 || whI == 6){
+              dullRate=0;
+              di++;
+              continue;
+            }
+            if (getDoseNumber(ind, di) <= 0){
+              di++;
+              continue;
+            }
+          }
+        }
         jj  = 0;
-	int solveId=csim*nsub+csub;
-	if (doDose || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)) {
+        int solveId=csim*nsub+csub;
+        if (doDose || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)) {
           // sim.id
           if (sm){
             dfi = INTEGER(VECTOR_ELT(df, jj));
             dfi[ii] = csim+1;
             jj++;
           }
-	  // id
+          // id
           if (md){
             dfi = INTEGER(VECTOR_ELT(df, jj));
             dfi[ii] = csub+1;
             jj++;
           }
-	  if (ms) {
-	    dfi = INTEGER(VECTOR_ELT(df, jj));
+          if (ms) {
+            dfi = INTEGER(VECTOR_ELT(df, jj));
             dfi[ii] = resetno+1;
             jj++;
-	  }
-	  // evid, cmt, ss, amt, dur, ii
-	  if (doDose) {
-	    if (nmevid){
-	      if (isObs(evid)) {
-		// evid
-		dfi = INTEGER(VECTOR_ELT(df, jj++));
-		if (evid >= 10){
-		  dfi[ii] = evid+91; // mtime 101 102 103...
-		  /* dullEvid=0; */
-		} else {
-		  /* if (evid == 2) dullEvid=0; */
-		  dfi[ii] = evid;
-		}
-		// cmt
-		dfi = INTEGER(VECTOR_ELT(df, jj++));
-		dfi[ii] = NA_INTEGER; // Has all states, cmt makes no sense.
-		// ss
-		dfi = INTEGER(VECTOR_ELT(df, jj++));
-		dfi[ii] = 0;
-		// amt
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// rate
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// dur
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-	      } else {
-		getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-		dfi = INTEGER(VECTOR_ELT(df, jj++));
-		double curAmt = getDoseNumber(ind, di);
-		if (whI == 7){
-		  dullRate=0;
-		  dfi[ii] = -1;
-		} else if (whI == 6){
-		  dullRate=0;
-		  dfi[ii] = -2; // evid
-		} else {
-		  if (curAmt > 0) {
-		    if (whI == 4){
-		      dfi[ii] = 5;
-		    } else if (whI == 5){
-		      dfi[ii] = 6;
-		    } else {
-		      dfi[ii] = 1; // evid
-		    }
-		  } else {
-		    if (whI == 1){
-		      dullRate=0;
-		      dfi[ii] = -10; // evid
-		    } else if (whI == 2) {
-		      dullDur=0;
-		      dfi[ii] = -20; // evid
-		    } else if (whI == 4){
-		      dfi[ii] = 5;
-		    } else if (whI == 5){
-		      dfi[ii] = 6;
-		    } else {
-		      dfi[ii] = 1;
-		    }
-		  }
-		}
-		// cmt
-		dfi = INTEGER(VECTOR_ELT(df, jj++));
-		if (evid == 2 || evid == 3){
-		  dfi[ii] = NA_INTEGER;
-		} else if (wh0 == 30){
-		  dfi[ii] = -cmt-1;
-		} else {
-		  dfi[ii] = cmt+1;
-		}
-		// ss
-		dfi = INTEGER(VECTOR_ELT(df, jj++));
-		switch (wh0){
-		  /* case 30: */
-		case 20:
-		  dullSS=0;
-		  dfi[ii] = 2;
-		  break;
-		case 10:
-		  dullSS=0;
-		  dfi[ii] = 1;
-		  break;
-		default:
-		  dfi[ii] = 0;
-		  break;
-		}
-	      }
-	    } else {
-	      // evid
-	      dfi = INTEGER(VECTOR_ELT(df, jj++));
-	      dfi[ii] = evid;
-	      // amt
-	      dfp = REAL(VECTOR_ELT(df, jj++));
-	      dfp[ii] = isObs(evid) ? NA_REAL : getDoseNumber(ind, di++);
-	    }
-	    if (nmevid && isDose(evid)){
-	      double curIi = getIiNumber(ind, di);
-	      if (curIi != 0) dullIi=0;
-	      double curAmt = getDoseNumber(ind, di++);
-	      // rate dur ii ss
-	      switch(ind->whI){
-	      case 9: // modeled rate
-		// amt
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curAmt;
-		// rate
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = -1.0;
-		// dur
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curIi;
-		break;
-	      case 8: // modeled duration
-		// amt
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curAmt;
-		// rate
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = -2.0;
-		// dur
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curIi;
-		break;
-	      case 7: // End modeled rate
-		// amt
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// rate
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// dur
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curIi;
-		break;
-	      case 6: // end modeled duration
-		// amt
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// rate
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// dur
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curIi;
-		break;
-	      case 2: // Infusion specified by dur
-		if (curAmt < 0){
-		  // amt
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		  // rate
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		  // dur
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		} else {
-		  // Find the next fixed length infusion that is turned off.
-		  double curDur=0.0;
-		  for (int jjj = di; jjj < ind->ndoses; jjj++){
-		    if (getDoseNumber(ind, jjj) == -curAmt){
-		      int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
-		      getWh(ind->evid[ind->idose[jjj]], &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
-		      if (nWhI == whI && nCmt == cmt){
-			curDur = getTime_(ind->idose[jjj], ind) -
-			  getTime_(ind->ix[i], ind);
-			break;
-		      }
-		    }
-		  }
-		  // amt
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = curAmt*curDur;
-		  // rate
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		  // dur
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = curDur;
-		}
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curIi;		  
-		break;
-	      case 1: // Infusion specified by rate
-		if (curAmt < 0){
-		  // amt
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		  // rate
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		  // dur
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		} else {
-		  double curDur=0.0;
-		  for (int jjj = di; jjj < ind->ndoses; jjj++){
-		    if (getDoseNumber(ind, jjj) == -curAmt){
-		      int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
-		      getWh(ind->evid[ind->idose[jjj]], &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
-		      if (nWhI == whI && nCmt == cmt){
-			curDur = getTime_(ind->idose[jjj], ind) -
-			  getTime_(ind->ix[i], ind);
-			break;
-		      }
-		    }
-		  }
-		  // amt
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = curAmt*curDur;
-		  // rate
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = curAmt;
-		  // dur
-		  dfp = REAL(VECTOR_ELT(df, jj++));
-		  dfp[ii] = NA_REAL;
-		}
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curIi;
-		break;
-	      default:
-		// Non infusion dose.
-		// Could be multiply/replace events
-		// amt
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curAmt;
-		// rate
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// dur
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = NA_REAL;
-		// ii
-		dfp = REAL(VECTOR_ELT(df, jj++));
-		dfp[ii] = curIi;
-	      }
-	    }
-	  } else if (nevid2col)  {
-	    //evid
-	    dfi = INTEGER(VECTOR_ELT(df, jj++));
-	    dfi[ii] = evid;
-	  }
+          }
+          // evid, cmt, ss, amt, dur, ii
+          if (doDose) {
+            if (nmevid){
+              if (isObs(evid)) {
+                // evid
+                dfi = INTEGER(VECTOR_ELT(df, jj++));
+                if (evid >= 10){
+                  dfi[ii] = evid+91; // mtime 101 102 103...
+                  /* dullEvid=0; */
+                } else {
+                  /* if (evid == 2) dullEvid=0; */
+                  dfi[ii] = evid;
+                }
+                // cmt
+                dfi = INTEGER(VECTOR_ELT(df, jj++));
+                dfi[ii] = NA_INTEGER; // Has all states, cmt makes no sense.
+                // ss
+                dfi = INTEGER(VECTOR_ELT(df, jj++));
+                dfi[ii] = 0;
+                // amt
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // rate
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // dur
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+              } else {
+                getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+                dfi = INTEGER(VECTOR_ELT(df, jj++));
+                double curAmt = getDoseNumber(ind, di);
+                if (whI == 7){
+                  dullRate=0;
+                  dfi[ii] = -1;
+                } else if (whI == 6){
+                  dullRate=0;
+                  dfi[ii] = -2; // evid
+                } else {
+                  if (curAmt > 0) {
+                    if (whI == 4){
+                      dfi[ii] = 5;
+                    } else if (whI == 5){
+                      dfi[ii] = 6;
+                    } else {
+                      dfi[ii] = 1; // evid
+                    }
+                  } else {
+                    if (whI == 1){
+                      dullRate=0;
+                      dfi[ii] = -10; // evid
+                    } else if (whI == 2) {
+                      dullDur=0;
+                      dfi[ii] = -20; // evid
+                    } else if (whI == 4){
+                      dfi[ii] = 5;
+                    } else if (whI == 5){
+                      dfi[ii] = 6;
+                    } else {
+                      dfi[ii] = 1;
+                    }
+                  }
+                }
+                // cmt
+                dfi = INTEGER(VECTOR_ELT(df, jj++));
+                if (evid == 2 || evid == 3){
+                  dfi[ii] = NA_INTEGER;
+                } else if (wh0 == 30){
+                  dfi[ii] = -cmt-1;
+                } else {
+                  dfi[ii] = cmt+1;
+                }
+                // ss
+                dfi = INTEGER(VECTOR_ELT(df, jj++));
+                switch (wh0){
+                  /* case 30: */
+                case 20:
+                  dullSS=0;
+                  dfi[ii] = 2;
+                  break;
+                case 10:
+                  dullSS=0;
+                  dfi[ii] = 1;
+                  break;
+                default:
+                  dfi[ii] = 0;
+                  break;
+                }
+              }
+            } else {
+              // evid
+              dfi = INTEGER(VECTOR_ELT(df, jj++));
+              dfi[ii] = evid;
+              // amt
+              dfp = REAL(VECTOR_ELT(df, jj++));
+              dfp[ii] = isObs(evid) ? NA_REAL : getDoseNumber(ind, di++);
+            }
+            if (nmevid && isDose(evid)){
+              double curIi = getIiNumber(ind, di);
+              if (curIi != 0) dullIi=0;
+              double curAmt = getDoseNumber(ind, di++);
+              // rate dur ii ss
+              switch(ind->whI){
+              case 9: // modeled rate
+                // amt
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curAmt;
+                // rate
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = -1.0;
+                // dur
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curIi;
+                break;
+              case 8: // modeled duration
+                // amt
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curAmt;
+                // rate
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = -2.0;
+                // dur
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curIi;
+                break;
+              case 7: // End modeled rate
+                // amt
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // rate
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // dur
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curIi;
+                break;
+              case 6: // end modeled duration
+                // amt
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // rate
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // dur
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curIi;
+                break;
+              case 2: // Infusion specified by dur
+                if (curAmt < 0){
+                  // amt
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                  // rate
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                  // dur
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                } else {
+                  // Find the next fixed length infusion that is turned off.
+                  double curDur=0.0;
+                  for (int jjj = di; jjj < ind->ndoses; jjj++){
+                    if (getDoseNumber(ind, jjj) == -curAmt){
+                      int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
+                      getWh(ind->evid[ind->idose[jjj]], &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
+                      if (nWhI == whI && nCmt == cmt){
+                        curDur = getTime_(ind->idose[jjj], ind) -
+                          getTime_(ind->ix[i], ind);
+                        break;
+                      }
+                    }
+                  }
+                  // amt
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = curAmt*curDur;
+                  // rate
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                  // dur
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = curDur;
+                }
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curIi;		  
+                break;
+              case 1: // Infusion specified by rate
+                if (curAmt < 0){
+                  // amt
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                  // rate
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                  // dur
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                } else {
+                  double curDur=0.0;
+                  for (int jjj = di; jjj < ind->ndoses; jjj++){
+                    if (getDoseNumber(ind, jjj) == -curAmt){
+                      int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
+                      getWh(ind->evid[ind->idose[jjj]], &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
+                      if (nWhI == whI && nCmt == cmt){
+                        curDur = getTime_(ind->idose[jjj], ind) -
+                          getTime_(ind->ix[i], ind);
+                        break;
+                      }
+                    }
+                  }
+                  // amt
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = curAmt*curDur;
+                  // rate
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = curAmt;
+                  // dur
+                  dfp = REAL(VECTOR_ELT(df, jj++));
+                  dfp[ii] = NA_REAL;
+                }
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curIi;
+                break;
+              default:
+                // Non infusion dose.
+                // Could be multiply/replace events
+                // amt
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curAmt;
+                // rate
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // dur
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = NA_REAL;
+                // ii
+                dfp = REAL(VECTOR_ELT(df, jj++));
+                dfp[ii] = curIi;
+              }
+            }
+          } else if (nevid2col)  {
+            //evid
+            dfi = INTEGER(VECTOR_ELT(df, jj++));
+            dfi[ii] = evid;
+          }
           // time
           dfp = REAL(VECTOR_ELT(df, jj++));
           dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift;
           // LHS
           if (nlhs){
-	    for (j = 0; j < nlhs; j++){
-	      dfp = REAL(VECTOR_ELT(df, jj));
-	      dfp[ii] =ind->lhs[j];
-	      jj++;
-	    }
+            for (j = 0; j < nlhs; j++){
+              dfp = REAL(VECTOR_ELT(df, jj));
+              dfp[ii] =ind->lhs[j];
+              jj++;
+            }
           }
           // States
           if (nPrnState){
@@ -2618,84 +2617,84 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             }
           }       
           // Cov
-	  int didUpdate = 0;
+          int didUpdate = 0;
           if (add_cov*ncov > 0){
-	    // This takes care of the time varying covariates that may be shuffled.
-	    _update_par_ptr(curT, solveId, rx, ind->idx);
-	    didUpdate=1;
-	    for (j = 0; j < add_cov*ncov; j++){
-	      tmp = VECTOR_ELT(df, jj);
-	      double tmpD = par_ptr[op->par_cov[j]-1];
-	      if (TYPEOF(tmp) == REALSXP) {
-		dfp = REAL(tmp);
-		// is this ntimes = nAllTimes or nObs time for this subject...?
-		dfp[ii] = tmpD;
-	      } else {
-		dfi = INTEGER(tmp);
-		// is this ntimes = nAllTimes or nObs time for this subject...?
-		dfi[ii] = (int)(tmpD);
-	      }
-	      jj++;
-	    }
+            // This takes care of the time varying covariates that may be shuffled.
+            _update_par_ptr(curT, solveId, rx, ind->idx);
+            didUpdate=1;
+            for (j = 0; j < add_cov*ncov; j++){
+              tmp = VECTOR_ELT(df, jj);
+              double tmpD = par_ptr[op->par_cov[j]-1];
+              if (TYPEOF(tmp) == REALSXP) {
+                dfp = REAL(tmp);
+                // is this ntimes = nAllTimes or nObs time for this subject...?
+                dfp[ii] = tmpD;
+              } else {
+                dfi = INTEGER(tmp);
+                // is this ntimes = nAllTimes or nObs time for this subject...?
+                dfi[ii] = (int)(tmpD);
+              }
+              jj++;
+            }
           }
-	  if (add_cov*ncov0 > 0){
-	    for (j = 0; j < add_cov*ncov0; j++){
-	      tmp  = VECTOR_ELT(df, jj);
-	      if (TYPEOF(tmp) == REALSXP){
-		dfp = REAL(tmp);
-		// is this ntimes = nAllTimes or nObs time for this subject...?
-		dfp[ii] = ind->par_ptr[rx->cov0[j]];
-	      } else {
-		dfi = INTEGER(tmp);
-		// is this ntimes = nAllTimes or nObs time for this subject...?
-		dfi[ii] = (int)(ind->par_ptr[rx->cov0[j]]);
-	      }
-	      jj++;
-	    }
-	  }
-	  if (nkeep && didUpdate==0) _update_par_ptr(curT, solveId, rx, ind->idx);
-	  for (j = 0; j < nkeep; j++){
-	    tmp = VECTOR_ELT(df, jj);
-	    if (TYPEOF(tmp) == REALSXP){
-	      dfp = REAL(tmp);
-	      // is this ntimes = nAllTimes or nObs time for this subject...?
-	      dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind);
-	    } else {
-	      dfi = INTEGER(tmp);
-	      /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
-	      // is this ntimes = nAllTimes or nObs time for this subject...?
-	      dfi[ii] = (int) (get_fkeep(j, curi + ind->ix[i], ind));
-	    }
-	    jj++;
-	  }
-	  // 
-	  if (doTBS){
-	    dfp = REAL(VECTOR_ELT(df, jj));
-	    dfp[ii] = ind->lambda;
-	    jj++;
+          if (add_cov*ncov0 > 0){
+            for (j = 0; j < add_cov*ncov0; j++){
+              tmp  = VECTOR_ELT(df, jj);
+              if (TYPEOF(tmp) == REALSXP){
+                dfp = REAL(tmp);
+                // is this ntimes = nAllTimes or nObs time for this subject...?
+                dfp[ii] = ind->par_ptr[rx->cov0[j]];
+              } else {
+                dfi = INTEGER(tmp);
+                // is this ntimes = nAllTimes or nObs time for this subject...?
+                dfi[ii] = (int)(ind->par_ptr[rx->cov0[j]]);
+              }
+              jj++;
+            }
+          }
+          if (nkeep && didUpdate==0) _update_par_ptr(curT, solveId, rx, ind->idx);
+          for (j = 0; j < nkeep; j++){
+            tmp = VECTOR_ELT(df, jj);
+            if (TYPEOF(tmp) == REALSXP){
+              dfp = REAL(tmp);
+              // is this ntimes = nAllTimes or nObs time for this subject...?
+              dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind);
+            } else {
+              dfi = INTEGER(tmp);
+              /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
+              // is this ntimes = nAllTimes or nObs time for this subject...?
+              dfi[ii] = (int) (get_fkeep(j, curi + ind->ix[i], ind));
+            }
+            jj++;
+          }
+          // 
+          if (doTBS){
+            dfp = REAL(VECTOR_ELT(df, jj));
+            dfp[ii] = ind->lambda;
+            jj++;
             dfp = REAL(VECTOR_ELT(df, jj));
             dfp[ii] = ind->yj;
-	    jj++;
-	    dfp = REAL(VECTOR_ELT(df, jj));
+            jj++;
+            dfp = REAL(VECTOR_ELT(df, jj));
             dfp[ii] = ind->logitLow;
-	    jj++;
-	    dfp = REAL(VECTOR_ELT(df, jj));
+            jj++;
+            dfp = REAL(VECTOR_ELT(df, jj));
             dfp[ii] = ind->logitHi;
-	    jj++;
-	  }
+            jj++;
+          }
           ii++;
         }
-	ind->_newind = 2;
+        ind->_newind = 2;
       }
       curi += ntimes;
       nBadDose = ind->nBadDose;
       BadDose = ind->BadDose;
       if (nBadDose && csim == 0){
-	for (i = 0; i < nBadDose; i++){
-	  if (BadDose[i] > op->extraCmt){
-	    warning(_("dose to compartment %d ignored (not in system; 'id=%d')"), BadDose[i],csub+1);
-	  }
-	}
+        for (i = 0; i < nBadDose; i++){
+          if (BadDose[i] > op->extraCmt){
+            warning(_("dose to compartment %d ignored (not in system; 'id=%d')"), BadDose[i],csub+1);
+          }
+        }
       }      
       if (updateErr){
         for (j=0; j < errNcol; j++){
@@ -2868,11 +2867,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     SEXP stateNames2 = PROTECT(rxStateNames(op->modNamePtr)); pro++;
     if (nPrnState){
       for (j = 0; j < neq[0]; j++){
-	if (!rmState[j]){
-	  SET_STRING_ELT(sexp_colnames2, jj, STRING_ELT(stateNames2,j));
-	  SET_VECTOR_ELT(df2, jj, VECTOR_ELT(df, kk));
-	  jj++;kk++;
-	}
+        if (!rmState[j]){
+          SET_STRING_ELT(sexp_colnames2, jj, STRING_ELT(stateNames2,j));
+          SET_VECTOR_ELT(df2, jj, VECTOR_ELT(df, kk));
+          jj++;kk++;
+        }
       }
     }
     // Put in Cov names
