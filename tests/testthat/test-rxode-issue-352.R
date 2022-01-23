@@ -28,5 +28,8 @@ test_that("RxODE#352", {
   
   params <- c(tcl = -4.98894153987034, tv = 0.341202932945698)
   
-  expect_error(rxSolve(rx, params = params, events = simdata, omega = omega, sigma = sigma), NA)
+  suppressMessages(expect_error(
+    rxSolve(rx, params = params, events = simdata, omega = omega, sigma = sigma),
+    NA
+  ))
 })
