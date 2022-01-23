@@ -1,5 +1,5 @@
 test_that("user function tests", {
-  expect_error(rxode2("a=fun(d,b,c)"))
+  suppressMessages(expect_error(rxode2("a=fun(d,b,c)")))
   expect_error(rxFromSE("Derivative(fun(a,b,c),a)"))
   
   fun <- "
@@ -94,6 +94,6 @@ test_that("user function tests", {
   expect_warning(rxRmFun("a"))
   
   rxRmFun("fun")
-  expect_error(rxode2("a=fun(d,b,c)"))
+  suppressMessages(expect_error(rxode2("a=fun(d,b,c)")))
   expect_error(rxFromSE("Derivative(fun(a,b,c),a)"))
 })
