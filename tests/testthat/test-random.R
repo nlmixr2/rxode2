@@ -19,7 +19,7 @@ test_that("rnorm", {
   
   ev <- et(1, id = 1:70000)
   
-  f <- warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2))
+  f <- suppressMessages(warn1(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 2)))
   
   expect_equal(mean(f$x1), 0, tolerance = 1e-2)
   expect_equal(sd(f$x1), 1, tolerance = 1e-2)
@@ -27,11 +27,10 @@ test_that("rnorm", {
   expect_equal(mean(f$x2), 3, tolerance = 1e-2)
   expect_equal(sd(f$x1), 1, tolerance = 1e-2)
   
-  
   expect_equal(mean(f$x3), 5, tolerance = 1e-2)
   expect_equal(sd(f$x3), 2, tolerance = 1e-2)
   
-  f2 <- rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1)
+  f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
   
   expect_equal(mean(f2$x1), 0, tolerance = 1e-2)
   expect_equal(sd(f2$x1), 1, tolerance = 1e-2)
@@ -42,9 +41,9 @@ test_that("rnorm", {
   expect_equal(mean(f2$x3), 5, tolerance = 1e-2)
   expect_equal(sd(f2$x3), 2, tolerance = 1e-2)
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x4 <- rnorm(a, b, c, d)
-  }))
+  })))
   
   ## Make sure seeds are reproducible
   ev <- et(1, id = 1:10)
@@ -79,9 +78,9 @@ test_that("rnormV", {
     d / dt(x0) <- 0
   })
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x4 <- rnormV(a, b, c, d)
-  }))
+  })))
   
   ## Make sure seeds are reproducible
   ev <- et(1, id = 1:10)
@@ -145,17 +144,17 @@ test_that("rbinom", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rbinom()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rbinom(a)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rbinom(a, b, c)
-  }))
+  })))
 })
 
 test_that("rcauchy", {
@@ -189,9 +188,9 @@ test_that("rcauchy", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x4 <- rcauchy(a, b, c, d)
-  }))
+  })))
 })
 
 test_that("rchisq", {
@@ -230,13 +229,13 @@ test_that("rchisq", {
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rchisq()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rchisq(a, b)
-  }))
+  })))
 })
 
 test_that("rexp tests", {
@@ -274,9 +273,9 @@ test_that("rexp tests", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rexp(a, b)
-  }))
+  })))
 })
 
 test_that("rf tests", {
@@ -322,17 +321,17 @@ test_that("rf tests", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rf(a, b, c)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rf(a)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rf()
-  }))
+  })))
 })
 
 test_that("rgamma tests", {
@@ -372,13 +371,13 @@ test_that("rgamma tests", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rgamma(a, b, c)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rgamma()
-  }))
+  })))
 })
 
 test_that("rbeta tests", {
@@ -424,17 +423,17 @@ test_that("rbeta tests", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rbeta(a, b, c)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rbeta(a)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rbeta()
-  }))
+  })))
 })
 
 test_that("rgeom tests", {
@@ -466,13 +465,13 @@ test_that("rgeom tests", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rgeom()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rgeom(a, b)
-  }))
+  })))
 })
 
 test_that("rpois", {
@@ -509,13 +508,13 @@ test_that("rpois", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rpois()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rxpois(a, b)
-  }))
+  })))
 })
 
 test_that("rt", {
@@ -554,13 +553,13 @@ test_that("rt", {
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rt()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rt(a, b)
-  }))
+  })))
 })
 
 test_that("runif", {
@@ -597,9 +596,9 @@ test_that("runif", {
   expect_equal(mean(f2$x3), 0.5 * (0.25 + 0.75), tolerance = 1e-2)
   expect_equal(sd(f2$x3), sqrt((0.75 - 0.25)^2 / 12), tolerance = 1e-2)
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x4 <- runif(a, b, c, d)
-  }))
+  })))
   
   ## Make sure seeds are reproducible
   ev <- et(1, id = 1:10)
@@ -667,13 +666,13 @@ test_that("rweibull tests", {
   
   expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rweibull(a, b, c)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     x1 <- rweibull()
-  }))
+  })))
 })
 
 test_that("individual random variable tests", {
