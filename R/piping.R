@@ -111,7 +111,7 @@
 #'
 #' @export
 .quoteCallInfoLines <- function(callInfo, envir=parent.frame()) {
-  .bracket <- rep(FALSE, length=length(callInfo))
+  .bracket <- rep(FALSE, length.out=length(callInfo))
   .env <- environment()
   .ret <- lapply(seq_along(callInfo), function(i) {
     .name <- names(callInfo)[i]
