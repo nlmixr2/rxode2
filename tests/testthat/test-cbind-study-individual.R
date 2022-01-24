@@ -39,7 +39,7 @@ test_that("cbind study and individual", {
   fileCbindStudyIndividual <- test_path("data-cbind-study-individual.qs")
   skip_if_not(file.exists(fileCbindStudyIndividual))
   
-  l <- qs::qload(fileCbindStudyIndividual)
+  l <- qs::qread(fileCbindStudyIndividual)
   
   tmat <- l$tmat
   ev1 <- l$ev1
