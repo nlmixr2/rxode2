@@ -117,27 +117,58 @@ static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
 }
 
 static inline void printParamLags(char *buf, int *j) {
+  sAppendN(&sbOut, "#undef diff_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
   sAppendN(&sbOut, "#define diff_", 13);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "1(x) (x - _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1))\n", *j);
+
+  sAppendN(&sbOut, "#undef diff_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
   sAppendN(&sbOut, "#define diff_", 13);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "(x,y) (x - _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y)))\n", *j);
+
+  sAppendN(&sbOut, "#undef first_", 13);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
   sAppendN(&sbOut, "#define first_", 14);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "1(x) _getParCov(_cSub, _solveData, %d, NA_INTEGER)\n", *j);
+
+  sAppendN(&sbOut, "#undef last_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
   sAppendN(&sbOut, "#define last_", 13);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "1(x) _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->n_all_times - 1)\n", *j);
+  
+  sAppendN(&sbOut, "#undef lead_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);
   sAppendN(&sbOut, "#define lead_", 13);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "1(x) _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + 1)\n", *j);
+
+  sAppendN(&sbOut, "#undef lead_", 12);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);
   sAppendN(&sbOut, "#define lead_", 13);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "(x, y) _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + (y))\n", *j);
+
+  sAppendN(&sbOut, "#undef lag_", 11);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "1\n", 2);  
   sAppendN(&sbOut, "#define lag_", 12);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "1(x) _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - 1)\n", *j);
+
+  sAppendN(&sbOut, "#undef lag_", 11);
+  doDot(&sbOut, buf);
+  sAppendN(&sbOut, "\n", 1);  
   sAppendN(&sbOut, "#define lag_", 12);
   doDot(&sbOut, buf);
   sAppend(&sbOut, "(x,y) _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx - (y))\n", *j);
