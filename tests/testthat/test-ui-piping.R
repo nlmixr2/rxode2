@@ -25,7 +25,7 @@ test_that("test of standard quoting of piping arguments", {
            quote(tv <- 3),
            quote(tcl <- 10),
            quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1))))))
-  
+
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
     tcl = 10
@@ -46,7 +46,7 @@ test_that("test of standard quoting of piping arguments", {
        quote(tcl <- 10),
        quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
        quote(eta.v ~ 0.2)))
-  
+
   expect_equal(testPipeQuote({
     tv = 3
     tcl = 10
@@ -66,7 +66,7 @@ test_that("test of standard quoting of piping arguments", {
        quote(tcl <- 10),
        quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
        quote(eta.v ~ 0.2)))
-  
+
   # Test c()
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
@@ -92,7 +92,7 @@ test_that("test of standard quoting of piping arguments", {
        quote(tv <- 3),
        quote(tcl <- 4))
   )
-  
+
   # test list()
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
@@ -118,7 +118,7 @@ test_that("test of standard quoting of piping arguments", {
        quote(tv <- 3),
        quote(tcl <- 4))
   )
-  
+
   .tmp <- list(tcl = 3, tv = 4)
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
@@ -143,9 +143,9 @@ test_that("test of standard quoting of piping arguments", {
        quote(tcl <- 3),
        quote(tv <- 4))
   )
-  
+
   .tmp <- c(tcl = 3, tv = 4)
-  
+
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
     tcl = 10
@@ -169,11 +169,11 @@ test_that("test of standard quoting of piping arguments", {
        quote(tcl <- 3),
        quote(tv <- 4))
   )
-  
+
   .tmp <- quote({
     ka = exp(tka)
   })
-  
+
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
     tcl = 10
@@ -196,9 +196,9 @@ test_that("test of standard quoting of piping arguments", {
        quote(eta.v ~ 0.2),
        quote(ka <- exp(tka)))
   )
-  
+
   .tmp <- quote(ka <- 8)
-  
+
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
     tcl = 10
@@ -221,9 +221,9 @@ test_that("test of standard quoting of piping arguments", {
        quote(eta.v ~ 0.2),
        quote(ka <- 8))
   )
-  
+
   .tmp <- quote(ka4 ~ 8)
-  
+
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
     tcl = 10
@@ -246,9 +246,9 @@ test_that("test of standard quoting of piping arguments", {
        quote(eta.v ~ 0.2),
        quote(ka4 ~ 8))
   )
-  
+
   .tmp <- quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1))))
-  
+
   expect_equal(testPipeQuote(tka=0.5, {
     tv = 3
     tcl = 10
@@ -297,16 +297,16 @@ one.compartment <- function() {
 f <- rxode2(one.compartment)
 
 test_that("Model Line from Expression, assign", {
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 })
@@ -338,13 +338,13 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, lower case f()", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), 6L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), 6L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 })
@@ -376,13 +376,13 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, upper case F()", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), 6L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), 6L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 })
@@ -414,13 +414,13 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, lag()", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), 6L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), 6L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 })
@@ -452,13 +452,13 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, alag()", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), 6L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), 6L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 })
@@ -490,13 +490,13 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, rate()", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), 6L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 })
@@ -528,16 +528,16 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, dur()", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), 6L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
 })
 
@@ -568,18 +568,18 @@ f <- rxode2(one.compartment)
 
 test_that("Model Line from Expression, duplicate d/dt(depot)", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), NULL)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -5L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -5L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -5L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -5L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -5L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -5L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
 })
 
@@ -612,16 +612,16 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, duplicate f(depot)", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), NULL)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), NULL)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
 })
 
@@ -654,19 +654,19 @@ f <- rxode2(one.compartment)
 test_that("Model Line from Expression, duplicate f(depot)", {
   expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
   expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), NULL)
   expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), NULL)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
   expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
   expect_equal(.rx$.getModelLineFromExpression(quote(cp), f), 8L)
-  
+
   expect_equal(.rx$.getModelLineFromExpression(quote(cp), f, TRUE), 9L)
 })
 
@@ -707,34 +707,34 @@ test_that("simple ini piping, uncorrelated model", {
   testEst(f, "tka", -Inf, 0.45, Inf, FALSE)
   testEst(f %>% ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
   testEst(f %>% ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
-  
+
   testEst(f %>% ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
   testEst(f %>% ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
-  
+
   expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
-  
+
   expect_error(f %>% ini(tka=NULL), "tka")
   expect_error(f %>% ini(tka=c(3,2,1)), "tka")
-  
+
   fFix <- f %>% ini(tka=fix)
   testEst(fFix, "tka", -Inf, 0.45, Inf, TRUE)
   testEst(fFix %>% ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
   testEst(fFix %>% ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
-  
+
   expect_warning(expect_warning(
     testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
     regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
@@ -776,34 +776,34 @@ test_that("simple ini piping, correlated model", {
   testEst(f, "tka", -Inf, 0.45, Inf, FALSE)
   testEst(f %>% ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
   testEst(f %>% ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
-  
+
   testEst(f %>% ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
   testEst(f %>% ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
-  
+
   expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
-  
+
   expect_error(f %>% ini(tka=NULL), "tka")
   expect_error(f %>% ini(tka=c(3,2,1)), "tka")
-  
+
   fFix <- f %>% ini(tka=fix)
   testEst(fFix, "tka", -Inf, 0.45, Inf, TRUE)
   testEst(fFix %>% ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
   testEst(fFix %>% ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
-  
+
   expect_warning(expect_warning(expect_warning(
     testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
     regexp="unfix.*eta.cl"), regexp="unfix.*eta.cl,eta.v"), regexp="unfix.*eta.v"
@@ -845,31 +845,31 @@ test_that("simple ini piping, fixed correlated model", {
   testEst(f, "tka", -Inf, 0.45, Inf, FALSE)
   testEst(f %>% ini(tka=0.5), "tka", -Inf, 0.5, Inf, FALSE)
   testEst(f %>% ini(tka=fix), "tka", -Inf, 0.45, Inf, TRUE)
-  
+
   testEst(f %>% ini(tka=c(0, 0.5)), "tka", 0, 0.5, Inf, FALSE)
   testEst(f %>% ini(tka=c(0, 0.5, 1)), "tka", 0, 0.5, 1, FALSE)
-  
+
   expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
-  
+
   expect_error(f %>% ini(tka=NULL), "tka")
   expect_error(f %>% ini(tka=c(3,2,1)), "tka")
-  
+
   fFix <- f %>% ini(tka=fix)
   testEst(fFix, "tka", -Inf, 0.45, Inf, TRUE)
   testEst(fFix %>% ini(tka=unfix), "tka", -Inf, 0.45, Inf, FALSE)
   testEst(fFix %>% ini(tka=unfix(0.5)), "tka", -Inf, 0.5, Inf, FALSE)
-  
+
   # should warn? Modify fixed value
   testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, TRUE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, TRUE)
-  
+
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, TRUE)
-  
+
   expect_warning(expect_warning(expect_warning(
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
     regexp="fix.*eta.cl"), regexp="fix.*eta.cl,eta.v"), regexp="fix.*eta.v"
@@ -882,7 +882,7 @@ test_that("simple ini piping, fixed correlated model", {
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
     regexp="fix.*eta.cl"), regexp="fix.*eta.cl,eta.v"), regexp="fix.*eta.v"
   )
-  
+
   testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE)
@@ -952,7 +952,7 @@ test_that("UI updates work correctly", {
     c("tka", "tcl", "tv", "eta.v", "add.err"),
     c("eta.ka", "eta.cl"),
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7))
-  
+
   # context("update: Multiple component change with list()")
   testUi(
     f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), list(tcl = 3, tv = 4)),
@@ -960,7 +960,7 @@ test_that("UI updates work correctly", {
     c("eta.ka", "eta.cl"),
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
-  
+
   # context("update: Multiple component change with assigned .tmp=list()")
   .tmp <- list(tcl = 3, tv = 4)
   .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp)
@@ -970,7 +970,7 @@ test_that("UI updates work correctly", {
     c("eta.ka", "eta.cl"),
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
-  
+
   # context("update: Multiple component change with assigned .tmp=c()")
   .tmp <- c(tcl = 3, tv = 4)
   .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp)
@@ -980,7 +980,7 @@ test_that("UI updates work correctly", {
     c("eta.ka", "eta.cl"),
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
-  
+
   # context("update: Multiple component change with assigned .tmp={}")
   .tmp <- quote({
     ka <- exp(tka)
@@ -992,7 +992,7 @@ test_that("UI updates work correctly", {
     c("eta.ka", "eta.cl"),
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
-  
+
   testUi(
     f %>% update(
       tka = 4,
@@ -1006,13 +1006,13 @@ test_that("UI updates work correctly", {
     c("eta.ka", "eta.cl"),
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
-  
+
   testUi(
     f %>% update(ka = exp(tka)),
     c("tka", "tcl", "tv", "eta.cl", "eta.v", "add.err"),
     "eta.ka", c(tka = 0.45, tcl = 1, tv = 3.45, eta.cl = 0.3, eta.v = 0.1, add.err = 0.7)
   )
-  
+
   ## Now test linCmt() issue #166
   one.cmt <- function() {
     ini({
@@ -1031,11 +1031,11 @@ test_that("UI updates work correctly", {
       linCmt() ~ add(add.err)
     })
   }
-  
+
   .ui <- one.cmt %>% update({
     linCmt() ~ add(add.err) + prop(prop.err)
   })
-  
+
   expect_s3_class(.ui, "rxUi")
 })
 
@@ -1045,7 +1045,7 @@ test_that("Looks through prior frames for the correct object", {
   fits <- lapply(seq(-1, -0.1, 0.1), function(kainit) {
     rxode2(update(fit, tka = kainit))
   })
-  
+
   expect_type(fits, "list")
   expect_error(lapply(seq(-1, -0.1, 0.1), function(kainit) {
     rxode2(update(fit, tka = matt))
@@ -1131,7 +1131,7 @@ test_that("expected piping errors", {
     })
   }
   f <- rxode2::rxode2(f)
-  
+
   expect_error(f %>% model(ipre ~ add(add.sd)) %>% ini(add.sd=sqrt(0.1)), NA)
 })
 
@@ -1149,14 +1149,65 @@ test_that("new ipre", {
       ipre ~ prop(prop.sd)
     })
   }
-  
+
   f <- rxode2(f)
-  
+
   trans <- function(f) {
     f %>% model(ipre ~ propF(prop.sd, f2)) %>% ini(prop.sd=sqrt(0.1))
   }
-  
+
   f2 <- trans(f)
-  
+
   expect_true(!any(f2$iniDf$name %in% c("f2")))
+})
+
+test_that("piping looks in the right environment for variables with fix()", {
+
+  f <- function() {
+    ini({
+      tke <- 0.5
+      eta.ke ~ 0.04
+      prop.sd <- sqrt(0.1)
+    })
+    model({
+      ke <- tke * exp(eta.ke)
+      ipre <- 10 * exp(-ke * t)
+      f2 <- ipre / (ipre + 5)
+      ipre ~ prop(prop.sd)
+    })
+  }
+
+  intke <- 5
+  tmp <- f %>% ini(tke=fix(intke))
+
+  expect_true(tmp$iniDf[tmp$iniDf$name == "tke","fix"])
+  expect_equal(tmp$iniDf[tmp$iniDf$name == "tke","est"], 5)
+  rm(list="intke")
+
+  f2 <- function() {
+    f <- function() {
+      ini({
+        tke <- 0.5
+        eta.ke ~ 0.04
+        prop.sd <- sqrt(0.1)
+      })
+      model({
+        ke <- tke * exp(eta.ke)
+        ipre <- 10 * exp(-ke * t)
+        f2 <- ipre / (ipre + 5)
+        ipre ~ prop(prop.sd)
+      })
+    }
+
+    intke <- 5
+    f %>% ini(tke=fix(intke))
+  }
+
+  tmp <- f2()
+
+  expect_true(tmp$iniDf[tmp$iniDf$name == "tke","fix"])
+  expect_equal(tmp$iniDf[tmp$iniDf$name == "tke","est"], 5)
+
+  expect_false(any(ls() == "intke"))
+
 })
