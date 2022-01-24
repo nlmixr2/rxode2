@@ -1,6 +1,4 @@
 tol <- 5e-5 ## Current difference for all equations
-type <- 2
-
 types <- 1:4
 
 for (type in types) {
@@ -266,7 +264,6 @@ for (type in types) {
   test_that("two compartment infusion steady state to central compartment, tau", {
     expect_equal(o2$C2, s2$C2, tolerance = tol)
   })
-  
   
   o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR2)
   s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR2, sensType = sensType)
@@ -1675,7 +1672,7 @@ for (type in types) {
     add.dosing(dose = 3, rate = -1, nbr.doses = 3, cmt = 1, dosing.interval = 12) %>%
     add.sampling(seq(0, 36, length.out = 200))
   
-  for (rt in seq(0.5, 1, 1.5)) {
+  for (rt in c(0.5, 1, 1.5)) {
     o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25, rt = rt), events = et, sensType = sensType)
     s.1c <- sol.1c %>% solve(params = c(V = 20, CL = 25, rt = rt), events = et, sensType = sensType)
     test_that(sprintf("1 compartment solved models and ODEs same for rate-modeled infusion: %s", rt), {
@@ -1706,7 +1703,7 @@ for (type in types) {
   
   goodP(sol.2c, 2)
   
-  for (rt in seq(0.5, 1, 1.5)) {
+  for (rt in c(0.5, 1, 1.5)) {
     o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, rt = rt), events = et, sensType = sensType)
     s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, rt = rt), events = et, sensType = sensType)
     test_that(sprintf("2 compartment solved models and ODEs same for rate-modeled infusion: %s", rt), {
@@ -1736,7 +1733,7 @@ for (type in types) {
   
   goodP(sol.3c, 3)
   
-  for (rt in seq(0.5, 1, 1.5)) {
+  for (rt in c(0.5, 1, 1.5)) {
     s.3c <- sol.3c %>%
       solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, rt = rt), events = et, sensType = sensType)
     o.3c <- ode.3c %>%
@@ -1768,7 +1765,7 @@ for (type in types) {
     add.dosing(dose = 3, rate = -2, nbr.doses = 3, cmt = 1, dosing.interval = 12) %>%
     add.sampling(seq(0, 36, length.out = 200))
   
-  for (dur in seq(0.5, 1, 1.5)) {
+  for (dur in c(0.5, 1, 1.5)) {
     o.1c <- ode.1c %>% solve(params = c(V = 20, CL = 25, dr = dur), events = et, sensType = sensType)
     s.1c <- sol.1c %>% solve(params = c(V = 20, CL = 25, dr = dur), events = et, sensType = sensType)
     test_that(sprintf("1 compartment solved models and ODEs same for dur-modeled infusion: %s", dur), {
@@ -1796,7 +1793,7 @@ for (type in types) {
   
   goodP(sol.2c, 2)
   
-  for (dur in seq(0.5, 1, 1.5)) {
+  for (dur in c(0.5, 1, 1.5)) {
     o.2c <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, dr = dur), events = et, sensType = sensType)
     s.2c <- sol.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, dr = dur), events = et, sensType = sensType)
     test_that(sprintf("2 compartment solved models and ODEs same for dur-modeled infusion: %s", dur), {
@@ -1826,7 +1823,7 @@ for (type in types) {
   
   goodP(sol.3c, 3)
   
-  for (dur in seq(0.5, 1, 1.5)) {
+  for (dur in c(0.5, 1, 1.5)) {
     o.3c <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, dr = dur), events = et, sensType = sensType)
     s.3c <- sol.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, dr = dur), events = et, sensType = sensType)
     test_that(sprintf("3 compartment solved models and ODEs same for dur-modeled infusion: %s", dur), {
