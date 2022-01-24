@@ -192,24 +192,17 @@ d/dt(blood)     = a*intestine - b*blood
     d/dt(Rest_of_Body) = QRB * (Arterial_Blood/VAB - Rest_of_Body/KbRB/VRB)")
   
   
-  et1 <- test_path("etTrans1.qs")
-  
-  if (file.exists(et1)) {
-    
+  test_that("strange rate doesn't affect model", {
+    et1 <- test_path("etTrans1.qs")
+    skip_if_not(file.exists(et1))
     dat <- qs::qread(et1)
-    
-    test_that("strange rate doesn't affect model", {
-      expect_false(any(etTrans(dat, mod)$AMT < 0, na.rm = TRUE))
-    })
-    
-  }
+    expect_false(any(etTrans(dat, mod)$AMT < 0, na.rm = TRUE))
+  })
   
-  t <- test_path("theoSd.qs")
-  
-  if (file.exists(t)) {
-    theoSd <- qs::qread(t)
-    
-    
+  test_that("Missing evid gives the same results", {
+    fileTheo <- test_path("theoSd.qs")
+    skip_if_not(file.exists(fileTheo))
+    theoSd <- qs::qread(fileTheo)
     d <- theoSd[, names(theoSd) != "EVID"]
     
     mod <- rxode2({
@@ -222,17 +215,13 @@ d/dt(blood)     = a*intestine - b*blood
     t1 <- etTrans(theoSd, mod)
     t2 <- etTrans(d, mod)
     
-    test_that("Missing evid gives the same results", {
-      expect_equal(t1$ID, t2$ID)
-      expect_equal(t1$TIME, t2$TIME)
-      expect_equal(t1$EVID, t2$EVID)
-      expect_equal(t1$AMT, t2$AMT)
-      expect_equal(t1$II, t2$II)
-      expect_equal(t1$DV, t2$DV)
-    })
-    
-  }
-  
+    expect_equal(t1$ID, t2$ID)
+    expect_equal(t1$TIME, t2$TIME)
+    expect_equal(t1$EVID, t2$EVID)
+    expect_equal(t1$AMT, t2$AMT)
+    expect_equal(t1$II, t2$II)
+    expect_equal(t1$DV, t2$DV)
+  })
   
   ## Test non-standard inputs
   tmp <- as.data.frame(et() %>% et(amt = 3, time = 0.24, evid = 4))
@@ -644,10 +633,9 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(levels(tmp$ID), lvls)
   })
   
-  qs <- test_path("warfarin.qs")
-  
-  if (file.exists(qs)) {
-    
+  test_that("warfarin model", {
+    qs <- test_path("warfarin.qs")
+    skip_if_not(file.exists(qs))
     warfarin <- qs::qread(qs)
     
     mod <- rxode2({
@@ -710,5 +698,5 @@ d/dt(blood)     = a*intestine - b*blood
     
     expect_equal(as.double((t$sex == "male") * 1), t$sm)
     expect_equal(as.double((t$sex == "female") * 1), t$sf)
-  }
+  })
 }

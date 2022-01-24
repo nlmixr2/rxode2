@@ -36,10 +36,10 @@ if (FALSE) {
 }
 
 test_that("cbind study and individual", {
-  qs <- test_path("data-cbind-study-individual.qs")
-  skip_if_not(file.exists(qs))
+  fileCbindStudyIndividual <- test_path("data-cbind-study-individual.qs")
+  skip_if_not(file.exists(fileCbindStudyIndividual))
   
-  l <- qs::qload(qs)
+  l <- qs::qread(fileCbindStudyIndividual)
   
   tmat <- l$tmat
   ev1 <- l$ev1

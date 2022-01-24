@@ -1,5 +1,5 @@
 test_that("mdv means EVID=2 when amt=0", {
-  skip_if(!file.exists(test_path("theoSd.qs")))
+  skip_if_not(file.exists(test_path("theoSd.qs")))
   theoSd <- qs::qread(test_path("theoSd.qs"))
   
   d <- theoSd[, names(theoSd) != "EVID"]
