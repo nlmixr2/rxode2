@@ -1334,10 +1334,16 @@ rxCompile.rxModelVars <- function(model, # Model
         rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")),
         prefix
       ) == -1 &&
-      is.loaded(.modVars)) {
-      dyn.unload(.cDllFile)
+        is.loaded(.modVars)) {
+      try(dyn.unload(.cDllFile), silent=TRUE)
       unlink(.cFile)
-      unlink(.cDllFile)
+      .tmp <- try(unlink(.cDllFile), silent=TRUE)
+      if (inherits(.tmp, "try-error")) {
+        if (file.exists(.cDllFile)) {
+          stop("cannot seem to remove '", .cDllFile, "'",
+               call.=FALSE)
+        }
+      }
     } else {
       try(dynLoad(.cDllFile), silent = TRUE)
       if (is.loaded(.modVars)) {
