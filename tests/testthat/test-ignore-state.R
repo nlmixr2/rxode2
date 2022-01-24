@@ -13,7 +13,6 @@ test_that("Nothing ignored", {
   expect_equal(rxModelVars(mod)$state.ignore, c(0L, 0L))
 })
 
-
 .rxWithOptions(list(rxode2.syntax.require.ode.first = FALSE), {
   mod <- rxode2({
     a <- 6
@@ -45,7 +44,6 @@ test_that("Nothing ignored", {
     d / dt(intestine) ~ -a * intestine
     d / dt(blood) <- a * intestine - b * blood
   })
-  
   
   mod.dur <- rxode2({
     a <- 6
@@ -162,64 +160,62 @@ test_that("Nothing ignored", {
   })
 })
 
-
-
 .rxWithOptions(list(rxode2.syntax.require.ode.first = TRUE), {
   test_that("errors usually occur", {
-    expect_error(rxode2({
+    suppressMessages(expect_error(rxode2({
       a <- 6
       b <- 0.6
       d / dt(intestine) <- -a * intestine
       alag(blood) <- 0
       d / dt(blood) ~ a * intestine - b * blood
-    }))
+    })))
     
-    expect_error(rxode2({
+    suppressMessages(expect_error(rxode2({
       a <- 6
       b <- 0.6
       d / dt(intestine) <- -a * intestine
       rate(blood) <- 2
       d / dt(blood) ~ a * intestine - b * blood
-    }))
+    })))
     
-    expect_error(rxode2({
+    suppressMessages(expect_error(rxode2({
       a <- 6
       b <- 0.6
       d / dt(intestine) <- -a * intestine
       dur(blood) <- 2
       d / dt(blood) ~ a * intestine - b * blood
-    }))
+    })))
     
-    expect_error(rxode2({
+    suppressMessages(expect_error(rxode2({
       a <- 6
       b <- 0.6
       f(blood) <- 1
       d / dt(intestine) <- -a * intestine
       d / dt(blood) ~ a * intestine - b * blood
-    }))
+    })))
     
-    expect_error(rxode2({
+    suppressMessages(expect_error(rxode2({
       a <- 6
       b <- 0.6
       alag(blood) <- 0
       d / dt(intestine) <- -a * intestine
       d / dt(blood) ~ a * intestine - b * blood
-    }))
+    })))
     
-    expect_error(rxode2({
+    suppressMessages(expect_error(rxode2({
       a <- 6
       b <- 0.6
       rate(blood) <- 2
       d / dt(intestine) <- -a * intestine
       d / dt(blood) ~ a * intestine - b * blood
-    }))
+    })))
     
-    expect_error(rxode2({
+    suppressMessages(expect_error(rxode2({
       a <- 6
       b <- 0.6
       dur(blood) <- 2
       d / dt(intestine) <- -a * intestine
       d / dt(blood) ~ a * intestine - b * blood
-    }))
+    })))
   })
 })

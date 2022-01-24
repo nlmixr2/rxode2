@@ -2,13 +2,13 @@ et <- et(1:10)
 et$b <- 1:10
 
 test_that("lag()", {
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- lag()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- lag(b, c)
-  }))
+  })))
   
   m1 <- rxode2({
     c <- b + 2
@@ -83,7 +83,6 @@ test_that("lag()", {
   
   expect_equal(x1$c, c(NA, 1, 2, 3, 4, 5, 6, 7, 8, 9))
   
-  
   m1 <- rxode2({
     a <- b
     c <- lead(a, -1)
@@ -108,13 +107,13 @@ test_that("lag()", {
 })
 
 test_that("lead()", {
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- lead()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- lead(b, c)
-  }))
+  })))
   
   m1 <- rxode2({
     c <- b + 2
@@ -157,7 +156,6 @@ test_that("lead()", {
   
   expect_equal(x1$a, 1:10)
   
-  
   m1 <- rxode2({
     a <- lead(b)
   })
@@ -180,19 +178,18 @@ test_that("lead()", {
   expect_equal(x1$a, c(2:10, NA))
 })
 
-
 test_that("first()", {
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- first()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- first(b, 1)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- first(b, 1, 2)
-  }))
+  })))
   
   m1 <- rxode2({
     a <- first(b)
@@ -217,17 +214,17 @@ test_that("first()", {
 })
 
 test_that("last()", {
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- last()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- last(b, 1)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- last(b, 1, 2)
-  }))
+  })))
   
   m1 <- rxode2({
     a <- last(b)
@@ -256,29 +253,29 @@ et <- et(1:10)
 et$b <- 2^(1:10)
 
 test_that("diff()", {
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- diff()
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- diff(b, 1, 2)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- diff(b, 1.2)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- diff(b, c)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- diff(b, -1)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- diff(b, 0)
-  }))
+  })))
   
   m1 <- rxode2({
     a <- diff(b)
@@ -289,7 +286,6 @@ test_that("diff()", {
   x1 <- m1 %>% rxSolve(et)
   
   expect_equal(x1$a, c(NA, 2, 4, 8, 16, 32, 64, 128, 256, 512))
-  
   
   m1 <- rxode2({
     c <- b
@@ -325,34 +321,31 @@ test_that("diff()", {
 })
 
 test_that("bad lag() types", {
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a ~ c + d
     b <- lag(a)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     d / dt(a) <- 3
     b <- lag(a)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- a + 3
     b <- lag(a)
-  }))
+  })))
   
-  
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- 13 + b
     b <- lag(a, 3)
-  }))
+  })))
   
-  expect_error(rxode2({
+  suppressMessages(expect_error(rxode2({
     a <- 13 + b
     b <- lead(a)
-  }))
+  })))
 })
-
-
 
 test_that("test sticky lhs", {
   mod1 <- rxode2({
@@ -391,7 +384,6 @@ test_that("test sticky lhs", {
   
   expect_equal(max(r2$tad, na.rm = TRUE), 64)
 })
-
 
 test_that("newind", {
   mod1 <- rxode2({

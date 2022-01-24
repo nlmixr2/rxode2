@@ -56,7 +56,7 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 })
 
 test_that("Jacobian specified but sensitivity not specified.", {
-  jac <- rxode2("
+  jac <- suppressMessages(rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Initial conditions
@@ -64,7 +64,7 @@ y(0) = 2
 dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
-", calcJac = TRUE)
+", calcJac = TRUE))
   
   expect_true(jac$calcJac)
   expect_false(jac$calcSens)
@@ -72,7 +72,7 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 })
 
 test_that("Sensitivity specified.", {
-  sens <- rxode2("
+  sens <- suppressMessages(rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Initial conditions
@@ -80,7 +80,7 @@ y(0) = 2
 dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
-", calcSens = TRUE)
+", calcSens = TRUE))
   
   expect_false(sens$calcJac)
   expect_true(sens$calcSens)
@@ -98,13 +98,13 @@ dy(0) = 0
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 ")
   jac <- norm
-  jac <- rxode2(jac, calcJac = TRUE)
+  jac <- suppressMessages(rxode2(jac, calcJac = TRUE))
   expect_true(jac$calcJac)
   expect_false(jac$calcSens)
-  sens <- rxode2(jac, calcSens = TRUE)
+  sens <- suppressMessages(rxode2(jac, calcSens = TRUE))
   expect_false(sens$calcJac)
   expect_true(sens$calcSens)
-  full <- rxode2(jac, calcSens = TRUE, calcJac = TRUE)
+  full <- suppressMessages(rxode2(jac, calcSens = TRUE, calcJac = TRUE))
   expect_false(sens$calcJac)
   expect_true(sens$calcSens)
   rxDelete(jac)
@@ -114,7 +114,7 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 })
 
 test_that("Jacobian and sensitivity specified.", {
-  sens <- rxode2("
+  sens <- suppressMessages(rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
 ## Initial conditions
@@ -122,13 +122,13 @@ y(0) = 2
 dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
-", calcSens = TRUE)
+", calcSens = TRUE))
   
-  norm <- rxode2(sens, calcSens = FALSE)
+  norm <- suppressMessages(rxode2(sens, calcSens = FALSE))
   expect_false(norm$calcJac)
   expect_false(norm$calcSens)
   
-  jac <- rxode2(sens, calcJac = TRUE)
+  jac <- suppressMessages(rxode2(sens, calcJac = TRUE))
   expect_true(jac$calcJac)
   expect_false(jac$calcSens)
   expect_false(sens$calcJac)
@@ -158,15 +158,15 @@ test_that("Conditional Sensitivites", {
   expect_false(transit.if$calcJac)
   expect_false(transit.if$calcSens)
   
-  jac <- rxode2(transit.if, calcJac = TRUE)
+  jac <- suppressMessages(rxode2(transit.if, calcJac = TRUE))
   expect_true(jac$calcJac)
   expect_false(jac$calcSens)
   
-  sens <- rxode2(transit.if, calcSens = TRUE)
+  sens <- suppressMessages(rxode2(transit.if, calcSens = TRUE))
   expect_false(sens$calcJac)
   expect_true(sens$calcSens)
   
-  full <- rxode2(transit.if, calcSens = TRUE, calcJac = TRUE)
+  full <- suppressMessages(rxode2(transit.if, calcSens = TRUE, calcJac = TRUE))
   expect_true(full$calcJac)
   expect_true(full$calcSens)
 })
@@ -187,7 +187,7 @@ d/dt(depot) = exp(log(bio*podo)+log(ktr)+n*log(ktr*t)-ktr*t-lgammafn(n+1))-ka*de
 d/dt(cen) = ka*depot-k*cen
 ")
   
-  mod <- rxode2(mod, calcSens = TRUE)
+  mod <- suppressMessages(rxode2(mod, calcSens = TRUE))
   
   et <- eventTable()
   et$add.sampling(seq(0, 10, length.out = 200))
@@ -226,7 +226,7 @@ d/dt(cen) = ka*depot-k*cen
     d / dt(cen) <- ka * depot - k * cen
   })
   
-  tmp <- rxode2(mod, calcSens = c("eta_ka", "eta_mtt"))
+  tmp <- suppressMessages(rxode2(mod, calcSens = c("eta_ka", "eta_mtt")))
   expect_true(all(!is.na(transit[["_sens_depot_mtt"]])))
   
   ## tmp <- rxode2(mod, calcSens=list(eta=c("eta_ka", "eta_mtt"), theta=c("cl", "vc")));
