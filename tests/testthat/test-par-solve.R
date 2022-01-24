@@ -238,7 +238,7 @@ for (meth in c("dop853", "liblsoda", "lsoda")) {
 
 test_that("Can solve the system.", {
   ## Now Try multi-subject data.
-  skip_if(!file.exists(test_path("test-data-setup.qs")))
+  skip_if_not(file.exists(test_path("test-data-setup.qs")))
   dat <- qs::qread(test_path("test-data-setup.qs"))
   
   pk7a <-

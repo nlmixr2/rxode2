@@ -1,6 +1,6 @@
-filePath <- test_path("warfarin.qs")
-skip_if_not(file.exists(filePath))
-warfarin <- qs::qread(filePath)
+fileWarfarin <- test_path("warfarin.qs")
+skip_if_not(file.exists(fileWarfarin))
+warfarin <- qs::qread(fileWarfarin)
 
 test_that("cmt() syntax makes sense", {
   mod <- rxode2({
