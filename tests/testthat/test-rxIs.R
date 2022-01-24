@@ -1,5 +1,5 @@
 test_that("rxIs tests", {
-  skip_if(!file.exists(test_path("test-data-setup.qs")))
+  skip_if_not(file.exists(test_path("test-data-setup.qs")))
   dat <- qs::qread(test_path("test-data-setup.qs"))
   dat <- tibble::as_tibble(dat)
   expect_true(rxIs(dat, "data.frame"))
