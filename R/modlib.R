@@ -190,7 +190,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
     }
     .pkg <- basename(usethis::proj_get())
     .rx <- loadNamespace("rxode2")
-    sapply(
+    lapply(
       list.files(.rxUseCdir, pattern = "[.]c", full.names = TRUE),
       function(x) {
         .minfo(sprintf("copy '%s'", basename(x)))
