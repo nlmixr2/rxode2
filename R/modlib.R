@@ -102,10 +102,10 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
     assign("internal", internal, .env)
     assign("overwrite", overwrite, .env)
     assign("compress", compress, .env)
-    sapply(list.files(devtools::package_file("inst/rx"), full.names = TRUE),
-      unlink,
-      force = TRUE, recursive = TRUE
-    )
+    lapply(list.files(devtools::package_file("inst/rx"), full.names = TRUE),
+           function(f) {
+             unlink(f, force = TRUE, recursive = TRUE)
+           })
     .models <- NULL
     for (.f in list.files(
       path = devtools::package_file("data"),
@@ -254,21 +254,46 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       cat(".rxUpdated <- new.env(parent=emptyenv())\n")
       sink()
     }
-    unlink(devtools::package_file("inst/rx"), recursive = TRUE, force = TRUE)
+    lapply(list.files(devtools::package_file("inst/rx"), full.names = TRUE),
+           function(f) {
+             unlink(f, force = TRUE, recursive = TRUE)
+           })
     if (length(list.files(devtools::package_file("inst"))) == 0) {
       unlink(devtools::package_file("inst"), recursive = TRUE, force = TRUE)
     }
     return(invisible(TRUE))
   } else {
-    .modName <- as.character(substitute(obj))
-    .pkg <- basename(usethis::proj_get())
-    .env <- new.env(parent = baseenv())
-    assign(.modName, rxode2(.norm2(obj), package = .pkg, modName = .modName), .env)
-    assignInMyNamespace(".rxUseCdir", dirname(rxC(.env[[.modName]])))
-    assign("internal", internal, .env)
-    assign("overwrite", overwrite, .env)
-    assign("compress", compress, .env)
-    eval(parse(text = sprintf("usethis::use_data(%s, internal=internal, overwrite=overwrite, compress=compress)", .modName)), envir = .env)
+    .tempfile <- tempfile()
+    .tempR <- tempfile(fileext=".R")
+    .expr <- bquote({
+      setwd(.(getwd()))
+      .modName <- .(as.character(substitute(obj)))
+      .pkg <- .(basename(usethis::proj_get()))
+      .env <- new.env(parent = baseenv())
+      assign(.modName, rxode2::rxode2(.(.norm2(obj)), package = .pkg, modName =.modName), .env)
+      writeLines(dirname(rxode2::rxC(.env[[.modName]])), .(.tempfile))
+      assign("internal", .(internal), .env)
+      assign("overwrite", .(overwrite), .env)
+      assign("compress", .(compress), .env)
+      eval(parse(text = sprintf("usethis::use_data(%s, internal=internal, overwrite=overwrite, compress=compress)", .modName)), envir = .env)
+    })
+    writeLines(paste(deparse(.expr), collapse="\n"), .tempR)
+    .cmd <- file.path(R.home("bin"), "R")
+    .args <- c("CMD", "BATCH", basename(.tempR))
+    .rxWithWd(tempdir(), {
+      .out <- sys::exec_internal(cmd = .cmd, args = .args, error = FALSE)
+      message(paste(readLines(paste0(.tempR, "out")), collapse="\n"))
+    })
+    .stderr <- rawToChar(.out$stderr)
+    if (!(all(.stderr == "") & length(.stderr) == 1)) {
+      message(paste(.stderr, sep = "\n"))
+    }
+    if (!file.exists(.tempfile)) {
+      stop("could not build model for inclusion in package",
+           call.=FALSE)
+    }
+    assignInMyNamespace(".rxUseCdir", readLines(.tempfile))
+    try(unlink(paste(.tempfile)), silent=TRUE)
   }
 }
 
