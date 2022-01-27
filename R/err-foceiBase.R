@@ -102,7 +102,7 @@
     .p1 <- .enQuote(pred1$a)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("add", "lnorm") & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("add", "lnorm", "logitNorm", "probitNorm") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -204,7 +204,7 @@
     .p1 <- .enQuote(pred1$a)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("add", "lnorm") & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("add", "lnorm", "probitNorm", "logitNorm") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- .enQuote(env$iniDf$name[.w])
     } else {
@@ -246,7 +246,7 @@
     .p1 <- .enQuote(pred1$a)
   } else {
     .cnd <- pred1$cond
-    .w <- which(env$iniDf$err %in% c("add", "lnorm") & env$iniDf$condition == .cnd)
+    .w <- which(env$iniDf$err %in% c("add", "lnorm", "logitNorm", "probitNorm") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
       .p1 <- .enQuote(env$iniDf$name[.w])
     } else {
