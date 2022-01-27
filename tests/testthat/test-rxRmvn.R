@@ -20,7 +20,8 @@ test_that("mvtnormal simulations make sense", {
   set.seed(1)
   x <- rxRmvn(20000, m, s, ncores = 2)
   
-  expect_equal(m, colMeans(x), tolerance = 0.01)
+  # Using tolerance=0.03 for the Mac random number generator
+  expect_equal(m, colMeans(x), tolerance = 0.03)
   expect_equal(s, var(x), tolerance = 0.1)
 })
 

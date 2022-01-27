@@ -399,7 +399,8 @@ test_that("rbeta tests", {
   }
   
   expect_equal(mean(f$x1), mbeta(2, 5), tolerance = 0.01)
-  expect_equal(sd(f$x1), sbeta(2, 5), tolerance = 0.01)
+  # Using tolerance=0.02 for the Mac random number generator
+  expect_equal(sd(f$x1), sbeta(2, 5), tolerance = 0.02)
   
   expect_equal(mean(f$x2), mbeta(2, 2), tolerance = 0.01)
   expect_equal(sd(f$x2), sbeta(2, 2), tolerance = 0.01)
