@@ -595,7 +595,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     .w <- which(env$df$name == .curName)
     if (.isLogitOrProbit && argumentNumber > 2) {
       env$err <- c(env$err,
-                   paste0("`", funName, "()` requires numeric bounds"))
+                   paste0("'", funName, "()' requires numeric bounds"))
     } else if (length(.w) == 1L) {
       .df  <- env$df
       .df$err[.w] <- ifelse(argumentNumber == 1, funName, paste0(funName, argumentNumber))
@@ -612,24 +612,20 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         }
       }
       env$err <- c(env$err,
-                   paste0("In the error expression, the variable `", .curName, "` must be estimated, not calculated"))
+                   paste0("in the error expression, the variable '", .curName, "' must be estimated, not calculated"))
     }
   } else if (.is.numeric(.cur, env)) {
     if (.isLogitOrProbit) {
-      .curName <- env$lastDistAssign
-      .w <- which(env$df$name == .curName)
-      if (length(.w) == 1L) {
+      if (argumentNumber == 2 || argumentNumber == 3) {
         env$trLimit[argumentNumber - 1] <- env$.numeric
       }
     }
-  } else if (is.logical(.cur)) {
-    if (is.na(.cur)) {
-      if (argumentNumber == 1 && funName %in% .allowDemoteAddDistributions) {
-        env$needToDemoteAdditiveExpression <- TRUE
-      } else {
-        env$err <- c(env$err,
-                     paste0("NA in `", funName, "()` cannot be used here"))
-      }
+  } else if (is.na(.cur)) {
+    if (argumentNumber == 1 && funName %in% .allowDemoteAddDistributions) {
+      env$needToDemoteAdditiveExpression <- TRUE
+    } else {
+      env$err <- c(env$err,
+                   paste0("NA in '", funName, "()' cannot be used here"))
     }
   }
 }
