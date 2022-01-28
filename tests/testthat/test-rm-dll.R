@@ -1,4 +1,5 @@
-# Removing dlls
+# Removing dll
+skip_on_os("windows")
 ode <- rxode2({
   b <- -1
   d / dt(X) <- a * X + Y * Z
