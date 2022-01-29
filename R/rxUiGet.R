@@ -49,7 +49,7 @@ rxUiGet.theta <- function(x, ...) {
   .w <- !is.na(.ini$ntheta)
   setNames(.ini$est[.w], .ini$name[.w])
 }
-attr(rxUiGet.theta, "desc") <- "Inital Population/Fixed Effects estimates, theta"
+attr(rxUiGet.theta, "desc") <- "Initial Population/Fixed Effects estimates, theta"
 
 #' @export
 #' @rdname rxUiGet
@@ -65,7 +65,7 @@ rxUiGet.omega <- function(x, ...) {
   }
   .lotri
 }
-#attr(rxUiGet.omega, "desc") <- "Initial Random Effects variability matrix, omega"
+attr(rxUiGet.omega, "desc") <- "Initial Random Effects variability matrix, omega"
 
 #' @export
 #' @rdname rxUiGet
@@ -257,10 +257,8 @@ rxUiGet.default <- function(x, ...) {
   if (!exists(.arg, envir=x[[1]])) return(NULL)
   get(.arg, x[[1]])
 }
+
 .rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)")
-
-
-
 
 .rxUiGetSupportedDollars <- function() {
   .v <- as.character(utils::methods("rxUiGet"))
