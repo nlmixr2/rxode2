@@ -216,7 +216,7 @@ extern "C" int par_progress(int c, int n, int d, int cores, clock_t t0, int stop
       if (curTicks > 50) curTicks=50;
       int isSupported = isProgSupported();
       if (_isRstudio) isSupported = 0;
-      
+
       if (isSupported == -1){
       } else if (isSupported == 0){
         int i;
@@ -302,7 +302,7 @@ extern "C" int par_progress(int c, int n, int d, int cores, clock_t t0, int stop
       return nticks;
     }
   }
-  return d;  
+  return d;
 }
 
 typedef struct {
@@ -502,14 +502,14 @@ static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char*
 }
 
 int global_jt = 2;
-int global_mf = 22;  
+int global_mf = 22;
 int global_debug = 0;
 
 double *global_rworkp;
 int *global_iworkp;
 
 unsigned int global_rworki = 0;
-double *global_rwork(unsigned int mx){ 
+double *global_rwork(unsigned int mx){
   if (mx >= global_rworki){
     global_rworki = mx+1024;
     global_rworkp = R_Realloc(global_rworkp, global_rworki, double);
@@ -518,7 +518,7 @@ double *global_rwork(unsigned int mx){
 }
 
 void rxUpdateFuns(SEXP trans){
-  const char *lib, *s_dydt, *s_calc_jac, *s_calc_lhs, *s_inis, *s_dydt_lsoda_dum, *s_dydt_jdum_lsoda, 
+  const char *lib, *s_dydt, *s_calc_jac, *s_calc_lhs, *s_inis, *s_dydt_lsoda_dum, *s_dydt_jdum_lsoda,
     *s_ode_solver_solvedata, *s_ode_solver_get_solvedata, *s_dydt_liblsoda, *s_AMT, *s_LAG, *s_RATE,
     *s_DUR, *s_mtime, *s_assignFuns,
     *s_ME, *s_IndF;
@@ -541,7 +541,7 @@ void rxUpdateFuns(SEXP trans){
   s_ME=CHAR(STRING_ELT(trans, 20));
   s_IndF=CHAR(STRING_ELT(trans, 21));
   global_jt = 2;
-  global_mf = 22;  
+  global_mf = 22;
   global_debug = 0;
   if (strcmp(CHAR(STRING_ELT(trans, 1)),"fulluser") == 0){
     global_jt = 1;
@@ -609,7 +609,7 @@ extern "C" void radix_r(const int from, const int to, const int radix,
 extern "C" void calcNradix(int *nbyte, int *nradix, int *spare, uint64_t *maxD, uint64_t *minD);
 
 extern "C" uint64_t dtwiddle(const void *p, int i);
-// Adapted from 
+// Adapted from
 // https://github.com/Rdatatable/data.table/blob/588e0725320eacc5d8fc296ee9da4967cee198af/src/forder.c#L630-L649
 extern "C" void sortRadix(rx_solving_options_ind *ind){
 #ifdef _OPENMP
@@ -672,7 +672,7 @@ extern "C" void sortRadix(rx_solving_options_ind *ind){
       }
       // rxode2 uses key[0][i] = 0 | (uint8_t)(elem & 0xff) instead of
       //  key[0][i] |= (uint8_t)(elem & 0xff)
-      // because unlike data.table, key[0][i] is not necessarily zero. 
+      // because unlike data.table, key[0][i] is not necessarily zero.
       key[0][i] = 0 | (uint8_t)(elem & 0xff);
     }
     radix_r(0, ind->n_all_times-1, 0, ind, rx);
@@ -749,10 +749,10 @@ static const char *err_msg_ls[] =
 extern "C" void solout(long int nr, double t_old, double t, double *y, int *nptr, int *irtrn){}
 
 extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, double tf,
-                      double *InfusionRate_, int *on_, 
+                      double *InfusionRate_, int *on_,
                       t_ME ME, t_IndF  IndF);
 
-void solveSS_1(int *neq, 
+void solveSS_1(int *neq,
                int *BadDose,
                double *InfusionRate,
                double *dose,
@@ -769,7 +769,7 @@ void solveSS_1(int *neq,
   int itol=0;
   switch(op->stiff){
   case 3:
-    idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on, 
+    idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
                   ME, IndF);
     if (idid <= 0) {
       /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
@@ -979,7 +979,7 @@ void handleSS(int *neq,
       // Based on http://www.rxkinetics.com/theo.html -- Chiou method
       for (j = 0; j < op->maxSS; j++){
         if (j == 0) xout2 = xp2+1.; // the first level drawn one hour after infusion
-        else xout2 = xp2+infStep; 
+        else xout2 = xp2+infStep;
         solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
                   xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
         canBreak=1;
@@ -1003,7 +1003,7 @@ void handleSS(int *neq,
             break;
           } else {
             // Assumes that this is at least one half life.
-            double a2 = yp[ind->cmt];	  
+            double a2 = yp[ind->cmt];
             infStep = max2(infStep,M_LN2/(rate/(a1+a2) + 2*(a1-a2)/((a1+a2)*(xout-t1))));
           }
         }
@@ -1155,7 +1155,7 @@ void handleSS(int *neq,
         ind->ixds = infBixds;
       }
     }
-	  
+
     if (doSS2){
       // Add at the end
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
@@ -1213,7 +1213,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         // Bad Solve => NA
         badSolveExit(i);
       } else {
-        idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on, 
+        idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on,
                       ME, IndF);
         xoutp=xout;
         postSolve(&idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
@@ -1291,7 +1291,7 @@ extern "C" void par_indLin(rx_solve *rx){
 }
 // ================================================================================
 // liblsoda
-extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid, 
+extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
   clock_t t0 = clock();
   int i;
@@ -1390,7 +1390,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
-extern "C" void ind_liblsoda(rx_solve *rx, int solveid, 
+extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
                              t_dydt_liblsoda dydt, t_update_inis u_inis){
   rx_solving_options *op = &op_global;
   struct lsoda_opt_t opt = {0};
@@ -1595,20 +1595,31 @@ int *global_BadDose(unsigned int mx){
 }
 
 extern "C" void rxOptionsIni(){
-  global_iworki = 1024*4;
-  global_iworkp=R_Calloc(1024*4, int);
-  
-  global_rworki=4*1024;
-  global_rworkp=R_Calloc(1024*4, double);
-  
-  global_InfusionRatei = 1024;
-  global_InfusionRatep=R_Calloc(1024, double);
 
-  global_BadDosei = 1024;
-  global_BadDosep=R_Calloc(1024, int);
+  if (global_iworki == 0) {
+    global_iworki = 1024*4;
+    global_iworkp=R_Calloc(1024*4, int);
+  }
 
-  global_scalei = 1024;
-  global_scalep=R_Calloc(1024, double);
+  if (global_rworki == 0) {
+    global_rworki=4*1024;
+    global_rworkp=R_Calloc(1024*4, double);
+  }
+
+  if (global_InfusionRatei == 0) {
+    global_InfusionRatei = 1024;
+    global_InfusionRatep=R_Calloc(1024, double);
+  }
+
+  if (global_BadDosei == 0) {
+    global_BadDosei = 1024;
+    global_BadDosep=R_Calloc(1024, int);
+  }
+
+  if (global_scalei == 0) {
+    global_scalei = 1024;
+    global_scalep=R_Calloc(1024, double);
+  }
 
   rx_solve *rx=(&rx_global);
 
@@ -1618,11 +1629,10 @@ extern "C" void rxOptionsIni(){
 
 extern "C" void rxOptionsFree(){
   if (global_iworki != 0) R_Free(global_iworkp);
-
+  global_iworki = 0;
 
   if (global_rworki != 0) R_Free(global_rworkp);
   global_rworki = 0;
-  R_Free(global_rworkp);
 
   global_InfusionRatei = 0;
   R_Free(global_InfusionRatep);
@@ -1647,8 +1657,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   rx_solving_options_ind *ind;
   double *yp;
   void *ctx = NULL;
-  
-  
+
+
   int istate = 1, i = 0;
   gitol = 1; gitask = 1; giopt = 1;
   gliw = liw;
@@ -1659,19 +1669,19 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   memset(iwork,0,liw+1); // Works because it is a integer
 
   neq[1] = solveid;
-  
+
   ind = &(rx->subjects[neq[1]]);
 
   rwork[4] = op->H0; // H0
   rwork[5] = ind->HMAX; // Hmax
   rwork[6] = op->HMIN; // Hmin
-  
+
   iwork[4] = 0; // ixpr
-  iwork[5] = op->mxstep; // mxstep 
-  iwork[6] = op->mxhnil; // MXHNIL 
-  iwork[7] = op->MXORDN; // MXORDN 
+  iwork[5] = op->mxstep; // mxstep
+  iwork[6] = op->mxhnil; // MXHNIL
+  iwork[7] = op->MXORDN; // MXORDN
   iwork[8] = op->MXORDS;  // MXORDS
-    
+
   double xp = ind->all_times[0];
   double xout;
 
@@ -1730,7 +1740,7 @@ extern "C" void ind_lsoda(rx_solve *rx, int solveid,
   int neq[2];
   neq[0] = op_global.neq;
   neq[1] = 0;
-  
+
   // Set jt to 1 if full is specified.
   int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0];
   double *rwork;
@@ -1751,18 +1761,18 @@ extern "C" void par_lsoda(rx_solve *rx){
   neq[0] = op_global.neq;
   neq[1] = 0;
   /* yp = global_yp(neq[0]); */
-  
+
   // Set jt to 1 if full is specified.
   int lrw=22+neq[0]*max(16, neq[0]+9), liw=20+neq[0], jt = global_jt;
   double *rwork;
   int *iwork;
-  
-  
+
+
   if (global_debug)
     RSprintf("JT: %d\n",jt);
   rwork = global_rwork(lrw+1);
   iwork = global_iwork(liw+1);
-  
+
   int curTick = 0;
   int abort = 0;
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
@@ -1783,7 +1793,7 @@ extern "C" void par_lsoda(rx_solve *rx){
   }
 }
 
-extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, 
+extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                          t_dydt c_dydt,
                          t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -1913,11 +1923,11 @@ void par_dop(rx_solve *rx){
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
-  
+
   //DE solver config vars
   // This part CAN be parallelized, if dop is thread safe...
   // Therefore you could use https://github.com/jacobwilliams/dop853, but I haven't yet
-  
+
   int curTick = 0;
   int abort = 0;
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
@@ -1965,7 +1975,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
     case 3:
       ind_indLin(rx, cid, u_inis, ME, IndF);
       break;
-    case 2: 
+    case 2:
       ind_liblsoda(rx, cid, dydt_lls, u_inis);
       break;
     case 1:
@@ -2211,7 +2221,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   double *par_ptr;
   double *errs = rxGetErrs();
   int updateErr = 0;
-  
+
   if (errNcol > 0){
     updateErr = 1;
   }
@@ -2533,7 +2543,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                 }
                 // ii
                 dfp = REAL(VECTOR_ELT(df, jj++));
-                dfp[ii] = curIi;		  
+                dfp[ii] = curIi;
                 break;
               case 1: // Infusion specified by rate
                 if (curAmt < 0){
@@ -2615,7 +2625,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                 jj++;
               }
             }
-          }       
+          }
           // Cov
           int didUpdate = 0;
           if (add_cov*ncov > 0){
@@ -2667,7 +2677,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             }
             jj++;
           }
-          // 
+          //
           if (doTBS){
             dfp = REAL(VECTOR_ELT(df, jj));
             dfp[ii] = ind->lambda;
@@ -2695,7 +2705,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             warning(_("dose to compartment %d ignored (not in system; 'id=%d')"), BadDose[i],csub+1);
           }
         }
-      }      
+      }
       if (updateErr){
         for (j=0; j < errNcol; j++){
           par_ptr[svar[j]] = NA_REAL;
@@ -2723,7 +2733,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     SET_STRING_ELT(sexp_colnames, jj, mkChar("resetno"));
     jj++;
   }
-  
+
   if (doDose){
     SET_STRING_ELT(sexp_colnames, jj, mkChar("evid"));
     jj++;
@@ -2765,7 +2775,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         jj++;
       }
     }
-  }  
+  }
   // Put in Cov names
   par_cov = op->par_cov;
   for (i = 0; i < ncov*add_cov; i++){
