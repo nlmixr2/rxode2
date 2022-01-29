@@ -1595,7 +1595,6 @@ int *global_BadDose(unsigned int mx){
 }
 
 extern "C" void rxOptionsIni(){
-
   if (global_iworki == 0) {
     global_iworki = 1024*4;
     global_iworkp=R_Calloc(1024*4, int);
