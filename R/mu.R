@@ -766,6 +766,52 @@
   .env$covariates <- .info$cov
   return(.env)
 }
+#' Check/adjust ranges for error parameters
+#'
+#' This will throw an error of an error parameter is defined out of
+#' range. It also will update `iniDf` to match the parameter description
+#'
+#' @param env rxode ui environment (likely before fianlization)
+#' @return Nothing, called for side effects
+#' @author Matthew L. Fidler
+#' @examples
+.checkAndAdjustErrInformation <- function(env) {
+  .iniDf <- env$iniDf
+  .w <- which(!is.na(.iniDf$err))
+  for (.err in .w) {
+    .curErr <- .iniDf$err[.err]
+    .wN <- which(names(.errDistArgRanges) == .curErr)
+    if (length(.wN) == 1L){
+      .range <- .errDistArgRanges[[.curErr]]
+      .est <- .iniDf$est[.err]
+      .lower <- .iniDf$lower[.err]
+      .upper <- .iniDf$upper[.err]
+      .name <- .iniDf$name[.err]
+      if (.range[1] > .est) {
+        stop("'", .name, "' estimate (", .est, ") needs to be above ", .range[1],
+                    call.=FALSE)
+      }
+      if (.range[2] < .est) {
+        stop("'", .name, "' estimate (", .est, ") needs to be below ", .range[2],
+                    call.=FALSE)
+      }
+      if (.lower < .range[1]) {
+        ## warning("'", .name, "' lower bound (", .lower, ") needs to be equal or above ", .range[1], "; adjusting",
+        ##         call.=FALSE)
+        .lower <- .range[1]
+      }
+      if (.upper > .range[2]) {
+        ## warning("'", .name, "' upper bound (", .upper, ") needs to be equal or below ", .range[2],"; adjusting",
+        ##         call.=FALSE)
+        .upper <- .range[2]
+      }
+      .iniDf$lower[.err] <- .lower
+      .iniDf$upper[.err] <- .upper
+    }
+  }
+  env$iniDf <- .iniDf
+  invisible()
+}
 
 #' Get mu-referencing model from model variables
 #'
@@ -818,6 +864,7 @@
                 paste(.env$err, collapse="\n")),
          call.=FALSE)
   }
+  .checkAndAdjustErrInformation(.env)
   .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
