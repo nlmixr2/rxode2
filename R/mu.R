@@ -774,7 +774,7 @@
 #' @param env rxode ui environment (likely before fianlization)
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
-#' @examples
+#' @noRd
 .checkAndAdjustErrInformation <- function(env) {
   .iniDf <- env$iniDf
   .w <- which(!is.na(.iniDf$err))
