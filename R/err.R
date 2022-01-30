@@ -85,6 +85,47 @@
   "weibull"="dweibull"#12
 )
 
+.errDistArgRanges <- list(
+  "add"=c(0, Inf),
+  "prop"=c(0, Inf),
+  "propT"=c(0, Inf),
+  "propF"=c(0, Inf),
+  "pow"=c(0, Inf),
+  "powT"=c(0, Inf),
+  "powF"=c(0, Inf),
+  "pow2"=c(-Inf, Inf),
+  "powT2"=c(-Inf, Inf),
+  "powF2"=c(-Inf, Inf),
+  "lnorm"=c(0, Inf),
+  "boxCox"=c(-Inf, Inf),
+  "yeoJohnson"=c(-Inf, Inf),
+  "pois"=c(0, Inf),
+  "binom"=c(0, Inf),
+  "binom2"=c(0, 1),
+  "bern"=c(0, 1),
+  "logitNorm"=c(0, Inf),
+  "probitNorm"=c(0, Inf),
+  "chisq"=c(0, Inf),
+  "chisq2"=c(0, Inf),
+  "dexp"=c(0, Inf),
+  "f"=c(0, Inf),
+  "f2"=c(0, Inf),
+  "f3"=c(0, Inf),
+  "geom"=c(0, 1),
+  "hyper"=c(0, Inf),
+  "hyper2"=c(0, Inf),
+  "hyper3"=c(0, Inf),
+  "dunif"=c(-Inf, Inf),
+  "dunif2"=c(-Inf, Inf),
+  "weibull"=c(0, Inf),
+  "weibull2"=c(0, Inf),
+  "beta" = c(0, Inf),
+  "beta2"=c(0, Inf),
+  "beta3"=c(0, Inf),
+  "t"=c(0, Inf),
+  "t2"=c(0, Inf)
+)
+
 
 ## the desired outcome for each expression is to capture the condition
 ## when the multiple endpoint occurs, the lower and upper for the
