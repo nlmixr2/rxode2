@@ -640,6 +640,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     } else if (length(.w) == 1L) {
       .df  <- env$df
       .df$err[.w] <- ifelse(argumentNumber == 1, funName, paste0(funName, argumentNumber))
+      if (!is.na(.df$condition[.w])) {
+        assign("dupErr", c(env$dupErr, .df$name[.w]), envir=env)
+      }
       .df$condition[.w] <- env$curCondition
       assign("df", .df, envir=env)
       assign("lastDistAssign", .curName, envir=env)
@@ -836,7 +839,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       env$linCmt <- TRUE
       return(quote(`rxLinCmt`))
     } else {
-      stop("used '", as.character(expression[[1]]), "', did you mean 'linCmt' or 'n2ll'",
+      stop("the left handed side of the error expression (function: '", as.character(expression[[1]]), "') can only be functions with 'linCmt' or 'n2ll'",
            call.=FALSE)
     }
   }
@@ -936,7 +939,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 .checkForMissingOrDupliacteInitials <- function(env) {
   .predDf <- env$predDf
   .iniDf <- env$iniDf
-  .err <- NULL
+  .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
     if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
       if (.predDf[.i, "distribution"] != "-2LL") {
@@ -999,6 +1002,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$eta <- dimnames(ini)[[1]]
   .env$top <- TRUE
   .env$df <- as.data.frame(ini)
+  .env$dupErr <- NULL
   .env$err <- NULL
   .env$errGlobal <- NULL
   # Add error structure like nlmixr ui had before transitioning to rxode2

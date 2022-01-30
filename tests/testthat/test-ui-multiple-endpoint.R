@@ -142,7 +142,6 @@ test_that("multiple-endpoint", {
       eta.kout ~ .5
       eta.e0 ~ .5
 
-      pdadd.err <- 4
     })
     model({
       ktr <- exp(tktr + eta.ktr)
@@ -171,16 +170,11 @@ test_that("multiple-endpoint", {
 
       cp <- center / v
       cp ~ prop(prop.err) + add(pkadd.err)
-      pca ~ add(pdadd.err)
+      pca ~ add(pkadd.err)
     })
-  }
+   }
 
-  ## This error does not make sense, but it used to error because pkadd.err shared 2 endpoints
-  ##   Error: multiple compartment models with expressions need to be conditioned by `|`
-  ## ie log(cp) ~ add(err) | cmt
-  ## The following endpoints need to be corrected: pca
-
-
+  ## Now you can share estimates between endpoints, if they  are in the model, not estimated
   expect_error(rxode2(pk.turnover.emax))
 
   pk.turnover.emax3 <- function() {
@@ -237,6 +231,8 @@ test_that("multiple-endpoint", {
     })
   }
 
+  expect_error(rxode2(pk.turnover.emax3), NA)
+
   pk.turnover.emax4 <- function() {
     ini({
       tktr <- log(1)
@@ -291,7 +287,7 @@ test_that("multiple-endpoint", {
     })
   }
 
-  expect_s3_class(rxode2(pk.turnover.emax4), "rxUi")
+  expect_error(rxode2(pk.turnover.emax4))
 
   pk.turnover.emax4 <- function() {
     ini({

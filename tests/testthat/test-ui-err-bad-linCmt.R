@@ -19,5 +19,5 @@ test_that("limCmt raises error", {
     })
   }
 
-  expect_error(rxode2(M2), "limCmt")
+  expect_error(rxode2(M2), "linCmt")
 })
