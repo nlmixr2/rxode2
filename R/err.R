@@ -794,6 +794,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     } else if (identical(expression[[1]], quote(`linCmt`))) {
       env$linCmt <- TRUE
       return(quote(`rxLinCmt`))
+    } else {
+      stop("used '", as.character(expression[[1]]), "', did you mean 'linCmt' or 'n2ll'",
+           call.=FALSE)
     }
   }
   expression
