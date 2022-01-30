@@ -175,6 +175,12 @@ test_that("multiple-endpoint", {
     })
   }
 
+  ## This error does not make sense, but it used to error because pkadd.err shared 2 endpoints
+  ##   Error: multiple compartment models with expressions need to be conditioned by `|`
+  ## ie log(cp) ~ add(err) | cmt
+  ## The following endpoints need to be corrected: pca
+
+
   expect_error(rxode2(pk.turnover.emax))
 
   pk.turnover.emax3 <- function() {
@@ -341,6 +347,10 @@ test_that("multiple-endpoint", {
     })
   }
 
+##   Error: multiple compartment models with expressions need to be conditioned by `|`
+## ie log(cp) ~ add(err) | cmt
+## The following endpoints need to be corrected: log(cp)
+
   expect_error(rxode2(pk.turnover.emax4))
 
   pk.turnover.emax4 <- function() {
@@ -396,6 +406,9 @@ test_that("multiple-endpoint", {
       log(pca) ~ add(pdadd.err) | cmt
     })
   }
+
+  ## Error in rxModelVars_(obj) :
+  ## Evaluation error: 'cmt' cannot be a state or lhs expression.
 
   expect_error(rxode2(pk.turnover.emax4))
 
