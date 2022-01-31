@@ -1211,3 +1211,26 @@ test_that("piping looks in the right environment for variables with fix()", {
   expect_false(any(ls() == "intke"))
 
 })
+
+test_that("invalid model pipe (more arguments than expected) throws an error", {
+
+  f <- function() {
+    ini({
+      tke <- 0.5
+      eta.ke ~ 0.04
+      prop.sd <- sqrt(0.1)
+    })
+    model({
+      ke <- tke * exp(eta.ke)
+      ipre <- 10 * exp(-ke * t)
+      f2 <- ipre / (ipre + 5)
+      f3 <- f2 * 3
+      lipre <- log(ipre)
+      ipre ~ prop(prop.sd)
+    })
+  }
+
+  expect_error(f %>% model(ipre~prop(f2,f3,c)))
+
+
+})
