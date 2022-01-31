@@ -1238,10 +1238,54 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (!any(class(object) %in% c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll"))) {
     stop("Unsupported type of model trying to be solved")
   }
-  .ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
-    params, events, inits,
-    setupOnlyS = .setupOnly
-  ), lst = TRUE)
+  .envReset <- new.env(parent=emptyenv())
+  .envReset$ret <- NULL
+  .envReset$reset <- TRUE
+  .envReset$cacheReset <- FALSE
+  .envReset$unload <- FALSE
+  # take care of too many DLLs or not provided simulation errors
+  while (.envReset$reset) {
+    .envReset$reset <- FALSE
+    tryCatch({
+      .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
+                                                    params, events, inits,
+                                                    setupOnlyS = .setupOnly
+                                                    ), lst = TRUE)
+    },
+    error=function(e) {
+      if (regexpr("not provided by package", e$message) != -1) {
+        if (.envReset$cacheReset) {
+          .malert("unsuccessful cache reset; try manual reset with 'rxClean()'")
+          stop(e)
+        } else {
+          # reset
+          gc()
+          .minfo("try resetting cache")
+          rxode2::rxClean()
+          .envReset$cacheReset <- TRUE
+          .envReset$reset <- TRUE
+          .msuccess("done")
+        }
+      } else if (regexpr("maximal number of DLLs reached", e$message) != -1) {
+        if (.envReset$unload) {
+          .malert("Could not unload rxode2 models, try restarting R")
+          stop(e)
+        } else {
+          # reset
+          gc()
+          .minfo("try resetting cache and unloading all rxode2 models")
+          try(rxode2::rxUnloadAll())
+          rxode2::rxClean()
+          .envReset$unload <- TRUE
+          .envReset$reset <- TRUE
+          .msuccess("done")
+        }
+      } else {
+        stop(e)
+      }
+    })
+  }
+  .ret <- .envReset$ret
   .ws <- .ret[[2]]
   .rxModels$.ws <- .ws
   lapply(.ws, function(x) warning(x, call. = FALSE))
