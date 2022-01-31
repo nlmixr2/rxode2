@@ -652,8 +652,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           return(NULL)
         }
       }
-      env$err <- c(env$err,
-                   paste0("in the error expression, the variable '", .curName, "' must be estimated, not calculated"))
+      if (env$estNotAllowed) {
+        env$err <- c(env$err,
+                     paste0("in the error expression, the variable '", .curName, "' must be estimated, not calculated"))
+      }
     }
   } else if (.is.numeric(.cur, env)) {
     if (.isLogitOrProbit) {
@@ -853,6 +855,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .errHandleTilde <- function(expression, env) {
   env$n2ll <- FALSE
+  env$estNotAllowed <- TRUE
   env$linCmt <- FALSE
   .left <- .errHandleN2llOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
@@ -1139,4 +1142,32 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env <- .isErrorExpression(expr, TRUE)
   if (inherits(.env, "logical")) return(FALSE)
   any(.env$predDf$distribution == c("norm", "t"))
+}
+#' Throw an error if the error expression  is invalid
+#'
+#' @param expr Error expression from a model({}) or related pipe
+#' @return Nothing, called for side effect of an error for a bad pipe
+#' @author Matthew L. Fidler
+#' @noRd
+.throwIfInvalidTilde <- function(expr) {
+  .env <- .isErrorExpression(expr, TRUE)
+  .env$isAnAdditiveExpression <- FALSE
+  .env$n2ll <- FALSE
+  .env$linCmt <- FALSE
+  .left <- .errHandleN2llOrLinCmt(expr[[2]], .env)
+  .env$trLimit <- c(-Inf, Inf)
+  .env$a <- .env$b <- .env$c <- .env$d <- .env$e <- .env$f <- .env$lambda <- NA_character_
+  .env$curCondition <- .env$curVar <- deparse1(.left)
+  .env$hasNonErrorTerm <- FALSE
+  .env$needsToBeAnErrorExpression <- FALSE
+  .env$needToDemoteAdditiveExpression <- FALSE
+  .right <- .errHandleCondition(expr[[3]], .env)
+  .env$isAnAdditiveExpression <- FALSE
+  .env$errTypeInfo <- rxErrTypeCombine("")
+  .env$distribution <- "norm"
+  .env$estNotAllowed <- FALSE
+  .errHandleErrorStructure(.right, .env)
+  if (!is.null(.env$err)) {
+    stop(paste(.env$err, collapse="\n"), call.=FALSE)
+  }
 }
