@@ -44,7 +44,7 @@ test_that("error when errors have too many arguments", {
     d/dt(depot) = -ka * depot
     d/dt(center) = ka * depot - cl/v * center
     cp = center/v
-    cp ~ add(add.sd, pow) + pow(pow.sd, pow) + boxCox(lambda) | cond
+    cp ~ add(add.sd, pow1) + pow(pow.sd, pow2) + boxCox(lambda) | cond
   }), lmat))
 })
 
@@ -97,6 +97,7 @@ test_that("The distribution names will transform to the preferred distributions"
 })
 
 test_that("non-numeric bounds for logitNorm and probitNorm", {
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -107,7 +108,7 @@ test_that("non-numeric bounds for logitNorm and probitNorm", {
     cp = center/v
     cp ~ logitNorm(add.sd, lower, upper) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat))
-  
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -118,7 +119,7 @@ test_that("non-numeric bounds for logitNorm and probitNorm", {
     cp = center/v
     cp ~ logitNorm(add.sd) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat), NA)
-  
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -129,7 +130,7 @@ test_that("non-numeric bounds for logitNorm and probitNorm", {
     cp = center/v
     cp ~ logitNorm(add.sd, 0) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat), NA)
-  
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -140,7 +141,7 @@ test_that("non-numeric bounds for logitNorm and probitNorm", {
     cp = center/v
     cp ~ logitNorm(add.sd, 0, 5) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat), NA)
-  
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -151,7 +152,7 @@ test_that("non-numeric bounds for logitNorm and probitNorm", {
     cp = center/v
     cp ~ logitNorm(add.sd, -5, 5) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat), NA)
-  
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -162,7 +163,7 @@ test_that("non-numeric bounds for logitNorm and probitNorm", {
     cp = center/v
     cp ~ logitNorm(add.sd, -Inf, Inf) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat), NA)
-  
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -173,10 +174,11 @@ test_that("non-numeric bounds for logitNorm and probitNorm", {
     cp = center/v
     cp ~ probitNorm(add.sd, lower, upper) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat))
+
 })
 
 test_that("rxTransformCombine", {
-  
+
   testCombine0 <- function(transforms) {
     .cmb <- rxErrTypeCombine("matt")
     for (i in transforms) {
@@ -184,178 +186,178 @@ test_that("rxTransformCombine", {
     }
     .cmb
   }
-  
+
   testCombine <- function(transforms) {
     .cmb <- testCombine0(transforms)
     .cmb2 <- testCombine0(rev(transforms))
     expect_equal(.cmb, .cmb2)
     .cmb
   }
-  
+
   ## add + prop
   expect_equal(testCombine(c("add", "prop"))$errType,
                testCombine(c("add", "propT"))$errType)
-  
+
   expect_equal(testCombine(c("add", "prop"))$errType,
                testCombine(c("add", "propF"))$errType)
-  
+
   expect_equal(testCombine(c("logitNorm", "prop"))$errType,
                testCombine(c("add", "prop"))$errType)
-  
+
   expect_equal(testCombine(c("logitNorm", "propT"))$errType,
                testCombine(c("add", "prop"))$errType)
-  
+
   expect_equal(testCombine(c("logitNorm", "propF"))$errType,
                testCombine(c("add", "prop"))$errType)
-  
+
   expect_equal(testCombine(c("probitNorm", "prop"))$errType,
                testCombine(c("add", "prop"))$errType)
-  
+
   expect_equal(testCombine(c("probitNorm", "propT"))$errType,
                testCombine(c("add", "prop"))$errType)
-  
+
   expect_equal(testCombine(c("probitNorm", "propF"))$errType,
                testCombine(c("add", "prop"))$errType)
-  
+
   ## add + pow
   expect_equal(testCombine(c("add", "pow"))$errType,
                testCombine(c("add", "powF"))$errType)
-  
+
   expect_equal(testCombine(c("lnorm", "pow"))$errType,
                testCombine(c("add", "pow"))$errType)
-  
+
   expect_equal(testCombine(c("logitNorm", "pow"))$errType,
                testCombine(c("add", "pow"))$errType)
-  
+
   expect_equal(testCombine(c("probitNorm", "pow"))$errType,
                testCombine(c("add", "pow"))$errType)
-  
+
   # Test Error type F
   expect_equal(testCombine(c("add", "powF"))$errTypeF,
                testCombine(c("add", "propF"))$errTypeF)
-  
+
   expect_equal(testCombine(c("add", "powT"))$errTypeF,
                testCombine(c("add", "propT"))$errTypeF)
-  
+
   expect_equal(testCombine(c("add", "pow"))$errTypeF,
                testCombine(c("add", "prop"))$errTypeF)
-  
+
   expect_equal(testCombine("powF")$errTypeF,
                testCombine("propF")$errTypeF)
-  
+
   expect_equal(testCombine("powT")$errTypeF,
                testCombine("propT")$errTypeF)
-  
+
   expect_equal(testCombine("pow")$errTypeF,
                testCombine("prop")$errTypeF)
-  
+
   # Test Transformation Type
   expect_equal(testCombine(c("add", "prop", "boxCox"))$transform,
                testCombine(c("add", "propT", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("add", "prop", "boxCox"))$transform,
                testCombine(c("add", "propF", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("add", "pow", "boxCox"))$transform,
                testCombine(c("add", "propF", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("pow", "boxCox"))$transform,
                testCombine(c("add", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("prop", "boxCox"))$transform,
                testCombine(c("add", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("lnorm", "prop", "boxCox")),
                testCombine(c("lnorm", "propT", "boxCox")))
-  
+
   expect_equal(testCombine(c("lnorm", "prop", "boxCox")),
                testCombine(c("lnorm", "propF", "boxCox")))
-  
+
   expect_equal(testCombine(c("lnorm", "pow", "boxCox")),
                testCombine(c("lnorm", "propF", "boxCox")))
-  
+
   expect_equal(testCombine(c("logitNorm", "prop"))$transform,
                testCombine(c("logitNorm", "propT"))$transform)
-  
+
   expect_equal(testCombine(c("logitNorm", "add"))$transform,
                testCombine(c("logitNorm", "propT"))$transform)
-  
+
   expect_equal(testCombine(c("logitNorm", "prop", "boxCox"))$transform,
                testCombine(c("logitNorm", "propT", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("logitNorm", "prop", "boxCox"))$transform,
                testCombine(c("logitNorm", "propF", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("logitNorm", "pow", "boxCox"))$transform,
                testCombine(c("logitNorm", "propF", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("probitNorm", "prop", "boxCox"))$transform,
                testCombine(c("probitNorm", "propT", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("probitNorm", "prop", "boxCox"))$transform,
                testCombine(c("probitNorm", "propF", "boxCox"))$transform)
-  
+
   expect_equal(testCombine(c("probitNorm", "pow", "boxCox"))$transform,
                testCombine(c("probitNorm", "propF", "boxCox"))$transform)
-  
+
   # Yeo Johnson
   expect_equal(testCombine(c("add", "prop", "yeoJohnson"))$transform,
                testCombine(c("add", "propT", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("add", "prop", "yeoJohnson"))$transform,
                testCombine(c("add", "propF", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("add", "pow", "yeoJohnson"))$transform,
                testCombine(c("add", "propF", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("pow", "yeoJohnson"))$transform,
                testCombine(c("add", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("prop", "yeoJohnson"))$transform,
                testCombine(c("add", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("lnorm", "prop", "yeoJohnson")),
                testCombine(c("lnorm", "propT", "yeoJohnson")))
-  
+
   expect_equal(testCombine(c("lnorm", "prop", "yeoJohnson")),
                testCombine(c("lnorm", "propF", "yeoJohnson")))
-  
+
   expect_equal(testCombine(c("lnorm", "pow", "yeoJohnson")),
                testCombine(c("lnorm", "propF", "yeoJohnson")))
-  
+
   expect_equal(testCombine(c("logitNorm", "prop", "yeoJohnson"))$transform,
                testCombine(c("logitNorm", "propT", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("logitNorm", "prop", "yeoJohnson"))$transform,
                testCombine(c("logitNorm", "propF", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("logitNorm", "pow", "yeoJohnson"))$transform,
                testCombine(c("logitNorm", "propF", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("probitNorm", "prop", "yeoJohnson"))$transform,
                testCombine(c("probitNorm", "propT", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("probitNorm", "prop", "yeoJohnson"))$transform,
                testCombine(c("probitNorm", "propF", "yeoJohnson"))$transform)
-  
+
   expect_equal(testCombine(c("probitNorm", "pow", "yeoJohnson"))$transform,
                testCombine(c("probitNorm", "propF", "yeoJohnson"))$transform)
-  
+
   # Box Cox and Yeo Johnson are not compatible
   expect_equal(testCombine(c("boxCox", "prop", "yeoJohnson")),
                testCombine(c("boxCox", "propT", "yeoJohnson")))
-  
+
   # Prop and pow are not compatible
   expect_equal(testCombine(c("pow", "prop")),
                testCombine(c("pow", "prop")))
-  
+
   # Make sure demotion works
   expect_equal(rxDemoteAddErr(testCombine(c("add", "prop"))),
                testCombine("prop"))
-  
+
   expect_equal(rxDemoteAddErr(testCombine(c("add", "pow"))),
                testCombine("pow"))
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -366,9 +368,9 @@ test_that("rxTransformCombine", {
     cp = center/v
     cp ~ logitNorm(add.sd) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf$errType, testCombine(c("pow", "add"))$errType)
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -379,9 +381,9 @@ test_that("rxTransformCombine", {
     cp = center/v + add.sd
     cp ~ logitNorm(NA) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -392,9 +394,9 @@ test_that("rxTransformCombine", {
     cp = center/v + add.sd + lambda
     cp ~ lnorm(NA) + pow(pow.sd, pow) | cond
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -405,9 +407,9 @@ test_that("rxTransformCombine", {
     cp = center/v + add.sd + lambda
     cp ~ lnorm(add.sd) + pow(pow.sd, pow)  | cond
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf$errType, testCombine(c("add", "pow"))$errType)
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -418,9 +420,9 @@ test_that("rxTransformCombine", {
     cp = center/v + add.sd
     cp ~ probitNorm(NA) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf$errType, testCombine(c("pow"))$errType)
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -431,12 +433,13 @@ test_that("rxTransformCombine", {
     cp = center/v
     cp ~ probitNorm(add.sd) + pow(pow.sd, pow) + boxCox(lambda) | cond
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf$errType, testCombine(c("add", "pow"))$errType)
+
 })
 
 test_that("categorical expressions", {
-  
+
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -447,7 +450,7 @@ test_that("categorical expressions", {
     cp = center/v
     cp ~ c(add.sd, pow.sd, pow, lambda) | cond
   }), lmat), NA)
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -458,10 +461,10 @@ test_that("categorical expressions", {
     cp = center/v
     cp ~ c(add.sd, pow.sd, pow, lambda) | cond
   }), lmat) -> mod
-  
+
   testOrd <- mod$iniDf[which(mod$iniDf$condition == "cond"),c("name","err")]
   row.names(testOrd) <- NULL
-  
+
   expect_equal(
     testOrd,
     structure(
@@ -471,10 +474,11 @@ test_that("categorical expressions", {
       row.names = c(NA, -4L),
       class = "data.frame")
   )
+
 })
 
 test_that("theta/eta/eps problems", {
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -493,10 +497,10 @@ test_that("theta/eta/eps problems", {
     l = tka + eta.ka
     cp ~ add(a) + powF(b, c, f) + t(d, e) + boxCox(l)| cond
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf[, c("a", "b", "c", "d", "e", "lambda")],
                structure(list(a = "a", b = "b", c = "c", d = "d", e = "e", lambda = "l"), class = "data.frame", row.names = c(NA, -1L)))
-  
+
   .rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -507,10 +511,11 @@ test_that("theta/eta/eps problems", {
     cp = center/v+ add.sd + pow.sd + pow + lambda
     cp ~ add(a) + powF(b, c, f) + t(d, e) + boxCox(l)| cond
   }), lmat) -> mod
-  
+
 })
 
 test_that("no defined errors throw an error", {
+
   expect_error(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -520,10 +525,11 @@ test_that("no defined errors throw an error", {
     d/dt(center) = ka * depot - cl/v * center
     cp = center/v + add.sd + pow.sd + pow + lambda
   }), lmat))
+
 })
 
 test_that("multiple endpoint parsing", {
-  
+
   lmat <- lotri({
     tktr <- log(1)
     tka <- log(1)
@@ -550,7 +556,7 @@ test_that("multiple endpoint parsing", {
     ##
     pdadd.err <- 10
   })
-  
+
   .rx$.errProcessExpression(quote({
     ktr <- exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -579,10 +585,10 @@ test_that("multiple endpoint parsing", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ add(pdadd.err)
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf[, c("cond", "var", "dvid", "cmt")],
                structure(list(cond = c("cp", "effect"), var = c("cp", "effect"), dvid = 1:2, cmt = 5:4), class = "data.frame", row.names = c(NA, -2L)))
-  
+
   .rx$.errProcessExpression(quote({
     ktr <- exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -609,11 +615,11 @@ test_that("multiple endpoint parsing", {
     cp ~ prop(prop.err) + add(pkadd.err) | center
     effect ~ add(pdadd.err)
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf[, c("cond", "var", "dvid", "cmt")],
                structure(list(cond = c("center", "effect"), var = c("cp", "effect"), dvid = 1:2, cmt = 3:4),
                          class = "data.frame", row.names = c(NA, -2L)))
-  
+
   .rx$.errProcessExpression(quote({
     ktr <- exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -639,15 +645,16 @@ test_that("multiple endpoint parsing", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf[, c("cond", "var", "dvid", "cmt")],
                structure(list(cond = c("cp", "pca"), var = c("cp", "effect"), dvid = 1:2, cmt = 5:6),
                          class = "data.frame", row.names = c(NA, -2L)))
+
 })
 
 # Try hidden expressions combined with error expression
 test_that("test expressions that are hidden with ~ vs error expressions with ~", {
-  
+
   lmat <- lotri({
     tktr <- log(1)
     tka <- log(1)
@@ -674,7 +681,7 @@ test_that("test expressions that are hidden with ~ vs error expressions with ~",
     ##
     pdadd.err <- 10
   })
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -700,11 +707,11 @@ test_that("test expressions that are hidden with ~ vs error expressions with ~",
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf[, c("cond", "var", "dvid", "cmt")],
                structure(list(cond = c("cp", "pca"), var = c("cp", "effect"), dvid = 1:2, cmt = 5:6),
                          class = "data.frame", row.names = c(NA, -2L)))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -731,11 +738,11 @@ test_that("test expressions that are hidden with ~ vs error expressions with ~",
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(mod$predDf[, c("cond", "var", "dvid", "cmt")],
                structure(list(cond = c("cp", "pca"), var = c("cp", "effect"), dvid = 1:2, cmt = 5:6),
                          class = "data.frame", row.names = c(NA, -2L)))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -762,7 +769,7 @@ test_that("test expressions that are hidden with ~ vs error expressions with ~",
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(
     mod$predDf[, c("cond", "var", "dvid", "cmt")],
     structure(
@@ -774,10 +781,11 @@ test_that("test expressions that are hidden with ~ vs error expressions with ~",
       class = "data.frame", row.names = c(NA, -2L)
     )
   )
+
 })
 
 test_that("test different distributions", {
-  
+
   lmat <- lotri({
     tktr <- log(1)
     tka <- log(1)
@@ -804,7 +812,7 @@ test_that("test different distributions", {
     ##
     pdadd.err <- 10
   })
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -831,9 +839,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ dchisq(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "chisq"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -860,9 +868,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ chisq(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "chisq"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -889,9 +897,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ dexp(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "dexp"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -918,9 +926,9 @@ test_that("test different distributions", {
     cp ~ df(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("f", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -947,9 +955,9 @@ test_that("test different distributions", {
     cp ~ f(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("f", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -976,9 +984,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ pois(lambda)
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "pois"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1005,9 +1013,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ dpois(lambda)
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "pois"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1034,9 +1042,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ dbinom(pdadd.err)
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "binom"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1063,9 +1071,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ binom(pdadd.err)
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "binom"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1092,9 +1100,9 @@ test_that("test different distributions", {
     cp ~ dbeta(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("beta", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1121,9 +1129,9 @@ test_that("test different distributions", {
     cp ~ beta(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("beta", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1150,9 +1158,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ geom(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "geom"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1179,9 +1187,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err)
     effect ~ dgeom(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("norm", "geom"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1206,13 +1214,13 @@ test_that("test different distributions", {
     ##
     cp = center / v
     cp ~ hyper(prop.err, pkadd.err, pdadd.err)
-    effect ~ dpois(pdadd.err) | pca
+    effect ~ dpois(cp) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("hyper", "pois"))
-  
+
   ## "unif", #11
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1237,11 +1245,11 @@ test_that("test different distributions", {
     ##
     cp = center / v
     cp ~ unif(prop.err, pkadd.err)
-    effect ~ add(pdadd.err) | pca
+    effect ~ add(cp) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("unif", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1268,9 +1276,9 @@ test_that("test different distributions", {
     cp ~ dunif(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("unif", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1297,9 +1305,9 @@ test_that("test different distributions", {
     cp ~ weibull(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("weibull", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1326,9 +1334,9 @@ test_that("test different distributions", {
     cp ~ dweibull(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("weibull", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1355,9 +1363,9 @@ test_that("test different distributions", {
     cp ~ c(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("ordinal", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1384,9 +1392,9 @@ test_that("test different distributions", {
     cp ~ c(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("ordinal", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1413,9 +1421,9 @@ test_that("test different distributions", {
     cp ~ dt(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("t", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1442,9 +1450,9 @@ test_that("test different distributions", {
     cp ~ t(prop.err, pkadd.err)
     effect ~ add(pdadd.err) | pca
   }), lmat) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("t", "norm"))
-  
+
   lmat2 <- lotri({
     tktr <- log(1)
     tka <- log(1)
@@ -1472,7 +1480,7 @@ test_that("test different distributions", {
     pdadd.err <- 10
     df <- c(1, 10)
   })
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1499,9 +1507,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err) + dt(df)
     effect ~ add(pdadd.err) | pca
   }), lmat2) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("t", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1528,9 +1536,9 @@ test_that("test different distributions", {
     cp ~ prop(prop.err) + add(pkadd.err) + dt(df)
     effect ~ add(pdadd.err) | pca
   }), lmat2) -> mod
-  
+
   expect_equal(paste(mod$predDf$distribution), c("t", "norm"))
-  
+
   .rx$.errProcessExpression(quote({
     ktr ~ exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -1557,9 +1565,11 @@ test_that("test different distributions", {
     n2ll(cp) ~ log(prop.err) + log(cp)
     effect ~ add(pdadd.err) | pca
   }), lmat2) -> mod
+
 })
 
 test_that(".isErrorExpression", {
+
   expect_false(.rx$.isErrorExpression(quote(lipre~add(add.err) + 3*x | matt)))
   expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) | matt)))
   expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) + prop(prop.sd) + boxCox(lambda)| matt)))
@@ -1567,4 +1577,5 @@ test_that(".isErrorExpression", {
   expect_false(.rx$.isErrorExpression(quote(lipre <- add(add.err) + prop(prop.sd) + boxCox(lambda))))
   expect_false(.rx$.isErrorExpression(quote(lipre + 2 <- add(add.err) + prop(prop.sd) + boxCox(lambda))))
   expect_true(.rx$.isErrorExpression(quote(linCmt() ~ add(add.err) + prop(prop.err))))
+
 })
