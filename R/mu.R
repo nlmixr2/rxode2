@@ -258,16 +258,34 @@
   }
   .expr
 }
-
+#' Downgrade the mu reference to additive
+#'
+#' @param .we which eta values
+#' @param .wt which theta values
+#' @param .names names
+#' @param env rxode2 ui environment (incomplete)
+#' @return Nothing, called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
 .muRefDowngradeEvalToAdditive <- function(.we, .wt, .names, env) {
   .w <- c(.we, .wt)
   if (length(.w) > 0){
-    lapply(.w,function(i){
+    lapply(.w, function(i){
       .muRefSetCurEval(.names[i], env, "")
     })
   }
 }
-
+#'  Mu reference handle single theta covariates
+#'
+#' @param .we Which etas
+#' @param .wt which thetas
+#' @param .names which  names
+#' @param .doubleNames These are the double names
+#' @param .extraItems Extra items
+#' @param env rxode2 incomplete environment
+#' @return Nothing called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
 .muRefHandleSingleThetaCovOnly <- function(.we, .wt, .names, .doubleNames, .extraItems, env) {
   .w <- which(env$muRefCovariateDataFrame$theta == .names[.wt])
   .w0 <- which(env$muRefCovariateEmpty == .names[.wt])
@@ -687,7 +705,6 @@
       env$muRefCurEval$curEval[.w] <- .blankEval
     }
   }
-
 }
 
 
@@ -696,7 +713,6 @@
 ## 3. $lhs: lhs
 ## 4. theta: theta from ini
 ## 5. eta: eta from ini
-
 .rxMuRefSetupInitialEnvironment <- function(mod, ini=NULL) {
   if (is.null(ini)) {
     .eta <- mod$eta
@@ -870,7 +886,7 @@
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
                      "logit.theta.low", "param", "probit.theta", "probit.theta.hi",
                      "probit.theta.low", "probitInv.theta", "probitInv.theta.hi",
-                     "probitInv.theta.low", "top"),
+                     "probitInv.theta.low", "top", "dupErr"),
                    ls(envir=.env, all.names=TRUE))
   if (length(.rm) > 0) rm(list=.rm, envir=.env)
   return(invisible(.env))
