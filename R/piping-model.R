@@ -243,14 +243,21 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
                c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
                envir=.env)
       } else if (.ret > 0) {
+        if (.isErr) {
+          .throwIfInvalidTilde(line)
+        }
         .lstExpr <- get("lstExpr", rxui)
         .lstExpr[[.ret]] <- line
         assign("lstExpr", .lstExpr, rxui)
         assign(".recalculate", TRUE, rxui)
       } else {
+        if (.isErr) {
+          .throwIfInvalidTilde(line)
+        }
         .lstExpr <- get("lstExpr", rxui)
         .lstExpr[[length(.lstExpr) + 1]] <- line
         assign("lstExpr", .lstExpr, rxui)
+        assign(".recalculate", TRUE, rxui)
       }
     }
     NULL
