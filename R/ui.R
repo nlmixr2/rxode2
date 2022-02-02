@@ -55,9 +55,44 @@
   }
   .ret
 }
+#' Rearrange function
+#'
+#' @param fun Function to rearrange so that `model` is at the end (if needed)
+#' @return A more normalized function
+#' @author Matthew L. Fidler
+#' @noRd
+.rxFunctionRearrange <- function(fun) {
+  .lst <- as.list(body(fun)[-1])
+  .w <- which(vapply(.idx, function(x) {
+    identical(.lst[[x]][[1]], quote(`ini`))
+  }, logical(1), USE.NAMES=TRUE))
+  if (length(.w) != 1) {
+    stop("rxode2 model function requires one 'ini({})' block",
+         call.=FALSE)
+  }
+  if (identical(.lst[[length(.lst)]][[1]], quote(`model`))) {
+    return(fun)
+  }
+  warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
+          call.=FALSE)
+  .idx <- seq_along(.lst)
+  .w <- which(vapply(.idx, function(x) {
+    identical(.lst[[x]][[1]], quote(`model`))
+  }, logical(1), USE.NAMES=TRUE))
+  if (length(.w) != 1) {
+    stop("rxode2 model function requires one 'model({})' block",
+         call.=FALSE)
+  }
+  .fun2 <- function() {}
+  body(.fun2) <- as.call(lapply(c(-1L, .idx[-.w], .w), function(i) {
+    if (i == -1L) return(quote(`{`))
+    .lst[[i]]
+  }))
+  .fun2
+}
 
 .rxFunction2ui <- function(fun) {
-  .fun <- eval(parse(text=paste(.rxFunction2string(fun), collapse="\n")))
+  .fun <- .rxFunctionRearrange(eval(parse(text=paste(.rxFunction2string(fun), collapse="\n"))))
   .ret <- .fun()
   # Save $model like nlmixr UI used to...
   assign("model", fun, envir=.ret)

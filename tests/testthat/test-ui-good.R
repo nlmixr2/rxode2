@@ -19,10 +19,14 @@ test_that("model properties after are parsed OK", {
       cp = center / v
       cp ~ add(add.sd)
     })
-    keep = c("WT")
-    drop = c("depot")
+    keep = "WT"
+    drop = "depot"
   }
 
-  rxode2(one.compartment)
+  expect_warning(rxode2(one.compartment))
+
+  expect_s3_class(suppressWarnings(rxode2(one.compartment)), "rxUi")
+
+  expect_true(inherits(one.compartment(), "character"))
 
 })
