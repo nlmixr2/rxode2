@@ -74,8 +74,6 @@
   if (identical(.lst[[length(.lst)]][[1]], quote(`model`))) {
     return(fun)
   }
-  warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
-          call.=FALSE)
   .w <- which(vapply(.idx, function(x) {
     identical(.lst[[x]][[1]], quote(`model`))
   }, logical(1), USE.NAMES=TRUE))
@@ -83,6 +81,8 @@
     stop("rxode2 model function requires one 'model({})' block",
          call.=FALSE)
   }
+  warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
+          call.=FALSE)
   .fun2 <- function() {}
   body(.fun2) <- as.call(lapply(c(-1L, .idx[-.w], .w), function(i) {
     if (i == -1L) return(quote(`{`))
