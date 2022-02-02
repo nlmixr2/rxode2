@@ -1,3 +1,4 @@
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 //#undef NDEBUG
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
@@ -56,7 +57,7 @@ NumericVector setUnits(NumericVector obj, std::string unit){
       return obj;
     } else {
       return asNv(f(_["x"] = obj, _["value"] = unit, _["mode"] = "standard"),
-		  "set_units(obj)");
+                  "set_units(obj)");
     }
   } else {
     obj.attr("class") = R_NilValue;
@@ -89,27 +90,27 @@ CharacterVector etDollarNames(RObject obj){
 
 //[[Rcpp::export]]
 RObject etUpdate(RObject obj,
-		 RObject arg = R_NilValue,
-		 RObject value = R_NilValue,
-		 LogicalVector exact = true){
+                 RObject arg = R_NilValue,
+                 RObject value = R_NilValue,
+                 LogicalVector exact = true){
   if (rxIs(obj,"rxEt")){
     evCur = obj;
     if (rxIs(value, "NULL")){
       CharacterVector cls = clone(asCv(obj.attr("class"), "class"));
       List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
       if (rxIsChar(arg)){
-	CharacterVector carg = asCv(arg, "arg");
-	std::string sarg = as<std::string>(carg[0]);
-	if (sarg == "env"){
-	  e.attr("class") = R_NilValue;
-	  return as<RObject>(e);
-	} else if (e.containsElementNamed(sarg.c_str())){
-	  return as<RObject>(e[sarg]);
-	}
-	List lst = asList(obj, "obj");
-	if (lst.containsElementNamed(sarg.c_str())){
-	  return(as<RObject>(lst[sarg]));
-	}
+        CharacterVector carg = asCv(arg, "arg");
+        std::string sarg = as<std::string>(carg[0]);
+        if (sarg == "env"){
+          e.attr("class") = R_NilValue;
+          return as<RObject>(e);
+        } else if (e.containsElementNamed(sarg.c_str())){
+          return as<RObject>(e[sarg]);
+        }
+        List lst = asList(obj, "obj");
+        if (lst.containsElementNamed(sarg.c_str())){
+          return(as<RObject>(lst[sarg]));
+        }
       }
     } else {
       // Assign
@@ -118,33 +119,33 @@ RObject etUpdate(RObject obj,
     if (rxIs(value, "NULL")){
       List lst = List(obj);
       if (rxIsNumInt(arg)){
-	int iarg = asInt(arg, "arg");
-	if (iarg <= lst.size()){
-	  return lst[iarg-1];
-	}
+        int iarg = asInt(arg, "arg");
+        if (iarg <= lst.size()){
+          return lst[iarg-1];
+        }
       } else if (rxIs(arg, "character")){
-	std::string sarg = as<std::string>(arg);
-	CharacterVector nm = lst.names();
-	int n = nm.size(), i;
-	unsigned int slen = strlen(sarg.c_str());
-	int dexact = -1;
-	if (exact[0] == TRUE){
-	  dexact = 1;
-	} else if (exact[0] == FALSE){
-	  dexact = 0;
-	}
-	unsigned int slen2;
-	for (i = 0; i < n; i++){
-	  slen2 = strlen((as<std::string>(nm[i])).c_str());
-	  if (slen <= slen2 &&
-	      (strncmp((as<std::string>(nm[i])).c_str(), sarg.c_str(), slen)  == 0 ) &&
-	      (dexact != 1 || (dexact == 1 && slen == slen2))){
-	    if (dexact == -1){
-	      Rf_warningcall(R_NilValue, _("partial match of '%s' to '%s'"),sarg.c_str(), (as<std::string>(nm[i])).c_str());
-	    }
-	    return lst[i];
-	  }
-	}
+        std::string sarg = as<std::string>(arg);
+        CharacterVector nm = lst.names();
+        int n = nm.size(), i;
+        unsigned int slen = strlen(sarg.c_str());
+        int dexact = -1;
+        if (exact[0] == TRUE){
+          dexact = 1;
+        } else if (exact[0] == FALSE){
+          dexact = 0;
+        }
+        unsigned int slen2;
+        for (i = 0; i < n; i++){
+          slen2 = strlen((as<std::string>(nm[i])).c_str());
+          if (slen <= slen2 &&
+              (strncmp((as<std::string>(nm[i])).c_str(), sarg.c_str(), slen)  == 0 ) &&
+              (dexact != 1 || (dexact == 1 && slen == slen2))){
+            if (dexact == -1){
+              Rf_warningcall(R_NilValue, _("partial match of '%s' to '%s'"),sarg.c_str(), (as<std::string>(nm[i])).c_str());
+            }
+            return lst[i];
+          }
+        }
       }
     }
   }
@@ -160,95 +161,95 @@ List etEmpty(CharacterVector units){
   // eventTable style methods
   std::string getUnits= "function() .Call(rxode2:::`_rxode2_et_`, list(getUnits=TRUE) ,list('last'))";
   e["get.units"] = eval2(_["expr"]   = parse2(_["text"]=getUnits),
-			 _["envir"]  = e);
+                         _["envir"]  = e);
   
   e["getUnits"] = eval2(_["expr"]   = parse2(_["text"]=getUnits),
-			_["envir"]  = e);
+                        _["envir"]  = e);
   e["get_units"] = eval2(_["expr"]   = parse2(_["text"]=getUnits),
-			 _["envir"]  = e);
+                         _["envir"]  = e);
 
   std::string addDosing= "function (dose, nbr.doses = 1L, dosing.interval = 24, \n    dosing.to = 1L, rate = NULL, amount.units = NA_character_, \n    start.time = 0, do.sampling = FALSE, time.units = NA_character_, \n    ...) \n{\n    .lst <- list(dose = dose, nbr.doses = nbr.doses, start.time = start.time, \n        do.sampling = do.sampling, ...)\n    if (!is.na(amount.units)) \n        .lst$amount.units <- amount.units\n    if (!is.na(time.units)) \n        .lst$time.units <- time.units\n    if (dosing.to != 1) \n        .lst$dosing.to <- dosing.to\n    if (!is.null(rate)) \n        .lst$rate <- rate\n    .lst$dosing.interval <- dosing.interval\n    invisible(.Call(rxode2:::`_rxode2_et_`, .lst, list('last')))\n}";
 
   e["add.dosing"] = eval2(_["expr"] = parse2(_["text"] = addDosing),
-			  _["envir"]  = e);
+                          _["envir"]  = e);
   e["add_dosing"] = eval2(_["expr"] = parse2(_["text"] = addDosing),
-			  _["envir"]  = e);
+                          _["envir"]  = e);
   e["addDosing"] = eval2(_["expr"] = parse2(_["text"] = addDosing),
-			 _["envir"]  = e);
+                         _["envir"]  = e);
 
   std::string addSampling="function(time, time.units = NA) {\n  .lst <- list();\n  .lst$time<-time;\n  if(!is.na(time.units)) .lst$time.units<- time.units\n  invisible(.Call(rxode2:::`_rxode2_et_`, .lst, list('last')));\n}";
 
   e["add.sampling"] = eval2(_["expr"] = parse2(_["text"] = addSampling),
-			    _["envir"]  = e);
+                            _["envir"]  = e);
   e["add_sampling"] = eval2(_["expr"] = parse2(_["text"] = addSampling),
-			    _["envir"]  = e);
+                            _["envir"]  = e);
   e["addSampling"] = eval2(_["expr"] = parse2(_["text"] = addSampling),
-			   _["envir"]  = e);
+                           _["envir"]  = e);
   
   e["clear.sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearSampling=TRUE),list('last')))"),
-			      _["envir"]  = e);
+                              _["envir"]  = e);
 
   e["clear_sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearSampling=TRUE),list('last')))"),
-			      _["envir"]  = e);
+                              _["envir"]  = e);
 
   e["clearSampling"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearSampling=TRUE),list('last')))"),
-			     _["envir"]  = e);
+                             _["envir"]  = e);
 
 
   e["clear.dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearDosing=TRUE),list('last')))"),
-			    _["envir"]  = e);
+                            _["envir"]  = e);
 
   e["clear_dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearDosing=TRUE),list('last')))"),
-			    _["envir"]  = e);
+                            _["envir"]  = e);
 
   e["clearDosing"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(clearDosing=TRUE),list('last')))"),
-			   _["envir"]  = e);
+                           _["envir"]  = e);
 
   e["simulate"] = eval2(_["expr"] = parse2(_["text"] = "function(object, nsim = 1, seed = NULL, ...){if (!missing(nsim)) Rf_warningcall(R_NilValue, \"'nsim' is ignored when simulating event tables\");if(!is.null(seed)) set.seed(seed); invisible(.Call(rxode2:::`_rxode2_et_`, list(simulate=TRUE),list('last')))}"));
 
   std::string importET = "function(data) invisible(.Call(rxode2:::`_rxode2_et_`, list(data=data),list('import')))";
 
   e["import.EventTable"] = eval2(_["expr"] = parse2(_["text"] = importET),
-				 _["envir"]  = e);
+                                 _["envir"]  = e);
 
   e["importEventTable"] = eval2(_["expr"] = parse2(_["text"] = importET),
-				_["envir"]  = e);
+                                _["envir"]  = e);
 
   e["copy"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(copy=TRUE),list('last'))"),
-		    _["envir"]  = e);
+                    _["envir"]  = e);
   
   e["get.EventTable"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.EventTable=TRUE),list('last'))"),
-			      _["envir"]  = e);
+                              _["envir"]  = e);
   e["getEventTable"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.EventTable=TRUE),list('last'))"),
-			     _["envir"]  = e);
+                             _["envir"]  = e);
   e["get.obs.rec"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.obs.rec=TRUE),list('last'))"),
-			   _["envir"]  = e);
+                           _["envir"]  = e);
 
   e["get.nobs"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.nobs=TRUE),list('last'))"),
-			_["envir"]  = e);
+                        _["envir"]  = e);
 
 
   e["get.dosing"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.dosing=TRUE),list('last'))"),
-			  _["envir"]  = e);
+                          _["envir"]  = e);
   e["getDosing"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.dosing=TRUE),list('last'))"),
-			 _["envir"]  = e);
+                         _["envir"]  = e);
   
   e["get.sampling"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.sampling=TRUE),list('last'))"),
-			    _["envir"]  = e);
+                            _["envir"]  = e);
 
   e["getSampling"] = eval2(_["expr"] = parse2(_["text"] = "function() .Call(rxode2:::`_rxode2_et_`, list(get.sampling=TRUE),list('last'))"),
-			   _["envir"]  = e);
+                           _["envir"]  = e);
 
   e["expand"] = eval2(_["expr"] = parse2(_["text"] = "function() invisible(.Call(rxode2:::`_rxode2_et_`, list(expand=TRUE) ,list('last')))"),
-		      _["envir"]  = e);
+                      _["envir"]  = e);
   e["nobs"] = 0;
   e["ndose"] = 0;
   e["show"] = LogicalVector::create(_["id"] = false, _["low"] = false,
-				    _["time"] = true, _["high"] = false,
-				    _["cmt"] =false, _["amt"]=false,
-				    _["rate"] = false, _["ii"] = false,
-				    _["addl"] = false, _["evid"] = true,
-				    _["ss"] = false, _["dur"] = false);
+                                    _["time"] = true, _["high"] = false,
+                                    _["cmt"] =false, _["amt"]=false,
+                                    _["rate"] = false, _["ii"] = false,
+                                    _["addl"] = false, _["evid"] = true,
+                                    _["ss"] = false, _["dur"] = false);
   e["IDs"] = IntegerVector::create(1);
 
   e["canResize"] = true;
@@ -349,11 +350,11 @@ List etSort(List& curEt){
   IntegerVector ord;
   if (useForder()){
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL));
+                _["na.last"] = LogicalVector::create(NA_LOGICAL));
   } else {
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL),
-		_["method"]="radix");
+                _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                _["method"]="radix");
   }
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
@@ -365,20 +366,20 @@ List etSort(List& curEt){
   for (j = newEt.size(); j--;){
     for (i = newSize;i--;){
       if (rxIs(curEt[j], "numeric")) {
-	if (i == newSize-1) newEt[j] = NumericVector(newSize);
-	tmpN=newEt[j];
-	tmpN2 = curEt[j];
-	tmpN[i] = tmpN2[idx[i]];
+        if (i == newSize-1) newEt[j] = NumericVector(newSize);
+        tmpN=newEt[j];
+        tmpN2 = curEt[j];
+        tmpN[i] = tmpN2[idx[i]];
       } else if (rxIs(curEt[j], "integer")) {
-	if (i == newSize-1) newEt[j] = IntegerVector(newSize);
-	tmpI=newEt[j];
-	tmpI2 = curEt[j];
-	tmpI[i] = tmpI2[idx[i]];
+        if (i == newSize-1) newEt[j] = IntegerVector(newSize);
+        tmpI=newEt[j];
+        tmpI2 = curEt[j];
+        tmpI[i] = tmpI2[idx[i]];
       } else if (rxIs(curEt[j], "character")){
-	if (i == newSize-1) newEt[j] = CharacterVector(newSize);
-	tmpC=newEt[j];
-	tmpC2 = curEt[j];
-	tmpC[i] = tmpC2[idx[i]];
+        if (i == newSize-1) newEt[j] = CharacterVector(newSize);
+        tmpC=newEt[j];
+        tmpC2 = curEt[j];
+        tmpC[i] = tmpC2[idx[i]];
       }
     }
   }
@@ -410,7 +411,7 @@ List etSimulate(List curEt){
 }
 
 static inline void etUpdateCanResize(List &lst, LogicalVector& show, List& eOld, IntegerVector& IDs,
-				     List& e){
+                                     List& e){
   bool showId = show["id"];
   std::vector<int> uIds = as<std::vector<int>>(eOld["IDs"]);
   bool turnOnShowId = false;
@@ -471,16 +472,16 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
     for (int i = windowLst.size(); i--;){
       NumericVector cur = asNv(windowLst[i], "windowLst[i]");
       if (rxIs(cur, "units")){
-	if (!CharacterVector::is_na(units["time"])){
-	  cur = setUnits(cur, as<std::string>(units["time"]));
-	} else {
-	  cur = setUnits(cur, "");
-	}
+        if (!CharacterVector::is_na(units["time"])){
+          cur = setUnits(cur, as<std::string>(units["time"]));
+        } else {
+          cur = setUnits(cur, "");
+        }
       }
       if (cur.size() != 2)
-	stop(_("windows need to be a list of observation windows, each of 2 elements e.g. list(c(0,2), c(2,7))"));
+        stop(_("windows need to be a list of observation windows, each of 2 elements e.g. list(c(0,2), c(2,7))"));
       if (cur[0]> cur[1])
-	stop(_("windows need to be ordered list(c(2,0)) is invalid"));
+        stop(_("windows need to be ordered list(c(2,0)) is invalid"));
       id.push_back(IDs[j]);
       low.push_back(cur[0]);
       high.push_back(cur[1]);
@@ -497,11 +498,11 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
   IntegerVector ord;
   if (useForder()){
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL));
+                _["na.last"] = LogicalVector::create(NA_LOGICAL));
   } else {
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL),
-		_["method"]="radix");
+                _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                _["method"]="radix");
   }
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
@@ -570,12 +571,12 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
     tmpN[i] = high[idx[i]];
     if (idx[i] >= oldSize){
       if (isCmtInt){
-	tmpI = asIv(lst[4], "lst[4]");
-	tmpI[i] = asInt(cmt, "cmt");
+        tmpI = asIv(lst[4], "lst[4]");
+        tmpI[i] = asInt(cmt, "cmt");
       } else {
-	tmpC = asCv(lst[4], "lst[4]");
-	tmpC2 = asCv(cmt, "cmt");
-	tmpC[i] = tmpC2[0];
+        tmpC = asCv(lst[4], "lst[4]");
+        tmpC2 = asCv(cmt, "cmt");
+        tmpC[i] = tmpC2[0];
       }
       
       // nme[5] = "amt";
@@ -603,20 +604,20 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
       tmpN[i] = NA_REAL;
     } else {
       for (j = 12; j--;){
-	if (rxIsNum(curEt[j])){
-	  tmpN = asNv(lst[j], "lst[j]");
-	  tmpN2 = asNv(curEt[j], "curEt[j]");
-	  tmpN[i] = tmpN2[idx[i]];
-	} else if (rxIsInt(curEt[j])) {
-	  tmpI = asIv(lst[j], "lst[j]");
-	  tmpI2 = asIv(curEt[j], "curEt[j]");
-	  tmpI[i] = tmpI2[idx[i]];
-	} else if (rxIsChar(curEt[j])){
-	  // Char
-	  tmpC = asCv(lst[j], "lst[j]");
-	  tmpC2 = asCv(curEt[j], "curEt[j]");
-	  tmpC[i] = tmpC2[idx[i]];	
-	}
+        if (rxIsNum(curEt[j])){
+          tmpN = asNv(lst[j], "lst[j]");
+          tmpN2 = asNv(curEt[j], "curEt[j]");
+          tmpN[i] = tmpN2[idx[i]];
+        } else if (rxIsInt(curEt[j])) {
+          tmpI = asIv(lst[j], "lst[j]");
+          tmpI2 = asIv(curEt[j], "curEt[j]");
+          tmpI[i] = tmpI2[idx[i]];
+        } else if (rxIsChar(curEt[j])){
+          // Char
+          tmpC = asCv(lst[j], "lst[j]");
+          tmpC2 = asCv(curEt[j], "curEt[j]");
+          tmpC[i] = tmpC2[idx[i]];	
+        }
       }
     }
   }
@@ -668,36 +669,36 @@ List etAddTimes(NumericVector newTimes, IntegerVector IDs, RObject cmt, bool tur
   }
   SORT(idx.begin(),idx.end(),
        [id, time, evid, curId, curTime, curEvid, oldSize](int a, int b){
-	 int ida, evida, idb, evidb;
-	 double timea, timeb;
-	 if (a < oldSize){
-	   ida = curId[a];
-	   timea = curTime[a];
-	   evida = curEvid[a];
-	 } else {
-	   ida = id[a-oldSize];
-	   timea = time[a-oldSize];
-	   evida = evid[a-oldSize];
-	 }
-	 if (b < oldSize){
-	   idb = curId[b];
-	   timeb = curTime[b];
-	   evidb = curEvid[b];
-	 } else {
-	   idb = id[b-oldSize];
-	   timeb = time[b-oldSize];
-	   evidb = evid[b-oldSize];
-	 }
-	 if (ida == idb){
-	   if (timea == timeb){
-	     if (evida == evidb){
-	       return a < b;
-	     }
-	     return evida < evidb;
-	   }
-	   return timea < timeb;
-	 }
-	 return ida < idb;
+         int ida, evida, idb, evidb;
+         double timea, timeb;
+         if (a < oldSize){
+           ida = curId[a];
+           timea = curTime[a];
+           evida = curEvid[a];
+         } else {
+           ida = id[a-oldSize];
+           timea = time[a-oldSize];
+           evida = evid[a-oldSize];
+         }
+         if (b < oldSize){
+           idb = curId[b];
+           timeb = curTime[b];
+           evidb = curEvid[b];
+         } else {
+           idb = id[b-oldSize];
+           timeb = time[b-oldSize];
+           evidb = evid[b-oldSize];
+         }
+         if (ida == idb){
+           if (timea == timeb){
+             if (evida == evidb){
+               return a < b;
+             }
+             return evida < evidb;
+           }
+           return timea < timeb;
+         }
+         return ida < idb;
        });
 
   List lst(curEt.size());
@@ -767,12 +768,12 @@ List etAddTimes(NumericVector newTimes, IntegerVector IDs, RObject cmt, bool tur
       tmpN[i] = NA_REAL;
 
       if (isCmtInt){
-	tmpI = asIv(lst[4], "lst[4]");
-	tmpI[i] = asInt(cmt, "cmt");
+        tmpI = asIv(lst[4], "lst[4]");
+        tmpI[i] = asInt(cmt, "cmt");
       } else {
-	tmpC = asCv(lst[4], "lst[4]");
-	tmpC2 = asCv(cmt, "cmt");
-	tmpC[i] = tmpC2[0];
+        tmpC = asCv(lst[4], "lst[4]");
+        tmpC2 = asCv(cmt, "cmt");
+        tmpC[i] = tmpC2[0];
       }
 
       // nme[5] = "amt";
@@ -809,20 +810,20 @@ List etAddTimes(NumericVector newTimes, IntegerVector IDs, RObject cmt, bool tur
       tmpN[i] = curTime[idx[i]];
       // low
       for (j = 12; j--;){
-	if (rxIsNum(curEt[j])){
-	  tmpN = asNv(lst[j], "lst[j]");
-	  tmpN2 = asNv(curEt[j], "curEt[j]");
-	  tmpN[i] = tmpN2[idx[i]];
-	} else if (rxIsInt(curEt[j])) {
-	  tmpI = asIv(lst[j], "lst[j]");
-	  tmpI2 = asIv(curEt[j], "lst[j]");
-	  tmpI[i] = tmpI2[idx[i]];
-	} else if (rxIsChar(curEt[j])){
-	  // Char
-	  tmpC = asCv(lst[j], "lst[j]");
-	  tmpC2 = asCv(curEt[j], "lst[j]");
-	  tmpC[i] = tmpC2[idx[i]];	
-	}
+        if (rxIsNum(curEt[j])){
+          tmpN = asNv(lst[j], "lst[j]");
+          tmpN2 = asNv(curEt[j], "curEt[j]");
+          tmpN[i] = tmpN2[idx[i]];
+        } else if (rxIsInt(curEt[j])) {
+          tmpI = asIv(lst[j], "lst[j]");
+          tmpI2 = asIv(curEt[j], "lst[j]");
+          tmpI[i] = tmpI2[idx[i]];
+        } else if (rxIsChar(curEt[j])){
+          // Char
+          tmpC = asCv(lst[j], "lst[j]");
+          tmpC2 = asCv(curEt[j], "lst[j]");
+          tmpC[i] = tmpC2[idx[i]];	
+        }
       }
     }
   }
@@ -852,9 +853,9 @@ CharacterVector deparseUnit(NumericVector nv){
       nv0.attr("class") = "units";
       CharacterVector ret = f(nv0);
       if (as<std::string>(ret) == "NA"){
-	return CharacterVector::create(NA_STRING);
+        return CharacterVector::create(NA_STRING);
       } else {
-	return ret;
+        return ret;
       }
     } else {
       return CharacterVector::create(NA_STRING);
@@ -873,13 +874,13 @@ IntegerVector convertMethod(RObject method){
       std::string cur = (as<std::string>(tmp[jj])).substr(0,1);
       // (1 = replace, 2 = add, 3 = multiply)
       if (cur == "A" || cur == "a" || cur == "2"){
-	oldEvid[jj] = 1;
+        oldEvid[jj] = 1;
       } else if (cur == "m" || cur == "M" || cur == "3"){
-	oldEvid[jj] = 6;
+        oldEvid[jj] = 6;
       } else if (cur == "r" || cur == "R" || cur == "1"){
-	oldEvid[jj] = 5;
+        oldEvid[jj] = 5;
       } else {
-	stop(_("unknown method: '%s'"), (as<std::string>(tmp[jj])).c_str());
+        stop(_("unknown method: '%s'"), (as<std::string>(tmp[jj])).c_str());
       }
     }
   } else if (rxIs(method, "factor")){
@@ -890,13 +891,13 @@ IntegerVector convertMethod(RObject method){
     for (int jj = lvl.size(); jj--;){
       std::string cur = (as<std::string>(lvl[jj])).substr(0,1);
       if (cur == "A" || cur == "a" || cur == "2"){
-	trans[jj] = 1;
+        trans[jj] = 1;
       } else if (cur == "m" || cur == "M" || cur == "3"){
-	trans[jj] = 6;
+        trans[jj] = 6;
       } else if (cur == "r" || cur == "R" || cur == "1"){
-	trans[jj] = 5;
+        trans[jj] = 5;
       } else {
-	stop(_("unknown method: '%s'"), (as<std::string>(lvl[jj])).c_str());
+        stop(_("unknown method: '%s'"), (as<std::string>(lvl[jj])).c_str());
       }
     }
     for (int jj = tmp.size(); jj--;){
@@ -908,11 +909,11 @@ IntegerVector convertMethod(RObject method){
     for (int jj = tmp.size(); jj--;){
       // (1 = replace, 2 = add, 3 = multiply)
       if (tmp[jj] == 1.){
-	oldEvid[jj] = 5;
+        oldEvid[jj] = 5;
       } else if (tmp[jj] == 2.){
-	oldEvid[jj] = 1;
+        oldEvid[jj] = 1;
       } else if (tmp[jj] == 3.){
-	oldEvid[jj] = 6;
+        oldEvid[jj] = 6;
       }
     }
   }
@@ -967,7 +968,7 @@ List etImportEventTable(List inData, bool warnings = true){
       evidCol = mdvCol;
       oldEvid=asIv(inData[evidCol], "inData[evidCol]");
       if (methodCol != -1 && warnings){
-	Rf_warningcall(R_NilValue, _("using 'mdv' instead of 'method'"));
+        Rf_warningcall(R_NilValue, _("using 'mdv' instead of 'method'"));
       }
     } else if (methodCol != -1){
       oldEvid = convertMethod(inData[methodCol]);
@@ -1085,7 +1086,7 @@ List etImportEventTable(List inData, bool warnings = true){
   int wh, cmtI, wh100, whI, wh0, ndose=0, nobs=0;
 
   CharacterVector units = CharacterVector::create(_["dosing"]=NA_STRING,
-						  _["time"]=NA_STRING);
+                                                  _["time"]=NA_STRING);
   List lst = etEmpty(units);
   CharacterVector cls = lst.attr("class");
   List e = cls.attr(".rxode2.lst");
@@ -1103,51 +1104,51 @@ List etImportEventTable(List inData, bool warnings = true){
     if (curevid == 0){
       id.push_back(oldId[i]);
       if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
-	uIds.push_back(oldId[i]);
+        uIds.push_back(oldId[i]);
       }
       low.push_back(NA_REAL);
       if (ISNA(oldTime[i])){
-	time.push_back(oldTime[i]);
-	high.push_back(NA_REAL);
-	if (!cmtC){
-	  cmt.push_back(oldCmt[i]);
-	  if (oldCmt[i] > 1) show["cmt"] = true;
-	}
-	amt.push_back(NA_REAL);
-	rate.push_back(NA_REAL);
-	dur.push_back(NA_REAL);
-	ii.push_back(NA_REAL);
-	addl.push_back(NA_INTEGER);
-	evid.push_back(2);
-	ss.push_back(NA_INTEGER);
-	ndose++;
+        time.push_back(oldTime[i]);
+        high.push_back(NA_REAL);
+        if (!cmtC){
+          cmt.push_back(oldCmt[i]);
+          if (oldCmt[i] > 1) show["cmt"] = true;
+        }
+        amt.push_back(NA_REAL);
+        rate.push_back(NA_REAL);
+        dur.push_back(NA_REAL);
+        ii.push_back(NA_REAL);
+        addl.push_back(NA_INTEGER);
+        evid.push_back(2);
+        ss.push_back(NA_INTEGER);
+        ndose++;
       } else {
-	time.push_back(oldTime[i]);
-	high.push_back(NA_REAL);
-	if (!cmtC){
-	  cmt.push_back(oldCmt[i]);
-	  if (oldCmt[i] > 1) show["cmt"] = true;
-	}
-	amt.push_back(NA_REAL);
-	rate.push_back(NA_REAL);
-	dur.push_back(NA_REAL);
-	ii.push_back(NA_REAL);
-	addl.push_back(NA_INTEGER);
-	evid.push_back(0);
-	ss.push_back(NA_INTEGER);
-	nobs++;
+        time.push_back(oldTime[i]);
+        high.push_back(NA_REAL);
+        if (!cmtC){
+          cmt.push_back(oldCmt[i]);
+          if (oldCmt[i] > 1) show["cmt"] = true;
+        }
+        amt.push_back(NA_REAL);
+        rate.push_back(NA_REAL);
+        dur.push_back(NA_REAL);
+        ii.push_back(NA_REAL);
+        addl.push_back(NA_INTEGER);
+        evid.push_back(0);
+        ss.push_back(NA_INTEGER);
+        nobs++;
       }
     } else if (curevid <= 6){
       id.push_back(oldId[i]);
       if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
-	uIds.push_back(oldId[i]);
+        uIds.push_back(oldId[i]);
       }
       low.push_back(NA_REAL);
       time.push_back(oldTime[i]);
       high.push_back(NA_REAL);
       if (!cmtC){
-	cmt.push_back(oldCmt[i]);
-	if (oldCmt[i] > 1) show["cmt"] = true;
+        cmt.push_back(oldCmt[i]);
+        if (oldCmt[i] > 1) show["cmt"] = true;
       }
       amt.push_back(oldAmt[i]);
       if (curevid >= 5 && oldRate[i] != 0) stop(_("replacement/multiplication events cannot be combined with infusions"));
@@ -1173,135 +1174,135 @@ List etImportEventTable(List inData, bool warnings = true){
       if (oldIi[i] > 0) show["ii"] = true;
       switch (whI){
       case 6:
-	break;
+        break;
       case 8:
-	// 8 = Duration is modeled, AMT=dose; Rate = AMT/(Modeled Duration) NONMEM RATE=-2
-	id.push_back(oldId[i]);
-	if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
-	  uIds.push_back(oldId[i]);
-	}
-	low.push_back(NA_REAL);
-	time.push_back(oldTime[i]);
-	high.push_back(NA_REAL);
-	cmt.push_back(cmtI);
-	amt.push_back(oldAmt[i]);
-	rate.push_back(-2.0);
-	dur.push_back(0.0);
-	ii.push_back(oldIi[i]);
-	addl.push_back(0);
-	evid.push_back(1);
-	if (whI == 10){
-	  ss.push_back(1);
-	  show["ss"] = true;
-	} else if (whI == 20){
-	  ss.push_back(2);
-	  show["ss"] = true;
-	} else {
-	  ss.push_back(0);
-	}
-	show["rate"] = true;
-	ndose++;
-	break;
+        // 8 = Duration is modeled, AMT=dose; Rate = AMT/(Modeled Duration) NONMEM RATE=-2
+        id.push_back(oldId[i]);
+        if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
+          uIds.push_back(oldId[i]);
+        }
+        low.push_back(NA_REAL);
+        time.push_back(oldTime[i]);
+        high.push_back(NA_REAL);
+        cmt.push_back(cmtI);
+        amt.push_back(oldAmt[i]);
+        rate.push_back(-2.0);
+        dur.push_back(0.0);
+        ii.push_back(oldIi[i]);
+        addl.push_back(0);
+        evid.push_back(1);
+        if (whI == 10){
+          ss.push_back(1);
+          show["ss"] = true;
+        } else if (whI == 20){
+          ss.push_back(2);
+          show["ss"] = true;
+        } else {
+          ss.push_back(0);
+        }
+        show["rate"] = true;
+        ndose++;
+        break;
       case 7:
-	break;
+        break;
       case 9:
-	// 9 = Rate is modeled, AMT=dose; Duration = AMT/(Modeled Rate) NONMEM RATE=-1
-	id.push_back(oldId[i]);
-	if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
-	  uIds.push_back(oldId[i]);
-	}
-	low.push_back(NA_REAL);
-	time.push_back(oldTime[i]);
-	high.push_back(NA_REAL);
-	cmt.push_back(cmtI);
-	amt.push_back(oldAmt[i]);
-	rate.push_back(-1.0);
-	dur.push_back(0.0);
-	ii.push_back(oldIi[i]);
-	addl.push_back(0);
-	evid.push_back(1);
-	if (whI == 10){
-	  ss.push_back(1);
-	  show["ss"] = true;
-	} else if (whI == 20){
-	  ss.push_back(2);
-	  show["ss"] = true;
-	} else {
-	  ss.push_back(0);
-	}
-	show["rate"] = true;
-	ndose++;
-	break;
+        // 9 = Rate is modeled, AMT=dose; Duration = AMT/(Modeled Rate) NONMEM RATE=-1
+        id.push_back(oldId[i]);
+        if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
+          uIds.push_back(oldId[i]);
+        }
+        low.push_back(NA_REAL);
+        time.push_back(oldTime[i]);
+        high.push_back(NA_REAL);
+        cmt.push_back(cmtI);
+        amt.push_back(oldAmt[i]);
+        rate.push_back(-1.0);
+        dur.push_back(0.0);
+        ii.push_back(oldIi[i]);
+        addl.push_back(0);
+        evid.push_back(1);
+        if (whI == 10){
+          ss.push_back(1);
+          show["ss"] = true;
+        } else if (whI == 20){
+          ss.push_back(2);
+          show["ss"] = true;
+        } else {
+          ss.push_back(0);
+        }
+        show["rate"] = true;
+        ndose++;
+        break;
       case 2:
       case 1:
-	if (oldAmt[i] > 0){
-	  for (j = i; j < oldEvid.size(); j++){
-	    if (curevid == oldEvid[j] && oldAmt[i] == -oldAmt[j]){
-	      double durC = oldTime[j] - oldTime[i];
-	      id.push_back(oldId[i]);
-	      if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
-		uIds.push_back(oldId[i]);
-	      }
-	      low.push_back(NA_REAL);
-	      time.push_back(oldTime[i]);
-	      high.push_back(NA_REAL);
-	      cmt.push_back(cmtI);
-	      amt.push_back(oldAmt[i] * durC);
-	      if (whI == 1){
-		rate.push_back(oldAmt[i]);
-		dur.push_back(0);
-		show["rate"] = true;
-	      } else {
-		rate.push_back(0);
-		dur.push_back(durC);
-		show["dur"] = true;
-	      }
-	      ii.push_back(oldIi[i]);
-	      addl.push_back(0);
-	      evid.push_back(1);
-	      if (whI == 10){
-		ss.push_back(1);
-		show["ss"] = true;
-	      } else if (whI == 20){
-		ss.push_back(2);
-		show["ss"] = true;
-	      } else {
-		ss.push_back(0);
-	      }
-	      ndose++;
-	      break;
-	    }
-	  }
-	}// else {
-	break;
-	// }
+        if (oldAmt[i] > 0){
+          for (j = i; j < oldEvid.size(); j++){
+            if (curevid == oldEvid[j] && oldAmt[i] == -oldAmt[j]){
+              double durC = oldTime[j] - oldTime[i];
+              id.push_back(oldId[i]);
+              if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
+                uIds.push_back(oldId[i]);
+              }
+              low.push_back(NA_REAL);
+              time.push_back(oldTime[i]);
+              high.push_back(NA_REAL);
+              cmt.push_back(cmtI);
+              amt.push_back(oldAmt[i] * durC);
+              if (whI == 1){
+                rate.push_back(oldAmt[i]);
+                dur.push_back(0);
+                show["rate"] = true;
+              } else {
+                rate.push_back(0);
+                dur.push_back(durC);
+                show["dur"] = true;
+              }
+              ii.push_back(oldIi[i]);
+              addl.push_back(0);
+              evid.push_back(1);
+              if (whI == 10){
+                ss.push_back(1);
+                show["ss"] = true;
+              } else if (whI == 20){
+                ss.push_back(2);
+                show["ss"] = true;
+              } else {
+                ss.push_back(0);
+              }
+              ndose++;
+              break;
+            }
+          }
+        }// else {
+        break;
+        // }
       case 0:
-	// No infusion
-	id.push_back(oldId[i]);
-	if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
-	  uIds.push_back(oldId[i]);
-	}
-	low.push_back(NA_REAL);
-	time.push_back(oldTime[i]);
-	high.push_back(NA_REAL);
-	cmt.push_back(cmtI);
-	amt.push_back(oldAmt[i]);
-	rate.push_back(0);
-	dur.push_back(0);
-	ii.push_back(oldIi[i]);
-	addl.push_back(0);
-	evid.push_back(1);
-	if (whI == 10){
-	  ss.push_back(1);
-	  show["ss"] = true;
-	} else if (whI == 20){
-	  ss.push_back(2);
-	  show["ss"] = true;
-	} else {
-	  ss.push_back(0);
-	}
-	ndose++;
-	break;
+        // No infusion
+        id.push_back(oldId[i]);
+        if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
+          uIds.push_back(oldId[i]);
+        }
+        low.push_back(NA_REAL);
+        time.push_back(oldTime[i]);
+        high.push_back(NA_REAL);
+        cmt.push_back(cmtI);
+        amt.push_back(oldAmt[i]);
+        rate.push_back(0);
+        dur.push_back(0);
+        ii.push_back(oldIi[i]);
+        addl.push_back(0);
+        evid.push_back(1);
+        if (whI == 10){
+          ss.push_back(1);
+          show["ss"] = true;
+        } else if (whI == 20){
+          ss.push_back(2);
+          show["ss"] = true;
+        } else {
+          ss.push_back(0);
+        }
+        ndose++;
+        break;
       }
     }
   }
@@ -1468,15 +1469,15 @@ List etExpandAddl(List curEt){
       cii = ii[j];
       ii[j] = 0;
       for (i = caddl; i--;){
-	id.push_back(id[j]);
-	evid.push_back(evid[j]);
-	low.push_back(low[j]);
-	high.push_back(high[j]);
-	time.push_back(time[j] + (i+1)*cii);
-	addl.push_back(0);
-	ii.push_back(0);
-	idx0.push_back(j);
-	ndose++;
+        id.push_back(id[j]);
+        evid.push_back(evid[j]);
+        low.push_back(low[j]);
+        high.push_back(high[j]);
+        time.push_back(time[j] + (i+1)*cii);
+        addl.push_back(0);
+        ii.push_back(0);
+        idx0.push_back(j);
+        ndose++;
       }
     }
   }
@@ -1488,11 +1489,11 @@ List etExpandAddl(List curEt){
   IntegerVector ord;
   if (useForder()){
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL));
+                _["na.last"] = LogicalVector::create(NA_LOGICAL));
   } else {
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL),
-		_["method"]="radix");
+                _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                _["method"]="radix");
   }
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
@@ -1544,36 +1545,36 @@ List etExpandAddl(List curEt){
   for (i = idx.size(); i--;){  
     for (j = 12; j--;){
       if (j == 0){
-	tmpI = asIv(lst[0], "lst[0]");
-	tmpI[i] = id[idx[i]];
+        tmpI = asIv(lst[0], "lst[0]");
+        tmpI[i] = id[idx[i]];
       } else if (j == 1){
-	tmpN = asNv(lst[1], "lst[1]");
-	tmpN[i] = low[idx[i]];
+        tmpN = asNv(lst[1], "lst[1]");
+        tmpN[i] = low[idx[i]];
       } else if (j == 2){
-	tmpN = asNv(lst[2], "lst[2]");
-	tmpN[i] = time[idx[i]];
+        tmpN = asNv(lst[2], "lst[2]");
+        tmpN[i] = time[idx[i]];
       } else if (j == 3){
-	tmpN = asNv(lst[3], "lst[3]");
-	tmpN[i] = high[idx[i]];
+        tmpN = asNv(lst[3], "lst[3]");
+        tmpN[i] = high[idx[i]];
       } else if (j == 8){
-	tmpI = asIv(lst[8], "lst[8]");
-	tmpI[i] = addl[idx[i]];
+        tmpI = asIv(lst[8], "lst[8]");
+        tmpI[i] = addl[idx[i]];
       } else if (j == 7){
-	tmpN = asNv(lst[7], "lst[7]");
-	tmpN[i] = ii[idx[i]];
+        tmpN = asNv(lst[7], "lst[7]");
+        tmpN[i] = ii[idx[i]];
       } else if (rxIsNum(curEt[j])){
-	tmpN = asNv(lst[j], "lst[j]");
-	tmpN2 = asNv(curEt[j], "curEt[j]");
-	tmpN[i] = tmpN2[idx0[idx[i]]];
+        tmpN = asNv(lst[j], "lst[j]");
+        tmpN2 = asNv(curEt[j], "curEt[j]");
+        tmpN[i] = tmpN2[idx0[idx[i]]];
       } else if (rxIsInt(curEt[j])) {
-	tmpI = asIv(lst[j], "lst[j]");
-	tmpI2 = asIv(curEt[j], "curEt[j]");
-	tmpI[i] = tmpI2[idx0[idx[i]]];
+        tmpI = asIv(lst[j], "lst[j]");
+        tmpI2 = asIv(curEt[j], "curEt[j]");
+        tmpI[i] = tmpI2[idx0[idx[i]]];
       } else if (rxIsChar(curEt[j])){
-	// Char
-	tmpC = asCv(lst[j], "lst[j]");
-	tmpC2 = asCv(curEt[j], "curEt[j]");
-	tmpC[i] = tmpC2[idx0[idx[i]]];	
+        // Char
+        tmpC = asCv(lst[j], "lst[j]");
+        tmpC2 = asCv(curEt[j], "curEt[j]");
+        tmpC[i] = tmpC2[idx0[idx[i]]];	
       }
     }
   }
@@ -1595,8 +1596,8 @@ List etExpandAddl(List curEt){
 }
 
 List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, double ii,
-	       int addl, int curEvid, int ss, double dur,
-	       IntegerVector IDs, bool turnOnShowCmt, bool doSampling, List curEt){
+               int addl, int curEvid, int ss, double dur,
+               IntegerVector IDs, bool turnOnShowCmt, bool doSampling, List curEt){
   std::vector<double> time = as<std::vector<double>>(curEt["time"]);
   std::vector<int> id = as<std::vector<int>>(curEt["id"]);
   std::vector<int> evid = as<std::vector<int>>(curEt["evid"]);
@@ -1616,47 +1617,47 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
       high.push_back(NA_REAL);
       ndose++;
       if (doSampling){
-	id.push_back(IDs[j]);
-	evid.push_back(0);
-	time.push_back(curTime[0]);
-	low.push_back(NA_REAL);
-	high.push_back(NA_REAL);
-	nobs++;
-	for (i = addl; i--;){
-	  id.push_back(IDs[j]);
-	  evid.push_back(0);
-	  low.push_back(NA_REAL);
-	  high.push_back(NA_REAL);
-	  time.push_back(curTime[0] + (i+1)*ii);
-	  nobs++;
-	}
+        id.push_back(IDs[j]);
+        evid.push_back(0);
+        time.push_back(curTime[0]);
+        low.push_back(NA_REAL);
+        high.push_back(NA_REAL);
+        nobs++;
+        for (i = addl; i--;){
+          id.push_back(IDs[j]);
+          evid.push_back(0);
+          low.push_back(NA_REAL);
+          high.push_back(NA_REAL);
+          time.push_back(curTime[0] + (i+1)*ii);
+          nobs++;
+        }
       }
     } else if (curTime.size() == 2) {
       if (curTime[0] < curTime[1]){
-	if (doSampling){
-	  stop(_("'do.sampling' is not supported with dose windows"));
-	}
-	id.push_back(IDs[j]);
-	evid.push_back(curEvid);
-	low.push_back(curTime[0]);
-	high.push_back(curTime[1]);
-	c = Rf_runif(curTime[0], curTime[1]);
-	time.push_back(c);
-	ndose++;
-	for (i = addl; i--;){
-	  id.push_back(IDs[j]);
-	  evid.push_back(curEvid);
-	  a = curTime[0]+ (i+1)*ii;
-	  b = curTime[1]+ (i+1)*ii;
-	  low.push_back(a);
-	  high.push_back(b);
-	  c = Rf_runif(a, b);
-	  time.push_back(c);
-	  ndose++;
-	  unroll=true;
-	}
+        if (doSampling){
+          stop(_("'do.sampling' is not supported with dose windows"));
+        }
+        id.push_back(IDs[j]);
+        evid.push_back(curEvid);
+        low.push_back(curTime[0]);
+        high.push_back(curTime[1]);
+        c = Rf_runif(curTime[0], curTime[1]);
+        time.push_back(c);
+        ndose++;
+        for (i = addl; i--;){
+          id.push_back(IDs[j]);
+          evid.push_back(curEvid);
+          a = curTime[0]+ (i+1)*ii;
+          b = curTime[1]+ (i+1)*ii;
+          low.push_back(a);
+          high.push_back(b);
+          c = Rf_runif(a, b);
+          time.push_back(c);
+          ndose++;
+          unroll=true;
+        }
       } else {
-	stop(_("dosing window you need to specify window in order, e.g. 'et(time=list(c(0,2)),amt=3)'"));
+        stop(_("dosing window you need to specify window in order, e.g. 'et(time=list(c(0,2)),amt=3)'"));
       }
     } else {
       stop(_("dosing time or time windows must only be 1-2 elements"));
@@ -1670,11 +1671,11 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
   IntegerVector ord;
   if (useForder()){
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL));
+                _["na.last"] = LogicalVector::create(NA_LOGICAL));
   } else {
     ord = order(ivId, nvTime, ivEvid,
-		_["na.last"] = LogicalVector::create(NA_LOGICAL),
-		_["method"]="radix");
+                _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                _["method"]="radix");
   }
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
@@ -1744,12 +1745,12 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
 
     if (idx[i] >= oldSize){
       if (isCmtInt){
-	tmpI = asIv(lst[4], "lst[4]");
-	tmpI[i] = asInt(cmt, "cmt");
+        tmpI = asIv(lst[4], "lst[4]");
+        tmpI[i] = asInt(cmt, "cmt");
       } else {
-	tmpC = asCv(lst[4], "lst[4]");
-	tmpC2 = asCv(cmt, "cmt");
-	tmpC[i] = tmpC2[0];
+        tmpC = asCv(lst[4], "lst[4]");
+        tmpC2 = asCv(cmt, "cmt");
+        tmpC[i] = tmpC2[0];
       }
 
       // nme[5] = "amt";
@@ -1763,16 +1764,16 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
       // nme[7] = "ii";
       tmpN = asNv(lst[7], "lst[7]");
       if (unroll){
-	tmpN[i] = 0;
+        tmpN[i] = 0;
       } else {
-	tmpN[i] = ii;
+        tmpN[i] = ii;
       }
       // nme[8] = "addl";
       tmpI = asIv(lst[8], "lst[8]"); // id
       if (unroll){
-	tmpI[i] = 0;
+        tmpI[i] = 0;
       } else {
-	tmpI[i] = addl;
+        tmpI[i] = addl;
       }
   
       // nme[10] = "ss";
@@ -1785,20 +1786,20 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
     } else {
       // low
       for (j = 12; j--;){
-	if (rxIsNum(curEt[j])){
-	  tmpN = asNv(lst[j], "lst[j]");
-	  tmpN2 = asNv(curEt[j], "curEt[j]");
-	  tmpN[i] = tmpN2[idx[i]];
-	} else if (rxIsInt(curEt[j])) {
-	  tmpI = asIv(lst[j], "lst[j]");
-	  tmpI2 = asIv(curEt[j], "curEt[j]");
-	  tmpI[i] = tmpI2[idx[i]];
-	} else if (rxIsChar(curEt[j])){
-	  // Char
-	  tmpC = asCv(lst[j], "lst[j]");
-	  tmpC2 = asCv(curEt[j], "curEt[j]");
-	  tmpC[i] = tmpC2[idx[i]];
-	}
+        if (rxIsNum(curEt[j])){
+          tmpN = asNv(lst[j], "lst[j]");
+          tmpN2 = asNv(curEt[j], "curEt[j]");
+          tmpN[i] = tmpN2[idx[i]];
+        } else if (rxIsInt(curEt[j])) {
+          tmpI = asIv(lst[j], "lst[j]");
+          tmpI2 = asIv(curEt[j], "curEt[j]");
+          tmpI[i] = tmpI2[idx[i]];
+        } else if (rxIsChar(curEt[j])){
+          // Char
+          tmpC = asCv(lst[j], "lst[j]");
+          tmpC2 = asCv(curEt[j], "curEt[j]");
+          tmpC[i] = tmpC2[idx[i]];
+        }
       }
     }
   }
@@ -1995,9 +1996,9 @@ List etResizeId(List curEt, IntegerVector IDs){
   for (i = IDs.size(); i--;){
     if (std::find(oldIDs.begin(), oldIDs.end(), IDs[i]) == oldIDs.end()){
       if (IDs[i] < 0){
-	rmIds.push_back(-IDs[i]);
+        rmIds.push_back(-IDs[i]);
       } else {
-	newIds.push_back(IDs[i]);
+        newIds.push_back(IDs[i]);
       }
     }
   }
@@ -2010,7 +2011,7 @@ List etResizeId(List curEt, IntegerVector IDs){
     std::vector<int> finalIds;
     for (i = oldIDs.size(); i--;){
       if (std::find(rmIds.begin(), rmIds.end(), oldIDs[i]) == rmIds.end()){
-	finalIds.push_back(oldIDs[i]);
+        finalIds.push_back(oldIDs[i]);
       }
     }
     int rmId = NA_INTEGER, newId = NA_INTEGER;
@@ -2018,13 +2019,13 @@ List etResizeId(List curEt, IntegerVector IDs){
       return etEmpty(e["units"]);
     } else if (finalIds.size() == 0 && newIds.size() > 0){
       if (asBool(e["canResize"], "e[\"canResize\"]")){
-	newId = newIds.back();
-	newIds.pop_back();
-	finalIds.push_back(newId);
-	rmId = rmIds.back();
-	rmIds.pop_back();
+        newId = newIds.back();
+        newIds.pop_back();
+        finalIds.push_back(newId);
+        rmId = rmIds.back();
+        rmIds.pop_back();
       } else {
-	stop(_("cannot add more 'ID's to this event table"));
+        stop(_("cannot add more 'ID's to this event table"));
       }
     }
     int nobs = 0;
@@ -2034,14 +2035,14 @@ List etResizeId(List curEt, IntegerVector IDs){
     std::vector<bool> isIn;
     for (i = 0; i < (int)id.size(); i++){
       if (std::find(rmIds.begin(), rmIds.end(), id[i]) == rmIds.end()){
-	if (evid[i] == 0){
-	  nobs++;
-	} else {
-	  ndose++;
-	}
-	isIn.push_back(true);
+        if (evid[i] == 0){
+          nobs++;
+        } else {
+          ndose++;
+        }
+        isIn.push_back(true);
       } else {
-	isIn.push_back(false);
+        isIn.push_back(false);
       }
     }
     int j, newSize = nobs+ndose, k=0;
@@ -2051,36 +2052,36 @@ List etResizeId(List curEt, IntegerVector IDs){
     for (j = newEt.size(); j--;){
       k=newSize-1;
       for (i = (int)id.size();i--;){
-	if (rxIs(curEt[j], "numeric")) {
-	  if (i == (int)id.size()-1) newEt[j] = NumericVector(newSize);
-	  if (isIn[i]){
-	    tmpN=newEt[j];
-	    tmpN2   = curEt[j];
-	    tmpN[k] = tmpN2[i];
-	  }
-	} else if (rxIs(curEt[j], "integer")) {
-	  if (i == (int)id.size()-1) newEt[j] = IntegerVector(newSize);
-	  if (isIn[i]){
-	    tmpI  = newEt[j];
-	    tmpI2 = curEt[j];
-	    // Replace ID if needed
-	    if (j == 0 && tmpI2[i] == rmId){
-	      tmpI[k] = newId;
-	    } else {
-	      tmpI[k] = tmpI2[i];
-	    }
-	  }
-	} else if (rxIs(curEt[j], "character")){
-	  if (i == (int)id.size()-1) newEt[j] = CharacterVector(newSize);
-	  if (isIn[i]){
-	    tmpC=newEt[j];
-	    tmpC2 = curEt[j];
-	    tmpC[k] = tmpC2[i];
-	  }
-	}
-	if (isIn[i]){
-	  k--;
-	}
+        if (rxIs(curEt[j], "numeric")) {
+          if (i == (int)id.size()-1) newEt[j] = NumericVector(newSize);
+          if (isIn[i]){
+            tmpN=newEt[j];
+            tmpN2   = curEt[j];
+            tmpN[k] = tmpN2[i];
+          }
+        } else if (rxIs(curEt[j], "integer")) {
+          if (i == (int)id.size()-1) newEt[j] = IntegerVector(newSize);
+          if (isIn[i]){
+            tmpI  = newEt[j];
+            tmpI2 = curEt[j];
+            // Replace ID if needed
+            if (j == 0 && tmpI2[i] == rmId){
+              tmpI[k] = newId;
+            } else {
+              tmpI[k] = tmpI2[i];
+            }
+          }
+        } else if (rxIs(curEt[j], "character")){
+          if (i == (int)id.size()-1) newEt[j] = CharacterVector(newSize);
+          if (isIn[i]){
+            tmpC=newEt[j];
+            tmpC2 = curEt[j];
+            tmpC[k] = tmpC2[i];
+          }
+        }
+        if (isIn[i]){
+          k--;
+        }
       }
     }
     CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
@@ -2109,12 +2110,12 @@ List etResizeId(List curEt, IntegerVector IDs){
       int maxId = oldMaxId + newIds.size();
       double c = (double)(maxId)/(double)(oldMaxId);
       int oldSize = asInt(e["nobs"], "e[\"nobs\"]") +
-	asInt(e["ndose"], "e[\"ndose\"]");
+        asInt(e["ndose"], "e[\"ndose\"]");
       int newSize = (int)(oldSize*c);
       int idSize = (int)((double)(oldSize)/(double)(oldMaxId));
       // Add new ids.
       for (i = newIds.size(); i--;){
-  	oldIDs.push_back(newIds[i]);
+        oldIDs.push_back(newIds[i]);
       }
       SORT(oldIDs.begin(),oldIDs.end()); // Less expensive, then whole table doesn't need to be sorted.
       int j;
@@ -2123,38 +2124,38 @@ List etResizeId(List curEt, IntegerVector IDs){
       CharacterVector tmpC, tmpC2;
       List newEt(curEt.size());
       for (j = newEt.size(); j--;){
-  	if (rxIs(curEt[j], "integer")) {
-  	  tmpI = IntegerVector(newSize);
-  	  tmpI2 = asIv(curEt[j], "curEt[j]");
-  	  std::copy(tmpI2.begin(), tmpI2.end(), tmpI.begin());
-  	  if (j == 0){
-  	    for (i = oldMaxId+1; i <= maxId; i++){
-  	      std::fill_n(tmpI.begin() + oldSize + (i-oldMaxId-1)*idSize, idSize, oldIDs[i-1]);
-  	    }
-  	  } else {
-  	    for (i = newSize - oldSize; i--;){
-  	      tmpI[oldSize+i] = tmpI2[i % oldSize];
-  	    }
-  	  }
-  	  newEt[j] = tmpI;
-  	} else if (rxIs(curEt[j], "character")){
-  	  // Char
-  	  tmpC = CharacterVector(newSize);
-  	  tmpC2 = asCv(curEt[j], "curEt[j]");
-  	  std::copy(tmpC2.begin(), tmpC2.end(), tmpC.begin());
-  	  for (i = newSize - oldSize; i--;){
-  	    tmpC[oldSize+i] = tmpC2[i % oldSize];
-  	  }
-  	  newEt[j] = tmpC;
-  	} else {
-  	  tmpN = NumericVector(newSize);
-  	  tmpN2 = asNv(curEt[j], "curEt[j]");
-  	  std::copy(tmpN2.begin(), tmpN2.end(), tmpN.begin());
-  	  for (i = newSize - oldSize; i--;){
-  	    tmpN[oldSize+i] = tmpN2[i % oldSize];
-  	  }
-  	  newEt[j] = tmpN;
-  	}
+        if (rxIs(curEt[j], "integer")) {
+          tmpI = IntegerVector(newSize);
+          tmpI2 = asIv(curEt[j], "curEt[j]");
+          std::copy(tmpI2.begin(), tmpI2.end(), tmpI.begin());
+          if (j == 0){
+            for (i = oldMaxId+1; i <= maxId; i++){
+              std::fill_n(tmpI.begin() + oldSize + (i-oldMaxId-1)*idSize, idSize, oldIDs[i-1]);
+            }
+          } else {
+            for (i = newSize - oldSize; i--;){
+              tmpI[oldSize+i] = tmpI2[i % oldSize];
+            }
+          }
+          newEt[j] = tmpI;
+        } else if (rxIs(curEt[j], "character")){
+          // Char
+          tmpC = CharacterVector(newSize);
+          tmpC2 = asCv(curEt[j], "curEt[j]");
+          std::copy(tmpC2.begin(), tmpC2.end(), tmpC.begin());
+          for (i = newSize - oldSize; i--;){
+            tmpC[oldSize+i] = tmpC2[i % oldSize];
+          }
+          newEt[j] = tmpC;
+        } else {
+          tmpN = NumericVector(newSize);
+          tmpN2 = asNv(curEt[j], "curEt[j]");
+          std::copy(tmpN2.begin(), tmpN2.end(), tmpN.begin());
+          for (i = newSize - oldSize; i--;){
+            tmpN[oldSize+i] = tmpN2[i % oldSize];
+          }
+          newEt[j] = tmpN;
+        }
       }
       newEt.attr("names")     = curEt.attr("names");
       bool recalcTime = false;
@@ -2178,7 +2179,7 @@ List etResizeId(List curEt, IntegerVector IDs){
       cls.attr(".rxode2.lst")  = e;
       newEt.attr("class")     = cls;
       int len = asInt(e["nobs"], "e[\"nobs\"]") +
-	asInt(e["ndose"], "e[\"ndose\"]");
+        asInt(e["ndose"], "e[\"ndose\"]");
       newEt.attr("row.names") = IntegerVector::create(NA_INTEGER, -len);
       if (recalcTime){
       	// Will have to sort with new times.
@@ -2209,15 +2210,15 @@ RObject et_(List input, List et__){
   if (et__.size() > 0){
     if (rxIs(et__[0],"character")){
       if (as<std::string>(et__[0]) == "last"){
-	doUpdateObj=true;
-	curEt = evCur;
-	foundEt=true;
+        doUpdateObj=true;
+        curEt = evCur;
+        foundEt=true;
       } else if (as<std::string>(et__[0]) == "import") {
-	bool bt = true, bf = false;
-	return etUpdateObj(etImportEventTable(as<List>(input["data"]), true), bt, bf, bt);
+        bool bt = true, bf = false;
+        return etUpdateObj(etImportEventTable(as<List>(input["data"]), true), bt, bf, bt);
       } else if (as<std::string>(et__[0]) == "importQuiet") {
-	bool bt = true, bf = false;
-	return etUpdateObj(etImportEventTable(as<List>(input["data"]), false), bt, bf, bt);
+        bool bt = true, bf = false;
+        return etUpdateObj(etImportEventTable(as<List>(input["data"]), false), bt, bf, bt);
       }
     } else if (rxIs(et__, "rxEt")) {
       foundEt=true;
@@ -2254,14 +2255,14 @@ RObject et_(List input, List et__){
   for (i = (int)inN.size(); i--;){
     if (inN[i] == "amt" || inN[i] == "dose") {
       if (amtIx != -1){
-	stop(_("can only have one of the following: 'amt', 'dose'"));
+        stop(_("can only have one of the following: 'amt', 'dose'"));
       }
       amtIx=i;
       amtChar = CHAR(STRING_ELT(inN, amtIx));
     }
     else if (inN[i] == "ii" || inN[i] == "dosing.interval" || inN[i] == "dosingInterval" || inN[i] == "dosing_interval"){
       if (iiIx != -1){
-	stop(_("can only have one of the following: 'ii', 'dosing.interval', 'dosingInterval' or 'dosing_interval'"));
+        stop(_("can only have one of the following: 'ii', 'dosing.interval', 'dosingInterval' or 'dosing_interval'"));
       }
       iiIx=i;
     }
@@ -2279,47 +2280,47 @@ RObject et_(List input, List et__){
     }
     else if (inN[i] == "ID" || inN[i] == "id") idIx=i;
     else if (inN[i] == "cmt" || inN[i] == "dosing.to" || inN[i] == "dosingTo" || inN[i] =="dosing_to" ||
-	     inN[i] == "dose.to" || inN[i] == "doseTo" || inN[i] == "dose_to" || inN[i] == "state"){
+             inN[i] == "dose.to" || inN[i] == "doseTo" || inN[i] == "dose_to" || inN[i] == "state"){
       if (cmtIx != -1){
-	stop(_("can only have one of the following: 'cmt', 'dosing.to', 'dose.to', 'state'"));
+        stop(_("can only have one of the following: 'cmt', 'dosing.to', 'dose.to', 'state'"));
       }
       cmtIx=i;
       cmtChar=CHAR(STRING_ELT(inN, cmtIx));
     }
     else if (inN[i] == "amount.units" || inN[i] == "amountUnits" || inN[i] == "amount_units" ||
-	     inN[i] == "amt.units" || inN[i] == "amtUnits" || inN[i] == "amt_units" ||
-	     inN[i] == "dose.units" || inN[i] == "doseUnits" || inN[i] == "dose_units") {
+             inN[i] == "amt.units" || inN[i] == "amtUnits" || inN[i] == "amt_units" ||
+             inN[i] == "dose.units" || inN[i] == "doseUnits" || inN[i] == "dose_units") {
       if (amtUnitIx != -1){
-	stop(_("can only have one of the following: 'amount.units', 'amt.units', 'dose.units'"));
+        stop(_("can only have one of the following: 'amount.units', 'amt.units', 'dose.units'"));
       }
       amtUnitIx=i;
       amtUnitChar = CHAR(STRING_ELT(inN, amtUnitIx));
     }
     else if (inN[i] == "time.units" || inN[i] == "timeUnits" || inN[i] == "time_units") {
       if (timeUnitIx != -1) {
-	stop(_("can only have one of the following: 'time.units', 'timeUnits', 'time_units'"));
+        stop(_("can only have one of the following: 'time.units', 'timeUnits', 'time_units'"));
       }
       timeUnitIx=i;
       timeUnitChar=CHAR(STRING_ELT(inN, i));
     }
     else if (inN[i] == "do.sampling" || inN[i] == "doSampling" || inN[i] == "do_sampling" ||
-	     inN[i] == "add.sampling" || inN[i] == "addSampling" || inN[i] == "add_sampling") {
+             inN[i] == "add.sampling" || inN[i] == "addSampling" || inN[i] == "add_sampling") {
       if (doSamplingIdx != -1) {
-	stop(_("can only have one of the following: 'add.sampling', 'do.sampling'"));
+        stop(_("can only have one of the following: 'add.sampling', 'do.sampling'"));
       }
       doSamplingIdx=i;
       doSamplingChar=CHAR(STRING_ELT(inN, i));
     }
     else if (inN[i] == "time" || inN[i] == "start.time" || inN[i] == "startTime" || inN[i] == "start_time" ||
-	     inN[i] == "start" || inN[i] == "from"){
+             inN[i] == "start" || inN[i] == "from"){
       if (timeIx != -1){
-	stop(_("can only have one of the following: 'time', 'start.time', 'from'"));
+        stop(_("can only have one of the following: 'time', 'start.time', 'from'"));
       }
       timeIx = i;
     }
     else if (inN[i] == "nbr.doses" || inN[i] == "nbrDoses" || inN[i] == "nbr") {
       if (nbrIx != -1){
-	stop(_("can only have one of the following: 'nbrDoses', 'nbr.doses'"));
+        stop(_("can only have one of the following: 'nbrDoses', 'nbr.doses'"));
       }
       nbrIx=i;
       nbrChar = CHAR(STRING_ELT(inN, i));
@@ -2334,13 +2335,13 @@ RObject et_(List input, List et__){
     }
     else if (inN[i] == "dur" || inN[i] == "duration") {
       if (durIx != -1){
-	stop(_("can only have one of the following: 'dur', 'duration'"));
+        stop(_("can only have one of the following: 'dur', 'duration'"));
       }
       durIx = i;
       durChar = CHAR(STRING_ELT(inN, i));
     }
     else if (inN[i] != "" && inN[i] != "simulate" && inN[i] != "envir" &&
-	     inN[i] != "expand" && !doUpdateObj){
+             inN[i] != "expand" && !doUpdateObj){
       stop(_("unused argument '%s'"), (as<std::string>(inN[i])).c_str());
     }
   }
@@ -2352,16 +2353,16 @@ RObject et_(List input, List et__){
       if (rxIs(input[i], "integer") && timeIx == -1) timeIx = i;
       if (rxIs(input[i], "list") && timeIx == -1) timeIx=i;
       if (rxIs(input[i], "rxEt")){
-	if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
-	foundEt=true;
-	curEt = input[i];
+        if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
+        foundEt=true;
+        curEt = input[i];
       }
       if (rxIs(input[i], "rxSolve")){
-	if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
-	foundEt=true;
-	inputSolve=true;
-	curEt = getEtSolve(input[i]);
-	curSolve=et__;
+        if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
+        foundEt=true;
+        inputSolve=true;
+        curEt = getEtSolve(input[i]);
+        curSolve=et__;
       }
     }
   }
@@ -2372,16 +2373,16 @@ RObject et_(List input, List et__){
       if (rxIs(input[i], "integer") && timeIx == -1) timeIx = i;
       if (rxIs(input[i], "list") && timeIx == -1) timeIx=i;
       if (rxIs(input[i], "rxEt")){
-	if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
-	foundEt=true;
-	curEt = input[i];
+        if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
+        foundEt=true;
+        curEt = input[i];
       }
       if (rxIs(input[i], "rxSolve")){
-	if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
-	foundEt=true;
-	inputSolve=true;
-	curEt = getEtSolve(input[i]);
-	curSolve=et__;
+        if (foundEt) stop(_("multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"));
+        foundEt=true;
+        inputSolve=true;
+        curEt = getEtSolve(input[i]);
+        curSolve=et__;
       }
     }
   }
@@ -2416,164 +2417,164 @@ RObject et_(List input, List et__){
     if (rxIs(input[0], "logical")){
       LogicalVector in0 = asLv(input[0], "input[0]");
       if (in0[0]){
-	CharacterVector nm = input.attr("names");
-	if (nm[0] == "getUnits"){
-	  return(e["units"]);
-	} else if (nm[0] == "get.nobs"){
-	  return e["nobs"];
-	} else if (nm[0] == "get.dose"){
-	  return e["nobs"];
-	} else if (nm[0] == "simulate"){
-	  bool bt = true;
-	  return etUpdateObj(etSimulate(asList(curEt, "curEt")),
-			     doUpdateObj, inputSolve, bt);
-	} else if (nm[0] == "copy"){
-	  // Make sure that the object is cloned
-	  bool bf=false;
-	  return etUpdateObj(asList(curEt, "curEt"),bf, bf, bf);
-	} else if (nm[0] == "get.EventTable"){
-	  e.attr("class") = R_NilValue;
-	  if (asInt(e["nobs"], "e[\"nobs\"]") == 0 &&
-	      asInt(e["ndose"], "e[\"ndose\"]") == 0){
-	    return R_NilValue;
-	  } else {
-	    CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-	    List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
-	    LogicalVector show = e["show"];
-	    List cur = clone(asList(curEt, "curEt"));
-	    CharacterVector curN = cur.attr("names");
-	    int lenShow=0;
-	    for (int i = show.size();i--;){
-	      if (show[i]) lenShow++;
-	    }
-	    List ret(lenShow);
-	    CharacterVector nm(lenShow);
-	    int j=0;
-	    for (int i = 0; i < show.size(); i++){
-	      if (show[i]){
-		ret[j] = cur[i];
-		nm[j]= curN[i];
-		j++;
-	      }
-	    }
-	    ret.attr("names") = nm;
-	    ret.attr("row.names") = cur.attr("row.names");
-	    ret.attr("class") = "data.frame";
-	    return as<RObject>(ret);
-	  }
-	} else if (nm[0] == "get.obs.rec"){
-	  List lst = asList(curEt, "curEt");
-	  IntegerVector evid = asIv(lst["evid"], "lst[\"evid\"]");
-	  LogicalVector ret(evid.size());
-	  for (int i = evid.size(); i--;) ret[i] = (evid[i] == 0);
-	  return as<RObject>(ret);
-	} else if (nm[0] == "expand"){
-	  RObject ret = etUpdateObj(etExpandAddl(asList(curEt, "curEt")),
-				    doUpdateObj, inputSolve, turnOnId);
-	  return ret;
-	} else if (nm[0] == "get.sampling" || nm[0] == "get.dosing" ||
-		   nm[0] == "clearSampling" || nm[0] == "clearDosing"){
-	  // Need to update
-	  bool doDose = (nm[0] == "get.dosing" || nm[0] == "clearSampling");
-	  bool updateObj = (nm[0] == "clearSampling" || nm[0] == "clearDosing");
-	  int n = doDose ? asInt(e["ndose"], "ndose") :
-	    asInt(e["nobs"], "e[\"nobs\"]");
-	  List cmp;
-	  if (n == 0){
-	    if (updateObj){
-	      cmp = asList(curEt,"curEt");
-	      List em =etEmpty(asCv(e["units"], "e[\"units\"]"));
-	      cls = clone(asCv(em.attr("class"), "class"));
-	      for (int j = cmp.size(); j--;){
-		if (rxIsNum(cmp[j])){
-		  cmp[j] = NumericVector(0);
-		} else if (rxIsInt(cmp[j])){
-		  cmp[j] = IntegerVector(0);
-		} else if (rxIsChar(cmp[j])) {
-		  cmp[j] = CharacterVector(0);
-		}
-	      }
-	      cmp.attr("row.names") = IntegerVector::create(NA_INTEGER, -n);
-	      cmp.attr("class") = cls;
-	      return R_NilValue;
-	    } else {
-	      return R_NilValue;
-	    }
-	  } else {
-	    cmp = asList(curEt, "curEt");
-	    List ret(cmp.size());
-	    IntegerVector evid = asIv(cmp["evid"], "cmp[\"evid\"]");
-	    int i, j, k;
-	    for (j = ret.size(); j--;){
-	      if (rxIsNum(cmp[j])){
-		ret[j] = NumericVector(n);
-	      } else if (rxIsInt(cmp[j])){
-		ret[j] = IntegerVector(n);
-	      } else if (rxIsChar(cmp[j])){
-		ret[j] = CharacterVector(n);
-	      }
-	    }
-	    k = 0;
-	    NumericVector tmpN, tmpN2;
-	    IntegerVector tmpI, tmpI2;
-	    CharacterVector tmpC, tmpC2;
-	    for (i = 0; i < evid.size(); i++){
-	      if ((doDose && evid[i] != 0) || (!doDose && evid[i] == 0)){
-		for (j = ret.size(); j--;){
-		  if (rxIs(cmp[j], "numeric")){
-		    tmpN = ret[j];
-		    tmpN2 = cmp[j];
-		    tmpN[k] = tmpN2[i];
-		  } else if (rxIs(cmp[j], "integer")){
-		    tmpI = ret[j];
-		    tmpI2 = cmp[j];
-		    tmpI[k] = tmpI2[i];
-		  } else if (rxIs(cmp[j], "character")){
-		    tmpC = ret[j];
-		    tmpC2 = cmp[j];
-		    tmpC[k] = tmpC2[i];
-		  }
-		}
-		k++;
-	      }
-	    }
-	    ret.attr("names") = cmp.attr("names");
-	    ret.attr("row.names") = IntegerVector::create(NA_INTEGER, -n);
-	    if (updateObj){
-	      // This updates the object in place.
-	      if (doDose){
-		e["nobs"] = 0;
-	      } else {
-		e["ndose"] = 0;
-	      }
-	      cls.attr(".rxode2.lst") = e;
-	      for (j = cmp.size(); j--;){
-		cmp[j] = ret[j];
-	      }
-	      cmp.attr("row.names") = IntegerVector::create(NA_INTEGER, -n);
-	      cmp.attr("class") = cls;
-	      return as<RObject>(ret);
-	    } else {
-	      ret.attr("class") = "data.frame";
-	    }
-	    return as<RObject>(ret);
-	  }
-	} else {
-	  Rf_warningcall(R_NilValue, _("nothing done"));
-	  return  asList(curEt, "curEt");
-	}
+        CharacterVector nm = input.attr("names");
+        if (nm[0] == "getUnits"){
+          return(e["units"]);
+        } else if (nm[0] == "get.nobs"){
+          return e["nobs"];
+        } else if (nm[0] == "get.dose"){
+          return e["nobs"];
+        } else if (nm[0] == "simulate"){
+          bool bt = true;
+          return etUpdateObj(etSimulate(asList(curEt, "curEt")),
+                             doUpdateObj, inputSolve, bt);
+        } else if (nm[0] == "copy"){
+          // Make sure that the object is cloned
+          bool bf=false;
+          return etUpdateObj(asList(curEt, "curEt"),bf, bf, bf);
+        } else if (nm[0] == "get.EventTable"){
+          e.attr("class") = R_NilValue;
+          if (asInt(e["nobs"], "e[\"nobs\"]") == 0 &&
+              asInt(e["ndose"], "e[\"ndose\"]") == 0){
+            return R_NilValue;
+          } else {
+            CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
+            List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
+            LogicalVector show = e["show"];
+            List cur = clone(asList(curEt, "curEt"));
+            CharacterVector curN = cur.attr("names");
+            int lenShow=0;
+            for (int i = show.size();i--;){
+              if (show[i]) lenShow++;
+            }
+            List ret(lenShow);
+            CharacterVector nm(lenShow);
+            int j=0;
+            for (int i = 0; i < show.size(); i++){
+              if (show[i]){
+                ret[j] = cur[i];
+                nm[j]= curN[i];
+                j++;
+              }
+            }
+            ret.attr("names") = nm;
+            ret.attr("row.names") = cur.attr("row.names");
+            ret.attr("class") = "data.frame";
+            return as<RObject>(ret);
+          }
+        } else if (nm[0] == "get.obs.rec"){
+          List lst = asList(curEt, "curEt");
+          IntegerVector evid = asIv(lst["evid"], "lst[\"evid\"]");
+          LogicalVector ret(evid.size());
+          for (int i = evid.size(); i--;) ret[i] = (evid[i] == 0);
+          return as<RObject>(ret);
+        } else if (nm[0] == "expand"){
+          RObject ret = etUpdateObj(etExpandAddl(asList(curEt, "curEt")),
+                                    doUpdateObj, inputSolve, turnOnId);
+          return ret;
+        } else if (nm[0] == "get.sampling" || nm[0] == "get.dosing" ||
+                   nm[0] == "clearSampling" || nm[0] == "clearDosing"){
+          // Need to update
+          bool doDose = (nm[0] == "get.dosing" || nm[0] == "clearSampling");
+          bool updateObj = (nm[0] == "clearSampling" || nm[0] == "clearDosing");
+          int n = doDose ? asInt(e["ndose"], "ndose") :
+            asInt(e["nobs"], "e[\"nobs\"]");
+          List cmp;
+          if (n == 0){
+            if (updateObj){
+              cmp = asList(curEt,"curEt");
+              List em =etEmpty(asCv(e["units"], "e[\"units\"]"));
+              cls = clone(asCv(em.attr("class"), "class"));
+              for (int j = cmp.size(); j--;){
+                if (rxIsNum(cmp[j])){
+                  cmp[j] = NumericVector(0);
+                } else if (rxIsInt(cmp[j])){
+                  cmp[j] = IntegerVector(0);
+                } else if (rxIsChar(cmp[j])) {
+                  cmp[j] = CharacterVector(0);
+                }
+              }
+              cmp.attr("row.names") = IntegerVector::create(NA_INTEGER, -n);
+              cmp.attr("class") = cls;
+              return R_NilValue;
+            } else {
+              return R_NilValue;
+            }
+          } else {
+            cmp = asList(curEt, "curEt");
+            List ret(cmp.size());
+            IntegerVector evid = asIv(cmp["evid"], "cmp[\"evid\"]");
+            int i, j, k;
+            for (j = ret.size(); j--;){
+              if (rxIsNum(cmp[j])){
+                ret[j] = NumericVector(n);
+              } else if (rxIsInt(cmp[j])){
+                ret[j] = IntegerVector(n);
+              } else if (rxIsChar(cmp[j])){
+                ret[j] = CharacterVector(n);
+              }
+            }
+            k = 0;
+            NumericVector tmpN, tmpN2;
+            IntegerVector tmpI, tmpI2;
+            CharacterVector tmpC, tmpC2;
+            for (i = 0; i < evid.size(); i++){
+              if ((doDose && evid[i] != 0) || (!doDose && evid[i] == 0)){
+                for (j = ret.size(); j--;){
+                  if (rxIs(cmp[j], "numeric")){
+                    tmpN = ret[j];
+                    tmpN2 = cmp[j];
+                    tmpN[k] = tmpN2[i];
+                  } else if (rxIs(cmp[j], "integer")){
+                    tmpI = ret[j];
+                    tmpI2 = cmp[j];
+                    tmpI[k] = tmpI2[i];
+                  } else if (rxIs(cmp[j], "character")){
+                    tmpC = ret[j];
+                    tmpC2 = cmp[j];
+                    tmpC[k] = tmpC2[i];
+                  }
+                }
+                k++;
+              }
+            }
+            ret.attr("names") = cmp.attr("names");
+            ret.attr("row.names") = IntegerVector::create(NA_INTEGER, -n);
+            if (updateObj){
+              // This updates the object in place.
+              if (doDose){
+                e["nobs"] = 0;
+              } else {
+                e["ndose"] = 0;
+              }
+              cls.attr(".rxode2.lst") = e;
+              for (j = cmp.size(); j--;){
+                cmp[j] = ret[j];
+              }
+              cmp.attr("row.names") = IntegerVector::create(NA_INTEGER, -n);
+              cmp.attr("class") = cls;
+              return as<RObject>(ret);
+            } else {
+              ret.attr("class") = "data.frame";
+            }
+            return as<RObject>(ret);
+          }
+        } else {
+          Rf_warningcall(R_NilValue, _("nothing done"));
+          return  asList(curEt, "curEt");
+        }
       } else {
-	Rf_warningcall(R_NilValue, _("nothing done"));
-	return  asList(curEt, "curEt");
+        Rf_warningcall(R_NilValue, _("nothing done"));
+        return  asList(curEt, "curEt");
       }
     } else {
       // We are updating the event table
       IntegerVector id; // = e["IDs"];
       if (idIx != -1){
       	id    = asIv(input[idIx], "input[idIx]");
-	curEt = as<RObject>(etResizeId(as<List>(curEt), id));
-	turnOnId=true;
-	doRet=true;
+        curEt = as<RObject>(etResizeId(as<List>(curEt), id));
+        turnOnId=true;
+        doRet=true;
       } else {
       	id = asIv(e["IDs"], "e[\"IDs\"]");
       }
@@ -2585,469 +2586,469 @@ RObject et_(List input, List et__){
       bool cmtNeg = false;
       // Dose
       if (cmtIx == -1){
-	List tmp = asList(curEt, "curEt");
-	if (rxIsInt(tmp[4])){
-	  cmtI = IntegerVector(1);
-	  if (amtIx == -1){
-	    cmtI[0] = NA_INTEGER;
-	  } else {
-	    cmtI[0] = 1;
-	  }
-	  cmt = as<RObject>(cmtI);
-	} else {
-	  cmtS = CharacterVector(1);
-	  if (amtIx == -1){
-	    cmtS[0] = "(obs)";
-	  } else {
-	    cmtS[0] = "(default)";
-	  }
-	  cmt = as<RObject>(cmtS);
-	}
+        List tmp = asList(curEt, "curEt");
+        if (rxIsInt(tmp[4])){
+          cmtI = IntegerVector(1);
+          if (amtIx == -1){
+            cmtI[0] = NA_INTEGER;
+          } else {
+            cmtI[0] = 1;
+          }
+          cmt = as<RObject>(cmtI);
+        } else {
+          cmtS = CharacterVector(1);
+          if (amtIx == -1){
+            cmtS[0] = "(obs)";
+          } else {
+            cmtS[0] = "(default)";
+          }
+          cmt = as<RObject>(cmtS);
+        }
       } else {
-	if (rxIsChar(input[cmtIx])){
-	  cmtS = asCv(input[cmtIx], "input[cmtIx]");
-	  if (cmtS.size() == 1){
-	    List tmp = as<List>(curEt);
-	    if (rxIsInt(tmp[4])){
-	      stop(_("cannot mix named and integer compartments in '%s'"), cmtChar);
-	    }
-	    std::string curCmt = as<std::string>(cmtS[0]);
-	    if (curCmt.substr(0, 1) == "-"){
-	      cmtNeg = true;
-	    }
-	    cmt = as<RObject>(cmtS);
-	  } else {
-	    stop(_("'%s' compartment cannot be a vector"), cmtChar);
-	  }
-	} else if (rxIsNumInt(input[cmtIx])){
-	  cmtI = asIv(input[cmtIx], "input[cmtIx]");
-	  if (cmtI.size() == 1){
-	    curEt=etCmtInt(curEt);
-	    cls = clone(asCv(curEt.attr("class"), "class"));
-	    e = cls.attr(".rxode2.lst");
-	    if (cmtI[0] < 0){
-	      cmtNeg = true;
-	    }
-	    if (cmtI[0] == 0){
-	      stop(_("'%s' cannot be zero"), cmtChar);
-	    }
-	    cmt = as<RObject>(cmtI);
-	  } else {
-	    stop(_("'%s' cannot be an vector"), cmtChar);
-	  }
-	} else {
-	  stop(_("'%s' must be an integer or a character"), cmtChar);
-	}
-	turnOnShowCmt=true;
+        if (rxIsChar(input[cmtIx])){
+          cmtS = asCv(input[cmtIx], "input[cmtIx]");
+          if (cmtS.size() == 1){
+            List tmp = as<List>(curEt);
+            if (rxIsInt(tmp[4])){
+              stop(_("cannot mix named and integer compartments in '%s'"), cmtChar);
+            }
+            std::string curCmt = as<std::string>(cmtS[0]);
+            if (curCmt.substr(0, 1) == "-"){
+              cmtNeg = true;
+            }
+            cmt = as<RObject>(cmtS);
+          } else {
+            stop(_("'%s' compartment cannot be a vector"), cmtChar);
+          }
+        } else if (rxIsNumInt(input[cmtIx])){
+          cmtI = asIv(input[cmtIx], "input[cmtIx]");
+          if (cmtI.size() == 1){
+            curEt=etCmtInt(curEt);
+            cls = clone(asCv(curEt.attr("class"), "class"));
+            e = cls.attr(".rxode2.lst");
+            if (cmtI[0] < 0){
+              cmtNeg = true;
+            }
+            if (cmtI[0] == 0){
+              stop(_("'%s' cannot be zero"), cmtChar);
+            }
+            cmt = as<RObject>(cmtI);
+          } else {
+            stop(_("'%s' cannot be an vector"), cmtChar);
+          }
+        } else {
+          stop(_("'%s' must be an integer or a character"), cmtChar);
+        }
+        turnOnShowCmt=true;
       }
       NumericVector amt(1);
       bool isObs=false;
       bool zeroAmt=false;
       if (amtIx == -1){
-	isObs=true;
+        isObs=true;
       } else {
-	NumericVector tmpNV = asNv(input[amtIx], "input[amtIx]");
-	if (amt.size() != 1){
-	  stop(_("'%s' cannot be a vector"), amtChar);
-	}
-	amt[0] = tmpNV[0];
-	if (rxIs(tmpNV, "units")){
-	  CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-	  List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
-	  CharacterVector units = e["units"];
-	  if (!CharacterVector::is_na(units["dosing"])){
-	    amt = setUnits(tmpNV, as<std::string>(units["dosing"]));
-	  } else {
-	    amt = setUnits(amt, "");
-	  }
-	}
-	if (amt[0]==0) zeroAmt=true;
-	isObs = false;
+        NumericVector tmpNV = asNv(input[amtIx], "input[amtIx]");
+        if (amt.size() != 1){
+          stop(_("'%s' cannot be a vector"), amtChar);
+        }
+        amt[0] = tmpNV[0];
+        if (rxIs(tmpNV, "units")){
+          CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
+          List e = clone(asList(cls.attr(".rxode2.lst"), ".rxode2.lst"));
+          CharacterVector units = e["units"];
+          if (!CharacterVector::is_na(units["dosing"])){
+            amt = setUnits(tmpNV, as<std::string>(units["dosing"]));
+          } else {
+            amt = setUnits(amt, "");
+          }
+        }
+        if (amt[0]==0) zeroAmt=true;
+        isObs = false;
       }
       if (cmtNeg && isObs){
-	isObs = false;
+        isObs = false;
       }
       IntegerVector evid(1);
       if (evidIx != -1){
-	IntegerVector tmp = as<IntegerVector>(input[evidIx]);
-	if (evid.size()!= 1){
-	  stop(_("'%s' cannot be a vector"), evidChar);
-	}
-	evid[0] = tmp[0];
-	if (cmtNeg && evid[0] != 2){
-	  stop(_("turning off compartments can only be done when '%s'=2"), evidChar);
-	}
-	if (evid[0] == 0 && isObs){
-	  stop(_("zero '%s' cannot be used with '%s'"), evidChar, amtChar);
-	}
-	if ((evid[0] == 1 || evid[0] == 4) && isObs){
-	  stop(_("'%s' requires an '%s'"), evidChar, amtChar);
-	} else if (evid[0] == 2 || evid[0] == 3) {
-	  if (amtIx == -1){
-	    if (amt[0] != 0 && NumericVector::is_na(amt[0])){
-	      Rf_warningcall(R_NilValue, _("'%s' is ignored when '%s'=2 or '%s'=3"), amtChar,
-		      evidChar, evidChar);
-	    }
-	  }
-	  amt[0] = NA_REAL;
-	  isObs = false;
-	}
+        IntegerVector tmp = as<IntegerVector>(input[evidIx]);
+        if (evid.size()!= 1){
+          stop(_("'%s' cannot be a vector"), evidChar);
+        }
+        evid[0] = tmp[0];
+        if (cmtNeg && evid[0] != 2){
+          stop(_("turning off compartments can only be done when '%s'=2"), evidChar);
+        }
+        if (evid[0] == 0 && isObs){
+          stop(_("zero '%s' cannot be used with '%s'"), evidChar, amtChar);
+        }
+        if ((evid[0] == 1 || evid[0] == 4) && isObs){
+          stop(_("'%s' requires an '%s'"), evidChar, amtChar);
+        } else if (evid[0] == 2 || evid[0] == 3) {
+          if (amtIx == -1){
+            if (amt[0] != 0 && NumericVector::is_na(amt[0])){
+              Rf_warningcall(R_NilValue, _("'%s' is ignored when '%s'=2 or '%s'=3"), amtChar,
+                             evidChar, evidChar);
+            }
+          }
+          amt[0] = NA_REAL;
+          isObs = false;
+        }
       } else {
-	evid = IntegerVector(1);
+        evid = IntegerVector(1);
       }
       bool ssInf = false;
       if (isObs && rateIx != -1 && ssIx!=-1){
-	isObs = false;
-	amt[0] = 0.0;
-	ssInf=true;
+        isObs = false;
+        amt[0] = 0.0;
+        ssInf=true;
       }
       if (isObs){
-	if (evidIx == -1) evid[0]=0;
-	IntegerVector addl;// = 0;
-	if (addlIx != -1){
-	  addl = as<IntegerVector>(input[addlIx]);
-	  if (addl.size() != 1) stop(_("'%s' cannot be a vector"), addlChar);
-	  if (addl[0] != 0){
-	    stop(_("'%s' needs a '%s'"), addlChar, amtChar);
-	  }
-	} else {
-	  addl = IntegerVector(1);
-	  addl[0] = 0;
-	}
-	if (untilIx != -1){
-	  stop(_("'%s' needs a '%s'"), untilChar, amtChar);
-	}
-	if (nbrIx != -1){
-	  stop(_("'%s' needs a '%s'"), nbrChar, amtChar);
-	}
-	NumericVector rate;
-	if (rateIx != -1){
-	  if (durIx != -1){
-	    stop(_("can not specify '%s' and '%s' for a dose, please pick one"),
-		 durChar, rateChar);
-	  }
-	  rate = as<NumericVector>(input[rateIx]);
-	  if (rate.size() != 1) stop(_("'%s' cannot be a vector"), rateChar);
-	  if (rate[0] != 0.0){
-	    stop(_("'%s' needs a '%s'"), rateChar, amtChar);
-	  }
-	} else {
-	  if (durIx != -1){
-	    NumericVector dur = as<NumericVector>(input[durIx]);
-	    if (dur.size() != 1) stop(_("'%s' cannot be a vector"), durChar);
-	    if (dur[0] != 0){
-	      stop(_("'%s' needs a '%s'"), durChar, amtChar);
-	    }
-	  }
-	  rate = NumericVector(1);
-	  rate[0]=0.0;	  
-	}
-	NumericVector ii(1);
-	if (iiIx != -1){
-	  NumericVector tmpNV = as<NumericVector>(input[iiIx]);
-	  if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), iiChar);
-	  if (tmpNV[0] != 0.0){
-	    stop(_("'ii' needs a 'dose'/'amt'"));
-	  }
-	  if (rxIs(tmpNV, "units")){
-	    ii = setUnits(tmpNV, as<std::string>(units[1]));
-	  } else {
-	    ii[0] = tmpNV[0];
-	  }
-	} else {
-	  ii[0] = 0.0;
-	}
-	if (addl[0] > 0 && ii[0] <= 0){
-	  stop(_("dosing interval of zero makes no sense with multiple dose events"));
-	}
+        if (evidIx == -1) evid[0]=0;
+        IntegerVector addl;// = 0;
+        if (addlIx != -1){
+          addl = as<IntegerVector>(input[addlIx]);
+          if (addl.size() != 1) stop(_("'%s' cannot be a vector"), addlChar);
+          if (addl[0] != 0){
+            stop(_("'%s' needs a '%s'"), addlChar, amtChar);
+          }
+        } else {
+          addl = IntegerVector(1);
+          addl[0] = 0;
+        }
+        if (untilIx != -1){
+          stop(_("'%s' needs a '%s'"), untilChar, amtChar);
+        }
+        if (nbrIx != -1){
+          stop(_("'%s' needs a '%s'"), nbrChar, amtChar);
+        }
+        NumericVector rate;
+        if (rateIx != -1){
+          if (durIx != -1){
+            stop(_("can not specify '%s' and '%s' for a dose, please pick one"),
+                 durChar, rateChar);
+          }
+          rate = as<NumericVector>(input[rateIx]);
+          if (rate.size() != 1) stop(_("'%s' cannot be a vector"), rateChar);
+          if (rate[0] != 0.0){
+            stop(_("'%s' needs a '%s'"), rateChar, amtChar);
+          }
+        } else {
+          if (durIx != -1){
+            NumericVector dur = as<NumericVector>(input[durIx]);
+            if (dur.size() != 1) stop(_("'%s' cannot be a vector"), durChar);
+            if (dur[0] != 0){
+              stop(_("'%s' needs a '%s'"), durChar, amtChar);
+            }
+          }
+          rate = NumericVector(1);
+          rate[0]=0.0;	  
+        }
+        NumericVector ii(1);
+        if (iiIx != -1){
+          NumericVector tmpNV = as<NumericVector>(input[iiIx]);
+          if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), iiChar);
+          if (tmpNV[0] != 0.0){
+            stop(_("'ii' needs a 'dose'/'amt'"));
+          }
+          if (rxIs(tmpNV, "units")){
+            ii = setUnits(tmpNV, as<std::string>(units[1]));
+          } else {
+            ii[0] = tmpNV[0];
+          }
+        } else {
+          ii[0] = 0.0;
+        }
+        if (addl[0] > 0 && ii[0] <= 0){
+          stop(_("dosing interval of zero makes no sense with multiple dose events"));
+        }
 	
-	IntegerVector ss;// = 0;
-	if (ssIx != -1){
-	  ss = as<IntegerVector>(input[ssIx]);
-	  if (ss.size() != 1) stop(_("'%s' cannot be a vector"), ssChar);
-	  if (ss[0] != 0){
-	    stop(_("non-zero '%s' needs a '%s'"), ssChar, amtChar);
-	  }
-	}
-	if (timeIx != -1) {
-	  if (rxIs(input[timeIx], "numeric") || rxIs(input[timeIx], "integer") ||
-	      rxIs(input[timeIx], "units")){
-	    NumericVector time = clone(as<NumericVector>(input[timeIx]));
-	    if (rxIs(time, "units")){
-	      CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
-	      List e = clone(as<List>(cls.attr(".rxode2.lst")));
-	      CharacterVector units = e["units"];
-	      if (!CharacterVector::is_na(units["time"])){
-		time = setUnits(time, as<std::string>(units["time"]));
-	      } else {
-		time = setUnits(time, "");
-	      }
-	    }
-	    RObject ret = etUpdateObj(etAddTimes(time, id, cmt, turnOnShowCmt, as<List>(curEt)),
-				      doUpdateObj, inputSolve, turnOnId);
-	    return ret;
-	  } else if (rxIs(input[timeIx], "list")){
-	    RObject ret = etUpdateObj(etAddWindow(as<List>(input[timeIx]), id, cmt, turnOnShowCmt, as<List>(curEt)),
-				      doUpdateObj, inputSolve, turnOnId);
-	    return ret;
-	  }
-	}
+        IntegerVector ss;// = 0;
+        if (ssIx != -1){
+          ss = as<IntegerVector>(input[ssIx]);
+          if (ss.size() != 1) stop(_("'%s' cannot be a vector"), ssChar);
+          if (ss[0] != 0){
+            stop(_("non-zero '%s' needs a '%s'"), ssChar, amtChar);
+          }
+        }
+        if (timeIx != -1) {
+          if (rxIs(input[timeIx], "numeric") || rxIs(input[timeIx], "integer") ||
+              rxIs(input[timeIx], "units")){
+            NumericVector time = clone(as<NumericVector>(input[timeIx]));
+            if (rxIs(time, "units")){
+              CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
+              List e = clone(as<List>(cls.attr(".rxode2.lst")));
+              CharacterVector units = e["units"];
+              if (!CharacterVector::is_na(units["time"])){
+                time = setUnits(time, as<std::string>(units["time"]));
+              } else {
+                time = setUnits(time, "");
+              }
+            }
+            RObject ret = etUpdateObj(etAddTimes(time, id, cmt, turnOnShowCmt, as<List>(curEt)),
+                                      doUpdateObj, inputSolve, turnOnId);
+            return ret;
+          } else if (rxIs(input[timeIx], "list")){
+            RObject ret = etUpdateObj(etAddWindow(as<List>(input[timeIx]), id, cmt, turnOnShowCmt, as<List>(curEt)),
+                                      doUpdateObj, inputSolve, turnOnId);
+            return ret;
+          }
+        }
       } else {
-	bool doWindow=false;
-	if (evidIx == -1 && !cmtNeg) evid[0]=1;
-	else if (evidIx == -1 && cmtNeg){
-	  evid[0]=2;
-	  amt[0] = NA_REAL; // This is where the changed
-	}
-	////////////////////////////////////////////////////////////////////////////////
-	// Dose
-	////////////////////////////////////////////////////////////////////////////////
-	if (addlIx != -1 && untilIx != -1){
-	  stop(_("can only specify '%s' or '%s', not both"), untilChar, addlChar);
-	}
-	if (addlIx != -1 && nbrIx != -1){
-	  stop(_("can only specify '%s' or '%s', not both"), addlChar, nbrChar);
-	}
-	if (nbrIx != -1 && untilIx != -1){
-	  stop(_("can only specify '%s' or '%s', not both"), nbrChar, untilChar);
-	}
-	bool doSampling = false;
-	if (doSamplingIdx != -1){
-	  if (rxIs(input[doSamplingIdx], "logical")){
-	    LogicalVector tmpL = as<LogicalVector>(input[doSamplingIdx]);
-	    if (tmpL.size() != 1) stop(_("'%s' can only have one item"), doSamplingChar);
-	    doSampling = tmpL[0];
-	  } else {
-	    stop(_("'%s' must be logical"), doSamplingChar);
-	  }
-	}
-	NumericVector rate(1);
-	NumericVector dur(1);
-	if (rateIx != -1){
-	  if (durIx != -1){
-	    stop(_("cannot specify '%s' and '%s' for a dose, please pick one"),
-		 durChar, rateChar);
-	  }
-	  NumericVector tmpNV = as<NumericVector>(input[rateIx]);
-	  if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), rateChar);
-	  if (rxIs(tmpNV, "units")){
-	    CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
-	    List e = clone(as<List>(cls.attr(".rxode2.lst")));
-	    CharacterVector units = e["units"];
-	    if (!CharacterVector::is_na(units[1]) && !CharacterVector::is_na(units[0])){
-	      if (rate[0] < 0){
-		stop(_("-1 and -2 rates do not make sense with units"));
-	      }
-	      std::string rateUnit = as<std::string>(units[0]) + "/" + as<std::string>(units[1]);
-	      rate = setUnits(tmpNV,rateUnit);
-	    } else {
-	      stop(_("'%s' is cannot be converted and added to this table"), rateChar); // 
-	    }
-	  } else {
-	    rate[0] = tmpNV[0];
-	  }
-	  if (ssInf){
-	    if (rate[0] != -1 && rate[0] <= 0.0){
-	      stop(_("steady state constant infusion dosing records must have '%s=-1' or positive rate"), rateChar);
-	    }
-	  }
-	  dur[0] = 0;
-	} else {
-	  if (durIx != -1){
-	    NumericVector tmpNV = as<NumericVector>(input[durIx]);
-	    rate = NumericVector(1);
-	    rate[0] = 0;
-	    if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), durChar);
-	    if (rxIs(tmpNV, "units")){
-	      CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
-	      List e = clone(as<List>(cls.attr(".rxode2.lst")));
-	      CharacterVector units = e["units"];
-	      if (!CharacterVector::is_na(units[1])){
-		std::string durUnit = as<std::string>(units[0]) + "/" + as<std::string>(units[1]);
-		dur = setUnits(tmpNV,as<std::string>(units[1]));
-		// While units are converted, the units that matter are the rate units.
-	      } else {
-		stop(_("'%s' cannot be converted and added to this table"), durChar);
-	      }
-	    } else {
-	      dur = tmpNV[0];
-	    }
-	  } else {
-	    rate[0] = 0.0;
-	    dur[0] = 0.0;
-	  }
-	}
-	NumericVector ii(1);// =0.0;
-	if (iiIx != -1){
-	  NumericVector tmpNV = as<NumericVector>(input[iiIx]);
-	  if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), iiChar);
-	  if (rxIs(tmpNV, "units")){
-	    ii = setUnits(tmpNV, as<std::string>(units[1]));
-	  } else {
-	    ii[0] = tmpNV[0];
-	  }
-	} else {
-	  ii[0] = 0.0;
-	}
-	bool ssRateInf = false;
-	IntegerVector ss;// = 0;
-	if (ssIx != -1){
-	  ss = as<IntegerVector>(input[ssIx]);
-	  if (ss.size() != 1) stop(_("'%s' cannot be a vector"), ssChar);
-	  if (zeroAmt && ss[0] != 0){
-	    if (ss[0] == 1 && (rate[0] > 0 || rate[0] == -1)) {
-	      ssRateInf=true;
-	    } else {
-	      stop(_("non-zero '%s' needs a '%s'"), ssChar, amtChar);
-	    }
-	  }
-	} else {
-	  ss = IntegerVector(1);
-	  ss[0] = 0;
-	}
-	NumericVector time;
-	List timeList;
-	if (timeIx != -1){
-	  if (rxIs(input[timeIx], "list")){
-	    doWindow=true;
-	    timeList = input[timeIx];
-	    time = as<NumericVector>(timeList[0]);
-	  } else {
-	    time = as<NumericVector>(input[timeIx]);
-	  }
-	} else {
-	  time = NumericVector(1);
-	  time[0] = 0;
-	}
-	IntegerVector addl(1);//=0;
-	if (addlIx != -1){
-	  IntegerVector tmpIV = as<IntegerVector>(input[addlIx]);
-	  if (tmpIV.size() != 1) stop(_("'%s' cannot be a vector"), addlChar);
-	  addl[0] = tmpIV[0];
-	} else if (nbrIx != -1){
-	  IntegerVector tmpIV = as<IntegerVector>(input[nbrIx]);
-	  if (tmpIV.size() != 1) stop(_("'%s' cannot be a vector"), nbrChar);
-	  if (tmpIV[0] < 1){
-	    stop(_("number of doses must be at least one ('%s': %d)"), nbrChar, addl[0]);
-	  }
-	  addl[0] = tmpIV[0]-1;
-	} else if (untilIx != -1){
-	  // Need time for this
-	  NumericVector tmpNV = as<NumericVector>(input[untilIx]);
-	  NumericVector until(1);
-	  if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), untilChar);
-	  if (ii[0] < 0){
-	    stop(_("'%s' can only be used with positive inter-dose intervals ('%s')"),
-		 untilChar, iiChar);
-	  }
-	  if (rxIs(tmpNV, "units")){
-	    until = setUnits(tmpNV, as<std::string>(units[1]));
-	  } else {
-	    until = tmpNV[0];
-	  }
-	  if (!doWindow || time.size() == 1){
-	    if (time.size() != 1){
-	      stop(_("'%s' does not make sense with multiple dosing times"),
-		   untilChar);
-	    }
-	    double tmp = until[0] - time[0] - ii[0];
-	    if (tmp > 0){
-	      tmp = tmp/ii[0];
-	      double tmp2 = std::ceil(tmp);
-	      if (tmp2 == tmp){
-		addl[0] = tmp + 1;
-	      } else {
-		addl[0] = tmp2;
-	      }
-	    } else {
-	      addl[0] = 0;
-	    }
-	  } else if (doWindow && time.size() == 2){
-	    double tmp = until[0] - time[1] - ii[0];
-	    if (tmp > 0){
-	      tmp = tmp/ii[0];
-	      double tmp2 = std::ceil(tmp);
-	      if (tmp2 == tmp){
-		addl[0] = tmp + 1;
-	      } else {
-		addl[0] = tmp2;
-	      }
-	    } else {
-	      addl[0] = 0;
-	    }
-	  } else {
-	    stop(_("dosing windows can only have 1-2 items in them"));
-	  }
-	} else {
-	  addl[0]=0;
-	}
-	if (ii[0] > 0 && ss[0] == 0 && addl[0] == 0){
-	  if (doUpdateObj && ii[0] == 24){
-	    ii[0]=0;
-	  } else {
-	    Rf_warningcall(R_NilValue, _("'%s' requires non zero additional doses ('%s') or steady state dosing ('%s': %f, '%s': %d; '%s': %d), reset '%s' to zero."), iiChar, addlChar, iiChar, ii[0], ssChar, ss[0], addlChar, addl[0],
-		    iiChar);
-	    ii[0]=0;
-	  }
-	}
-	if (ssInf && ss[0] != 1){
-	  stop(_("'%s' must be 1 when specifying a steady-state constant infusion"), ssChar);
-	}
-	if (ss[0] < 0 || ss[0] > 2){
-	  stop(_("'%s' must be 0, 1 or 2"), ssChar);
-	} if (ss[0] > 0 && ii[0] <= 0){
-	  if (!ssInf && !ssRateInf){
-	    stop(_("'%s' required with '%s'"), iiChar, ssChar);
-	  }
-	}
-	if (ssInf && ii[0] > 0){
-	  stop(_("'%s' cannot be used with steady state constant infusion"), iiChar);
-	}
-	if (ss[0] > 1 && time.size() > 1){
-	  stop(_("steady state ('%s') is not supported with dosing windows"), ssChar);
-	}
-	if (addl[0] < 0){
-	  stop(_("additional doses must be positive ('%s'=%d)"), addlChar, addl[0]);
-	}
-	if (addl[0] > 0 && ii[0] <= 0){
-	  stop(_("additional doses require an inter-dose interval ('%s')"), iiChar);
-	}
-	// Defer ss errors to end to check for rate infusion steady state
-	if (ssRateInf) {
-	  if (ii[0] != 0.0) {
-	    stop(_("for steady state infusions, you need %s=0, %s>0, %s=1, %s=0"),
-		 iiChar, rateChar, ssChar, amtChar);
-	  }
-	}
-	List ret;
-	if (doWindow){
-	  ret = etAddDose(time, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
-			  id, turnOnShowCmt, doSampling, as<List>(curEt));
-	  for (int i = 1; i < timeList.size(); i++){
-	    if (rxIs(timeList[i], "numeric") || rxIs(timeList[i], "integer") ||
-		rxIs(timeList[i],"units")){
-	      time = as<NumericVector>(timeList[i]);
-	      if (time.size() > 2){
-		stop(_("dosing time window lists can have 1-2 numeric entries in them"));
-	      }
-	      ret = etAddDose(time, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
-			      id, turnOnShowCmt, doSampling, ret);
-	    } else {
-	      stop(_("dosing window list needs to be numeric values only"));
-	    }
-	  }
-	} else {
-	  NumericVector time0(1);
-	  time0[0] = time[0];
-	  ret = etAddDose(time0, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
-				     id, turnOnShowCmt, doSampling, as<List>(curEt));
-	  for (int i = 1; i < time.size(); i++){
-	    time0[0] = time[i];
-	    ret = etAddDose(time0, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
-			    id, turnOnShowCmt, doSampling, ret);
-	  }
-	}
-	return etUpdateObj(ret, doUpdateObj, inputSolve, turnOnId);
+        bool doWindow=false;
+        if (evidIx == -1 && !cmtNeg) evid[0]=1;
+        else if (evidIx == -1 && cmtNeg){
+          evid[0]=2;
+          amt[0] = NA_REAL; // This is where the changed
+        }
+        ////////////////////////////////////////////////////////////////////////////////
+        // Dose
+        ////////////////////////////////////////////////////////////////////////////////
+        if (addlIx != -1 && untilIx != -1){
+          stop(_("can only specify '%s' or '%s', not both"), untilChar, addlChar);
+        }
+        if (addlIx != -1 && nbrIx != -1){
+          stop(_("can only specify '%s' or '%s', not both"), addlChar, nbrChar);
+        }
+        if (nbrIx != -1 && untilIx != -1){
+          stop(_("can only specify '%s' or '%s', not both"), nbrChar, untilChar);
+        }
+        bool doSampling = false;
+        if (doSamplingIdx != -1){
+          if (rxIs(input[doSamplingIdx], "logical")){
+            LogicalVector tmpL = as<LogicalVector>(input[doSamplingIdx]);
+            if (tmpL.size() != 1) stop(_("'%s' can only have one item"), doSamplingChar);
+            doSampling = tmpL[0];
+          } else {
+            stop(_("'%s' must be logical"), doSamplingChar);
+          }
+        }
+        NumericVector rate(1);
+        NumericVector dur(1);
+        if (rateIx != -1){
+          if (durIx != -1){
+            stop(_("cannot specify '%s' and '%s' for a dose, please pick one"),
+                 durChar, rateChar);
+          }
+          NumericVector tmpNV = as<NumericVector>(input[rateIx]);
+          if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), rateChar);
+          if (rxIs(tmpNV, "units")){
+            CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
+            List e = clone(as<List>(cls.attr(".rxode2.lst")));
+            CharacterVector units = e["units"];
+            if (!CharacterVector::is_na(units[1]) && !CharacterVector::is_na(units[0])){
+              if (rate[0] < 0){
+                stop(_("-1 and -2 rates do not make sense with units"));
+              }
+              std::string rateUnit = as<std::string>(units[0]) + "/" + as<std::string>(units[1]);
+              rate = setUnits(tmpNV,rateUnit);
+            } else {
+              stop(_("'%s' is cannot be converted and added to this table"), rateChar); // 
+            }
+          } else {
+            rate[0] = tmpNV[0];
+          }
+          if (ssInf){
+            if (rate[0] != -1 && rate[0] <= 0.0){
+              stop(_("steady state constant infusion dosing records must have '%s=-1' or positive rate"), rateChar);
+            }
+          }
+          dur[0] = 0;
+        } else {
+          if (durIx != -1){
+            NumericVector tmpNV = as<NumericVector>(input[durIx]);
+            rate = NumericVector(1);
+            rate[0] = 0;
+            if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), durChar);
+            if (rxIs(tmpNV, "units")){
+              CharacterVector cls = clone(as<CharacterVector>(curEt.attr("class")));
+              List e = clone(as<List>(cls.attr(".rxode2.lst")));
+              CharacterVector units = e["units"];
+              if (!CharacterVector::is_na(units[1])){
+                std::string durUnit = as<std::string>(units[0]) + "/" + as<std::string>(units[1]);
+                dur = setUnits(tmpNV,as<std::string>(units[1]));
+                // While units are converted, the units that matter are the rate units.
+              } else {
+                stop(_("'%s' cannot be converted and added to this table"), durChar);
+              }
+            } else {
+              dur = tmpNV[0];
+            }
+          } else {
+            rate[0] = 0.0;
+            dur[0] = 0.0;
+          }
+        }
+        NumericVector ii(1);// =0.0;
+        if (iiIx != -1){
+          NumericVector tmpNV = as<NumericVector>(input[iiIx]);
+          if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), iiChar);
+          if (rxIs(tmpNV, "units")){
+            ii = setUnits(tmpNV, as<std::string>(units[1]));
+          } else {
+            ii[0] = tmpNV[0];
+          }
+        } else {
+          ii[0] = 0.0;
+        }
+        bool ssRateInf = false;
+        IntegerVector ss;// = 0;
+        if (ssIx != -1){
+          ss = as<IntegerVector>(input[ssIx]);
+          if (ss.size() != 1) stop(_("'%s' cannot be a vector"), ssChar);
+          if (zeroAmt && ss[0] != 0){
+            if (ss[0] == 1 && (rate[0] > 0 || rate[0] == -1)) {
+              ssRateInf=true;
+            } else {
+              stop(_("non-zero '%s' needs a '%s'"), ssChar, amtChar);
+            }
+          }
+        } else {
+          ss = IntegerVector(1);
+          ss[0] = 0;
+        }
+        NumericVector time;
+        List timeList;
+        if (timeIx != -1){
+          if (rxIs(input[timeIx], "list")){
+            doWindow=true;
+            timeList = input[timeIx];
+            time = as<NumericVector>(timeList[0]);
+          } else {
+            time = as<NumericVector>(input[timeIx]);
+          }
+        } else {
+          time = NumericVector(1);
+          time[0] = 0;
+        }
+        IntegerVector addl(1);//=0;
+        if (addlIx != -1){
+          IntegerVector tmpIV = as<IntegerVector>(input[addlIx]);
+          if (tmpIV.size() != 1) stop(_("'%s' cannot be a vector"), addlChar);
+          addl[0] = tmpIV[0];
+        } else if (nbrIx != -1){
+          IntegerVector tmpIV = as<IntegerVector>(input[nbrIx]);
+          if (tmpIV.size() != 1) stop(_("'%s' cannot be a vector"), nbrChar);
+          if (tmpIV[0] < 1){
+            stop(_("number of doses must be at least one ('%s': %d)"), nbrChar, addl[0]);
+          }
+          addl[0] = tmpIV[0]-1;
+        } else if (untilIx != -1){
+          // Need time for this
+          NumericVector tmpNV = as<NumericVector>(input[untilIx]);
+          NumericVector until(1);
+          if (tmpNV.size() != 1) stop(_("'%s' cannot be a vector"), untilChar);
+          if (ii[0] < 0){
+            stop(_("'%s' can only be used with positive inter-dose intervals ('%s')"),
+                 untilChar, iiChar);
+          }
+          if (rxIs(tmpNV, "units")){
+            until = setUnits(tmpNV, as<std::string>(units[1]));
+          } else {
+            until = tmpNV[0];
+          }
+          if (!doWindow || time.size() == 1){
+            if (time.size() != 1){
+              stop(_("'%s' does not make sense with multiple dosing times"),
+                   untilChar);
+            }
+            double tmp = until[0] - time[0] - ii[0];
+            if (tmp > 0){
+              tmp = tmp/ii[0];
+              double tmp2 = std::ceil(tmp);
+              if (tmp2 == tmp){
+                addl[0] = tmp + 1;
+              } else {
+                addl[0] = tmp2;
+              }
+            } else {
+              addl[0] = 0;
+            }
+          } else if (doWindow && time.size() == 2){
+            double tmp = until[0] - time[1] - ii[0];
+            if (tmp > 0){
+              tmp = tmp/ii[0];
+              double tmp2 = std::ceil(tmp);
+              if (tmp2 == tmp){
+                addl[0] = tmp + 1;
+              } else {
+                addl[0] = tmp2;
+              }
+            } else {
+              addl[0] = 0;
+            }
+          } else {
+            stop(_("dosing windows can only have 1-2 items in them"));
+          }
+        } else {
+          addl[0]=0;
+        }
+        if (ii[0] > 0 && ss[0] == 0 && addl[0] == 0){
+          if (doUpdateObj && ii[0] == 24){
+            ii[0]=0;
+          } else {
+            Rf_warningcall(R_NilValue, _("'%s' requires non zero additional doses ('%s') or steady state dosing ('%s': %f, '%s': %d; '%s': %d), reset '%s' to zero."), iiChar, addlChar, iiChar, ii[0], ssChar, ss[0], addlChar, addl[0],
+                           iiChar);
+            ii[0]=0;
+          }
+        }
+        if (ssInf && ss[0] != 1){
+          stop(_("'%s' must be 1 when specifying a steady-state constant infusion"), ssChar);
+        }
+        if (ss[0] < 0 || ss[0] > 2){
+          stop(_("'%s' must be 0, 1 or 2"), ssChar);
+        } if (ss[0] > 0 && ii[0] <= 0){
+          if (!ssInf && !ssRateInf){
+            stop(_("'%s' required with '%s'"), iiChar, ssChar);
+          }
+        }
+        if (ssInf && ii[0] > 0){
+          stop(_("'%s' cannot be used with steady state constant infusion"), iiChar);
+        }
+        if (ss[0] > 1 && time.size() > 1){
+          stop(_("steady state ('%s') is not supported with dosing windows"), ssChar);
+        }
+        if (addl[0] < 0){
+          stop(_("additional doses must be positive ('%s'=%d)"), addlChar, addl[0]);
+        }
+        if (addl[0] > 0 && ii[0] <= 0){
+          stop(_("additional doses require an inter-dose interval ('%s')"), iiChar);
+        }
+        // Defer ss errors to end to check for rate infusion steady state
+        if (ssRateInf) {
+          if (ii[0] != 0.0) {
+            stop(_("for steady state infusions, you need %s=0, %s>0, %s=1, %s=0"),
+                 iiChar, rateChar, ssChar, amtChar);
+          }
+        }
+        List ret;
+        if (doWindow){
+          ret = etAddDose(time, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
+                          id, turnOnShowCmt, doSampling, as<List>(curEt));
+          for (int i = 1; i < timeList.size(); i++){
+            if (rxIs(timeList[i], "numeric") || rxIs(timeList[i], "integer") ||
+                rxIs(timeList[i],"units")){
+              time = as<NumericVector>(timeList[i]);
+              if (time.size() > 2){
+                stop(_("dosing time window lists can have 1-2 numeric entries in them"));
+              }
+              ret = etAddDose(time, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
+                              id, turnOnShowCmt, doSampling, ret);
+            } else {
+              stop(_("dosing window list needs to be numeric values only"));
+            }
+          }
+        } else {
+          NumericVector time0(1);
+          time0[0] = time[0];
+          ret = etAddDose(time0, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
+                          id, turnOnShowCmt, doSampling, as<List>(curEt));
+          for (int i = 1; i < time.size(); i++){
+            time0[0] = time[i];
+            ret = etAddDose(time0, cmt, amt[0], rate[0], ii[0], addl[0], evid[0], ss[0], dur[0],
+                            id, turnOnShowCmt, doSampling, ret);
+          }
+        }
+        return etUpdateObj(ret, doUpdateObj, inputSolve, turnOnId);
       }
     }
   } else {
@@ -3081,7 +3082,7 @@ RObject et_(List input, List et__){
   }
   if (doRet){
     return etUpdateObj(as<List>(curEt),doUpdateObj, inputSolve,
-			      turnOnId);
+                       turnOnId);
   }
   if (input.size() == 1 && rxIs(input[0], "data.frame")){
     return etImportEventTable(as<List>(input[0]), true);
@@ -3095,12 +3096,12 @@ RObject et_(List input, List et__){
 // Sequence event tables
 //[[Rcpp::export]]
 List etSeq_(List ets, int handleSamples=0, int waitType = 0,
-	    double defaultIi = 0,bool rbind = false,
-	    int uniqueId=0,
-	    int reserveLen=0, bool needSort=true,
-	    CharacterVector newUnits = CharacterVector::create(),
-	    LogicalVector newShow = LogicalVector::create(),
-	    bool isCmtIntIn = false){
+            double defaultIi = 0,bool rbind = false,
+            int uniqueId=0,
+            int reserveLen=0, bool needSort=true,
+            CharacterVector newUnits = CharacterVector::create(),
+            LogicalVector newShow = LogicalVector::create(),
+            bool isCmtIntIn = false){
   double timeDelta = 0;
   double maxTime = 0;
   double lastDose = 0;
@@ -3163,166 +3164,166 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
       cls = as<CharacterVector>(et.attr("class"));
       e = cls.attr(".rxode2.lst");
       if (!gotUnits){
-	units = e["units"];
-	show = e["show"];
-	if (rxIs(et["cmt"], "integer")){
-	  isCmtInt = true;
-	}
-	gotUnits=true;
+        units = e["units"];
+        show = e["show"];
+        if (rxIs(et["cmt"], "integer")){
+          isCmtInt = true;
+        }
+        gotUnits=true;
       } else {
-	if (isCmtInt && !rxIs(et["cmt"], "integer")){
-	  stop(_("cannot have event tables with integer and character 'cmt'"));
-	}
-	if (!isCmtInt && rxIs(et["cmt"], "integer")){
-	  stop(_("cannot have event tables with integer and character 'cmt'"));
-	}
-	LogicalVector newShow = e["show"];
-	for (j = show.size(); j--;){
-	  show[j] = show[j] || newShow[j];
-	}
+        if (isCmtInt && !rxIs(et["cmt"], "integer")){
+          stop(_("cannot have event tables with integer and character 'cmt'"));
+        }
+        if (!isCmtInt && rxIs(et["cmt"], "integer")){
+          stop(_("cannot have event tables with integer and character 'cmt'"));
+        }
+        LogicalVector newShow = e["show"];
+        for (j = show.size(); j--;){
+          show[j] = show[j] || newShow[j];
+        }
       }
       //
       // Load time, low, high and amt and convert units if needed.
       curTime = et["time"];
       if (rxIs(curTime, "units")){
-	if (!CharacterVector::is_na(units["time"])){
-	  curTime = setUnits(curTime, as<std::string>(units["time"]));
-	} else {
-	  curTime = setUnits(curTime, "");
-	}
+        if (!CharacterVector::is_na(units["time"])){
+          curTime = setUnits(curTime, as<std::string>(units["time"]));
+        } else {
+          curTime = setUnits(curTime, "");
+        }
       }
       curLow=et["low"];
       if (rxIs(curLow, "units")){
-	if (!CharacterVector::is_na(units["time"])){
-	  curLow = setUnits(curLow, as<std::string>(units["time"]));
-	} else {
-	  curLow = setUnits(curLow, "");
-	}
+        if (!CharacterVector::is_na(units["time"])){
+          curLow = setUnits(curLow, as<std::string>(units["time"]));
+        } else {
+          curLow = setUnits(curLow, "");
+        }
       }
       curHigh=et["high"];
       if (rxIs(curHigh, "units")){
-	if (!CharacterVector::is_na(units["time"])){
-	  curHigh = setUnits(curHigh, as<std::string>(units["time"]));
-	} else {
-	  curHigh = setUnits(curHigh, "");
-	}
+        if (!CharacterVector::is_na(units["time"])){
+          curHigh = setUnits(curHigh, as<std::string>(units["time"]));
+        } else {
+          curHigh = setUnits(curHigh, "");
+        }
       }
       curIi=et["ii"];
       if (rxIs(curIi, "units")){
-	if (!CharacterVector::is_na(units["time"])){
-	  curIi = setUnits(curIi, as<std::string>(units["time"]));
-	} else {
-	  curIi = setUnits(curIi, "");
-	}
+        if (!CharacterVector::is_na(units["time"])){
+          curIi = setUnits(curIi, as<std::string>(units["time"]));
+        } else {
+          curIi = setUnits(curIi, "");
+        }
       }
       curAmt = et["amt"];
       if (rxIs(curAmt, "units")){
-	if (!CharacterVector::is_na(units[0])){
-	  curAmt = setUnits(curAmt, as<std::string>(units[0]));
-	} else {
-	  curAmt = setUnits(curAmt, "");
-	}
+        if (!CharacterVector::is_na(units[0])){
+          curAmt = setUnits(curAmt, as<std::string>(units[0]));
+        } else {
+          curAmt = setUnits(curAmt, "");
+        }
       }
       curId = et["id"];
       curEvid = et["evid"];
       curAddl = et["addl"];
       firstDoseOfEt = true;
       for (j = 0; j < curTime.size(); j++){
-	if (handleSamples == 0 && curEvid[j]== 0) continue;
-	if (curEvid[j] == 0) nobs++;
-	else ndose++;
-	if (uniqueId==1){
-	  if (lastId != curId[j]){
-	    thisId++;
-	    lastId = curId[j];
-	    IDs.push_back(thisId);
-	  }
-	  id.push_back(thisId);
-	} else {
-	  id.push_back(curId[j]);
-	  if (std::find(IDs.begin(), IDs.end(), curId[j]) == IDs.end()){
-	    IDs.push_back(curId[j]);
-	  }
-	}
-	addl.push_back(curAddl[j]);
-	if (!ISNA(curHigh[j])) {
-	  if (curAddl[j] > 0){
-	    if (i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < curIi[j]){
-	      maxTime += curIi[j];
-	      timeDelta += curIi[j];
-	    }
-	    lastIi = curIi[j];
-	    trueLastIi=lastIi;
-	    lastDose = curHigh[j] + curAddl[j]*curIi[j];
-	    double tmp = curHigh[j] + (curAddl[j]+1)*curIi[j];
-	    if (tmp > maxTime) maxTime = tmp;
-	    firstDoseOfEt = false;
-	  } else if (curEvid[j] != 0 && curEvid[j] != 2 && curEvid[j] != 3) {
-	    if (!rbind && i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < defaultIi){
-	      Rf_warningcall(R_NilValue, _("assumed a dose interval of %.1f between event tables; use 'ii' to adjust"), defaultIi);
-	      maxTime += defaultIi;
-	      timeDelta += defaultIi;
-	    }
-	    lastIi = (curHigh[j] - lastDose);
-	    trueLastIi=0;
-	    maxTime = curHigh[j] + (curHigh[j] - lastDose); //Use last interval
-	    lastDose = curHigh[j];
-	    firstDoseOfEt = false;
-	  } else {
-	    if (curHigh[j] > maxTime) maxTime = curHigh[j];
-	  }
-	  high.push_back(curHigh[j]+timeDelta);
-	  time.push_back(curTime[j]+timeDelta);
-	  low.push_back(curLow[j]+timeDelta);
-	} else {
-	  if (curAddl[j] > 0){
-	    if (i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < curIi[j]){
-		maxTime += curIi[j];
-		timeDelta += curIi[j];
-	    }
-	    firstDoseOfEt = false;
-	    lastIi = curIi[j];
-	    trueLastIi=lastIi;
-	    lastDose = curTime[j] + curAddl[j] * curIi[j];
-	    double tmp = curTime[j] + (curAddl[j]+1) * curIi[j];
-	    if (tmp > maxTime) maxTime = tmp;
-	  } else if (curEvid[j] != 0 && curEvid[j] != 2 && curEvid[j] != 3){
-	    if (!rbind && i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < defaultIi){
-	      Rf_warningcall(R_NilValue, ("assumed a dose interval of %.1f between event tables; use 'ii' to adjust"), defaultIi);
-	      maxTime += defaultIi;
-	      timeDelta += defaultIi;
-	    }
-	    lastIi = (curTime[j] - lastDose);
-	    trueLastIi=0;
-	    lastDose = curTime[j];
-	    maxTime = curTime[j] + (curTime[j] - lastDose); //Use last interval
-	    firstDoseOfEt = false;
-	  } else {
-	    if (curTime[j] > maxTime) maxTime = curTime[j];
-	  }
-	  high.push_back(NA_REAL);
-	  time.push_back(curTime[j]+timeDelta);
-	  low.push_back(NA_REAL);
-	}
-	ii.push_back(curIi[j]);
-	amt.push_back(curAmt[j]);
-	evid.push_back(curEvid[j]);
-	idxEts.push_back(i);
-	idxEt.push_back(j);
-	idx.push_back(k++);
+        if (handleSamples == 0 && curEvid[j]== 0) continue;
+        if (curEvid[j] == 0) nobs++;
+        else ndose++;
+        if (uniqueId==1){
+          if (lastId != curId[j]){
+            thisId++;
+            lastId = curId[j];
+            IDs.push_back(thisId);
+          }
+          id.push_back(thisId);
+        } else {
+          id.push_back(curId[j]);
+          if (std::find(IDs.begin(), IDs.end(), curId[j]) == IDs.end()){
+            IDs.push_back(curId[j]);
+          }
+        }
+        addl.push_back(curAddl[j]);
+        if (!ISNA(curHigh[j])) {
+          if (curAddl[j] > 0){
+            if (i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < curIi[j]){
+              maxTime += curIi[j];
+              timeDelta += curIi[j];
+            }
+            lastIi = curIi[j];
+            trueLastIi=lastIi;
+            lastDose = curHigh[j] + curAddl[j]*curIi[j];
+            double tmp = curHigh[j] + (curAddl[j]+1)*curIi[j];
+            if (tmp > maxTime) maxTime = tmp;
+            firstDoseOfEt = false;
+          } else if (curEvid[j] != 0 && curEvid[j] != 2 && curEvid[j] != 3) {
+            if (!rbind && i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < defaultIi){
+              Rf_warningcall(R_NilValue, _("assumed a dose interval of %.1f between event tables; use 'ii' to adjust"), defaultIi);
+              maxTime += defaultIi;
+              timeDelta += defaultIi;
+            }
+            lastIi = (curHigh[j] - lastDose);
+            trueLastIi=0;
+            maxTime = curHigh[j] + (curHigh[j] - lastDose); //Use last interval
+            lastDose = curHigh[j];
+            firstDoseOfEt = false;
+          } else {
+            if (curHigh[j] > maxTime) maxTime = curHigh[j];
+          }
+          high.push_back(curHigh[j]+timeDelta);
+          time.push_back(curTime[j]+timeDelta);
+          low.push_back(curLow[j]+timeDelta);
+        } else {
+          if (curAddl[j] > 0){
+            if (i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < curIi[j]){
+              maxTime += curIi[j];
+              timeDelta += curIi[j];
+            }
+            firstDoseOfEt = false;
+            lastIi = curIi[j];
+            trueLastIi=lastIi;
+            lastDose = curTime[j] + curAddl[j] * curIi[j];
+            double tmp = curTime[j] + (curAddl[j]+1) * curIi[j];
+            if (tmp > maxTime) maxTime = tmp;
+          } else if (curEvid[j] != 0 && curEvid[j] != 2 && curEvid[j] != 3){
+            if (!rbind && i != 0 && trueLastIi == 0 && firstDoseOfEt && curTime[j] < defaultIi){
+              Rf_warningcall(R_NilValue, ("assumed a dose interval of %.1f between event tables; use 'ii' to adjust"), defaultIi);
+              maxTime += defaultIi;
+              timeDelta += defaultIi;
+            }
+            lastIi = (curTime[j] - lastDose);
+            trueLastIi=0;
+            lastDose = curTime[j];
+            maxTime = curTime[j] + (curTime[j] - lastDose); //Use last interval
+            firstDoseOfEt = false;
+          } else {
+            if (curTime[j] > maxTime) maxTime = curTime[j];
+          }
+          high.push_back(NA_REAL);
+          time.push_back(curTime[j]+timeDelta);
+          low.push_back(NA_REAL);
+        }
+        ii.push_back(curIi[j]);
+        amt.push_back(curAmt[j]);
+        evid.push_back(curEvid[j]);
+        idxEts.push_back(i);
+        idxEt.push_back(j);
+        idx.push_back(k++);
       }
       if (rbind){
-	maxTime = 0;
+        maxTime = 0;
       }
       timeDelta += maxTime;
     } else if (rxIs(ets[i], "numeric") || rxIs(ets[i], "integer")) {
       if (rxIs(ets[i], "units")) {
-	maxTime = asDouble(setUnits(ets[i], as<std::string>(units["time"])), "units[\"time\"]");
+        maxTime = asDouble(setUnits(ets[i], as<std::string>(units["time"])), "units[\"time\"]");
       } else {
-	maxTime = asDouble(ets[i], "ets[i]");
+        maxTime = asDouble(ets[i], "ets[i]");
       }
       if (waitType == 0 && maxTime > lastIi) {
-	maxTime -= lastIi;
+        maxTime -= lastIi;
       }
       timeDelta += maxTime;
     }
@@ -3335,11 +3336,11 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
     IntegerVector ord;
     if (useForder()){
       ord = order(ivId, nvTime, ivEvid,
-		  _["na.last"] = LogicalVector::create(NA_LOGICAL));
+                  _["na.last"] = LogicalVector::create(NA_LOGICAL));
     } else {
       ord = order(ivId, nvTime, ivEvid,
-		  _["na.last"] = LogicalVector::create(NA_LOGICAL),
-		  _["method"]="radix");
+                  _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                  _["method"]="radix");
     }
     ord = ord - 1;
     idx = as<std::vector<int>>(ord);
@@ -3464,7 +3465,7 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
 // Sequence event tables
 //[[Rcpp::export]]
 List etRep_(RObject curEt, int times, NumericVector wait, IntegerVector ids, int handleSamples, int waitType,
-	    double ii){
+            double ii){
   if (wait.size() != 1){
     stop(_("'wait' cannot be a vector"));
   }
@@ -3484,7 +3485,7 @@ List etRep_(RObject curEt, int times, NumericVector wait, IntegerVector ids, int
   }
   // Rcpp::print(Rcpp::wrap(seqLst));
   return etSeq_(seqLst, handleSamples, waitType, ii, false,0,
-		len*times, (IDs.size() != 1), e["units"],
-		e["show"], rxIs(curEt, "integer"));
+                len*times, (IDs.size() != 1), e["units"],
+                e["show"], rxIs(curEt, "integer"));
 }
 
