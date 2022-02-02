@@ -63,6 +63,7 @@
 #' @noRd
 .rxFunctionRearrange <- function(fun) {
   .lst <- as.list(body(fun)[-1])
+  .idx <- seq_along(.lst)
   .w <- which(vapply(.idx, function(x) {
     identical(.lst[[x]][[1]], quote(`ini`))
   }, logical(1), USE.NAMES=TRUE))
@@ -75,7 +76,6 @@
   }
   warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
           call.=FALSE)
-  .idx <- seq_along(.lst)
   .w <- which(vapply(.idx, function(x) {
     identical(.lst[[x]][[1]], quote(`model`))
   }, logical(1), USE.NAMES=TRUE))
