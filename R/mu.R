@@ -703,6 +703,9 @@
   .env$body <- list()
   .env$info <- .info
   .env$top <- TRUE
+  if (!exists("hasErrors", envir=.env)) {
+    .env$hasErrors <- FALSE
+  }
 
   # probit/probitInv
   .env$probit.theta.low <- NULL
