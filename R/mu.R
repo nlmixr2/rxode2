@@ -871,17 +871,15 @@
   lapply(seq_along(.predDf$cond), function(i) {
     .cond <- .predDf$cond[i]
     .w <- which(.iniDf$condition == .cond)
-    if (length(.w) == 0) {
-      # endpoint has no estimated parameters, see if they are modeled
-      # parameters
-      .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
-      .ret <- .ret[!is.na(.ret)]
-      .ret <- setdiff(.ret, .mv$lhs)
-      if (length(.ret)) {
-        ui$err <- c(ui$err,
-                    paste0("endpoint '", .predDf$cond[i], "' needs the following parameters estimated or modeled: ",
-                           paste(.ret, collapse=", ")))
-      }
+    # endpoint has no estimated parameters, see if they are modeled
+    # parameters
+    .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
+    .ret <- .ret[!is.na(.ret)]
+    .ret <- setdiff(.ret, .mv$lhs)
+    if (length(.ret)) {
+      ui$err <- c(ui$err,
+                  paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
+                         paste(.ret, collapse=", ")))
     }
   })
 }

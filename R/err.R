@@ -933,6 +933,20 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     }
   }
 }
+#' Add the Error Names
+#'
+#' @param errs Input endpoints
+#' @return The endpoints that the user enters
+#' @author Matthew L. Fidler
+#' @noRd
+.userEndpointNames <- function(endpoints) {
+  vapply(endpoints, function(e) {
+    if (e == "rxLinCmt") {
+      return("linCmt()")
+    }
+    e
+  }, character(1), USE.NAMES=FALSE)
+}
 
 #' Check for error exceptions
 #'
@@ -955,7 +969,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     }
   }
   if (length(.err) > 0) {
-    stop("endpoint parameter(s) missing, duplicated, or defined with '~': ", paste(.err, collapse=", "),
+    stop("endpoint parameter(s) missing, duplicated, or defined with '~': ", paste(.userEndpointNames(.err), collapse=", "),
          call.=FALSE)
   }
 }
