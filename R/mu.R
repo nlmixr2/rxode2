@@ -528,31 +528,6 @@
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
 
-
-## To reduce code from nlmixr, the
-## Covariate references should have the following structure:
-## To reduce code from nlmixr the mu reference:
-## -------------------------------
-## > f$nmodel$mu.ref
-## $eta.ka
-## [1] "tka"
-##
-## $eta.cl
-## [1] "tcl"
-##
-## $eta.v
-## [1] "tv"
-
-## > f$cov.ref
-## $age
-## cov.age
-##   "tcl"
-##
-## $wt
-## cov.wt
-##  "tcl"
-
-
 #' Handle the + expressions to determine mu-reference expressions
 #'
 #' @param x additive Call Expression
@@ -607,22 +582,6 @@
   }
 }
 
-
-## f$probit.theta.low  f$probit.theta.hi
-## f$probit.theta
-## f$logit.theta
-## f$log.theta
-## "tka"     "tcl"     "cov.wt"  "cov.age" "tv"
-
-## f$probit.eta.low  f$probit.eta.hi
-## f$probit.eta
-## f$probit.eta.low  f$probit.eta.hi
-## f$logit.eta
-## f$log.eta
-## "eta.ka" "eta.cl" "eta.v"
-##
-## > f$oneTheta
-## "tka" "tcl" "tv"
 .rxMuRef0 <- function(x, env) {
   if (env$top) {
     env$top <- FALSE
@@ -707,12 +666,13 @@
   }
 }
 
-
-## 1. $state : states
-## 2. $params : params
-## 3. $lhs: lhs
-## 4. theta: theta from ini
-## 5. eta: eta from ini
+#'  Setup the initial environment for mu-referencing calculations
+#'
+#' @param mod Model environment
+#' @param ini parsed lotri ini
+#' @return model environment to setup rxUi
+#' @author Matthew L. Fidler
+#' @noRd
 .rxMuRefSetupInitialEnvironment <- function(mod, ini=NULL) {
   if (is.null(ini)) {
     .eta <- mod$eta
@@ -945,7 +905,7 @@
     message(.errMsg)
   }
   if (length(.env$err) > 0) {
-    stop(paste0("syntax/parsing errors:\n",
+    stop(paste0(ifelse(.env$hasErrors, "syntax/parsing errors (see above) and additionally:\n", "syntax/parsing errors:\n"),
                 paste(.env$err, collapse="\n")),
          call.=FALSE)
   } else if (.env$hasErrors) {
