@@ -1,4 +1,5 @@
 test_that("Multiple endpoint parsing", {
+
   pk.turnover.emax <- function() {
     ini({
       tktr <- log(1)
@@ -55,19 +56,18 @@ test_that("Multiple endpoint parsing", {
       effect ~ add(pdadd.err)
     })
   }
-  
   f <- rxode2(pk.turnover.emax)
-  
+
   expect_equal(f$paramsLine,
                quote(params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50,
                             tkout, te0, pdadd.err, eta.ktr, eta.ka, eta.cl, eta.v, eta.emax,
                             eta.ec50, eta.kout, eta.e0)))
-  
+
   expect_equal(f$cmtLines,
                list(quote(cmt(cp))))
-  
+
   expect_equal(f$dvidLine, quote(dvid(5, 4)))
-  
+
   pk.turnover.emax2 <- function() {
     ini({
       tktr <- log(1)
@@ -121,19 +121,19 @@ test_that("Multiple endpoint parsing", {
       effect ~ add(pdadd.err)
     })
   }
-  
+
   ui2 <- rxode2(pk.turnover.emax2)
-  
+
   expect_equal(ui2$paramsLine,
                quote(params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50,
                             tkout, te0, pdadd.err, eta.ktr, eta.ka, eta.cl, eta.v, eta.emax,
                             eta.ec50, eta.kout, eta.e0)))
-  
+
   expect_equal(ui2$cmtLines,
                list())
-  
+
   expect_equal(ui2$dvidLine, quote(dvid(3, 4)))
-  
+
   pk.turnover.emax3 <- function() {
     ini({
       tktr <- log(1)
@@ -186,20 +186,20 @@ test_that("Multiple endpoint parsing", {
       effect ~ add(pdadd.err) | pca
     })
   }
-  
+
   ui3 <- rxode2(pk.turnover.emax3)
-  
+
   expect_equal(ui3$paramsLine,
                quote(params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50,
                             tkout, te0, pdadd.err, eta.ktr, eta.ka, eta.cl, eta.v, eta.emax,
                             eta.ec50, eta.kout, eta.e0)))
-  
+
   expect_equal(ui3$cmtLines,
                list(quote(cmt(cp)),
                     quote(cmt(pca))))
-  
+
   expect_equal(ui3$dvidLine, quote(dvid(5, 6)))
-  
+
   pk.turnover.emax4 <- function() {
     ini({
       tktr <- log(1)
@@ -253,22 +253,24 @@ test_that("Multiple endpoint parsing", {
       effect ~ add(pdadd.err) | pca
     })
   }
-  
+
   ui4 <- rxode2(pk.turnover.emax4)
-  
+
   expect_equal(ui4$paramsLine,
                quote(params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50,
                             tkout, te0, pdadd.err, covWt, eta.ktr, eta.ka, eta.cl, eta.v,
                             eta.emax, eta.ec50, eta.kout, eta.e0, wt)))
-  
+
   expect_equal(ui4$cmtLines,
                list(quote(cmt(cp)),
                     quote(cmt(pca))))
-  
+
   expect_equal(ui4$dvidLine, quote(dvid(5, 6)))
+
 })
 
 test_that("test constants are not considered a covariate ", {
+
   f <- function() {
     ini({
       t.fub <- 1
@@ -277,14 +279,15 @@ test_that("test constants are not considered a covariate ", {
       add.sd <- 0.01
     })
     model({
-      BP = 0.61;      # Blood:plasma partition coefficient
-      fup = 0.028;    # Fraction unbound in plasma
-      fub = fup/BP + t.fub + wt * cov.wt;   # Fraction unbound in blood
+      BP = 0.61      # Blood:plasma partition coefficient
+      fup = 0.028 + eta.fub    # Fraction unbound in plasma
+      fub = fup/BP + t.fub + wt * cov.wt   # Fraction unbound in blood
       fub ~ add(add.sd)
     })
   }
-  
+
   f <- rxode2(f)
-  
+
   expect_equal(f$covariates, "wt")
+
 })
