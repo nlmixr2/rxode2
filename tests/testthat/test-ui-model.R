@@ -279,9 +279,9 @@ test_that("test constants are not considered a covariate ", {
       add.sd <- 0.01
     })
     model({
-      BP = 0.61;      # Blood:plasma partition coefficient
-      fup = 0.028 + eta.fub;    # Fraction unbound in plasma
-      fub = fup/BP + t.fub + wt * cov.wt;   # Fraction unbound in blood
+      BP = 0.61      # Blood:plasma partition coefficient
+      fup = 0.028 + eta.fub    # Fraction unbound in plasma
+      fub = fup/BP + t.fub + wt * cov.wt   # Fraction unbound in blood
       fub ~ add(add.sd)
     })
   }
