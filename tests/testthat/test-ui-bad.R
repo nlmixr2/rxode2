@@ -205,6 +205,7 @@ test_that("issue nlmixr#501", {
     keep = "WT"
     drop = "depot"
   }
+
   expect_error(rxode2(one.compartment), "model")
 
 })
@@ -272,7 +273,7 @@ test_that("Un-estimated paramteres raise errors", {
     })
   }
 
-  expect_error(rxode2(uif.ode), rex::rex("The following parameter(s) were in the ini block but not in the model block: prop.err"))
+  expect_error(rxode2(uif.ode), rex::rex("the following parameter(s) were in the ini block but not in the model block: prop.err"))
 
   uif <- function() {
     ini({
@@ -295,7 +296,31 @@ test_that("Un-estimated paramteres raise errors", {
     })
   }
 
-  expect_error(rxode2(uif), rex::rex("The following parameter(s) were in the ini block but not in the model block: eta.v"))
+  expect_error(rxode2(uif), rex::rex("endpoints parameters that are missing, duplicated, or defined with"))
+
+
+  uif <- function() {
+    ini({
+      tka <- exp(0.5)
+      tcl <- exp(-3.2)
+      tv <- exp(1)
+      eta.ka ~ 0.1
+      ## Should be eta.cl
+      eta.v ~ 0.2
+      add.err <- 0.1
+    })
+    model({
+      ka <- tka + eta.ka
+      cl <- tcl + eta.cl
+      v <- tv
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      cp ~ add(add.err)
+    })
+  }
+
+  expect_error(rxode2(uif), rex::rex("the following parameter(s) were in the ini block but not in the model block: eta.v"))
 
 })
 

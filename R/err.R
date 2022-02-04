@@ -955,7 +955,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     }
   }
   if (length(.err) > 0) {
-    stop("endpoints with missing or duplicated ini estimates: ", paste(.err, collapse=", "),
+    stop("endpoints parameters missing, duplicated, or defined with '~': ", paste(.err, collapse=", "),
          call.=FALSE)
   }
 }

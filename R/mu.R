@@ -804,12 +804,12 @@
       .upper <- .iniDf$upper[.err]
       .name <- .iniDf$name[.err]
       if (.range[1] > .est) {
-        stop("'", .name, "' estimate (", .est, ") needs to be above ", .range[1],
-                    call.=FALSE)
+        env$err <- c(env$err,
+                     paste0("'", .name, "' estimate (", .est, ") needs to be above ", .range[1]))
       }
       if (.range[2] < .est) {
-        stop("'", .name, "' estimate (", .est, ") needs to be below ", .range[2],
-                    call.=FALSE)
+        env$err <- c(env$err,
+                     paste0("'", .name, "' estimate (", .est, ") needs to be below ", .range[2]))
       }
       if (.lower < .range[1]) {
         ## warning("'", .name, "' lower bound (", .lower, ") needs to be equal or above ", .range[1], "; adjusting",
@@ -826,6 +826,26 @@
     }
   }
   env$iniDf <- .iniDf
+  invisible()
+}
+#' Check for ini({}) parameters that are missing in the model({})
+#'
+#'
+#' @param ui rxode2 ui model
+#' @return Nothing, called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
+.checkForIniParametersMissingFromModelBlock <- function(ui) {
+  .iniDf <- ui$iniDf
+  .mv <- ui$mv0
+  .errEsts <- .iniDf[.iniDf$condition %in% ui$predDf$cond, "name"]
+  .estName <- .iniDf$name[!is.na(.iniDf$ntheta) | (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
+  .estName <- c(.estName, .errEsts)
+  .missingPars <- setdiff(.estName, c(.mv$params, .errEsts))
+  if (length(.missingPars) > 0) {
+    ui$err <- c(ui$err, paste0("the following parameter(s) were in the ini block but not in the model block: ",
+                               paste(.missingPars, collapse=", ")))
+  }
   invisible()
 }
 
@@ -881,6 +901,10 @@
          call.=FALSE)
   }
   .checkAndAdjustErrInformation(.env)
+  .checkForIniParametersMissingFromModelBlock(.env)
+  if (length(.env$err) > 0) {
+    stop(paste(.env$err, collapse="\n"), call.=FALSE)
+  }
   .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
