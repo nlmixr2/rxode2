@@ -930,24 +930,33 @@
 .rxMuRef <- function(mod, ini=NULL) {
   .env <- .rxMuRefSetupInitialEnvironment(mod, ini)
   .rxMuRef0(.env$.expr, env=.env)
-  if (length(.env$err) > 0) {
-    stop(paste0("syntax/parsing errors:\n",
-                paste(.env$err, collapse="\n")),
-         call.=FALSE)
-  }
+
   .checkAndAdjustErrInformation(.env)
   .checkForIniParametersMissingFromModelBlock(.env)
   .checkForInfiniteOrNaParameters(.env)
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
+  if (.env$hasErrors) {
+    .errMsg <- paste(vapply(seq_along(.env$lstExpr),
+                            function(i){
+                              sprintf("%s\033[1m:%03d:\033[0m %s",
+                                      ifelse(is.null(.env$lstErr[[i]]), "", sprintf("\033[1m%s\033[0m\n", .env$lstErr[[i]])),
+                                      i, deparse1(.env$lstExpr[[i]]))
+                            }, character(1), USE.NAMES=FALSE), collapse="\n")
+    message(.errMsg)
+  }
   if (length(.env$err) > 0) {
-    stop(paste(.env$err, collapse="\n"), call.=FALSE)
+    stop(paste0("syntax/parsing errors:\n",
+                paste(.env$err, collapse="\n")),
+         call.=FALSE)
+  } else if (.env$hasErrors) {
+    stop("syntax/parsing errors, see above", call.=FALSE)
   }
   .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
                      "logit.theta.low", "param", "probit.theta", "probit.theta.hi",
                      "probit.theta.low", "probitInv.theta", "probitInv.theta.hi",
-                     "probitInv.theta.low", "top", "dupErr"),
+                     "probitInv.theta.low", "top", "dupErr", "lstErr"),
                    ls(envir=.env, all.names=TRUE))
   if (length(.rm) > 0) rm(list=.rm, envir=.env)
   return(invisible(.env))
