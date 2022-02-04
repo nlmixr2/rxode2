@@ -955,7 +955,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     }
   }
   if (length(.err) > 0) {
-    stop("endpoints parameters missing, duplicated, or defined with '~': ", paste(.err, collapse=", "),
+    stop("endpoint parameter(s) missing, duplicated, or defined with '~': ", paste(.err, collapse=", "),
          call.=FALSE)
   }
 }

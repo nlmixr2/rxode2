@@ -849,6 +849,43 @@
   invisible()
 }
 
+#' Check for infinite or missing parameters
+#'
+#' @param ui rxode2 ui function
+#' @return Nothing called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
+.checkForInfiniteOrNaParameters <- function(ui) {
+  .iniDf <- ui$iniDf
+  .bad <- .iniDf$name[is.infinite(.iniDf$est) | is.na(.iniDf$est)]
+  if (length(.bad) > 0) {
+    ui$err <- c(ui$err, paste0("infinite/NA initial parameters: ", paste(.bad, collapse=", ")))
+  }
+  invisible()
+}
+
+.checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint <- function(ui) {
+  .iniDf <- ui$iniDf
+  .predDf <- ui$predDf
+  .mv <- ui$mv0
+  lapply(seq_along(.predDf$cond), function(i) {
+    .cond <- .predDf$cond[i]
+    .w <- which(.iniDf$condition == .cond)
+    if (length(.w) == 0) {
+      # endpoint has no estimated parameters, see if they are modeled
+      # parameters
+      .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
+      .ret <- .ret[!is.na(.ret)]
+      .ret <- setdiff(.ret, .mv$lhs)
+      if (length(.ret)) {
+        ui$err <- c(ui$err,
+                    paste0("endpoint '", .predDf$cond[i], "' needs the following parameters estimated or modeled: ",
+                           paste(.ret, collapse=", ")))
+      }
+    }
+  })
+}
+
 #' Get mu-referencing model from model variables
 #'
 #' The rxMuRef is the core of the nlmixr ui functions
@@ -902,6 +939,8 @@
   }
   .checkAndAdjustErrInformation(.env)
   .checkForIniParametersMissingFromModelBlock(.env)
+  .checkForInfiniteOrNaParameters(.env)
+  .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
   if (length(.env$err) > 0) {
     stop(paste(.env$err, collapse="\n"), call.=FALSE)
   }

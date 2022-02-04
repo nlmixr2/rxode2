@@ -296,7 +296,7 @@ test_that("Un-estimated paramteres raise errors", {
     })
   }
 
-  expect_error(rxode2(uif), rex::rex("endpoints parameters that are missing, duplicated, or defined with"))
+  expect_error(rxode2(uif), rex::rex("endpoint parameter(s) missing, duplicated, or defined with '~'"))
 
 
   uif <- function() {
@@ -333,7 +333,6 @@ test_that("Residuals are population parameters", {
       tv <- exp(1)
       eta.ka ~ 0.1
       eta.cl ~ 0.2
-      ## Should be assign since it is a THETa, should I support it....?
       add.err ~ 0.1
     })
     model({
@@ -347,7 +346,7 @@ test_that("Residuals are population parameters", {
     })
   }
 
-  expect_error(rxode2(uif), rex::rex("the parameter(s) 'add.err' cannot be an error and between subject variability"))
+  expect_error(rxode2(uif), rex::rex("endpoint parameter(s) missing, duplicated, or defined with '~'"))
 
 })
 
@@ -412,6 +411,7 @@ test_that("Parameters need to be named", {
     ),
     regexp="lotri syntax errors above"
   )
+
 })
 
 test_that("Parameters cannot be missing or Infinite", {
@@ -436,7 +436,7 @@ test_that("Parameters cannot be missing or Infinite", {
     })
   }
 
-  expect_error(rxode2(uif), rex::rex("infinite/NA initial parameters: 'tka'"))
+  expect_error(rxode2(uif), rex::rex("infinite/NA initial parameters: tka"))
 
   uif <- function() {
     ini({
@@ -485,11 +485,34 @@ test_that("Parameters cannot be missing or Infinite", {
     })
   }
 
-  expect_error(rxode2(uif), rex::rex("residual distribution parameter(s) estimates were not found in ini block"))
+  expect_error(rxode2(uif), rex::rex("endpoint 'cp' needs the following parameters estimated or modeled"))
+
+  uif <- function() {
+    ini({
+      tka <- 3
+      tcl <- exp(-3.2)
+      tv <- exp(1)
+      eta.ka ~ 0.1
+      eta.cl ~ 0.2
+    })
+    model({
+      ka <- tka + eta.ka
+      cl <- tcl + eta.cl
+      v <- tv
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      add.err <- ka + cl
+      cp ~ add(add.err)
+    })
+  }
+
+  expect_error(rxode2(uif), NA)
 
 })
 
 test_that("There must be at least one prediction", {
+
   uif <- function() {
     ini({
       tka <- 4
@@ -510,6 +533,7 @@ test_that("There must be at least one prediction", {
       cp <- add(add.err)
     })
   }
+
   expect_error(
     rxode2(uif),
     regexp="there must be at least one prediction"
