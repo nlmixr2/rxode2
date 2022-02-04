@@ -963,7 +963,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
         if (length(.w) == 0L) {
-          .err <- c(.err, .cnd)
+          if (!any(.errDist[[paste(.predDf$distribution[.i])]] == 0)) {
+            .err <- c(.err, .cnd)
+          }
         }
       }
     }
