@@ -231,10 +231,6 @@ test_that("Duplicate parameters raise errors", {
       V <- exp(lV + eta.V)
       CLD <- exp(lCLD + eta.Cl)
       VT <- exp(lVT + eta.VT)
-      ## FIXME possibly include both?
-      ## K10 <- CL / V
-      ## K12 <- CLD / V
-      ## K21 <- CLD / VT
       linCmt() ~ prop(prop.err)
     })
   }
