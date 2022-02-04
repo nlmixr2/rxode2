@@ -979,6 +979,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' Process the errors in the quoted expression
 #'
 #' @param x Quoted expression for parsing
+#' @param ini Initialization block
+#' @param linCmtSens Type of linCmt sensitivity
+#' @param verbose verbose
+#' @param checkMissing Check for missing arguments in the ini({}) block
 #' @param df lotri data.frame of estimates
 #' @return Environment with error information setup.
 #' @author Matthew Fidler
@@ -1014,7 +1018,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .errProcessExpression <- function(x, ini,
                                   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
-                                  verbose=FALSE) {
+                                  verbose=FALSE, checkMissing=TRUE) {
   # ntheta neta1 neta2   name lower       est   upper   fix  err  label
   # backTransform condition trLow trHi
   .env <- new.env(parent=emptyenv())
@@ -1110,7 +1114,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "curCmt", "errGlobal", "linCmt", "n2ll", "distribution"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
-      .checkForMissingOrDupliacteInitials(.env)
+      if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
       return(.env)
     }
   }
@@ -1147,7 +1151,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .ini <- as.data.frame(eval(parse(text=paste0("lotri({\n",
                              paste(paste(allNames(expr[[3]]), "<- 1"), collapse="\n"),
                              "\n})"))))
-  .env <- try(.errProcessExpression(.mod, .ini), silent=TRUE)
+  .env <- try(.errProcessExpression(.mod, .ini, checkMissing=FALSE), silent=TRUE)
   if (inherits(.env, "try-error")) return(FALSE)
   if (uiEnv) return(.env)
   ifelse(.lin, "rxLinCmt" == .env$predDf$var, .pre == .env$predDf$var)

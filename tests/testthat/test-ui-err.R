@@ -35,6 +35,10 @@ expect_err2 <- function(x, extra=FALSE) {
 
 .rx <- loadNamespace("rxode2")
 
+test_that("When checking for distributions, don't consider if the parameter is defined", {
+  expect_true(.rx$.isErrorExpression(ipre ~ add(f2) + propF(prop.sd, f2)))
+})
+
 test_that("error when errors have too many arguments", {
   expect_err2(.rx$.errProcessExpression(quote({
     ka <- exp(tka + eta.ka)
