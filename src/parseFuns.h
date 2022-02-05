@@ -1,3 +1,4 @@
+// -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil; -*-
 ////////////////////////////////////////////////////////////////////////////////
 // rxode2 parsing function routines
 
@@ -165,14 +166,17 @@ static inline int handleFunctionSum(transFunctions *tf) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       sAppend(&sbDt, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       if (maxSumProdN < ii){
-	maxSumProdN = ii;
+        maxSumProdN = ii;
       }
     } else if (!strcmp("sum", tf->v)){
       sAppend(&sb, "_sum(_p, _pld, -__MAX_PROD__, _solveData->sumType, %d, (double) ", ii);
       sAppend(&sbDt, "_sum(_p, _pld, -__MAX_PROD__, _solveData->sumType, %d, (double) ", ii);
       if (SumProdLD < ii){
-	SumProdLD = ii;
+        SumProdLD = ii;
       }
+    } else if (!strcmp("rxord", tf->v)) {
+      sAppend(&sb, "_rxord(_cSub, %d, (double) ", ii);
+      sAppend(&sbDt, "_rxord( _cSub, %d, (double) ", ii);
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);
