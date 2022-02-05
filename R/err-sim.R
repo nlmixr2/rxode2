@@ -87,6 +87,20 @@ rxGetDistributionSimulationLines.t <- function(line) {
 
 #' @rdname rxGetDistributionSimulationLines
 #' @export
+rxGetDistributionSimulationLines.ordinal <- function(line) {
+  .env <- line[[1]]
+  .pred1 <- line[[2]]
+  .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
+  .c[[1]] <- quote(`rxord`)
+  .ret <- vector("list", 2)
+  .ret[[1]] <- quote(ipredSim <- NA)
+  .ret[[2]] <- bquote(sim <- .(.c))
+  .ret
+}
+
+
+#' @rdname rxGetDistributionSimulationLines
+#' @export
 rxGetDistributionSimulationLines.default <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]

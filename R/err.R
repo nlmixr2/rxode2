@@ -616,8 +616,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   hyper=c("a", "b", "c"), #10
   unif=c("a", "b"), #11
   weibull=c("a", "b")#12
-
 )
+
+.allowEstimatedParameters <- c("ordinal")
 
 #' This handles the error distribution for a single argument.
 #'
@@ -656,8 +657,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         }
       }
       if (env$estNotAllowed) {
-        env$err <- c(env$err,
-                     paste0("in the error expression, the variable '", .curName, "' must be estimated, not calculated"))
+        if (!(funName %in% .allowEstimatedParameters)) {
+          env$err <- c(env$err,
+                       paste0("in the error expression, the variable '", .curName, "' must be estimated, not calculated"))
+        }
       }
     }
   } else if (.is.numeric(.cur, env)) {
@@ -959,7 +962,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
     if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
-      if (.predDf[.i, "distribution"] != "-2LL") {
+      if (!(.predDf[.i, "distribution"] %in% c("-2LL", "ordinal"))) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
         if (length(.w) == 0L) {

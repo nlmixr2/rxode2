@@ -4,6 +4,7 @@
 \alias{rxGetDistributionSimulationLines}
 \alias{rxGetDistributionSimulationLines.norm}
 \alias{rxGetDistributionSimulationLines.t}
+\alias{rxGetDistributionSimulationLines.ordinal}
 \alias{rxGetDistributionSimulationLines.default}
 \alias{rxGetDistributionSimulationLines.rxUi}
 \title{This is a S3 method for getting the distribution lines for a rxode2 simulation}
@@ -13,6 +14,8 @@ rxGetDistributionSimulationLines(line)
 \method{rxGetDistributionSimulationLines}{norm}(line)
 
 \method{rxGetDistributionSimulationLines}{t}(line)
+
+\method{rxGetDistributionSimulationLines}{ordinal}(line)
 
 \method{rxGetDistributionSimulationLines}{default}(line)
 
