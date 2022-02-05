@@ -60,3 +60,42 @@ uint32_t getRxSeed1(int ncores) {
   }
   return seed;
 }
+
+//' Get the rxode2 seed
+//'
+//' @return rxode2 seed state or -1 when the seed isn't set
+//'
+//' @export
+//' @seealso rxSetSeed, rxWithSeed, rxWithPreserveSeed
+//' @examples
+//'
+//' # without setting seed
+//'
+//' rxGetSeed()
+//' # Now set the seed
+//' rxSetSeed(42)
+//'
+//' rxGetSeed()
+//'
+//' rxnorm()
+//'
+//' rxGetSeed()
+//'
+//' # don't use the rxode2 seed again
+//'
+//' rxSetSeed(-1)
+//'
+//' rxGetSeed()
+//'
+//' rxnorm()
+//'
+//' rxGetSeed()
+//'
+//[[Rcpp::export]]
+int rxGetSeed() {
+  if (useRxSeed) {
+    return rxSeed;
+  } else {
+    return -1;
+  }
+}

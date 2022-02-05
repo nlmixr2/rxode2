@@ -847,6 +847,40 @@ rxnormV_ <- function(mean, sd, n, ncores) {
     .Call(`_rxode2_rxnormV_`, mean, sd, n, ncores)
 }
 
+#' Get the rxode2 seed
+#'
+#' @return rxode2 seed state or -1 when the seed isn't set
+#'
+#' @export
+#' @seealso rxSetSeed, rxWithSeed, rxWithPreserveSeed
+#' @examples
+#'
+#' # without setting seed
+#'
+#' rxGetSeed()
+#' # Now set the seed
+#' rxSetSeed(42)
+#'
+#' rxGetSeed()
+#'
+#' rxnorm()
+#'
+#' rxGetSeed()
+#'
+#' # don't use the rxode2 seed again
+#'
+#' rxSetSeed(-1)
+#'
+#' rxGetSeed()
+#'
+#' rxnorm()
+#'
+#' rxGetSeed()
+#'
+rxGetSeed <- function() {
+    .Call(`_rxode2_rxGetSeed`)
+}
+
 isNullZero <- function(obj) {
     .Call(`_rxode2_isNullZero`, obj)
 }

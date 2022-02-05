@@ -3021,6 +3021,16 @@ RcppExport SEXP _rxode2_rxnormV_(SEXP meanSEXP, SEXP sdSEXP, SEXP nSEXP, SEXP nc
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxGetSeed
+int rxGetSeed();
+RcppExport SEXP _rxode2_rxGetSeed() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(rxGetSeed());
+    return rcpp_result_gen;
+END_RCPP
+}
 // isNullZero
 LogicalVector isNullZero(RObject obj);
 static SEXP _rxode2_isNullZero_try(SEXP objSEXP) {

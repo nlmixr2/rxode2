@@ -1150,6 +1150,9 @@ rxUnloadAll <- function() {
 #' rxnorm()
 #'
 #' rnorm(1)
+#'
+#' @seealso rxGetSeed, rxWithSeed, rxWithPreserveSeed
+#'
 #' @references
 #'
 #' JD Cook. (2016). Random number generator seed mistakes.
@@ -1160,6 +1163,83 @@ rxSetSeed <- function(seed) {
   .Call(`_rxSetSeed`, seed)
   invisible()
 }
+
+.rmRseed <- function() {
+  if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
+    return(NULL)
+  }
+  set.seed(seed = NULL)
+  rm(".Random.seed", envir = globalenv())
+}
+
+.rxGetSeed <- function() {
+  if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
+    return(list(seed=NULL, kind=NULL, rxseed=rxGetSeed()))
+  }
+  list(seed = get(".Random.seed", globalenv(), mode = "integer",
+                  inherits = FALSE), kind = RNGkind(), rxseed=rxGetSeed())
+}
+
+.rxSetSeed <- function(seed) {
+  if (is.null(seed$seed)) {
+    .rxGetSeed()
+  } else {
+    do.call(RNGkind, args = as.list(seed$kind))
+    set.seed(seed$seed)
+  }
+  rxSetSeed(seed$rxseed)
+}
+#' Preserved seed and possibly set the seed
+#'
+#' @param seed R seed to use for the session
+#'
+#' @param code Is the code to evaluate
+#'
+#' @param rxseed is the rxode2 seed that is being preserved
+#'
+#' @return returns whatever the code is returning
+#'
+#' @inheritParams RNGkind
+#'
+#' @seealso rxGetSeed, rxSetSeed
+#'
+#' @examples
+#'
+#' rxGetSeed()
+#' rxWithSeed(1, {
+#'    print(rxGetSeed())
+#'    rxnorm()
+#'    print(rxGetSeed())
+#'    rxnorm()
+#' }, rxseed=3)
+#'
+#' @export
+rxWithSeed <- function(seed, code, rxseed=rxGetSeed(), kind = "default", normal.kind = "default",
+                       sample.kind = "default") {
+  force(seed)
+  force(rxseed)
+  force(kind)
+  force(normal.kind)
+  force(sample.kind)
+  .rxSeed <- .rxGetSeed()
+  .origSeed <- .rxGetSeed()
+  .newSeed <- .origSeed
+  .newSeed$seed <- seed
+  .newSeed$kind <- c(kind, normal.kind, sample.kind)
+  .newSeed$rxseed <- rxseed
+  on.exit(.rxSetSeed(.origSeed), add = TRUE)
+  .rxSetSeed(.newSeed)
+  force(code)
+}
+
+#' @rdname rxWithSeed
+#' @export
+rxWithPreserveSeed <- function(code) {
+  .origSeed <- .rxGetSeed()
+  on.exit(.rxSetSeed(.origSeed), add = TRUE)
+  force(code)
+}
+
 
 
 use.utf <- function() {
