@@ -76,10 +76,14 @@ set.seed(42)
 rxnorm()
 
 rnorm(1)
+
 }
 \references{
 JD Cook. (2016). Random number generator seed mistakes.
 \url{https://tinyurl.com/m62v3kv9}
+}
+\seealso{
+rxGetSeed, rxWithSeed, rxWithPreserveSeed
 }
 \author{
 Matthew Fidler

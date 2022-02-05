@@ -11,7 +11,7 @@ rxExpandSens2_(state, s1, s2)
 
 \item{s1}{is the variables to calculate sensitivity}
 
-\item{s2}{is the variabs to calculate second order sensitivity}
+\item{s2}{is the variables to calculate second order sensitivity}
 }
 \description{
 Expand second order sensitivity

@@ -2914,6 +2914,41 @@ RcppExport SEXP _rxode2_rpp_(SEXP nSSEXP, SEXP lambdaSSEXP, SEXP gammaSSEXP, SEX
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxordSelect
+double rxordSelect(double u, NumericVector cs);
+static SEXP _rxode2_rxordSelect_try(SEXP uSEXP, SEXP csSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< double >::type u(uSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type cs(csSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxordSelect(u, cs));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxordSelect(SEXP uSEXP, SEXP csSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxordSelect_try(uSEXP, csSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxrandnV
 arma::mat rxrandnV(unsigned int nrow, unsigned int ncol);
 static SEXP _rxode2_rxrandnV_try(SEXP nrowSEXP, SEXP ncolSEXP) {
@@ -2985,6 +3020,16 @@ RcppExport SEXP _rxode2_rxnormV_(SEXP meanSEXP, SEXP sdSEXP, SEXP nSEXP, SEXP nc
     }
     UNPROTECT(1);
     return rcpp_result_gen;
+}
+// rxGetSeed
+int rxGetSeed();
+RcppExport SEXP _rxode2_rxGetSeed() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(rxGetSeed());
+    return rcpp_result_gen;
+END_RCPP
 }
 // isNullZero
 LogicalVector isNullZero(RObject obj);
@@ -3096,6 +3141,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("SEXP(*rxRmvn0)(NumericMatrix&,arma::rowvec,arma::mat,arma::vec,arma::vec,int,bool,double,double,double,int)");
         signatures.insert("SEXP(*rxRmvnSEXP)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP)");
         signatures.insert("NumericVector(*rpp_)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP)");
+        signatures.insert("double(*rxordSelect)(double,NumericVector)");
         signatures.insert("arma::mat(*rxrandnV)(unsigned int,unsigned int)");
         signatures.insert("NumericVector(*rxnormV_)(double,double,int,int)");
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
@@ -3176,6 +3222,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxRmvn0", (DL_FUNC)_rxode2_rxRmvn0_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxRmvnSEXP", (DL_FUNC)_rxode2_rxRmvnSEXP_try);
     R_RegisterCCallable("rxode2", "_rxode2_rpp_", (DL_FUNC)_rxode2_rpp__try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxordSelect", (DL_FUNC)_rxode2_rxordSelect_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxrandnV", (DL_FUNC)_rxode2_rxrandnV_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxnormV_", (DL_FUNC)_rxode2_rxnormV__try);
     R_RegisterCCallable("rxode2", "_rxode2_isNullZero", (DL_FUNC)_rxode2_isNullZero_try);

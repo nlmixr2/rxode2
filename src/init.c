@@ -102,6 +102,7 @@ SEXP _rxode2_nestingInfo_(SEXP omega, SEXP data);
 SEXP _rxode2_isNullZero(SEXP in);
 
 SEXP rxode2_get_mv();
+SEXP _rxode2_rxGetSeed();
 
 SEXP _gammap(SEXP, SEXP);
 SEXP _gammaq(SEXP, SEXP);
@@ -121,6 +122,8 @@ SEXP _expit(SEXP, SEXP, SEXP);
 SEXP _logit(SEXP, SEXP, SEXP);
 SEXP _linCmtParse(SEXP vars, SEXP inStr, SEXP verbose);
 SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
+
+SEXP _rxode2_rxordSelect(SEXP, SEXP);
 
 static R_NativePrimitiveArgType rxode2_Sum_t[] = {
   REALSXP, INTSXP
@@ -322,6 +325,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},
     {"_rxode2_isLinCmt", (DL_FUNC) &_rxode2_isLinCmt, 0},
     {"rxode2_get_mv", (DL_FUNC) &rxode2_get_mv, 0},
+    {"_rxode2_rxGetSeed", (DL_FUNC) &_rxode2_rxGetSeed, 0},
     {"_rxode2_rxInv", (DL_FUNC) &_rxode2_rxInv, 1},
     {"_rxode2_removableDrive", (DL_FUNC) &_rxode2_removableDrive, 1},
     {"_rxCholInv", (DL_FUNC) &_rxCholInv, 3},
@@ -448,6 +452,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 27},
     {"_rxCbindStudyIndividual", (DL_FUNC) _rxCbindStudyIndividual, 2},
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
+    {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.

@@ -22,7 +22,7 @@ uint32_t rxSeed = 0;
 extern "C" SEXP _rxSetSeed(SEXP intIn) {
   int type = TYPEOF(intIn);
   if (Rf_length(intIn) != 1) {
-    Rf_errorcall(R_NilValue, _("'seed' must be an integer of length 1."));
+    Rf_errorcall(R_NilValue, _("'seed' must be an integer of length 1"));
   }
   if (type == REALSXP) {
     double in = REAL(intIn)[0];
@@ -34,7 +34,7 @@ extern "C" SEXP _rxSetSeed(SEXP intIn) {
       useRxSeed = true;
     }
   } else if (type == INTSXP) {
-    int in = REAL(intIn)[0];
+    int in = INTEGER(intIn)[0];
     if (in < 0) {
       rxSeed = 0;
       useRxSeed = false;
@@ -43,7 +43,7 @@ extern "C" SEXP _rxSetSeed(SEXP intIn) {
       useRxSeed = true;
     }
   } else {
-    Rf_errorcall(R_NilValue, _("'seed' must be an integer of length 1."));
+    Rf_errorcall(R_NilValue, _("'seed' must be an integer of length 1"));
   }
   return R_NilValue;
 }
@@ -59,4 +59,43 @@ uint32_t getRxSeed1(int ncores) {
     seed = min2(seed, std::numeric_limits<uint32_t>::max() - ncores - 1);
   }
   return seed;
+}
+
+//' Get the rxode2 seed
+//'
+//' @return rxode2 seed state or -1 when the seed isn't set
+//'
+//' @export
+//' @seealso rxSetSeed, rxWithSeed, rxWithPreserveSeed
+//' @examples
+//'
+//' # without setting seed
+//'
+//' rxGetSeed()
+//' # Now set the seed
+//' rxSetSeed(42)
+//'
+//' rxGetSeed()
+//'
+//' rxnorm()
+//'
+//' rxGetSeed()
+//'
+//' # don't use the rxode2 seed again
+//'
+//' rxSetSeed(-1)
+//'
+//' rxGetSeed()
+//'
+//' rxnorm()
+//'
+//' rxGetSeed()
+//'
+//[[Rcpp::export]]
+int rxGetSeed() {
+  if (useRxSeed) {
+    return rxSeed;
+  } else {
+    return -1;
+  }
 }

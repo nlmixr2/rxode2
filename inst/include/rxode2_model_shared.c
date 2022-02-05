@@ -108,6 +108,26 @@ double _sign(unsigned int n, ...) {
   return s;
 }
 
+double _rxord(int _cSub, unsigned int n,  ...) {
+  va_list valist;
+  va_start(valist, n);
+  double ret = 0.0;
+  double p = 0.0;
+  double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
+  for (unsigned int i = 0; i < n; i++) {
+    p += va_arg(valist, double);
+    if (ret < 1e-6) {
+      if (u < p) {
+        ret = (double)(i+1);
+      }
+    }
+  }
+  if (p >= 1) ret = NA_REAL;
+  else if (ret < 1e-6) ret = (double)(n+1);
+  va_end(valist);
+  return ret;
+}
+
 double _max(unsigned int n, ...) {
   va_list valist;
   va_start(valist, n);

@@ -201,14 +201,14 @@ rxExpandSens_ <- function(state, calcSens) {
 #'
 #' @param state is the state to expand
 #' @param s1 is the variables to calculate sensitivity
-#' @param s2 is the variabs to calculate second order sensitivity
+#' @param s2 is the variables to calculate second order sensitivity
 #' @keywords internal
 #' @export
 rxExpandSens2_ <- function(state, s1, s2) {
     .Call(`_rxode2_rxExpandSens2_`, state, s1, s2)
 }
 
-#' Expand FEta
+#' Expand d(f)/d(eta)
 #'
 #' @param state is the state to expand
 #' @param neta is the number of etas
@@ -835,12 +835,50 @@ rpp_ <- function(nS, lambdaS, gammaS, probS, t0S, tmaxS, randomOrderS) {
     .Call(`_rxode2_rpp_`, nS, lambdaS, gammaS, probS, t0S, tmaxS, randomOrderS)
 }
 
+rxordSelect <- function(u, cs) {
+    .Call(`_rxode2_rxordSelect`, u, cs)
+}
+
 rxrandnV <- function(nrow, ncol) {
     .Call(`_rxode2_rxrandnV`, nrow, ncol)
 }
 
 rxnormV_ <- function(mean, sd, n, ncores) {
     .Call(`_rxode2_rxnormV_`, mean, sd, n, ncores)
+}
+
+#' Get the rxode2 seed
+#'
+#' @return rxode2 seed state or -1 when the seed isn't set
+#'
+#' @export
+#' @seealso rxSetSeed, rxWithSeed, rxWithPreserveSeed
+#' @examples
+#'
+#' # without setting seed
+#'
+#' rxGetSeed()
+#' # Now set the seed
+#' rxSetSeed(42)
+#'
+#' rxGetSeed()
+#'
+#' rxnorm()
+#'
+#' rxGetSeed()
+#'
+#' # don't use the rxode2 seed again
+#'
+#' rxSetSeed(-1)
+#'
+#' rxGetSeed()
+#'
+#' rxnorm()
+#'
+#' rxGetSeed()
+#'
+rxGetSeed <- function() {
+    .Call(`_rxode2_rxGetSeed`)
 }
 
 isNullZero <- function(obj) {

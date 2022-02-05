@@ -2,7 +2,7 @@
 % Please edit documentation in R/RcppExports.R
 \name{rxExpandFEta_}
 \alias{rxExpandFEta_}
-\title{Expand FEta}
+\title{Expand d(f)/d(eta)}
 \usage{
 rxExpandFEta_(state, neta, pred)
 }
@@ -14,6 +14,6 @@ rxExpandFEta_(state, neta, pred)
 \item{pred}{type of prediction}
 }
 \description{
-Expand FEta
+Expand d(f)/d(eta)
 }
 \keyword{internal}
