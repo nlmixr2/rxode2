@@ -528,31 +528,6 @@
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
 
-
-## To reduce code from nlmixr, the
-## Covariate references should have the following structure:
-## To reduce code from nlmixr the mu reference:
-## -------------------------------
-## > f$nmodel$mu.ref
-## $eta.ka
-## [1] "tka"
-##
-## $eta.cl
-## [1] "tcl"
-##
-## $eta.v
-## [1] "tv"
-
-## > f$cov.ref
-## $age
-## cov.age
-##   "tcl"
-##
-## $wt
-## cov.wt
-##  "tcl"
-
-
 #' Handle the + expressions to determine mu-reference expressions
 #'
 #' @param x additive Call Expression
@@ -607,22 +582,6 @@
   }
 }
 
-
-## f$probit.theta.low  f$probit.theta.hi
-## f$probit.theta
-## f$logit.theta
-## f$log.theta
-## "tka"     "tcl"     "cov.wt"  "cov.age" "tv"
-
-## f$probit.eta.low  f$probit.eta.hi
-## f$probit.eta
-## f$probit.eta.low  f$probit.eta.hi
-## f$logit.eta
-## f$log.eta
-## "eta.ka" "eta.cl" "eta.v"
-##
-## > f$oneTheta
-## "tka" "tcl" "tv"
 .rxMuRef0 <- function(x, env) {
   if (env$top) {
     env$top <- FALSE
@@ -707,12 +666,13 @@
   }
 }
 
-
-## 1. $state : states
-## 2. $params : params
-## 3. $lhs: lhs
-## 4. theta: theta from ini
-## 5. eta: eta from ini
+#'  Setup the initial environment for mu-referencing calculations
+#'
+#' @param mod Model environment
+#' @param ini parsed lotri ini
+#' @return model environment to setup rxUi
+#' @author Matthew L. Fidler
+#' @noRd
 .rxMuRefSetupInitialEnvironment <- function(mod, ini=NULL) {
   if (is.null(ini)) {
     .eta <- mod$eta
@@ -743,6 +703,9 @@
   .env$body <- list()
   .env$info <- .info
   .env$top <- TRUE
+  if (!exists("hasErrors", envir=.env)) {
+    .env$hasErrors <- FALSE
+  }
 
   # probit/probitInv
   .env$probit.theta.low <- NULL
@@ -871,17 +834,15 @@
   lapply(seq_along(.predDf$cond), function(i) {
     .cond <- .predDf$cond[i]
     .w <- which(.iniDf$condition == .cond)
-    if (length(.w) == 0) {
-      # endpoint has no estimated parameters, see if they are modeled
-      # parameters
-      .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
-      .ret <- .ret[!is.na(.ret)]
-      .ret <- setdiff(.ret, .mv$lhs)
-      if (length(.ret)) {
-        ui$err <- c(ui$err,
-                    paste0("endpoint '", .predDf$cond[i], "' needs the following parameters estimated or modeled: ",
-                           paste(.ret, collapse=", ")))
-      }
+    # endpoint has no estimated parameters, see if they are modeled
+    # parameters
+    .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
+    .ret <- .ret[!is.na(.ret)]
+    .ret <- setdiff(.ret, .mv$lhs)
+    if (length(.ret)) {
+      ui$err <- c(ui$err,
+                  paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
+                         paste(.ret, collapse=", ")))
     }
   })
 }
@@ -932,24 +893,33 @@
 .rxMuRef <- function(mod, ini=NULL) {
   .env <- .rxMuRefSetupInitialEnvironment(mod, ini)
   .rxMuRef0(.env$.expr, env=.env)
-  if (length(.env$err) > 0) {
-    stop(paste0("syntax/parsing errors:\n",
-                paste(.env$err, collapse="\n")),
-         call.=FALSE)
-  }
+
   .checkAndAdjustErrInformation(.env)
   .checkForIniParametersMissingFromModelBlock(.env)
   .checkForInfiniteOrNaParameters(.env)
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
+  if (.env$hasErrors) {
+    .errMsg <- paste(vapply(seq_along(.env$lstExpr),
+                            function(i){
+                              sprintf("%s\033[1m:%03d:\033[0m %s",
+                                      ifelse(is.null(.env$lstErr[[i]]), "", sprintf("\033[1m%s\033[0m\n", .env$lstErr[[i]])),
+                                      i, deparse1(.env$lstExpr[[i]]))
+                            }, character(1), USE.NAMES=FALSE), collapse="\n")
+    message(.errMsg)
+  }
   if (length(.env$err) > 0) {
-    stop(paste(.env$err, collapse="\n"), call.=FALSE)
+    stop(paste0(ifelse(.env$hasErrors, "syntax/parsing errors (see above) and additionally:\n", "syntax/parsing errors:\n"),
+                paste(.env$err, collapse="\n")),
+         call.=FALSE)
+  } else if (.env$hasErrors) {
+    stop("syntax/parsing errors, see above", call.=FALSE)
   }
   .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
                      "logit.theta.low", "param", "probit.theta", "probit.theta.hi",
                      "probit.theta.low", "probitInv.theta", "probitInv.theta.hi",
-                     "probitInv.theta.low", "top", "dupErr"),
+                     "probitInv.theta.low", "top", "dupErr", "lstErr"),
                    ls(envir=.env, all.names=TRUE))
   if (length(.rm) > 0) rm(list=.rm, envir=.env)
   return(invisible(.env))

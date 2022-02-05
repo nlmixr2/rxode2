@@ -10,7 +10,7 @@ test_that("bounded functions needs numeric bounds", {
     eta.v ~ 0.1
     add.sd <- 0.1
   })
-  
+
   testBounded <- function(type="expit") {
     expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, a, b)"), lmat))
     expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 1, b)"), lmat))
@@ -21,7 +21,7 @@ test_that("bounded functions needs numeric bounds", {
     expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, a)"), lmat))
     expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 4)"), lmat))
   }
-  
+
   testBounded("logit")
   testBounded("expit")
   testBounded("probit")
@@ -73,7 +73,7 @@ test_that("simple mu referencing", {
     eta.v ~ 0.1
     add.sd <- 0.7
   })
-  
+
   env <- .rx$.rxMuRef(rxode2({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl)
@@ -83,7 +83,7 @@ test_that("simple mu referencing", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -110,14 +110,14 @@ test_that("shared eta is not mu referencing", {
     eta.emax ~ 0.1
     add.sd <- 0.7
   })
-  
+
   ## Test a duplicated eta; It shouldn't be counted as mu-referenced
   env <- .rx$.rxMuRef(rxode2({
     EmaxA <- exp(t.EmaxA + eta.emax)
     EmaxB <- exp(t.EmaxB + eta.emax)
     EmaxC <- exp(t.EmaxC + eta.emax)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -132,13 +132,13 @@ test_that("shared eta is not mu referencing", {
                                                     term = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtraEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"), nonMuEtas = "eta.emax"))
-  
+
   env <- .rx$.rxMuRef(rxode2({
     EmaxA <- exp(t.EmaxA + eta.emax)
     EmaxB <- exp(t.EmaxB + eta.emax)
     EmaxC <- t.EmaxC + eta.emax
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -153,12 +153,12 @@ test_that("shared eta is not mu referencing", {
                                                     term = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtraEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"), nonMuEtas = "eta.emax"))
-  
+
   env <- .rx$.rxMuRef(rxode2({
     EmaxB <- t.EmaxB + eta.emax
     EmaxA <- exp(t.EmaxA + eta.emax)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -172,10 +172,11 @@ test_that("shared eta is not mu referencing", {
                                                     term = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtraEmpty = c("t.EmaxB", "t.EmaxA"), nonMuEtas = "eta.emax"))
-  
+
 })
 
 test_that("composite ode expressions", {
+
   lmat <- lotri({
     ## You may label each parameter with a comment
     tka <- 0.45 # Log Ka
@@ -189,14 +190,14 @@ test_that("composite ode expressions", {
     eta.v ~ 0.1
     add.sd <- 0.7
   })
-  
+
   env <- .rx$.rxMuRef(rxode2({
     d/dt(depot) = -exp(tka + eta.ka) * depot
     d/dt(center) = exp(tka + eta.ka) * depot - exp(tcl + eta.cl)/exp(tv + eta.v) * center
     cp = center/exp(tv + eta.v)
     #cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(
     env,
     list(
@@ -227,11 +228,11 @@ test_that("composite ode expressions", {
       muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
       muRefExtraEmpty = c("tka", "tcl", "tv"), nonMuEtas = NULL)
   )
-  
+
 })
 
 test_that("old style tka*eta(eta.ka)", {
-  
+
   lmat <- lotri({
     ## You may label each parameter with a comment
     tka <- 0.45 # Log Ka
@@ -245,7 +246,7 @@ test_that("old style tka*eta(eta.ka)", {
     eta.v ~ 0.1
     add.sd <- 0.7
   })
-  
+
   env <- .rx$.rxMuRef(rxode2({
     ka <- tka * exp(eta.ka + 0)
     cl <- tcl * exp(eta.cl + 0)
@@ -255,7 +256,7 @@ test_that("old style tka*eta(eta.ka)", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -273,7 +274,7 @@ test_that("old style tka*eta(eta.ka)", {
                                                          "eta.v"), extra = c("0", "0", "0")), row.names = c(NA, -3L
                                                          ), class = "data.frame"), muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka",
                                                                                                                          "eta.cl", "eta.v")))
-  
+
   env <- .rx$.rxMuRef(rxode2({
     ka <- tka * exp(eta.ka + 0)
     cl <- tcl * exp(eta.cl + 0)
@@ -284,7 +285,7 @@ test_that("old style tka*eta(eta.ka)", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -302,7 +303,7 @@ test_that("old style tka*eta(eta.ka)", {
                                                          "eta.v"), extra = c("0", "0", "0")), row.names = c(NA, -3L
                                                          ), class = "data.frame"), muRefExtraEmpty = "tv", nonMuEtas = c("eta.ka",
                                                                                                                          "eta.cl", "eta.v")))
-  
+
   env <- .rx$.rxMuRef(rxode2({
     ka <- tka * exp(eta.ka)
     cl <- tcl * exp(eta.cl)
@@ -312,7 +313,7 @@ test_that("old style tka*eta(eta.ka)", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -329,7 +330,7 @@ test_that("old style tka*eta(eta.ka)", {
                muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka", "eta.cl",
                                                      "eta.v")))
-  
+
   env <- .rx$.rxMuRef(rxode2({
     ka <- tka * exp(eta.ka)
     cl <- tcl * exp(eta.cl)
@@ -340,7 +341,7 @@ test_that("old style tka*eta(eta.ka)", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -357,12 +358,12 @@ test_that("old style tka*eta(eta.ka)", {
                muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka", "eta.cl",
                                                      "eta.v")))
-  
+
 })
 
 
 test_that("curEval for theta only", {
-  
+
   lmat <- lotri({
     ## You may label each parameter with a comment
     tka <- 0.45 # Log Ka
@@ -375,7 +376,7 @@ test_that("curEval for theta only", {
     eta.v ~ 0.1
     add.sd <- 0.7
   })
-  
+
   env <- .rx$.rxMuRef(rxode2({
     ka <- exp(tka)
     cl <- exp(tcl + eta.cl)
@@ -386,7 +387,7 @@ test_that("curEval for theta only", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = character(0),
                                                         covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
@@ -401,11 +402,11 @@ test_that("curEval for theta only", {
                                                                                                                                                                                                                                                parameter = character(0), term = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                muRefExtraEmpty = "tcl", nonMuEtas = "eta.v"))
-  
+
 })
 
 test_that("test covariates", {
-  
+
   lmat <- lotri({
     ## You may label each parameter with a comment
     tka <- 0.45 # Log Ka
@@ -429,7 +430,7 @@ test_that("test covariates", {
     eta.v ~ 0.1
     add.sd <- 0.7
   })
-  
+
   env <- .rx$.rxMuRef(rxode2({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
@@ -440,7 +441,7 @@ test_that("test covariates", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env,
           list(muRefCovariateDataFrame = structure(list(theta = c("tcl",
                                                                   "tcl", "tv", "tv", "tv", "tvp", "tvp", "tvp"), covariate = c("age",
@@ -462,8 +463,8 @@ test_that("test covariates", {
                ), extra = c("3", "log(wt/70) * cl.wt", "2")), row.names = c(NA,
                                                                             -3L), class = "data.frame"), muRefExtraEmpty = c("tka", "tvp"
                                                                             ), nonMuEtas = NULL))
-  
-  
+
+
   # This one tv is used in 2 covariate references
   env <- .rx$.rxMuRef(rxode2({
     ka <- exp(tka + eta.ka)
@@ -475,7 +476,7 @@ test_that("test covariates", {
     cp = center/v
     ## cp ~ add(add.sd)
   }), lmat)
-  
+
   testEnv(env, list(muRefCovariateDataFrame = structure(list(theta = c("tcl",
                                                                        "tcl"), covariate = c("age", "sex"), covariateParameter = c("cl.age",
                                                                                                                                    "cl.sex")), row.names = 1:2, class = "data.frame"), muRefCovariateEmpty = c("tka",
@@ -493,11 +494,11 @@ test_that("test covariates", {
                                                                                                                        parameter = c("tcl", "tcl"), extra = c("3", "log(wt/70) * cl.wt"
                                                                                                                        )), row.names = 1:2, class = "data.frame"), muRefExtraEmpty = c("tka",
                                                                                                                                                                                        "tv"), nonMuEtas = "eta.v"))
-  
+
   #env$nonMuEtas
-  
+
   #expect_equal(env$nonMuEtas, "eta.v")
-  
+
 })
 
 ## ## Composite expressions should be extracted to their own lines
