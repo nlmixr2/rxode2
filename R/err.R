@@ -618,7 +618,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   weibull=c("a", "b")#12
 )
 
-.allowEstimatedParameters <- c("ordinal")
+.allowEstimatedParameters <- "ordinal"
 
 #' This handles the error distribution for a single argument.
 #'
