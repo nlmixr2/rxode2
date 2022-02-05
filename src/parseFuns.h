@@ -158,8 +158,8 @@ static inline int handleFunctionLogit(transFunctions *tf) {
 }
 
 static inline int handleFunctionSum(transFunctions *tf) {
-  if (!strcmp("prod",tf->v) || !strcmp("sum",tf->v) || !strcmp("sign",tf->v) ||
-      !strcmp("max",tf->v) || !strcmp("min",tf->v)){
+  if (!strcmp("prod",tf->v) || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
+      !strcmp("max", tf->v) || !strcmp("min", tf->v) || !strcmp("rxord", tf->v)){
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (!strcmp("prod", tf->v)){
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
