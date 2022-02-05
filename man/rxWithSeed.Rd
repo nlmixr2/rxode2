@@ -22,6 +22,20 @@ rxWithPreserveSeed(code)
 \item{code}{Is the code to evaluate}
 
 \item{rxseed}{is the rxode2 seed that is being preserved}
+
+\item{kind}{character or \code{NULL}.  If \code{kind} is a character
+    string, set \R's RNG to the kind desired.  Use \code{"default"} to
+    return to the \R default.  See \sQuote{Details} for the
+    interpretation of \code{NULL}.}
+
+\item{normal.kind}{character string or \code{NULL}.  If it is a character
+    string, set the method of Normal generation.  Use \code{"default"}
+    to return to the \R default.  \code{NULL} makes no change.}
+
+\item{sample.kind}{character string or \code{NULL}.  If it is a character
+    string, set the method of discrete uniform generation (used in 
+    \code{\link[base]{sample}}, for instance).  Use \code{"default"} to return to 
+    the \R default.  \code{NULL} makes no change.}
 }
 \value{
 returns whatever the code is returning

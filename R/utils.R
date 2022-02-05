@@ -1199,7 +1199,7 @@ rxSetSeed <- function(seed) {
 #'
 #' @return returns whatever the code is returning
 #'
-#' @inheritParams RNGkind
+#' @inheritParams base::RNGkind
 #'
 #' @seealso rxGetSeed, rxSetSeed
 #'
