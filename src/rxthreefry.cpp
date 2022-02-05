@@ -1754,3 +1754,19 @@ NumericVector rpp_(SEXP nS, SEXP lambdaS, SEXP gammaS, SEXP probS, SEXP t0S, SEX
   }
   return R_NilValue;
 }
+
+
+//[[Rcpp::export]]
+double rxordSelect(double u, NumericVector cs) {
+  unsigned int n = (unsigned int)(cs.size());
+  double ret=0.0;
+  for (unsigned int i = 0; i < n; i++) {
+    if (ret < 1e-6) {
+      if (u < cs[i]) {
+        ret = (double)(i+1);
+      }
+    }
+  }
+  if (ret < 1e-6) ret = (double)(n+1);
+  return ret;
+ }

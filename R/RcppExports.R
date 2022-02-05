@@ -201,14 +201,14 @@ rxExpandSens_ <- function(state, calcSens) {
 #'
 #' @param state is the state to expand
 #' @param s1 is the variables to calculate sensitivity
-#' @param s2 is the variabs to calculate second order sensitivity
+#' @param s2 is the variables to calculate second order sensitivity
 #' @keywords internal
 #' @export
 rxExpandSens2_ <- function(state, s1, s2) {
     .Call(`_rxode2_rxExpandSens2_`, state, s1, s2)
 }
 
-#' Expand FEta
+#' Expand d(f)/d(eta)
 #'
 #' @param state is the state to expand
 #' @param neta is the number of etas
@@ -833,6 +833,10 @@ rxRmvnSEXP <- function(nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS, keepNa
 
 rpp_ <- function(nS, lambdaS, gammaS, probS, t0S, tmaxS, randomOrderS) {
     .Call(`_rxode2_rpp_`, nS, lambdaS, gammaS, probS, t0S, tmaxS, randomOrderS)
+}
+
+rxordSelect <- function(u, cs) {
+    .Call(`_rxode2_rxordSelect`, u, cs)
 }
 
 rxrandnV <- function(nrow, ncol) {

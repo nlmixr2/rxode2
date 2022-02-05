@@ -1515,6 +1515,27 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
+    inline double rxordSelect(double u, NumericVector cs) {
+        typedef SEXP(*Ptr_rxordSelect)(SEXP,SEXP);
+        static Ptr_rxordSelect p_rxordSelect = NULL;
+        if (p_rxordSelect == NULL) {
+            validateSignature("double(*rxordSelect)(double,NumericVector)");
+            p_rxordSelect = (Ptr_rxordSelect)R_GetCCallable("rxode2", "_rxode2_rxordSelect");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxordSelect(Shield<SEXP>(Rcpp::wrap(u)), Shield<SEXP>(Rcpp::wrap(cs)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<double >(rcpp_result_gen);
+    }
+
     inline arma::mat rxrandnV(unsigned int nrow, unsigned int ncol) {
         typedef SEXP(*Ptr_rxrandnV)(SEXP,SEXP);
         static Ptr_rxrandnV p_rxrandnV = NULL;

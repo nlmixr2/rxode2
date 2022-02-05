@@ -122,6 +122,8 @@ SEXP _logit(SEXP, SEXP, SEXP);
 SEXP _linCmtParse(SEXP vars, SEXP inStr, SEXP verbose);
 SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 
+SEXP _rxode2_rxordSelect(SEXP, SEXP);
+
 static R_NativePrimitiveArgType rxode2_Sum_t[] = {
   REALSXP, INTSXP
 };
@@ -448,6 +450,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 27},
     {"_rxCbindStudyIndividual", (DL_FUNC) _rxCbindStudyIndividual, 2},
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
+    {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.

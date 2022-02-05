@@ -527,6 +527,45 @@ rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
   rxSeedEng(ncores)
   .Call(`_rxode2_rxcauchy_`, location, scale, n, ncores)
 }
+#' Simulate ordinal value
+#'
+#' @param ... the probabilities to be simulated.  These should sum up to a number below one.
+#'
+#'
+#' @return A number from 1 to the (number of probabilities specified + 1)
+#'
+#' @details
+#'
+#' The values entered into the 'rxord' simulation will simulate the
+#' probability of falling each group. If it falls outside of the
+#' specified probabilities, it will simulate the group (number of
+#' probabilities specified + 1)
+#'
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' # This will give values 1, and 2
+#' rxord(0.5)
+#' rxord(0.5)
+#' rxord(0.5)
+#' rxord(0.5)
+#'
+#' # This will give values 1, 2 and 3
+#' rxord(0.3, 0.3)
+#' rxord(0.3, 0.3)
+#' rxord(0.3, 0.3)
+#'
+#' @export
+rxord <- function(...) {
+  .args <- c(...)
+  if (any(.args < 0)) return(NA_real_)
+  if (any(.args > 1)) return(NA_real_)
+  .sum <- sum(.args)
+  if (.sum >= 1) return(NA_real_)
+  .v <- rxunif()
+  .args <- cumsum(.args)
+  .Call(`_rxode2_rxordSelect`, .v, .args)
+}
 
 #' Simulate Binomial variable from threefry generator
 #'
