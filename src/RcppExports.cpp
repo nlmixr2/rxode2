@@ -3065,6 +3065,40 @@ RcppExport SEXP _rxode2_isNullZero(SEXP objSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxErf
+NumericVector rxErf(NumericVector v);
+static SEXP _rxode2_rxErf_try(SEXP vSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type v(vSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxErf(v));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxErf(SEXP vSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxErf_try(vSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 
 // validate (ensure exported C++ functions exist before calling them)
 static int _rxode2_RcppExport_validate(const char* sig) { 
@@ -3145,6 +3179,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("arma::mat(*rxrandnV)(unsigned int,unsigned int)");
         signatures.insert("NumericVector(*rxnormV_)(double,double,int,int)");
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
+        signatures.insert("NumericVector(*rxErf)(NumericVector)");
     }
     return signatures.find(sig) != signatures.end();
 }
@@ -3226,6 +3261,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxrandnV", (DL_FUNC)_rxode2_rxrandnV_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxnormV_", (DL_FUNC)_rxode2_rxnormV__try);
     R_RegisterCCallable("rxode2", "_rxode2_isNullZero", (DL_FUNC)_rxode2_isNullZero_try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxErf", (DL_FUNC)_rxode2_rxErf_try);
     R_RegisterCCallable("rxode2", "_rxode2_RcppExport_validate", (DL_FUNC)_rxode2_RcppExport_validate);
     return R_NilValue;
 }

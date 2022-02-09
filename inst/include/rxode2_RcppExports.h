@@ -1599,6 +1599,27 @@ namespace rxode2 {
         return Rcpp::as<LogicalVector >(rcpp_result_gen);
     }
 
+    inline NumericVector rxErf(NumericVector v) {
+        typedef SEXP(*Ptr_rxErf)(SEXP);
+        static Ptr_rxErf p_rxErf = NULL;
+        if (p_rxErf == NULL) {
+            validateSignature("NumericVector(*rxErf)(NumericVector)");
+            p_rxErf = (Ptr_rxErf)R_GetCCallable("rxode2", "_rxode2_rxErf");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxErf(Shield<SEXP>(Rcpp::wrap(v)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<NumericVector >(rcpp_result_gen);
+    }
+
 }
 
 #endif // RCPP_rxode2_RCPPEXPORTS_H_GEN_

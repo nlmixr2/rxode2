@@ -885,6 +885,10 @@ isNullZero <- function(obj) {
     .Call(`_rxode2_isNullZero`, obj)
 }
 
+rxErf <- function(v) {
+    .Call(`_rxode2_rxErf`, v)
+}
+
 # Register entry points for exported C++ functions
 methods::setLoadAction(function(ns) {
     .Call('_rxode2_RcppExport_registerCCallable', PACKAGE = 'rxode2')

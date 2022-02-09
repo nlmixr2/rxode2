@@ -307,6 +307,7 @@ void handleTlast(double *time, rx_solving_options_ind *ind);
 SEXP _probit(SEXP xS, SEXP lowS, SEXP highS);
 SEXP _probitInv(SEXP xS, SEXP lowS, SEXP highS);
 SEXP _rxode2_rxrandnV(SEXP, SEXP);
+SEXP _rxode2_rxErf(SEXP);
 
 void simeps(int id);
 void simeta(int id);
@@ -453,6 +454,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxCbindStudyIndividual", (DL_FUNC) _rxCbindStudyIndividual, 2},
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
+    {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.

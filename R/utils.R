@@ -556,6 +556,19 @@ rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, i
 phi <- function(q) {
   .Call(`_phi`, q, PACKAGE = "rxode2")
 }
+#' Error function
+#'
+#'
+#' @param x vector or real values
+#' @return erf of x
+#' @author Matthew L. Fidler
+#' @examples
+#' erf(1.0)
+#' @export
+erf <- function(x) {
+  checkmate::assertNumeric(x)
+  .Call(`_rxode2_rxErf`, x, PACKAGE = "rxode2")
+}
 #' Gammap: normalized lower incomplete gamma function
 #'
 #' This is the gamma_p from the boost library

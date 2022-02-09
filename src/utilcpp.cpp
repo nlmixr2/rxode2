@@ -52,3 +52,13 @@ LogicalVector isNullZero(RObject obj) {
   }
   return false;
 }
+
+
+//[[Rcpp::export]]
+NumericVector rxErf(NumericVector v) {
+  NumericVector ret(v.size());
+  for (int i = v.size(); i--;) {
+    ret[i] = std::erf(v[i]);
+  }
+  return ret;
+}
