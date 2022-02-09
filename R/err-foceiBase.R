@@ -14,7 +14,8 @@
 #' @param pred1 Single error data frame
 #' @return Lambda expression
 #' @author Matthew Fidler
-#' @noRd
+#' @keywords internal
+#' @export
 .rxGetLambdaFromPred1AndIni <- function(env, pred1) {
   if (!is.na(pred1$lambda)) {
     return(.enQuote(pred1$lambda))
@@ -36,7 +37,8 @@
 #' @param pred1 The `data.frame` of the current error
 #' @return Lower Boundary
 #' @author Matthew Fidler
-#' @noRd
+#' @keywords internal
+#' @export
 .rxGetLowBoundaryPred1AndIni <- function(env, pred1) {
   if (.rxTransformHasBounds(pred1$transform)) {
     return(pred1$trLow)
@@ -49,7 +51,8 @@
 #' @param pred1 The `data.frame` of the current error
 #' @return Upper Boundary
 #' @author Matthew Fidler
-#' @noRd
+#' @keywords internal
+#' @export
 .rxGetHiBoundaryPred1AndIni <- function(env, pred1) {
   if (.rxTransformHasBounds(pred1$transform)) {
     return(pred1$trHi)
@@ -63,7 +66,8 @@
 #' @param pred1 The `data.frame` of the current error
 #' @return The prediction symbol
 #' @author Matthew Fidler
-#' @noRd
+#' @export
+#' @keywords internal
 .rxGetPredictionF <- function(env, pred1) {
   .f <- pred1$var
   if (.f == "rxLinCmt") {
@@ -79,7 +83,8 @@
 #' @param yj The transformation number for the current error
 #' @return The transformation expression
 #' @author Matthew Fidler
-#' @noRd
+#' @keywords internal
+#' @export
 .rxGetPredictionFTransform <- function(env, pred1, yj) {
   if (yj == 2) {
     return(quote(rx_pred_f_))
