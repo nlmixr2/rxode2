@@ -52,7 +52,6 @@
 #' # create the shiny app example (template)
 #' genShinyApp.template(appDir = "myapp")
 #' # run the shiny app
-#' \dontrun{
 #' if (requireNamespace("shiny", quietly=TRUE)) {
 #'   library(shiny)
 #'   # runApp("myapp") # Won't launch in environments without browsers
