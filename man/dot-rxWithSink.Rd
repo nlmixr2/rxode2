@@ -2,9 +2,12 @@
 % Please edit documentation in R/utils.R
 \name{.rxWithSink}
 \alias{.rxWithSink}
+\alias{.rxWithSinkBoth}
 \title{With one sink, then release}
 \usage{
 .rxWithSink(file, code)
+
+.rxWithSinkBoth(file, code)
 }
 \arguments{
 \item{file}{the path to the file sink while running the \code{code}}
