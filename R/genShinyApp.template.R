@@ -65,10 +65,10 @@
 genShinyApp.template <-
   function(appDir = "shinyExample", verbose = TRUE,
            ODE.config = list(ode = "model", params = c(KA = 0.294), inits = c(eff = 1), method = "lsoda", atol = 1e-8, rtol = 1e-6)) {
-   #if (!requireNamespace("shiny", quietly=TRUE)) {
-   #  warning("install.packages('shiny') to use genShinyApp.template()")
-   #  return(NULL)
-   #}
+   if (!requireNamespace("shiny", quietly=TRUE)) {
+     warning("install.packages('shiny') to use genShinyApp.template()")
+     return(NULL)
+   }
    if (missing(ODE.config)) {
       ODE.config <- list(
         ode = "
