@@ -63,16 +63,6 @@ dosing regimen simulation web application. Users may want to
 modify the code to experiment creating shiny applications for
 their specific \code{rxode2} models.
 }
-\examples{
-\donttest{
-# create the shiny app example (template)
-genShinyApp.template(appDir = "myapp")
-# run the shiny app
-library(shiny)
-# runApp("myapp") # Won't launch in environments without browsers
-unlink("myapp", recursive = TRUE, force = TRUE) # remove myapp
-}
-}
 \seealso{
 \code{\link[=rxode2]{rxode2()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.rstudio.com}).
 }
