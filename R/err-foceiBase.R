@@ -292,7 +292,14 @@
     return(bquote( ( (.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2)) ) ^ 2))
   }
 }
-
+#' Get Variance for error type
+#'
+#' @param env Environment
+#' @param pred1 Pred for one end-point
+#' @return Variance error type
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
 .rxGetVarianceForErrorType <- function(env, pred1) {
   switch(as.character(pred1$errType),
          "add"=.rxGetVarianceForErrorAdd(env, pred1), # 1
