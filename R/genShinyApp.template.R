@@ -47,12 +47,15 @@
 #'
 #' @examples
 #' \donttest{
+#' # remove myapp when the example is complete
+#' on.exit(unlink("myapp", recursive = TRUE, force = TRUE))
 #' # create the shiny app example (template)
 #' genShinyApp.template(appDir = "myapp")
 #' # run the shiny app
-#' library(shiny)
-#' # runApp("myapp") # Won't launch in environments without browsers
-#' unlink("myapp", recursive = TRUE, force = TRUE) # remove myapp
+#' if (requireNamespace("shiny", quietly=TRUE)) {
+#'   library(shiny)
+#'   # runApp("myapp") # Won't launch in environments without browsers
+#' }
 #' }
 #' @keywords simulation nonlinear
 #' @concept PK/PD
@@ -61,7 +64,11 @@
 genShinyApp.template <-
   function(appDir = "shinyExample", verbose = TRUE,
            ODE.config = list(ode = "model", params = c(KA = 0.294), inits = c(eff = 1), method = "lsoda", atol = 1e-8, rtol = 1e-6)) {
-    if (missing(ODE.config)) {
+   if (!requireNamespace("shiny", quietly=TRUE)) {
+     warning("install.packages('shiny') to use genShinyApp.template()")
+     return(NULL)
+   }
+   if (missing(ODE.config)) {
       ODE.config <- list(
         ode = "
    C2 = centr/V2;
