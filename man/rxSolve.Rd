@@ -28,6 +28,7 @@ rxSolve(
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin"),
   transitAbs = NULL,
+  sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
   maxsteps = 70000L,
@@ -40,8 +41,7 @@ rxSolve(
   ...,
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
-  addCov = FALSE,
-  matrix = FALSE,
+  addCov = TRUE,
   sigma = NULL,
   sigmaDf = NULL,
   sigmaLower = -Inf,
@@ -54,7 +54,6 @@ rxSolve(
   nDisplayProgress = 10000L,
   amountUnits = NA_character_,
   timeUnits = "hours",
-  stiff,
   theta = NULL,
   thetaLower = -Inf,
   thetaUpper = Inf,
@@ -116,7 +115,11 @@ rxSolve(
     TRUE, rate2 = TRUE, dur2 = TRUE),
   resample = NULL,
   resampleID = TRUE,
-  maxwhile = 1e+05
+  maxwhile = 1e+05,
+  atolSens = 1e-08,
+  rtolSens = 1e-06,
+  ssAtolSens = 1e-08,
+  ssRtolSens = 1e-06
 )
 
 \method{rxSolve}{`function`}(
@@ -215,6 +218,15 @@ must be setup specially to use this solving routine.
 \item{transitAbs}{boolean indicating if this is a transit
 compartment absorption}
 
+\item{sigdig}{Specifies the "significant digits" that the ode
+solving requests.  When specified this controls the relative and
+absolute tolerances of the ODE solvers.  By default the tolerance
+is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
+sensitivity equations and steady-state solutions the default is
+\code{0.5*10^(-sigdig-1.5)} (sensitivity changes only applicable
+for liblsoda).  By default this is unspecified (\code{NULL}) and uses
+the standard \code{atol}/\code{rtol}.}
+
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been
 achieved;  This is also used in the solved linear model to check
@@ -279,9 +291,6 @@ carried backward to midpoint.
 \item{addCov}{A boolean indicating if covariates should be added
 to the output matrix or data frame. By default this is
 disabled.}
-
-\item{matrix}{A boolean indicating if a matrix should be returned
-instead of the rxode2's solved object.}
 
 \item{sigma}{Named sigma covariance or Cholesky decomposition of a
 covariance matrix.  The names of the columns indicate
@@ -360,21 +369,6 @@ data as an rxode2 event table.}
 \item{timeUnits}{This supplies the time units of a data frame
 supplied instead of an event table.  This is for importing the
 data as an rxode2 event table.}
-
-\item{stiff}{a logical (\code{TRUE} by default) indicating whether
-the ODE system is stiff or not.\preformatted{For stiff ODE systems (`stiff = TRUE`), `rxode2` uses the
-LSODA (Livermore Solver for Ordinary Differential Equations)
-Fortran package, which implements an automatic method switching
-for stiff and non-stiff problems along the integration
-interval, authored by Hindmarsh and Petzold (2003).
-
-For non-stiff systems (`stiff = FALSE`), `rxode2` uses
-DOP853, an explicit Runge-Kutta method of order 8(5, 3) of
-Dormand and Prince as implemented in C by Hairer and Wanner
-(1993).
-
-If stiff is not specified, the `method` argument is used instead.
-}}
 
 \item{theta}{A vector of parameters that will be named \verb{THETA\[#\]} and
 added to parameters}
@@ -540,7 +534,7 @@ you supply single subject event tables (created with
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,
-420.}
+12.}
 
 \item{strictSS}{Boolean indicating if a strict steady-state is
 required. If a strict steady-state is (\code{TRUE}) required
@@ -702,6 +696,18 @@ Hence the default is \code{resampleID=TRUE}.}
 
 \item{maxwhile}{represents the maximum times a while loop is
 evaluated before exiting.  By default this is 100000}
+
+\item{atolSens}{Sensitivity atol, can be different than atol with
+liblsoda.  This allows a less accurate solve for gradients (if desired)}
+
+\item{rtolSens}{Sensitivity rtol, can be different than rtol with
+liblsoda.  This allows a less accurate solve for gradients (if desired)}
+
+\item{ssAtolSens}{Sensitivity absolute tolerance (atol) for
+calculating if steady state has been achieved for sensitivity compartments.}
+
+\item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
+calculating if steady state has been achieved for sensitivity compartments.}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

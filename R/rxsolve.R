@@ -631,7 +631,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     sigmaSeparation = c("auto", "lkj", "separation"),
                     sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     nDisplayProgress = 10000L,
-                    amountUnits = NA_character_, timeUnits = "hours", stiff,
+                    amountUnits = NA_character_, timeUnits = "hours",
                     theta = NULL,
                     thetaLower = -Inf, thetaUpper = Inf,
                     eta = NULL, addDosing = FALSE,
@@ -1380,9 +1380,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .rxModels$.ws <- .ws
   lapply(.ws, function(x) warning(x, call. = FALSE))
   .ret <- .ret[[1]]
-  if (.ctl$matrix == 4L) {
+  if (.ctl$returnType == 4L) {
     data.table::setDT(.ret)
-  } else if (.ctl$matrix == 5L) {
+  } else if (.ctl$returnType == 5L) {
     .ret <- tibble::as_tibble(.ret)
   }
   return(.ret)
