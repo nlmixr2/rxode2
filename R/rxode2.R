@@ -463,8 +463,8 @@ rxode2 <- # nolint
     .env$lhs <- .env$.mv$lhs
     .env$params <- .env$.mv$params
     .env$version <- rxode2::rxVersion()["version"]
-    .env$solve <- eval(bquote(function(..., matrix = TRUE, object = NULL) {
-      rxode2::rxSolve(object = get("rxDll", envir = .(.env)), ..., matrix = matrix)
+    .env$solve <- eval(bquote(function(..., returnType= "matrix", object = NULL) {
+      rxode2::rxSolve(object = get("rxDll", envir = .(.env)), ..., returnType = "matrix")
     }))
     .env$dll <- new.env(parent = baseenv())
     .env$assignPtr <- eval(bquote(function() {
