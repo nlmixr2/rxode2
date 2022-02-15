@@ -166,100 +166,100 @@ nleq <-
   }
 
 test_that("cholperm", {
-  withr::with_seed(12, {
+  rxWithSeed(12, {
     d <- 5
-    
+
     mu <- 1:d
-    
+
     ## Creating covariance matrix
     tmp <- matrix(rnorm(d^2), d, d)
     mcov <- tcrossprod(tmp, tmp)
-    
+
     r1 <- cholperm(mcov, -(1:5), 1:5)
     r2 <- .rx$rxCholperm(mcov, -(1:5), 1:5)
-    
+
     expect_equal(r1$L, r2$L)
     expect_equal(r1$l, r2$l)
     expect_equal(r1$u, r2$u)
     expect_equal(r1$perm, r2$perm + 1)
-    
+
     r1 <- cholperm(mcov, 1:5, 2 * (1:5))
     r2 <- .rx$rxCholperm(mcov, 1:5, 2 * 1:5)
-    
+
     expect_equal(r1$L, r2$L)
     expect_equal(r1$l, r2$l)
     expect_equal(r1$u, r2$u)
     expect_equal(r1$perm, r2$perm + 1)
-    
+
     r1 <- cholperm(mcov, -2 * (1:5), -(1:5))
     r2 <- .rx$rxCholperm(mcov, -2 * (1:5), -(1:5))
-    
+
     expect_equal(r1$L, r2$L)
     expect_equal(r1$l, r2$l)
     expect_equal(r1$u, r2$u)
     expect_equal(r1$perm, r2$perm + 1)
-    
+
     ## microbenchmark::microbenchmark(cholperm(mcov, -2 * (1:5), -(1:5)), rxCholperm(mcov, -2 * (1:5), -(1:5)))
     ## microbenchmark::microbenchmark(microbenchmark::cholperm(mcov, -2 * (1:5), -(1:5)), rxCholperm(mcov, -2 * (1:5), -(1:5)))
   })
 })
 
 test_that("gradpsi", {
-  withr::with_seed(12, {
+  rxWithSeed(12, {
     d <- 5
-    
+
     mu <- 1:d
-    
+
     ## Creating covariance matrix
     tmp <- matrix(rnorm(d^2), d, d)
     mcov <- tcrossprod(tmp, tmp)
     r2 <- .rx$rxCholperm(mcov, -(1:5), 1:5)
-    
+
     d <- length(r2$l)
     y <- seq(0, 2 * d - 2)
     l <- r2$l
     u <- r2$u
     L <- r2$L
-    
+
     r1 <- gradpsi(y, L, l, u)
     r2 <- .rx$rxGradpsi(y, L, l, u)
-    
+
     expect_equal(r1$Jac, r2$Jac)
     expect_equal(r1$grad, r2$grad)
-    
+
     r1 <- gradpsi(rep(1, 2 * d - 2), L, l, u)
     r2 <- .rx$rxGradpsi(rep(1, 2 * d - 2), L, l, u)
-    
+
     expect_equal(r1$Jac, r2$Jac)
     expect_equal(r1$grad, r2$grad)
-    
+
     r1 <- gradpsi(rep(-1, 2 * d - 2), L, l, u)
     r2 <- .rx$rxGradpsi(rep(-1, 2 * d - 2), L, l, u)
-    
+
     expect_equal(r1$Jac, r2$Jac)
     expect_equal(r1$grad, r2$grad)
-    
+
     ## microbenchmark::microbenchmark(gradpsi(rep(-1,2*d-2), L, l, u), .rx$rxGradpsi(rep(-1,2*d-2), L, l, u));
-    
+
     d <- 2
-    
+
     mu <- 1:d
-    
+
     ## Creating covariance matrix
     tmp <- matrix(rnorm(d^2), d, d)
     mcov <- tcrossprod(tmp, tmp)
     r2 <- .rx$rxCholperm(mcov, -(1:d), 1:d)
-    
+
     d <- length(r2$l)
     y <- seq(0, 2 * d - 2)
     l <- r2$l
     u <- r2$u
     L <- r2$L
-    
-    
+
+
     r1 <- gradpsi(rep(-1, 2 * d - 2), L, l, u)
     r2 <- .rx$rxGradpsi(rep(-1, 2 * d - 2), L, l, u)
-    
+
     expect_equal(r1$Jac, r2$Jac)
     expect_equal(r1$grad, r2$grad)
   })
@@ -267,44 +267,44 @@ test_that("gradpsi", {
 
 
 test_that("nleq", {
-  withr::with_seed(12, {
+  rxWithSeed(12, {
     d <- 5
-    
+
     mu <- 1:d
-    
+
     ## Creating covariance matrix
     tmp <- matrix(rnorm(d^2), d, d)
     mcov <- tcrossprod(tmp, tmp)
     r2 <- .rx$rxCholperm(mcov, -3 * (1:d), 2 * (1:d))
-    
+
     expect_equal(.rx$rxNleq(r2$l, r2$u, r2$L), nleq(r2$l, r2$u, r2$L))
     ## microbenchmark::microbenchmark(rxNleq(r2$l, r2$u, r2$L), nleq(r2$l, r2$u, r2$L))
-    
+
     d <- 2
-    
+
     mu <- 1:d
-    
+
     ## Creating covariance matrix
     tmp <- matrix(rnorm(d^2), d, d)
     mcov <- tcrossprod(tmp, tmp)
     r2 <- .rx$rxCholperm(mcov, -2 * (1:d), 3 * 1:d)
-    
+
     expect_equal(.rx$rxNleq(r2$l, r2$u, r2$L), nleq(r2$l, r2$u, r2$L))
   })
 })
 
 test_that("rxMvnrnd", {
-  withr::with_seed(12, {
+  rxWithSeed(12, {
     d <- 5
-    
+
     mu <- 1:d
-    
+
     ## Creating covariance matrix
     tmp <- matrix(rnorm(d^2), d, d)
     mcov <- tcrossprod(tmp, tmp)
-    
+
     out <- .rx$rxCholperm(mcov, -2 * (1:5), 1:5)
-    
+
     Lfull <- out$L
     l <- out$l
     u <- out$u
@@ -321,7 +321,7 @@ test_that("rxMvnrnd", {
     xmu <- nleq(l, u, L) # nonlinear equation solver
     x <- xmu[1:(d - 1)]
     mu <- xmu[d:(2 * d - 2)] # assign saddlepoint x* and mu*
-    
+
     fun <- function(n) {
       r1 <- .rx$rxMvnrnd(5, L, l, u, mu)
       expect_equal(length(r1$logpr), 5)

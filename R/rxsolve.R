@@ -692,7 +692,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .bad <- .nxtra
     }
-    .bad <- .bad[.bad != ".setupOnly"]
+    .bad <- .bad[!(.bad %in% c(".setupOnly"))]
     if (length(.bad) > 0) {
       stop("unused argument: ", paste
       (paste0("'", .bad, "'", sep=""), collapse=", "),

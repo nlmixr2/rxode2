@@ -75,7 +75,7 @@ et$add.sampling(0:360)
 
 et <- et %>% et(id = 1:7)
 
-withr::with_seed(
+rxWithSeed(
   42,
   {
     test_that("non-symmetric omegas throw errors", {
@@ -84,7 +84,7 @@ withr::with_seed(
         "omega.*symmetric"
       )
     })
-    
+
     test_that("non-symmetric sigmas throw errors", {
       expect_error(
         rxSolve(mod, theta, et,
@@ -100,13 +100,13 @@ withr::with_seed(
         "sigma.*symmetric"
       )
     })
-    
+
     tMat <- mod$params
     tMat <- tMat[regexpr("eta", tMat) == -1]
     tM <- diag(length(tMat))
     dimnames(tM) <- list(tMat, tMat)
     tM[1, 2] <- 2
-    
+
     omega <- lotri({
       eta.Vg + eta.Q + eta.Vi ~
         c(
@@ -118,7 +118,7 @@ withr::with_seed(
       eta.Clgi ~ 0.207
       eta.Cli ~ 0.0852
     })
-    
+
     test_that("non-symmetric sigmas throw errors", {
       expect_error(
         rxSolve(mod, theta, et, thetaMat = tM, omega = omega),

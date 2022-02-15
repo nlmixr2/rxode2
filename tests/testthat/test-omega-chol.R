@@ -1,4 +1,4 @@
-withr::with_seed(
+rxWithSeed(
   42,
   {
     dgs <- c("sqrt", "log", "identity")
@@ -28,7 +28,7 @@ withr::with_seed(
           }
         })
       }
-      
+
       test_that("diagonal indicator give correct values", {
         tmp <- rxSymInvCholCreate(matrix(c(1, 0.9, 0, 0.9, 1, 0, 0, 0, 1), ncol = 3))
         expect_equal(tmp$theta.diag, c(TRUE, FALSE, TRUE, TRUE))

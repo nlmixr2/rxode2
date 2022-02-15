@@ -6,8 +6,6 @@ test_that("npde simulation works on mac nlmixr #460", {
   skip_if_not(file.exists(test_path("si.qs")))
   si <- qs::qread(test_path("si.qs"))
   si$object <- rxode2(si$object)
-  withr::with_seed(
-    42,
-    expect_error(solve <- suppressWarnings(do.call(rxode2::rxSolve, si)), NA)
-  )
+  rxWithSeed(42,
+    expect_error(solve <- suppressWarnings(do.call(rxode2::rxSolve, si)), NA))
 })

@@ -1,4 +1,4 @@
-withr::with_seed(
+rxWithSeed(
   42,
   {
     m1 <- rxode2({
@@ -12,7 +12,7 @@ withr::with_seed(
       mWT <- WT
       mCRCL <- CRCL
     })
-    
+
     # Make non-random covariates for testing
     AGE <- round(seq(18, 18 + 29))
     SEX <- c(rep(0, 15), rep(1, 15))
@@ -20,14 +20,14 @@ withr::with_seed(
     CRCL <- seq(30, 30 + 29)
     ## id is in lower case to match the event table
     cov.df <- dplyr::tibble(id = seq_along(AGE), AGE = AGE, SEX = SEX, WT = WT, CRCL = CRCL)
-    
+
     s <- c(0, 0.25, 0.5, 0.75, 1, 1.5, seq(2, 24, by = 1))
     ## Add 10% diff
     s <- lapply(s, function(x) {
       d <- x * 0.1
       c(x - d, x + d)
     })
-    
+
     e <- et() %>%
       ## Specify the id and weight based dosing from covariate data.frame
       ## This requires rxode2 XXX
@@ -38,17 +38,17 @@ withr::with_seed(
       ## Merge the event table with the covarite information
       merge(cov.df, by = "id") %>%
       dplyr::as_tibble()
-    
+
     e2 <- et() %>%
       ## Specify the id and weight based dosing from covariate data.frame
       ## This requires rxode2 XXX
       et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
       ## Sampling is added for each ID
       et(s)
-    
+
     e$WT <- e$WT + e$time / 30
     e$CRCL <- e$CRCL + e$time / 30
-    
+
     test_that("test resampleID behavior", {
       for (nStud in c(1, 2)) {
         f1 <- rxSolve(m1, e,
@@ -62,13 +62,13 @@ withr::with_seed(
                       sigma = lotri(err.sd ~ 0.5), addCov = TRUE,
                       addDosing = TRUE, nStud = nStud
         )
-        
+
         if (nStud == 1) {
           expect_equal(f1$WT, e$WT)
           expect_equal(f1$CRCL, e$CRCL)
           expect_equal(f1$SEX, e$SEX)
         }
-        
+
         f2 <- rxSolve(m1, e,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
                       omega = lotri(
@@ -82,26 +82,26 @@ withr::with_seed(
                       resampleID = TRUE,
                       addDosing = TRUE, nStud = nStud
         )
-        
+
         expect_equal(f2$mWT, f2$WT)
         expect_equal(f2$mCRCL, f2$CRCL)
         expect_equal(f2$mSEX, f2$SEX)
-        
+
         r1 <- f1[!duplicated(f1$id), c("id", "SEX", "WT", "CRCL")]
         r2 <- f2[!duplicated(f2$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1, r2)))
-        
+
         ## now test that the covariates are all shifted correctly
         expect_true(all(r1$WT - r1$CRCL == 30))
         expect_true(all(r2$WT - r2$CRCL == 30))
-        
+
         expect_true(all(r1$SEX[r1$CRCL <= 44] == 0))
         expect_true(all(r1$SEX[r1$CRCL > 44] == 1))
-        
+
         expect_true(all(r2$SEX[r2$CRCL <= 44] == 0))
         expect_true(all(r2$SEX[r2$CRCL > 44] == 1))
-        
+
         f3 <- rxSolve(m1, e,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
                       omega = lotri(
@@ -115,23 +115,23 @@ withr::with_seed(
                       resampleID = FALSE,
                       addDosing = TRUE, nStud = nStud
         )
-        
+
         expect_equal(f3$mWT, f3$WT)
         expect_equal(f3$mCRCL, f3$CRCL)
         expect_equal(f3$mSEX, f3$SEX)
-        
+
         r1 <- f1[!duplicated(f1$id), c("id", "SEX", "WT", "CRCL")]
         r3 <- f3[!duplicated(f3$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1, r3)))
-        
+
         ## Now these should be false
         expect_false(all(r3$WT - r3$CRCL == 30))
-        
+
         expect_false(all(r3$SEX[r3$CRCL <= 44] == 0))
         expect_false(all(r3$SEX[r3$CRCL > 44] == 1))
-        
-        
+
+
         f3 <- rxSolve(m1, e,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
                       omega = lotri(
@@ -145,22 +145,22 @@ withr::with_seed(
                       resampleID = FALSE,
                       addDosing = TRUE, nStud = nStud
         )
-        
+
         expect_equal(f3$mWT, f3$WT)
         expect_equal(f3$mCRCL, f3$CRCL)
         expect_equal(f3$mSEX, f3$SEX)
-        
+
         r1 <- f1[!duplicated(f1$id), c("id", "SEX", "WT", "CRCL")]
         r3 <- f3[!duplicated(f3$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1, r3)))
-        
+
         ## Now these should be false
         expect_false(all(r3$WT - r3$CRCL == 30))
-        
+
         expect_false(all(r3$SEX[r3$CRCL <= 44] == 0))
         expect_false(all(r3$SEX[r3$CRCL > 44] == 1))
-        
+
         f2 <- rxSolve(m1, e,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
                       omega = lotri(
@@ -174,26 +174,26 @@ withr::with_seed(
                       resampleID = TRUE,
                       addDosing = TRUE, nStud = nStud
         )
-        
+
         expect_equal(f2$mWT, f2$WT)
         expect_equal(f2$mCRCL, f2$CRCL)
         expect_equal(f2$mSEX, f2$SEX)
-        
+
         r1 <- f1[!duplicated(f1$id), c("id", "SEX", "WT", "CRCL")]
         r2 <- f2[!duplicated(f2$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1, r2)))
-        
+
         ## now test that the covariates are all shifted correctly
         expect_true(all(r1$WT - r1$CRCL == 30))
         expect_true(all(r2$WT - r2$CRCL == 30))
-        
+
         expect_true(all(r1$SEX[r1$CRCL <= 44] == 0))
         expect_true(all(r1$SEX[r1$CRCL > 44] == 1))
-        
+
         expect_true(all(r2$SEX[r2$CRCL <= 44] == 0))
         expect_true(all(r2$SEX[r2$CRCL > 44] == 1))
-        
+
         if (nStud == 1) {
           f1 <- rxSolve(m1, e,
                         ## Lotri uses lower-triangular matrix rep. for named matrix
@@ -207,17 +207,17 @@ withr::with_seed(
                         resample = FALSE,
                         addDosing = TRUE, nStud = nStud
           )
-          
+
           expect_equal(f1$WT, e$WT)
           expect_equal(f1$CRCL, e$CRCL)
           expect_equal(f1$SEX, e$SEX)
         }
       }
     })
-    
-    
+
+
     # resample tests; time invariant
-    
+
     nsub <- 30
     # Simulate Weight based on age and gender
     AGE <- round(runif(nsub, min = 18, max = 70))
@@ -230,14 +230,14 @@ withr::with_seed(
     CRCL <- round(runif(nsub, 30, 140))
     ## id is in lower case to match the event table
     cov.df <- dplyr::tibble(id = seq_along(AGE), AGE = AGE, SEX = SEX, WT = WT, CRCL = CRCL)
-    
+
     s <- c(0, 0.25, 0.5, 0.75, 1, 1.5, seq(2, 24, by = 1))
     ## Add 10% diff
     s <- lapply(s, function(x) {
       d <- x * 0.1
       c(x - d, x + d)
     })
-    
+
     e <- et(time.units = "hr") %>%
       ## Specify the id and weight based dosing from covariate data.frame
       ## This requires rxode2 XXX
@@ -248,15 +248,15 @@ withr::with_seed(
       ## Merge the event table with the covarite information
       merge(cov.df, by = "id") %>%
       dplyr::as_tibble()
-    
+
     e2 <- et(time.units = "hr") %>%
       ## Specify the id and weight based dosing from covariate data.frame
       ## This requires rxode2 XXX
       et(id = cov.df$id, amt = 6 * cov.df$WT, rate = 6 * cov.df$WT) %>%
       ## Sampling is added for each ID
       et(s)
-    
-    
+
+
     test_that("resample tests: time invariant", {
       for (resampleID in c(TRUE, FALSE)) {
         f1 <- rxSolve(m1, e,
@@ -269,10 +269,10 @@ withr::with_seed(
                       ),
                       sigma = lotri(err.sd ~ 0.5), addCov = TRUE
         )
-        
+
         expect_equal(f1$mWT, f1$WT)
         expect_equal(f1$mCRCL, f1$CRCL)
-        
+
         f2 <- rxSolve(m1, e,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
                       omega = lotri(
@@ -285,10 +285,10 @@ withr::with_seed(
                       resample = c("SEX", "WT", "CRCL"),
                       resampleID = resampleID
         )
-        
+
         expect_equal(f2$mWT, f2$WT)
         expect_equal(f2$mCRCL, f2$CRCL)
-        
+
         f3 <- rxSolve(m1, e,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
                       omega = lotri(
@@ -301,21 +301,21 @@ withr::with_seed(
                       resample = c("SEX", "WT", "CRCL"),
                       resampleID = resampleID
         )
-        
+
         expect_equal(f3$mWT, f3$WT)
         expect_equal(f3$mCRCL, f3$CRCL)
-        
+
         r1 <- f1[!duplicated(f1$id), c("id", "SEX", "WT", "CRCL")]
         r2 <- f2[!duplicated(f2$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1, r2)))
-        
+
         r3 <- f3[!duplicated(f3$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1, r3)))
-        
+
         ## Now try icov option
-        
+
         f1 <-
           expect_warning(
             rxSolve(m1, e2,
@@ -330,10 +330,10 @@ withr::with_seed(
                     sigma = lotri(err.sd ~ 0.5), addCov = TRUE
             )
           )
-        
+
         expect_equal(f1$mWT, f1$WT)
         expect_equal(f1$mCRCL, f1$CRCL)
-        
+
         f2 <-
           expect_warning(
             rxSolve(m1, e2,
@@ -350,10 +350,10 @@ withr::with_seed(
                     resampleID = resampleID
             )
           )
-        
+
         expect_equal(f2$mWT, f2$WT)
         expect_equal(f2$mCRCL, f2$CRCL)
-        
+
         f3 <-
           expect_warning(
             rxSolve(m1, e2,
@@ -371,19 +371,19 @@ withr::with_seed(
                     resampleID = resampleID
             )
           )
-        
+
         expect_equal(f3$mWT, f3$WT)
         expect_equal(f3$mCRCL, f3$CRCL)
       }
     })
-    
+
     # resample tests; time varying
-    
+
     # Make these time-varying covariates
-    
+
     e$WT <- e$WT + rnorm(length(e$WT), sd = 1)
     e$CRCL <- e$CRCL + rnorm(length(e$CRCL), sd = 1)
-    
+
     test_that("resample tests: time varying", {
       for (resampleID in c(TRUE, FALSE)) {
         f1 <- rxSolve(m1, e,
@@ -396,10 +396,10 @@ withr::with_seed(
                       ),
                       sigma = lotri(err.sd ~ 0.5), addCov = TRUE
         )
-        
+
         expect_equal(f1$mWT, f1$WT)
         expect_equal(f1$mCRCL, f1$CRCL)
-        
+
         f2 <- rxSolve(m1, e,
                       ## Lotri uses lower-triangular matrix rep. for named matrix
                       omega = lotri(
@@ -412,10 +412,10 @@ withr::with_seed(
                       resample = c("SEX", "WT", "CRCL"),
                       resampleID = resampleID
         )
-        
+
         expect_equal(f2$mWT, f2$WT)
         expect_equal(f2$mCRCL, f2$CRCL)
-        
+
         f3 <- rxSolve(m1, e,
                       omega = lotri(
                         eta.cl ~ .306,
@@ -427,20 +427,20 @@ withr::with_seed(
                       resample = c("SEX", "WT", "CRCL"),
                       resampleID = resampleID
         )
-        
+
         expect_equal(f3$mWT, f3$WT)
         expect_equal(f3$mCRCL, f3$CRCL)
-        
+
         r1 <- f1[!duplicated(f1$id), c("id", "SEX", "WT", "CRCL")]
         r2 <- f2[!duplicated(f2$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1$WT, r2$WT)))
-        
+
         ## Now test keep case
-        
+
         r1 <- f1[!duplicated(f1$id), c("id", "SEX", "WT", "CRCL")]
         r3 <- f3[!duplicated(f3$id), c("id", "SEX", "WT", "CRCL")]
-        
+
         expect_false(isTRUE(all.equal(r1$WT, r3$WT)))
       }
     })

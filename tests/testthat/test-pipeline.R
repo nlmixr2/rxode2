@@ -12,7 +12,7 @@ mod <- rxode2({
 })
 
 fun <- function(type) {
-  withr::with_seed(
+  rxWithSeed(
     42,
     {
       p1 <- mod %>%
@@ -44,7 +44,7 @@ fun <- function(type) {
     }
   )
   ##
-  withr::with_seed(
+  rxWithSeed(
     42,
     {
       p2 <- mod %>%

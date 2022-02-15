@@ -5,18 +5,18 @@ test_that("single cvPost draw makes sense", {
 })
 
 test_that("cvPost of 3 items make sense.", {
-  withr::with_seed(42, {
+  rxWithSeed(42, {
     mat1 <- matrix(c(1, .3, .3, 1), 2, 2)
     draw3 <- cvPost(3, mat1, n = 3)
     drawNull <- cvPost(NULL, mat1, n = 1)
     expect_equal(drawNull, mat1)
   })
-  withr::with_seed(
-    42, 
+  rxWithSeed(
+    42,
     draw3c <- cvPost(3, matrix(c(1, .3, .3, 1), 2, 2), n = 3, returnChol = TRUE)
   )
-  withr::with_seed(
-    42, 
+  rxWithSeed(
+    42,
     draw3ct1 <- cvPost(3, matrix(c(1, .3, .3, 1), 2, 2), n = 3, returnChol = TRUE, type = 1)
   )
   expect_type(draw3, "list")
@@ -27,19 +27,19 @@ test_that("cvPost of 3 items make sense.", {
     expect_equal(chol(draw3[[i]]), draw3c[[i]])
   }
   expect_equal(draw3c, draw3ct1)
-  withr::with_seed(
-    42, 
+  rxWithSeed(
+    42,
     draw3c <- cvPost(3, chol(matrix(c(1, .3, .3, 1), 2, 2)), n = 3, omegaIsChol = TRUE)
-  )  
-  withr::with_seed(
+  )
+  rxWithSeed(
     42,
     draw3 <- cvPost(3, matrix(c(1, .3, .3, 1), 2, 2), n = 3)
   )
   for (i in seq_along(draw3)) {
     expect_equal(draw3[[1]], draw3c[[1]])
   }
-  
-  withr::with_seed(
+
+  rxWithSeed(
     42,
     lkj <-
       cvPost(
@@ -51,8 +51,8 @@ test_that("cvPost of 3 items make sense.", {
         type = "lkj",
         returnChol = TRUE
       )
-  )  
-  withr::with_seed(
+  )
+  rxWithSeed(
     42,
     lkjTn <-
       cvPost(
@@ -63,7 +63,7 @@ test_that("cvPost of 3 items make sense.", {
         type = 2,
         returnChol = TRUE, diagXformType = 5
       )
-  )  
+  )
   expect_equal(lkj, lkjTn)
 })
 
