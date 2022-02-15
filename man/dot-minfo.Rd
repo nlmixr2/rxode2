@@ -2,9 +2,18 @@
 % Please edit documentation in R/utils.R
 \name{.minfo}
 \alias{.minfo}
+\alias{.malert}
+\alias{.mwarn}
+\alias{.msuccess}
 \title{Internal messaging statements}
 \usage{
 .minfo(text, ..., .envir = parent.frame())
+
+.malert(text, ..., .envir = parent.frame())
+
+.mwarn(text, ..., .envir = parent.frame())
+
+.msuccess(text, ..., .envir = parent.frame())
 }
 \arguments{
 \item{text}{Text}
@@ -14,7 +23,7 @@
 \item{.envir}{Environment to evaluate in}
 }
 \value{
-Nothing, called for side
+Nothing, called for side effects
 }
 \description{
 Internal messaging statements

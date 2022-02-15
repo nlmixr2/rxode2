@@ -1,27 +1,27 @@
-#'  Internal messaging statements
+#' Internal messaging statements
 #'
 #' @param text Text
 #' @param ... Other arguments
 #' @param .envir Environment to evaluate in
-#' @return Nothing, called for side
+#' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
 .minfo <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert_info(gettext(text), ..., .envir = .envir)
 }
+#' @rdname dot-minfo
 #' @export
-#' @rdname .minfo
 .malert <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert(gettext(text), ..., .envir = .envir)
 }
+#' @rdname dot-minfo
 #' @export
-#' @rdname .minfo
 .mwarn <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert_warning(gettext(text), ..., .envir = .envir)
 }
+#' @rdname dot-minfo
 #' @export
-#' @rdname .minfo
 .msuccess <- function(text, ..., .envir = parent.frame()) {
   cli::cli_alert_success(gettext(text), ..., .envir = .envir)
 }
@@ -1015,7 +1015,7 @@ rxUnloadAll <- function() {
   force(code)
 }
 
-#' @rdname .rxWithSink
+#' @rdname dot-rxWithSink
 #' @export
 .rxWithSinkBoth <- function(file, code) {
   zz <- file(file, open = "wt")
