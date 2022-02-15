@@ -257,6 +257,7 @@ rxExpandNesting <- function(obj, nestingInfo, compile = FALSE) {
 #' 
 #'   -1 = Maximum number of iterations reached when doing
 #'        inductive linearization
+#' @name rxIndLin_
 NULL
 
 rxIndLin_ <- function(states) {
