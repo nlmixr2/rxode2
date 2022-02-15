@@ -39,21 +39,15 @@
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
 #'         must be setup specially to use this solving routine.
 #'
-#' @param stiff a logical (`TRUE` by default) indicating whether
-#'     the ODE system is stiff or not.
+#' @param sigdig Specifies the "significant digits" that the ode
+#'   solving requests.  When specified this controls the relative and
+#'   absolute tolerances of the ODE solvers.  By default the tolerance
+#'   is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
+#'   sensitivity equations and steady-state solutions the default is
+#'   \code{0.5*10^(-sigdig-1.5)} (sensitivity changes only applicable
+#'   for liblsoda).  By default this is unspecified (`NULL`) and uses
+#'   the standard `atol`/`rtol`.
 #'
-#'     For stiff ODE systems (`stiff = TRUE`), `rxode2` uses the
-#'     LSODA (Livermore Solver for Ordinary Differential Equations)
-#'     Fortran package, which implements an automatic method switching
-#'     for stiff and non-stiff problems along the integration
-#'     interval, authored by Hindmarsh and Petzold (2003).
-#'
-#'     For non-stiff systems (`stiff = FALSE`), `rxode2` uses
-#'     DOP853, an explicit Runge-Kutta method of order 8(5, 3) of
-#'     Dormand and Prince as implemented in C by Hairer and Wanner
-#'     (1993).
-#'
-#'     If stiff is not specified, the `method` argument is used instead.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
@@ -64,6 +58,12 @@
 #'     by the ODE solver to determine if a good solution has been
 #'     achieved. This is also used in the solved linear model to check
 #'     if prior doses do not add anything to the solution.
+#'
+#' @param atolSens Sensitivity atol, can be different than atol with
+#'     liblsoda.  This allows a less accurate solve for gradients (if desired)
+#'
+#' @param rtolSens Sensitivity rtol, can be different than rtol with
+#'     liblsoda.  This allows a less accurate solve for gradients (if desired)
 #'
 #' @param maxsteps maximum number of (internally defined) steps allowed
 #'     during one call to the solver. (5000 by default)
@@ -147,13 +147,19 @@
 #'
 #' @param infSSstep Step size for determining if a constant infusion
 #'     has reached steady state.  By default this is large value,
-#'     420.
+#'     12.
 #'
 #' @param ssAtol Steady state atol convergence factor.  Can be
 #'     a vector based on each state.
 #'
 #' @param ssRtol Steady state rtol convergence factor.  Can be a
 #'     vector based on each state.
+#'
+#' @param ssAtolSens Sensitivity absolute tolerance (atol) for
+#'     calculating if steady state has been achieved for sensitivity compartments.
+#'
+#' @param ssRtolSens Sensitivity relative tolerance (rtol) for
+#'     calculating if steady state has been achieved for sensitivity compartments.
 #'
 #' @param maxAtolRtolFactor The maximum `atol`/`rtol` that
 #'     FOCEi and other routines may adjust to.  By default 0.1
@@ -493,9 +499,6 @@
 #' @param subsetNonmem subset to NONMEM compatible EVIDs only.  By
 #'   default `TRUE`.
 #'
-#' @param matrix A boolean indicating if a matrix should be returned
-#'     instead of the rxode2's solved object.
-#'
 #' @param scale a numeric named vector with scaling for ode
 #'     parameters of the system.  The names must correspond to the
 #'     parameter identifiers in the ODE specification. Each of the
@@ -616,12 +619,13 @@
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin"),
-                    transitAbs = NULL, atol = 1.0e-8, rtol = 1.0e-6,
+                    transitAbs = NULL, sigdig=NULL,
+                    atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
                     hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, ...,
                     cores,
                     covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
-                    addCov = FALSE, matrix = FALSE, sigma = NULL, sigmaDf = NULL,
+                    addCov = TRUE, sigma = NULL, sigmaDf = NULL,
                     sigmaLower = -Inf, sigmaUpper = Inf,
                     nCoresRV = 1L, sigmaIsChol = FALSE,
                     sigmaSeparation = c("auto", "lkj", "separation"),
@@ -671,232 +675,318 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linDiffCentral = c(tlag = TRUE, f = TRUE, rate = TRUE, dur = TRUE, tlag2 = TRUE, f2 = TRUE, rate2 = TRUE, dur2 = TRUE),
                     resample = NULL,
                     resampleID = TRUE,
-                    maxwhile = 100000) {
+                    maxwhile = 100000,
+                    atolSens = 1.0e-8,
+                    rtolSens = 1.0e-6,
+                    ssAtolSens=1.0e-8,
+                    ssRtolSens=1.0e-6) {
   if (is.null(object)) {
     .xtra <- list(...)
-    if (inherits(sigmaXform, "numeric") || inherits(sigmaXform, "integer")) {
+    if (checkmate::testIntegerish(sigmaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
       .sigmaXform <- as.integer(sigmaXform)
     } else {
-      .sigmaXform <- as.vector(c(
-        "variance" = 6, "log" = 5, "identity" = 4,
-        "nlmixrSqrt" = 1, "nlmixrLog" = 2,
-        "nlmixrIdentity" = 3
-      )[match.arg(sigmaXform)])
+      .sigmaXform <- c(
+        "variance" = 6L, "log" = 5L, "identity" = 4L,
+        "nlmixrSqrt" = 1L, "nlmixrLog" = 2L,
+        "nlmixrIdentity" = 3L
+      )[match.arg(sigmaXform)]
     }
-    if (inherits(omegaXform, "numeric") || inherits(omegaXform, "integer")) {
+    if (checkmate::testIntegerish(omegaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
       .omegaXform <- as.integer(omegaXform)
     } else {
-      .omegaXform <- as.vector(c(
-        "variance" = 6, "log" = 5,
-        "identity" = 4, "nlmixrSqrt" = 1,
-        "nlmixrLog" = 2,
-        "nlmixrIdentity" = 3
-      )[match.arg(omegaXform)])
-    }
-
-    if (is.null(transitAbs) && !is.null(.xtra$transit_abs)) {
-      transitAbs <- .xtra$transit_abs
-    }
-    if (missing(updateObject) && !is.null(.xtra$update.object)) {
-      updateObject <- .xtra$update.object
-    }
-    if (missing(covsInterpolation) && !is.null(.xtra$covs_interpolation)) {
-      covsInterpolation <- .xtra$covs_interpolation
-    }
-    if (missing(addCov) && !is.null(.xtra$add.cov)) {
-      addCov <- .xtra$add.cov
+      .omegaXform <- c(
+        "variance" = 6L, "log" = 5L,
+        "identity" = 4L, "nlmixrSqrt" = 1L,
+        "nlmixrLog" = 2L,
+        "nlmixrIdentity" = 3L
+      )[match.arg(omegaXform)]
     }
     if (!is.null(seed)) {
+      # Depending on the kind of seed, seed may be a vector of
+      # integers, though that use-case is likely not common
+      checkmate::testIntegerish(seed, any.missing=FALSE, min.len=1)
       set.seed(seed)
     }
-    if (!is.null(nsim)) {
+    if (checkmate::testIntegerish(nsim, len=1, lower=1, any.missing=FALSE)) {
       if (rxIs(params, "eventTable") || rxIs(events, "eventTable") && nSub == 1L) {
-        nSub <- nsim
+        nSub <- as.integer(nsim)
       } else if (nStud == 1L) {
-        nStud <- nsim
+        nStud <- as.integer(nsim)
       }
     }
-    ## stiff = TRUE, transitAbs = NULL,
-    ## atol = 1.0e-8, rtol = 1.0e-6, maxsteps = 5000, hmin = 0, hmax = NULL, hini = 0, maxordn = 12,
-    ## maxords = 5, ..., covsInterpolation = c("linear", "constant", "NOCB", "midpoint"),
-    ## theta=numeric(), eta=numeric(), matrix=TRUE,addCov=FALSE,
-    ## inC=FALSE, counts=NULL, doSolve=TRUE
-    if (!missing(stiff) && missing(method)) {
-      if (rxIs(stiff, "logical")) {
-        if (stiff) {
-          method <- "lsoda"
-          .Deprecated("method = \"lsoda\"", old = "stiff=TRUE")
-        } else {
-          method <- "dop853"
-          .Deprecated("method = \"dop853\"", old = "stiff=FALSE")
-        }
-      }
-    } else if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
+    if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
       method <- 1L
-    } else {
-      if (inherits(method, "numeric")) {
+    } else if (checkmate::testIntegerish(method)) {
         method <- as.integer(method)
-      }
-      if (!rxIs(method, "integer")) {
-        method <- match.arg(method)
-      }
-    }
-    .matrixIdx <- c(
-      "rxSolve" = 0, "matrix" = 1, "data.frame" = 2, "data.frame.TBS" = 3, "data.table" = 4,
-      "tbl" = 5, "tibble" = 5
-    )
-    if (!missing(returnType)) {
-      matrix <- .matrixIdx[match.arg(returnType)]
-    } else if (!is.null(.xtra$return.type)) {
-      matrix <- .matrixIdx[.xtra$return.type]
     } else {
-      matrix <- as.integer(matrix)
-    }
-    if (!rxIs(method, "integer")) {
       .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
-      method <- .methodIdx[method]
+      method <- .methodIdx[match.arg(method)]
     }
-    if (length(covsInterpolation) > 1) covsInterpolation <- covsInterpolation[1]
-    if (!rxIs(covsInterpolation, "integer")) {
-      covsInterpolation <- tolower(match.arg(
-        covsInterpolation,
-        c(
-          "linear", "locf", "LOCF", "constant",
-          "nocb", "NOCB", "midpoint"
-        )
-      ))
-      if (covsInterpolation == "constant") covsInterpolation <- "locf"
-      covsInterpolation <- as.integer(which(covsInterpolation ==
-        c("linear", "locf", "nocb", "midpoint")) - 1)
+    if (checkmate::testIntegerish(returnType, len=1, lower=0, upper=5, any.missing=FALSE)) {
+      returnType <- as.integer(returnType)
+    } else {
+      .matrixIdx <- c(
+        "rxSolve" = 0L, "matrix" = 1L, "data.frame" = 2L, "data.frame.TBS" = 3L, "data.table" = 4L,
+        "tbl" = 5L, "tibble" = 5L)
+      returnType <- .matrixIdx[match.arg(returnType)]
     }
-    if (any(duplicated(names(.xtra)))) {
-      stop("duplicate arguments do not make sense", .call = FALSE)
+    if (checkmate::testIntegerish(covsInterpolation, len=1, lower=0, upper=3, any.missing=FALSE)) {
+      covsInterpolation <- as.integer(covsInterpolation)
+    } else {
+      covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
     }
     if (any(names(.xtra) == "covs")) {
       stop("covariates can no longer be specified by 'covs' include them in the event dataset",
-        .call = FALSE
-      )
+           .call = FALSE
+           )
     }
     if (missing(cores)) {
       cores <- 0L
     } else if (!missing(cores)) {
-      checkmate::assert_integerish(cores, lower = 0L, len = 1)
+      checkmate::assertIntegerish(cores, lower = 0L, len = 1)
       cores <- as.integer(cores)
     }
     if (inherits(sigma, "character")) {
       .sigma <- sigma
     } else {
-      .sigma <- lotri(sigma)
+      .sigma <- lotri::lotri(sigma)
     }
     if (inherits(omega, "character")) {
       .omega <- omega
     } else if (inherits(omega, "lotri")) {
       .omega <- omega
     } else {
-      .omega <- lotri(omega)
+      .omega <- lotri::lotri(omega)
     }
-    if (inherits(indLinMatExpType, "numeric") ||
-      inherits(indLinMatExpType, "integer")) {
+    if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .indLinMatExpType <- as.integer(indLinMatExpType)
     } else {
-      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3, "arma" = 1, "expokit" = 2)
-      .indLinMatExpType <- match.arg(indLinMatExpType)
-      .indLinMatExpType <- as.integer(.indLinMatExpTypeIdx[match.arg(indLinMatExpType)])
+      .indLinMatExpTypeIdx <- c("Al-Mohy" = 3L, "arma" = 1L, "expokit" = 2L)
+      .indLinMatExpType <- .indLinMatExpTypeIdx[match.arg(indLinMatExpType)]
     }
-    if (inherits(sumType, "numeric") ||
-      inherits(sumType, "integer")) {
+    if (checkmate::testIntegerish(sumType, len=1, lower=1, upper=5, any.missing=FALSE)) {
       .sum <- as.integer(sumType)
     } else {
-      .sum <- which(match.arg(sumType) == c("pairwise", "fsum", "kahan", "neumaier", "c"))
+      .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)[match.arg(sumType)]
     }
-    if (inherits(prodType, "numeric") ||
-      inherits(prodType, "integer")) {
+    if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .prod <- as.integer(prodType)
     } else {
-      .prod <- which(match.arg(prodType) == c("long double", "double", "logify"))
+      .prod <- c("long double"=1L, "double"=1L, "logify"=1L)[match.arg(prodType)]
     }
 
-    if (inherits(sensType, "numeric") ||
-      inherits(sensType, "integer")) {
+    if (checkmate::testIntegerish(sensType, len=1, lower=1, upper=4, any.missing=FALSE)) {
       .sensType <- as.integer(sensType)
     } else {
-      .sensType <- as.integer(which(match.arg(sensType) == c("autodiff", "forward", "central", "advan")))
+      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)[match.arg(sensType)]
     }
+    if (checkmate::testIntegerish(strictSS, len=1, lower=0, upper=1, any.missing=FALSE)) {
+      strictSS <- as.integer(strictSS)
+    } else {
+      checkmate::assertLogical(strictSS, any.missing=FALSE, len=1)
+      strictSS <- as.integer(strictSS)
+    }
+    checkmate::assertIntegerish(indLinMatExpOrder, len=1, min=1, any.missing=FALSE)
+    indLinMatExpOrder <- as.integer(indLinMatExpOrder)
+    if (!checkmate::testIntegerish(safeZero, lower=0, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
+    }
+    safeZero <- as.integer(safeZero)
+    if (!is.null(scale)) {
+      checkmate::assertNumeric(scale, lower=0, finite=TRUE, any.missing=FALSE,names="strict")
+    }
+    if (!is.null(transitAbs)) {
+      checkmate::assertLogical(transitAbs, len=1, any.missing=FALSE)
+    }
+    if (!is.null(sigdig)) {
+      checkmate::assertNumeric(sigdig, lower=1, finite=TRUE, any.missing=FALSE, len=1)
+      if (missing(atol)) {
+        atol <- 0.5 * 10^(-sigdig - 2)
+      }
+      if (missing(rtol)) {
+        rtol <- 0.5 * 10^(-sigdig - 2)
+      }
+      if (missing(atolSens)) {
+        atolSens <- 0.5 * 10^(-sigdig - 1.5)
+      }
+      if (missing(rtolSens)) {
+        rtolSens <- 0.5 * 10^(-sigdig - 1.5)
+      }
+      if (missing(ssAtol)) {
+        ssAtol <- 0.5 * 10^(-sigdig - 2)
+      }
+      if (misssing(ssRtol)) {
+        ssRtol <- 0.5 * 10^(-sigdig - 2)
+      }
+      if (missing(ssAtolSens)) {
+        ssAtolSens <- 0.5 * 10^(-sigdig - 1.5)
+      }
+      if (missing(ssRtolSens)) {
+        ssRtolSens <- 0.5 * 10^(-sigdig - 1.5)
+      }
+    }
+    checkmate::assertNumeric(atol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
+    checkmate::assertNumeric(rtol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
+    checkmate::assertNumeric(atolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(rtolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(ssAtol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
+    checkmate::assertNumeric(ssRtol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
+    checkmate::assertNumeric(ssAtolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(ssRtolSens, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(maxsteps, lower=1, any.missing=FALSE, len=1)
+    maxsteps <- as.integer(maxsteps)
+    checkmate::assertNumeric(hmin, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(hmax, lower=0, any.missing=TRUE, null.ok=TRUE, finite=TRUE, len=1)
+    checkmate::assertNumeric(hmaxSd, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
+    checkmate::assertNumeric(hini, lower=0, any.missing=FALSE, null.ok=FALSE, finite=TRUE, len=1)
+    checkmate::assertIntegerish(maxordn, lower=1, upper=12, any.missing=FALSE, len=1)
+    maxordn <- as.integer(maxordn)
+    checkmate::assertIntegerish(maxords, lower=1, upper=5, any.missing=FALSE, len=1)
+    maxods <- as.integer(maxords)
+    checkmate::assertIntegerish(mxhnil, lower=0, any.missing=FALSE, len=1)
+    mxhnil <- as.integer(mxhnil)
+    checkmate::assertIntegerish(hmxi, lower=0, any.missing=FALSE, len=1)
+    checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
+    checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
+    indLinPhiM <- as.integer(indLinPhiM)
+    checkmate::assertIntegerish(minSS, lower=5L, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(maxSS, lower=7L, any.missing=FALSE, len=1)
+    if (maxSS <= minSS) stop("'maxSS' must be larger than 'minSS'", call.=FALSE)
+    checkmate::assertNumeric(infSSstep, lower=6, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(maxAtolRtolFactor, lower=0.01, any.missing=FALSE, finite=TRUE, null.ok=FALSE, len=1)
+    checkmate::assertNumeric(from, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(to, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(by, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(length.out, lower=0, any.missing=FALSE, null.ok=TRUE, len=1)
+    checkmate::assertLogical(addCov, len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(nCoresRV, len=1, lower=1)
+    checkmate::assertLogical(sigmaIsChol,len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(nDisplayProgress, len=1, lower=100, any.missing=FALSE)
+    checkmate::assertCharacter(amountUnits, any.missing=TRUE, len=1)
+    checkmate::assertCharacter(timeUnits, any.missing=TRUE, len=1)
+    checkmate::assertLogical(addDosing, any.missing=TRUE, null.ok=TRUE, len=1)
+    checkmate::assertLogical(subsetNonmem, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertNumeric(sigmaDf, any.missing=FALSE, lower=0, len=1, null.ok=TRUE)
+    checkmate::assertNumeric(stateTrim, min.len=1, max.len=2)
+    checkmate::assertLogical(updateObject, len=1, any.missing=FALSE)
+    checkmate::assertNumeric(omegaDf, any.missing=FALSE, lower=0, len=1, null.ok=TRUE)
+    checkmate::assertLogical(omegaIsChol,len=1, any.missing=FALSE)
+    checkmate::assertIntegerish(nSub, len=1, lower=1)
+    nSub <- as.integer(nSub)
+    checkmate::assertMatrix(thetaMat, col.names="strict", null.ok=TRUE, mode="numeric")
+    checkmate::assertNumeric(thetaDf, any.missing=FALSE, lower=0, len=1, null.ok=TRUE)
+    checkmate::assertLogical(thetaIsChol,len=1, any.missing=FALSE,  null.ok=TRUE)
+    checkmate::assertIntegerish(nStud, len=1, any.missing=FALSE, lower=1)
+    checkmate::assertNumeric(dfSub, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
+    checkmate::assertNumeric(dfObs, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
+    # iCov = data.frame
+    checkmate::assertDataFrame(iCov, null.ok=TRUE)
+    checkmate::assertCharacter(keep, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertCharacter(drop, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertLogical(warnDrop, len=1, any.missing=FALSE)
+    checkmate::assertNumeric(omegaLower, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertNumeric(omegaUpper, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertNumeric(sigmaLower, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertNumeric(sigmaUpper, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertNumeric(thetaLower, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertNumeric(thetaUpper, any.missing=FALSE, null.ok=TRUE)
+    checkmate::assertLogical(idFactor, any.missing=FALSE)
+    checkmate::assertLogical(warnIdSort, any.missing=FALSE)
+    checkmate::assertNumeric(linDiff, names="strict", len=8)
+    checkmate::assertLogical(linDiffCentral, names="strict", len=8, any.missing=FALSE)
+    checkmate::assertLogical(resample, null.ok=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(maxwhile, lower=20, len=1)
+    maxwhile <- as.integer(maxwhile)
     .ret <- list(
-      scale = scale,
-      method = method,
-      transitAbs = transitAbs,
-      atol = atol,
-      rtol = rtol,
-      maxsteps = maxsteps,
-      hmin = hmin,
-      hmax = hmax,
-      hini = hini,
-      maxordn = maxordn,
-      maxords = maxords,
-      covsInterpolation = covsInterpolation,
-      addCov = addCov,
-      matrix = matrix,
-      sigma = .sigma,
-      sigmaDf = sigmaDf,
-      nCoresRV = nCoresRV,
-      sigmaIsChol = sigmaIsChol,
+      scale = scale, #
+      method = method, #
+      transitAbs = transitAbs, #
+      atol = atol, #
+      rtol = rtol, #
+      maxsteps = maxsteps,#
+      hmin = hmin, #
+      hmax = hmax, #
+      hini = hini, #
+      maxordn = maxordn, #
+      maxords = maxords, #
+      covsInterpolation = covsInterpolation,#
+      addCov = addCov,#
+      returnType = returnType, #
+      sigma = .sigma, #
+      sigmaDf = sigmaDf, #
+      nCoresRV = nCoresRV, #
+      sigmaIsChol = sigmaIsChol, #
       sigmaSeparation = match.arg(sigmaSeparation),
-      sigmaXform = .sigmaXform,
-      nDisplayProgress = nDisplayProgress,
-      amountUnits = amountUnits,
-      timeUnits = timeUnits,
-      addDosing = addDosing,
-      stateTrim = stateTrim,
-      updateObject = updateObject,
-      omega = .omega,
-      omegaDf = omegaDf,
-      omegaIsChol = omegaIsChol,
+      sigmaXform = .sigmaXform, #
+      nDisplayProgress = nDisplayProgress, #
+      amountUnits = amountUnits, #
+      timeUnits = timeUnits, #
+      addDosing = addDosing,#
+      stateTrim = stateTrim, #
+      updateObject = updateObject, #
+      omega = .omega, #
+      omegaDf = omegaDf, #
+      omegaIsChol = omegaIsChol, #
       omegaSeparation = match.arg(omegaSeparation),
       omegaXform = .omegaXform,
-      nSub = nSub,
-      thetaMat = thetaMat,
-      thetaDf = thetaDf,
-      thetaIsChol = thetaIsChol,
-      nStud = nStud,
-      dfSub = dfSub,
-      dfObs = dfObs,
-      seed = seed,
-      nsim = nsim,
-      minSS = minSS, maxSS = maxSS,
-      strictSS = as.integer(strictSS),
-      infSSstep = as.double(infSSstep),
-      istateReset = istateReset,
-      subsetNonmem = subsetNonmem,
-      hmaxSd = hmaxSd,
-      maxAtolRtolFactor = maxAtolRtolFactor,
-      from = from,
-      to = to,
-      by = by,
-      length.out = length.out,
-      iCov = iCov,
-      keep = keep, keepF = character(0), keepI = character(0),
-      drop = drop,
-      warnDrop = warnDrop,
-      omegaLower = omegaLower, omegaUpper = omegaUpper,
-      sigmaLower = sigmaLower, sigmaUpper = sigmaUpper,
-      thetaLower = thetaLower, thetaUpper = thetaUpper,
-      indLinPhiM = indLinPhiM,
-      indLinPhiTol = indLinPhiTol,
-      indLinMatExpType = .indLinMatExpType,
-      indLinMatExpOrder = as.integer(indLinMatExpOrder),
-      idFactor = idFactor,
-      mxhnil = mxhnil, hmxi = hmxi, warnIdSort = warnIdSort,
-      ssAtol = ssAtol, ssRtol = ssRtol, safeZero = as.integer(safeZero),
-      sumType = as.integer(.sum),
-      prodType = as.integer(.prod),
-      sensType = as.integer(.sensType),
-      linDiff = linDiff,
-      linDiffCentral = linDiffCentral,
-      resample = resample,
-      resampleID = resampleID,
+      nSub = nSub, #
+      thetaMat = thetaMat, #
+      thetaDf = thetaDf, #
+      thetaIsChol = thetaIsChol, #
+      nStud = nStud,#
+      dfSub = dfSub,#
+      dfObs = dfObs,#
+      seed = seed,#
+      nsim = nsim, #
+      minSS = minSS, maxSS = maxSS, #
+      strictSS = strictSS, #
+      infSSstep = as.double(infSSstep), #
+      istateReset = istateReset, #
+      subsetNonmem = subsetNonmem, #
+      hmaxSd = hmaxSd, #
+      maxAtolRtolFactor = maxAtolRtolFactor, #
+      from = from, #
+      to = to, #
+      by = by, #
+      length.out = length.out, #
+      iCov = iCov, #
+      keep = keep, #
+      keepF = character(0),
+      keepI = character(0),
+      drop = drop, #
+      warnDrop = warnDrop, #
+      omegaLower = omegaLower, #
+      omegaUpper = omegaUpper, #
+      sigmaLower = sigmaLower, #
+      sigmaUpper = sigmaUpper,#
+      thetaLower = thetaLower, #
+      thetaUpper = thetaUpper, #
+      indLinPhiM = indLinPhiM, #
+      indLinPhiTol = indLinPhiTol, #
+      indLinMatExpType = .indLinMatExpType, #
+      indLinMatExpOrder = indLinMatExpOrder, #
+      idFactor = idFactor, #
+      mxhnil = mxhnil, #
+      hmxi = hmxi, #
+      warnIdSort = warnIdSort, #
+      ssAtol = ssAtol, #
+      ssRtol = ssRtol, #
+      safeZero = safeZero,
+      sumType = .sum,
+      prodType = .prod,
+      sensType = .sensType,
+      linDiff = linDiff, #
+      linDiffCentral = linDiffCentral,#
+      resample = resample, #
+      resampleID = resampleID,#
       maxwhile = maxwhile,
-      cores = cores
+      cores = cores,
+      atolSens = atolSens,
+      rtolSens = rtolSens,
+      ssAtolSens=ssAtolSens,
+      ssRtolSens=ssRtolSens
     )
     return(.ret)
   }

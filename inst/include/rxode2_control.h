@@ -14,7 +14,7 @@
 #define Rxc_maxords 10
 #define Rxc_covsInterpolation 11
 #define Rxc_addCov 12
-#define Rxc_matrix 13
+#define Rxc_returnType 13
 #define Rxc_sigma 14
 #define Rxc_sigmaDf 15
 #define Rxc_nCoresRV 16

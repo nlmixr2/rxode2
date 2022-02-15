@@ -2661,7 +2661,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   _rxModels[".lastEv1"] = ev1;
 }
 
-// This functin simulates individual parameter values and residual
+// This function simulates individual parameter values and residual
 // parameter values and then converts them to a data.frame.  This
 // allows rxSolve_ to solve as if the user specified these parameters
 // directly
@@ -4311,7 +4311,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   int maxords = asInt(rxControl[Rxc_maxords], "maxords");
   int covs_interpolation = asInt(rxControl[Rxc_covsInterpolation], "covsInterpolation");
   bool addCov = asBool(rxControl[Rxc_addCov], "addCov");
-  int matrix = asInt(rxControl[Rxc_matrix], "matrix");
+  int matrix = asInt(rxControl[Rxc_returnType], "returnType");
   int nDisplayProgress = asInt(rxControl[Rxc_nDisplayProgress], "nDisplayProgress");
   NumericVector stateTrim = asNv(rxControl[Rxc_stateTrim], "stateTrim");
   double stateTrimU= R_PosInf;
