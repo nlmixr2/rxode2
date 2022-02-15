@@ -682,6 +682,22 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssRtolSens=1.0e-6) {
   if (is.null(object)) {
     .xtra <- list(...)
+    .nxtra <- names(.xtra)
+    .w <- which(regexpr("^[Ss][0-9]+$", .nxtra) != -1)
+    if (length(.w) > 0) {
+      for (.arg in .w) {
+        checkmate::assertNumeric(.xtra[[.arg]], lower=0, finite=TRUE, len=1, .var.name=.nxtra[.arg])
+      }
+      .bad <- .nxtra[-.w]
+    } else {
+      .bad <- .nxtra
+    }
+    .bad <- .bad[.bad != ".setupOnly"]
+    if (length(.bad) > 0) {
+      stop("unused argument: ", paste
+      (paste0("'", .bad, "'", sep=""), collapse=", "),
+           call.=FALSE)
+    }
     if (checkmate::testIntegerish(sigmaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
       .sigmaXform <- as.integer(sigmaXform)
     } else {
