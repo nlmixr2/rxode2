@@ -5893,12 +5893,12 @@ RObject rxUnloadAll_(){
     std::string varC = as<std::string>(vars[i]);
     if (varC.find(exclude) == std::string::npos){
       if (rxIsInt(_rxModels[varC])){
-  	int val = asInt(_rxModels[varC], "_rxModels[varC]");
-  	if (val > 1){
-  	} else if (val == 0 && rxUnload_){
-  	  dynUnload(varC);
-  	  rmRxModelsFromDll(varC);
-  	}
+        int val = asInt(_rxModels[varC], "_rxModels[varC]");
+        if (val > 1){
+        } else if (val == 0 && rxUnload_){
+          dynUnload(varC);
+          rmRxModelsFromDll(varC);
+        }
       }
     }
   }
