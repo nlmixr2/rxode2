@@ -916,7 +916,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(warnIdSort, any.missing=FALSE)
     checkmate::assertNumeric(linDiff, names="strict", len=8)
     checkmate::assertLogical(linDiffCentral, names="strict", len=8, any.missing=FALSE)
-    checkmate::assertLogical(resample, null.ok=TRUE, any.missing=FALSE, len=1)
+    if (is.null(resample)) {
+    } else if (checkmate::testLogical(resample)) {
+      checkmate::assertLogical(resample, any.missing=FALSE, len=1)
+    } else {
+      checkmate::assertCharacter(resample, min.len=1, any.missing=FALSE, unique=TRUE)
+    }
     checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(maxwhile, lower=20, len=1)
     maxwhile <- as.integer(maxwhile)
