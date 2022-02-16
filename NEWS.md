@@ -2,10 +2,25 @@
 
 ## Breaking changes
 
+### Solving controls
+
+* The options for `rxControl` and `rxSolve` are more strict.
+  `camelCase` is now always used.  Old options like `add.cov` and
+  `transit_abs` are no longer supported, only `addCov` and
+  `transitAbs` are supported.
+  
+* A new option, `sigdig` has been added to `rxControl()`, which
+  controls some of the more common significant figure options like
+  `atol`, `rtol`, `ssAtol`, `ssRtol`, with a single option. 
+  
+### Simulations
+
 * For simulations, `$simulationSigma` now assumes a diagonal matrix.
   The sigma values are assumed to be standard normal, and uncorrelated
   between endpoints.  Simulation with uncertainty will still draw from
   this identity diagonal matrix
+
+### Other breaking changes
 
 * Solved objects now access the underlying rxode model with `$rxode2`
   instead of `$rxode`
