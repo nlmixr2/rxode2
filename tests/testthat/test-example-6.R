@@ -378,7 +378,7 @@ test_that("infusion model works.", {
   expect_equal(round(as.data.frame(pk), 4), inf.dat)
 })
 
-pk2 <- solve(mod, et, matrix = TRUE)
+pk2 <- solve(mod, et, returnType = "matrix")
 test_that("matrix solving works.", {
   expect_equal(as.matrix(pk), pk2)
 })

@@ -23,7 +23,7 @@ et <- eventTable()
 et$add.sampling(seq(0, 10, length.out = 200))
 et$add.dosing(20, start.time = 0)
 
-transit <- rxSolve(mod, et, transit_abs = TRUE)
+transit <- rxSolve(mod, et, transitAbs = TRUE)
 
 test_that("Transit absorption works", {
   expect_equal(
@@ -43,7 +43,7 @@ test_that("Transit absorption is not specified, but still works.", {
 
 ## It gives different results than the last different results...? Is it important?  What does it mean?
 test_that("Transit absorption is turned off, and gives other results", {
-  no_transit <- rxSolve(mod, et, transit_abs = FALSE)
+  no_transit <- rxSolve(mod, et, transitAbs = FALSE)
   expect_equal(
     round(as.data.frame(no_transit[c(1:15, seq(194 - 15, 194)), ]), 4),
     dat2
@@ -201,9 +201,9 @@ test_that("transit can be a variable or ODE", {
   mod <- rxode2("
 d/dt(transit) = -3
 ")
-  
+
   expect_s3_class(mod, "rxode2")
-  
+
   mod <- rxode2("
 transit = matt + fun
 ")

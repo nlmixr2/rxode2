@@ -30,7 +30,7 @@ for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match pr
                    params = c(a = -8 / 3, b = -10),
                    events = et,
                    inits = c(X = 1, Y = 1, Z = 1),
-                   add.cov = TRUE,
+                   addCov = TRUE,
                    covsInterpolation = "linear",
                    method = meth
     )
@@ -56,7 +56,7 @@ for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match pr
                    params = c(a = -8 / 3, b = -10),
                    events = et,
                    inits = c(X = 1, Y = 1, Z = 1),
-                   covsInterpolation = "nocb", add.cov = TRUE,
+                   covsInterpolation = "nocb", addCov = TRUE,
                    method = meth
     )
   })
@@ -82,7 +82,7 @@ for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match pr
                    params = c(a = -8 / 3, b = -10),
                    events = et,
                    inits = c(X = 1, Y = 1, Z = 1),
-                   covsInterpolation = "midpoint", add.cov = TRUE,
+                   covsInterpolation = "midpoint", addCov = TRUE,
                    method = meth
     )
   })
@@ -108,7 +108,7 @@ for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match pr
                    params = c(a = -8 / 3, b = -10),
                    events = et,
                    inits = c(X = 1, Y = 1, Z = 1),
-                   covsInterpolation = "locf", add.cov = TRUE,
+                   covsInterpolation = "locf", addCov = TRUE,
                    method = meth
     )
   })
