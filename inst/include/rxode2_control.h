@@ -85,6 +85,11 @@
 #define Rxc_resampleID 81
 #define Rxc_maxwhile 82
 #define Rxc_cores 83
+#define Rxc_atolSens 84
+#define Rxc_rtolSens 85
+#define Rxc_ssAtolSens 86
+#define Rxc_ssRtolSens 87
+#define Rxc_simVariability 88
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

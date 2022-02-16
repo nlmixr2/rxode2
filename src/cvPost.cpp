@@ -385,12 +385,12 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
       double nu = getDbl(nuS, "nu");
       NumericVector om1 = as<NumericVector>(omegaS);
       if (om1.size() % 2 == 0){
-	int n1 = om1.size()/2;
-	NumericMatrix om2(n1,n1);
-	for (int i = 0; i < om1.size();i++){
-	  om2[i] = om1[i];
-	}
-	return as<SEXP>(cvPost0(nu, om2, omegaIsChol, returnChol));
+        int n1 = om1.size()/2;
+        NumericMatrix om2(n1,n1);
+        for (int i = 0; i < om1.size();i++){
+          om2[i] = om1[i];
+        }
+        return as<SEXP>(cvPost0(nu, om2, omegaIsChol, returnChol));
       }
     } else if (isLotri(omegaS)) {
       RObject omega = omegaS;
@@ -401,46 +401,46 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
       List lotriLst = as<List>(omega.attr("lotri"));
       // type = 1
       if (lotriLst.size() > 0) {
-	for (int ii = 0; ii < nOmega; ++ii) {
-	  List curOmegaLst;
-	  int nsame = 1;
-	  double nu = 1.0;
-	  if (lotriLst.containsElementNamed((as<std::string>(omegaInNames[ii])).c_str())){
-	    curOmegaLst = lotriLst[as<std::string>(omegaInNames[ii])];
-	    if (curOmegaLst.containsElementNamed("nu")){
-	      nu = asDouble(curOmegaLst["nu"], "nu");
-	    }
-	    if (curOmegaLst.containsElementNamed("same")){
-	      nsame = asInt(curOmegaLst["same"], "same");
-	    }
-	  }
-	  RObject cur;
-	  if (nu > 1) {
-	    NumericMatrix tmp = as<NumericMatrix>(omegaIn[ii]);
-	    cur = as<RObject>(cvPost0(nu, tmp, false, false));
-	    cur.attr("dimnames") = tmp.attr("dimnames"); // Preserve dimnames
-	  } else {
-	    cur = omegaIn[ii];
-	  }
-	  if (nsame > 1) {
-	    List curl(2);
-	    curl[0] = cur;
-	    curl[1] = nsame;
-	    omegaLst[ii] = curl;
-	  } else {
-	    omegaLst[ii] = cur;
-	  }
-	}
+        for (int ii = 0; ii < nOmega; ++ii) {
+          List curOmegaLst;
+          int nsame = 1;
+          double nu = 1.0;
+          if (lotriLst.containsElementNamed((as<std::string>(omegaInNames[ii])).c_str())){
+            curOmegaLst = lotriLst[as<std::string>(omegaInNames[ii])];
+            if (curOmegaLst.containsElementNamed("nu")){
+              nu = asDouble(curOmegaLst["nu"], "nu");
+            }
+            if (curOmegaLst.containsElementNamed("same")){
+              nsame = asInt(curOmegaLst["same"], "same");
+            }
+          }
+          RObject cur;
+          if (nu > 1) {
+            NumericMatrix tmp = as<NumericMatrix>(omegaIn[ii]);
+            cur = as<RObject>(cvPost0(nu, tmp, false, false));
+            cur.attr("dimnames") = tmp.attr("dimnames"); // Preserve dimnames
+          } else {
+            cur = omegaIn[ii];
+          }
+          if (nsame > 1) {
+            List curl(2);
+            curl[0] = cur;
+            curl[1] = nsame;
+            omegaLst[ii] = curl;
+          } else {
+            omegaLst[ii] = cur;
+          }
+        }
       }
       IntegerVector startAt(1);
       if (omega.hasAttribute("start")) {
-	startAt[0] = asInt(omega.attr("start"), "start");
+        startAt[0] = asInt(omega.attr("start"), "start");
       } else {
-	startAt[0] = 1;
+        startAt[0] = 1;
       }
       SEXP format = R_NilValue;
       if (omega.hasAttribute("format")) {
-	format = omega.attr("format");
+        format = omega.attr("format");
       }
       setupLotri();
       return as<SEXP>(lotriMat(as<SEXP>(omegaLst), format, as<SEXP>(startAt)));
@@ -450,52 +450,52 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
       List ret(n);
       IntegerVector nIS = IntegerVector::create(1);
       for (int i = 0; i < n; i++){
-	ret[i] = cvPost_(nuS, omegaS, nIS, omegaIsCholS,
-			 returnCholS, nIS, wrap(nIS));
-       }
+        ret[i] = cvPost_(nuS, omegaS, nIS, omegaIsCholS,
+                         returnCholS, nIS, wrap(nIS));
+      }
       return(as<SEXP>(ret));
     } else {
       if (qtest(omegaS, "M")){
-	double nu = getDbl(nuS, "nu");
-	if (qtest(diagXformTypeS, "S1")) {
-	  //("log", "identity", "variance", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity")
-	  std::string diagXformTypeStr = as<std::string>(diagXformTypeS);
-	  if (diagXformTypeStr == "nlmixrSqrt"){
-	    diagXformType=1;
-	  } else if (diagXformTypeStr == "nlmixrLog"){
-	    diagXformType=2;
-	  } else if (diagXformTypeStr == "nlmixrIdentity"){
-	    diagXformType=3;
-	  } else if (diagXformTypeStr == "identity") {
-	    diagXformType=4;
-	  } else if (diagXformTypeStr == "log") {
-	    diagXformType=5;
-	  } else if (diagXformTypeStr == "variance") {
-	    diagXformType=6;
-	  } else {
-	    stop(_("variable 'diagXformType': Unrecognized transformation '%s'"), diagXformTypeStr.c_str());
-	  }
-	} else if (qtest(diagXformTypeS, "X1[1,6]")) {
-	  diagXformType = as<int>(diagXformTypeS);
-	} else {
-	  stop(_("variable 'diagXformType': Can only use transformation string or integer[1,6]"));
-	}
-	RObject omega = omegaS;
-	arma::mat om0 = as<arma::mat>(omega);
-	om0 = om0.t();
-	List ret(om0.n_cols);
-	if (n != 1) Rf_warningcall(R_NilValue, _("'n' is determined by the 'omega' argument which contains the simulated standard deviations"));
-	for (unsigned int i = 0; i < om0.n_cols; i++){
-	  arma::vec sd = om0.col(i);
-	  if (nu < 3){
-	    stop("'nu' must be >= 3");
-	  }
-	  arma::mat reti = rcvC1(sd, nu, diagXformType, type-1, returnChol);
-	  RObject retc = wrap(reti);
-	  retc.attr("dimnames") = omega.attr("dimnames");
-	  ret[i] = retc;
-	}
-	return(as<SEXP>(ret));
+        double nu = getDbl(nuS, "nu");
+        if (qtest(diagXformTypeS, "S1")) {
+          //("log", "identity", "variance", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity")
+          std::string diagXformTypeStr = as<std::string>(diagXformTypeS);
+          if (diagXformTypeStr == "nlmixrSqrt"){
+            diagXformType=1;
+          } else if (diagXformTypeStr == "nlmixrLog"){
+            diagXformType=2;
+          } else if (diagXformTypeStr == "nlmixrIdentity"){
+            diagXformType=3;
+          } else if (diagXformTypeStr == "identity") {
+            diagXformType=4;
+          } else if (diagXformTypeStr == "log") {
+            diagXformType=5;
+          } else if (diagXformTypeStr == "variance") {
+            diagXformType=6;
+          } else {
+            stop(_("variable 'diagXformType': Unrecognized transformation '%s'"), diagXformTypeStr.c_str());
+          }
+        } else if (qtest(diagXformTypeS, "X1[1,6]")) {
+          diagXformType = as<int>(diagXformTypeS);
+        } else {
+          stop(_("variable 'diagXformType': Can only use transformation string or integer[1,6]"));
+        }
+        RObject omega = omegaS;
+        arma::mat om0 = as<arma::mat>(omega);
+        om0 = om0.t();
+        List ret(om0.n_cols);
+        if (n != 1) Rf_warningcall(R_NilValue, _("'n' is determined by the 'omega' argument which contains the simulated standard deviations"));
+        for (unsigned int i = 0; i < om0.n_cols; i++){
+          arma::vec sd = om0.col(i);
+          if (nu < 3){
+            stop("'nu' must be >= 3");
+          }
+          arma::mat reti = rcvC1(sd, nu, diagXformType, type-1, returnChol);
+          RObject retc = wrap(reti);
+          retc.attr("dimnames") = omega.attr("dimnames");
+          ret[i] = retc;
+        }
+        return(as<SEXP>(ret));
       } else {
 	stop(_("when sampling from correlation priors to create covariance matrices, the input must be a matrix of standard deviations"));
       }
@@ -884,17 +884,17 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
     if (!Rf_isNull(belowSEXP)) {
       // below to sample matrix
       SEXP omegaList = PROTECT(cvPost_(et, // In case needed
-				       lotriBelow,
-				       nStudS,
-				       LogicalVector::create(false),
-				       LogicalVector::create(false),
-				       IntegerVector::create(methodInt),
-				       control[Rxc_omegaXform])); pro++;
+                                       lotriBelow,
+                                       nStudS,
+                                       LogicalVector::create(false),
+                                       LogicalVector::create(false),
+                                       IntegerVector::create(methodInt),
+                                       control[Rxc_omegaXform])); pro++;
       if (Rf_length(omegaList) >= 1 &&
-	  asDouble(lotriMaxNu(lotriBelow), "lotriMaxNu(lotriBelow)") > 1.0) {
-	rxModelsAssign(".omegaL", omegaList);
+          asDouble(lotriMaxNu(lotriBelow), "lotriMaxNu(lotriBelow)") > 1.0) {
+        rxModelsAssign(".omegaL", omegaList);
       } else {
-	rxModelsAssign(".omegaL", R_NilValue);
+        rxModelsAssign(".omegaL", R_NilValue);
       }
       List bounds = PROTECT(lotriGetBounds(lotriBelow, R_NilValue, R_NilValue)); pro++;
       NumericVector upper = bounds[0];

@@ -208,7 +208,7 @@ SEXP _rxode2_rxSimThetaOmega(SEXP paramsSEXP, SEXP omegaSEXP, SEXP omegaDfSEXP, 
 			    SEXP thetaLowerSEXP, SEXP thetaUpperSEXP, SEXP thetaDfSEXP, SEXP thetaIsCholSEXP, SEXP nStudSEXP,
 			    SEXP sigmaSEXP, SEXP sigmaLowerSEXP, SEXP sigmaUpperSEXP, SEXP sigmaDfSEXP, SEXP sigmaIsCholSEXP,
 			    SEXP sigmaSeparationSEXP, SEXP sigmaXformSEXP, SEXP nCoresRVSEXP, SEXP nObsSEXP, SEXP dfSubSEXP,
-			    SEXP dfObsSEXP, SEXP simSubjectsSEXP);
+                             SEXP dfObsSEXP, SEXP simSubjectsSEXP, SEXP simVar);
 
 SEXP _rxode2_convertId_(SEXP);
 
@@ -450,7 +450,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxQr", (DL_FUNC) _rxode2_rxQr, 1},
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
-    {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 27},
+    {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},
     {"_rxCbindStudyIndividual", (DL_FUNC) _rxCbindStudyIndividual, 2},
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},

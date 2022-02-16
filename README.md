@@ -16,7 +16,7 @@ output:
 
 <!-- badges: start -->
 [![R build status](https://github.com/nlmixr2/rxode2/workflows/R-CMD-check/badge.svg)](https://github.com/nlmixr2/rxode2/actions)
-[![codecov.io](https://codecov.io/github/nlmixr2/rxode2/coverage.svg)](https://codecov.io/github/nlmixr2/rxode2?branch=master)
+[![codecov.io](https://codecov.io/github/nlmixr2/rxode2/coverage.svg)](https://codecov.io/github/nlmixr2/rxode2)
 [![CRAN version](http://www.r-pkg.org/badges/version/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CRAN checks](https://cranchecks.info/badges/worst/rxode2)](https://cran.r-project.org/web/checks/check_results_rxode2.html)
 [![CRAN total downloads](https://cranlogs.r-pkg.org/badges/grand-total/rxode2)](https://cran.r-project.org/package=rxode2)
@@ -179,15 +179,6 @@ mod1 <- rxode2({
   d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff;
 })
 #> 
-#> detected new version of rxode2, cleaning cache
-#> → creating rxode2 include directory
-#> → getting R compile options
-#> → precompiling headers
-#> ✔ done
-#> Warning in file(file, if (append) "a" else "w"): cannot open file '/home/
-#> matt/.cache/R/rxode2/rx_0fba07e769d3ed75783fd5f0bf78aba2__.rxd/Makevars': No
-#> such file or directory
-#> Error in file(file, if (append) "a" else "w"): cannot open the connection
 ```
 
 ## Specify ODE parameters and initial conditions
@@ -334,14 +325,14 @@ You can also solve this and create a rxode2 data frame:
 ```r
 x <- mod1 %>% rxSolve(theta, ev, inits);
 x
-#> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ Solved rxode2 object ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂
-#> ── Parameters (x$params): ───────────────────────────────────────────────────────────────────────────────
+#> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ Solved rxode2 object ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂
+#> ── Parameters (x$params): ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #>      V2      V3      KA      CL       Q     Kin    Kout    EC50 
 #>  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 
-#> ── Initial Conditions (x$inits): ────────────────────────────────────────────────────────────────────────
+#> ── Initial Conditions (x$inits): ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> depot centr  peri   eff 
 #>     0     0     0     1 
-#> ── First part of data (object): ─────────────────────────────────────────────────────────────────────────
+#> ── First part of data (object): ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> # A tibble: 241 × 7
 #>   time    C2    C3  depot centr  peri   eff
 #>    [h] <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl>
@@ -352,7 +343,7 @@ x
 #> 5    4  44.5 5.98   3085. 1789. 1776.  1.23
 #> 6    5  36.5 7.18   2299. 1467. 2132.  1.21
 #> # … with 235 more rows
-#> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂
+#> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂
 ```
 
 This returns a modified data frame.  You can see the compartment
@@ -361,6 +352,7 @@ values in the plot below:
 
 ```r
 library(ggplot2)
+#> Learn more about the underlying theory at https://ggplot2-book.org/
 plot(x,C2) + ylab("Central Concentration")
 ```
 

@@ -545,6 +545,9 @@
 #'     of c-based solves before a progress bar is shown.  By default
 #'     this is 10,000.
 #'
+#' @param simVariability determines if the variability is simulated.
+#'   When `NA` (default) this is determined by the solver.
+#'
 #' @param ... Other arguments including scaling factors for each
 #'     compartment.  This includes S# = numeric will scale a compartment
 #'     # by a dividing the compartment amount by the scale factor,
@@ -679,7 +682,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     atolSens = 1.0e-8,
                     rtolSens = 1.0e-6,
                     ssAtolSens=1.0e-8,
-                    ssRtolSens=1.0e-6) {
+                    ssRtolSens=1.0e-6,
+                    simVariability=NA) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -863,6 +867,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     mxhnil <- as.integer(mxhnil)
     checkmate::assertIntegerish(hmxi, lower=0, any.missing=FALSE, len=1)
     checkmate::assertLogical(istateReset, any.missing=TRUE, len=1)
+    checkmate::assertLogical(simVariability, len=1)
     checkmate::assertNumeric(indLinPhiTol, lower=0, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(indLinPhiM, lower=0L, any.missing=FALSE, len=1)
     indLinPhiM <- as.integer(indLinPhiM)
@@ -1002,7 +1007,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       atolSens = atolSens,
       rtolSens = rtolSens,
       ssAtolSens=ssAtolSens,
-      ssRtolSens=ssRtolSens
+      ssRtolSens=ssRtolSens,
+      simVariability=simVariability
     )
     return(.ret)
   }

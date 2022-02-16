@@ -2,6 +2,7 @@ rex::register_shortcuts("rxode2")
 # Hack for Rcpp->R initial values problem
 R_NegInf <- -Inf # nolint
 R_PosInf <- Inf # nolint
+NA_LOGICAL <- NA # nolint
 
 .linCmtSens <- NULL
 .clearME <- function() {

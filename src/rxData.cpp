@@ -1,3 +1,4 @@
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 #define USE_FC_LEN_T
 // [[Rcpp::interfaces(r, cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -281,17 +282,17 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
     bool dropCur = false;
     for (int j = drop.size();j--;){
       if (as<std::string>(drop[j]) == curName){
-	dropCur = true;
-	break;
+        dropCur = true;
+        break;
       }
     }
     if (dropCur) ndrop++;
     else keepI.push_back(i);
     if (dropCur && !rxDropB && i < 10){
       if (curName == "time" ||
-	  curName == "sim.id" ||
-	  curName == "id") {
-	rxDropB=true;
+          curName == "sim.id" ||
+          curName == "id") {
+        rxDropB=true;
       }
     }
   }
@@ -345,19 +346,19 @@ bool rxIs(const RObject &obj, std::string cls){
     hasDim = obj.hasAttribute("dim");
     if (hasDim){
       if (cls == "event.matrix" || cls ==  "rx.event"){
-	if (obj.hasAttribute("dimnames")){
-	  List dn = as<List>(obj.attr("dimnames"));
+        if (obj.hasAttribute("dimnames")){
+          List dn = as<List>(obj.attr("dimnames"));
           if (dn.size() == 2){
             CharacterVector cv = as<CharacterVector>(dn[1]);
             return rxHasEventNames(cv);
           } else {
-	    return false;
-	  }
-	} else {
-	  return false;
-	}
+            return false;
+          }
+        } else {
+          return false;
+        }
       } else {
-	return (cls == "matrix" || cls == "numeric.matrix");
+        return (cls == "matrix" || cls == "numeric.matrix");
       }
     } else {
       return (cls == "numeric");
@@ -371,11 +372,11 @@ bool rxIs(const RObject &obj, std::string cls){
       if (cls == "integer") return true;
       hasCls = obj.hasAttribute("class");
       if (hasCls){
-	CharacterVector classattr = obj.attr("class");
-	if (as<std::string>(classattr[0]) == cls){
-	  return true;
-	}
-	return false;
+        CharacterVector classattr = obj.attr("class");
+        if (as<std::string>(classattr[0]) == cls){
+          return true;
+        }
+        return false;
       }
       return false;
     }
@@ -402,10 +403,10 @@ bool rxIs(const RObject &obj, std::string cls){
       std::string cur;
       for (unsigned int i = classattr.size(); i--; ){
         cur = as<std::string>(classattr[i]);
-	if (cur == cls) return true;
+        if (cur == cls) return true;
       }
     } else if (cls == "environment"){
-       return true;
+      return true;
     }
     return false;
   case 22: // external pointer
@@ -434,118 +435,130 @@ SEXP rxRmvn0(NumericMatrix& A_, arma::rowvec mu, arma::mat sigma,
 
 Function getRxFn(std::string name);
 RObject rxSimSigma(const RObject &sigma,
-		   const RObject &df,
-		   int ncores,
-		   const bool &isChol,
-		   int nObs,
-		   const bool checkNames = true,
-		   NumericVector lowerIn =NumericVector::create(R_NegInf),
-		   NumericVector upperIn = NumericVector::create(R_PosInf),
-		   double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100){
+                   const RObject &df,
+                   int ncores,
+                   const bool &isChol,
+                   int nObs,
+                   const bool checkNames = true,
+                   NumericVector lowerIn =NumericVector::create(R_NegInf),
+                   NumericVector upperIn = NumericVector::create(R_PosInf),
+                   double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100){
+  
   if (nObs < 1){
     rxSolveFree();
     stop(_("refusing to simulate %d items"),nObs);
   }
-  if (rxIs(sigma, "numeric.matrix")){
-    // FIXME more distributions
-    NumericMatrix sigmaM(sigma);
-    if (sigmaM.nrow() != sigmaM.ncol()){
-      rxSolveFree();
-      stop(_("matrix must be a square matrix"));
-    }
-    List dimnames;
-    StringVector simNames;
-    bool addNames = false;
-    if (checkNames){
-      if (!sigmaM.hasAttribute("dimnames")){
-	rxSolveFree();
-        stop(_("matrix must have named dimensions (try 'lotri')"));
-      }
-      dimnames = sigmaM.attr("dimnames");
-      simNames = as<StringVector>(dimnames[1]);
-      addNames=true;
-    } else if (sigmaM.hasAttribute("dimnames")){
-      dimnames = sigmaM.attr("dimnames");
-      simNames = as<StringVector>(dimnames[1]);
-      addNames = true;
-    }
-    NumericMatrix simMat(nObs,sigmaM.ncol());
-    arma::rowvec m(sigmaM.ncol(),arma::fill::zeros);
-    NumericVector lower(sigmaM.ncol());
-    NumericVector upper(sigmaM.ncol());
-    if (lowerIn.hasAttribute("names")){
-      // Named
-      CharacterVector lowN = lowerIn.attr("names");
-      for (int j = simNames.size(); j--;){
-	lower[j] = R_NegInf;
-	for (int k = lowN.size(); k--;){
-	  if (lowN[k] == simNames[j]){
-	    lower[j] = lowerIn[k];
-	    break;
-	  }
-	}
-      }
-    } else if (lowerIn.size() == 1){
-      std::fill_n(lower.begin(), lower.size(), lowerIn[0]);
-    } else if (lowerIn.size() == lower.size()){
-      lower = lowerIn;
+  NumericMatrix sigmaM;
+  if (rxIs(sigma, "numeric.matrix")) {
+    sigmaM = as<NumericMatrix>(sigma);
+  } else if (rxIs(sigma, "numeric")) {
+    int dim = sqrt(Rf_length(sigma));
+    if (dim*dim == Rf_length(sigma)) {
+      RObject sigma2 = sigma;
+      sigma2.attr("dim") = IntegerVector::create(dim, dim);
+      sigmaM = as<NumericMatrix>(sigma2);
     } else {
       rxSolveFree();
-      stop(_("lower bounds needs to be a named vector, a single value or exactly the same size"));
+      stop(_("'sigma' is not a matrix"));
     }
-    if (upperIn.hasAttribute("names")){
-      // Named
-      CharacterVector upN = upperIn.attr("names");
-      for (int j = simNames.size(); j--;){
-	upper[j] = R_NegInf;
-	for (int k = upN.size(); k--;){
-	  if (upN[k] == simNames[j]){
-	    upper[j] = upperIn[k];
-	    break;
-	  }
-	}
-      }
-    } else if (upperIn.size() == 1){
-      std::fill_n(upper.begin(), upper.size(), upperIn[0]);
-    } else if (!upperIn.hasAttribute("names") && upperIn.size() == upper.size()){
-      upper = upperIn;
-    } else {
+  } else {
+    rxSolveFree(); 
+    stop(_("'sigma' is not a matrix"));
+  }
+  if (sigmaM.nrow() != sigmaM.ncol()){
+    rxSolveFree();
+    stop(_("matrix must be a square matrix"));
+  }
+  List dimnames;
+  StringVector simNames;
+  bool addNames = false;
+  if (checkNames){
+    if (!sigmaM.hasAttribute("dimnames")) {
       rxSolveFree();
-      stop(_("upper bounds needs to be a named vector, a single value or exactly the same size"));
+      stop(_("matrix must have named dimensions (try 'lotri')"));
     }
+    dimnames = sigmaM.attr("dimnames");
+    simNames = as<StringVector>(dimnames[1]);
+    addNames=true;
+  } else if (sigmaM.hasAttribute("dimnames")){
+    dimnames = sigmaM.attr("dimnames");
+    simNames = as<StringVector>(dimnames[1]);
+    addNames = true;
+  }
+  NumericMatrix simMat(nObs,sigmaM.ncol());
+  arma::rowvec m(sigmaM.ncol(),arma::fill::zeros);
+  NumericVector lower(sigmaM.ncol());
+  NumericVector upper(sigmaM.ncol());
+  if (lowerIn.hasAttribute("names")){
+    // Named
+    CharacterVector lowN = lowerIn.attr("names");
+    for (int j = simNames.size(); j--;){
+      lower[j] = R_NegInf;
+      for (int k = lowN.size(); k--;){
+        if (lowN[k] == simNames[j]){
+          lower[j] = lowerIn[k];
+          break;
+        }
+      }
+    }
+  } else if (lowerIn.size() == 1){
+    std::fill_n(lower.begin(), lower.size(), lowerIn[0]);
+  } else if (lowerIn.size() == lower.size()){
+    lower = lowerIn;
+  } else {
+    rxSolveFree();
+    stop(_("lower bounds needs to be a named vector, a single value or exactly the same size"));
+  }
+  if (upperIn.hasAttribute("names")){
+    // Named
+    CharacterVector upN = upperIn.attr("names");
+    for (int j = simNames.size(); j--;){
+      upper[j] = R_NegInf;
+      for (int k = upN.size(); k--;){
+        if (upN[k] == simNames[j]){
+          upper[j] = upperIn[k];
+          break;
+        }
+      }
+    }
+  } else if (upperIn.size() == 1){
+    std::fill_n(upper.begin(), upper.size(), upperIn[0]);
+  } else if (!upperIn.hasAttribute("names") && upperIn.size() == upper.size()){
+    upper = upperIn;
+  } else {
+    rxSolveFree();
+    stop(_("upper bounds needs to be a named vector, a single value or exactly the same size"));
+  }
 
-    // Ncores = 1?  Should it be parallelized when it can be...?
-    // Note that if so, the number of cores also affects the output.
-    // while (totSim < nObs){
-    if (df.isNULL()){
-      rxRmvn0(simMat, m, as<arma::mat>(sigmaM), as<arma::vec>(lower),
-	      as<arma::vec>(upper), ncores, isChol, a, tol, nlTol, nlMaxiter);
+  // Ncores = 1?  Should it be parallelized when it can be...?
+  // Note that if so, the number of cores also affects the output.
+  // while (totSim < nObs){
+  if (df.isNULL()){
+    rxRmvn0(simMat, m, as<arma::mat>(sigmaM), as<arma::vec>(lower),
+            as<arma::vec>(upper), ncores, isChol, a, tol, nlTol, nlMaxiter);
+    // Function rmvn = as<Function>(mvnfast["rmvn"]);
+    // rmvn(_["n"]=curSimN, _["mu"]=m, _["sigma"]=sigmaM, _["ncores"]=ncores,
+    //      _["isChol"]=isChol, _["A"] = simMat0); // simMat is updated with the random deviates
+  } else {
+    double df2 = asDouble(df, "df");
+    if (R_FINITE(df2)){
+      rxSolveFree();
+      stop(_("t distribution not yet supported"));
+      // Function rmvt = as<Function>(mvnfast["rmvt"]);
+      // rmvt(_["n"]=curSimN, _["mu"]=m, _["sigma"]=sigmaM, _["df"] = df,
+      //      _["ncores"]=ncores, _["isChol"]=isChol, _["A"] = simMat0);
+    } else {
       // Function rmvn = as<Function>(mvnfast["rmvn"]);
       // rmvn(_["n"]=curSimN, _["mu"]=m, _["sigma"]=sigmaM, _["ncores"]=ncores,
-      //      _["isChol"]=isChol, _["A"] = simMat0); // simMat is updated with the random deviates
-    } else {
-      double df2 = asDouble(df, "df");
-      if (R_FINITE(df2)){
-	rxSolveFree();
-	stop(_("t distribution not yet supported"));
-	  // Function rmvt = as<Function>(mvnfast["rmvt"]);
-	// rmvt(_["n"]=curSimN, _["mu"]=m, _["sigma"]=sigmaM, _["df"] = df,
-	//      _["ncores"]=ncores, _["isChol"]=isChol, _["A"] = simMat0);
-      } else {
-	// Function rmvn = as<Function>(mvnfast["rmvn"]);
-	// rmvn(_["n"]=curSimN, _["mu"]=m, _["sigma"]=sigmaM, _["ncores"]=ncores,
-	//      _["isChol"]=isChol, _["A"] = simMat0);
-	rxRmvn0(simMat, m, as<arma::mat>(sigmaM), as<arma::vec>(lower),
-	      as<arma::vec>(upper), ncores, isChol, a, tol, nlTol, nlMaxiter);
-      }
+      //      _["isChol"]=isChol, _["A"] = simMat0);
+      rxRmvn0(simMat, m, as<arma::mat>(sigmaM), as<arma::vec>(lower),
+              as<arma::vec>(upper), ncores, isChol, a, tol, nlTol, nlMaxiter);
     }
-    if (addNames){
-      simMat.attr("dimnames") = List::create(R_NilValue, simNames);
-    }
-    return wrap(simMat);
-  } else {
-    return R_NilValue;
   }
+  if (addNames){
+    simMat.attr("dimnames") = List::create(R_NilValue, simNames);
+  }
+  return wrap(simMat);
 }
 
 bool foundEnv = false;
@@ -706,47 +719,47 @@ List rxModelVars_character(const RObject &obj){
       Function f = getRxFn(".rxModelVarsCharacter");
       return f(obj);
     } else if ((sobj.find("=") == std::string::npos) &&
-	       (sobj.find("<-") == std::string::npos) &&
-	       (sobj.find("~") == std::string::npos)){
+               (sobj.find("<-") == std::string::npos) &&
+               (sobj.find("~") == std::string::npos)){
       if (_rxModels.exists(sobj)){
-	RObject obj1 = _rxModels.get(sobj);
-	if (rxIs(obj1, "rxModelVars")){
-	  return asList(obj1, "obj1");
-	} else if (rxIs(obj1, "rxode2")){
-	  return rxModelVars_(obj1);
-	}
+        RObject obj1 = _rxModels.get(sobj);
+        if (rxIs(obj1, "rxModelVars")){
+          return asList(obj1, "obj1");
+        } else if (rxIs(obj1, "rxode2")){
+          return rxModelVars_(obj1);
+        }
       }
       std::string sobj1 = sobj + "_model_vars";
       if (_rxModels.exists(sobj1)){
-	RObject obj1 = _rxModels.get(sobj1);
-	if (rxIs(obj1, "rxModelVars")){
-	  return asList(obj1, "obj1");
-	}
+        RObject obj1 = _rxModels.get(sobj1);
+        if (rxIs(obj1, "rxModelVars")){
+          return asList(obj1, "obj1");
+        }
       }
       Function get("get",R_BaseNamespace);
       List platform = get(_["x"]=".Platform", _["envir"] = R_BaseEnv);
       sobj1 = sobj + "_" + as<std::string>(platform["r_arch"]) + "_model_vars";
       if (_rxModels.exists(sobj1)){
-	RObject obj1 = _rxModels.get(sobj1);
-	if (rxIs(obj1, "rxModelVars")){
-	  return asList(obj1, "obj1");
-	}
+        RObject obj1 = _rxModels.get(sobj1);
+        if (rxIs(obj1, "rxModelVars")){
+          return asList(obj1, "obj1");
+        }
       }
       Function filePath("file.path", R_BaseNamespace);
       Function wd("getwd", R_BaseNamespace);
       sobj1 = as<std::string>(wd());
       std::string sobj2 = sobj + ".d";
       std::string sobj3 = sobj + "_" + as<std::string>(platform["r_arch"]) +
-	as<std::string>(platform["dynlib.ext"]);
+        as<std::string>(platform["dynlib.ext"]);
       sobj1 = as<std::string>(filePath(sobj1,sobj2, sobj3));
       if (fileExists(sobj1)){
-	Rcout << "Path: " << sobj1 << "\n";
-	dynLoad(sobj1);
-	sobj1 = sobj + "_" + as<std::string>(platform["r_arch"]) +
-	  "_model_vars";
-	Function call(".Call", R_BaseNamespace);
-	List ret = asList(call(sobj1), "call(sobj1)");
-	return ret;
+        Rcout << "Path: " << sobj1 << "\n";
+        dynLoad(sobj1);
+        sobj1 = sobj + "_" + as<std::string>(platform["r_arch"]) +
+          "_model_vars";
+        Function call(".Call", R_BaseNamespace);
+        List ret = asList(call(sobj1), "call(sobj1)");
+        return ret;
       }
     }
   } else if (modList.hasAttribute("names")){
@@ -754,18 +767,18 @@ List rxModelVars_character(const RObject &obj){
     CharacterVector modListNames = modList.names();
     for (unsigned int i = 0; i < modListNames.size(); i++){
       if (modListNames[i] == "prefix"){
-	containsPrefix=true;
-	break;
+        containsPrefix=true;
+        break;
       }
     }
     if (containsPrefix){
       std::string mvstr = asStr(modList["prefix"], "modList[\"prefix\"]") +
-	"model_vars";
+        "model_vars";
       if(_rxModels.exists(mvstr)){
-	RObject obj1 = _rxModels.get(mvstr);
-	if (rxIs(obj1, "rxModelVars")){
-	  return asList(obj1, "obj1");
-	}
+        RObject obj1 = _rxModels.get(mvstr);
+        if (rxIs(obj1, "rxModelVars")){
+          return asList(obj1, "obj1");
+        }
       }
     }
   }
@@ -780,17 +793,17 @@ List rxModelVars_character(const RObject &obj){
 List rxModelVars_list(const RObject &obj){
   bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, podo=false, dfdy=false;
   List lobj  = asList(obj, "rxModelVars_list");
-    CharacterVector nobj = lobj.names();
-    for (unsigned int i = 0; i < nobj.size(); i++){
-      if (nobj[i] == "modVars"){
-	return(rxModelVars_(lobj["modVars"]));
-      } else if (!params && nobj[i]== "params"){
-	params=true;
-      } else if (!lhs && nobj[i] == "lhs"){
-	lhs=true;
-      } else if (!state && nobj[i] == "state"){
-	state=true;
-      } else if (!trans && nobj[i] == "trans"){
+  CharacterVector nobj = lobj.names();
+  for (unsigned int i = 0; i < nobj.size(); i++){
+    if (nobj[i] == "modVars"){
+      return(rxModelVars_(lobj["modVars"]));
+    } else if (!params && nobj[i]== "params"){
+      params=true;
+    } else if (!lhs && nobj[i] == "lhs"){
+      lhs=true;
+    } else if (!state && nobj[i] == "state"){
+      state=true;
+    } else if (!trans && nobj[i] == "trans"){
 	trans=true;
       } else if (!ini && nobj[i] == "ini"){
 	ini = true;
@@ -1468,19 +1481,26 @@ SEXP rxGetFromChar(char *ptr, std::string var){
 }
 
 void rxSimTheta(CharacterVector &thetaN,
-		CharacterVector& parN,
-		IntegerVector &thetaPar,
-		NumericMatrix &thetaM,
-		bool &simTheta,
-		const Nullable<NumericMatrix> &thetaMat = R_NilValue,
-		const NumericVector &thetaLower = NumericVector::create(R_NegInf),
-		const NumericVector &thetaUpper = NumericVector::create(R_PosInf),
-		const Nullable<NumericVector> &thetaDf  = R_NilValue,
-		const bool &thetaIsChol = false,
-		int nStud = 1,
-		int nCoresRV = 1){
+                CharacterVector& parN,
+                IntegerVector &thetaPar,
+                NumericMatrix &thetaM,
+                bool &simTheta,
+                const Nullable<NumericMatrix> &thetaMat = R_NilValue,
+                const NumericVector &thetaLower = NumericVector::create(R_NegInf),
+                const NumericVector &thetaUpper = NumericVector::create(R_PosInf),
+                const Nullable<NumericVector> &thetaDf  = R_NilValue,
+                const bool &thetaIsChol = false,
+                int nStud = 1,
+                int nCoresRV = 1,
+                const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)){
   int i, j;
-  if (!thetaMat.isNull() && nStud > 1){
+  bool simVar;
+  if (simVariability[0] == NA_LOGICAL) {
+    simVar = nStud > 1;
+  } else {
+    simVar = simVariability[0];
+  }
+  if (!thetaMat.isNull() && simVar){
     thetaM = as<NumericMatrix>(thetaMat);
     if (!thetaM.hasAttribute("dimnames")){
       rxSolveFree();
@@ -1489,13 +1509,14 @@ void rxSimTheta(CharacterVector &thetaN,
     if (!thetaIsChol){
       arma::mat tmpM = as<arma::mat>(thetaMat);
       if (tmpM.is_zero()) {
-	setZeroMatrix(1);
+        setZeroMatrix(1);
       } else if (!tmpM.is_sympd()){
-	rxSolveFree();
-	stop(_("'thetaMat' must be symmetric"));
+        rxSolveFree();
+        stop(_("'thetaMat' must be symmetric"));
       }
     }
-    thetaM = as<NumericMatrix>(rxSimSigma(as<RObject>(thetaMat), as<RObject>(thetaDf),
+    
+    thetaM = as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf),
 					  nCoresRV, thetaIsChol, nStud, true,
 					  thetaLower, thetaUpper));
     thetaN = as<CharacterVector>((as<List>(thetaM.attr("dimnames")))[1]);
@@ -1512,32 +1533,39 @@ void rxSimTheta(CharacterVector &thetaN,
       }
     }
     simTheta = true;
-  } else if (!thetaMat.isNull() && nStud <= 1){
-    warning(_("'thetaMat' is ignored since nStud <= 1"));
+  } else if (!thetaMat.isNull() && simVariability[0] == NA_LOGICAL && !simVar){
+    warning(_("'thetaMat' is ignored since nStud <= 1\nuse 'simVariability = TRUE' to override."));
   }
 }
 
 
 void rxSimOmega(bool &simOmega,
-		bool &omegaSep,
-		NumericMatrix &omegaM,
-		CharacterVector &omegaN,
-		NumericMatrix &omegaMC,
-		List &omegaList,
-		CharacterVector &thetaN,
-		NumericMatrix &thetaM,
-		std::string omegatxt="omega",
-		const RObject &omega= R_NilValue,
-		const Nullable<NumericVector> &omegaDf= R_NilValue,
-		const NumericVector &omegaLower = NumericVector::create(R_NegInf),
-		const NumericVector &omegaUpper = NumericVector::create(R_PosInf),
-		const bool &omegaIsChol = false,
-		std::string omegaSeparation= "auto",//("lkj", "separation")
-		const int omegaXform = 1,
-		double dfSub = 0,
-		int nStud = 1,
-		int nSub = 1){
+                bool &omegaSep,
+                NumericMatrix &omegaM,
+                CharacterVector &omegaN,
+                NumericMatrix &omegaMC,
+                List &omegaList,
+                CharacterVector &thetaN,
+                NumericMatrix &thetaM,
+                std::string omegatxt="omega",
+                const RObject &omega= R_NilValue,
+                const Nullable<NumericVector> &omegaDf= R_NilValue,
+                const NumericVector &omegaLower = NumericVector::create(R_NegInf),
+                const NumericVector &omegaUpper = NumericVector::create(R_PosInf),
+                const bool &omegaIsChol = false,
+                std::string omegaSeparation= "auto",//("lkj", "separation")
+                const int omegaXform = 1,
+                double dfSub = 0,
+                int nStud = 1,
+                int nSub = 1,
+                const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
   int j;
+  bool simVar;
+  if (simVariability[0] == NA_LOGICAL) {
+    simVar = nStud > 1;
+  } else {
+    simVar = simVariability[0];
+  }
   if (Rf_isNull(omega)){
   } else if (rxIsChar(omega)){
     // Create a matrix in order of the names.
@@ -1547,64 +1575,92 @@ void rxSimOmega(bool &simOmega,
     j=0;
     for (unsigned int i = 0; i < omegaN.size(); i++){
       for (j = 0; j < thetaN.size(); j++){
-	if (omegaN[i] == thetaN[j]){
-	  omegaMC(_,i) = thetaM(_,j);
-	  break;
-	}
+        if (omegaN[i] == thetaN[j]){
+          omegaMC(_,i) = thetaM(_,j);
+          break;
+        }
       }
       if (j == thetaN.size()){
-	stop(_("parameter '%s' was not simulated in 'thetaMat'"), (as<std::string>(omegaN[i])).c_str());
+        stop(_("parameter '%s' was not simulated in 'thetaMat'"), (as<std::string>(omegaN[i])).c_str());
       }
     }
     simOmega = true;
   } else if (rxIs(omega,"matrix") && nSub >= 1){
-    simOmega = true;
     omegaM = as<NumericMatrix>(omega);
-    if (!omegaM.hasAttribute("dimnames")){
-      rxSolveFree();
-      stop(_("'%s' must be a named matrix"),omegatxt.c_str());
-    }
-    if (omegaIsChol){
-      omegaMC = omegaM;
+    if (omegaM.size() == 0) {
     } else {
-      arma::mat tmpM = as<arma::mat>(omegaM);
-      if (tmpM.is_zero()){
-	omegaMC = omegaM;
-      } else if (!tmpM.is_sympd()){
-	rxSolveFree();
-	stop(_("'%s' must be symmetric"),omegatxt.c_str());
-      } else {
-	omegaMC = wrap(arma::chol(as<arma::mat>(omegaM)));
+      simOmega = true;
+      if (!omegaM.hasAttribute("dimnames")){
+        rxSolveFree();
+        stop(_("'%s' must be a named matrix"),omegatxt.c_str());
       }
-    }
-    omegaN = as<CharacterVector>((as<List>(omegaM.attr("dimnames")))[1]);
-  }
-  if (nStud > 1){
-    if (dfSub > 0 && simOmega) {
-      if (omegaSep){
-	int defaultType = 2;
-	if (omegaSeparation == "auto"){
-	  if (omegaN.size() >= 10){
-	    defaultType = 3;
-	  }
-	} else if (omegaSeparation == "separation") {
-	  defaultType = 3;
-	}
-	omegaList = cvPost_(as<SEXP>(NumericVector::create(dfSub)),
-			     as<SEXP>(omegaMC),
-			     as<SEXP>(IntegerVector::create(1)),
-			     as<SEXP>(LogicalVector::create(false)),
-			     as<SEXP>(LogicalVector::create(false)),
-			     as<SEXP>(IntegerVector::create(defaultType)),
-			     as<SEXP>(IntegerVector::create(omegaXform)));
+      if (omegaIsChol){
+        omegaMC = omegaM;
       } else {
-	omegaList = cvPost_(as<SEXP>(NumericVector::create(dfSub)),
-			     as<SEXP>(omegaMC),
-			     as<SEXP>(IntegerVector::create(nStud)),
-			     as<SEXP>(LogicalVector::create(true)),
-			     as<SEXP>(LogicalVector::create(false)),
-			     as<SEXP>(IntegerVector::create(1)),
-			     as<SEXP>(IntegerVector::create(1)));
+        arma::mat tmpM = as<arma::mat>(omegaM);
+        if (tmpM.is_zero()){
+          omegaMC = omegaM;
+        } else if (!tmpM.is_sympd()){
+          rxSolveFree();
+          stop(_("'%s' must be symmetric, positive definite"),omegatxt.c_str());
+        } else {
+          omegaMC = wrap(arma::chol(as<arma::mat>(omegaM)));
+        }
+      }
+      omegaN = as<CharacterVector>((as<List>(omegaM.attr("dimnames")))[1]);
+    }
+  }
+  if (simVar){
+    if (dfSub > 0 && simOmega) {
+      if (omegaSep) {
+        int defaultType = 2;
+        if (omegaSeparation == "auto"){
+          if (omegaN.size() >= 10){
+            defaultType = 3;
+          }
+        } else if (omegaSeparation == "separation") {
+          defaultType = 3;
+        }
+        RObject ol = cvPost_(as<SEXP>(NumericVector::create(dfSub)),
+                             as<SEXP>(omegaMC),
+                             as<SEXP>(IntegerVector::create(1)),
+                             as<SEXP>(LogicalVector::create(false)),
+                             as<SEXP>(LogicalVector::create(false)),
+                             as<SEXP>(IntegerVector::create(defaultType)),
+                             as<SEXP>(IntegerVector::create(omegaXform)));
+        if (TYPEOF(ol) == VECSXP) {
+          omegaList = ol;
+        } else {
+          omegaList = List::create(ol);
+        }
+      } else {
+        RObject ol = cvPost_(as<SEXP>(NumericVector::create(dfSub)),
+                             as<SEXP>(omegaMC),
+                             as<SEXP>(IntegerVector::create(nStud)),
+                             as<SEXP>(LogicalVector::create(true)),
+                             as<SEXP>(LogicalVector::create(false)),
+                             as<SEXP>(IntegerVector::create(1)),
+                             as<SEXP>(IntegerVector::create(1)));
+        if (TYPEOF(ol) == VECSXP) {
+          omegaList = ol;
+        } else {
+          omegaList = List::create(ol);
+        }
+      }
+      RObject cur = omegaList[0];
+      int dim = omegaN.size();
+      if (Rf_length(cur)== dim*dim) {
+        for (int i = 0; i < omegaList.size(); i++) {
+          RObject cur = omegaList[i];
+          cur.attr("dim") = IntegerVector::create(dim, dim);
+          cur.attr("dimnames") = List::create(omegaN, omegaN);
+        }
+      } else {
+        REprintf("Simulated 'cvPost()' does not match the required dimensions:\n");
+        print(omegaMC);
+        print(omegaN);
+        print(wrap(cur));
+        stop("cvPost() mismatch");
       }
     }
   }
@@ -1664,33 +1720,41 @@ arma::vec fillVec(arma::vec& in, int len);
 List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                      const RObject &omega= R_NilValue,
                      const Nullable<NumericVector> &omegaDf= R_NilValue,
-		     const NumericVector &omegaLower = NumericVector::create(R_NegInf),
-		     const NumericVector &omegaUpper = NumericVector::create(R_PosInf),
+                     const NumericVector &omegaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &omegaUpper = NumericVector::create(R_PosInf),
                      const bool &omegaIsChol = false,
-		     std::string omegaSeparation= "auto",//("lkj", "separation")
-		     const int omegaXform = 1,
+                     std::string omegaSeparation= "auto",//("lkj", "separation")
+                     const int omegaXform = 1,
                      int nSub = 1,
                      const Nullable<NumericMatrix> &thetaMat = R_NilValue,
-		     const NumericVector &thetaLower = NumericVector::create(R_NegInf),
-		     const NumericVector &thetaUpper = NumericVector::create(R_PosInf),
+                     const NumericVector &thetaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &thetaUpper = NumericVector::create(R_PosInf),
                      const Nullable<NumericVector> &thetaDf  = R_NilValue,
                      const bool &thetaIsChol = false,
                      int nStud = 1,
                      const RObject sigma = R_NilValue,
-		     const NumericVector &sigmaLower = NumericVector::create(R_NegInf),
-		     const NumericVector &sigmaUpper = NumericVector::create(R_PosInf),
+                     const NumericVector &sigmaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &sigmaUpper = NumericVector::create(R_PosInf),
                      const Nullable<NumericVector> &sigmaDf= R_NilValue,
                      const bool &sigmaIsChol = false,
-		     std::string sigmaSeparation= "auto",//("lkj", "separation")
-		     const int sigmaXform = 1,
+                     std::string sigmaSeparation= "auto",//("lkj", "separation")
+                     const int sigmaXform = 1,
                      int nCoresRV = 1,
                      int nObs = 1,
                      double dfSub = 0,
                      double dfObs = 0,
-		     bool simSubjects=true){
+                     bool simSubjects=true,
+                     const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
   rx_solve* rx = getRxSolve_();
   NumericVector par;
   CharacterVector parN;
+  bool simVar;
+  if (simVariability[0] == NA_LOGICAL) {
+    simVar = nStud > 1;
+  } else {
+    simVar = simVariability[0];
+  }
+
   if (params.isNull()){
   } else {
     par = NumericVector(params);
@@ -1706,8 +1770,8 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   IntegerVector thetaPar(parN.size());
   int i, j, k;
   rxSimTheta(thetaN, parN, thetaPar, thetaM, simTheta,
-	     thetaMat, thetaLower, thetaUpper, thetaDf,
-	     thetaIsChol, nStud, nCoresRV);
+             thetaMat, thetaLower, thetaUpper, thetaDf,
+             thetaIsChol, nStud, nCoresRV, simVariability);
   bool simOmega = false;
   bool omegaSep=false;
   NumericMatrix omegaM;
@@ -1720,9 +1784,9 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
     warning(_("multi-subject simulation without without 'omega'"));
   }
   rxSimOmega(simOmega, omegaSep, omegaM, omegaN, omegaMC,
-	     omegaList, thetaN, thetaM, "omega", omega, omegaDf,
-	     omegaLower, omegaUpper, omegaIsChol,
-	     omegaSeparation, omegaXform, dfSub, nStud, nSub);
+             omegaList, thetaN, thetaM, "omega", omega, omegaDf,
+             omegaLower, omegaUpper, omegaIsChol,
+             omegaSeparation, omegaXform, dfSub, nStud, nSub, simVariability);
   arma::mat tmp = as<arma::mat>(omegaM);
   if (tmp.is_zero()) {
     setZeroMatrix(2);
@@ -1734,9 +1798,9 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   NumericMatrix sigmaMC;
   List sigmaList;
   rxSimOmega(simSigma, sigmaSep, sigmaM, sigmaN, sigmaMC,
-	     sigmaList, thetaN, thetaM, "sigma", sigma, sigmaDf,
-	     sigmaLower, sigmaUpper, sigmaIsChol,
-	     sigmaSeparation, sigmaXform, dfObs, nStud, nObs);
+             sigmaList, thetaN, thetaM, "sigma", sigma, sigmaDf,
+             sigmaLower, sigmaUpper, sigmaIsChol,
+             sigmaSeparation, sigmaXform, dfObs, nStud, nObs, simVariability);
 
   tmp = as<arma::mat>(sigmaM);
   if (tmp.is_zero()) {
@@ -1789,12 +1853,14 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
     }
     // Now Omega Covariates
     if (ocol > 0) {
-      if (dfSub > 0 && nStud > 1) {
+      if (dfSub > 0 && simVar) {
         // nm = ret0[j]; // parameter column
-        nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(omegaList[i]), as<RObject>(omegaDf), nCoresRV, false, nSub,
-					   false, omegaLower, omegaUpper));
+        RObject ol = wrap(omegaList[i]);
+        RObject nm0 = rxSimSigma(wrap(omegaList[i]), wrap(omegaDf), nCoresRV, false, nSub,
+                                 false, omegaLower, omegaUpper);
+        nm1 = as<NumericMatrix>(nm0);
       } else {
-        nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(omegaMC), as<RObject>(omegaDf), nCoresRV, true, nSub,
+        nm1 = as<NumericMatrix>(rxSimSigma(wrap(omegaMC), wrap(omegaDf), nCoresRV, true, nSub,
 					   false, omegaLower, omegaUpper));
       }
       for (j=pcol; j < pcol+ocol; j++) {
@@ -1807,7 +1873,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
     }
     if (scol > 0) {
       if (simSubjects) {
-        if (dfObs > 0  && nStud > 1) {
+        if (dfObs > 0  && simVar) {
           nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(sigmaList[i]), as<RObject>(sigmaDf), nCoresRV, false, nObs*nSub,
 					     false, sigmaLower, sigmaUpper));
         } else {
@@ -1821,7 +1887,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
           }
         }
       } else {
-        if (dfObs > 0  && nStud > 1) {
+        if (dfObs > 0  && simVar) {
           nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(sigmaList[i]), as<RObject>(sigmaDf), nCoresRV, false, nObs,
 					     false, sigmaLower, sigmaUpper));
         } else {
@@ -1858,20 +1924,20 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   if (simTheta) {
     _rxModels[".theta"] = thetaM;
   }
-  if (dfSub > 0 && nStud > 1) {
+  if (dfSub > 0 && simVar) {
     _rxModels[".omegaL"] = omegaList;
     _rxModels[".omegaN"] = omegaN;
   } else if (Rf_isMatrix(omega)) {
     _rxModels[".omegaN"]= as<CharacterVector>((as<List>((as<NumericMatrix>(omega)).attr("dimnames")))[1]);
   }
-  if (dfObs > 0 && nStud > 1) {
+  if (dfObs > 0 && simVar) {
     _rxModels[".sigmaL"] = sigmaList;
   }
-  if (Rf_isNull(sigma) || rxIsChar(sigma)) {
+  if (Rf_isNull(sigma) || rxIsChar(sigma) || Rf_length(sigma) == 0) {
   } else {
     // Fill in sigma information for simeta()
     arma::mat sigma0;
-    if (dfObs > 0 && nStud > 1) {
+    if (dfObs > 0 && simVar) {
       sigma0 = as<arma::mat>(sigmaList[0]);
       if (_globals.gsigma != NULL) free(_globals.gsigma);
       rx->neps = sigma0.n_rows;
@@ -1909,14 +1975,14 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   } else {
     // Fill in omega information for simeta()
     arma::mat omega0;
-    if (dfSub > 0 && nStud > 1) {
+    if (dfSub > 0 && simVar) {
       omega0 = as<arma::mat>(omegaList[0]);
       rx->neta = omega0.n_rows;
       if (_globals.gomega != NULL) free(_globals.gomega);
       _globals.gomega = (double*)malloc((2 * rx->neta + rx->neta * rx->neta * omegaList.size())*sizeof(double));
       for (int i = 0; i < omegaList.size(); i++) {
-	omega0 = as<arma::mat>(omegaList[i]);
-	std::copy(&omega0[0], &omega0[0] + rx->neta * rx->neta, _globals.gomega + 2 * rx->neta + i * rx->neta * rx->neta);
+        omega0 = as<arma::mat>(omegaList[i]);
+        std::copy(&omega0[0], &omega0[0] + rx->neta * rx->neta, _globals.gomega + 2 * rx->neta + i * rx->neta * rx->neta);
       }
       _globals.nOmega = 1;
     } else {
@@ -2666,19 +2732,21 @@ static inline void rxSolve_ev1Update(const RObject &obj,
 // allows rxSolve_ to solve as if the user specified these parameters
 // directly
 static inline void rxSolve_simulate(const RObject &obj,
-				    const List &rxControl,
-				    const Nullable<CharacterVector> &specParams,
-				    const Nullable<List> &extraArgs,
-				    const RObject &params,
-				    const RObject &ev1,
-				    const RObject &inits,
-				    rxSolve_t* rxSolveDat){
+                                    const List &rxControl,
+                                    const Nullable<CharacterVector> &specParams,
+                                    const Nullable<List> &extraArgs,
+                                    const RObject &params,
+                                    const RObject &ev1,
+                                    const RObject &inits,
+                                    rxSolve_t* rxSolveDat){
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
 
   RObject omega = rxControl[Rxc_omega];
   Nullable<NumericVector> omegaDf = asNNv(rxControl[Rxc_omegaDf], "omegaDf");
   bool omegaIsChol = asBool(rxControl[Rxc_omegaIsChol], "Rxc_omegaIsChol");
+
+  LogicalVector simVariability = rxControl[Rxc_simVariability];
 
   Nullable<NumericMatrix> thetaMat = as<Nullable<NumericMatrix>>(rxControl[Rxc_thetaMat]);
   Nullable<NumericVector> thetaDf = asNNv(rxControl[Rxc_thetaDf], "thetaDf");
@@ -2785,6 +2853,14 @@ static inline void rxSolve_simulate(const RObject &obj,
   double dfSub=asDouble(rxControl[Rxc_dfSub], "dfSub");
   double dfObs=asDouble(rxControl[Rxc_dfObs], "dfObs");
 
+  bool simVar;
+  if (simVariability[0] == NA_LOGICAL) {
+    simVar = nStud > 1;
+  } else {
+    simVar = simVariability[0];
+  }
+
+
   unsigned int nCoresRV = asUnsignedInt(rxControl[Rxc_nCoresRV], "nCoresRV");
 
   bool simSubjects = false;
@@ -2797,10 +2873,10 @@ static inline void rxSolve_simulate(const RObject &obj,
     bool cbindPar1 = false;
     if (!rxIsNum(rxSolveDat->par1)){
       if (!thetaMat.isNull()) {
-	rxSolveFree();
-	stop(_("when specifying 'thetaMat' the parameters cannot be a 'data.frame'/'matrix'."));
+        rxSolveFree();
+        stop(_("when specifying 'thetaMat' the parameters cannot be a 'data.frame'/'matrix'."));
       } else {
-	cbindPar1 = true;
+        cbindPar1 = true;
       }
     }
     unsigned int nSub0 = 0;
@@ -2809,39 +2885,39 @@ static inline void rxSolve_simulate(const RObject &obj,
     rx->nobs = 0;
     rx->nobs2 = 0;
     if (rxIs(ev1,"event.data.frame")||
-	rxIs(ev1,"event.matrix")){
+        rxIs(ev1,"event.matrix")){
       if (rxcId > -1){
-	DataFrame dataf = as<DataFrame>(ev1);
-	IntegerVector id = as<IntegerVector>(dataf[rxcId]);
-	IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
-	int lastid= id[id.size()-1]+42;
-	rx->nall = evid.size();
-	int evid9=0;
-	for (unsigned int j = rx->nall; j--;){
-	  if (lastid != id[j]){
-	    lastid=id[j];
-	    nSub0++;
-	  }
-	  if (isObs(evid[j])) rx->nobs++;
-	  if (evid[j] == 0) rx->nobs2++;
-	  if (evid[j] == 9) evid9++;
-	}
-	rx->nevid9 = evid9;
+        DataFrame dataf = as<DataFrame>(ev1);
+        IntegerVector id = as<IntegerVector>(dataf[rxcId]);
+        IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
+        int lastid= id[id.size()-1]+42;
+        rx->nall = evid.size();
+        int evid9=0;
+        for (unsigned int j = rx->nall; j--;){
+          if (lastid != id[j]){
+            lastid=id[j];
+            nSub0++;
+          }
+          if (isObs(evid[j])) rx->nobs++;
+          if (evid[j] == 0) rx->nobs2++;
+          if (evid[j] == 9) evid9++;
+        }
+        rx->nevid9 = evid9;
       } else {
-	nSub0 =1;
-	DataFrame dataf = as<DataFrame>(ev1);
-	IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
-	rx->nall = evid.size();
-	int evid9=0;
-	for (unsigned int j =rx->nall; j--;){
-	  if (isObs(evid[j])) rx->nobs++;
-	  if (evid[j] == 0) rx->nobs2++;
-	  if (evid[j] == 9) evid9++;
-	}
-	rx->nevid9= evid9;
+        nSub0 =1;
+        DataFrame dataf = as<DataFrame>(ev1);
+        IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
+        rx->nall = evid.size();
+        int evid9=0;
+        for (unsigned int j =rx->nall; j--;){
+          if (isObs(evid[j])) rx->nobs++;
+          if (evid[j] == 0) rx->nobs2++;
+          if (evid[j] == 9) evid9++;
+        }
+        rx->nevid9= evid9;
       }
     }
-    if (nStud > 1 && nSub0 == nSub*nStud){
+    if (simVar && nSub0 == nSub*nStud){
     } else if (nSub > 1 && nSub0 > 1 && nSub != nSub0){
       rxSolveFree();
       stop(_("provided multi-subject data (n=%d) trying to simulate a different number of subjects (n=%d)"), nSub0, nSub);
@@ -2858,22 +2934,22 @@ static inline void rxSolve_simulate(const RObject &obj,
     } else {
       LogicalVector addDosing1 = as<LogicalVector>(rxSolveDat->addDosing);
       if (LogicalVector::is_na(addDosing1[0])){
-	curObs = rx->nall - rx->nevid9;
+        curObs = rx->nall - rx->nevid9;
       } if (addDosing1[0]){
-	curObs = rx->nall - rx->nevid9;
+        curObs = rx->nall - rx->nevid9;
       } else {
-	curObs = rx->nobs - rx->nevid9;
+        curObs = rx->nobs - rx->nevid9;
       }
     }
     if (rxIs(as<RObject>(thetaMat), "matrix")){
       if (!thetaIsChol){
-	arma::mat tmpM = as<arma::mat>(thetaMat);
-	if (tmpM.is_zero()) {
-	  setZeroMatrix(1);
-	} else if (!tmpM.is_sympd()){
-	  rxSolveFree();
-	  stop(_("'thetaMat' must be symmetric"));
-	}
+        arma::mat tmpM = as<arma::mat>(thetaMat);
+        if (tmpM.is_zero()) {
+          setZeroMatrix(1);
+        } else if (!tmpM.is_sympd()){
+          rxSolveFree();
+          stop(_("'thetaMat' must be symmetric"));
+        }
       }
     }
     Nullable<NumericVector> params0 = R_NilValue;
@@ -2881,25 +2957,26 @@ static inline void rxSolve_simulate(const RObject &obj,
       params0 = as<Nullable<NumericVector>>(rxSolveDat->par1);
     }
     List lst = rxSimThetaOmega(params0,
-			    omega,
-			    omegaDf,
-			    asNv(rxControl[Rxc_omegaLower], "omegaLower"),
-			    asNv(rxControl[Rxc_omegaUpper], "omegaUpper"),
-			    omegaIsChol,
-			    asStr(rxControl[Rxc_omegaSeparation], "omegaSeparation"),
-			    asInt(rxControl[Rxc_omegaXform], "omegaXform"),
-			    nSub0, thetaMat,
-			    asNv(rxControl[Rxc_thetaLower], "thetaLower"),
-			    asNv(rxControl[Rxc_thetaUpper], "thetaUpper"),
-			    thetaDf, thetaIsChol, nStud,
-			    sigma,
-			    asNv(rxControl[Rxc_sigmaLower], "sigmaLower"),
-			    asNv(rxControl[Rxc_sigmaUpper], "sigmaUpper"),
-			    sigmaDf, sigmaIsChol,
-			    asStr(rxControl[Rxc_sigmaSeparation], "sigmaSeparation"),
-			    asInt(rxControl[Rxc_sigmaXform], "sigmaXform"),
-			    nCoresRV, curObs,
-			    dfSub, dfObs, simSubjects);
+                               omega,
+                               omegaDf,
+                               asNv(rxControl[Rxc_omegaLower], "omegaLower"),
+                               asNv(rxControl[Rxc_omegaUpper], "omegaUpper"),
+                               omegaIsChol,
+                               asStr(rxControl[Rxc_omegaSeparation], "omegaSeparation"),
+                               asInt(rxControl[Rxc_omegaXform], "omegaXform"),
+                               nSub0, thetaMat,
+                               asNv(rxControl[Rxc_thetaLower], "thetaLower"),
+                               asNv(rxControl[Rxc_thetaUpper], "thetaUpper"),
+                               thetaDf, thetaIsChol, nStud,
+                               sigma,
+                               asNv(rxControl[Rxc_sigmaLower], "sigmaLower"),
+                               asNv(rxControl[Rxc_sigmaUpper], "sigmaUpper"),
+                               sigmaDf, sigmaIsChol,
+                               asStr(rxControl[Rxc_sigmaSeparation], "sigmaSeparation"),
+                               asInt(rxControl[Rxc_sigmaXform], "sigmaXform"),
+                               nCoresRV, curObs,
+                               dfSub, dfObs, simSubjects,
+                               simVariability);
     if (cbindPar1) {
       lst = cbindThetaOmega(rxSolveDat->par1, lst);
     }
@@ -2914,13 +2991,13 @@ static inline void rxSolve_simulate(const RObject &obj,
 // This will setup the parNumeric, parDf, or parMat for solving. It
 // will also set the parameter type.
 static inline void rxSolve_parSetup(const RObject &obj,
-				    const List &rxControl,
-				    const Nullable<CharacterVector> &specParams,
-				    const Nullable<List> &extraArgs,
-				    const CharacterVector& pars,
-				    const RObject &ev1,
-				    const RObject &inits,
-				    rxSolve_t* rxSolveDat){
+                                    const List &rxControl,
+                                    const Nullable<CharacterVector> &specParams,
+                                    const Nullable<List> &extraArgs,
+                                    const CharacterVector& pars,
+                                    const RObject &ev1,
+                                    const RObject &inits,
+                                    rxSolve_t* rxSolveDat){
   //  determine which items will be sampled from
   if (rxIsNumInt(rxSolveDat->par1)){
     rxSolveDat->parNumeric = as<NumericVector>(rxSolveDat->par1);
@@ -2949,14 +3026,14 @@ static inline void rxSolve_parSetup(const RObject &obj,
     if (rxSolveDat->parMat.hasAttribute("dimnames")){
       Nullable<CharacterVector> colnames0 = as<Nullable<CharacterVector>>((as<List>(rxSolveDat->parMat.attr("dimnames")))[1]);
       if (colnames0.isNull()){
-	if (rxSolveDat->parMat.ncol() == pars.size()){
-	  rxSolveDat->nmP = pars;
-	} else {
-	  rxSolveFree();
-	  stop(_("if parameters are not named, they must match the order and size of the parameters in the model"));
-	}
+        if (rxSolveDat->parMat.ncol() == pars.size()){
+          rxSolveDat->nmP = pars;
+        } else {
+          rxSolveFree();
+          stop(_("if parameters are not named, they must match the order and size of the parameters in the model"));
+        }
       } else {
-	rxSolveDat->nmP = CharacterVector(colnames0);
+        rxSolveDat->nmP = CharacterVector(colnames0);
       }
     } else if (rxSolveDat->parMat.ncol() == pars.size()) {
       rxSolveDat->nmP = pars;
@@ -3813,7 +3890,7 @@ static inline Environment rxSolve_genenv(const RObject &object,
   }
   if(_rxModels.exists(".thetaL")){
     SEXP tmp = _rxModels[".thetaL"];
-    if (TYPEOF(tmp) == VECSXP && Rf_length(tmp) > 1) {
+    if (TYPEOF(tmp) == VECSXP && Rf_length(tmp) > 0) {
       e[".thetaL"] = as<List>(tmp);
     } else {
       e[".thetaL"] = R_NilValue;
@@ -3822,7 +3899,7 @@ static inline Environment rxSolve_genenv(const RObject &object,
   }
   if(_rxModels.exists(".omegaL")){
     SEXP tmp = _rxModels[".omegaL"];
-    if (TYPEOF(tmp) == VECSXP && Rf_length(tmp) > 1) {
+    if (TYPEOF(tmp) == VECSXP && Rf_length(tmp) > 0) {
       e[".omegaL"] = as<List>(tmp);
     } else {
       e[".omegaL"] = R_NilValue;
@@ -3831,7 +3908,7 @@ static inline Environment rxSolve_genenv(const RObject &object,
   }
   if(_rxModels.exists(".sigmaL")){
     SEXP tmp = _rxModels[".sigmaL"];
-    if (TYPEOF(tmp) == VECSXP && Rf_length(tmp) > 1) {
+    if (TYPEOF(tmp) == VECSXP && Rf_length(tmp) > 0) {
       e[".sigmaL"] = as<List>(_rxModels[".sigmaL"]);
     } else {
       e[".sigmaL"] = R_NilValue;
@@ -4284,7 +4361,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 	      const Nullable<CharacterVector> &specParams,
 	      const Nullable<List> &extraArgs,
 	      const RObject &params, const RObject &events, const RObject &inits,
-	      const int setupOnly){
+              const int setupOnly){
   if (setupOnly == 0){
     rxSolveFree();
   }
@@ -4373,14 +4450,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     object = obj;
     // Update rxode2 model (if needed) and simulate nesting
     if ((!Rf_isNull(rxControl[Rxc_thetaMat]) ||
-    	 !Rf_isNull(rxControl[Rxc_omega]) ||
-    	 !Rf_isNull(rxControl[Rxc_sigma])) &&
-	rxIs(rxControl[Rxc_omega], "lotri") &&
-	TYPEOF(rxControl[Rxc_sigma]) != STRSXP
-	) {
+         !Rf_isNull(rxControl[Rxc_omega]) ||
+         !Rf_isNull(rxControl[Rxc_sigma])) &&
+        rxIs(rxControl[Rxc_omega], "lotri") &&
+        TYPEOF(rxControl[Rxc_sigma]) != STRSXP
+        ) {
       // Update model, events and parameters based on nesting
       _rxModels[".nestPars"] = expandPars_(wrap(object), wrap(trueParams),
-					   wrap(trueEvents), wrap(rxControl));
+                                           wrap(trueEvents), wrap(rxControl));
       object = _rxModels[".nestObj"];
       trueEvents = _rxModels[".nestEvents"];
       didNesting=true;
@@ -4392,10 +4469,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFreeObj = object;
       List indLin = rxSolveDat->mv[RxMv_indLin];
       if (indLin.size() == 0){
-	Function rxode2 = getRxFn("rxode2");
-	object = rxode2(object, _["indLin"]=true);
-	rxSolveDat->mv = rxModelVars(object);
-	rxSolveFreeObj = object;
+        Function rxode2 = getRxFn("rxode2");
+        object = rxode2(object, _["indLin"]=true);
+        rxSolveDat->mv = rxModelVars(object);
+        rxSolveFreeObj = object;
       } // else {
       // 	object =obj;
       // }
@@ -4412,8 +4489,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->sensType = asInt(rxControl[Rxc_sensType], "sensType");
     return rxSolve_update(object, rxControl, specParams,
-			  extraArgs, params, events, inits,
-			  rxSolveDat);
+                          extraArgs, params, events, inits,
+                          rxSolveDat);
   } else {
     rxLock(object);
 #ifdef rxSolveT
@@ -4473,47 +4550,47 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
       if (op->cores == 0) {
-	switch (thread) {
-	case 2:
-	  // Thread safe, but possibly not reproducible
-	  if (op->cores > 1) {
-	    op->stiff = method = 4;
-	    warning(_("results depend on the number of cores used"));
-	  }
-	  rxSolveDat->throttle = false;
-	  break;
-	case 1:
-	  // Thread safe, and reproducible
-	  op->cores = getRxThreads(INT_MAX, false);
-	  rxSolveDat->throttle = true;
-	  break;
-	case 0:
-	  // Not thread safe.
-	  warning(_("not thread safe method, using 1 core"));
-	  op->cores = 1;
-	  rxSolveDat->throttle = false;
-	  break;
-	}
+        switch (thread) {
+        case 2:
+          // Thread safe, but possibly not reproducible
+          if (op->cores > 1) {
+            op->stiff = method = 4;
+            warning(_("results depend on the number of cores used"));
+          }
+          rxSolveDat->throttle = false;
+          break;
+        case 1:
+          // Thread safe, and reproducible
+          op->cores = getRxThreads(INT_MAX, false);
+          rxSolveDat->throttle = true;
+          break;
+        case 0:
+          // Not thread safe.
+          warning(_("not thread safe method, using 1 core"));
+          op->cores = 1;
+          rxSolveDat->throttle = false;
+          break;
+        }
       } else {
-	switch (thread) {
-	case 2:
-	  // Thread safe, but possibly not reproducible
-	  if (op->cores > 1) {
-	    op->stiff = method = 4;
-	    warning(_("results depend on the number of cores used"));
-	  }
-	  break;
-	case 1:
-	  // Thread safe, and reproducible
-	  rxSolveDat->throttle = true;
-	  break;
-	case 0:
-	  // Not thread safe.
-	  warning(_("not thread safe method, using 1 core"));
-	  op->cores = 1;
-	  rxSolveDat->throttle = false;
-	  break;
-	}
+        switch (thread) {
+        case 2:
+          // Thread safe, but possibly not reproducible
+          if (op->cores > 1) {
+            op->stiff = method = 4;
+            warning(_("results depend on the number of cores used"));
+          }
+          break;
+        case 1:
+          // Thread safe, and reproducible
+          rxSolveDat->throttle = true;
+          break;
+        case 0:
+          // Not thread safe.
+          warning(_("not thread safe method, using 1 core"));
+          op->cores = 1;
+          rxSolveDat->throttle = false;
+          break;
+        }
       }
     }
     seedEng(max2(op->cores, 1));
@@ -4537,7 +4614,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif// rxSolveT
     // Update event table with observations if they are missing
     rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
-		      ev1, inits, rxSolveDat);
+                      ev1, inits, rxSolveDat);
 
 #ifdef rxSolveT
     RSprintf("Time6: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4576,28 +4653,28 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (indLin.size() == 4){
       int me = rxIsNull(indLin[1]);
       if (as<bool>(indLin[2])){
-	// Inductive linearization
-	IntegerVector indLinItems = as<IntegerVector>(indLin[3]);
-	op->indLinN = indLinItems.size();
-	if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
-	_globals.gindLin = R_Calloc(op->indLinN,int);
-	op->indLin = _globals.gindLin;
-	std::copy(indLinItems.begin(), indLinItems.end(), op->indLin);
-	if (me){
-	  // homogenous ME + IndLin
-	  op->doIndLin=3;
-	} else {
-	  // inhomogenous ME + IndLin
-	  op->doIndLin=4;
-	}
+        // Inductive linearization
+        IntegerVector indLinItems = as<IntegerVector>(indLin[3]);
+        op->indLinN = indLinItems.size();
+        if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
+        _globals.gindLin = R_Calloc(op->indLinN,int);
+        op->indLin = _globals.gindLin;
+        std::copy(indLinItems.begin(), indLinItems.end(), op->indLin);
+        if (me){
+          // homogenous ME + IndLin
+          op->doIndLin=3;
+        } else {
+          // inhomogenous ME + IndLin
+          op->doIndLin=4;
+        }
       } else {
-	op->indLinN = 0;
-	op->indLin = NULL;
-	if (me){
-	  op->doIndLin=1;
-	} else {
-	  op->doIndLin=2;
-	}
+        op->indLinN = 0;
+        op->indLin = NULL;
+        if (me){
+          op->doIndLin=1;
+        } else {
+          op->doIndLin=2;
+        }
       }
     } else if (indLin.size() == 3) {
       // f is NULL
@@ -4672,7 +4749,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif// rxSolveT
     if (!didNesting) {
       rxSolve_simulate(object, rxControl, specParams, extraArgs,
-		       params, ev1, inits, rxSolveDat);
+                       params, ev1, inits, rxSolveDat);
       // RSprintf("\nold method:\n");
     } else {
       rxSolveDat->warnIdSort = false;
@@ -4682,24 +4759,24 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     // .sigma could be reassigned in an update, so check outside simulation function.
     if (_rxModels.exists(".sigma")){
-      if (Rf_isMatrix(_rxModels[".sigma"])) {
-	rxSolveDat->sigmaN=  as<CharacterVector>((as<List>((as<NumericMatrix>(_rxModels[".sigma"])).attr("dimnames")))[1]);
+      if (Rf_isMatrix(_rxModels[".sigma"]) && Rf_length(_rxModels[".sigma"]) > 0) {
+        rxSolveDat->sigmaN=  as<CharacterVector>((as<List>((as<NumericMatrix>(_rxModels[".sigma"])).attr("dimnames")))[1]);
       } else {
-	_rxModels.remove(".sigma");
+        _rxModels.remove(".sigma");
       }
-    } else if (Rf_isMatrix(rxControl[Rxc_sigma])) {
+    } else if (Rf_isMatrix(rxControl[Rxc_sigma]) && Rf_length(rxControl[Rxc_sigma]) > 0) {
       rxSolveDat->sigmaN= as<CharacterVector>((as<List>((as<NumericMatrix>(rxControl[Rxc_sigma])).attr("dimnames")))[1]);
       _rxModels[".sigma"] = rxControl[Rxc_sigma];
     }
     if (_rxModels.exists(".omega")){
-      if (Rf_isMatrix(_rxModels[".omega"])) {
-	rxSolveDat->omegaN= as<CharacterVector>((as<List>((as<NumericMatrix>(_rxModels[".omega"])).attr("dimnames")))[1]);
+      if (Rf_isMatrix(_rxModels[".omega"]) && Rf_length(_rxModels[".omega"]) > 0) {
+        rxSolveDat->omegaN= as<CharacterVector>((as<List>((as<NumericMatrix>(_rxModels[".omega"])).attr("dimnames")))[1]);
       } else {
-	_rxModels.remove(".omega");
+        _rxModels.remove(".omega");
       }
     } else if (_rxModels.exists(".omegaN")) {
       rxSolveDat->omegaN = as<CharacterVector>(_rxModels[".omegaN"]);
-    } else if (Rf_isMatrix(rxControl[Rxc_omega])) {
+    } else if (Rf_isMatrix(rxControl[Rxc_omega]) && Rf_length(rxControl[Rxc_omega]) > 0) {
       _rxModels[".omega"] = rxControl[Rxc_omega];
       rxSolveDat->omegaN= as<CharacterVector>((as<List>((as<NumericMatrix>(rxControl[Rxc_omega])).attr("dimnames")))[1]);
     }
@@ -4709,7 +4786,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif// rxSolveT
     // This will setup the parameters
     rxSolve_parSetup(object, rxControl, specParams, extraArgs,
-		     pars, ev1, inits, rxSolveDat);
+                     pars, ev1, inits, rxSolveDat);
 #ifdef rxSolveT
     RSprintf("Time9: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4718,7 +4795,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     // Setup some data-based parameters like hmax
     rxSolve_datSetupHmax(object, rxControl, specParams, extraArgs,
-			 pars, ev1, inits, rxSolveDat);
+                         pars, ev1, inits, rxSolveDat);
 
 #ifdef rxSolveT
     RSprintf("Time10: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4727,7 +4804,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     // Make sure the user input all the parameters.
     rxSolve_parOrder(object, rxControl, specParams, extraArgs,
-		     pars, ev1, inits, rxSolveDat);
+                     pars, ev1, inits, rxSolveDat);
 
 #ifdef rxSolveT
     RSprintf("Time11: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4740,7 +4817,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (op->nsvar == 0){
       getRxModels();
       if(_rxModels.exists(".sigma")){
-	_rxModels.remove(".sigma");
+        _rxModels.remove(".sigma");
       }
     }
     // Now setup the rest of the rx_solve object
@@ -4765,62 +4842,62 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (linB) {
       int linBflag = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtFlg];
       if (rx->sensType == 4) {
-	// This is the ADVAN senstivities
-	if (linKa) {
-	  switch (linNcmt) {
-	  case 1:
-	    op->nlin = 8;
-	    break;
-	  case 2:
-	    op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-	    break;
-	  case 3:
-	    op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-	    break;
-	  }
-	} else {
-	  switch (linNcmt) {
-	  case 1:
-	    op->nlin = 3;
-	    break;
-	  case 2:
-	    op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-	    break;
-	  case 3:
-	    op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-	    break;
-	  }
-	}
-	op->nlin2 = op->nlin;
-	op->linBflag = linBflag;
-	// Add the other components
-	if (linBflag & 64){ // tlag 64= bitwShiftL(1, 7-1)
-	  op->nlin++;
-	}
-	if (linBflag & 128){ // f 128 = 1 << 8-1
-	  op->nlin++;
-	}
-	if (linBflag & 256){ // rate 256 = 1 << 9-1
-	  op->nlin++;
-	}
-	if (linBflag & 512){ // dur 512 = 1 << 10-1
-	  op->nlin++;
-	}
-	if (linBflag & 2048) { // tlag2 2048 = 1 << 12 - 1
-	  op->nlin++;
-	}
-	if (linBflag & 4096) { // f2 4096 = 1 << 13 - 1
-	  op->nlin++;
-	}
-	if (linBflag & 8192) { // rate2 8192 = 1 << 14 - 1
-	  op->nlin++;
-	}
-	if (linBflag & 16384) { // dur2 16384 = 1 << 15 - 1
-	  op->nlin++;
-	}
+        // This is the ADVAN senstivities
+        if (linKa) {
+          switch (linNcmt) {
+          case 1:
+            op->nlin = 8;
+            break;
+          case 2:
+            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
+            break;
+          case 3:
+            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
+            break;
+          }
+        } else {
+          switch (linNcmt) {
+          case 1:
+            op->nlin = 3;
+            break;
+          case 2:
+            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
+            break;
+          case 3:
+            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
+            break;
+          }
+        }
+        op->nlin2 = op->nlin;
+        op->linBflag = linBflag;
+        // Add the other components
+        if (linBflag & 64){ // tlag 64= bitwShiftL(1, 7-1)
+          op->nlin++;
+        }
+        if (linBflag & 128){ // f 128 = 1 << 8-1
+          op->nlin++;
+        }
+        if (linBflag & 256){ // rate 256 = 1 << 9-1
+          op->nlin++;
+        }
+        if (linBflag & 512){ // dur 512 = 1 << 10-1
+          op->nlin++;
+        }
+        if (linBflag & 2048) { // tlag2 2048 = 1 << 12 - 1
+          op->nlin++;
+        }
+        if (linBflag & 4096) { // f2 4096 = 1 << 13 - 1
+          op->nlin++;
+        }
+        if (linBflag & 8192) { // rate2 8192 = 1 << 14 - 1
+          op->nlin++;
+        }
+        if (linBflag & 16384) { // dur2 16384 = 1 << 15 - 1
+          op->nlin++;
+        }
       } else {
-	op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;//(4+linNcmt+linKa)*linNcmt+(2+linNcmt+linKa)*linKa+1;
-	// ncmt + oral0 + (2*ncmt+oral)*(ncmt+oral0+1) + 2*ncmt
+        op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;//(4+linNcmt+linKa)*linNcmt+(2+linNcmt+linKa)*linKa+1;
+        // ncmt + oral0 + (2*ncmt+oral)*(ncmt+oral0+1) + 2*ncmt
       }
     } else {
       op->nlin = linNcmt+linKa;
@@ -4857,7 +4934,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
-				      5*op->neq + 7*n3a, sizeof(double));// [n0]
+                                      5*op->neq + 7*n3a, sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4931,7 +5008,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     rxSolve_normalizeParms(object, rxControl, specParams, extraArgs,
-			   pars, ev1, inits, rxSolveDat);
+                           pars, ev1, inits, rxSolveDat);
     if (op->stiff == 2 || op->stiff == 4) { // liblsoda
       // Order by the number of times per subject
       sortIds(rx, 1);
@@ -4946,7 +5023,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif// rxSolveT
 
     SEXP ret = rxSolve_finalize(object, rxControl, specParams, extraArgs, params, events,
-				inits, rxSolveDat);
+                                inits, rxSolveDat);
     if (!rxIsNull(setupOnlyObj)) {
       rxUnlock(setupOnlyObj);
       setupOnlyObj = R_NilValue;
@@ -4962,7 +5039,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
 
 RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact,
-			   List &lst) {
+                           List &lst) {
   int i, j, n;
   rxCurObj = obj;
   CharacterVector cls = lst.attr("class");
@@ -5062,35 +5139,35 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     for (j = parsC.size(); j--; ){
       std::string test = "_sens_" + as<std::string>(normState[i]) + "_" + as<std::string>(parsC[j]);
       if (test == sarg){
-	test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(parsC[j]) + "__";
-	return lst[test];
+        test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(parsC[j]) + "__";
+        return lst[test];
       }
       test = as<std::string>(normState[i]) + "_" + as<std::string>(parsC[j]);
       if (test == sarg){
-	test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(parsC[j]) + "__";
-	return lst[test];
+        test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(parsC[j]) + "__";
+        return lst[test];
       }
       test = as<std::string>(normState[i]) + "." + as<std::string>(parsC[j]);
       if (test == sarg){
-	test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(parsC[j]) + "__";
-	return lst[test];
+        test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(parsC[j]) + "__";
+        return lst[test];
       }
     }
     for (j = lhsC.size(); j--;){
       std::string test = "_sens_" + as<std::string>(normState[i]) + "_" + as<std::string>(lhsC[j]);
       if (test == sarg){
-	test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(lhsC[j]) + "__";
-	return lst[test];
+        test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(lhsC[j]) + "__";
+        return lst[test];
       }
       test = as<std::string>(normState[i]) + "_" + as<std::string>(lhsC[j]);
       if (test == sarg){
-	test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(lhsC[j]) + "__";
-	return lst[test];
+        test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(lhsC[j]) + "__";
+        return lst[test];
       }
       test = as<std::string>(normState[i]) + "." + as<std::string>(lhsC[j]);
       if (test == sarg){
-	test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(lhsC[j]) + "__";
-	return lst[test];
+        test = "rx__sens_" + as<std::string>(normState[i]) + "_BY_" + as<std::string>(lhsC[j]) + "__";
+        return lst[test];
       }
     }
   }

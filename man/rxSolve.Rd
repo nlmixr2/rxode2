@@ -119,7 +119,8 @@ rxSolve(
   atolSens = 1e-08,
   rtolSens = 1e-06,
   ssAtolSens = 1e-08,
-  ssRtolSens = 1e-06
+  ssRtolSens = 1e-06,
+  simVariability = NA
 )
 
 \method{rxSolve}{`function`}(
@@ -708,6 +709,9 @@ calculating if steady state has been achieved for sensitivity compartments.}
 
 \item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
 calculating if steady state has been achieved for sensitivity compartments.}
+
+\item{simVariability}{determines if the variability is simulated.
+When \code{NA} (default) this is determined by the solver.}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

@@ -31,7 +31,8 @@ rxSimThetaOmega(
   nObs = 1L,
   dfSub = 0,
   dfObs = 0,
-  simSubjects = TRUE
+  simSubjects = TRUE,
+  simVariability = as.logical(c(NA_LOGICAL))
 )
 }
 \arguments{
@@ -198,6 +199,9 @@ inverse Wishart distribution (scaled) or scaled inverse chi squared distribution
 
 \item{simSubjects}{boolean indicated rxode2 should simulate subjects in studies (\code{TRUE},
 default) or studies (\code{FALSE})}
+
+\item{simVariability}{determines if the variability is simulated.
+When \code{NA} (default) this is determined by the solver.}
 }
 \value{
 a data frame with the simulated subjects
