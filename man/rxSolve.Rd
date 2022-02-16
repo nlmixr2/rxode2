@@ -18,7 +18,7 @@
 \alias{solve.rxParams}
 \alias{solve.rxEt}
 \alias{rxControl}
-\title{Solving & Simulation of a ODE/solved system (and solving options) equation}
+\title{Solving & Simulation of a ODE/solved system (a options) equation}
 \usage{
 rxSolve(
   object,
