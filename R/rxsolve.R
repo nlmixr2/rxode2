@@ -696,7 +696,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .bad <- .nxtra
     }
-    .bad <- .bad[!(.bad %in% c(".setupOnly"))]
+    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF"))]
     if (length(.bad) > 0) {
       stop("unused argument: ", paste
       (paste0("'", .bad, "'", sep=""), collapse=", "),
@@ -986,7 +986,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       iCov = iCov, #
       keep = keep, #
       keepF = character(0),
-      keepI = character(0),
       drop = drop, #
       warnDrop = warnDrop, #
       omegaLower = omegaLower, #

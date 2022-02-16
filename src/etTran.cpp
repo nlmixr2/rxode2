@@ -353,7 +353,7 @@ bool warnedNeg=false;
 //'     this is determined by `option("rxode2.combine.dvid")` and if the option has not been set,
 //'     this is `TRUE`. This typically does not affect rxode2 simulations.
 //' 
-//' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
+//' @param keepF This is a named vector of items you want to keep in the final rxode2 dataset.
 //'     For added rxode2 event records (if seen), last observation carried forward will be used.
 //' 
 //' @return Object for solving in rxode2
