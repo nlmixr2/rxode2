@@ -812,7 +812,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
     }
     safeZero <- as.integer(safeZero)
-    if (!is.null(scale)) {
+    if (is.null(scale)) {
+    } else if (is.list(scale)) {
+      checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
+      lapply(names(scale), function(n){
+        checkmate::assertNumeric(scale[[n]], lower=0, finite=TRUE, any.missing=FALSE, len=1, .var.name=n)
+      })
+    } else {
       checkmate::assertNumeric(scale, lower=0, finite=TRUE, any.missing=FALSE,names="strict")
     }
     if (!is.null(transitAbs)) {
