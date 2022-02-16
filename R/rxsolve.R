@@ -24,8 +24,8 @@
 #' tmp2$ssAtol
 #' tmp2$ssRtol
 rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
-  checkmate::assertIntegerish(sensCmt, lower=1, len=1, finite=TRUE)
-  checkmate::assertIntegerish(ncmt, lower=2, len=1, finite=TRUE)
+  checkmate::assertIntegerish(sensCmt, lower=1, len=1)
+  checkmate::assertIntegerish(ncmt, lower=2, len=1)
   if (sensCmt >= ncmt) {
     stop("'sensCmt' must be lower than the number of compartments 'ncmt'",
          call.=FALSE)
