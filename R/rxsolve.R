@@ -886,7 +886,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       if (missing(ssAtol)) {
         ssAtol <- 0.5 * 10^(-sigdig - 2)
       }
-      if (misssing(ssRtol)) {
+      if (missing(ssRtol)) {
         ssRtol <- 0.5 * 10^(-sigdig - 2)
       }
       if (missing(ssAtolSens)) {
@@ -1065,6 +1065,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ssRtolSens=ssRtolSens,
       simVariability=simVariability
     )
+    class(.ret) <- "rxControl"
     return(.ret)
   }
   UseMethod("rxSolve")

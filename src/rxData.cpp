@@ -4369,7 +4369,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
-  if (rxIs(rxControl,"rxControl")){
+  if (!rxIs(rxControl,"rxControl")){
     rxSolveFree();
     stop(_("control list not setup correctly"));
   }
