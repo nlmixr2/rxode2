@@ -1234,3 +1234,32 @@ test_that("invalid model pipe (more arguments than expected) throws an error", {
 
 
 })
+
+test_that("Add an eta to a model that does not have an eta will work", {
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      tv <- exp(3.45); # log V
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- tv
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  expect_error(ocmt %>%
+                 model(ka <- exp(tka + eta.ka)),
+               NA)
+
+})

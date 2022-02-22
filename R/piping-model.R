@@ -389,7 +389,11 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 .addVariableToIniDf <- function(var, rxui) {
   .iniDf <- rxui$iniDf
   if (regexpr(.etaModelReg, var) != -1) {
-    .eta <- max(.iniDf$neta1, na.rm=TRUE) + 1
+    if (all(is.na(.iniDf$neta1))) {
+      .eta <- 1
+    } else {
+      .eta <- max(.iniDf$neta1, na.rm=TRUE) + 1
+    }
     .extra <- .rxIniDfTemplate
     .extra$est <- 1
     .extra$neta1 <- .eta
