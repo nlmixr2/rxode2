@@ -1620,7 +1620,6 @@ int *global_BadDose(unsigned int mx){
 }
 
 extern "C" void rxOptionsIni() {
-
   rx_solve *rx=(&rx_global);
 
   rx->op = &op_global;
