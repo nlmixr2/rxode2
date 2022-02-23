@@ -511,8 +511,13 @@ int *global_iworkp;
 unsigned int global_rworki = 0;
 double *global_rwork(unsigned int mx){
   if (mx >= global_rworki){
+    bool first = (global_rworki == 0);
     global_rworki = mx+1024;
-    global_rworkp = R_Realloc(global_rworkp, global_rworki, double);
+    if (first) {
+      global_rworkp = R_Calloc(global_rworki, double);
+    } else {
+      global_rworkp = R_Realloc(global_rworkp, global_rworki, double);
+    }
   }
   return global_rworkp;
 }
@@ -1557,8 +1562,13 @@ extern "C" void par_liblsoda(rx_solve *rx){
 unsigned int global_iworki = 0;
 int *global_iwork(unsigned int mx){
   if (mx >= global_iworki){
+    bool first = (global_iworki == 0);
     global_iworki = mx+1024;
-    global_iworkp = R_Realloc(global_iworkp, global_iworki, int);
+    if (first) {
+      global_iworkp = R_Calloc(global_iworki, int);      
+    } else {
+      global_iworkp = R_Realloc(global_iworkp, global_iworki, int);
+    }
   }
   return global_iworkp;
 }
@@ -1567,8 +1577,13 @@ double *global_InfusionRatep;
 unsigned int global_InfusionRatei = 0;
 double *global_InfusionRate(unsigned int mx){
   if (mx >= global_InfusionRatei){
+    bool first = (global_InfusionRatei == 0);
     global_InfusionRatei = mx+1024;
-    global_InfusionRatep = R_Realloc(global_InfusionRatep, global_InfusionRatei, double);
+    if (first) {
+      global_InfusionRatep = R_Calloc(global_InfusionRatei, double);
+    } else {
+      global_InfusionRatep = R_Realloc(global_InfusionRatep, global_InfusionRatei, double);
+    }
   }
   return global_InfusionRatep;
 }
@@ -1577,8 +1592,13 @@ double *global_scalep;
 unsigned int global_scalei = 0;
 double *global_scale(unsigned int mx){
   if (mx >= global_scalei){
+    bool first = (global_scalei==0);
     global_scalei = mx+1024;
-    global_scalep = R_Realloc(global_scalep, global_scalei, double);
+    if (first) {
+      global_scalep = R_Calloc(global_scalei, double);
+    } else {
+      global_scalep = R_Realloc(global_scalep, global_scalei, double);
+    }
   }
   return global_scalep;
 }
@@ -1588,38 +1608,18 @@ int *global_BadDosep;
 unsigned int global_BadDosei = 0;
 int *global_BadDose(unsigned int mx){
   if (mx >= global_BadDosei){
+    bool first = (global_BadDosei==0);
     global_BadDosei = mx+1024;
-    global_BadDosep = R_Realloc(global_BadDosep, global_BadDosei, int);
+    if (first) {
+      global_BadDosep = R_Calloc(global_BadDosei, int);
+    } else {
+      global_BadDosep = R_Realloc(global_BadDosep, global_BadDosei, int);
+    }
   }
   return global_BadDosep;
 }
 
-extern "C" void rxOptionsIni(){
-  if (global_iworki == 0) {
-    global_iworki = 1024*4;
-    global_iworkp=R_Calloc(1024*4, int);
-  }
-
-  if (global_rworki == 0) {
-    global_rworki=4*1024;
-    global_rworkp=R_Calloc(1024*4, double);
-  }
-
-  if (global_InfusionRatei == 0) {
-    global_InfusionRatei = 1024;
-    global_InfusionRatep=R_Calloc(1024, double);
-  }
-
-  if (global_BadDosei == 0) {
-    global_BadDosei = 1024;
-    global_BadDosep=R_Calloc(1024, int);
-  }
-
-  if (global_scalei == 0) {
-    global_scalei = 1024;
-    global_scalep=R_Calloc(1024, double);
-  }
-
+extern "C" void rxOptionsIni() {
   rx_solve *rx=(&rx_global);
 
   rx->op = &op_global;
@@ -1633,14 +1633,14 @@ extern "C" void rxOptionsFree(){
   if (global_rworki != 0) R_Free(global_rworkp);
   global_rworki = 0;
 
+  if (global_InfusionRatei != 0) R_Free(global_InfusionRatep);
   global_InfusionRatei = 0;
-  R_Free(global_InfusionRatep);
 
+  if (global_BadDosei != 0) R_Free(global_BadDosep);
   global_BadDosei = 0;
-  R_Free(global_BadDosep);
 
+  if (global_scalei !=  0) R_Free(global_scalep);
   global_scalei = 0;
-  R_Free(global_scalep);
 }
 
 extern "C" void rxFreeLast(){
