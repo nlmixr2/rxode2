@@ -1412,9 +1412,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .envReset$cacheReset <- FALSE
   .envReset$unload <- FALSE
   # take care of too many DLLs or not provided simulation errors
-  if (.setupOnly == 0L) {
-    on.exit({rxUnloadAll()}, add=TRUE)
-  }
   while (.envReset$reset) {
     .envReset$reset <- FALSE
     tryCatch({
