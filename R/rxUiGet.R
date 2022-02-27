@@ -186,6 +186,12 @@ attr(rxUiGet.fun, "desc") <- "Normalized model function"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.md5 <- function(x, ...) {
+  digest::digest(rxUiGet.funPrint(x, ...))
+}
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.ini <- function(x, ...) {
   get("iniDf", x[[1]])
 }

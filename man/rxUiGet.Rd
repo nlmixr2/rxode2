@@ -15,6 +15,7 @@
 \alias{rxUiGet.multipleEndpoint}
 \alias{rxUiGet.funPrint}
 \alias{rxUiGet.fun}
+\alias{rxUiGet.md5}
 \alias{rxUiGet.ini}
 \alias{rxUiGet.iniFun}
 \alias{rxUiGet.modelFun}
@@ -51,6 +52,8 @@ rxUiGet(x, ...)
 \method{rxUiGet}{funPrint}(x, ...)
 
 \method{rxUiGet}{fun}(x, ...)
+
+\method{rxUiGet}{md5}(x, ...)
 
 \method{rxUiGet}{ini}(x, ...)
 
