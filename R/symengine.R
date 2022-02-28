@@ -179,8 +179,6 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "rt" = 1
 )
 
-
-
 .rxSEeqUsr <- NULL
 
 .rxCcode <- NULL
@@ -716,14 +714,14 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
           .val2 <- try(get(.xc, envir = .env), silent = TRUE)
           if (inherits(.val2, "character")) {
             .val2 <- eval(parse(text = paste0("quote({", .val2, "})")))
-            return(.rxToSE(.val2, envir, progress))
+            return(.rxToSE(.val2, envir=envir, progress=progress))
           } else if (inherits(.val2, "numeric") || inherits(.val2, "integer")) {
             return(sprintf("%s", .val2))
           }
         }
       }
     }
-    return(.rxToSE(x, envir, progress))
+    return(.rxToSE(x, envir=envir, progress=progress))
   }
   return(.rxToSE(eval(parse(text = paste0("quote({", x, "})"))), envir, progress))
 }
@@ -754,49 +752,62 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
   return(x)
 }
-
-#' @rdname rxToSE
-#' @export
-.rxToSE <- function(x, envir = NULL, progress = FALSE) {
-  rxReq("symengine")
+#' Change rxode2 syntax to symengine syntax for symbols and numbers
+#'
+#'
+#' @param x expression
+#' @param envir Current evaluating environment
+#' @param progress Progress information
+#' @param isEnvir Tell if this is an environment parse
+#' @return Changed environment
+#' @author Matthew L. Fidler
+#' @noRd
+.rxToSENameOrAtomic <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .cnst <- names(.rxSEreserved)
-  .isEnv <- inherits(envir, "rxS") || inherits(envir, "environment")
-  if (is.name(x) || is.atomic(x)) {
-    if (is.character(x)) {
-      .ret <- .rxChrToSym(x)
-      if (.isEnv) {
-        .ret2 <- as.character(.ret)
-        assign(.ret2, symengine::Symbol(.ret2), envir = envir)
+  if (is.character(x)) {
+    .ret <- .rxChrToSym(x)
+    if (isEnv) {
+      .ret2 <- as.character(.ret)
+      assign(.ret2, symengine::Symbol(.ret2), envir = envir)
+    }
+    return(.ret)
+  } else {
+    .ret <- as.character(x)
+    if (any(.ret == .cnst)) {
+      .ret <- paste0("rx_SymPy_Res_", .ret)
+      if (isEnv && is.name(x)) {
+        if (substr(x, 1, 1) != ".") {
+          if (!exists(.ret, envir = envir)) {
+            assign(.ret, symengine::Symbol(.ret), envir = envir)
+          }
+        }
       }
       return(.ret)
     } else {
-      .ret <- as.character(x)
-      if (any(.ret == .cnst)) {
-        .ret <- paste0("rx_SymPy_Res_", .ret)
-        if (.isEnv && is.name(x)) {
+      .ret0 <- .rxSEcnt[.ret]
+      if (is.na(.ret0)) {
+        if (isEnv && is.name(x)) {
+          ## message(.ret)
           if (substr(x, 1, 1) != ".") {
-            if (!exists(.ret, envir = envir)) {
+            if (!exists(.ret, envir = envir) && is.name(x)) {
               assign(.ret, symengine::Symbol(.ret), envir = envir)
             }
           }
         }
         return(.ret)
-      } else {
-        .ret0 <- .rxSEcnt[.ret]
-        if (is.na(.ret0)) {
-          if (.isEnv && is.name(x)) {
-            ## message(.ret)
-            if (substr(x, 1, 1) != ".") {
-              if (!exists(.ret, envir = envir) && is.name(x)) {
-                assign(.ret, symengine::Symbol(.ret), envir = envir)
-              }
-            }
-          }
-          return(.ret)
-        }
-        return(setNames(.ret0, NULL))
       }
+      return(setNames(.ret0, NULL))
     }
+  }
+}
+
+#' @rdname rxToSE
+#' @export
+.rxToSE <- function(x, envir = NULL, progress = FALSE) {
+  rxReq("symengine")
+  .isEnv <- inherits(envir, "rxS") || inherits(envir, "environment")
+  if (is.name(x) || is.atomic(x)) {
+    return(.rxToSENameOrAtomic(x, envir=envir, progress=progress, isEnv=.isEnv))
   } else if (is.call(x)) {
     if (identical(x[[1]], quote(`(`))) {
       return(paste0("(", .rxToSE(x[[2]], envir = envir), ")"))
@@ -821,7 +832,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       if (.isEnv) {
         for (.var in names(envir$..ddt..)) {
           .expr <- envir$..ddt..[[.var]]
-          .expr <- eval(parse(text = .expr))
+          .expr <- eval(parse(text = .expr), envir=envir)
           assign(.var, .expr, envir = envir)
           .rx <- paste0(
             rxFromSE(.var), "=",
@@ -2293,20 +2304,17 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
       .tmp <- paste0("rx_SymPy_Res_", x)
       assign(.tmp, symengine::Symbol(.tmp), envir = .env)
     } else {
-      .tmp <- rxToSE(x)
+      .tmp <- rxToSE(x, envir=.env)
       assign(.tmp, symengine::Symbol(.tmp), envir = .env)
       assign(x, symengine::Symbol(x), envir = .env)
     }
   })
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   .expr <- eval(parse(text = paste0("quote({", rxNorm(x), "})")))
-  .ret <- .rxToSE(.expr, .env)
+  .ret <- .rxToSE(.expr, envir=.env)
   class(.env) <- "rxS"
   return(.env)
 }
-
-
-
 
 symengineC <- new.env(parent = emptyenv())
 symengineC$"**" <- .dslToPow
@@ -2327,7 +2335,6 @@ for (op in c("+", "-", "*")) {
 symengineC[["/"]] <- function(e1, e2) {
   sprintf("%s /( (%s == 0) ? %s : %s)", e1, e2, .Machine$double.eps, e2)
 }
-
 
 unknownCsymengine <- function(op) {
   force(op)
