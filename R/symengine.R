@@ -823,7 +823,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   if (isEnv) {
     for (.var in names(envir$..ddt..)) {
       .expr <- envir$..ddt..[[.var]]
-      .expr <- eval(parse(text = .expr), envir=envir)
+      .expr <- eval(parse(text = .expr))
       assign(.var, .expr, envir = envir)
       .rx <- paste0(
         rxFromSE(.var), "=",
@@ -1016,7 +1016,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
-.rxToSESqureBracket <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+.rxToSESquareBracket <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .type <- toupper(as.character(x[[2]]))
   if (any(.type == c("THETA", "ETA"))) {
     if (is.numeric(x[[3]])) {
@@ -1294,7 +1294,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                identical(x[[1]], quote(`~`))) {
     return(.rxToSEAssignOperators(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`[`))) {
-    return(.rxToSESqureBracket(x, envir = envir, progress = progress, isEnv=isEnv))
+    return(.rxToSESquareBracket(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tad`))) {
     return(.rxToSETad(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`lag`)) ||
@@ -2337,9 +2337,10 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
     ## symengine::subs(symengine::subs(..polygamma, ..a, a), ..b,  b)
     symengine::psigamma(b, a)
   }
+  # "tlast"
   .pars <- c(
     rxParams(x), rxState(x),
-    "podo", "t", "time", "tlast", "rx1c", "rx__PTR__"
+    "podo", "t", "time",  "rx1c", "rx__PTR__"
   )
   ## default lambda/yj values
   .env$rx_lambda_ <- symengine::S("1")
