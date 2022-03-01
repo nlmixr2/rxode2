@@ -752,6 +752,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
   return(x)
 }
+
+.rxToSEDualVarFunction <- c("tlast", "tad", "tafd")
+
 #' Change rxode2 syntax to symengine syntax for symbols and numbers
 #'
 #'
@@ -766,7 +769,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .cnst <- names(.rxSEreserved)
   if (is.character(x)) {
     .ret <- .rxChrToSym(x)
-    if (isEnv) {
+    .ret2 <- as.character(.ret)
+    if (.ret2 %in% .rxToSEDualVarFunction) {
+      return(paste(.ret2, "()"))
+    } else if (isEnv) {
       .ret2 <- as.character(.ret)
       assign(.ret2, symengine::Symbol(.ret2), envir = envir)
     }
