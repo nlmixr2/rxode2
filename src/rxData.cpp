@@ -1271,6 +1271,7 @@ typedef struct {
   double *gInfusionRate;
   double *gTlastS;
   double *gTfirstS;
+	double *gCurDoseS;
   double *gAlag;
   double *gF;
   double *gRate;
@@ -3059,6 +3060,7 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->solved		= -1;
   ind->tfirst		= NA_REAL;
   ind->tlast		= NA_REAL;
+	ind->curDose  = NA_REAL;
   ind->yj		= 0;
   ind->logitLow         = 0;
   ind->logitHi          = 1;
@@ -3666,6 +3668,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 	  ind->linCmtRate = ind->InfusionRate + op->neq;
 	  ind->tlastS = &_globals.gTlastS[(op->neq + op->extraCmt)*cid];
 	  ind->tfirstS = &_globals.gTfirstS[(op->neq + op->extraCmt)*cid];
+		ind->curDoseS = &_globals.gCurDoseS[(op->neq + op->extraCmt)*cid];
 	  ind->alag = &_globals.gAlag[(op->neq + op->extraCmt)*cid];
 	  ind->cF = &_globals.gF[(op->neq + op->extraCmt)*cid];
 	  ind->cRate = &_globals.gRate[(op->neq + op->extraCmt)*cid];
@@ -4934,7 +4937,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
-                                      5*op->neq + 7*n3a, sizeof(double));// [n0]
+                                      5*op->neq + 8*n3a, sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4965,8 +4968,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // All NA_REAL fill are below;  one statement to initialize them all
     rx->ypNA = _globals.gssAtol + op->neq; // [op->neq]
     _globals.gTlastS = rx->ypNA + op->neq; // [n3a]
-    _globals.gTfirstS = _globals.gTlastS + n3a; // [n3a]
-    _globals.gIndSim = _globals.gTfirstS + n3a;// [n7]
+    _globals.gTfirstS  = _globals.gTlastS + n3a; // [n3a]
+		_globals.gCurDoseS = _globals.gTfirstS + n3a; // [n3a]
+    _globals.gIndSim   = _globals.gCurDoseS + n3a;// [n7]
     std::fill_n(rx->ypNA, op->neq + 2*n3a, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);

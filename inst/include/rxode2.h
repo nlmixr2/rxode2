@@ -163,9 +163,11 @@ typedef struct {
   int nBadDose;
   double HMAX; // Determined by diff
   double tlast;
+  double curDose;
   int dosenum;
   double tfirst;
   double *tlastS;
+  double *curDoseS;
   double *tfirstS;
   double podo;
   double *par_ptr; // both time changing and time invariant
