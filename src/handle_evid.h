@@ -1,3 +1,4 @@
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 #ifndef __HANDLE_EVID_H___
 #define __HANDLE_EVID_H___
 
@@ -77,20 +78,20 @@ static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int 
     if (rx_global.linKa) {
       switch (*cmt) {
       case 0:
-	*cmt = op_global.neq;
-	break;
+				*cmt = op_global.neq;
+				break;
       case 1:
-	*cmt = op_global.neq+1;
-	break;
+				*cmt = op_global.neq+1;
+				break;
       case 2:
-	*cmt -= 2;
-	break;
+				*cmt -= 2;
+				break;
       }
     } else {
       if (*cmt == 0) {
-	*cmt = op_global.neq;
+				*cmt = op_global.neq;
       } else {
-	*cmt -= 1;
+				*cmt -= 1;
       }
     }
   }
@@ -128,33 +129,33 @@ static inline int syncIdx(rx_solving_options_ind *ind) {
     // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
     int m = getDoseNumberFromIndex(ind, ind->ix[ind->idx]);
     if (m != -1) {
-	ind->ixds=m;
+			ind->ixds=m;
     } else {
       //262144
       if (!(ind->err & 262144)){
-	ind->err += 262144;
+				ind->err += 262144;
       }
       return 0;
     }
     // Need to adjust ixdsr
     for(int j = ind->ixds; j--;){
       if (ind->ix[ind->idx] == ind->idose[j]){
-	ind->ixds = j;
-	break;
+				ind->ixds = j;
+				break;
       }
     }
     if (ind->ix[ind->idx] != ind->idose[ind->ixds]){
       for(int j = ind->ixds+1; j< ind->ndoses; j++){
-	if (ind->ix[ind->idx] == ind->idose[j]){
-	  ind->ixds = j;
-	  break;
-	}
+				if (ind->ix[ind->idx] == ind->idose[j]){
+					ind->ixds = j;
+					break;
+				}
       }
     }
     if (ind->ix[ind->idx] != ind->idose[ind->ixds]){
       //524288
       if (!(ind->err & 524288)){
-	ind->err += 524288;
+				ind->err += 524288;
       }
       return 0;
     }
@@ -198,13 +199,13 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt, double
 }
  
 static inline int handle_evid(int evid, int neq, 
-			      int *BadDose,
-			      double *InfusionRate,
-			      double *dose,
-			      double *yp,
-			      int do_transit_abs,
-			      double xout, int id,
-			      rx_solving_options_ind *ind) {
+															int *BadDose,
+															double *InfusionRate,
+															double *dose,
+															double *yp,
+															int do_transit_abs,
+															double xout, int id,
+															rx_solving_options_ind *ind) {
   if (isObs(evid)) return 0;
   int cmt, foundBad, j;
   double tmp;
@@ -227,8 +228,8 @@ static inline int handle_evid(int evid, int neq,
     foundBad = 0;
     for (j = 0; j < ind->nBadDose; j++){
       if (BadDose[j] == cmt+1){
-	foundBad=1;
-	break;
+				foundBad=1;
+				break;
       }
     }
     if (!foundBad){
@@ -257,12 +258,12 @@ static inline int handle_evid(int evid, int neq,
       ind->cacheME=0;
       InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
       if (ind->wh0 == EVID0_SS2 && getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-	  getDoseIndex(ind, ind->idx)) {
-	if (!(ind->err & 1048576)){
-	  ind->err += 1048576;
-	}
-	return 0;
-	/* Rf_errorcall(R_NilValue, "SS=2 & Modeled F does not work"); */
+					getDoseIndex(ind, ind->idx)) {
+				if (!(ind->err & 1048576)){
+					ind->err += 1048576;
+				}
+				return 0;
+				/* Rf_errorcall(R_NilValue, "SS=2 & Modeled F does not work"); */
       }
       break;
     case EVIDF_MODEL_RATE_OFF: // End modeled rate
@@ -273,12 +274,12 @@ static inline int handle_evid(int evid, int neq,
       InfusionRate[cmt] += getDoseIndex(ind, ind->idx);
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 &&
-	  getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-	  getDoseIndex(ind, ind->idx)) {
-	if (!(ind->err & 2097152)){
-	  ind->err += 2097152;
-	}
-	return 0;
+					getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
+					getDoseIndex(ind, ind->idx)) {
+				if (!(ind->err & 2097152)){
+					ind->err += 2097152;
+				}
+				return 0;
       }
       break;
     case EVIDF_INF_DUR:
@@ -289,10 +290,10 @@ static inline int handle_evid(int evid, int neq,
       InfusionRate[cmt] += tmp;
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 && tmp != getDoseIndex(ind, ind->idx)) {
-	if (!(ind->err & 4194304)){
-	  ind->err += 4194304;
-	}
-	return 0;
+				if (!(ind->err & 4194304)){
+					ind->err += 4194304;
+				}
+				return 0;
       }
       break;
     case EVIDF_INF_RATE:
@@ -300,10 +301,10 @@ static inline int handle_evid(int evid, int neq,
       InfusionRate[cmt] += getDoseIndex(ind, ind->idx);
       ind->cacheME=0;
       if (ind->wh0 == EVID0_SS2 && getDoseIndex(ind, ind->idx) > 0 &&
-	  getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) != getDoseIndex(ind, ind->idx)) {
-	if (!(ind->err & 4194304)){
-	  ind->err += 4194304;
-	}
+					getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) != getDoseIndex(ind, ind->idx)) {
+				if (!(ind->err & 4194304)){
+					ind->err += 4194304;
+				}
       }
       break;
     case EVIDF_REPLACE: // replace
@@ -320,19 +321,19 @@ static inline int handle_evid(int evid, int neq,
       break;
     case EVIDF_NORMAL:
       if (do_transit_abs) {
-	ind->on[cmt] = 1;
-	if (ind->wh0 == EVID0_SS2){
-	  tmp = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
-	  ind->podo = tmp;
-	} else {
-	  ind->podo = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
-	}
-	handleTlastInline(&xout, ind);
+				ind->on[cmt] = 1;
+				if (ind->wh0 == EVID0_SS2){
+					tmp = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+					ind->podo = tmp;
+				} else {
+					ind->podo = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+				}
+				handleTlastInline(&xout, ind);
       } else {
-	ind->on[cmt] = 1;
-	ind->podo = 0;
-	handleTlastInline(&xout, ind);
-	yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
+				ind->on[cmt] = 1;
+				ind->podo = 0;
+				handleTlastInline(&xout, ind);
+				yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       }
     }
     ind->ixds++;
@@ -343,14 +344,14 @@ static inline int handle_evid(int evid, int neq,
 }
 
 static inline int handleEvid1(int *i, rx_solve *rx, int *neq,
-			      double *yp, double *xout) {
+															double *yp, double *xout) {
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   rx_solving_options *op = rx->op;
   ind->idx = *i;
   if (!isObs(ind->evid[ind->ix[ind->idx]])) syncIdx(ind);
   return handle_evid(ind->evid[ind->ix[ind->idx]], neq[0] + op->extraCmt,
-		     ind->BadDose, ind->InfusionRate, ind->dose, yp,
-		     op->do_transit_abs, *xout, neq[1], ind);
+										 ind->BadDose, ind->InfusionRate, ind->dose, yp,
+										 op->do_transit_abs, *xout, neq[1], ind);
 }
 #endif
 
