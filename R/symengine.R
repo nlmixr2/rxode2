@@ -771,7 +771,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .ret <- .rxChrToSym(x)
     .ret2 <- as.character(.ret)
     if (.ret2 %in% .rxToSEDualVarFunction) {
-      return(paste(.ret2, "()"))
+      return(paste0(.ret2, "()"))
     } else if (isEnv) {
       .ret2 <- as.character(.ret)
       assign(.ret2, symengine::Symbol(.ret2), envir = envir)
@@ -779,7 +779,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.ret)
   } else {
     .ret <- as.character(x)
-    if (any(.ret == .cnst)) {
+    if (.ret %in% .rxToSEDualVarFunction) {
+      return(paste0(.ret, "()"))
+    } else if (any(.ret == .cnst)) {
       .ret <- paste0("rx_SymPy_Res_", .ret)
       if (isEnv && is.name(x)) {
         if (substr(x, 1, 1) != ".") {
