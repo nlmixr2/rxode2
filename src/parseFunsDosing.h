@@ -1,3 +1,4 @@
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 static inline int handleFunctionDosenum(transFunctions *tf) {
   if (!strcmp("dosenum", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
