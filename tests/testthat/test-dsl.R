@@ -1,5 +1,4 @@
 # Test symengine<->rxode2 dsl
-
 test_that("d/dt(x) parsing", {
   expect_equal(rxToSE(d / dt(matt)), "rx__d_dt_matt__")
   expect_equal(rxFromSE(rx__d_dt_matt__), "d/dt(matt)")
@@ -27,49 +26,49 @@ test_that("function and constant translation", {
   expect_equal(rxToSE(gammafn(a)), "gamma(a)")
   expect_error(rxToSE(gammafn(a, b)))
   expect_error(rxFromSE(gamma(a, b)))
-  
+
   expect_equal(rxToSE(lgammafn(a)), "lgamma(a)")
   expect_equal(rxToSE(lgammafn(a)), "lgamma(a)")
   expect_equal(rxFromSE(loggamma(a)), "lgamma(a)")
   expect_equal(rxFromSE(loggamma(1 + a)), "lgamma1p(a)")
   expect_equal(rxFromSE(lgamma(1 + a)), "lgamma1p(a)")
-  
+
   expect_equal(rxToSE(digamma(a)), "polygamma(0,a)")
   expect_equal(rxFromSE(polygamma(0, a)), "digamma(a)")
-  
+
   expect_equal(rxToSE(trigamma(a)), "polygamma(1,a)")
   expect_equal(rxFromSE(polygamma(1, a)), "trigamma(a)")
-  
+
   expect_equal(rxToSE(tetragamma(a)), "polygamma(2,a)")
   expect_equal(rxFromSE(polygamma(2, a)), "tetragamma(a)")
-  
+
   expect_equal(rxToSE(pentagamma(a)), "polygamma(3,a)")
   expect_equal(rxFromSE(polygamma(3, a)), "pentagamma(a)")
-  
+
   expect_equal(rxToSE(lbeta(a, b)), "log(beta(a,b))")
   expect_equal(rxFromSE(log(beta(a, b))), "lbeta(a,b)")
-  
+
   expect_equal(rxToSE(lgamma1p(a)), "lgamma(a+1)")
   expect_equal(rxFromSE(lgamma(a + 1)), "lgamma1p(a)")
   expect_equal(rxFromSE(lgamma(1 + a)), "lgamma1p(a)")
   expect_equal(rxFromSE(lgamma(a + 1 + b)), "lgamma1p(a+b)")
-  
+
   expect_equal(rxToSE(log1p(a)), "log(1+a)")
   expect_equal(rxFromSE(log(a + 1)), "log1p(a)")
-  
+
   expect_equal(rxToSE(cospi(a)), "cos(pi*(a))")
   expect_equal(rxFromSE(cos(pi * a)), "cospi(a)")
   expect_equal(rxFromSE(cos(pi * (a))), "cospi(a)")
-  
+
   expect_equal(rxFromSE(cos(b * pi * a)), "cospi(b*a)")
-  
+
   expect_equal(rxToSE(sinpi(a)), "sin(pi*(a))")
   expect_equal(rxFromSE(sin(pi * a)), "sinpi(a)")
-  
+
   expect_equal(rxToSE(tanpi(a)), "tan(pi*(a))")
   expect_equal(rxFromSE(tan(pi * a)), "tanpi(a)")
   expect_equal(rxFromSE("tan(pi/2)"), "tanpi(1/2)")
-  
+
   expect_equal(rxToSE(log1pmx(a)), "(log(1+a)-(a))")
   expect_equal(rxToSE(expm1(a)), "(exp(a)-1)")
   expect_equal(rxToSE(pow(a, b)), "(a)^(b)")
@@ -80,128 +79,128 @@ test_that("function and constant translation", {
   expect_equal(rxToSE(Rx_pow(a, b)), "(a)^(b)")
   expect_equal(rxToSE(R_pow_di(a, b)), "(a)^(b)")
   expect_equal(rxToSE(factorial(n)), "gamma(n+1)")
-  
+
   expect_equal(rxToSE(beta(a, b)), "beta(a,b)")
   expect_error(rxToSE(beta(a)))
-  
+
   expect_equal(rxToSE(choose(n, k)), "gamma(n+1)/(gamma(k+1)*gamma(n-(k)+1))")
   expect_equal(rxToSE(lchoose(n, k)), "(lgamma(n+1)-lgamma(k+1)-lgamma(n-(k)+1))")
-  
+
   expect_equal(rxFromSE(log(-x + 1)), "log1p(-x)")
   expect_equal(rxFromSE(log(1 - x)), "log1p(-x)")
-  
+
   expect_equal(rxToSE(log1pexp(x)), "log(1+exp(x))")
   expect_equal(rxFromSE(log(1 + exp(x))), "log1pexp(x)")
-  
+
   ## expect_equal(rxFromSymPy(log((1 + x)^2)), "log1p(Rx_pow_di(x, 2)+2 * x)")
   ## expect_equal(rxFromSymPy(log((0.75 + x)^2)), "log1p(Rx_pow_di(x, 2)+1.5 * x-0.4375)")
-  
+
   expect_equal(rxFromSE(E), "2.7182818284590451")
   expect_equal(rxToSE(M_E), "E")
-  
+
   expect_equal(rxToSE(exp(1)), "E")
   expect_equal(rxFromSE(exp(1)), "M_E")
-  
+
   expect_equal(rxFromSE(log(2)), "M_LN2")
   expect_equal(rxFromSE(log(10)), "M_LN10")
-  
+
   expect_equal(rxToSE("M_LN2"), "log(2)")
   expect_equal(rxFromSE("log(2)"), "M_LN2")
-  
+
   expect_equal(rxToSE("M_LN10"), "log(10)")
   expect_equal(rxFromSE("log(10)"), "M_LN10")
-  
+
   expect_equal(rxToSE("M_LN_SQRT_PI"), "log(sqrt(pi))")
-  
+
   expect_equal(rxFromSE("log(sqrt(pi))"), "M_LN_SQRT_PI")
   expect_equal(rxFromSE("log(pi**0.5)"), "M_LN_SQRT_PI")
   expect_equal(rxFromSE("log(pi^0.5)"), "M_LN_SQRT_PI")
   expect_equal(rxFromSE("log(pi^(1/2))"), "M_LN_SQRT_PI")
   expect_equal(rxFromSE("log(pi**(1/2))"), "M_LN_SQRT_PI")
-  
+
   expect_equal(rxToSE("M_LN_SQRT_PId2"), "log(sqrt(pi/2))")
   expect_equal(rxFromSE(log(sqrt(pi / 2))), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log(sqrt(pi * 0.5))), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log(sqrt(0.5 * pi))), "M_LN_SQRT_PId2")
-  
+
   expect_equal(rxFromSE(log((pi / 2)^0.5)), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((pi * 0.5)^0.5)), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((0.5 * pi)^0.5)), "M_LN_SQRT_PId2")
-  
+
   expect_equal(rxFromSE(log((pi / 2)**0.5)), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((pi * 0.5)**0.5)), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((0.5 * pi)**0.5)), "M_LN_SQRT_PId2")
-  
+
   expect_equal(rxFromSE(log((pi / 2)**(1 / 2))), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((pi * 0.5)**(1 / 2))), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((0.5 * pi)**(1 / 2))), "M_LN_SQRT_PId2")
-  
+
   expect_equal(rxFromSE(log((pi / 2)^(1 / 2))), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((pi * 0.5)^(1 / 2))), "M_LN_SQRT_PId2")
   expect_equal(rxFromSE(log((0.5 * pi)^(1 / 2))), "M_LN_SQRT_PId2")
-  
+
   expect_equal(rxToSE("M_LN_SQRT_2PI"), "log(sqrt(2*pi))")
   expect_equal(rxFromSE(log((pi * 2)^0.5)), "M_LN_SQRT_2PI")
   expect_equal(rxFromSE(log((2 * pi)^0.5)), "M_LN_SQRT_2PI")
-  
+
   expect_equal(rxFromSE(log((pi * 2)**0.5)), "M_LN_SQRT_2PI")
   expect_equal(rxFromSE(log((2 * pi)**0.5)), "M_LN_SQRT_2PI")
-  
+
   expect_equal(rxFromSE(log((pi * 2)**(1 / 2))), "M_LN_SQRT_2PI")
   expect_equal(rxFromSE(log((2 * pi)**(1 / 2))), "M_LN_SQRT_2PI")
-  
+
   expect_equal(rxFromSE(log((pi * 2)^(1 / 2))), "M_LN_SQRT_2PI")
   expect_equal(rxFromSE(log((2 * pi)^(1 / 2))), "M_LN_SQRT_2PI")
-  
-  
+
+
   expect_equal(rxToSE("M_SQRT_3"), "sqrt(3)")
   expect_equal(rxFromSE("sqrt(3)"), "M_SQRT_3")
-  
+
   expect_equal(rxToSE("M_SQRT_2"), "sqrt(2)")
   expect_equal(rxFromSE("sqrt(2)"), "M_SQRT_2")
-  
+
   expect_equal(rxToSE("M_SQRT_32"), "sqrt(32)")
   expect_equal(rxFromSE("sqrt(32)"), "M_SQRT_32")
-  
+
   expect_equal(rxToSE("M_SQRT_PI"), "sqrt(pi)")
   expect_equal(rxFromSE("sqrt(pi)"), "M_SQRT_PI")
-  
+
   expect_equal(rxToSE("M_SQRT_2dPI"), "sqrt(2/pi)")
   expect_equal(rxFromSE("sqrt(2/pi)"), "M_SQRT_2dPI")
   expect_equal(rxFromSE("(2/pi)^0.5"), "M_SQRT_2dPI")
   expect_equal(rxFromSE("(2/pi)^(1/2)"), "M_SQRT_2dPI")
-  
+
   expect_equal(rxToSE("M_PI_2"), "pi/2")
   expect_equal(rxFromSE("pi*0.5"), "M_PI_2")
   expect_equal(rxFromSE("0.5*pi"), "M_PI_2")
   expect_equal(rxFromSE("pi/2"), "M_PI_2")
-  
+
   expect_equal(rxToSE("M_PI_4"), "pi/4")
   expect_equal(rxFromSE("pi*0.25"), "M_PI_4")
   expect_equal(rxFromSE("0.25*pi"), "M_PI_4")
   expect_equal(rxFromSE("pi/4"), "M_PI_4")
-  
+
   expect_equal(rxFromSE("1/pi"), "M_1_PI")
   expect_equal(rxToSE("M_1_PI"), "1/pi")
-  
+
   expect_equal(rxFromSE("2/pi"), "M_2_PI")
   expect_equal(rxToSE("M_2_PI"), "2/pi")
-  
+
   expect_equal(rxToSE("M_2_SQRTPI"), "2/sqrt(pi)")
   expect_equal(rxFromSE("2/sqrt(pi)"), "M_2_SQRTPI")
   expect_equal(rxFromSE("2/(pi^0.5)"), "M_2_SQRTPI")
-  
+
   expect_equal(rxToSE(M_1_SQRT_2PI), "1/sqrt(2*pi)")
   expect_equal(rxFromSE("1/sqrt(2*pi)"), "M_1_SQRT_2PI")
   expect_equal(rxFromSE("1/sqrt(pi*2)"), "M_1_SQRT_2PI")
   expect_equal(rxFromSE("1/((pi*2)^(1/2))"), "M_1_SQRT_2PI")
   expect_equal(rxFromSE("1/((pi*2)^0.5)"), "M_1_SQRT_2PI")
-  
+
   expect_equal(rxToSE(log10(a)), "log(a)/log(10)")
   expect_equal(rxToSE(log2(a)), "log(a)/log(2)")
   ## FIXME log10 log2? fromSE?
-  
-  
+
+
   ## expect_equal(rxFromSymPy("3 + 4*3+2+2*matt*pi"), "3 + 4 * 3 + 2 + matt * M_2PI")
   ## expect_equal(rxFromSymPy("3 + 4*3+2+pi*matt*2"), "3 + 4 * 3 + 2 + matt * M_2PI")
 })
@@ -258,7 +257,7 @@ test_that("logic tests", {
   expect_equal(rxFromSE("rxAnd(a,b)"), "(a&&b)")
   expect_equal(rxFromSE("rxOr(a,b)"), "(a||b)")
   expect_equal(rxFromSE("rxNot(rxOr(a,b))"), "(!((a||b)))")
-  
+
   expect_equal(rxToSE("(a==b)"), "(rxEq(a,b))")
   expect_equal(rxToSE("(a!=b)"), "(rxNeq(a,b))")
   expect_equal(rxToSE("(a>=b)"), "(rxGeq(a,b))")
@@ -270,7 +269,7 @@ test_that("logic tests", {
   expect_equal(rxToSE("(a|b)"), "(rxOr(a,b))")
   expect_equal(rxToSE("(a||b)"), "(rxOr(a,b))")
   expect_equal(rxToSE("!(a||b)"), "rxNot((rxOr(a,b)))")
-  
+
   expect_equal(
     rxFromSE("Derivative(rxEq(a,b), a)"),
     "(-20*tanh(10*(a-b))+20*tanh(10*(a-b))^3)"
@@ -279,17 +278,17 @@ test_that("logic tests", {
     rxFromSE("Derivative(rxEq(a,b), b)"),
     "(20*tanh(10*(a-b))-20*tanh(10*(a-b))^3)"
   )
-  
+
   expect_equal(
     rxFromSE("Derivative(rxGeq(a,b), a)"),
     "(5-5*tanh(4.60512018348798+10*(a-b))^2)"
   )
-  
+
   expect_equal(
     rxFromSE("Derivative(rxGeq(a,b), b)"),
     "(-5+5*tanh(4.60512018348798+10*(a-b))^2)"
   )
-  
+
   expect_equal(
     rxFromSE("Derivative(rxLeq(a,b), a)"),
     "(-5+5*tanh(-4.60512018348798+10*(a-b))^2)"
@@ -298,7 +297,7 @@ test_that("logic tests", {
     rxFromSE("Derivative(rxLeq(a,b), b)"),
     "(5-5*tanh(-4.60512018348798+10*(a-b))^2)"
   )
-  
+
   expect_equal(
     rxFromSE("Derivative(rxLt(a,b), a)"),
     "(-5+5*tanh(4.60512018348798+10*(a-b))^2)"
@@ -307,7 +306,7 @@ test_that("logic tests", {
     rxFromSE("Derivative(rxLt(a,b), b)"),
     "(5-5*tanh(4.60512018348798+10*(a-b))^2)"
   )
-  
+
   expect_equal(
     rxFromSE("Derivative(rxGt(a,b), a)"),
     "(5-5*tanh(-4.60512018348798+10*(a-b))^2)"
@@ -316,7 +315,7 @@ test_that("logic tests", {
     rxFromSE("Derivative(rxGt(a,b), b)"),
     "(-5+5*tanh(-4.60512018348798+10*(a-b))^2)"
   )
-  
+
   expect_equal(
     rxFromSE("Derivative(rxOr(a,b), a)"),
     "(1-(b))"
@@ -325,7 +324,7 @@ test_that("logic tests", {
     rxFromSE("Derivative(rxOr(a,b), b)"),
     "(1-(a))"
   )
-  
+
   expect_equal(
     rxFromSE("Derivative(rxNot(a), a)"),
     "(-1)"
