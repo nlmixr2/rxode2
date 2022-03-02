@@ -97,6 +97,29 @@ static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int 
   }
 }
 
+static inline double getDoseNumber(rx_solving_options_ind *ind, int i) {
+  return ind->dose[ind->idose[i]];
+  //return ind->dose[i];
+}
+
+static inline double getDoseIndex(rx_solving_options_ind *ind, int i) {
+  return ind->dose[ind->ix[i]];
+}
+
+static inline double getDoseIndexPlus1(rx_solving_options_ind *ind, int i) {
+  return ind->dose[ind->ix[i]+1];
+}
+
+static inline double getIiNumber(rx_solving_options_ind *ind, int i) {
+  //return ind->ii[i];
+  return ind->ii[ind->idose[i]];
+}
+
+static inline void setDoseNumber(rx_solving_options_ind *ind, int i, int j, double value) {
+  ind->dose[ind->idose[i] + j] = value;
+  //ind->dose[i+j] = value;
+}
+
 static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) {
   rx_solving_options *op = &op_global;
   double _time = *time + ind->curShift;
@@ -104,6 +127,8 @@ static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) 
       ind->cmt < op->neq + op->extraCmt){
     ind->dosenum++;
     ind->tlast = _time;
+		ind->curDose = getDoseIndex(ind, ind->idx);
+		ind->curDoseS[ind->cmt] = ind->curDose;
     if (ISNA(ind->tfirst)) ind->tfirst = _time;
     ind->tlastS[ind->cmt] = _time;
     if (ISNA(ind->tfirstS[ind->cmt])) ind->tfirstS[ind->cmt] = _time;
@@ -163,36 +188,9 @@ static inline int syncIdx(rx_solving_options_ind *ind) {
   return 1;
 }
 
-static inline double getDoseNumber(rx_solving_options_ind *ind, int i) {
-  return ind->dose[ind->idose[i]];
-  //return ind->dose[i];
-}
-
-static inline double getDoseIndex(rx_solving_options_ind *ind, int i) {
-  return ind->dose[ind->ix[i]];
-}
-
-static inline double getDoseIndexPlus1(rx_solving_options_ind *ind, int i) {
-  return ind->dose[ind->ix[i]+1];
-}
-
-static inline double getIiNumber(rx_solving_options_ind *ind, int i) {
-  //return ind->ii[i];
-  return ind->ii[ind->idose[i]];
-}
-
-static inline void setDoseNumber(rx_solving_options_ind *ind, int i, int j, double value) {
-  ind->dose[ind->idose[i] + j] = value;
-  //ind->dose[i+j] = value;
-}
 
 extern t_F AMT;
 
-static inline void handleDoseInline(rx_solving_optioions_ind *ind, int cmt, double dose) {
-	// If used in rxode2 events this could be negative unless used at the starting dose only.
-	ind->curDose = dose;
-	ind->curDoseS[cmt] = dose;
-}
 
 static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y) {
   double ret = AMT(id, cmt, dose, t, y);
@@ -204,7 +202,7 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt, double
   return ret;
 }
 
-static inline void handleCurDoseForModeledInfusion(rx_solving_options_ind *ind) {
+static inline void handleCurDoseForModeledInfusion(rx_solving_options_ind *ind, int cmt) {
 	// Here the model duration is stored on the next item
 	double origAmt = getDoseIndex(ind, ind->idx);
 	ind->curDose = origAmt;
@@ -229,6 +227,12 @@ static inline void handleCurDoseForModeledInfusion(rx_solving_options_ind *ind) 
 	// 	origRate= rate/f;
 	// }
 	// // Now we have the original rates/duration values
+}
+
+static inline void handleDoseInline(rx_solving_options_ind *ind, int cmt, double dose) {
+	// If used in rxode2 events this could be negative unless used at the starting dose only.
+	ind->curDose = dose;
+	ind->curDoseS[cmt] = dose;
 }
  
 static inline int handle_evid(int evid, int neq, 
@@ -289,7 +293,7 @@ static inline int handle_evid(int evid, int neq,
       // Rate already calculated and saved in the next dose record
       ind->on[cmt] = 1;
       ind->cacheME=0;
-			handleCurDoseForModeledInfusion(ind);
+			handleCurDoseForModeledInfusion(ind, cmt);
 	    InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
       if (ind->wh0 == EVID0_SS2 && getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
 					getDoseIndex(ind, ind->idx)) {
@@ -358,20 +362,17 @@ static inline int handle_evid(int evid, int neq,
       ind->on[cmt] = 1;
       ind->podo = 0;
       handleTlastInline(&xout, ind);
-			handleDoseInline(ind, cmt, getDoseIndex(ind, ind->idx));
       yp[cmt] = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       break;
     case EVIDF_MULT: //multiply
       ind->on[cmt] = 1;
       ind->podo = 0;
       handleTlastInline(&xout, ind);
-			handleDoseInline(ind, cmt, getDoseIndex(ind, ind->idx));
       yp[cmt] *= getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       break;
     case EVIDF_NORMAL:
       if (do_transit_abs) {
 				ind->on[cmt] = 1;
-				handleDoseInline(ind, cmt, getDoseIndex(ind, ind->idx));
 				if (ind->wh0 == EVID0_SS2){
 					tmp = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
 					ind->podo = tmp;
@@ -382,7 +383,6 @@ static inline int handle_evid(int evid, int neq,
       } else {
 				ind->on[cmt] = 1;
 				ind->podo = 0;
-				handleDoseInline(ind, cmt, getDoseIndex(ind, ind->idx));
 				handleTlastInline(&xout, ind);
 				yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       }

@@ -697,6 +697,7 @@ static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind
     ind->on[j] = 1;
     ind->tlastS[j] = NA_REAL;
     ind->tfirstS[j] = NA_REAL;
+    ind->curDoseS[j] = NA_REAL;
   }
   ind->inLhs = inLhs;
   if (rx->nMtime) calc_mtime(solveid, ind->mtime);
@@ -713,6 +714,7 @@ static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind
   ind->dosenum = 0;
   ind->tlast = NA_REAL;
   ind->tfirst = NA_REAL;
+  ind->curDose = NA_REAL;
   if (inLhs == 0 || (inLhs == 1 && op->neq==0)) {
     ind->solved = -1;
     if (rx->needSort){
