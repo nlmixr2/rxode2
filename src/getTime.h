@@ -1,3 +1,4 @@
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 #ifndef __GETTIME_H__
 #define __GETTIME_H__
 
@@ -73,15 +74,15 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
     rx_solving_options *op = &op_global;
     if (ind->cmt < op->neq){
       if (rx->needSort & 4){
-	if (!(ind->err & 16)){
-	  ind->err += 16;
-	}
-	return;
+        if (!(ind->err & 16)){
+          ind->err += 16;
+        }
+        return;
       } else {
-	if (!(ind->err & 32)){
-	  ind->err += 32;
-	}
-	return;
+        if (!(ind->err & 32)){
+          ind->err += 32;
+        }
+        return;
       }
     }
   }
@@ -105,16 +106,16 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
     rx_solving_options *op = &op_global;
     if (ind->cmt < op->neq){
       if (rx->needSort & 8){
-	if (!(ind->err & 2)){
-	  ind->err += 2;
-	}
-	return;
+        if (!(ind->err & 2)){
+          ind->err += 2;
+        }
+        return;
       } else {
-	// FIXME don't error out with linear compartmental model
-	if (!(ind->err & 4)){
-	  ind->err += 4;
-	}
-	return;
+        // FIXME don't error out with linear compartmental model
+        if (!(ind->err & 4)){
+          ind->err += 4;
+        }
+        return;
       }
     }
   }
@@ -125,7 +126,7 @@ static inline void handleTurnOffModeledDuration(int idx, rx_solve *rx, rx_solvin
   if (idx > 0){
     if (!isEvidModeledDurationStart(ind->evid[idx-1])) {
       if (!(ind->err & 64)){
-	ind->err += 64;
+        ind->err += 64;
       }
       return;
     }
@@ -148,7 +149,7 @@ static inline void handleTurnOnModeledDuration(int idx, rx_solve *rx, rx_solving
   } else {
     if (!isEvidModeledDurationStop(ind->evid[idx+1])) {
       if (!(ind->err & 512)){
-	ind->err += 512;
+        ind->err += 512;
       }
       return;
     }
@@ -160,7 +161,7 @@ static inline void handleTurnOffModeledRate(int idx, rx_solve *rx, rx_solving_op
   if (idx > 0){
     if (!isEvidModeledRateStart(ind->evid[idx-1])) {
       if (!(ind->err & 1024)){
-	ind->err += 1024;
+        ind->err += 1024;
       }
       return;
     }
@@ -184,7 +185,7 @@ static inline void handleTurnOnModeledRate(int idx, rx_solve *rx, rx_solving_opt
   } else {
     if (!isEvidModeledRateStop(ind->evid[idx+1])) {
       if (!(ind->err & 8192)){
-	ind->err += 8192;
+        ind->err += 8192;
       }
       return;
     }
@@ -201,7 +202,7 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     int j = getDoseNumberFromIndex(ind, idx);
     if (j == -1){
       if (!(ind->err & 16384)){
-	ind->err += 16384;
+        ind->err += 16384;
       }
       return 0.0;
       /* Rf_errorcall(R_NilValue, "Corrupted event table during sort (1)."); */
@@ -210,10 +211,10 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     for (k = j; k--;){
       if (ind->evid[ind->idose[j]] == ind->evid[ind->idose[k]]) break;
       if (k == 0) {
-	if (!(ind->err & 32768)){
-	  ind->err += 32768;
-	}
-	return 0.0;
+        if (!(ind->err & 32768)){
+          ind->err += 32768;
+        }
+        return 0.0;
       }
     }
     rx_solve *rx = &rx_global;
@@ -224,7 +225,7 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
       op->naTime = 1;
     }
     double durOld = (ind->all_times[ind->idose[j]] -
-		     ind->all_times[ind->idose[k]]);
+                     ind->all_times[ind->idose[k]]);
     double dur = f*durOld;
     double t = ind->all_times[ind->idose[k]]+dur;
     return getLag(ind, ind->id, ind->cmt, t);
@@ -276,7 +277,7 @@ static inline double getTime__(int idx, rx_solving_options_ind *ind, int update)
     //
     if (update == 0) {
       if (ind->whI == EVIDF_INF_RATE) {
-	return handleInfusionItem(idx, rx, op, ind);
+        return handleInfusionItem(idx, rx, op, ind);
       }
     } else {
       return getTimeCalculateInfusionTimes(idx, rx, op, ind);
@@ -296,7 +297,7 @@ static inline double getTime_(int idx, rx_solving_options_ind *ind) {
 extern "C" {
 #endif
 
-double getTime(int idx, rx_solving_options_ind *ind);
+  double getTime(int idx, rx_solving_options_ind *ind);
 
 #define calcMtime(solveid, mtime) calc_mtime(solveid,mtime);
 
