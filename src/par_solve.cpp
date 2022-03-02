@@ -603,11 +603,9 @@ extern "C" rx_solve *getRxSolve_(){
   return &rx_global;
 }
 
-
 extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
   return getTime__(idx, ind, 0);
 }
-
 
 extern "C" void radix_r(const int from, const int to, const int radix,
                         rx_solving_options_ind *ind, rx_solve *rx);
