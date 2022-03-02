@@ -534,3 +534,10 @@ test_that("is.infinite", {
   expect_equal(rxFromSE("Derivative(is.infinite(a),a)"), "0")
   expect_equal(rxFromSE("is.infinite(v)"), "is.infinite(v)")
 })
+
+test_that("dual function/variable promotion",{
+  expect_equal(rxToSE("tlast"), "tlast()")
+  expect_equal(rxFromSE("tlast()"), "tlast()")
+  expect_equal(rxToSE("tad"), "(t-tlast())")
+  expect_equal(rxFromSE("tlast(NaN)"), "tlast()")
+})
