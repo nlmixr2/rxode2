@@ -539,4 +539,5 @@ test_that("dual function/variable promotion",{
   expect_equal(rxToSE("tlast"), "tlast()")
   expect_equal(rxFromSE("tlast()"), "tlast()")
   expect_equal(rxToSE("tad"), "(t-tlast())")
+  expect_equal(rxFromSE("tlast(NaN)"), "tlast()")
 })
