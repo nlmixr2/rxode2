@@ -535,6 +535,8 @@ test_that("is.infinite", {
   expect_equal(rxFromSE("is.infinite(v)"), "is.infinite(v)")
 })
 
-test_that("dual function/variable promotion",
-          expect_equal(rxToSE("tlast"), "tlast()"),
-          expect_equal(rxFromSE("tlast()"), "tlast()"))
+test_that("dual function/variable promotion",{
+  expect_equal(rxToSE("tlast"), "tlast()")
+  expect_equal(rxFromSE("tlast()"), "tlast()")
+  expect_equal(rxToSE("tad"), "(t-tlast())")
+})
