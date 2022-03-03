@@ -1272,6 +1272,7 @@ typedef struct {
   double *gTlastS;
   double *gTfirstS;
 	double *gCurDoseS;
+	double *gPodoS;
   double *gAlag;
   double *gF;
   double *gRate;
@@ -3060,6 +3061,7 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->tfirst		= NA_REAL;
   ind->tlast		= NA_REAL;
 	ind->curDose  = NA_REAL;
+	ind->podo =  0;
   ind->yj		= 0;
   ind->logitLow         = 0;
   ind->logitHi          = 1;
@@ -3397,69 +3399,69 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
     // Check for the omega-style simulated parameters.
     for (j = rxSolveDat->omegaN.size(); j--;){
       if (rxSolveDat->omegaN[j] == pars[i]){
-	_globals.govar[j] = i;
-	break;
+				_globals.govar[j] = i;
+				break;
       }
     }
     // Check to see if this is a covariate.
     for (j = op->ncov; j--;){
       if (_globals.gpar_cov[j] == (int)(i + 1)){
-	_globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
-	curPar = true;
-	rxSolveDat->eGparPos[i]=_globals.gParPos[i];
-	break;
+				_globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
+				curPar = true;
+				rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+				break;
       }
     }
     // Check for the sigma-style simulated parameters.
     if (!curPar){
       for (j = rxSolveDat->sigmaN.size(); j--;){
-	if (rxSolveDat->sigmaN[j] == pars[i]){
-	  _globals.gsvar[j] = i;
-	  rxSolveDat->nsvar++;
-	  _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
-	  curPar = true;
-	  rxSolveDat->eGparPos[i]=_globals.gParPos[i];
-	  break;
-	}
+				if (rxSolveDat->sigmaN[j] == pars[i]){
+					_globals.gsvar[j] = i;
+					rxSolveDat->nsvar++;
+					_globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
+					curPar = true;
+					rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+					break;
+				}
       }
     }
     // Next, check to see if this is a user-specified parameter
     if (!curPar){
       for (j = rxSolveDat->nmP.size(); j--;){
-	if (rxSolveDat->nmP[j] == pars[i]){
-	  curPar = true;
-	  _globals.gParPos[i] = j + 1;
-	  rxSolveDat->eGparPos[i]=_globals.gParPos[i];
-	  break;
-	}
+				if (rxSolveDat->nmP[j] == pars[i]){
+					curPar = true;
+					_globals.gParPos[i] = j + 1;
+					rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+					break;
+				}
       }
     }
     // last, check for $ini values
     if (!curPar){
       for (j = mvIniN.size(); j--;){
-	if (mvIniN[j] == pars[i]){
-	  curPar = true;
-	  _globals.gParPos[i] = -j - 1;
-	  rxSolveDat->eGparPos[i]=_globals.gParPos[i];
-	  break;
-	}
+				if (mvIniN[j] == pars[i]){
+					curPar = true;
+					_globals.gParPos[i] = -j - 1;
+					rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+					break;
+				}
       }
     }
     if (!curPar){
       for (j = 1; j < mvCov1N.size(); j++){
-	if (mvCov1N[j] == pars[i]){
-	  // These are setup once and don't need to be updated
-	  _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
-	  curPar = true;
-	  rxSolveDat->eGparPos[i]=_globals.gParPos[i];
-	}
+				if (mvCov1N[j] == pars[i]){
+					// These are setup once and don't need to be updated
+					_globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
+					curPar = true;
+					rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+				}
       }
     }
     if (!curPar){
       if (errStr == ""){
-	errStr = "The following parameter(s) are required for solving: " + pars[i];
+				errStr = "The following parameter(s) are required for solving: " + pars[i];
       } else {
-	errStr = errStr + ", " + pars[i];
+				errStr = errStr + ", " + pars[i];
       }
       allPars = false;
     }
@@ -4936,7 +4938,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
-                                      5*op->neq + 8*n3a, sizeof(double));// [n0]
+                                      5*op->neq + 9*n3a, sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4969,7 +4971,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gTlastS = rx->ypNA + op->neq; // [n3a]
     _globals.gTfirstS  = _globals.gTlastS + n3a; // [n3a]
 		_globals.gCurDoseS = _globals.gTfirstS + n3a; // [n3a]
-    _globals.gIndSim   = _globals.gCurDoseS + n3a;// [n7]
+		_globals.gPodoS = _globals.gCurDoseS + n3a; // [n3a]
+    _globals.gIndSim   = _globals.gPodoS + n3a;// [n7]
     std::fill_n(rx->ypNA, op->neq + 2*n3a, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);

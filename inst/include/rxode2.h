@@ -170,6 +170,7 @@ typedef struct {
   double *curDoseS;
   double *tfirstS;
   double podo;
+  double *podoS;
   double *par_ptr; // both time changing and time invariant
   double *dose;
   double *ii;
