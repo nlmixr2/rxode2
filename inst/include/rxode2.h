@@ -89,7 +89,6 @@ typedef struct {
   int MXORDN;
   int MXORDS;
   //
-  int do_transit_abs;
   int nlhs;
   int neq;
   int stiff;

@@ -2019,7 +2019,6 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
 #define defrx_inits R_NilValue
 #define defrx_covs R_NilValue
 #define defrx_method 2
-#define defrx_transit_abs R_NilValue
 #define defrx_atol 1.0e-8
 #define defrx_rtol 1.0e-8
 #define defrx_maxsteps 5000
@@ -3670,6 +3669,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 					ind->tlastS = &_globals.gTlastS[(op->neq + op->extraCmt)*cid];
 					ind->tfirstS = &_globals.gTfirstS[(op->neq + op->extraCmt)*cid];
 					ind->curDoseS = &_globals.gCurDoseS[(op->neq + op->extraCmt)*cid];
+					ind->podoS = &_globals.gPodoS[(op->neq + op->extraCmt)*cid];
 					ind->alag = &_globals.gAlag[(op->neq + op->extraCmt)*cid];
 					ind->cF = &_globals.gF[(op->neq + op->extraCmt)*cid];
 					ind->cRate = &_globals.gRate[(op->neq + op->extraCmt)*cid];
@@ -4297,7 +4297,6 @@ static inline void iniRx(rx_solve* rx) {
   op->MXORDN =12;
   op->MXORDS = 5;
   //
-  op->do_transit_abs=0;
   op->nlhs = 0;
   op->neq = 0;
   op->stiff = 0;
@@ -4380,7 +4379,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   maxAtolRtolFactor = asDouble(rxControl[Rxc_maxAtolRtolFactor], "maxAtolRtolFactor");
   RObject scale = rxControl[Rxc_scale];
   int method = asInt(rxControl[Rxc_method], "method");
-  Nullable<LogicalVector> transit_abs = asNLv(rxControl[Rxc_transitAbs], "transitAbs");
   NumericVector atolNV = asNv(rxControl[Rxc_atol], "atol");
   NumericVector rtolNV = asNv(rxControl[Rxc_rtol], "rtol");
   NumericVector atolNVss = asNv(rxControl[Rxc_ssAtol], "ssAtol");
@@ -4690,19 +4688,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->MXORDS = maxords;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
-    int transit = 0;
-    if (transit_abs.isNull()){
-      transit = rxSolveDat->mv[RxMv_podo];
-      if (transit){
-        warning(_("assumed transit compartment model since 'podo' is in the model"));
-      }
-    }  else {
-      LogicalVector tr = LogicalVector(transit_abs);
-      if (tr[0]){
-        transit=  1;
-      }
-    }
-    op->do_transit_abs = transit;
     op->nlhs = lhs.size();
     CharacterVector trans = rxSolveDat->mv[RxMv_trans];
     // Make sure the model variables are assigned...

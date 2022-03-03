@@ -24,7 +24,7 @@ int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_i
     // In this case dosing to the extra compartments is OK so add it
     rx_solving_options *op = &op_global;
     return handle_evid(evid, op->neq + op->extraCmt, ind->BadDose,
-		       ind->InfusionRate, ind->dose, yp, 0,
+		       ind->InfusionRate, ind->dose, yp,
 		       xout, id, ind);
 
   } else {

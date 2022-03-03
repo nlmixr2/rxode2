@@ -762,7 +762,6 @@ void solveSS_1(int *neq,
                double *InfusionRate,
                double *dose,
                double *yp,
-               int do_transit_abs,
                double xout, double xp, int id,
                int *i, int nx,
                int *istate,
@@ -886,7 +885,6 @@ void handleSS(int *neq,
               double *InfusionRate,
               double *dose,
               double *yp,
-              int do_transit_abs,
               double xout, double xp, int id,
               int *i, int nx,
               int *istate,
@@ -985,7 +983,7 @@ void handleSS(int *neq,
       for (j = 0; j < op->maxSS; j++){
         if (j == 0) xout2 = xp2+1.; // the first level drawn one hour after infusion
         else xout2 = xp2+infStep;
-        solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+        solveSS_1(neq, BadDose, InfusionRate, dose, yp,
                   xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
         canBreak=1;
         if (j <= op->minSS -1){
@@ -1023,9 +1021,9 @@ void handleSS(int *neq,
         // Use "real" xout for handle_evid functions.
         handle_evid(ind->evid[ind->ix[*i]], neq[0],
                     BadDose, InfusionRate, dose, yp,
-                    op->do_transit_abs, xout, neq[1], ind);
+                    xout, neq[1], ind);
         // yp is last solve or y0
-        solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+        solveSS_1(neq, BadDose, InfusionRate, dose, yp, 
                   xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
         ind->ixds--; // This dose stays in place
         canBreak=1;
@@ -1077,11 +1075,11 @@ void handleSS(int *neq,
           ind->ixds = infBixds;
           handle_evid(ind->evid[ind->idose[infBixds]], neq[0],
                       BadDose, InfusionRate, dose, yp,
-                      op->do_transit_abs, xout, neq[1], ind);
+                      xout, neq[1], ind);
           // yp is last solve or y0
           *istate=1;
           // yp is last solve or y0
-          solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp, 
                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
           xp2 = xout2;
           // Turn off Infusion, solve (dur-ii)
@@ -1090,7 +1088,7 @@ void handleSS(int *neq,
           ind->idx=ei;
           handle_evid(ind->evid[ind->idose[infEixds]], neq[0],
                       BadDose, InfusionRate, dose, yp,
-                      op->do_transit_abs, xout+dur, neq[1], ind);
+                      xout+dur, neq[1], ind);
           if (j <= op->minSS -1){
             if (ind->rc[0]== -2019){
               badSolveExit(*i);
@@ -1120,7 +1118,7 @@ void handleSS(int *neq,
           }
           // yp is last solve or y0
           *istate=1;
-          solveSS_1(neq, BadDose, InfusionRate, dose, yp, op->do_transit_abs,
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp, 
                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
           if (j <= op->minSS -1){
             if (ind->rc[0]== -2019){
@@ -1169,7 +1167,7 @@ void handleSS(int *neq,
     if (!doSSinf){
       handle_evid(ind->evid[ind->ix[*i]], neq[0],
                   BadDose, InfusionRate, dose, yp,
-                  op->do_transit_abs, xout, neq[1], ind);
+                  xout, neq[1], ind);
     }
     ind->doSS=0;
   }
@@ -1240,7 +1238,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         xp=xout;
         ind->ixds++;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &idid, op, ind, u_inis, NULL);
         if (ind->wh0 == 30){
           yp[ind->cmt] = inits[ind->cmt];
@@ -1375,7 +1373,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         xp=xout;
         ind->ixds++;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx);
         if (ind->wh0 == 30){
           yp[ind->cmt] = inits[ind->cmt];
@@ -1717,7 +1715,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         ind->ixds++;
         xp = xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == 30){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
@@ -1890,7 +1888,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         ind->ixds++;
         xp=xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, op->do_transit_abs, xout,
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == 30){
           yp[ind->cmt] = inits[ind->cmt];

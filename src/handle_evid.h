@@ -243,7 +243,6 @@ static inline int handle_evid(int evid, int neq,
 															double *InfusionRate,
 															double *dose,
 															double *yp,
-															int do_transit_abs,
 															double xout, int id,
 															rx_solving_options_ind *ind) {
   if (isObs(evid)) return 0;
@@ -388,7 +387,7 @@ static inline int handleEvid1(int *i, rx_solve *rx, int *neq, double *yp, double
   if (!isObs(ind->evid[ind->ix[ind->idx]])) syncIdx(ind);
   return handle_evid(ind->evid[ind->ix[ind->idx]], neq[0] + op->extraCmt,
 										 ind->BadDose, ind->InfusionRate, ind->dose, yp,
-										 op->do_transit_abs, *xout, neq[1], ind);
+										 *xout, neq[1], ind);
 }
 #endif
 
