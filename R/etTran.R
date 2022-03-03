@@ -1,4 +1,4 @@
-.expandPars <- function(object, params, events, control) {
+expandPars <- function(object, params, events, control) {
   .Call(`_rxode2_expandPars_`, object, params, events, control,
     PACKAGE = "rxode2"
   )

@@ -56,7 +56,7 @@ int lastStrLoc=0;
 SEXP _goodFuns;
 vLines _dupStrs;
 
-int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_podo = 0, rx_syntax_require_ode_first = 1;
+int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_syntax_require_ode_first = 1;
 
 extern D_ParserTables parser_tables_rxode2;
 
@@ -366,7 +366,6 @@ void reset() {
   found_jac = 0;
   rx_syntax_error = 0;
   rx_suppress_syntax_info=0;
-  rx_podo = 0;
   rx_syntax_allow_ini = 1;
 
   maxSumProdN = 0;
@@ -494,7 +493,6 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   set_d_use_r_headers(0);
   set_d_rdebug_grammar_level(0);
   set_d_verbose_level(0);
-  rx_podo = 0;
 
   if (isString(prefix) && length(prefix) == 1){
     model_prefix = CHAR(STRING_ELT(prefix,0));

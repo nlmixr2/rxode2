@@ -1418,7 +1418,7 @@ rxCompile.rxModelVars <- function(model, # Model
         if (!is.null(modName)) {
           .newMod <- regexpr("_new", modName) != -1
         }
-        .rxModelVarsLast[[18]] <- .indLinInfo
+        .rxModelVarsLast[[17]] <- .indLinInfo
         .model <- .rxModelVarsLast$model
         .model["indLin"] <- .rxMECode
         .rxModelVarsLast$model <- .model

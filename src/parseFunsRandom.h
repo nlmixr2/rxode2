@@ -49,11 +49,9 @@ static inline int handleFunctionTransit(transFunctions *tf) {
     if (ii == 2){
       aAppendN("_transit3P(t, _cSub, ", 21);
       sAppendN(&sbt,"transit(", 8);
-      rx_podo=1;
     } else if (ii == 3){
       aAppendN("_transit4P(t, _cSub, ", 21);
       sAppendN(&sbt,"transit(", 8);
-      rx_podo = 1;
     } else {
       updateSyntaxCol();
       trans_syntax_error_report_fn(_("'transit' takes 2-3 arguments transit(n, mtt, bio)"));

@@ -8,7 +8,6 @@ void wprint_node(int depth, char *name, char *value, void *client_data) {
   nodeInfo ni;
   niReset(&ni);
   int tmp = nodeTime(value) ||
-    nodePodo(value) ||
     nodeCmt(value) ||
     nodeTlast(value) ||
     nodePtr(value) ||

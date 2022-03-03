@@ -32,16 +32,6 @@ static inline int nodeTime(char *value) {
   return 0;
 }
 
-static inline int nodePodo(char *value) {
-  if (!strcmp("podo",value)){
-    aAppendN("_solveData->subjects[_cSub].podo", 32);
-    sAppendN(&sbt, "podo", 4);
-    rx_podo = 1;
-    return 1;
-  }
-  return 0;
-}
-
 static inline int nodeCmt(char *value) {
   if (!strcmp("CMT",value)){
     aAppendN("_CMT", 4);

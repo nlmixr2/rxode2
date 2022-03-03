@@ -54,7 +54,6 @@ static inline int assertForbiddenVariables(const char *s) {
 static inline int isReservedVariable(const char *s) {
   return !strcmp("amt", s) ||
     !strcmp("time", s) ||
-    !strcmp("podo", s) ||
     !strcmp("rx__PTR__", s) ||
     !strcmp("tlast", s) ||
     // Ignore M_ constants

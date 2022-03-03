@@ -660,8 +660,8 @@ List rxModelVars_rxode2(const RObject &obj){
   }
 }
 List rxModelVars_blank(){
-  List ret(21);
-  CharacterVector retN(22);
+  List ret(20);
+  CharacterVector retN(20);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -674,34 +674,32 @@ List rxModelVars_blank(){
   retN[4] = "model";
   ret[5]  = NumericVector::create(); // ini
   retN[5] = "ini";
-  ret[6]  = LogicalVector::create(false); // podo
-  retN[6] = "podo";
-  ret[7]  = LogicalVector::create(); // dfdy
-  retN[7] = "dfdy";
-  ret[8]  = LogicalVector::create(); // sens
-  retN[8] = "sens";
-  ret[9] = IntegerVector::create(); // state.ignore
-  retN[9] = "state.ignore";
-  ret[10] = CharacterVector::create(); // version
-  retN[10] = "version";
-  ret[11] = CharacterVector::create(); // normal.state
-  retN[11] = "normal.state";
-  ret[12] = IntegerVector::create(0); // need sort
-  retN[12] = "needSort";
-  ret[13] = IntegerVector::create(0); // nMtime
-  retN[13] = "nMtime";
-  ret[14] = IntegerVector::create(0); // extraCmt
-  retN[14] = "extraCmt";
-  ret[15] = CharacterVector::create(); // stateExtra
-  retN[15] = "stateExtra";
-  ret[16] = IntegerVector::create(); // dvid
-  retN[16] = "dvid";
-  ret[17] = List::create();
-  retN[17] = "indLin";
-  ret[18] = IntegerVector::create(0); // timeId
-  retN[18] = "timeId";
-  ret[19] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[19] = "md5";
+  ret[6]  = LogicalVector::create(); // dfdy
+  retN[6] = "dfdy";
+  ret[7]  = LogicalVector::create(); // sens
+  retN[7] = "sens";
+  ret[8] = IntegerVector::create(); // state.ignore
+  retN[8] = "state.ignore";
+  ret[9] = CharacterVector::create(); // version
+  retN[9] = "version";
+  ret[10] = CharacterVector::create(); // normal.state
+  retN[10] = "normal.state";
+  ret[11] = IntegerVector::create(0); // need sort
+  retN[11] = "needSort";
+  ret[12] = IntegerVector::create(0); // nMtime
+  retN[12] = "nMtime";
+  ret[13] = IntegerVector::create(0); // extraCmt
+  retN[13] = "extraCmt";
+  ret[14] = CharacterVector::create(); // stateExtra
+  retN[14] = "stateExtra";
+  ret[15] = IntegerVector::create(); // dvid
+  retN[15] = "dvid";
+  ret[16] = List::create();
+  retN[16] = "indLin";
+  ret[17] = IntegerVector::create(0); // timeId
+  retN[17] = "timeId";
+  ret[18] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[18] = "md5";
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
   return ret;
@@ -791,7 +789,7 @@ List rxModelVars_character(const RObject &obj){
 }
 
 List rxModelVars_list(const RObject &obj){
-  bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, podo=false, dfdy=false;
+  bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, dfdy=false;
   List lobj  = asList(obj, "rxModelVars_list");
   CharacterVector nobj = lobj.names();
   for (unsigned int i = 0; i < nobj.size(); i++){
@@ -811,8 +809,6 @@ List rxModelVars_list(const RObject &obj){
 			model = true;
 		} else if (!md5 && nobj[i] == "md5"){
 			md5 = true;
-		} else if (!podo && nobj[i] == "podo"){
-			podo=true;
 		} else if (!dfdy && nobj[i] == "dfdy"){
 			dfdy = true;
 		} else {
