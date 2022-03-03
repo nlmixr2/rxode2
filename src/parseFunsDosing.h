@@ -25,7 +25,8 @@ static inline int handleFunctionDosenum(transFunctions *tf) {
 static inline int handleFunctionTad(transFunctions *tf) {
   if ((tf->isTad = !strcmp("tad", tf->v)) || (tf->isTafd = !strcmp("tafd", tf->v)) ||
       (tf->isTlast = !strcmp("tlast", tf->v)) || (tf->isTfirst = !strcmp("tfirst", tf->v)) ||
-			(tf->isDose = !strcmp("dose", tf->v))) {
+			(tf->isDose = !strcmp("dose", tf->v)) ||
+			(tf->isPodo = !strcmp("podo", tf->v))) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii == 1){
       D_ParseNode *xpn = d_get_child(tf->pn, 2);

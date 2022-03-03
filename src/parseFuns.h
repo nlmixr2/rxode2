@@ -79,6 +79,7 @@ typedef struct transFunctions {
   int isTafd;
   int isTlast;
   int isDose;
+  int isPodo;
   int isTfirst;
   int isInd;
   nodeInfo ni;
@@ -113,6 +114,7 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isTafd=0;
   tf->isTlast = 0;
   tf->isDose = 0;
+  tf->isPodo = 0;
   tf->isTfirst = 0;
   tf->isInd=0;
 }
