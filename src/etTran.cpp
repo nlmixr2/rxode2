@@ -1204,10 +1204,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cevid = -1;
       }
       break;
+		case 7:
     case 1:
       if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
-        stop(_("'mdv' cannot be 0 when 'evid'=1 id: %s row: %d"), CHAR(idLvl[cid-1]), i+1);
+        stop(_("'mdv' cannot be 0 when 'evid'=%d id: %s row: %d"), cevid, CHAR(idLvl[cid-1]), i+1);
       }
+			if (cevid == 7) {
+				flg = 50;
+				cevid=1;
+			}
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
       if (rateI == 0) allInf=false;
       else allBolus=false;

@@ -136,7 +136,6 @@ static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) 
 		case EVIDF_MODEL_RATE_ON: // modeled rate.
     case EVIDF_MODEL_DUR_ON: // modeled duration.
       // Rate already calculated and saved in the next dose record
-			
 	    //InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
 			break;
 		case EVIDF_MODEL_RATE_OFF: // End modeled rate
