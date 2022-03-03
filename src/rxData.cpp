@@ -3056,7 +3056,6 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->idx		= 0;
   ind->ixds		= 0;
   ind->lambda		= 1.0;
-  ind->podo		= 0.0;
   ind->solved		= -1;
   ind->tfirst		= NA_REAL;
   ind->tlast		= NA_REAL;

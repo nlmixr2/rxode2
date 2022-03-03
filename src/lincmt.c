@@ -34,36 +34,6 @@ double log1mex(double a){
 
 void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0);
 
-// Linear compartment models/functions
-extern double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p){
-  double dose = getDoseNumber(ind, l);
-  if (backward){
-    if (l <= 0) {
-      Rf_errorcall(R_NilValue, _("could not find a start to the infusion"));
-    }
-    p[0] = l-1;
-    while (p[0] > 0 && getDoseNumber(ind, p[0]) != -dose){
-      p[0]--;
-    }
-    if (getDoseNumber(ind, p[0]) != -dose){
-      Rf_errorcall(R_NilValue, _("could not find a start to the infusion"));
-    }
-    return ind->all_times[ind->idose[l]] - ind->all_times[ind->idose[p[0]]];
-  } else {
-    if (l >= ind->ndoses) {
-      Rf_errorcall(R_NilValue, _("could not find an end to the infusion"));
-    }
-    p[0] = l+1;
-    while (p[0] < ind->ndoses && getDoseNumber(ind, p[0]) != -dose){
-      p[0]++;
-    }
-    if (getDoseNumber(ind, p[0]) != -dose){
-      Rf_errorcall(R_NilValue, _("could not find an end to the infusion"));
-    }
-    return ind->all_times[ind->idose[p[0]]] - ind->all_times[ind->idose[l]];
-  }
-}
-
 extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   // Uses bisection for slightly faster lookup of dose index.
   int i, j, ij;

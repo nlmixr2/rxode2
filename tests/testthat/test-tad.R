@@ -218,6 +218,17 @@ test_that("tad family works with ode", {
       122
     )
   )
+
+  ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
+    et(time = 1, amt = 10000, rate=10000 / 9, addl = 9, ii = 12, cmt = "depot") %>%
+    et(time = 120, amt = 2000, rate=2000 / 9, addl = 4, ii = 14, cmt = "depot") %>%
+    et(time = 122, amt = 2200, rate=2200 / 9, addl = 4, ii = 14, cmt = "peri") %>%
+    et(0, 240, by = 3)
+
+  r2 <- rxSolve(mod1, ev, addDosing = NA)
+
+  r2 <- rxSolve(mod1, ev, addDosing = NA)
+
 })
 
 test_that("test parsing of ode", {
