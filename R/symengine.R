@@ -764,7 +764,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(x)
 }
 
-.rxToSEDualVarFunction <- c("tlast", "tad", "tafd")
+.rxToSEDualVarFunction <- c("tlast", "tad", "tafd", "dose", "podo")
 
 #' Change rxode2 syntax to symengine syntax for symbols and numbers
 #'
