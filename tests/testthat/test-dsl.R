@@ -208,11 +208,11 @@ test_that("function and constant translation", {
 test_that("transit compartment translation.", {
   expect_equal(
     rxToSE(transit(n, mtt, bio)),
-    "exp(log((bio)*(podo))+log(n + 1)-log(mtt)+(n)*((log(n+1)-log(mtt))+log(t))-((n+1)/(mtt))*(t)-lgamma(1+n))"
+    "exp(log((bio)*(podo()))+log(n + 1)-log(mtt)+(n)*((log(n+1)-log(mtt))+log(t))-((n+1)/(mtt))*(t)-lgamma(1+n))"
   )
   expect_equal(
     rxToSE(transit(n, mtt)),
-    "exp(log(podo)+(log(n+1)-log(mtt))+(n)*((log(n+1)-log(mtt))+ log(t))-((n + 1)/(mtt))*(t)-lgamma(1+n))"
+    "exp(log(podo())+(log(n+1)-log(mtt))+(n)*((log(n+1)-log(mtt))+ log(t))-((n + 1)/(mtt))*(t)-lgamma(1+n))"
   )
 })
 
