@@ -156,12 +156,6 @@ static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) 
 		if (_return) return;
     ind->dosenum++;
     ind->tlast = _time;
-		if (ind->wh0 == 50) {
-			ind->podo = curDose;
-		} else {
-			ind->podo = 0.0;
-		}
-		ind->podoS[ind->cmt] = ind->podo;
 		ind->curDose = curDose;
 		ind->curDoseS[ind->cmt] = ind->curDose;
     if (ISNA(ind->tfirst)) ind->tfirst = _time;
@@ -372,9 +366,9 @@ static inline int handle_evid(int evid, int neq,
 			if (ind->wh0 != EVID0_PHANTOM) {
 				yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
 			}
-			ind->ixds++;
-			ind->solved = ind->idx;
 		}
+		ind->ixds++;
+		ind->solved = ind->idx;
     return 1;
 	}
   return 0;

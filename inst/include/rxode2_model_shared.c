@@ -167,7 +167,7 @@ double _transit4P(int cmt, double t, unsigned int id, double n, double mtt, doub
   double tlast = _solveData->subjects[id].tlastS[cmt];
   if (ISNA(tlast)) tlast = 0.0;
   double tad = (t-tlast);
-  return exp(log(bio*(_solveData->subjects[id].podoS[cmt]))+lktr+n*(lktr+log(tad))-ktr*(tad)-lgamma1p(nd));
+  return exp(log(bio*(_solveData->subjects[id].curDoseS[cmt]))+lktr+n*(lktr+log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
 double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
@@ -177,7 +177,7 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
   double tlast = _solveData->subjects[id].tlastS[cmt];
   if (ISNA(tlast)) tlast = 0.0;
   double tad = t-tlast;
-  double podo = _solveData->subjects[id].podoS[cmt];
+  double podo = _solveData->subjects[id].curDoseS[cmt];
   return exp(log(podo)+lktr+n*(lktr+log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
