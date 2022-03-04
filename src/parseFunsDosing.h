@@ -33,8 +33,13 @@ static inline int handleFunctionTad(transFunctions *tf) {
       char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       if (allSpaces(v2)){
 				// tad overall
-				sAppend(&sb, "_%s0()", tf->v);
-				sAppend(&sbDt, "_%s0()", tf->v);
+				if (tf->isPodo) {
+					sAppend(&sb, "_%s1(%d)", tf->v, tb.lastDdt);
+					sAppend(&sbDt, "_%s1(%d)", tf->v, tb.lastDdt);
+				} else {
+					sAppend(&sb, "_%s0()", tf->v);
+					sAppend(&sbDt, "_%s0()", tf->v);
+				}
       } else {
 				sAppend(&sb, "_%s1(", tf->v);
 				sAppend(&sbDt, "_%s1(", tf->v);
