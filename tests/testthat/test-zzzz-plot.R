@@ -2,6 +2,7 @@ test_that("plot tests", {
   skip_if_not_installed("units")
   skip_if_not_installed("ggplot2", minimum_version="3.3.5")
   skip_if_not_installed("vdiffr")
+  rxUnloadAll()
 
   # vdiffr doesn't cause errors on CRAN, so skip there.
   skip_on_cran()
