@@ -763,6 +763,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
   return(x)
 }
+
+.rxToSEDualVarFunction <- c("tlast", "tad", "tafd")
+
 #' Change rxode2 syntax to symengine syntax for symbols and numbers
 #'
 #'
@@ -777,14 +780,23 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .cnst <- names(.rxSEreserved)
   if (is.character(x)) {
     .ret <- .rxChrToSym(x)
-    if (isEnv) {
+    .ret2 <- as.character(.ret)
+    if (.ret2 %in% .rxToSEDualVarFunction) {
+      .ret2 <- paste0(.ret2, "()")
+      .ret2 <- rxToSE(.ret2)
+      return(.ret2)
+    } else if (isEnv) {
       .ret2 <- as.character(.ret)
       assign(.ret2, symengine::Symbol(.ret2), envir = envir)
     }
     return(.ret)
   } else {
     .ret <- as.character(x)
-    if (any(.ret == .cnst)) {
+    if (.ret %in% .rxToSEDualVarFunction) {
+      .ret <- paste0(.ret, "()")
+      .ret <- rxToSE(.ret)
+      return(.ret)
+    } else if (any(.ret == .cnst)) {
       .ret <- paste0("rx_SymPy_Res_", .ret)
       if (isEnv && is.name(x)) {
         if (substr(x, 1, 1) != ".") {
@@ -2010,7 +2022,6 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
                 return(paste0(.xc[1], .x2[[1]], .xc[2]))
               }
             }
-
             return(paste0(.xc[1], .rxFromSE(x[[2]]), .xc[2]))
           } else {
             stop(sprintf("'%s' only acceps 1 argument", .x1),
@@ -2035,6 +2046,13 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
         }
       }
       if (length(x) == 2) {
+        .isnan <- try(is.nan(x[[2]]), silent=TRUE)
+        if (inherits(.isnan, "try-error")) .isnan <- FALSE
+        if (.isnan) {
+          if (as.character(x[[1]]) %in% .rxToSEDualVarFunction) {
+            return(paste0(as.character(x[[1]]), "()"))
+          }
+        }
         if (identical(x[[1]], quote(`log`))) {
           if (length(x[[2]]) == 3) {
             if (identical(x[[2]][[1]], quote(`beta`))) {
@@ -2305,7 +2323,13 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
   .f <- function(...) {
     1
   }
-  body(.f) <- bquote(return(symengine::FunctionSymbol(.(name), unlist(list(...)))))
+  body(.f) <- bquote({
+    .args <- unlist(list(...))
+    if (length(.args) == 0) {
+      .args <- NaN
+    }
+    return(symengine::FunctionSymbol(.(name), .args))
+  })
   return(.f)
 }
 
