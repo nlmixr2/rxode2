@@ -47,10 +47,12 @@ static inline int handleFunctionTransit(transFunctions *tf) {
   if (!strcmp("transit", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii == 2){
-      aAppendN("_transit3P(t, _cSub, ", 21);
+      sAppend(&sb,   "_transit3P(%d, t, _cSub, ", tb.lastDdt);
+      sAppend(&sbDt, "_transit3P(%d, t, _cSub, ", tb.lastDdt);
       sAppendN(&sbt,"transit(", 8);
     } else if (ii == 3){
-      aAppendN("_transit4P(t, _cSub, ", 21);
+      sAppend(&sb,   "_transit4P(%d, t, _cSub, ", tb.lastDdt);
+      sAppend(&sbDt, "_transit4P(%d, t, _cSub, ", tb.lastDdt);
       sAppendN(&sbt,"transit(", 8);
     } else {
       updateSyntaxCol();

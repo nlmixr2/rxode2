@@ -155,7 +155,7 @@ d/dt(cen) = ka*depot-k*cen
 ")
 
 test_that("Transit absorption is function that can take 3 arguments", {
-  expect_warning(transit2 <- rxSolve(mod, et))
+  transit2 <- rxSolve(mod, et)
   expect_equal(
     round(as.data.frame(transit)[, names(transit) != "ktr"], 4),
     round(as.data.frame(transit2), 4)
@@ -173,10 +173,10 @@ n = 20.1
 k = cl/vc
 d/dt(depot) = transit(n, mtt, 1)-ka*depot
 d/dt(cen) = ka*depot-k*cen
-)
+")
 
 test_that("Transit absorption can take numeric arguments", {
-  expect_warning(transit2 <- rxSolve(mod, et))
+  transit2 <- rxSolve(mod, et)
   expect_equal(
     round(as.data.frame(transit)[, names(transit) != "ktr"], 4),
     round(as.data.frame(transit2), 4)

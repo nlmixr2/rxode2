@@ -86,6 +86,7 @@ lhs symbols?
   int nInd;
   int simflg;
   int thread;
+  int lastDdt;
 } symtab;
 
 extern symtab tb;

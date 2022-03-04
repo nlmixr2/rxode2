@@ -27,7 +27,6 @@ rxSolve(
   inits = NULL,
   scale = NULL,
   method = c("liblsoda", "lsoda", "dop853", "indLin"),
-  transitAbs = NULL,
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -215,9 +214,6 @@ solving nor user Jacobain specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
 must be setup specially to use this solving routine.
 }}
-
-\item{transitAbs}{boolean indicating if this is a transit
-compartment absorption}
 
 \item{sigdig}{Specifies the "significant digits" that the ode
 solving requests.  When specified this controls the relative and

@@ -156,7 +156,7 @@ static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) 
 		if (_return) return;
     ind->dosenum++;
     ind->tlast = _time;
-		if (ind->whI == 50) {
+		if (ind->wh0 == 50) {
 			ind->podo = curDose;
 		} else {
 			ind->podo = 0.0;

@@ -160,18 +160,25 @@ double _min(unsigned int n, ...){
   return mn;
 }
 
-double _transit4P(double t, unsigned int id, double n, double mtt, double bio){
-  double ktr = (n+1)/mtt;
-  double lktr = log(n+1)-log(mtt);
-  double tc = (t-(_solveData->subjects[id].tlast));
-  return exp(log(bio*(_solveData->subjects[id].podo))+lktr+n*(lktr+log(tc))-ktr*(tc)-lgamma1p(n));
+double _transit4P(int cmt, double t, unsigned int id, double n, double mtt, double bio){
+  double nd = (double) n;
+  double ktr = (nd+1)/mtt;
+  double lktr = log(nd+1)-log(mtt);
+  double tlast = _solveData->subjects[id].tlastS[cmt];
+  if (ISNA(tlast)) tlast = 0.0;
+  double tad = (t-tlast);
+  return exp(log(bio*(_solveData->subjects[id].podoS[cmt]))+lktr+n*(lktr+log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
-double _transit3P(double t, unsigned int id, double n, double mtt){
-  double ktr = (n+1)/mtt;
-  double lktr = log(n+1)-log(mtt);
-  double tc = (t-(_solveData->subjects[id].tlast));
-  return exp(log(_solveData->subjects[id].podo)+lktr+n*(lktr+log(tc))-ktr*(tc)-lgamma1p(n));
+double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
+  double nd = (double) n;
+  double ktr = (nd+1)/mtt;
+  double lktr = log(nd+1)-log(mtt);
+  double tlast = _solveData->subjects[id].tlastS[cmt];
+  if (ISNA(tlast)) tlast = 0.0;
+  double tad = t-tlast;
+  double podo = _solveData->subjects[id].podoS[cmt];
+  return exp(log(podo)+lktr+n*(lktr+log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
 void _assignFuns0() {
