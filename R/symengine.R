@@ -703,6 +703,8 @@ rxD <- function(name, derivatives) {
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE) {
   assignInMyNamespace(".promoteLinB", promoteLinSens)
+  assignInMyNamespace(".rxIsLhs", FALSE)
+  assignInMyNamespace(".rxLastAssignedDdt", "")
   if (is(substitute(x), "character")) {
     force(x)
   } else if (is(substitute(x), "{")) {
@@ -884,6 +886,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(.ret)
 }
 
+.rxLastAssignedDdt <- ""
+.rxIsLhs <- FALSE
+
 .rxToSEArithmeticOperators <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (length(x) == 3) {
     if (identical(x[[1]], quote(`/`))) {
@@ -896,6 +901,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
           .state <- as.character(.x3[[2]]) # .rxToSE(.x3[[2]], envir = envir)
         } else {
           .state <- .rxToSE(.x3[[2]], envir = envir)
+        }
+        if (.rxIsLhs) {
+          assignInMyNamespace(".rxLastAssignedDdt", .state)
         }
         return(paste0("rx__d_dt_", .state, "__"))
       } else {
@@ -942,7 +950,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 }
 
 .rxToSEAssignOperators <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  assignInMyNamespace(".rxIsLhs", TRUE)
   .var <- .rxToSE(x[[2]], envir = envir)
+  assignInMyNamespace(".rxIsLhs", FALSE)
   .isNum <- FALSE
   if (isEnv) {
     if (length(x[[2]]) == 2) {
@@ -1158,6 +1168,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxToSETlastOrTfirst <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .len <- length(x)
   if (.len == 1L) {
+    if (identical(x[[1]], quote(`podo`))) {
+      return(paste0("podo(", .rxLastAssignedDdt, ")"))
+    }
   } else if (.len == 2L) {
     if (length(x[[2]]) != 1) {
       stop(as.character(x[[1]]), "() must be used with a state", call. = FALSE)
@@ -1281,11 +1294,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .bio <- .rxToSE(x[[4]], envir = envir)
     if (isEnv) envir$..curCall <- .lastCall
     return(paste0(
-      "exp(log((", .bio, ")*(podo()))+log(",
+      "exp(log((", .bio, ")*(podo(", .rxLastAssignedDdt, ")))+log(",
       .n, " + 1)-log(", .mtt, ")+(", .n,
       ")*((log(", .n, "+1)-log(", .mtt,
-      "))+log(t))-((", .n, "+1)/(", .mtt,
-      "))*(t)-lgamma(1+", .n, "))"
+      "))+log(t-tlast(", .rxLastAssignedDdt, ")))-((", .n, "+1)/(", .mtt,
+      "))*(t-tlast(", .rxLastAssignedDdt, "))-lgamma(1+", .n, "))"
     ))
   } else if (length(x) == 3) {
     if (isEnv) {
@@ -1295,7 +1308,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .n <- .rxToSE(x[[2]], envir = envir)
     .mtt <- .rxToSE(x[[3]], envir = envir)
     if (isEnv) envir$..curCall <- .lastCall
-    return(paste0("exp(log(podo())+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t))-((", .n, " + 1)/(", .mtt, "))*(t)-lgamma(1+", .n, "))"))
+    return(paste0("exp(log(podo(", .rxLastAssignedDdt, "))+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t-tlast(", .rxLastAssignedDdt, ")))-((", .n, " + 1)/(", .mtt, "))*(t-tlast(",.rxLastAssignedDdt, "))-lgamma(1+", .n, "))"))
   } else {
     stop("'transit' can only take 2-3 arguments", call. = FALSE)
   }

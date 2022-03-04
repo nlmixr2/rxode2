@@ -1,4 +1,5 @@
 test_that("Specified jacobian is captured", {
+
   Vtpol2 <- rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
@@ -186,7 +187,7 @@ n = 20.1
 k = cl/vc
 ktr = (n+1)/mtt
 ## note that lgammafn is the same as lgamma in R.
-d/dt(depot) = exp(log(bio*podo())+log(ktr)+n*log(ktr*t)-ktr*t-lgammafn(n+1))-ka*depot
+d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-ktr*tad(depot)-lgammafn(n+1))-ka*depot
 d/dt(cen) = ka*depot-k*cen
 ")
 
@@ -225,11 +226,12 @@ d/dt(cen) = ka*depot-k*cen
     k <- cl / vc
     ktr <- (n + 1) / mtt
     ## note that lgammafn is the same as lgamma in R.
-    d/dt(depot) <- exp(log(bio * podo()) + log(ktr) + n * log(ktr * t) - ktr * t - lgammafn(n + 1)) - ka * depot
+    d/dt(depot) <- exp(log(bio * podo(depot)) + log(ktr) + n * log(ktr * tad(depot)) - ktr * tad(depot) -
+                         lgammafn(n + 1)) - ka * depot
     d/dt(cen) <- ka * depot - k * cen
   })
 
-  tmp <- suppressMessages(rxode2(mod, calcSens = c("eta_ka", "eta_mtt")))
+  transit <- suppressMessages(rxode2(mod, calcSens = c("eta_ka", "eta_mtt")))
   expect_true(all(!is.na(transit[["_sens_depot_mtt"]])))
 
   ## tmp <- rxode2(mod, calcSens=list(eta=c("eta_ka", "eta_mtt"), theta=c("cl", "vc")));
