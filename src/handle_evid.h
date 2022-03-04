@@ -123,37 +123,42 @@ static inline void setDoseNumber(rx_solving_options_ind *ind, int i, int j, doub
   //ind->dose[i+j] = value;
 }
 
+static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {
+	int _return = 0;
+	unsigned int p;
+	switch (ind->whI) {
+	case EVIDF_MODEL_RATE_ON: // modeled rate.
+	case EVIDF_MODEL_DUR_ON: // modeled duration.
+		// Rate already calculated and saved in the next dose record
+		//InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
+		break;
+	case EVIDF_MODEL_RATE_OFF: // End modeled rate
+	case EVIDF_MODEL_DUR_OFF: // end modeled duration
+		_return = 1;
+		break;
+	case EVIDF_INF_DUR:
+	case EVIDF_INF_RATE:
+		if (*curDose < 0) {
+			_return = 1;
+		} else {
+			// The amt in rxode2 is the infusion rate, but we need the amt
+			*tinf = _getDur(ind->ixds, ind, 2, &p);
+			if (ISNA(*tinf)) curDose[0] = tinf[0] * curDose[0];
+			else _return = 1;
+		}
+		break;
+	}
+	if (_return) return 1;
+	return 0;
+}
 
 static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) {
   rx_solving_options *op = &op_global;
   double _time = *time + ind->curShift;
   if (op->neq + op->extraCmt != 0 && ind->tlast != _time && isDose(ind->evid[ind->ix[ind->idx]]) &&
       ind->cmt < op->neq + op->extraCmt){
-		int _return = 0;
 		double curDose = getDoseIndex(ind, ind->idx), tinf = NA_REAL;
-		unsigned int p;
-		switch (ind->whI) {
-		case EVIDF_MODEL_RATE_ON: // modeled rate.
-    case EVIDF_MODEL_DUR_ON: // modeled duration.
-      // Rate already calculated and saved in the next dose record
-	    //InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
-			break;
-		case EVIDF_MODEL_RATE_OFF: // End modeled rate
-    case EVIDF_MODEL_DUR_OFF: // end modeled duration
-			_return = 1;
-			break;
-		case EVIDF_INF_DUR:
-		case EVIDF_INF_RATE:
-			if (curDose < 0) {
-				_return = 1;
-			} else {
-				// The amt in rxode2 is the infusion rate, but we need the amt
-				tinf = _getDur(ind->ixds, ind, 0, &p);
-				curDose *= tinf;
-			}
-			break;
-		}
-		if (_return) return;
+		if (handleTlastInlineUpateDosingInformation(ind, &curDose, &tinf)) return;
     ind->dosenum++;
     ind->tlast = _time;
 		ind->curDose = curDose;
