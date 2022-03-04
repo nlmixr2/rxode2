@@ -1,9 +1,9 @@
 test_that("CMT translation matches input", {
   filename <- test_path("433.qs")
   skip_if_not(file.exists(filename))
-  
+
   lst <- qs::qread(filename)
-  
+
   rx <- rxode2({
     cmt(parent)
     cmt(m1)
@@ -42,11 +42,11 @@ test_that("CMT translation matches input", {
     tad <- tad()
     dosenum <- dosenum()
   })
-  
+
   lst <- c(list(rx), lst)
-  
+
   s <- do.call(rxSolve, lst)
-  
+
   expect_equal(
     subset(lst[[3]], time == 0 & CMT == 2, "dv"),
     subset(s, time == 0 & CMT == 2, "dv")
