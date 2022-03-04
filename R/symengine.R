@@ -141,6 +141,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "tfirst" = NA,
   "lag" = NA,
   "lead" = NA,
+  "dose" =NA,
+  "podo" =NA,
   "dabs" = 1,
   "dabs2" = 1,
   "abs1" = 1,
@@ -559,6 +561,14 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$dose <- list(function(a) {
+  return("0")
+})
+
+.rxD$podo <- list(function(a) {
+  return("0")
+})
+
 .rxD$tlast <- list(function(a) {
   return("0")
 })
@@ -586,6 +596,7 @@ rxRmFun <- function(name) {
 .rxD$is.infinite <- list(function(a) {
   return("0")
 })
+
 
 ## Approx a>=b by
 ## 1/2-1/2*tanh(k*x+delta)=1-tol
@@ -1258,7 +1269,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .bio <- .rxToSE(x[[4]], envir = envir)
     if (isEnv) envir$..curCall <- .lastCall
     return(paste0(
-      "exp(log((", .bio, ")*(podo))+log(",
+      "exp(log((", .bio, ")*(podo()))+log(",
       .n, " + 1)-log(", .mtt, ")+(", .n,
       ")*((log(", .n, "+1)-log(", .mtt,
       "))+log(t))-((", .n, "+1)/(", .mtt,
@@ -1272,7 +1283,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .n <- .rxToSE(x[[2]], envir = envir)
     .mtt <- .rxToSE(x[[3]], envir = envir)
     if (isEnv) envir$..curCall <- .lastCall
-    return(paste0("exp(log(podo)+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t))-((", .n, " + 1)/(", .mtt, "))*(t)-lgamma(1+", .n, "))"))
+    return(paste0("exp(log(podo())+(log(", .n, "+1)-log(", .mtt, "))+(", .n, ")*((log(", .n, "+1)-log(", .mtt, "))+ log(t))-((", .n, " + 1)/(", .mtt, "))*(t)-lgamma(1+", .n, "))"))
   } else {
     stop("'transit' can only take 2-3 arguments", call. = FALSE)
   }
@@ -1303,7 +1314,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tlast`)) ||
-               identical(x[[1]], quote(`tfirst`))) {
+               identical(x[[1]], quote(`tfirst`)) ||
+               identical(x[[1]], quote(`dose`)) ||
+               identical(x[[1]], quote(`podo`))) {
     return(.rxToSETlastOrTfirst(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`psigamma`))) {
     return(.rxToSEPsigamma(x, envir = envir, progress = progress, isEnv=isEnv))
@@ -2268,7 +2281,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
           ")"
         )
         return(.ret)
-      } else if (any(paste(.ret0[[1]]) == c("tlast", "tfirst"))) {
+      } else if (any(paste(.ret0[[1]]) == c("tlast", "tfirst", "dose", "podo"))) {
         if (length(.ret0) == 1L) {
           return(paste0(.ret0[[1]], "()"))
         } else if (length(.ret0) == 2L) {
@@ -2340,7 +2353,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
   # "tlast"
   .pars <- c(
     rxParams(x), rxState(x),
-    "podo", "t", "time",  "rx1c", "rx__PTR__"
+    "t", "time",  "rx1c", "rx__PTR__"
   )
   ## default lambda/yj values
   .env$rx_lambda_ <- symengine::S("1")
@@ -2434,17 +2447,6 @@ seC <- function(x) {
 
 
 ## nocov end
-
-sympyTransit4 <- function(t, n, mtt, bio, podo = "podo", tlast = "tlast") {
-  ktr <- paste0("((", n, " + 1)/(", mtt, "))")
-  lktr <- paste0("(log((", n, ") + 1) - log(", mtt, "))")
-  tc <- paste0("((", t, ")-(", tlast, "))")
-  paste0(
-    "exp(log((", bio, ") * (", podo, ")) + ", lktr, " + (",
-    n, ") * ", "(", lktr, " + log(", t, ")) - ",
-    ktr, " * (", t, ") - log(gamma(1 + (", n, "))))"
-  )
-}
 
 allNames <- function(x) {
   if (is.atomic(x)) {
