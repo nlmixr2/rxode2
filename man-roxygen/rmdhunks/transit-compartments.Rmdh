@@ -16,31 +16,27 @@ mod <- rxode2({
     k = cl/vc
     ktr = (n+1)/mtt
     ## note that lgammafn is the same as lgamma in R.
-    d/dt(depot) = exp(log(bio*podo)+log(ktr)+n*log(ktr*t)-ktr*t-lgammafn(n+1))-ka*depot
+    d/dt(depot) = exp(log(bio*podo())+log(ktr)+n*log(ktr*t)-ktr*t-lgammafn(n+1))-ka*depot
     d/dt(cen) = ka*depot-k*cen
 })
 
 et <- eventTable();
 et$add.sampling(seq(0, 7, length.out=200));
-et$add.dosing(20, start.time=0);
+et$add.dosing(20, start.time=0, evid=7);
 
-transit <- rxSolve(mod, et, transit_abs=TRUE)
+transit <- rxSolve(mod, et)
 
 plot(transit, cen, ylab="Central Concentration")
 ```
-
 
 Another option is to specify the transit compartment function
 `transit` syntax.  This specifies the parameters `transit(number of
 transit compartments, mean transit time, bioavailability)`.  The
 bioavailability term is optional.
 
-Using the `transit` code also automatically turns on the `transit_abs`
-option.  Therefore, the same model can be specified by:
-
+The same model can be specified by:
 
 ```{r}
-
 mod <- rxode2({
     ## Table 3 from Savic 2007
     cl = 17.2 # (L/hr)
@@ -57,7 +53,7 @@ mod <- rxode2({
 
 et <- eventTable();
 et$add.sampling(seq(0, 7, length.out=200));
-et$add.dosing(20, start.time=0);
+et$add.dosing(20, start.time=0, evid=7);
 
 transit <- rxSolve(mod, et)
 
