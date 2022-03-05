@@ -59,7 +59,6 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 			trans_syntax_error_report_fn(_gbuf.s);
 			/* Free(v2); */
 			/* Free(tf->v); */
-			return 1;
 		} else {
 			tb.statei++;
 			sAppend(&sb, "%d)", tb.de.n);
@@ -71,6 +70,7 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 		sAppend(&sbDt, "%d)", tb.id);
 	}
 	// tad(cmt)
+	return 1;
 }
 
 static inline int handleFunctionTad(transFunctions *tf) {
