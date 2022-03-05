@@ -12,12 +12,16 @@ test_that("tad family works with ode", {
     Kin <- 1
     Kout <- 1
     EC50 <- 200
+    fDepot <- 1
+    fPeri <- 1
     C2 <- centr / V2
     C3 <- peri / V3
-    d / dt(depot) <- -KA * depot
-    d / dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
-    d / dt(peri) <- Q * C2 - Q * C3
-    d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
+    d/dt(peri) <- Q * C2 - Q * C3
+    d/dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
+    f(depot) <- fDepot
+    f(peri) <- fPeri
     ## TAD tests
     tad <- tad()
     dosen <- dosenum()
@@ -219,15 +223,57 @@ test_that("tad family works with ode", {
     )
   )
 
+  f <- function(r1, r2) {
+    expect_equal(r1$dose, r2$dose)
+    expect_equal(r1$dosed, r2$dosed)
+    expect_equal(r1$dosep, r2$dosep)
+    expect_equal(r1$dosen, r2$dosen)
+    expect_equal(r1$tad, r2$tad)
+    expect_equal(r1$tafd, r2$tafd)
+    expect_equal(r1$tadd, r2$tadd)
+    expect_equal(r1$tafdd, r2$tafdd)
+    expect_equal(r1$tadp, r2$tadp)
+    expect_equal(r1$tl, r2$tl)
+    expect_equal(r1$tfirst, r2$tfirst)
+    expect_equal(r1$tfirstd, r2$tfirstd)
+    expect_equal(r1$tlastd, r2$tlastd)
+    expect_equal(r1$tlastp, r2$tlastp)
+    expect_equal(r1$tfirstp, r2$tfirstp)
+  }
+
+
+  r2 <- rxSolve(mod1, c(fDepot=0.5, fPeri=0.25), ev, addDosing = TRUE)
+
+  f(r1, r2)
+
   ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
-    et(time = 1, amt = 10000, rate=10000 / 9, addl = 9, ii = 12, cmt = "depot") %>%
-    et(time = 120, amt = 2000, rate=2000 / 9, addl = 4, ii = 14, cmt = "depot") %>%
-    et(time = 122, amt = 2200, rate=2200 / 9, addl = 4, ii = 14, cmt = "peri") %>%
+    et(time = 1, amt = 10000, rate=10000 / 6, addl = 9, ii = 12, cmt = "depot") %>%
+    et(time = 120, amt = 2000, rate=2000 / 6, addl = 4, ii = 14, cmt = "depot") %>%
+    et(time = 122, amt = 2200, rate=2200 / 6, addl = 4, ii = 14, cmt = "peri") %>%
     et(0, 240, by = 3)
 
-  r2 <- rxSolve(mod1, ev, addDosing = NA)
+  r2 <- rxSolve(mod1, ev, addDosing = TRUE)
 
-  r2 <- rxSolve(mod1, ev, addDosing = NA)
+  f(r1, r2)
+
+  r2 <- rxSolve(mod1, c(fDepot=0.5, fPeri=0.25), ev, addDosing = TRUE)
+
+  f(r1, r2)
+
+  ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
+    et(time = 1, amt = 10000, dur=6, addl = 9, ii = 12, cmt = "depot") %>%
+    et(time = 120, amt = 2000, dur=6, addl = 4, ii = 14, cmt = "depot") %>%
+    et(time = 122, amt = 2200, dur=6, addl = 4, ii = 14, cmt = "peri") %>%
+    et(0, 240, by = 3)
+
+  r3 <- rxSolve(mod1, ev, addDosing=TRUE)
+
+  f(r1, r3)
+
+  r2 <- rxSolve(mod1, c(fDepot=0.5, fPeri=0.25), ev, addDosing = TRUE)
+
+  f(r1, r2)
+
 
 })
 

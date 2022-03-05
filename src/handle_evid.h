@@ -124,7 +124,6 @@ static inline void setDoseNumber(rx_solving_options_ind *ind, int i, int j, doub
 }
 
 static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind *ind, double *curDose, double *tinf) {
-	int _return = 0;
 	unsigned int p;
 	switch (ind->whI) {
 	case EVIDF_MODEL_RATE_ON: // modeled rate.
@@ -132,25 +131,29 @@ static inline int handleTlastInlineUpateDosingInformation(rx_solving_options_ind
 		// Rate already calculated and saved in the next dose record
 		// InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
 		*tinf = ind->all_times[ind->idx + 1] - ind->all_times[ind->idx];
+		return 1;
 		break;
 	case EVIDF_MODEL_RATE_OFF: // End modeled rate
 	case EVIDF_MODEL_DUR_OFF: // end modeled duration
-		_return = 1;
+		return 0;
 		break;
 	case EVIDF_INF_DUR:
 	case EVIDF_INF_RATE:
-		if (*curDose < 0) {
-			_return = 1;
+		if (curDose[0] <= 0) {
+			return 0;
 		} else {
 			// The amt in rxode2 is the infusion rate, but we need the amt
-			*tinf = _getDur(ind->ixds, ind, 2, &p);
-			if (ISNA(*tinf)) curDose[0] = tinf[0] * curDose[0];
-			else _return = 1;
+			tinf[0] = _getDur(ind->ixds, ind, 2, &p);
+			if (!ISNA(tinf[0])) {
+				curDose[0] = tinf[0] * curDose[0];
+				return 1;
+			} else {
+				return 0;
+			}
 		}
 		break;
 	}
-	if (_return) return 1;
-	return 0;
+	return 1;
 }
 
 static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) {
@@ -159,7 +162,7 @@ static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) 
   if (op->neq + op->extraCmt != 0 && ind->tlast != _time && isDose(ind->evid[ind->ix[ind->idx]]) &&
       ind->cmt < op->neq + op->extraCmt){
 		double curDose = getDoseIndex(ind, ind->idx), tinf = NA_REAL;
-		if (handleTlastInlineUpateDosingInformation(ind, &curDose, &tinf)) return;
+		if (handleTlastInlineUpateDosingInformation(ind, &curDose, &tinf) == 0) return;
     ind->dosenum++;
     ind->tlast = _time;
 		ind->curDose = curDose;
