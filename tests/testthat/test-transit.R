@@ -13,7 +13,7 @@ n = 20.1
 k = cl/vc
 ktr = (n+1)/mtt
 ## note that lgammafn is the same as lgamma in R.
-d/dt(depot) = exp(log(bio*podo())+log(ktr)+n*log(ktr*t)-ktr*t-lgammafn(n+1))-ka*depot
+d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-ktr*tad(depot)-lgammafn(n+1))-ka*depot
 d/dt(cen) = ka*depot-k*cen
 ")
 
@@ -51,7 +51,7 @@ n = 20.1
 k = cl/vc
 ktr = (n+1)/mtt
 ## note that lgamma1p is the same as lgamma(1+p) in R.
-d/dt(depot) = exp(log(bio*podo())+log(ktr)+n*log(ktr*t)-ktr*t-lgamma1p(n))-ka*depot
+d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-ktr*tad(depot)-lgamma1p(n))-ka*depot
 d/dt(cen) = ka*depot-k*cen
 ")
 
@@ -73,7 +73,7 @@ bio=1
 n = 20.1
 k = cl/vc
 ktr = (n+1)/mtt
-d/dt(depot) = exp(log(bio*podo())+log(ktr)+n*log(ktr*t)-ktr*t-lgamma(n+1))-ka*depot
+d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-ktr*tad(depot)-lgamma(n+1))-ka*depot
 d/dt(cen) = ka*depot-k*cen
 ")
 
@@ -111,7 +111,7 @@ bio=1
 n = 20.1
 k = cl/vc
 ktr = (n+1)/mtt
-d/dt(depot) = exp(log(bio*podo())+log(ktr)+n*log(ktr*t)-ktr*t-log(factorial(n)))-ka*depot
+d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-ktr*tad(depot)-log(factorial(n)))-ka*depot
 d/dt(cen) = ka*depot-k*cen
 ")
 

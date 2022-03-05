@@ -16,13 +16,14 @@ mod <- rxode2({
     k = cl/vc
     ktr = (n+1)/mtt
     ## note that lgammafn is the same as lgamma in R.
-    d/dt(depot) = exp(log(bio*podo())+log(ktr)+n*log(ktr*t)-ktr*t-lgammafn(n+1))-ka*depot
+    d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-
+                        ktr*tad(depot)-lgammafn(n+1))-ka*depot
     d/dt(cen) = ka*depot-k*cen
 })
 
-et <- eventTable();
-et$add.sampling(seq(0, 7, length.out=200));
-et$add.dosing(20, start.time=0, evid=7);
+et <- eventTable()
+et$add.sampling(seq(0, 7, length.out=200))
+et$add.dosing(20, start.time=0, evid=7)
 
 transit <- rxSolve(mod, et)
 

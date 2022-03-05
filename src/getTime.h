@@ -2,8 +2,6 @@
 #ifndef __GETTIME_H__
 #define __GETTIME_H__
 
-
-
 #if defined(__cplusplus)
 
 extern t_F AMT;
@@ -64,9 +62,9 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
   int oldIdx = ind->idx;
   ind->idx = idx;
   amt  = getAmt(ind, ind->id, ind->cmt, ind->dose[idx], t, yp);
-  dur  = getDur(ind,  ind->id, ind->cmt, amt, t);
+  dur  = getDur(ind, ind->id, ind->cmt, amt, t);
   ind->idx = oldIdx;
-  if (dur > 0){
+  if (dur > 0) {
     ind->dose[idx+1]      = -amt/dur;
     ind->all_times[idx+1] = t + dur;
   } else {
@@ -238,7 +236,6 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
   }
 }
 
-
 static inline double getTimeCalculateInfusionTimes(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   switch(ind->whI){
   case EVIDF_MODEL_DUR_OFF:
@@ -292,7 +289,6 @@ static inline double getTime_(int idx, rx_solving_options_ind *ind) {
 
 
 #endif
-
 
 extern "C" {
 #endif
