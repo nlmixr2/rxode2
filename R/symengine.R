@@ -3278,8 +3278,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
   .ret <- c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
-    "linCmt", names(.rxOnly), ls(.symengineFs), "tad", "tafd",
-    "tfirst", "tlast", "dose", "podo"
+    "linCmt", names(.rxOnly), ls(.symengineFs)
   )
   if (extra) {
     .ret <- c(.ret, c(

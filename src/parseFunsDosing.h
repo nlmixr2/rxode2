@@ -23,7 +23,7 @@ static inline int handleFunctionDosenum(transFunctions *tf) {
 }
 
 static inline int isFunctionTadType(transFunctions *tf) {
-	(tf->isTad = !strcmp("tad", tf->v)) || (tf->isTafd = !strcmp("tafd", tf->v)) ||
+	return (tf->isTad = !strcmp("tad", tf->v)) || (tf->isTafd = !strcmp("tafd", tf->v)) ||
 		(tf->isTlast = !strcmp("tlast", tf->v)) || (tf->isTfirst = !strcmp("tfirst", tf->v)) ||
 		(tf->isDose = !strcmp("dose", tf->v)) ||
 		(tf->isPodo = !strcmp("podo", tf->v));
