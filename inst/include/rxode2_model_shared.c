@@ -163,22 +163,22 @@ double _min(unsigned int n, ...){
 double _transit4P(int cmt, double t, unsigned int id, double n, double mtt, double bio){
   double nd = (double) n;
   double ktr = (nd+1)/mtt;
-  double lktr = log(nd+1)-log(mtt);
+  double lktr = _safe_log(nd+1)-_safe_log(mtt);
   double tlast = _solveData->subjects[id].tlastS[cmt];
   if (ISNA(tlast)) tlast = 0.0;
   double tad = (t-tlast);
-  return exp(log(bio*(_solveData->subjects[id].curDoseS[cmt]))+lktr+n*(lktr+log(tad))-ktr*(tad)-lgamma1p(nd));
+  return exp(_safe_log(bio*(_solveData->subjects[id].curDoseS[cmt]))+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
 double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
   double nd = (double) n;
   double ktr = (nd+1)/mtt;
-  double lktr = log(nd+1)-log(mtt);
+  double lktr = _safe_log(nd+1)-_safe_log(mtt);
   double tlast = _solveData->subjects[id].tlastS[cmt];
   if (ISNA(tlast)) tlast = 0.0;
   double tad = t-tlast;
   double podo = _solveData->subjects[id].curDoseS[cmt];
-  return exp(log(podo)+lktr+n*(lktr+log(tad))-ktr*(tad)-lgamma1p(nd));
+  return exp(_safe_log(podo)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
 void _assignFuns0() {
