@@ -102,6 +102,7 @@ static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
       add_de(ni, name, v, 0, fromDDT);
     }
     new_or_ith(v);
+    tb.lastDdt = tb.id;
     /* printf("de[%d]->%s[%d]\n",tb.id,v,tb.ix); */
     sb.o =0; sbDt.o =0;
     if (tb.idu[tb.id] == 0){

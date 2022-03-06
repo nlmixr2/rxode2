@@ -1,4 +1,5 @@
 test_that("Specified jacobian is captured", {
+
   Vtpol2 <- rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y
@@ -135,7 +136,8 @@ mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
   expect_true(sens$calcSens)
 })
 
-test_that("Conditional Sensitivites", {
+test_that("Conditional Sensitivities", {
+
   transit.if <- rxode2({
     ## Table 3 from Savic 2007
     cl <- 17.2 # (L/hr)
@@ -151,8 +153,8 @@ test_that("Conditional Sensitivites", {
     } else {
       ka <- ka2
     }
-    d / dt(depot) <- transit(n, mtt, bio) - ka * depot
-    d / dt(cen) <- ka * depot - k * cen
+    d/dt(depot) <- transit(n, mtt, bio) - ka * depot
+    d/dt(cen) <- ka * depot - k * cen
   })
 
   expect_false(transit.if$calcJac)
@@ -169,9 +171,11 @@ test_that("Conditional Sensitivites", {
   full <- suppressMessages(rxode2(transit.if, calcSens = TRUE, calcJac = TRUE))
   expect_true(full$calcJac)
   expect_true(full$calcSens)
+
 })
 
 test_that("Transit Sensitivities", {
+
   mod <- rxode2("
 ## Table 3 from Savic 2007
 cl = 17.2 # (L/hr)
@@ -183,7 +187,7 @@ n = 20.1
 k = cl/vc
 ktr = (n+1)/mtt
 ## note that lgammafn is the same as lgamma in R.
-d/dt(depot) = exp(log(bio*podo)+log(ktr)+n*log(ktr*t)-ktr*t-lgammafn(n+1))-ka*depot
+d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-ktr*tad(depot)-lgammafn(n+1))-ka*depot
 d/dt(cen) = ka*depot-k*cen
 ")
 
@@ -191,10 +195,10 @@ d/dt(cen) = ka*depot-k*cen
 
   et <- eventTable()
   et$add.sampling(seq(0, 10, length.out = 200))
-  et$add.dosing(20, start.time = 0)
+  et$add.dosing(20, start.time = 0, evid=7)
 
   transit <- suppressWarnings({
-    rxSolve(mod, et, transitAbs = TRUE)
+    rxSolve(mod, et)
   })
 
   ## Used the log(0) protection since the depot_mtt sensitivity
@@ -222,11 +226,12 @@ d/dt(cen) = ka*depot-k*cen
     k <- cl / vc
     ktr <- (n + 1) / mtt
     ## note that lgammafn is the same as lgamma in R.
-    d / dt(depot) <- exp(log(bio * podo) + log(ktr) + n * log(ktr * t) - ktr * t - lgammafn(n + 1)) - ka * depot
-    d / dt(cen) <- ka * depot - k * cen
+    d/dt(depot) <- exp(log(bio * podo(depot)) + log(ktr) + n * log(ktr * tad(depot)) - ktr * tad(depot) -
+                         lgammafn(n + 1)) - ka * depot
+    d/dt(cen) <- ka * depot - k * cen
   })
 
-  tmp <- suppressMessages(rxode2(mod, calcSens = c("eta_ka", "eta_mtt")))
+  transit <- suppressMessages(rxode2(mod, calcSens = c("eta_ka", "eta_mtt")))
   expect_true(all(!is.na(transit[["_sens_depot_mtt"]])))
 
   ## tmp <- rxode2(mod, calcSens=list(eta=c("eta_ka", "eta_mtt"), theta=c("cl", "vc")));

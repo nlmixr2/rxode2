@@ -1164,7 +1164,8 @@ c.rxEvid <- function(x, ...) {
             ifelse(.x == 4, paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
               ifelse(.x == 5, paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
                 ifelse(.x == 6, paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
-                  paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
+                  ifelse(.x == 7, paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
+                  paste0(crayon::blue$red(.x), ":", crayon::red("Invalid")))
                 )
               )
             )
@@ -1187,7 +1188,8 @@ as.character.rxEvid <- function(x, ...) {
             ifelse(.x == 4, "4:Reset&Dose",
               ifelse(.x == 5, "5:Replace",
                 ifelse(.x == 6, "6:Multiply",
-                  paste0(.x, ":Invalid")
+                  ifelse(.x == 7, "7:Transit",
+                         paste0(.x, ":Invalid"))
                 )
               )
             )

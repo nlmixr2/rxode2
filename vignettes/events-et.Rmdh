@@ -1,6 +1,6 @@
 
 An event table in rxode2 is a specialized data frame that acts as a
-container for all of rxode2/ ' 's events and observation times.
+container for all of rxode2's events and observation times.
 
 To create an rxode2 event table you may use the code `eventTable()`,
 `et()`, or even create your own data frame with the right event

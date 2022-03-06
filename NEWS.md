@@ -6,8 +6,7 @@
 
 * The options for `rxControl` and `rxSolve` are more strict.
   `camelCase` is now always used.  Old options like `add.cov` and
-  `transit_abs` are no longer supported, only `addCov` and
-  `transitAbs` are supported.
+  `transit_abs` are no longer supported, only `addCov` is supported.
   
 * A new option, `sigdig` has been added to `rxControl()`, which
   controls some of the more common significant figure options like
@@ -60,6 +59,9 @@
 
 * The function `rxode2Test()` has been removed in favor of using testthat
   directly.
+  
+* Transit compartments need to use a new `evid`, `evid=7`.  That being
+  said, the `transitAbs` option is no longer supported.
 
 ## Additional features
 
@@ -74,6 +76,12 @@
 
 * Since there are many changes that could be incompatible, this
   version has been renamed to `rxode2`
+  
+## Bug fixes
+
+* `tad()` and related time features only reset at the start of an
+  infusion (as opposed to starting at the beginning and end of an
+  infusion)
 
 # RxODE 1.1.3
 

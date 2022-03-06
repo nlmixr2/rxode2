@@ -16,7 +16,6 @@
 #endif
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
-extern "C" double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
 extern "C" void RSprintf(const char *format, ...);
 
 namespace stan {

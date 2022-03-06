@@ -243,9 +243,6 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #' @param maxwhile represents the maximum times a while loop is
 #'   evaluated before exiting.  By default this is 100000
 #'
-#' @param transitAbs boolean indicating if this is a transit
-#'     compartment absorption
-#'
 #' @param sensType Sensitivity type for `linCmt()` model:
 #'
 #' `advan` Use the direct advan solutions
@@ -667,7 +664,7 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin"),
-                    transitAbs = NULL, sigdig=NULL,
+                    sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
                     hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, ...,
@@ -743,6 +740,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF"))]
     if (length(.bad) > 0) {
+      if ("transitAbs" %in% .bad) {
+        stop("'transitAbs' is no longer supported, use 'evid=7' instead",
+             call.=FALSE)
+      }
       stop("unused argument: ", paste
       (paste0("'", .bad, "'", sep=""), collapse=", "),
            call.=FALSE)
@@ -866,9 +867,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       checkmate::assertNumeric(scale, lower=0, finite=TRUE, any.missing=FALSE,names="strict")
     }
-    if (!is.null(transitAbs)) {
-      checkmate::assertLogical(transitAbs, len=1, any.missing=FALSE)
-    }
     if (!is.null(sigdig)) {
       checkmate::assertNumeric(sigdig, lower=1, finite=TRUE, any.missing=FALSE, len=1)
       if (missing(atol)) {
@@ -979,7 +977,6 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     .ret <- list(
       scale = scale, #
       method = method, #
-      transitAbs = transitAbs, #
       atol = atol, #
       rtol = rtol, #
       maxsteps = maxsteps,#

@@ -19,13 +19,19 @@ the exceptions:
       bioavailability will change the infusion duration since
       `rate`/`amt` are fixed in the input data.
  - Some infrequent NONMEM columns are not supported: `pcmt`, `call`.
- - Additional events are supported:
+ - NONMEM-style events are supported (0: Observation, 1: Dose, 2:
+   Other, 3: Reset, 4: Reset+Dose).  Additional events are supported:
    - `evid=5` or replace event; This replaces the value of a
        compartment with the value specified in the `amt` column. This
        is equivalent to `deSolve`=`replace`.
    - `evid=6` or multiply event; This multiplies the value in the
      compartment with the value specified by the `amt` column.  This
      is equivalent to `deSolve`=`multiply`.
+   - `evid=7` or transit compartment model/phantom event. This puts
+     the dose in the `dose()` function and calculates time since last
+     dose `tad()` but doesn't actually put the dose in the
+     compartment. This allows the `transit()` function to easily apply
+     to the compartment.
  
  Here are the legal entries to a data table:
  
@@ -37,7 +43,7 @@ the exceptions:
 | rate      | infusion rate         | When specified the infusion duration will be dur=amt/rate                    |
 |           |                       | rate = -1, rate modeled; rate = -2, duration modeled                         |
 | dur       | infusion duration     | When specified the infusion rate will be rate = amt/dur                      |
-| evid      | event ID              | 0=Observation; 1=Dose; 2=Other; 3=Reset; 4=Reset+Dose; 5=Replace; 6=Multiply |
+| evid      | event ID              | 0=Observation; 1=Dose; 2=Other; 3=Reset; 4=Reset+Dose; 5=Replace; 6=Multiply;7=Transit |
 | cmt       | Compartment           | Represents compartment #/name for dose/observation                           |
 | ss        | Steady State Flag     | 0 = non-steady-state; 1=steady state; 2=steady state +prior states           |
 | ii        | Inter-dose Interval   | Time between doses.                                                          |

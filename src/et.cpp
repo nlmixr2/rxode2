@@ -1138,7 +1138,7 @@ List etImportEventTable(List inData, bool warnings = true){
         ss.push_back(NA_INTEGER);
         nobs++;
       }
-    } else if (curevid <= 6){
+    } else if (curevid <= 7){
       id.push_back(oldId[i]);
       if (std::find(uIds.begin(), uIds.end(), oldId[i]) == uIds.end()){
         uIds.push_back(oldId[i]);
@@ -1167,7 +1167,9 @@ List etImportEventTable(List inData, bool warnings = true){
       ndose++;
     } else {
       // Convert evid
-      if (cmtC) stop(_("old rxode2 'evid' values are not supported with string compartments"));
+      if (cmtC) {
+				stop(_("old rxode2 'evid' values are not supported with string compartments"));
+			}
       getWh(curevid, &wh, &cmtI, &wh100, &whI, &wh0);
       cmtI++;
       if (cmtI != 1) show["cmt"] = true;

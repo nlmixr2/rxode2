@@ -8,8 +8,8 @@ SEXP generateModelVars() {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(allocVector(VECSXP, 20));pro++;
-  SEXP names = PROTECT(allocVector(STRSXP, 20));pro++;
+  SEXP lst   = PROTECT(allocVector(VECSXP, 19));pro++;
+  SEXP names = PROTECT(allocVector(STRSXP, 19));pro++;
 
   SEXP sNeedSort = PROTECT(allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -72,52 +72,49 @@ SEXP generateModelVars() {
   SET_STRING_ELT(names,5,mkChar("ini"));
   SET_VECTOR_ELT(lst,  5,ini);
 
-  SET_STRING_ELT(names,6,mkChar("podo"));
-  SET_VECTOR_ELT(lst,  6,ScalarLogical(rx_podo));
+  SET_STRING_ELT(names,6,mkChar("dfdy"));
+  SET_VECTOR_ELT(lst,  6,dfdy);
 
-  SET_STRING_ELT(names,7,mkChar("dfdy"));
-  SET_VECTOR_ELT(lst,  7,dfdy);
+  SET_STRING_ELT(names,7,mkChar("sens"));
+  SET_VECTOR_ELT(lst,  7,sens);
 
-  SET_STRING_ELT(names,8,mkChar("sens"));
-  SET_VECTOR_ELT(lst,  8,sens);
+  SET_STRING_ELT(names,8,mkChar("state.ignore"));
+  SET_VECTOR_ELT(lst,  8,stateRmS);
 
-  SET_STRING_ELT(names,9,mkChar("state.ignore"));
-  SET_VECTOR_ELT(lst,  9,stateRmS);
+  SET_STRING_ELT(names,9,mkChar("version"));
+  SET_VECTOR_ELT(lst,  9,version);
 
-  SET_STRING_ELT(names,10,mkChar("version"));
-  SET_VECTOR_ELT(lst,  10,version);
+  SET_STRING_ELT(names,10,mkChar("normal.state"));
+  SET_VECTOR_ELT(lst,  10,normState);
 
-  SET_STRING_ELT(names,11,mkChar("normal.state"));
-  SET_VECTOR_ELT(lst,  11,normState);
+  SET_STRING_ELT(names,11,mkChar("needSort"));
+  SET_VECTOR_ELT(lst,  11,sNeedSort);
 
-  SET_STRING_ELT(names,12,mkChar("needSort"));
-  SET_VECTOR_ELT(lst,  12,sNeedSort);
+  SET_STRING_ELT(names,12,mkChar("nMtime"));
+  SET_VECTOR_ELT(lst,  12,sMtime);
 
-  SET_STRING_ELT(names,13,mkChar("nMtime"));
-  SET_VECTOR_ELT(lst,  13,sMtime);
-
-  SET_STRING_ELT(names, 14, mkChar("extraCmt"));
+  SET_STRING_ELT(names, 13, mkChar("extraCmt"));
   SEXP sExtraCmt = PROTECT(allocVector(INTSXP,1));pro++;
   INTEGER(sExtraCmt)[0] = extraCmt;
-  SET_VECTOR_ELT(lst, 14, sExtraCmt);
+  SET_VECTOR_ELT(lst, 13, sExtraCmt);
 
-  SET_STRING_ELT(names, 15, mkChar("stateExtra"));
-  SET_VECTOR_ELT(lst,   15, extraState);
+  SET_STRING_ELT(names, 14, mkChar("stateExtra"));
+  SET_VECTOR_ELT(lst,   14, extraState);
 
-  SET_STRING_ELT(names, 16, mkChar("dvid"));
+  SET_STRING_ELT(names, 15, mkChar("dvid"));
   SEXP sDvid = PROTECT(allocVector(INTSXP,tb.dvidn));pro++;
   for (int i = 0; i < tb.dvidn; i++) INTEGER(sDvid)[i]=tb.dvid[i];
-  SET_VECTOR_ELT(lst,  16, sDvid);
+  SET_VECTOR_ELT(lst,  15, sDvid);
 
-  SET_STRING_ELT(names, 17, mkChar("indLin"));
+  SET_STRING_ELT(names, 16, mkChar("indLin"));
   SEXP matLst = PROTECT(allocVector(VECSXP, 0));pro++;
-  SET_VECTOR_ELT(lst,  17, matLst);
+  SET_VECTOR_ELT(lst,  16, matLst);
 
-  SET_STRING_ELT(names, 18, mkChar("flags"));
-  SET_VECTOR_ELT(lst,   18, sLinCmt);
+  SET_STRING_ELT(names, 17, mkChar("flags"));
+  SET_VECTOR_ELT(lst,   17, sLinCmt);
 
-  SET_STRING_ELT(names, 19, mkChar("slhs"));
-  SET_VECTOR_ELT(lst,   19, slhs);
+  SET_STRING_ELT(names, 18, mkChar("slhs"));
+  SET_VECTOR_ELT(lst,   18, slhs);
 
   sPrint(&_bufw,"%.*s", (int)strlen(model_prefix)-1, model_prefix);
 

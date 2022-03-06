@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
-extern int rx_syntax_require_ode_first, rx_podo, needSort;
+extern int rx_syntax_require_ode_first, needSort;
 void updateSyntaxCol();
 void trans_syntax_error_report_fn(char *err);
 void parseFree(int last);
@@ -86,6 +86,7 @@ lhs symbols?
   int nInd;
   int simflg;
   int thread;
+  int lastDdt;
 } symtab;
 
 extern symtab tb;
