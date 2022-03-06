@@ -4,7 +4,13 @@
 \alias{.modelHandleModelLines}
 \title{Handle model lines}
 \usage{
-.modelHandleModelLines(modelLines, rxui, modifyIni = FALSE, envir)
+.modelHandleModelLines(
+  modelLines,
+  rxui,
+  modifyIni = FALSE,
+  append = FALSE,
+  envir
+)
 }
 \arguments{
 \item{modelLines}{The model lines that are being considered}
@@ -12,6 +18,14 @@
 \item{rxui}{The rxode2 UI object}
 
 \item{modifyIni}{Should the ini({}) be considered}
+
+\item{append}{This is a boolean to determine if the lines are
+appended in piping.  The possible values for this is:
+\itemize{
+\item \code{TRUE} which is when the lines are appended to the model instead of replaced (default)
+\item \code{FALSE} when the lines are replaced in the model
+\item \code{NA} is when the lines are pre-pended to the model instead of replaced
+}}
 
 \item{envir}{Environment for evaluation}
 }

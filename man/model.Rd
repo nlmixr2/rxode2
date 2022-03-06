@@ -7,18 +7,26 @@
 \alias{model.default}
 \title{Model block for rxode2/nlmixr models}
 \usage{
-\method{model}{`function`}(x, ..., envir = parent.frame())
+\method{model}{`function`}(x, ..., append = FALSE, envir = parent.frame())
 
-\method{model}{rxUi}(x, ..., envir = parent.frame())
+\method{model}{rxUi}(x, ..., append = FALSE, envir = parent.frame())
 
-model(x, ..., envir = parent.frame())
+model(x, ..., append = FALSE, envir = parent.frame())
 
-\method{model}{default}(x, ...)
+\method{model}{default}(x, ..., append = FALSE, envir = parent.frame())
 }
 \arguments{
 \item{x}{model expression}
 
 \item{...}{Other arguments}
+
+\item{append}{This is a boolean to determine if the lines are
+appended in piping.  The possible values for this is:
+\itemize{
+\item \code{TRUE} which is when the lines are appended to the model instead of replaced (default)
+\item \code{FALSE} when the lines are replaced in the model
+\item \code{NA} is when the lines are pre-pended to the model instead of replaced
+}}
 
 \item{envir}{the \code{environment} in which unevaluated model
 expressions is to be evaluated.  May also be \code{NULL}, a list, a

@@ -1263,3 +1263,40 @@ test_that("Add an eta to a model that does not have an eta will work", {
                NA)
 
 })
+
+
+test_that("Appending or pre-pending items to a model works", {
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      tv <- exp(3.45); # log V
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- tv
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  f <- rxode2(ocmt)
+  f2 <- f %>% model(cp1 <- cp, append=TRUE)
+
+  expect_true("cp1" %in% f2$mv0$lhs)
+  expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
+
+  f2 <- f %>% model(f2 <- 3 * 2, append=NA)
+  expect_true("f2" %in% f2$mv0$lhs)
+  expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
+
+
+})

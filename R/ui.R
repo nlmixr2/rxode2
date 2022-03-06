@@ -201,6 +201,12 @@ ini.default <- function(x, ...) {
 #'
 #' @param x model expression
 #' @param ... Other arguments
+#' @param append This is a boolean to determine if the lines are
+#'   appended in piping.  The possible values for this is:
+#'
+#'  - `TRUE` which is when the lines are appended to the model instead of replaced (default)
+#'  - `FALSE` when the lines are replaced in the model
+#'  - `NA` is when the lines are pre-pended to the model instead of replaced
 #' @param envir the `environment` in which unevaluated model
 #'   expressions is to be evaluated.  May also be `NULL`, a list, a
 #'   data frame, a pairlist or an integer as specified to `sys.call`.
@@ -208,7 +214,7 @@ ini.default <- function(x, ...) {
 #'   called before `model` block
 #' @author Matthew Fidler
 #' @export
-model <- function(x, ..., envir=parent.frame()) {
+model <- function(x, ..., append=FALSE, envir=parent.frame()) {
   if (is(substitute(x), "{")) {
     .ini <- .lastIni
     .iniQ <- .lastIniQ
@@ -239,8 +245,8 @@ model <- function(x, ..., envir=parent.frame()) {
 
 #' @export
 #' @rdname model
-model.default <- function(x, ...) {
-
+model.default <- function(x, ..., append=FALSE, envir=parent.frame()) {
+  stop("rxode2 does not know how to handle this model statement")
 }
 
 #' @export

@@ -30,12 +30,7 @@
 #' assertRxUi(one.cmt)
 #' # assertRxUi(rnorm)
 #'
-f <- nlmixr(one.cmt)
-
-assertRxUi <- function(model, .var.name=NULL) {
-  if (is.null(.var.name)) {
-    .var.name <- as.character(substitute(model))
-  }
+assertRxUi <- function(model, .var.name=checkmate::vname(model)) {
   if (inherits(model, "function")) {
     model <- try(rxode2(model), silent=TRUE)
     if (inherits(model, "try-error")) {

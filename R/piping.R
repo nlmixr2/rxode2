@@ -116,7 +116,9 @@
   .ret <- lapply(seq_along(callInfo), function(i) {
     .name <- names(callInfo)[i]
     if (!is.null(.name)) {
-      if (.name != "") {
+      if (.name %in% c("envir", "append")) {
+        return(NULL)
+      } else if (.name != "") {
         # Changed named items to
         return(as.call(list(quote(`<-`), .enQuote(.name),
                             eval(call("quote", callInfo[[i]])))))
@@ -135,5 +137,8 @@
     .quoted
   })
   .w <- which(.bracket)
-  .quoteExpandBracketsOrCs(.ret, .w, envir=envir)
+  .ret <- .quoteExpandBracketsOrCs(.ret, .w, envir=envir)
+  .ret[vapply(seq_along(.ret), function(i) {
+    !is.null(.ret[[i]])
+  }, logical(1), USE.NAMES=FALSE)]
 }
