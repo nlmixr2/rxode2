@@ -783,11 +783,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   if (is.character(x)) {
     .ret <- .rxChrToSym(x)
     .ret2 <- as.character(.ret)
-    if (.ret2 %in% .rxToSEDualVarFunction) {
-      .ret2 <- paste0(.ret2, "()")
-      .ret2 <- rxToSE(.ret2)
-      return(.ret2)
-    } else if (isEnv) {
+    if (isEnv) {
       .ret2 <- as.character(.ret)
       assign(.ret2, symengine::Symbol(.ret2), envir = envir)
     }
