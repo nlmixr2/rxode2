@@ -14,6 +14,10 @@ test_that("tad family works with ode", {
     EC50 <- 200
     fDepot <- 1
     fPeri <- 1
+    durDepot <- 1
+    rateDepot <- 1
+    durPeri <- 1
+    ratePeri <- 1
     C2 <- centr / V2
     C3 <- peri / V3
     d/dt(depot) <- -KA * depot
@@ -22,6 +26,10 @@ test_that("tad family works with ode", {
     d/dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
     f(depot) <- fDepot
     f(peri) <- fPeri
+    dur(depot) = durDepot
+    rate(depot) = rateDepot
+    dur(peri) = durPeri
+    rate(peri) = ratePeri
     ## TAD tests
     tad <- tad()
     dosen <- dosenum()
@@ -274,6 +282,29 @@ test_that("tad family works with ode", {
 
   f(r1, r2)
 
+  ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
+    et(time = 1, amt = 10000, rate = -1, addl = 9, ii = 12, cmt = "depot") %>%
+    et(time = 120, amt = 2000, rate = -1, addl = 4, ii = 14, cmt = "depot") %>%
+    et(time = 122, amt = 2200, rate= -1, addl = 4, ii = 14, cmt = "peri") %>%
+    et(0, 240, by = 3)
+
+  r1 <- rxSolve(mod1, ev, addDosing = TRUE)
+
+  r2 <- rxSolve(mod1, c(fDepot=0.5, fPeri=0.25), ev, addDosing = TRUE)
+
+  f(r1, r2)
+
+  ev <- et(amountUnits = "mg", timeUnits = "hours") %>%
+    et(time = 1, amt = 10000, rate = -2, addl = 9, ii = 12, cmt = "depot") %>%
+    et(time = 120, amt = 2000, rate = -2, addl = 4, ii = 14, cmt = "depot") %>%
+    et(time = 122, amt = 2200, rate= -2, addl = 4, ii = 14, cmt = "peri") %>%
+    et(0, 240, by = 3)
+
+  r1 <- rxSolve(mod1, ev, addDosing = TRUE)
+
+  r2 <- rxSolve(mod1, c(fDepot=0.5, fPeri=0.25), ev, addDosing = TRUE)
+
+  f(r1, r2)
 
 })
 
