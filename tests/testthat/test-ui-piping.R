@@ -1298,5 +1298,4 @@ test_that("Appending or pre-pending items to a model works", {
   expect_true("f2" %in% f2$mv0$lhs)
   expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
 
-
 })
