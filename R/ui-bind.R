@@ -2,6 +2,8 @@
 #'
 #' @param model1 rxUi model 1
 #' @param model2 rxUi model 2
+#' @param ... Models sent (in order) to `rxAppendModel` to
+#'   concatenate/bind the models together
 #' @return New model with both models appended together
 #' @author Matthew L. Fidler
 #' @export
@@ -43,6 +45,16 @@
 #' }
 #'
 #' rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+#'
+#' # You may also use c(...) or rbind(...) but this requires the first
+#' # argument to be an compiled/evaluated rxode2 model.  This can be
+#' # done by calling the function like 'ocmt()', or evaluating within
+#' # rxode2 ('rxode2(ocmt)') or piping /modifying it
+#'
+#' c(ocmt %>% model(ceff=cp,append=TRUE), idr)
+#'
+#' rbind(ocmt %>% model(ceff=cp,append=TRUE), idr)
+#'
 rxAppendModel <- function(model1, model2) {
   model1 <- assertRxUi(model1)
   model1 <- .copyUi(model1) # so modifications do not affect first model
@@ -84,4 +96,24 @@ rxAppendModel <- function(model1, model2) {
   model1$iniDf <- .ini
   model1$lstExpr <- c(model1$lstExpr, model2$lstExpr)
   model1$fun()
+}
+
+
+#' @rdname rxAppendModel
+#' @export
+c.rxUi <- function(...) {
+  .list <- list(...)
+  .m1 <- .list[[1]]
+  .list <- .list[-1]
+  for (i in seq_along(.list)) {
+    .m1 <- rxAppendModel(.m1, .list[[i]])
+  }
+  .m1
+}
+
+#' @rdname rxAppendModel
+#' @export
+rbind.rxUi <- function(..., deparse.level = 1) {
+  if (!missing(deparse.level)) warning("'deparse.level' not used with rxode2 ui models", call. = FALSE)
+  do.call(c.rxUi, list(...))
 }
