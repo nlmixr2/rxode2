@@ -70,6 +70,14 @@
 
 * `rxModelVars({})` is now supported.
 
+* You may now combine 2 models in `rxode2` with `rxAppendModel()`. In
+  fact, as long as the first value is a rxode2 evaluated ui model, you can
+  use  `c`/`rbind` to bind 2 or more models together.
+  
+* You may now append model lines with piping using `%>% model(lines,
+  append=TRUE)` you can also pre-pend lines by `%>% model(lines,
+  append=NA)`
+
 ## Internal changes
 
 * Strict R headers are enforced more places
