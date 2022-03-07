@@ -4,6 +4,7 @@
 #' @param model2 rxUi model 2
 #' @param ... Models sent (in order) to `rxAppendModel` to
 #'   concatenate/bind the models together
+#' @param deparse.level ignored parameter that is used with `rbind()`
 #' @return New model with both models appended together
 #' @author Matthew L. Fidler
 #' @export
@@ -98,6 +99,10 @@ rxAppendModel <- function(model1, model2) {
   model1$fun()
 }
 
+#' @export
+`+.rxUi` <- function(obj1, obj2) {
+  rxAppendModel(obj1, obj2)
+}
 
 #' @rdname rxAppendModel
 #' @export

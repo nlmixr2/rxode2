@@ -19,6 +19,8 @@ rxAppendModel(model1, model2)
 
 \item{...}{Models sent (in order) to \code{rxAppendModel} to
 concatenate/bind the models together}
+
+\item{deparse.level}{ignored parameter that is used with \code{rbind()}}
 }
 \value{
 New model with both models appended together
