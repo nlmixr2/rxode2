@@ -4,7 +4,7 @@ test_that("binding together", {
     ini({
       tka <- exp(0.45) # Ka
       tcl <- exp(1) # Cl
-      tv <- exp(3.45); # log V
+      tv <- exp(3.45) # log V
       ## the label("Label name") works with all models
       add.sd <- 0.7
     })

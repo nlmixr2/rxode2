@@ -1273,7 +1273,7 @@ test_that("Appending or pre-pending items to a model works", {
       tcl <- exp(1) # Cl
       ## This works with interactive models
       ## You may also label the preceding line with label("label text")
-      tv <- exp(3.45); # log V
+      tv <- exp(3.45) # log V
       ## the label("Label name") works with all models
       add.sd <- 0.7
     })
