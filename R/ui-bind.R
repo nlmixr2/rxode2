@@ -64,7 +64,7 @@ rxAppendModel <- function(model1, model2) {
   .bind <- intersect(model1$mv0$lhs, model2$allCovs)
   if (length(.bind) == 0) {
     stop("the first model does not have variables that are used by the second model",
-         .call=FALSE)
+         call.=FALSE)
   }
   .maxTheta <- suppressWarnings(max(.ini1$ntheta, na.rm=TRUE))
   if (!is.finite(.maxTheta)) {
@@ -74,13 +74,13 @@ rxAppendModel <- function(model1, model2) {
   .ini2$ntheta <- .ini2$ntheta + .maxTheta
   .maxEta <- suppressWarnings(max(.ini1$neta1, na.rm=TRUE))
   if (is.finite(.maxEta)) {
-    .ini2$neta1 <- .ini12$neta1 + .maxEta
-    .ini2$neta2 <- .ini12$neta2 + .maxEta
+    .ini2$neta1 <- .ini2$neta1 + .maxEta
+    .ini2$neta2 <- .ini2$neta2 + .maxEta
   }
   .ini <- rbind(.ini1, .ini2)
   .etas <- which(is.na(.ini$ntheta))
   if (length(.etas) > 0) {
-    .iniT <- .ini[-etas, ]
+    .iniT <- .ini[-.etas, ]
     .iniT <- .iniT[order(.iniT$ntheta), ]
     .iniE <- .ini[.etas, ]
     .iniE <- .iniE[order(.iniE$neta1, .iniE$neta2), ]
