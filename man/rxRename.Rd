@@ -4,10 +4,10 @@
 \alias{rxRename}
 \title{Rename items inside of a \code{rxode2} ui model}
 \usage{
-rxRename(rxui, ..., envir = parent.frame())
+rxRename(.data, ..., envir = parent.frame())
 }
 \arguments{
-\item{rxui}{rxode2 ui function}
+\item{.data}{rxode2 ui function, named data to be consistent with \code{dplyr::rename()}}
 
 \item{...}{rename items}
 
