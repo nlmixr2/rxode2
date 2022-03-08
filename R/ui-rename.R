@@ -107,12 +107,42 @@
 #' `new_name = old_name` syntax
 #'
 #' @param .data rxode2 ui function, named data to be consistent with `dplyr::rename()`
+#'
 #' @param ... rename items
+#'
 #' @param envir Environment for evaluation
+#'
 #' @return New model with items renamed
+#'
 #' @author Matthew L. Fidler
+#'
 #' @export
+#'
 #' @examples
+#'
+#' ocmt <- function() {
+#'    ini({
+#'      tka <- exp(0.45) # Ka
+#'      tcl <- exp(1) # Cl
+#'      ## This works with interactive models
+#'      ## You may also label the preceding line with label("label text")
+#'      tv <- exp(3.45) # log V
+#'      ## the label("Label name") works with all models
+#'      add.sd <- 0.7
+#'    })
+#'    model({
+#'      ka <- tka
+#'      cl <- tcl
+#'      v <- tv
+#'      d/dt(depot) = -ka * depot
+#'      d/dt(center) = ka * depot - cl / v * center
+#'      cp = center / v
+#'      cp ~ add(add.sd)
+#'    })
+#' }
+#'
+#' ocmt %>% rxRename(cpParent=cp)
+#'
 rxRename <- function(.data, ..., envir=parent.frame()) {
   rxui <- assertRxUi(.data)
   .vars <- unique(c(rxui$mv0$state, rxui$mv0$params, rxui$mv0$lhs, rxui$predDf$var, rxui$predDf$cond, rxui$iniDf$name))
@@ -127,12 +157,15 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   rxui$fun()
 }
 
+#' @rdname rxRename
+#' @export
 rename.rxUi <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
   do.call(rxRename, c(.lst, list(envir=parent.frame(2))))
 }
-
+#' @rdname rxRename
+#' @export
 rename.function <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
