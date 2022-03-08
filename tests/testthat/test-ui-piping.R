@@ -5,7 +5,7 @@ testPipeQuote <- function(..., envir=parent.frame()) {
 }
 
 test_that("test of standard quoting of piping arguments", {
-  expect_equal(testPipeQuote(tka=0.5, {
+  expect_equal(testPipeQuote(-ka, tka=0.5, {
     tv = 3
     tcl = 10
     eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
@@ -15,7 +15,8 @@ test_that("test of standard quoting of piping arguments", {
     tv = 3
     tcl = 10
     eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
-  }), list(quote(tka <- 0.5),
+  }), list(quote(-ka),
+           quote(tka <- 0.5),
            quote(tv <- 3),
            quote(tcl <- 10),
            quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
