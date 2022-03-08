@@ -49,7 +49,7 @@
 #' @return new expression with variable renamed
 #' @author Matthew L. Fidler
 #' @noRd
-.rxRenameRecursive <- function(item, new, old) {
+.rxRenameRecursive <- function(item, new, old, isLhs=FALSE) {
   if (is.atomic(item)) {
     return(item)
   }
@@ -60,7 +60,23 @@
       return(item)
     }
   } else if (is.call(item)) {
-    return(as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursive, new=new, old=old))))
+    if (isLhs && identical(item[[1]], quote(`/`))) {
+      # handle d/dt() differently so that d doesn't get renamed
+      .num <- item[[2]]
+      .denom <- item[[3]]
+      if (is.call(.num)) .num <- as.call(lapply(.num, .rxRenameRecursive, new=new, old=old, isLhs=TRUE))
+      if (is.call(.denom)) .denom <- as.call(lapply(.denom, .rxRenameRecursive, new=new, old=old, isLhs=TRUE))
+      return(as.call(c(list(item[[1]]), .num, .denom)))
+    }
+    if (identical(item[[1]], quote(`=`)) ||
+          identical(item[[1]], quote(`<-`)) ||
+          identical(item[[1]], quote(`~`))) {
+      .elhs <- lapply(item[c(-1, -3)], .rxRenameRecursive, new=new, old=old, isLhs=TRUE)
+      .erhs <- lapply(item[c(-1, -2)], .rxRenameRecursive, new=new, old=old, isLhs=FALSE)
+      return(as.call(c(item[[1]], .elhs, .erhs)))
+    } else {
+      return(as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursive, new=new, old=old, isLhs=isLhs))))
+    }
   } else {
     stop("unknown expression", call.=FALSE)
   }
