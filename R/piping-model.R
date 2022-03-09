@@ -71,6 +71,9 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
     if (identical(.expr1, quote(`alag`))) {
       .expr3 <- eval(parse(text=paste0("quote(lag(",as.character(.expr2),"))")))
     }
+    if (identical(.expr1, quote(`-`))) {
+      .expr3 <- .expr2
+    }
   }
  .expr3
 }
@@ -88,22 +91,33 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
 #' @param origLines This is a list of lines in the `model({})` block
 #'   of the equation.
 #' @param rxui the UI model
-#' @return `NULL` for duplicated lines, otherwise the line number (if
+#' @param returnAllLines Return all line numbers for the lhs, even
+#'   when there are duplicates. (default `FALSE`)
+#' @return For duplicated lines: `NULL` for duplicated lines (when
+#'   `returnAllLines` is FALSE) or all the line numbers (when
+#'   `returnAllLines` is TRUE).
+#'
+#' For non-duplicated lines return  the line number (if
 #'   it is found) and `NA` if it is not found.
+#'
 #' @author Matthew L. Fidler
 #' @noRd
 .getModelineFromExperssionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
-                                                        errLines, origLines, rxui) {
+                                                        errLines, origLines, rxui,
+                                                        returnAllLines=FALSE) {
   .ret <- NA_integer_
   .multipleEndpointModel <- length(errLines) != 1L
   for (.i in seq_along(origLines)) {
     .isErrorLine <- .i %in% errLines
-    if ((useErrorLine && .isErrorLine) ||
+    if (returnAllLines ||
+          (useErrorLine && .isErrorLine) ||
           (!useErrorLine && !.isErrorLine)) {
       .expr <- origLines[[.i]]
       if (identical(.expr[[2]], expr)) {
         if (is.na(.ret)) {
           .ret <- .i
+        } else if (returnAllLines) {
+          .ret <- c(.ret, .i)
         } else {
           return(NULL)
         }
@@ -111,6 +125,8 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
         if (identical(.expr[[2]], altExpr)) {
           if (is.na(.ret)) {
             .ret <- .i
+          } else if (returnAllLines) {
+            .ret <- c(.ret, .i)
           } else {
             return(NULL)
           }
@@ -178,13 +194,19 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
 #' Find the line of the original expression
 #'
 #' @param expr Expression
+#'
 #' @param rxui rxode2 UI
-#' @param errorLine When TRUE,Should the error line be considered, or consider
-#'   the non-error line
+#'
+#' @param errorLine When TRUE,Should the error line be considered, or
+#'   consider the non-error line
+#'
+#' @param returnAllLines A boolean to determine if all line numbers
+#'   should be returned, by default `FALSE`
+#'
 #' @return The return can be:
 #'
 #'  - Line number of from the original model, if the model matches one
-#'  line uniquely.
+#'  line uniquely (or an integer vector of all the lines matching when `returnAllLines=TRUE`)
 #'
 #'  - Negative number; This indicates the model property (ie
 #'  `f(depot)`) is not found in the model, but the differential
@@ -199,13 +221,15 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
 #' @author Matthew L. Fidler
 #'
 #' @noRd
-.getModelLineFromExpression <- function(lhsExpr, rxui, errorLine=FALSE) {
+.getModelLineFromExpression <- function(lhsExpr, rxui, errorLine=FALSE, returnAllLines=FALSE) {
   .origLines <- rxui$lstExpr
   .errLines <- rxui$predDf$line
   .expr3 <- .getModelLineEquivalentLhsExpression(lhsExpr)
-  .ret <- .getModelineFromExperssionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui)
+  .ret <- .getModelineFromExperssionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
   if (is.null(.ret)) {
     return(NULL)
+  } else if (length(.ret) > 1) {
+    return(.ret)
   } else if (!is.na(.ret)) {
     return(.ret)
   }
@@ -220,6 +244,21 @@ rxUiGet.mvFromExpression <- function(x, ...) {
   eval(call("rxModelVars",as.call(c(list(quote(`{`)), .x$lstExpr[-.x$predDf$line]))))
 }
 attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored (possibly changed) expression"
+
+#' Describe if the piping expression is a drop expression
+#'
+#' @param line expression for line/expression
+#' @return `TRUE` if this is a drop expression like `%>% model(-v)`, otherwise `FALSE`
+#' @author Matthew L. Fidler
+#' @noRd
+.isDropExpression <- function(line) {
+  if (length(line) == 2L) {
+    if (identical(line[[1]], quote(`-`))) {
+      return(is.name(line[[2]]))
+    }
+  }
+  FALSE
+}
 
 #'  Modify the error lines/expression
 #'
@@ -238,27 +277,52 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
       .iniHandleFixOrUnfix(line, rxui, envir=envir)
     } else {
       .isErr <- .isErrorExpression(line)
-      .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr)
-      if (.isErr && is.na(.ret)) {
-        stop("the error '", deparse1(line[[2]]), "' is not in the multiple-endpoint model and cannot be modified",
-             call.=FALSE)
+      .isDrop <- .isDropExpression(line)
+      .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr, .isDrop)
+      if (length(.ret == 1)) {
+        if (.isErr && is.na(.ret)) {
+          stop("the error '", deparse1(line[[2]]), "' is not in the multiple-endpoint model and cannot be modified",
+               call.=FALSE)
+        }
       }
       if (is.null(.ret)) {
         assign(".err",
                c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is duplicated in the model and cannot be modified by piping")),
                envir=.env)
-      } else if (is.na(.ret)) {
-        assign(".err",
-               c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
-               envir=.env)
-      } else if (.ret > 0) {
-        if (.isErr) {
-          .throwIfInvalidTilde(line)
+      } else if (all(.ret > 0)) {
+        if (.isDrop) {
+          .lstExpr <- get("lstExpr", rxui)
+          .predDf <- get("predDf", rxui)
+          .ret0 <- sort(.ret, decreasing=TRUE)
+          for (.i in .ret0) {
+            ## Drop lines that match
+            .w <- which(.predDf$line == .i)
+            if (length(.w) > 0) {
+              .predDf <- .predDf[-.w,, drop = FALSE]
+            }
+            # renumber lines greater
+            .w <- which(.predDf$line > .i)
+            if (length(.w) > 0) {
+              .predDf$line[.w] <- .predDf$line[.w] - 1L
+            }
+            .lstExpr <- .lstExpr[-.i]
+          }
+          assign("predDf", .predDf, rxui)
+          assign("lstExpr", .lstExpr, rxui)
+          assign(".recalculate", TRUE, rxui)
+        } else if (is.na(.ret)) {
+          assign(".err",
+                 c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
+                 envir=.env)
+        } else {
+          if (.isErr) {
+            .throwIfInvalidTilde(line)
+          }
+          .lstExpr <- get("lstExpr", rxui)
+          .lstExpr[[.ret]] <- line
+          assign("lstExpr", .lstExpr, rxui)
+          assign(".recalculate", TRUE, rxui)
         }
-        .lstExpr <- get("lstExpr", rxui)
-        .lstExpr[[.ret]] <- line
-        assign("lstExpr", .lstExpr, rxui)
-        assign(".recalculate", TRUE, rxui)
       } else {
         if (.isErr) {
           .throwIfInvalidTilde(line)
