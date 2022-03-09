@@ -31,6 +31,14 @@ test_that("Now test fix and unfixing", {
   w <- which(f3$iniDf$name == "tka")
   expect_false(f3$iniDf$fix[w])
 
+  f2 <- one.compartment %>% ini(tka=fix(3))
+  w <- which(f2$iniDf$name == "tka")
+  expect_true(f2$iniDf$fix[w])
+
+  f3 <- f2 %>% ini(tka=unfix(3))
+  w <- which(f3$iniDf$name == "tka")
+  expect_false(f3$iniDf$fix[w])
+
 
   # should fix the entire block
   f2 <- one.compartment %>% ini(eta.cl=fix)
