@@ -47,14 +47,7 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, envir)
 }
 
-#' This gives a equivalent left handed expression
-#'
-#' @param expr This exchanges expressions ie f() to F()
-#' @return NULL if there isn't an equivalent expression, or the
-#'   equivalent expression.
-#' @author Matthew L. Fidler
-#' @noRd
-.getModelLineEquivalentLhsExpression <- function(expr) {
+.getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {
   .expr3 <- NULL
   if (length(expr) == 3L) {
     .expr1 <- expr[[1]]
@@ -70,6 +63,18 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
       }
     }
   }
+  .expr3
+}
+
+#' This gives a equivalent left handed expression
+#'
+#' @param expr This exchanges expressions ie f() to F()
+#' @return NULL if there isn't an equivalent expression, or the
+#'   equivalent expression.
+#' @author Matthew L. Fidler
+#' @noRd
+.getModelLineEquivalentLhsExpression <- function(expr) {
+  .expr3 <- .getModelLineEquivalentLhsExpressionDropDdt(expr)
   if (length(expr) == 2L) {
     .expr1 <- expr[[1]]
     .expr2 <- expr[[2]]
@@ -266,6 +271,9 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 #' @author Matthew L. Fidler
 #' @noRd
 .isDropExpression <- function(line) {
+  if (!is.null(.getModelLineEquivalentLhsExpressionDropDdt(line))) {
+    return(TRUE)
+  }
   if (length(line) == 2L) {
     if (identical(line[[1]], quote(`-`))) {
       if (is.name(line[[2]])) {

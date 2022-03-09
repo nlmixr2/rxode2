@@ -29,6 +29,7 @@ test_that("drop support functions", {
   expect_false(.rx$.isDropExpression(quote(-f(depot + central))))
 
   expect_true(.rx$.isDropExpression(quote(-depot(0))))
+  expect_true(.rx$.isDropExpression(quote(-d/dt(depot))))
 
 })
 
