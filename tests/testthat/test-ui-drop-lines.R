@@ -4,6 +4,15 @@
 test_that("drop support functions", {
   expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-cl)), quote(cl))
 
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-lag(matt))), quote(lag(matt)))
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-alag(matt))), quote(alag(matt)))
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-F(matt))), quote(F(matt)))
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-f(matt))), quote(f(matt)))
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-rate(matt))), quote(rate(matt)))
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-dur(matt))), quote(dur(matt)))
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-matt(0))), quote(matt(0)))
+  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-d/dt(matt))), quote(d/dt(matt)))
+
   expect_true(.rx$.isDropExpression(quote(-v)))
   expect_false(.rx$.isDropExpression(quote(-v+3)))
   expect_false(.rx$.isDropExpression(quote(-3)))

@@ -50,12 +50,26 @@ model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
 #' This gives a equivalent left handed expression
 #'
 #' @param expr This exchanges expressions ie f() to F()
-#' @return NULL if there isn't an equaivlent expression, or the
+#' @return NULL if there isn't an equivalent expression, or the
 #'   equivalent expression.
 #' @author Matthew L. Fidler
 #' @noRd
 .getModelLineEquivalentLhsExpression <- function(expr) {
   .expr3 <- NULL
+  if (length(expr) == 3L) {
+    .expr1 <- expr[[1]]
+    .expr2 <- expr[[2]]
+    if (identical(.expr1, quote(`/`))) {
+      if (length(.expr2) == 2L) {
+        if (identical(.expr2[[1]], quote(`-`)) &&
+              identical(.expr2[[2]], quote(`d`)) &&
+              is.call(expr[[3]]) &&
+              identical(expr[[3]][[1]], quote(`dt`))) {
+          .expr3 <- as.call(list(.expr1, .expr2[[2]], expr[[3]]))
+        }
+      }
+    }
+  }
   if (length(expr) == 2L) {
     .expr1 <- expr[[1]]
     .expr2 <- expr[[2]]
