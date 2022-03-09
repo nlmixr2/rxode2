@@ -1,8 +1,17 @@
-#' Assert that the model is a rxUi function or model
+#' Assert properties of the rxUi models
 #'
 #' @param model Model to check
-#' @param .var.name Var name to override if this needs a different name
+#' @details
+#'
+#' These functions have different types of assertions
+#'
+#'  - `assertRxUi` -- Make sure this is a proper rxode2 model (if not throw error)
+#'
+#'  - `assertRxUiSingleEndpoint` -- Make sure the rxode2 model is only
+#'    a single endpoint model (if not throw error)
+#'
 #' @return the rxUi model
+#' @inheritParams checkmate::assertIntegerish
 #' @author Matthew L. Fidler
 #' @export
 #' @examples
@@ -38,7 +47,18 @@ assertRxUi <- function(model, .var.name=checkmate::vname(model)) {
     }
   }
   if (!inherits(model, "rxUi")) {
-      stop("'", .var.name, "' needs to be a rxUi model", call.=FALSE)
+    stop("'", .var.name, "' needs to be a rxUi model", call.=FALSE)
   }
-  return(invisible(model))
+  invisible(model)
+}
+
+#' @export
+#' @rdname
+assertRxUiSingleEndpoint <- function(model, .var.name=checkmate::vname(model)) {
+  model <- assertRxUi(model, .var.name=.var.name)
+  .predDf <- model$predDf
+  if (length(f$predDf$cond) > 1L) {
+    stop("'", .var.name, "' needs to be a single endpoint model", call.=FALSE)
+  }
+  invisible(model)
 }
