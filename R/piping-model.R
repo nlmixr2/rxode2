@@ -291,6 +291,35 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   FALSE
 }
 
+.getAdditionalDropLines <- function(line, rxui, isErr, isDrop) {
+  .dropCmt <- .getModelLineEquivalentLhsExpressionDropDdt(line)
+  if (!is.null(.dropCmt)) {
+    .state <- .dropCmt[[3]][[2]]
+    .types <- list(quote(`f`), quote(`F`), quote(`alag`),
+                   quote(`lag`), quote(`dur`), quote(`rate`), NULL)
+    .types <- lapply(seq_along(.types),
+                     function(i){
+                       .cur <- .types[[i]]
+                       if (is.null(.cur)) {
+                         as.call(list(.state, 0))
+                       } else {
+                         as.call(list(.cur, .state))
+                       }
+                     })
+    return(unique(do.call("c", lapply(seq_along(.types), function(i) {
+      .v <- .getModelLineFromExpression(.types[[i]], rxui, isErr, isDrop)
+      if (is.na(.v[1])) {
+        return(NULL)
+      } else if (.v[1] < 0) {
+        return(NULL)
+      } else {
+        return(.v)
+      }
+    }))))
+  }
+  NULL
+}
+
 #'  Modify the error lines/expression
 #'
 #' @param lines quoted lines to modify
@@ -309,7 +338,12 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     } else {
       .isErr <- .isErrorExpression(line)
       .isDrop <- .isDropExpression(line)
-      .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr, .isDrop)
+      if (.isDrop) {
+        .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
+        .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
+      } else {
+        .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr, .isDrop)
+      }
       if (length(.ret == 1)) {
         if (.isErr && is.na(.ret)) {
           stop("the error '", deparse1(line[[2]]), "' is not in the multiple-endpoint model and cannot be modified",
@@ -320,6 +354,11 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
         assign(".err",
                c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is duplicated in the model and cannot be modified by piping")),
                envir=.env)
+      } else if (is.na(.ret[1])) {
+          assign(".err",
+                 c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
+                 envir=.env)
+
       } else if (all(.ret > 0)) {
         if (.isDrop) {
           .lstExpr <- get("lstExpr", rxui)
@@ -341,10 +380,6 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
           assign("predDf", .predDf, rxui)
           assign("lstExpr", .lstExpr, rxui)
           assign(".recalculate", TRUE, rxui)
-        } else if (is.na(.ret)) {
-          assign(".err",
-                 c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
-                 envir=.env)
         } else {
           if (.isErr) {
             .throwIfInvalidTilde(line)
