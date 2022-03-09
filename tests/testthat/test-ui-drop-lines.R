@@ -3,7 +3,6 @@
 
 test_that("drop support functions", {
   expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-cl)), quote(cl))
-
   expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-lag(matt))), quote(lag(matt)))
   expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-alag(matt))), quote(alag(matt)))
   expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-F(matt))), quote(F(matt)))
@@ -19,6 +18,18 @@ test_that("drop support functions", {
 
   expect_false(.rx$.isDropExpression(quote(x <- y)))
   expect_false(.rx$.isDropExpression(quote(x + y ~ c(1, 0.01, 1))))
+
+  expect_true(.rx$.isDropExpression(quote(-f(depot))))
+  expect_true(.rx$.isDropExpression(quote(-F(depot))))
+  expect_true(.rx$.isDropExpression(quote(-alag(depot))))
+  expect_true(.rx$.isDropExpression(quote(-lag(depot))))
+  expect_true(.rx$.isDropExpression(quote(-rate(depot))))
+  expect_true(.rx$.isDropExpression(quote(-dur(depot))))
+  expect_false(.rx$.isDropExpression(quote(-matt(depot))))
+  expect_false(.rx$.isDropExpression(quote(-f(depot + central))))
+
+  expect_true(.rx$.isDropExpression(quote(-depot(0))))
+
 })
 
 test_that("drop from model before single endpoint model", {

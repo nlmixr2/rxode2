@@ -268,7 +268,16 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 .isDropExpression <- function(line) {
   if (length(line) == 2L) {
     if (identical(line[[1]], quote(`-`))) {
-      return(is.name(line[[2]]))
+      if (is.name(line[[2]])) {
+        return(TRUE)
+      } else if (is.call(line[[2]]) && length(line[[2]]) == 2L) {
+        if (is.name(line[[2]][[2]]) &&
+              as.character(line[[2]][[1]]) %in% c("F", "f", "alag", "lag", "dur", "rate")) {
+          return(TRUE)
+        } else if (identical(line[[2]][[2]], 0)) {
+          return(TRUE)
+        }
+      }
     }
   }
   FALSE
