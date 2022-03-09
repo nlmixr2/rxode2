@@ -3,14 +3,14 @@
 
 test_that("drop support functions", {
   expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-cl)), quote(cl))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-lag(matt))), quote(lag(matt)))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-alag(matt))), quote(alag(matt)))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-F(matt))), quote(F(matt)))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-f(matt))), quote(f(matt)))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-rate(matt))), quote(rate(matt)))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-dur(matt))), quote(dur(matt)))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-matt(0))), quote(matt(0)))
-  expect_equal(rx$.getModelLineEquivalentLhsExpression(quote(-d/dt(matt))), quote(d/dt(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-lag(matt))), quote(lag(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-alag(matt))), quote(alag(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-F(matt))), quote(F(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-f(matt))), quote(f(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-rate(matt))), quote(rate(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-dur(matt))), quote(dur(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-matt(0))), quote(matt(0)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-d/dt(matt))), quote(d/dt(matt)))
 
   expect_true(.rx$.isDropExpression(quote(-v)))
   expect_false(.rx$.isDropExpression(quote(-v+3)))
@@ -164,5 +164,42 @@ test_that("drop endpoint from  multiple endpoint model", {
   expect_length(f2$predDf$cond, 1)
   expect_equal(f2$predDf$cond, "effect")
   expect_length(f2$lstExpr, 17)
+
+})
+
+
+test_that("drop compartment and compartment-related properties", {
+
+  one.compartment <- function() {
+    ini({
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.err <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      f(depot) <- 3
+      cp <- center / v
+      cp ~ add(add.err)
+      cp2 <- cp * cl
+    })
+  }
+
+  f2 <- one.compartment %>% model(-d/dt(depot))
+
+  expect_equal(f2$mv0$state, "center")
+  expect_length(f2$lstExpr, 7L)
+
+  f2 <- one.compartment %>% model(-f(depot))
+  expect_equal(f2$mv0$state, c("depot", "center"))
+  expect_length(f2$lstExpr, 8L)
 
 })
