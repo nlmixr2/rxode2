@@ -40,6 +40,10 @@ test_that("Now test fix and unfixing", {
   f3 <- f2 %>% ini(eta.cl=unfix)
   expect_equal(f3$iniDf[!is.na(f3$iniDf$neta1), "fix"], c(FALSE, FALSE, FALSE, FALSE))
 
+  f2 <- one.compartment %>% ini(fix(eta.cl))
+  expect_equal(f2$iniDf[!is.na(f2$iniDf$neta1), "fix"], c(FALSE, TRUE, TRUE, TRUE))
 
+  f3 <- f2 %>% ini(unfixed(eta.cl))
+  expect_equal(f3$iniDf[!is.na(f3$iniDf$neta1), "fix"], c(FALSE, FALSE, FALSE, FALSE))
 
 })

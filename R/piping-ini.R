@@ -221,6 +221,15 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .iniHandleFixOrUnfix <- function(expr, rxui, envir=parent.frame()) {
+  if (is.call(expr) && length(expr) == 2 && is.name(expr[[2]])) {
+    if (identical(expr[[1]], quote(`fix`)) ||
+          identical(expr[[1]], quote(`fixed`))) {
+      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
+    } else if (identical(expr[[1]], quote(`unfix`)) ||
+                 identical(expr[[1]], quote(`unfixed`))) {
+      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
+    }
+  }
   .assignOp <- expr[[1]]
   if (identical(.assignOp, quote(`<-`)) ||
         identical(.assignOp, quote(`=`))) {
