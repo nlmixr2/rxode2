@@ -77,6 +77,10 @@
 * You may now append model lines with piping using `%>% model(lines,
   append=TRUE)` you can also pre-pend lines by `%>% model(lines,
   append=NA)`
+  
+* You may now rename model variables, states and defined parameters
+  with `%>% rxRename(new=old)` or if `dplyr` is loaded: `%>%
+  rename(new=old)`
 
 ## Internal changes
 
