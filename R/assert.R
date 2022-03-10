@@ -103,7 +103,7 @@ assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .predDf <- model$predDf
-  if (all(.predDf$distribution == "norm")) {
+  if (!all(.predDf$distribution == "norm")) {
     stop("'", .var.name, "' needs to be a (transformably) normal model", extra, call.=FALSE)
   }
   invisible(model)
@@ -115,7 +115,7 @@ assertRxUiEstimatedResiduals <- function(model, extra="", .var.name=.vname(model
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .predDf <- model$predDf
-  if (all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda")], use.names=FALSE)))) {
+  if (!all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda")], use.names=FALSE)))) {
     stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call.=FALSE)
   }
   invisible(model)
@@ -127,7 +127,7 @@ assertRxUiPopulationOnly <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .iniDf <- model$iniDf
-  if (all(is.na(.iniDf$neta1))) {
+  if (any(!is.na(.iniDf$neta1))) {
     stop("'", .var.name, "' can only have population estimates", extra, call.=FALSE)
   }
   invisible(model)
@@ -139,7 +139,7 @@ assertRxUiMixedOnly <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .iniDf <- model$iniDf
-  if (!all(is.na(.iniDf$neta1))) {
+  if (all(is.na(.iniDf$neta1))) {
     stop("'", .var.name, "' needs to be a mixed effect model", extra, call.=FALSE)
   }
   invisible(model)
