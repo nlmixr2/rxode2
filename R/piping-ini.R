@@ -1,3 +1,21 @@
+.iniModifyFixedForThetaOrEtablock <- function(ini, w, fixedValue) {
+  ini$fix[w] <- fixedValue
+  .neta <- ini$neta1[w]
+  if (!is.na(.neta)) {
+    .etas <- .neta
+    .fixedEtas <- NULL
+    while (length(.etas) > 0) {
+      .neta <- .etas[1]
+      w <-which(ini$neta1 == .neta | ini$neta2 == .neta)
+      ini$fix[w] <- fixedValue
+      .etas <- unique(c(.etas, ini$neta1[w], ini$neta2[w]))
+      .fixedEtas <- c(.neta, .fixedEtas)
+      .etas <- .etas[!(.etas %in% .fixedEtas)]
+    }
+  }
+  ini
+}
+
 #' Modify the population estimate in the internal `iniDf` data.frame
 #'
 #' @param ini This is the data frame for modifying
@@ -20,11 +38,11 @@
       warning("trying to fix '", lhs, "', but already fixed",
               call.=FALSE)
     } else {
-      ini$fix[.w] <- TRUE
+      ini <- .iniModifyFixedForThetaOrEtablock(ini, .w, TRUE)
     }
   } else if (doUnfix) {
     if (.curFix) {
-      ini$fix[.w] <- FALSE
+      ini <- .iniModifyFixedForThetaOrEtablock(ini, .w, FALSE)
     } else {
       warning("trying to unfix '", lhs, "', but already unfixed",
               call.=FALSE)
@@ -203,6 +221,15 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .iniHandleFixOrUnfix <- function(expr, rxui, envir=parent.frame()) {
+  if (is.call(expr) && length(expr) == 2 && is.name(expr[[2]])) {
+    if (identical(expr[[1]], quote(`fix`)) ||
+          identical(expr[[1]], quote(`fixed`))) {
+      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
+    } else if (identical(expr[[1]], quote(`unfix`)) ||
+                 identical(expr[[1]], quote(`unfixed`))) {
+      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
+    }
+  }
   .assignOp <- expr[[1]]
   if (identical(.assignOp, quote(`<-`)) ||
         identical(.assignOp, quote(`=`))) {

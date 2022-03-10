@@ -81,6 +81,9 @@
 * You may now rename model variables, states and defined parameters
   with `%>% rxRename(new=old)` or if `dplyr` is loaded: `%>%
   rename(new=old)`
+  
+* You can fix parameters with `%>% ini(tcl=fix)` or `%>% ini(fix(tcl))` as well as unfix parameters with 
+  `%>% ini(tcl=unfix)` or `%>% ini(unfix(tcl))`
 
 ## Internal changes
 
