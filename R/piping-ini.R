@@ -245,7 +245,6 @@ ini.function <- function(x, ..., envir=parent.frame()) {
   .ret
 }
 
-
 #' This tells if the line is modifying an estimate instead of a line of the model
 #'
 #' @param line Quoted line
