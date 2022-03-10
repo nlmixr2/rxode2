@@ -750,7 +750,13 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @author Matthew Fidler
 #' @noRd
 .errHandleErrorStructure <- function(expression, env) {
-  if (identical(expression[[1]], quote(`+`))) {
+  .isAdd <- FALSE
+  if (is.name(expression) || is.atomic(expression)) {
+    .isAdd <- FALSE
+  } else if (identical(expression[[1]], quote(`+`))) {
+    .isAdd <- TRUE
+  }
+  if (.isAdd) {
     env$isAnAdditiveExpression <- TRUE
     .errHandleErrorStructure(expression[[2]], env)
     .errHandleErrorStructure(expression[[3]], env)
@@ -766,11 +772,19 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .errHandleSingleTerm(.currErr, expression, env)
     }
   } else {
-    .currErr <- deparse1(expression[[1]])
-    if (.currErr == "c") {
+    if (is.name(expression) || is.atomic(expression)) {
+      .currErr <- deparse1(expression)
+      .isC <- FALSE
+      .isErrDist <- FALSE
+    } else {
+      .currErr <- deparse1(expression[[1]])
+      .isC <- .currErr == "c"
+      .isErrDist <- .currErr %in% names(.errDist)
+    }
+    if (.isC) {
       env$distribution <- "ordinal"
       .errHandleSingleDistributionTerm("ordinal", expression, env)
-    } else if (.currErr %in% names(.errDist)) {
+    } else if (.isErrDist) {
       .currErr <- rxPreferredDistributionName(.currErr)
       env$distribution <- .currErr
       .errHandleSingleDistributionTerm(.currErr, expression, env)
@@ -798,6 +812,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @author Matthew Fidler
 #' @noRd
 .errHandleCondition <- function(expression, env) {
+  if (is.name(expression) || is.atomic(expression)) return(expression)
   if (identical(expression[[1]], quote(`|`))) {
     env$needsToBeAnErrorExpression  <- TRUE
     env$curCondition <- deparse1(expression[[3]])
