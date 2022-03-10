@@ -5,29 +5,21 @@
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiNormal}
 \alias{assertRxUiEstimatedResiduals}
+\alias{assertRxUiPopulationOnly}
+\alias{assertRxUiMixedOnly}
 \title{Assert properties of the rxUi models}
 \usage{
-assertRxUi(model, extra = "", .var.name = checkmate::vname(model))
+assertRxUi(model, extra = "", .var.name = .vname(model))
 
-assertRxUiSingleEndpoint(
-  model,
-  extra = "",
-  .var.name = checkmate::vname(model)
-)
+assertRxUiSingleEndpoint(model, extra = "", .var.name = .vname(model))
 
-assertRxUiSingleEndpoint(
-  model,
-  extra = "",
-  .var.name = checkmate::vname(model)
-)
+assertRxUiNormal(model, extra = "", .var.name = .vname(model))
 
-assertRxUiNormal(model, extra = "", .var.name = checkmate::vname(model))
+assertRxUiEstimatedResiduals(model, extra = "", .var.name = .vname(model))
 
-assertRxUiEstimatedResiduals(
-  model,
-  extra = "",
-  .var.name = checkmate::vname(model)
-)
+assertRxUiPopulationOnly(model, extra = "", .var.name = .vname(model))
+
+assertRxUiMixedOnly(model, extra = "", .var.name = .vname(model))
 }
 \arguments{
 \item{model}{Model to check}
@@ -55,6 +47,10 @@ a single endpoint model (if not throw error)
 normal residual distribution
 \item \code{assertRxUiEstimatedResiduals} -- This makes sure that the
 residual error parameter are estimated (not modeled).
+\item \code{assertRxUiPopulationOnly} -- This makes sure the model is the
+population only model (no mixed effects)
+\item \code{assertRxUiMixedOnly} -- This makes sure the model is a mixed
+effect model (not a population effect)
 }
 }
 \examples{

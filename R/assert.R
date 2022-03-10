@@ -1,3 +1,11 @@
+.vname <- function(x) {
+  .v <- paste0(deparse1(eval.parent(substitute(substitute(x)))),collapse = "\n")
+  if (regexpr("[ >]+", .v) != -1) {
+    return("model")
+  }
+  .v
+}
+
 #' Assert properties of the rxUi models
 #'
 #' @param model Model to check
@@ -9,9 +17,9 @@
 #'
 #' These functions have different types of assertions
 #'
-#'  - `assertRxUi` -- Make sure this is a proper rxode2 model (if not throw error)
+#' - `assertRxUi` -- Make sure this is a proper rxode2 model (if not throw error)
 #'
-#'  - `assertRxUiSingleEndpoint` -- Make sure the rxode2 model is only
+#' - `assertRxUiSingleEndpoint` -- Make sure the rxode2 model is only
 #'    a single endpoint model (if not throw error)
 #'
 #' - `assertRxUiNormal` -- This needs to be a normal or transformably
@@ -19,6 +27,12 @@
 #'
 #' - `assertRxUiEstimatedResiduals` -- This makes sure that the
 #'    residual error parameter are estimated (not modeled).
+#'
+#' - `assertRxUiPopulationOnly` -- This makes sure the model is the
+#'    population only model (no mixed effects)
+#'
+#' - `assertRxUiMixedOnly` -- This makes sure the model is a mixed
+#'   effect model (not a population effect)
 #'
 #' @return the rxUi model
 #'
@@ -57,7 +71,8 @@
 #'
 #' assertRxUiSingleEndpoint(one.cmt)
 #'
-assertRxUi <- function(model, extra="", .var.name=checkmate::vname(model)) {
+assertRxUi <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
   if (inherits(model, "function")) {
     model <- try(rxode2(model), silent=TRUE)
     if (inherits(model, "try-error")) {
@@ -72,10 +87,11 @@ assertRxUi <- function(model, extra="", .var.name=checkmate::vname(model)) {
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiSingleEndpoint <- function(model, extra="", .var.name=checkmate::vname(model)) {
+assertRxUiSingleEndpoint <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .predDf <- model$predDf
-  if (length(f$predDf$cond) > 1L) {
+  if (length(.predDf$cond) > 1L) {
     stop("'", .var.name, "' needs to be a single endpoint model", extra, call.=FALSE)
   }
   invisible(model)
@@ -83,18 +99,8 @@ assertRxUiSingleEndpoint <- function(model, extra="", .var.name=checkmate::vname
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiSingleEndpoint <- function(model, extra="", .var.name=checkmate::vname(model)) {
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  .predDf <- model$predDf
-  if (length(f$predDf$cond) > 1L) {
-    stop("'", .var.name, "' needs to be a single endpoint model", extra, call.=FALSE)
-  }
-  invisible(model)
-}
-
-#' @export
-#' @rdname assertRxUi
-assertRxUiNormal <- function(model, extra="", .var.name=checkmate::vname(model)) {
+assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .predDf <- model$predDf
   if (all(.predDf$distribution == "norm")) {
@@ -105,11 +111,36 @@ assertRxUiNormal <- function(model, extra="", .var.name=checkmate::vname(model))
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiEstimatedResiduals <- function(model, extra="", .var.name=checkmate::vname(model)) {
+assertRxUiEstimatedResiduals <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .predDf <- model$predDf
   if (all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda")], use.names=FALSE)))) {
     stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call.=FALSE)
+  }
+  invisible(model)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiPopulationOnly <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
+  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  .iniDf <- model$iniDf
+  if (all(is.na(.iniDf$neta1))) {
+    stop("'", .var.name, "' can only have population estimates", extra, call.=FALSE)
+  }
+  invisible(model)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiMixedOnly <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
+  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  .iniDf <- model$iniDf
+  if (!all(is.na(.iniDf$neta1))) {
+    stop("'", .var.name, "' needs to be a mixed effect model", extra, call.=FALSE)
   }
   invisible(model)
 }
