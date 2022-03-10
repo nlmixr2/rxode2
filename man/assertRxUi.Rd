@@ -2,22 +2,63 @@
 % Please edit documentation in R/assert.R
 \name{assertRxUi}
 \alias{assertRxUi}
-\title{Assert that the model is a rxUi function or model}
+\alias{assertRxUiSingleEndpoint}
+\alias{assertRxUiNormal}
+\alias{assertRxUiEstimatedResiduals}
+\title{Assert properties of the rxUi models}
 \usage{
-assertRxUi(model, .var.name = checkmate::vname(model))
+assertRxUi(model, extra = "", .var.name = checkmate::vname(model))
+
+assertRxUiSingleEndpoint(
+  model,
+  extra = "",
+  .var.name = checkmate::vname(model)
+)
+
+assertRxUiSingleEndpoint(
+  model,
+  extra = "",
+  .var.name = checkmate::vname(model)
+)
+
+assertRxUiNormal(model, extra = "", .var.name = checkmate::vname(model))
+
+assertRxUiEstimatedResiduals(
+  model,
+  extra = "",
+  .var.name = checkmate::vname(model)
+)
 }
 \arguments{
 \item{model}{Model to check}
 
-\item{.var.name}{Var name to override if this needs a different name}
+\item{extra}{Extra text to append to the error message (like
+"for focei")}
+
+\item{.var.name}{[\code{character(1)}]\cr
+Name of the checked object to print in assertions. Defaults to
+the heuristic implemented in \code{\link[checkmate]{vname}}.}
 }
 \value{
 the rxUi model
 }
 \description{
-Assert that the model is a rxUi function or model
+Assert properties of the rxUi models
+}
+\details{
+These functions have different types of assertions
+\itemize{
+\item \code{assertRxUi} -- Make sure this is a proper rxode2 model (if not throw error)
+\item \code{assertRxUiSingleEndpoint} -- Make sure the rxode2 model is only
+a single endpoint model (if not throw error)
+\item \code{assertRxUiNormal} -- This needs to be a normal or transformably
+normal residual distribution
+\item \code{assertRxUiEstimatedResiduals} -- This makes sure that the
+residual error parameter are estimated (not modeled).
+}
 }
 \examples{
+
 one.cmt <- function() {
  ini({
    ## You may label each parameter with a comment
@@ -39,8 +80,11 @@ one.cmt <- function() {
     linCmt() ~ add(add.sd)
  })
 }
+
 assertRxUi(one.cmt)
-# assertRxUi(rnorm)
+# assertRxUi(rnorm) # will fail
+
+assertRxUiSingleEndpoint(one.cmt)
 
 }
 \author{
