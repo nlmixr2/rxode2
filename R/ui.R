@@ -281,7 +281,7 @@ print.rxUi <-function(x, ...) {
       .me %>%
         huxtable::print_screen(colnames = FALSE)
     } else {
-      print(.mu)
+      print(.me)
     }
     cat("\n")
   }
