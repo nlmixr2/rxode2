@@ -58,6 +58,9 @@ rxGetDistributionSimulationLines <- function(line) {
       }
     }
   }, character(1))
+  if (.dist == "-2LL") {
+    return(env$lstExpr[[pred1$line]][[3]])
+  }
   as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), .enQuote))
 }
 
