@@ -89,5 +89,23 @@ test_that("binding together", {
   }, append=TRUE)
 
   expect_true(any(addModelLine$iniDf$name == "idr.sd2"))
+  expect_false(any(addModelLine$iniDf$name == "eff"))
+  expect_false(any(addModelLine$iniDf$name == "eff2"))
+
+  expect_error(idr %>% model({
+    eff2 <- eff + 3
+    eff2 ~ add(idr.sd2) | matt
+  }, append=TRUE))
+
+  addModelLine <- idr %>% model({
+    eff2 <- eff + 3
+    eff2 ~ add(idr.sd2) | matt
+  }, append=TRUE)
+
+
+  expect_true(any(addModelLine$iniDf$name == "idr.sd2"))
+  expect_false(any(addModelLine$iniDf$name == "eff"))
+  expect_false(any(addModelLine$iniDf$name == "eff2"))
+  expect_false(any(addModelLine$iniDf$name == "matt"))
 
 })

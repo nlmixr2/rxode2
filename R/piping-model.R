@@ -18,23 +18,24 @@ model.function <- function(x, ..., append=FALSE, envir=parent.frame()) {
 .modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, envir) {
   checkmate::assertLogical(modifyIni, any.missing=FALSE, len=1)
   checkmate::assertLogical(append, any.missing=TRUE, len=1)
-  .doMod <- FALSE
+  .doAppend <- FALSE
   if (is.na(append)) {
     assign("lstExpr", c(modelLines, rxui$lstExpr), envir=rxui)
-    .doMod <- TRUE
+    .doAppend <- TRUE
   } else if (append) {
     assign("lstExpr", c(rxui$lstExpr, modelLines), envir=rxui)
-    .doMod <- TRUE
+    .doAppend <- TRUE
   }
-  if (.doMod) {
+  if (.doAppend) {
     # in pre-pending or appending, lines are only added
     .lhs <- NULL
     .rhs <- NULL
     for (x in modelLines) {
-      if (identical(x[[1]], quote(`~`)) ||
+      .isTilde <- identical(x[[1]], quote(`~`))
+      if (.isTilde ||
             identical(x[[1]], quote(`=`)) ||
             identical(x[[1]], quote(`<-`))) {
-        .tmp <- .getVariablesFromExpression(x[[3]])
+        .tmp <- .getVariablesFromExpression(x[[3]], ignorePipe=.isTilde)
         .tmp <- .tmp[!(.tmp %in% .lhs)]
         .rhs <- unique(c(.tmp, .rhs))
         .lhs <- unique(c(.getVariablesFromExpression(x[[2]]),.lhs))
@@ -433,18 +434,22 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 #' @return Character vector of variables
 #' @author Matthew L. Fidler
 #' @noRd
-.getVariablesFromExpression <- function(x) {
+.getVariablesFromExpression <- function(x, ignorePipe=FALSE) {
   if (is.atomic(x)) {
     character()
   } else if (is.name(x)) {
     return(as.character(x))
   } else  {
     if (is.call(x)) {
-      x1 <- x[-1]
+      if (ignorePipe && identical(x[[1]], quote(`|`))) {
+        return(.getVariablesFromExpression(x[[2]]))
+      } else {
+        x1 <- x[-1]
+      }
     } else {
       x1 <- x
     }
-    unique(unlist(lapply(x1, .getVariablesFromExpression)))
+    unique(unlist(lapply(x1, .getVariablesFromExpression, ignorePipe=ignorePipe)))
   }
 }
 
