@@ -81,7 +81,7 @@ test_that("binding together", {
   expect_error(idr %>% model({
     eff2 <- eff + 3
     eff2 ~ add(idr.sd2)
-  }, append=TRUE))
+  }, append=TRUE), NA)
 
   addModelLine <- idr %>% model({
     eff2 <- eff + 3
