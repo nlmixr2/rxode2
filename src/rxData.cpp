@@ -1129,6 +1129,10 @@ SEXP rxInits(const RObject &obj,
       return ret;
     }
     NumericVector inits = rxInits(obj, vec, req, defaultValue, noerror,noini,false);
+		if (!obj.hasAttribute("names")) {
+			CharacterVector ret = "";
+      return ret;
+		}
     CharacterVector nms = inits.names();
     List mv = rxModelVars(obj);
     CharacterVector state = mv[RxMv_state];

@@ -33,10 +33,12 @@ test_that("binding together", {
       ic50 <- exp(tic50)
       d/dt(eff) <- kin - kout*(1-ceff^gamma/(ic50^gamma+ceff^gamma))
       eff ~ add(idr.sd)
-    })
+     })
   }
 
   m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+
+  expect_error(print(m1), NA)
   expect_true("idr.sd" %in% m1$iniDf$name)
   expect_true("tv" %in% m1$iniDf$name)
 
@@ -58,5 +60,34 @@ test_that("binding together", {
   expect_true("tv" %in% m1$iniDf$name)
   expect_true("eta.ka" %in% m1$iniDf$name)
   expect_true("eta.kout" %in% m1$iniDf$name)
+
+  idr <- function() {
+    ini({
+      tkin <- log(1)
+      tkout <- log(1)
+      tic50 <- log(10)
+      gamma <- fix(1)
+      idr.sd <- 1
+    })
+    model({
+      kin <- exp(tkin)
+      kout <- exp(tkout)
+      ic50 <- exp(tic50)
+      d/dt(eff) <- kin - kout*(1-ceff^gamma/(ic50^gamma+ceff^gamma))
+      eff ~ add(idr.sd)
+    })
+  }
+
+  expect_error(idr %>% model({
+    eff2 <- eff + 3
+    eff2 ~ add(idr.sd2)
+  }, append=TRUE))
+
+  addModelLine <- idr %>% model({
+    eff2 <- eff + 3
+    eff2 ~ add(idr.sd2)
+  }, append=TRUE)
+
+  expect_true(any(addModelLine$iniDf$name == "idr.sd2"))
 
 })
