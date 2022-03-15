@@ -181,6 +181,7 @@ rxTheme <- function(base_size = 11, base_family = "",
   return(list(.timex, .logx, .logy, .dat))
 }
 
+
 #' @export
 plot.rxSolve <- function(x, y, ..., log = "",
                          xlab = "Time", ylab = "") {

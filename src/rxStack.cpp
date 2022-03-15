@@ -93,11 +93,22 @@ List rxStack(List Data, Nullable<CharacterVector> vars=R_NilValue){
   }
   IntegerVector inId;
   IntegerVector outId;
+  bool hasLvl = false;
+  CharacterVector lvls;
   if (bId){
     inId = Data["id"];
+    RObject inIdRO = Data["id"];
+    if (inIdRO.hasAttribute("levels")) {
+      hasLvl = true;
+      lvls = inIdRO.attr("levels");
+    }
     outId = IntegerVector(inId.size()*nfactor);
     for (j = nfactor; j--;){
       std::copy(inId.begin(),inId.end(),outId.begin()+j*inId.size());
+    }
+    if (hasLvl) {
+      outId.attr("levels") = lvls;
+      outId.attr("class") = "factor";
     }
     ret["id"] = outId;
   }
@@ -147,7 +158,6 @@ List rxStack(List Data, Nullable<CharacterVector> vars=R_NilValue){
     outTime.attr("units") = inTime.attr("units");
   }
   ret["time"] = outTime;
-
 
   NumericVector outValue(inTime.size()*nfactor);
   IntegerVector outLvl(inTime.size()*nfactor);
