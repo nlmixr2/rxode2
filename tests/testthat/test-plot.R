@@ -52,12 +52,12 @@ test_that(".plotLog works with xgxr", {
   skip_if_not_installed("xgxr")
   skip("See https://github.com/Novartis/xgxr/issues/50 for why xgxr is not uniquely tested as of 2022-03-15")
   current_xgxr_option <- getOption("rxode2.xgxr")
-  options(rxode2.xgxr=TRUE)
-  
-  d <- data.frame(time=-1:2, conc=0:3)
-  
-  # Cleanup
-  options(rxode2.xgxr=current_xgxr_option)
+  withr::with_options(
+    list(rxode2.xgxr=TRUE), {
+      d <- data.frame(time=-1:2, conc=0:3)
+      # Insert tests here
+    }
+  )
 })
 
 test_that(".plotLog gives expected errors", {
