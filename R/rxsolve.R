@@ -852,7 +852,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertLogical(strictSS, any.missing=FALSE, len=1)
       strictSS <- as.integer(strictSS)
     }
-    checkmate::assertIntegerish(indLinMatExpOrder, len=1, min=1, any.missing=FALSE)
+    checkmate::assertIntegerish(indLinMatExpOrder, len=1, lower=1, any.missing=FALSE)
     indLinMatExpOrder <- as.integer(indLinMatExpOrder)
     if (!checkmate::testIntegerish(safeZero, lower=0, upper=1, len=1, any.missing=FALSE)) {
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
