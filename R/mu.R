@@ -596,7 +596,19 @@
           # This line has etas or covariates and might need to be
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
-          lapply(x, .rxMuRef0, env=env)
+          if (rxode2.debug) {
+            lapply(x, .rxMuRef0, env=env)
+          } else {
+            .tmp <- try(lapply(x, .rxMuRef0, env=env), silent=TRUE)
+          }
+          if (inherits(.tmp, "try-error")) {
+            .msg <- paste0("mu-ref err: ", attr(.tmp,"condition")$message)
+            if (!is.null(env$lstErr[[.i]])) {
+              .msg <- paste(env$lstErr[[.i]], "\n", .msg)
+            }
+            env$lstErr[[.i]] <- .msg
+            env$hasErrors <- TRUE
+          }
         } else {
           # This line does not depend on etas or covariates
           # simply add to the body
@@ -899,12 +911,14 @@
   .checkForInfiniteOrNaParameters(.env)
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
   if (.env$hasErrors) {
-    .errMsg <- paste(vapply(seq_along(.env$lstExpr),
-                            function(i){
-                              sprintf("%s\033[1m:%03d:\033[0m %s",
-                                      ifelse(is.null(.env$lstErr[[i]]), "", sprintf("\033[1m%s\033[0m\n", .env$lstErr[[i]])),
-                                      i, deparse1(.env$lstExpr[[i]]))
-                            }, character(1), USE.NAMES=FALSE), collapse="\n")
+    .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
+                      paste(vapply(seq_along(.env$lstExpr),
+                                   function(i){
+                                     sprintf(paste0("%s", crayon::bold("%03d:"), " %s"),
+                                             ifelse(is.null(.env$lstErr[[i]]), "",
+                                                    sprintf(paste0(crayon::bold("%s"), "\n"), .env$lstErr[[i]])),
+                                             i, deparse1(.env$lstExpr[[i]]))
+                                   }, character(1), USE.NAMES=FALSE), collapse="\n"))
     message(.errMsg)
   }
   if (length(.env$err) > 0) {
