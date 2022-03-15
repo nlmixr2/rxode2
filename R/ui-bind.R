@@ -62,7 +62,7 @@ rxAppendModel <- function(model1, model2) {
   model2 <- assertRxUi(model2)
   .ini1 <- model1$iniDf
   .ini2 <- model2$iniDf
-  .bind <- intersect(model1$mv0$lhs, model2$allCovs)
+  .bind <- intersect(c(model1$mv0$lhs, model1$mv0$state), model2$allCovs)
   if (length(.bind) == 0) {
     stop("the first model does not have variables that are used by the second model",
          call.=FALSE)

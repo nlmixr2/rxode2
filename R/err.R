@@ -930,23 +930,23 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       if (!(env$distribution %in% .rxDistributionType)) {
         env$distribution <- "norm"
       }
-      env$predDf <- rbind(env$predDf,
-                          data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
-                                     trLow=env$trLimit[1], trHi=env$trLimit[2],
-                                     transform=env$errTypeInfo$transform,
-                                     errType=env$errTypeInfo$errType,
-                                     errTypeF=env$errTypeInfo$errTypeF,
-                                     addProp=env$errTypeInfo$addProp,
-                                     distribution=factor(env$distribution, levels=.rxDistributionType),
-                                     line=env$line,
-                                     a=env$a,
-                                     b=env$b,
-                                     c=env$c,
-                                     d=env$d,
-                                     e=env$e,
-                                     f=env$f,
-                                     lambda=env$lambda,
-                                     linCmt=env$linCmt))
+      .tmp <- data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
+                         trLow=env$trLimit[1], trHi=env$trLimit[2],
+                         transform=env$errTypeInfo$transform,
+                         errType=env$errTypeInfo$errType,
+                         errTypeF=env$errTypeInfo$errTypeF,
+                         addProp=env$errTypeInfo$addProp,
+                         distribution=factor(env$distribution, levels=.rxDistributionType),
+                         line=env$line,
+                         a=env$a,
+                         b=env$b,
+                         c=env$c,
+                         d=env$d,
+                         e=env$e,
+                         f=env$f,
+                         lambda=env$lambda,
+                         linCmt=env$linCmt)
+      env$predDf <- rbind(env$predDf, .tmp)
       env$curDvid <- env$curDvid + 1L
     }
   }
@@ -1062,7 +1062,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .env$lstExpr <- vector(length(.y), mode="list")
       .env$hasErrors <- FALSE
       for (.i in seq_along(.y)) {
-        .env$line <- .i
+         .env$line <- .i
         if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
         }
