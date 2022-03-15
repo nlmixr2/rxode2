@@ -532,6 +532,17 @@
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
 
+
+.muRefHandlePlusNoop <- function(par) {
+  if (is.symbol(par)) return(par)
+  if (identical(par[[1]], quote(`+`)) &&
+        length(par) == 2L) {
+    return(par[[2]])
+  }
+  par
+}
+
+
 #' Handle the + expressions to determine mu-reference expressions
 #'
 #' @param x additive Call Expression
@@ -546,6 +557,7 @@
   .extraItems <- NULL
   while (!is.null(.x2)) {
     env$.found <- FALSE
+    .x2[[1]] <- .muRefHandlePlusNoop(.x2[[1]])
     .names <- .muRefExtractSingleVariableNames(.x2, .names, env)
     .doubleNames <- .muRefExtractMultiplyMuCovariates(.x2, .doubleNames, env)
     if (!env$.found && !is.name(.x2[[2]])) {
