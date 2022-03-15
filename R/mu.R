@@ -535,17 +535,17 @@
 #' Handle unary plus as a noop
 #'
 #'
-#' @param par parameter expression
+#' @param expr parameter expression
 #' @return return plus
 #' @author Matthew L. Fidler
 #' @noRd
-.muRefHandlePlusNoop <- function(par) {
-  if (is.symbol(par)) return(par)
-  if (identical(par[[1]], quote(`+`)) &&
-        length(par) == 2L) {
-    return(par[[2]])
+.muRefHandlePlusNoop <- function(expr) {
+  if (is.symbol(expr)) return(expr)
+  if (identical(expr[[1]], quote(`+`)) &&
+        length(expr) == 2L) {
+    return(expr[[2]])
   }
-  par
+  expr
 }
 
 
