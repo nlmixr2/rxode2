@@ -1,4 +1,4 @@
-#' rxTheme is the rxode2 theme for plots
+#' rxTheme is the ggplot2 theme for rxode2 plots
 #'
 #' @inheritParams ggplot2::theme_grey
 #'
@@ -6,7 +6,7 @@
 #'   (`FALSE`). This could also be a character indicating `x` or `y`.
 #'
 #' @return ggplot2 theme used in rxode2
-#'
+#' @family rxode2 plotting
 #' @export
 rxTheme <- function(base_size = 11, base_family = "",
                     base_line_size = base_size / 22,
@@ -181,10 +181,22 @@ rxTheme <- function(base_size = 11, base_family = "",
   return(list(.timex, .logx, .logy, .dat))
 }
 
-
+#' Plot rxode2 objects
+#' 
+#' @param x rxode2 object to plot
+#' @param y Compartments or left-hand-side values to plot either as a bare name
+#'   or as a character vector
+#' @param ... Ignored
+#' @param log Should "" (neither x nor y), "x", "y", or "xy" (or "yx") be
+#'   log-scale?
+#' @param xlab,ylab The x and y axis labels
+#' 
+#' @return A ggplot2 object
+#' 
+#' @family rxode2 plotting
+#' @keywords Internal
 #' @export
-plot.rxSolve <- function(x, y, ..., log = "",
-                         xlab = "Time", ylab = "") {
+plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   .data <- NULL
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
@@ -307,7 +319,8 @@ plot.rxSolve <- function(x, y, ..., log = "",
   .gg
 }
 
-
+#' @rdname plot.rxSolve
+#' @keywords Internal
 #' @export
 plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
@@ -358,7 +371,8 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   return(.ret)
 }
 
-
+#' @rdname plot.rxSolve
+#' @keywords Internal
 #' @export
 plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
