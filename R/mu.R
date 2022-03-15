@@ -911,11 +911,12 @@
   .checkForInfiniteOrNaParameters(.env)
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
   if (.env$hasErrors) {
-    .errMsg <- paste0(cli::col_blue("\nmodel"), "({}) errors:\n",
+    .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
                       paste(vapply(seq_along(.env$lstExpr),
                                    function(i){
-                                     sprintf("%s\033[1m:%03d:\033[0m %s",
-                                             ifelse(is.null(.env$lstErr[[i]]), "", sprintf("\033[1m%s\033[0m\n", .env$lstErr[[i]])),
+                                     sprintf(paste0("%s", crayon::bold("%03d:"), " %s"),
+                                             ifelse(is.null(.env$lstErr[[i]]), "",
+                                                    sprintf(paste0(crayon::bold("%s"), "\n"), .env$lstErr[[i]])),
                                              i, deparse1(.env$lstExpr[[i]]))
                                    }, character(1), USE.NAMES=FALSE), collapse="\n"))
     message(.errMsg)
