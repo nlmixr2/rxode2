@@ -250,7 +250,11 @@
     if(is.call(x[[i]])) {
       .expr <- x[[i]]
       if (identical(.expr[[1]], quote(`+`))){
-        .expr <- .expr[-1]
+        if (length(.expr) == 2L) {
+          .expr <- NULL
+        } else {
+          .expr <- .expr[-1]
+        }
       } else {
         .expr <- NULL
       }
@@ -528,6 +532,23 @@
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
 
+#' Handle unary plus as a noop
+#'
+#'
+#' @param expr parameter expression
+#' @return return plus
+#' @author Matthew L. Fidler
+#' @noRd
+.muRefHandlePlusNoop <- function(expr) {
+  if (is.symbol(expr)) return(expr)
+  if (identical(expr[[1]], quote(`+`)) &&
+        length(expr) == 2L) {
+    return(expr[[2]])
+  }
+  expr
+}
+
+
 #' Handle the + expressions to determine mu-reference expressions
 #'
 #' @param x additive Call Expression
@@ -542,6 +563,7 @@
   .extraItems <- NULL
   while (!is.null(.x2)) {
     env$.found <- FALSE
+    .x2[[1]] <- .muRefHandlePlusNoop(.x2[[1]])
     .names <- .muRefExtractSingleVariableNames(.x2, .names, env)
     .doubleNames <- .muRefExtractMultiplyMuCovariates(.x2, .doubleNames, env)
     if (!env$.found && !is.name(.x2[[2]])) {
