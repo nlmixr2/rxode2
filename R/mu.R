@@ -250,7 +250,11 @@
     if(is.call(x[[i]])) {
       .expr <- x[[i]]
       if (identical(.expr[[1]], quote(`+`))){
-        .expr <- .expr[-1]
+        if (length(.expr) == 2L) {
+          .expr <- NULL
+        } else {
+          .expr <- .expr[-1]
+        }
       } else {
         .expr <- NULL
       }
