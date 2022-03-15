@@ -596,7 +596,19 @@
           # This line has etas or covariates and might need to be
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
-          lapply(x, .rxMuRef0, env=env)
+          if (rxode2.debug) {
+            lapply(x, .rxMuRef0, env=env)
+          } else {
+            .tmp <- try(lapply(x, .rxMuRef0, env=env), silent=TRUE)
+          }
+          if (inherits(.tmp, "try-error")) {
+            .msg <- paste0("mu-ref err: ", attr(.tmp,"condition")$message)
+            if (!is.null(env$lstErr[[.i]])) {
+              .msg <- paste(env$lstErr[[.i]], "\n", .msg)
+            }
+            env$lstErr[[.i]] <- .msg
+            env$hasErrors <- TRUE
+          }
         } else {
           # This line does not depend on etas or covariates
           # simply add to the body
