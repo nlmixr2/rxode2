@@ -141,44 +141,40 @@ rxTheme <- function(base_size = 11, base_family = "",
     .timex <- .xgxrT("h")
     .xlab <- xlab(xlab)
   }
-  list(.timex, .xlab, .dat)
+  list(timex=.timex, xlab=.xlab, dat=.dat)
 }
 
 .plotLog <- function(.dat, .timex, log = "") {
+  # match.arg() cannot be used because it doesn't work with an empty string
+  # (https://stackoverflow.com/questions/41441170/failure-of-match-arg-for-the-empty-string)
+  stopifnot(length(log) == 1)
+  stopifnot(is.character(log))
+  stopifnot(log %in% c("", "x", "y", "xy", "yx"))
+  useLogX <- nchar(log) == 2 | log == "x"
+  useLogY <- nchar(log) == 2 | log == "y"
+  useXgxr <-
+    getOption("rxode2.xgxr", TRUE) &&
+    requireNamespace("xgxr", quietly = TRUE)
   .logx <- NULL
   .logy <- NULL
-  .xgxr <- getOption("rxode2.xgxr", TRUE) &&
-    requireNamespace("xgxr", quietly = TRUE)
-  if (is.character(log) && length(log) == 1) {
-    if (log == "x") {
-      .dat <- .dat[.dat$time > 0, ]
-      if (.xgxr) {
-        .logx <- xgxr::xgx_scale_x_log10()
-      } else {
-        .logx <- ggplot2::scale_x_log10()
-      }
-      .timex <- NULL
-    } else if (log == "y") {
-      if (.xgxr) {
-        .logy <- xgxr::xgx_scale_y_log10()
-      } else {
-        .logy <- ggplot2::scale_y_log10()
-      }
-    } else if (log == "xy" || log == "yx") {
-      if (.xgxr) {
-        .logx <- xgxr::xgx_scale_x_log10()
-        .logy <- xgxr::xgx_scale_y_log10()
-      } else {
-        .logx <- ggplot2::scale_x_log10()
-        .logy <- ggplot2::scale_y_log10()
-      }
-      .dat <- .dat[.dat$time > 0, ]
-      .timex <- NULL
-    } else if (log != "") {
-      stop(sprintf("'log=\"%s\"' not supported", log))
+  if (useLogX) {
+    stopifnot(".dat requires 'time' column"="time" %in% names(.dat))
+    .dat <- .dat[.dat$time > 0, ]
+    if (useXgxr) {
+      .logx <- xgxr::xgx_scale_x_log10()
+    } else {
+      .logx <- ggplot2::scale_x_log10()
+    }
+    .timex <- NULL
+  }
+  if (useLogY) {
+    if (useXgxr) {
+      .logy <- xgxr::xgx_scale_y_log10()
+    } else {
+      .logy <- ggplot2::scale_y_log10()
     }
   }
-  return(list(.timex, .logx, .logy, .dat))
+  list(timex=.timex, logx=.logx, logy=.logy, dat=.dat)
 }
 
 #' Plot rxode2 objects
@@ -296,22 +292,16 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
     }
   }
   .lst <- .plotTime(.dat, xlab)
-  .timex <- .lst[[1]]
-  .xlab <- .lst[[2]]
-  .dat <- .lst[[3]]
-  .lst <- .plotLog(.dat, .timex, log)
-  .timex <- .lst[[1]]
-  .logx <- .lst[[2]]
-  .logy <- .lst[[3]]
-  .dat <- .lst[[4]]
-  ggplot(.dat, .aes) +
+  .xlab <- .lst[["xlab"]]
+  .lst <- .plotLog(.lst[["dat"]], .lst[["timex"]], log)
+  ggplot(.lst[["dat"]], .aes) +
     .line +
     .facet +
     .theme +
     .repel +
-    .timex +
-    .logx +
-    .logy +
+    .lst[["timex"]] +
+    .lst[["logx"]] +
+    .lst[["logy"]] +
     .ylab +
     .xlab +
     .legend ->
@@ -330,14 +320,12 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .facet <- NULL
   .dat <- x
   .lst <- .plotTime(.dat, xlab)
-  .timex <- .lst[[1]]
-  .xlab <- .lst[[2]]
-  .dat <- .lst[[3]]
-  .lst <- .plotLog(.dat, .timex, log)
-  .timex <- .lst[[1]]
-  .logx <- .lst[[2]]
-  .logy <- .lst[[3]]
-  .dat <- .lst[[4]]
+  .xlab <- .lst[["xlab"]]
+  .lst <- .plotLog(.lst[["dat"]], .lst[["timex"]], log)
+  .timex <- .lst[["timex"]]
+  .logx <- .lst[["logx"]]
+  .logy <- .lst[["logy"]]
+  .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
     .facet <- facet_wrap(~trt, scales = "free_y")
   }
@@ -387,14 +375,12 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .facet <- NULL
   .dat <- x
   .lst <- .plotTime(.dat, xlab)
-  .timex <- .lst[[1]]
-  .xlab <- .lst[[2]]
-  .dat <- .lst[[3]]
-  .lst <- .plotLog(.dat, .timex, log)
-  .timex <- .lst[[1]]
-  .logx <- .lst[[2]]
-  .logy <- .lst[[3]]
-  .dat <- .lst[[4]]
+  .xlab <- .lst[["xlab"]]
+  .lst <- .plotLog(.lst[["dat"]], .lst[["timex"]], log)
+  .timex <- .lst[["timex"]]
+  .logx <- .lst[["logx"]]
+  .logy <- .lst[["logy"]]
+  .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
     .facet <- facet_wrap(~trt, scales = "free_y")
   }
