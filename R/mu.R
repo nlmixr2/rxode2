@@ -532,7 +532,13 @@
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
 
-
+#' Handle unary plus as a noop
+#'
+#'
+#' @param par parameter expression
+#' @return return plus
+#' @author Matthew L. Fidler
+#' @noRd
 .muRefHandlePlusNoop <- function(par) {
   if (is.symbol(par)) return(par)
   if (identical(par[[1]], quote(`+`)) &&
