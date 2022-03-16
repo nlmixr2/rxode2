@@ -41,6 +41,9 @@ rxGetDistributionSimulationLines <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .dist <- as.character(pred1$distribution)
+  if (.dist == "-2LL") {
+    return(env$lstExpr[[pred1$line]][[3]])
+  }
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond
   .argName <- .namedArgumentsToPredDf[[.dist]]
@@ -58,9 +61,7 @@ rxGetDistributionSimulationLines <- function(line) {
       }
     }
   }, character(1))
-  if (.dist == "-2LL") {
-    return(env$lstExpr[[pred1$line]][[3]])
-  }
+
 
   as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), .enQuote))
 }
