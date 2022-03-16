@@ -1,6 +1,5 @@
 test_that("simple solving with ID(s) in the dataset", {
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  theoSd <- qs::qread(test_path("theoSd.qs"))
+  theoSd <- nlmixr2data::theo_sd
   d <- theoSd[, names(theoSd) != "EVID"]
   d <- d[d$ID != 10, ]
 
@@ -35,8 +34,7 @@ test_that("simple solving with ID(s) in the dataset", {
 })
 
 test_that("Test giving IDs to data-frames", {
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  d <- qs::qread(test_path("theoSd.qs"))
+  d <- nlmixr2data::theo_sd
   d$ID <- paste(d$ID)
 
   mod <- rxode2({
@@ -79,9 +77,7 @@ test_that("Test giving IDs to data-frames", {
   expect_warning(tmp2 <- rxSolve(mod, d, parData2))
 
   ## Now add an id to the dataset
-
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  d <- qs::qread(test_path("theoSd.qs"))
+  d <- nlmixr2data::theo_sd
   d$ID <- paste(d$ID)
 
   parData <- data.frame(
@@ -102,8 +98,7 @@ test_that("Test giving IDs to data-frames", {
   expect_equal(levels(tmp2$id), levels(tmp2$params$id))
 
   ## Now try letters
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  d <- qs::qread(test_path("theoSd.qs"))
+  d <- nlmixr2data::theo_sd
   d$ID <- letters[d$ID]
 
   parData <- data.frame(
@@ -150,8 +145,7 @@ test_that("Test giving IDs to data-frames", {
 })
 
 test_that("test iCov ID", {
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  d <- qs::qread(test_path("theoSd.qs"))
+  d <- nlmixr2data::theo_sd
   d$ID <- paste(d$ID)
 
   mod <- rxode2({
@@ -197,8 +191,7 @@ test_that("test iCov ID", {
 
   ## Now add an id to the dataset
 
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  d <- qs::qread(test_path("theoSd.qs"))
+  d <- nlmixr2data::theo_sd
   d$ID <- paste(d$ID)
   d <- d[, names(d) != "WT"]
 
@@ -217,8 +210,7 @@ test_that("test iCov ID", {
   expect_equal(tmp2$cwt, tmp2$wt)
 
   ## Now try letters
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  d <- qs::qread(test_path("theoSd.qs"))
+  d <- nlmixr2data::theo_sd
 
   d <- d[, names(d) != "WT"]
   d$ID <- letters[d$ID]
@@ -255,8 +247,7 @@ test_that("test iCov ID", {
 })
 
 test_that("id is retained as an integer", {
-  skip_if_not(file.exists(test_path("theoSd.qs")))
-  theoSd <- qs::qread(test_path("theoSd.qs"))
+  theoSd <- nlmixr2data::theo_sd
 
   d <- theoSd[, names(theoSd) != "EVID"]
   d <- d[d$ID != 10, ]

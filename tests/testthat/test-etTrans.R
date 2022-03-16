@@ -200,9 +200,7 @@ d/dt(blood)     = a*intestine - b*blood
   })
 
   test_that("Missing evid gives the same results", {
-    fileTheo <- test_path("theoSd.qs")
-    skip_if_not(file.exists(fileTheo))
-    theoSd <- qs::qread(fileTheo)
+    theoSd <- nlmixr2data::theo_sd
     d <- theoSd[, names(theoSd) != "EVID"]
 
     mod <- rxode2({
