@@ -51,7 +51,9 @@
   "dunif"=0:2,
   "unif"=0:2,
   "dweibull"=1:2,
-  "weibull"=1:2
+  "weibull"=1:2,
+  "cauchy"= 0:2,
+  "dcauchy"= 0:2
 )
 
 .errDistsPositive <- c("add", "norm", "dnorm", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
@@ -82,7 +84,8 @@
   "geom"="dgeom", #9
   "hyper"="dhyper", #10
   "unif"="dunif", #11
-  "weibull"="dweibull"#12
+  "weibull"="dweibull", #12
+  "cauchy"="dcauchy" #13
 )
 
 .errDistArgRanges <- list(
@@ -257,6 +260,7 @@ rxPreferredDistributionName <- function(dist) {
   "hyper", #10
   "unif", #11
   "weibull", #12
+  "cauchy", #13
   "ordinal", # 13
   "-2LL" #14
 )
@@ -615,7 +619,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   geom=c("a"), #9
   hyper=c("a", "b", "c"), #10
   unif=c("a", "b"), #11
-  weibull=c("a", "b")#12
+  weibull=c("a", "b"), #12
+  cauchy=c("a", "b")
 )
 
 .allowEstimatedParameters <- "ordinal"
