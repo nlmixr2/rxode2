@@ -225,8 +225,6 @@ rxPreferredDistributionName <- function(dist) {
 )
 
 
-.rxTransformHasALambdaParameterPrecalc <- c()
-
 .rxTransformHasALambdaParameter <- function(distribution) {
   (as.integer(distribution) %in% c(1L, 2L, 6L, 8L, 9L, 10L))
 }
