@@ -1,3 +1,4 @@
+
 expect_plotlog <- function(o, timex, logx, logy, dat) {
   # Checking for the correct type for logx and logy is nontrivial, so j
   expect_named(o, c("timex", "logx", "logy", "dat"))
@@ -68,4 +69,37 @@ test_that(".plotLog gives expected errors", {
   expect_error(.plotLog(.dat=data.frame(A=1), log="x", .timex="A"))
   # Time column is only required when log="x"
   expect_silent(.plotLog(.dat=data.frame(A=1), log="y", .timex="A"))
+})
+
+test_that("plot() with invalid component throws an error", {
+
+  pheno2 <- function() {
+    ini({
+      tcl <- log(0.008) # typical value of clearance
+      tv <-  log(0.6)   # typical value of volume
+      ## var(eta.cl)
+      eta.cl + eta.v ~ c(1,
+                         0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
+      # interindividual variability on clearance and volume
+      add.err <- 0.1    # residual variability
+    })
+    model({
+      cl <- exp(tcl + eta.cl) # individual value of clearance
+      v <- exp(tv + eta.v)    # individual value of volume
+      ke <- cl / v            # elimination rate constant
+      d/dt(A1) = - ke * A1    # model differential equation
+      cp = A1 / v             # concentration in plasma
+      cp ~ add(add.err)  # define error model
+    })
+  }
+
+  simdata <- data.frame(time=1:10, ID=factor(c("A", "B")))
+
+  sim <- rxSolve(pheno2, events=simdata)
+
+  expect_error(plot(sim, "foo"))
+  expect_warning(plot(sim, sim, "foo"))
+  expect_warning(plot(sim, sim, "foo"))
+  expect_error(plot(sim), NA)
+
 })

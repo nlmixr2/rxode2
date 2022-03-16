@@ -178,7 +178,7 @@ rxTheme <- function(base_size = 11, base_family = "",
 }
 
 #' Plot rxode2 objects
-#' 
+#'
 #' @param x rxode2 object to plot
 #' @param y Compartments or left-hand-side values to plot either as a bare name
 #'   or as a character vector
@@ -186,9 +186,9 @@ rxTheme <- function(base_size = 11, base_family = "",
 #' @param log Should "" (neither x nor y), "x", "y", or "xy" (or "yx") be
 #'   log-scale?
 #' @param xlab,ylab The x and y axis labels
-#' 
+#'
 #' @return A ggplot2 object
-#' 
+#'
 #' @family rxode2 plotting
 #' @keywords Internal
 #' @export
@@ -205,11 +205,22 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
     as.character(substitute(y)),
     names(sapply(as.character(.call), `c`))
   )
-
-  .cmts <- .cmts[!duplicated(.cmts)]
-  .cmts <- intersect(.cmts, c(rxState(x), rxLhs(x)))
-  if (length(.cmts) == 0) {
+  .cmts <- .cmts[.cmts != ""]
+  if (length(.cmts) == 0L) {
     .cmts <- NULL
+  } else {
+    .cmts <- .cmts[!duplicated(.cmts)]
+    .both <- c(rxState(x), rxLhs(x))
+    .cmts0 <- intersect(.cmts, .both)
+    if (length(.cmts0) == 0) {
+      stop("the items requested in the plot do not exist in the solved object: ",
+           paste(.cmts, collapse=", "))
+    } else if (length(.cmts0) != length(.cmts)) {
+      .ignored <- .cmts[!(.cmts %in% .both)]
+      warning("some requested items do not exist in the solved object and were ignored: ",
+              paste(.ignored, collapse=", "))
+    }
+    .cmts <- .cmts0
   }
   .dat <- rxStack(x, .cmts)
   .nlvl <- 1L
