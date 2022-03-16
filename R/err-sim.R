@@ -377,7 +377,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .lenLines <- length(.predDf$line)
     .if <- TRUE
   } else {
-    .lenLines <- sum(vrapply(seq_along(errLines), function(i){
+    .lenLines <- sum(vapply(seq_along(errLines), function(i){
       length(errLines[[i]])
     }, integer(1)))
   }
