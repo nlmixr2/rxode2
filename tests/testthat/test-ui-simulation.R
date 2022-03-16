@@ -193,7 +193,7 @@ test_that("pois simulations", {
 })
 
 
-test_that("pois simulations", {
+test_that("binom simulations", {
 
   f <- function() {
     ini({
@@ -225,4 +225,66 @@ test_that("pois simulations", {
 
 })
 
+test_that("beta simulations", {
 
+  f <- function() {
+    ini({
+      talpha <- 0.5
+      eta.alpha ~ 0.01
+      tbeta <- 3
+      eta.beta ~ 0.01
+    })
+    model({
+      alpha <- exp(talpha + eta.alpha)
+      beta <- exp(tbeta + eta.beta)
+      err ~ beta(alpha, beta)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rbeta[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
+
+test_that("chisq simulations", {
+
+  f <- function() {
+    ini({
+      tdf <- 0.5
+      eta.df ~ 0.01
+    })
+    model({
+      nu <- exp(tdf + eta.df)
+      err ~ chisq(nu)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rchisq[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
