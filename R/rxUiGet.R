@@ -126,6 +126,9 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
   .info <- get("predDf", .x)
+  if (is.null(.info)) {
+    return(invisible())
+  }
   if (length(.info$cond) == 1) return(NULL)
   if (getOption("rxode2.combine.dvid", TRUE)) {
     .info <- .info[order(.info$dvid), ]

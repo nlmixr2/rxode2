@@ -835,7 +835,11 @@
 .checkForIniParametersMissingFromModelBlock <- function(ui) {
   .iniDf <- ui$iniDf
   .mv <- ui$mv0
-  .errEsts <- .iniDf[.iniDf$condition %in% ui$predDf$cond, "name"]
+  if (is.null(ui$predDf)) {
+    .errEsts <- NULL
+  } else {
+    .errEsts <- .iniDf[.iniDf$condition %in% ui$predDf$cond, "name"]
+  }
   .estName <- .iniDf$name[!is.na(.iniDf$ntheta) | (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
   .estName <- c(.estName, .errEsts)
   .missingPars <- setdiff(.estName, c(.mv$params, .errEsts))
@@ -864,6 +868,7 @@
 .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint <- function(ui) {
   .iniDf <- ui$iniDf
   .predDf <- ui$predDf
+  if (is.null(.predDf)) return(NULL)
   .mv <- ui$mv0
   lapply(seq_along(.predDf$cond), function(i) {
     .cond <- .predDf$cond[i]
