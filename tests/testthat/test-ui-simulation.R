@@ -119,8 +119,6 @@ test_that("normal simulations", {
 
 })
 
-
-
 test_that("t simulations", {
 
   f <- function() {
@@ -149,6 +147,8 @@ test_that("t simulations", {
 
   expect_error(tmp$simulationModel, NA)
 
+  expect_true(regexpr("rxt[(]nu[)]", rxNorm(tmp$simulationModel)) != -1)
+
   ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
     et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
     et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
@@ -161,4 +161,68 @@ test_that("t simulations", {
   })
 
 })
+
+test_that("pois simulations", {
+
+  f <- function() {
+    ini({
+      tlambda <- 0.5
+      eta.lambda ~ 0.01
+    })
+    model({
+      lambda <- exp(tlambda + eta.lambda)
+      err ~ pois(lambda)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rpois[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
+
+test_that("pois simulations", {
+
+  f <- function() {
+    ini({
+      tn <- 0.5
+      eta.n ~ 0.01
+      prob <- logit(0.45)
+    })
+    model({
+      n <- exp(tn + eta.n)
+      p <- expit(prob)
+      err ~ dbinom(n, p)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rxbinom[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
 
