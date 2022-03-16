@@ -46,8 +46,8 @@
   "f"=2:3,
   "dgeom"=1,
   "geom"=1,
-  "dhyper"=3,
-  "hyper"=3,
+#  "dhyper"=3,
+#  "hyper"=3,
   "dunif"=0:2,
   "unif"=0:2,
   "dweibull"=1:2,
@@ -83,10 +83,9 @@
   "chisq"="dchisq", #6
   "f"="df", #8
   "geom"="dgeom", #9
-  "hyper"="dhyper", #10
-  "unif"="dunif", #11
-  "weibull"="dweibull", #12
-  "cauchy"="dcauchy" #13
+  "unif"="dunif", #10
+  "weibull"="dweibull", #11
+  "cauchy"="dcauchy" #12
 )
 
 .errDistArgRanges <- list(
@@ -116,9 +115,9 @@
   "f2"=c(0, Inf),
   "f3"=c(0, Inf),
   "geom"=c(0, 1),
-  "hyper"=c(0, Inf),
-  "hyper2"=c(0, Inf),
-  "hyper3"=c(0, Inf),
+  ## "hyper"=c(0, Inf),
+  ## "hyper2"=c(0, Inf),
+  ## "hyper3"=c(0, Inf),
   "dunif"=c(-Inf, Inf),
   "dunif2"=c(-Inf, Inf),
   "weibull"=c(0, Inf),
@@ -225,12 +224,15 @@ rxPreferredDistributionName <- function(dist) {
   "probit + boxCox" # 10
 )
 
+
+.rxTransformHasALambdaParameterPrecalc <- c()
+
 .rxTransformHasALambdaParameter <- function(distribution) {
   (as.integer(distribution) %in% c(1L, 2L, 6L, 8L, 9L, 10L))
 }
 
 .rxTransformHasBounds <- function(distribution) {
-    (as.integer(distribution) %in% 5:10)
+    (as.integer(distribution) %in% 5:14)
 }
 
 .rxAddPropLevels <- c(
@@ -268,8 +270,8 @@ rxPreferredDistributionName <- function(dist) {
   "weibull", #12
   "cauchy", #13
   "dgamma", #14
-  "ordinal", # 13
-  "-2LL" #14
+  "ordinal", # 15
+  "-2LL" #16
 )
 
 #' Demote the error type
@@ -624,7 +626,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   dexp=c("a"), #7
   f=c("a", "b", "c"), #8
   geom=c("a"), #9
-  hyper=c("a", "b", "c"), #10
+#  hyper=c("a", "b", "c"), #10
   unif=c("a", "b"), #11
   weibull=c("a", "b"), #12
   cauchy=c("a", "b"),
