@@ -632,9 +632,7 @@ d/dt(blood)     = a*intestine - b*blood
   })
 
   test_that("warfarin model", {
-    qs <- test_path("warfarin.qs")
-    skip_if_not(file.exists(qs))
-    warfarin <- qs::qread(qs)
+    warfarin <- nlmixr2data:warfarin
 
     mod <- rxode2({
       lka <- log(0.1) # log Ka
