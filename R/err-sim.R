@@ -34,6 +34,8 @@ rxGetDistributionSimulationLines <- function(line) {
   "hyper"="rhyper",
   "unif"="runif",
   "weibull"="rweibull",
+  "cauchy"="rcauchy",
+  "dgamma"="rgamma",
   "ordinal"="rordinal"
 )
 

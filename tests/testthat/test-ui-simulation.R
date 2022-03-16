@@ -427,3 +427,102 @@ test_that("rweibull simulations", {
 
 })
 
+
+
+test_that("rcauchy simulations", {
+
+  f <- function() {
+    ini({
+      ta <- 0.5
+      eta.a ~ 0.01
+      tb <- 0.5
+      eta.b ~ 0.01
+    })
+    model({
+      a <- exp(ta + eta.a)
+      b <- exp(tb + eta.b)
+      err ~ dcauchy(a, b)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rcauchy[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
+
+test_that("rgamma simulations", {
+
+  f <- function() {
+    ini({
+      ta <- 0.5
+      eta.a ~ 0.01
+      tb <- 0.5
+      eta.b ~ 0.01
+    })
+    model({
+      a <- exp(ta + eta.a)
+      b <- exp(tb + eta.b)
+      err ~ dgamma(a, b)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rgamma[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
+
+test_that("rgeom simulations", {
+
+  f <- function() {
+    ini({
+      ta <- logit(0.5)
+      eta.a ~ 0.01
+    })
+    model({
+      a <- expit(ta + eta.a)
+      err ~ dgeom(a)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rgeom[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
