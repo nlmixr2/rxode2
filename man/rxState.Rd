@@ -22,7 +22,12 @@ This returns the model's compartments or states.
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
+
+Other Query model information: 
+\code{\link{rxLhs}()},
+\code{\link{rxUiGet.cmtLines}()}
 }
 \author{
 Matthew L.Fidler
 }
+\concept{Query model information}

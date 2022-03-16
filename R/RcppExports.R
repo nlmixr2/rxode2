@@ -8,14 +8,14 @@ removableDrive <- function(driveRoot) {
 #' Scaled Inverse Chi Squared distribution
 #'
 #' @param n Number of random samples
-#'
+#' 
 #' @param nu degrees of freedom of inverse chi square
-#'
-#' @param scale  Scale of inverse chi squared distribution
+#' 
+#' @param scale  Scale of inverse chi squared distribution 
 #'         (default is 1).
-#'
+#' 
 #' @return a vector of inverse chi squared deviates.
-#'
+#' 
 #' @examples
 #' rinvchisq(3, 4, 1) ## Scale = 1, degrees of freedom = 4
 #' rinvchisq(2, 4, 2) ## Scale = 2, degrees of freedom = 4
@@ -27,16 +27,16 @@ rinvchisq <- function(n = 1L, nu = 1.0, scale = 1) {
 #' One correlation sample from the LKJ distribution
 #'
 #' @param d The dimension of the correlation matrix
-#'
+#' 
 #' @param eta The scaling parameter of the LKJ distribution.
 #'   Must be > 1.  Also related to the degrees of freedom nu.
 #'   eta = (nu-1)/2.
-#'
+#' 
 #' @param cholesky boolean; If `TRUE` return the cholesky
 #'   decomposition.
 #'
 #' @return A correlation sample from the LKJ distribution
-#'
+#' 
 #' @author Matthew Fidler (translated to RcppArmadillo) and Emma Schwager
 #' @export
 #' @keywords internal
@@ -58,13 +58,13 @@ rLKJcvLsd1 <- function(logSd, logSdSD, eta = 1.0) {
 #' random covariate to a correlation.
 #'
 #' @inheritParams rLKJ1
-#'
+#' 
 #' @param nu Degrees of freedom of the Wishart distribution
-#'
+#' 
 #' @inheritParams cvPost
 #'
 #' @return One correlation sample from the inverse wishart
-#'
+#' 
 #' @author Matthew Fidler
 #' @keywords internal
 #' @export
@@ -147,30 +147,30 @@ rxSetIni0 <- function(ini0 = TRUE) {
 #' Event translation for rxode2
 #'
 #' @param inData Data frame to translate
-#'
+#' 
 #' @param obj Model to translate data
-#'
+#' 
 #' @param addCmt Add compartment to data frame (default `FALSE`).
-#'
+#' 
 #' @param dropUnits Boolean to drop the units (default `FALSE`).
-#'
+#' 
 #' @param allTimeVar Treat all covariates as if they were time-varying
-#'
+#' 
 #' @param keepDosingOnly keep the individuals who only have dosing records and any
 #'   trailing dosing records after the last observation.
-#'
+#' 
 #' @param combineDvid is a boolean indicating if rxode2 will use `DVID` on observation
 #'     records to change the `cmt` value; Useful for multiple-endpoint nlmixr models.  By default
 #'     this is determined by `option("rxode2.combine.dvid")` and if the option has not been set,
 #'     this is `TRUE`. This typically does not affect rxode2 simulations.
-#'
-#' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
+#' 
+#' @param keepF This is a named vector of items you want to keep in the final rxode2 dataset.
 #'     For added rxode2 event records (if seen), last observation carried forward will be used.
-#'
+#' 
 #' @return Object for solving in rxode2
-#'
+#' 
 #' @keywords internal
-#'
+#' 
 #' @export
 etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0)) {
     .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep)
@@ -212,7 +212,7 @@ rxExpandSens2_ <- function(state, s1, s2) {
 #'
 #' @param state is the state to expand
 #' @param neta is the number of etas
-#' @param pred type of prediction
+#' @param pred type of prediction 
 #' @keywords internal
 #' @export
 rxExpandFEta_ <- function(state, neta, pred) {
@@ -250,11 +250,11 @@ rxExpandNesting <- function(obj, nestingInfo, compile = FALSE) {
 #'    When doIndLin == 0, cache > 0 = nInf-1
 #' @param ME the rxode2 matrix exponential function
 #' @param IndF The rxode2 Inductive Linearization function F
-#'
+#' 
 #' @return Returns a status for solving
-#'
+#' 
 #'   1 = Successful solve
-#'
+#' 
 #'   -1 = Maximum number of iterations reached when doing
 #'        inductive linearization
 #' @name rxIndLin_
@@ -323,7 +323,7 @@ rxModelVars_ <- function(obj) {
 #' If state is a string, return the compartment number of the named state.
 #'
 #' @seealso [rxode2()]
-#'
+#' @family Query model information
 #' @author Matthew L.Fidler
 #'
 #' @export
@@ -359,7 +359,7 @@ rxDfdy <- function(obj) {
 #'
 #' @return a character vector listing the calculated parameters
 #' @seealso \code{\link{rxode2}}
-#'
+#' @family Query model information
 #' @author Matthew L.Fidler
 #' @export
 rxLhs <- function(obj) {
@@ -389,7 +389,7 @@ rxLhs <- function(obj) {
 #' @author Matthew L.Fidler
 #' @export
 rxInits <- function(obj, vec = NULL, req = NULL, defaultValue = 0, noerror = FALSE, noini = FALSE, rxLines = FALSE) {
-  .Call(`_rxode2_rxInits`, obj, vec, req, defaultValue, noerror, noini, rxLines)
+    .Call(`_rxode2_rxInits`, obj, vec, req, defaultValue, noerror, noini, rxLines)
 }
 
 #' Setup the initial conditions.
@@ -573,9 +573,9 @@ rxDynLoad <- function(obj) {
 #' Lock/unlocking of rxode2 dll file
 #'
 #' @param obj A rxode2 family of objects
-#'
+#' 
 #' @return nothing; called for side effects
-#'
+#' 
 #' @export
 rxLock <- function(obj) {
     .Call(`_rxode2_rxLock`, obj)
@@ -669,12 +669,12 @@ rxSetSilentErr <- function(silent) {
     .Call(`_rxode2_rxSetSilentErr`, silent)
 }
 
-#' Invert matrix using RcppArmadillo.
+#' Invert matrix using RcppArmadillo.  
 #'
 #' @param matrix matrix to be inverted.
-#'
+#' 
 #' @return inverse or pseudo inverse of matrix.
-#'
+#' 
 #' @export
 rxInv <- function(matrix) {
     .Call(`_rxode2_rxInv`, matrix)
@@ -687,15 +687,15 @@ rxInv <- function(matrix) {
 #'   [rxSymInvCholCreate()] with the default arguments and return a
 #'   reactive s3 object.  Otherwise, use the inversion object to
 #'   calculate the requested derivative/inverse.
-#'
+#' 
 #' @param theta Thetas to be used for calculation.  If missing (`NULL`), a
 #'     special s3 class is created and returned to access `Omega^1`
 #'     objects as needed and cache them based on the theta that is
 #'     used.
-#'
+#' 
 #' @param type The type of object.  Currently the following types are
 #'     supported:
-#'
+#' 
 #' * `cholOmegaInv` gives the
 #'     Cholesky decomposition of the Omega Inverse matrix.
 #' * `omegaInv` gives the Omega Inverse matrix.
@@ -704,18 +704,18 @@ rxInv <- function(matrix) {
 #' * `d(D)` gives the `d(diagonal(Omega^-1))` with respect to
 #'     the theta parameter specified in the `thetaNumber`
 #'     parameter
-#'
+#' 
 #' @param thetaNumber For types `d(omegaInv)` and `d(D)`,
 #'     the theta number that the derivative is taken against.  This
 #'     must be positive from 1 to the number of thetas defining the
 #'     Omega matrix.
-#'
+#' 
 #' @return Matrix based on parameters or environment with all the
 #'     matrixes calculated in variables `omega`, `omegaInv`, `dOmega`,
 #'     `dOmegaInv`.
-#'
+#' 
 #' @author Matthew L. Fidler
-#'
+#' 
 #' @export
 rxSymInvChol <- function(invObjOrMatrix, theta = NULL, type = "cholOmegaInv", thetaNumber = 0L) {
     .Call(`_rxode2_rxSymInvChol`, invObjOrMatrix, theta, type, thetaNumber)
@@ -738,7 +738,7 @@ rxOptRep_ <- function(input) {
 #'
 #' @return Stacked data with \code{value} and \code{trt}, where value is the values
 #'   and \code{trt} is the state and \code{lhs} variables.
-#'
+#' 
 #' @author Matthew Fidler
 rxStack <- function(Data, vars = NULL) {
     .Call(`_rxode2_rxStack`, Data, vars)
