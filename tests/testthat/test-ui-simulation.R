@@ -288,3 +288,142 @@ test_that("chisq simulations", {
   })
 
 })
+
+
+test_that("dexp simulations", {
+
+  f <- function() {
+    ini({
+      trate <- 0.5
+      eta.rate ~ 0.01
+    })
+    model({
+      r <- exp(trate + eta.rate)
+      err ~ dexp(r)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rexp[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
+## Hyperbolic simulation not supported yet..
+## test_that("dhyper simulations", {
+##   f <- function() {
+##     ini({
+##       tm <- 0.5
+##       eta.m ~ 0.01
+##       tn <- 0.5
+##       eta.n ~ 0.01
+##       tk <- 0.7
+##       eta.k ~ 0.01
+##     })
+##     model({
+##       m <- exp(tm + eta.m)
+##       n <- exp(tn + eta.n)
+##       k <- exp(tk + eta.k)
+##       err ~ dhyper(m, n, k)
+##     })
+##   }
+
+##   tmp <- rxode2(f)
+
+##   expect_error(tmp$simulationModel, NA)
+
+##   expect_true(regexpr("rf[(]", rxNorm(tmp$simulationModel)) != -1)
+
+##   ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+##     et(id=1:20) %>%
+##     dplyr::as_tibble()
+
+##   rxWithPreserveSeed({
+##     expect_error(rxSolve(tmp, ev,
+##                          returnType="tibble", addCov=TRUE), NA)
+##   })
+
+## })
+
+
+#  "unif"="runif",
+
+test_that("unif simulations", {
+
+  f <- function() {
+    ini({
+      ta <- 0.5
+      eta.a ~ 0.01
+      tb <- 0.5
+      eta.b ~ 0.01
+    })
+    model({
+      a <- exp(ta + eta.a)
+      b <- exp(tb + eta.b)
+      err ~ dunif(a, b)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("runif[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
+#  "weibull"="rweibull",
+
+test_that("rweibull simulations", {
+
+  f <- function() {
+    ini({
+      ta <- 0.5
+      eta.a ~ 0.01
+      tb <- 0.5
+      eta.b ~ 0.01
+    })
+    model({
+      a <- exp(ta + eta.a)
+      b <- exp(tb + eta.b)
+      err ~ dweibull(a, b)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rweibull[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
+
