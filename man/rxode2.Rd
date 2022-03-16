@@ -280,8 +280,9 @@ An example model is shown below:\preformatted{   # simple assignment
 Expressions in assignment and \code{if} statements can be numeric or logical,
 however, no character nor integer expressions are currently supported.
 
-Numeric expressions can include the following numeric operators \verb{+, -, *, /, ^} and those mathematical functions defined in the C or the R math
-libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
+Numeric expressions can include the following numeric operators
+\verb{+, -, *, /, ^} and those mathematical functions defined in the C or the
+R math libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
 
 You may also access the R’s functions in the \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines}{R math libraries},
 like \code{lgammafn} for the log gamma function.
