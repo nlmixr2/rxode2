@@ -495,3 +495,34 @@ test_that("rgamma simulations", {
   })
 
 })
+
+
+test_that("rgeom simulations", {
+
+  f <- function() {
+    ini({
+      ta <- logit(0.5)
+      eta.a ~ 0.01
+    })
+    model({
+      a <- expit(ta + eta.a)
+      err ~ dgeom(a)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rgeom[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})
