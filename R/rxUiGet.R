@@ -32,6 +32,7 @@
 #'   parsed function for rxode2.  `exact` is a boolean that says if an
 #'   exact match is required.
 #' @param ... Other arguments
+#' @family Query model information
 #' @return value that was requested from the UI object
 #' @author Matthew Fidler
 #' @export
@@ -81,7 +82,6 @@ rxUiGet.allCovs <- function(x, ...) {
   get("covariates", envir=x[[1]])
 }
 attr(rxUiGet.allCovs, "desc") <- "Get all covariates defined in the model"
-
 
 #' @export
 #' @rdname rxUiGet
@@ -244,7 +244,6 @@ rxUiGet.thetaLower <- function(x, ...) {
   setNames(.ini$lower[.w], .ini$name[.w])
 }
 attr(rxUiGet.thetaLower, "desc") <- "thetaLower"
-
 
 #' @export
 #' @rdname rxUiGet

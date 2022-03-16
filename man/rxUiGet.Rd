@@ -82,6 +82,12 @@ value that was requested from the UI object
 \description{
 S3 for getting information from UI model
 }
+\seealso{
+Other Query model information: 
+\code{\link{rxLhs}()},
+\code{\link{rxState}()}
+}
 \author{
 Matthew Fidler
 }
+\concept{Query model information}

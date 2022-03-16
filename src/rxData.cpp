@@ -889,7 +889,7 @@ List rxModelVars_(const RObject &obj){
 //' If state is a string, return the compartment number of the named state.
 //'
 //' @seealso [rxode2()]
-//'
+//' @family Query model information
 //' @author Matthew L.Fidler
 //'
 //' @export
@@ -957,7 +957,7 @@ CharacterVector rxDfdy(const RObject &obj){
 //'
 //' @return a character vector listing the calculated parameters
 //' @seealso \code{\link{rxode2}}
-//'
+//' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
 //[[Rcpp::export]]
