@@ -40,7 +40,7 @@ rxGetDistributionSimulationLines <- function(line) {
 .getQuotedDistributionAndSimulationArgs <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
-  .dist <- pred1$distribution
+  .dist <- as.character(pred1$distribution)
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond
   .argName <- .namedArgumentsToPredDf[[.dist]]
@@ -61,6 +61,7 @@ rxGetDistributionSimulationLines <- function(line) {
   if (.dist == "-2LL") {
     return(env$lstExpr[[pred1$line]][[3]])
   }
+
   as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), .enQuote))
 }
 
@@ -386,6 +387,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   if (modelVars) {
     as.call(list(quote(`rxModelVars`), as.call(.ret)))
   } else {
+
     as.call(list(quote(`rxode2`), as.call(.ret)))
   }
 }
