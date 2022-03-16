@@ -461,3 +461,37 @@ test_that("rcauchy simulations", {
   })
 
 })
+
+
+test_that("rgamma simulations", {
+
+  f <- function() {
+    ini({
+      ta <- 0.5
+      eta.a ~ 0.01
+      tb <- 0.5
+      eta.b ~ 0.01
+    })
+    model({
+      a <- exp(ta + eta.a)
+      b <- exp(tb + eta.b)
+      err ~ dgamma(a, b)
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rgamma[(]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+    expect_error(rxSolve(tmp, ev,
+                         returnType="tibble", addCov=TRUE), NA)
+  })
+
+})

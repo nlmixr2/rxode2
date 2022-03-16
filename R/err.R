@@ -53,7 +53,8 @@
   "dweibull"=1:2,
   "weibull"=1:2,
   "cauchy"= 0:2,
-  "dcauchy"= 0:2
+  "dcauchy"= 0:2,
+  "dgamma"=1:2
 )
 
 .errDistsPositive <- c("add", "norm", "dnorm", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
@@ -261,6 +262,7 @@ rxPreferredDistributionName <- function(dist) {
   "unif", #11
   "weibull", #12
   "cauchy", #13
+  "dgamma", #14
   "ordinal", # 13
   "-2LL" #14
 )
@@ -620,7 +622,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   hyper=c("a", "b", "c"), #10
   unif=c("a", "b"), #11
   weibull=c("a", "b"), #12
-  cauchy=c("a", "b")
+  cauchy=c("a", "b"),
+  dgamma=c("a", "b")
 )
 
 .allowEstimatedParameters <- "ordinal"
