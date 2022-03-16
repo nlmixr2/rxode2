@@ -170,3 +170,33 @@ test_that("assert properties of rxUi models", {
 
 
 })
+
+test_that("There must be at least one prediction assertion", {
+
+  uif <- function() {
+    ini({
+      tka <- 4
+      tcl <- exp(-3.2)
+      tv <- exp(1)
+      eta.ka ~ 0.1
+      eta.cl ~ 0.2
+    })
+    model({
+      ka <- tka + eta.ka
+      cl <- tcl + eta.cl
+
+      v <- tv
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+  }
+
+  tmp <- rxode2(uif)
+
+  expect_error(
+    assertRxUiPrediction(tmp),
+    regexp="there must be at least one prediction"
+  )
+})
+
