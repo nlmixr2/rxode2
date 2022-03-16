@@ -121,7 +121,5 @@ man/rmdhunks/rxode2-datasets.Rmd
 authors.md
 ^cran-comments\.md$
 ^authors\.md$
-tests/testthat/_snaps/zzzz-plot
-tests/testthat/test-zzzz-plot.R
 tests/testthat/test-lincmt-parse.R
 
