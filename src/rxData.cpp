@@ -828,6 +828,15 @@ List rxModelVars_(const RObject &obj){
     return ret;
   } else if (rxIs(obj,"rxode2")) {
     return rxModelVars_rxode2(obj);
+	} else if (Rf_isFunction(obj)){
+		Function getUi = getRxFn("assertRxUi");
+		Environment e = asEnv(getUi(obj), "rxode2(obj)");
+		List ret = asList(e["mv0"], "e[\"mv0\"]");
+    return ret;
+	} else if (rxIs(obj, "rxUi")){
+		Environment e = asEnv(obj, "obj");
+    List ret = asList(e["mv0"], "e[\"mv0\"]");
+    return ret;
   } else if (rxIs(obj, "rxS")){
     Environment e = asEnv(obj, "obj");
     List ret = asList(e["..mv"], "e[\"..mv\"]");
@@ -874,8 +883,25 @@ List rxModelVars_(const RObject &obj){
   }
 }
 
+//' State variables
+//'
+//' This returns the model's compartments or states.
+//'
+//' @inheritParams rxModelVars
+//'
+//' @param state is a string indicating the state or compartment that
+//'     you would like to lookup.
+//'
+//' @return If state is missing, return a character vector of all the states.
+//'
+//' If state is a string, return the compartment number of the named state.
+//'
+//' @seealso [rxode2()]
+//' @family Query model information
+//' @author Matthew L.Fidler
+//' @export
 // [[Rcpp::export]]
-RObject rxState_(const RObject &obj = R_NilValue, RObject state = R_NilValue){
+RObject rxState(const RObject &obj = R_NilValue, RObject state = R_NilValue){
   List modVar = rxModelVars(obj);
   CharacterVector states = modVar["state"];
   if (state.isNULL()){
@@ -922,6 +948,7 @@ CharacterVector rxParams_(const RObject &obj){
 //'
 //' @author Matthew L. Fidler
 //'
+//' @family Query model information
 //' @export
 //[[Rcpp::export]]
 CharacterVector rxDfdy(const RObject &obj){
@@ -1094,6 +1121,7 @@ NumericVector rxInits0(const RObject &obj,
 //' @return Initial values of the rxDll object
 //'
 //' @keywords internal
+//' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
 //[[Rcpp::export]]

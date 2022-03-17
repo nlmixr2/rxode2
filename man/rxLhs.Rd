@@ -19,8 +19,8 @@ This returns the model calculated variables
 \code{\link{rxode2}}
 
 Other Query model information: 
+\code{\link{rxModelVars}()},
 \code{\link{rxParams}()},
-\code{\link{rxState_}()},
 \code{\link{rxState}()},
 \code{\link{rxUiGet.cmtLines}()}
 }

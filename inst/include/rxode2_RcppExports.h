@@ -237,17 +237,17 @@ namespace rxode2 {
         return Rcpp::as<List >(rcpp_result_gen);
     }
 
-    inline RObject rxState_(const RObject& obj = R_NilValue, RObject state = R_NilValue) {
-        typedef SEXP(*Ptr_rxState_)(SEXP,SEXP);
-        static Ptr_rxState_ p_rxState_ = NULL;
-        if (p_rxState_ == NULL) {
-            validateSignature("RObject(*rxState_)(const RObject&,RObject)");
-            p_rxState_ = (Ptr_rxState_)R_GetCCallable("rxode2", "_rxode2_rxState_");
+    inline RObject rxState(const RObject& obj = R_NilValue, RObject state = R_NilValue) {
+        typedef SEXP(*Ptr_rxState)(SEXP,SEXP);
+        static Ptr_rxState p_rxState = NULL;
+        if (p_rxState == NULL) {
+            validateSignature("RObject(*rxState)(const RObject&,RObject)");
+            p_rxState = (Ptr_rxState)R_GetCCallable("rxode2", "_rxode2_rxState");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_rxState_(Shield<SEXP>(Rcpp::wrap(obj)), Shield<SEXP>(Rcpp::wrap(state)));
+            rcpp_result_gen = p_rxState(Shield<SEXP>(Rcpp::wrap(obj)), Shield<SEXP>(Rcpp::wrap(state)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

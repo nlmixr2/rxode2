@@ -1765,6 +1765,7 @@ rxModels_ <- # nolint
 #'    and interim code that is used to generate the final C file `parseModel`}
 #'
 #' @keywords internal
+#' @family Query model information
 #' @author Matthew L. Fidler
 #' @export
 rxModelVars <- function(obj) {
@@ -1779,12 +1780,6 @@ rxModelVars <- function(obj) {
   }
   if (is(obj, "rxModelVars")) {
     return(obj)
-  }
-  if (is(obj, "function")) {
-    obj <- assertRxUi(obj)
-  }
-  if (is(obj, "rxUi")) {
-    return(rxModelVars_(obj$mv0))
   }
   .tmp <- try(obj, silent = TRUE)
   if (inherits(.tmp, "try-error")) {

@@ -32,7 +32,15 @@ Return all the known model variables for a specified rxode2 object
 These items are only calculated after compilation; they are
 built-into the rxode2 compiled DLL.
 }
+\seealso{
+Other Query model information: 
+\code{\link{rxLhs}()},
+\code{\link{rxParams}()},
+\code{\link{rxState}()},
+\code{\link{rxUiGet.cmtLines}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Query model information}
 \keyword{internal}

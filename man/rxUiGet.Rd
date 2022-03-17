@@ -85,8 +85,8 @@ S3 for getting information from UI model
 \seealso{
 Other Query model information: 
 \code{\link{rxLhs}()},
+\code{\link{rxModelVars}()},
 \code{\link{rxParams}()},
-\code{\link{rxState_}()},
 \code{\link{rxState}()}
 }
 \author{
