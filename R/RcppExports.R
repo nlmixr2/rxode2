@@ -325,7 +325,6 @@ rxModelVars_ <- function(obj) {
 #' @seealso [rxode2()]
 #' @family Query model information
 #' @author Matthew L.Fidler
-#'
 #' @export
 rxState <- function(obj = NULL, state = NULL) {
     .Call(`_rxode2_rxState`, obj, state)

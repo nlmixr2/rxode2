@@ -25,6 +25,8 @@ This returns the model's compartments or states.
 
 Other Query model information: 
 \code{\link{rxLhs}()},
+\code{\link{rxModelVars}()},
+\code{\link{rxParams}()},
 \code{\link{rxUiGet.cmtLines}()}
 }
 \author{

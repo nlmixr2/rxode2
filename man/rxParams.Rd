@@ -124,6 +124,14 @@ character vector listing the parameters in the model.
 This returns the model's parameters that are required to solve the
 ODE system, and can be used to pipe parameters into an rxode2 solve
 }
+\seealso{
+Other Query model information: 
+\code{\link{rxLhs}()},
+\code{\link{rxModelVars}()},
+\code{\link{rxState}()},
+\code{\link{rxUiGet.cmtLines}()}
+}
 \author{
 Matthew L.Fidler
 }
+\concept{Query model information}

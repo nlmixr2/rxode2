@@ -608,6 +608,11 @@ SEXP dynLoad(std::string dll){
 
 List rxModelVars_(const RObject &obj); // model variables section
 
+List rxModelVars_lastChance(const RObject &obj) {
+	Function getMV = getRxFn("rxModelVarsS3");
+	return getMV(obj);
+}
+
 List rxModelVars_rxode2(const RObject &obj){
   Environment e = asEnv(obj, "obj");
   List rxDll = asList(e["rxDll"], "e[\"rxDll\"]");
@@ -811,12 +816,11 @@ List rxModelVars_list(const RObject &obj){
 			md5 = true;
 		} else if (!dfdy && nobj[i] == "dfdy"){
 			dfdy = true;
-		} else {
+		} else if (params && lhs && state && trans && ini && model && md5 && dfdy) {
 			return lobj;
 		}
 	}
-	rxSolveFree();
-	stop(_("cannot figure out the model variables"));
+	return rxModelVars_lastChance(obj);
 }
 
 // [[Rcpp::export]]
@@ -828,6 +832,15 @@ List rxModelVars_(const RObject &obj){
     return ret;
   } else if (rxIs(obj,"rxode2")) {
     return rxModelVars_rxode2(obj);
+	} else if (Rf_isFunction(obj)){
+		Function getUi = getRxFn("assertRxUi");
+		Environment e = asEnv(getUi(obj), "rxode2(obj)");
+		List ret = asList(e["mv0"], "e[\"mv0\"]");
+    return ret;
+	} else if (rxIs(obj, "rxUi")){
+		Environment e = asEnv(obj, "obj");
+    List ret = asList(e["mv0"], "e[\"mv0\"]");
+    return ret;
   } else if (rxIs(obj, "rxS")){
     Environment e = asEnv(obj, "obj");
     List ret = asList(e["..mv"], "e[\"..mv\"]");
@@ -844,15 +857,7 @@ List rxModelVars_(const RObject &obj){
     if (e.exists(".args.object")){
       return rxModelVars_(e[".args.object"]);
     } else {
-      CharacterVector cls = obj.attr("class");
-      int i = 0;
-      Rprintf(_("class:\t"));
-      for (i = 0; i < cls.size(); i++){
-        Rprintf("%s\t", (as<std::string>(cls[i])).c_str());
-      }
-      Rprintf("\n");
-      rxSolveFree();
-      stop(_("need an rxode2-type object to extract model variables"));
+			return rxModelVars_lastChance(obj);
     }
   } else if (rxIsChar(obj)){
     return rxModelVars_character(obj);
@@ -862,18 +867,9 @@ List rxModelVars_(const RObject &obj){
     rxSolveFree();
     stop(_("a NULL object does not have any rxode2 model variables"));
   } else {
-    CharacterVector cls = obj.attr("class");
-    int i = 0;
-    Rprintf(_("class:\t"));
-    for (i = 0; i < cls.size(); i++){
-      Rprintf("%s\t", (as<std::string>(cls[i])).c_str());
-    }
-    Rprintf("\n");
-    rxSolveFree();
-    stop(_("need an rxode2-type object to extract model variables"));
+		return rxModelVars_lastChance(obj);
   }
 }
-
 
 //' State variables
 //'
@@ -891,7 +887,6 @@ List rxModelVars_(const RObject &obj){
 //' @seealso [rxode2()]
 //' @family Query model information
 //' @author Matthew L.Fidler
-//'
 //' @export
 // [[Rcpp::export]]
 RObject rxState(const RObject &obj = R_NilValue, RObject state = R_NilValue){
@@ -941,6 +936,7 @@ CharacterVector rxParams_(const RObject &obj){
 //'
 //' @author Matthew L. Fidler
 //'
+//' @family Query model information
 //' @export
 //[[Rcpp::export]]
 CharacterVector rxDfdy(const RObject &obj){
@@ -1113,6 +1109,7 @@ NumericVector rxInits0(const RObject &obj,
 //' @return Initial values of the rxDll object
 //'
 //' @keywords internal
+//' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
 //[[Rcpp::export]]

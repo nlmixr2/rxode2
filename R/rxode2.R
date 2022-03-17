@@ -1748,6 +1748,8 @@ rxModels_ <- # nolint
 #' These items are only calculated after compilation; they are
 #' built-into the rxode2 compiled DLL.
 #'
+#' To allow extensible a s3 hook is added in the function `rxModelVarsS3`
+#'
 #' @param obj rxode2 family of objects
 #'
 #' @return A list of rxode2 model properties including:
@@ -1765,6 +1767,7 @@ rxModels_ <- # nolint
 #'    and interim code that is used to generate the final C file `parseModel`}
 #'
 #' @keywords internal
+#' @family Query model information
 #' @author Matthew L. Fidler
 #' @export
 rxModelVars <- function(obj) {
@@ -1785,6 +1788,19 @@ rxModelVars <- function(obj) {
     obj <- as.character(substitute(obj))
   }
   rxModelVars_(obj)
+}
+
+#' @rdname rxModelVars
+#' @export
+rxModelVarsS3 <- function(obj) {
+  UseMethod("rxModelVarsS3")
+}
+
+#' @rdname rxModelVars
+#' @export
+rxModelVarsS3.default <- function(obj) {
+  stop("need an rxode2-type object to extract model variables",
+       call.=FALSE)
 }
 
 .rxGetParseModel <- function(type = c("normal", "dt"),

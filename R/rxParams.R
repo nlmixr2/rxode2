@@ -16,6 +16,7 @@
 #'     character vector listing the parameters in the model.
 #'
 #' @author Matthew L.Fidler
+#' @family Query model information
 #' @export
 rxParams <- function(obj, ...) {
   UseMethod("rxParams")
