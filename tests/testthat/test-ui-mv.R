@@ -75,3 +75,31 @@ test_that("rxode2 rxState works with ui objects", {
 })
 
 
+test_that("rxode2 rxLhs works with ui objects", {
+  expect_equal(rxLhs(one.cmt), c("ka", "cl", "v"))
+  expect_equal(rxLhs(f), c("ka", "cl", "v"))
+  expect_equal(rxLhs(cov), c("ka", "cl", "v", "vp", "cp"))
+  expect_equal(rxLhs(f2), c("ka", "cl", "v", "vp", "cp"))
+})
+
+
+test_that("rxode2 rxParams works with ui objects", {
+  expect_equal(rxParams(one.cmt), c("tka", "eta.ka", "tcl", "eta.cl", "tv", "eta.v"))
+  expect_equal(rxParams(f), c("tka", "eta.ka", "tcl", "eta.cl", "tv", "eta.v"))
+  expect_equal(rxParams(cov), c("tka", "eta.ka", "tcl", "eta.cl", "wt", "cl.wt", "sex", "cl.sex", "age", "cl.age", "tv", "eta.v", "v.wt", "v.sex", "v.age", "tvp", "vp.wt", "vp.sex", "vp.age"))
+  expect_equal(rxParams(f2), c("tka", "eta.ka", "tcl", "eta.cl", "wt", "cl.wt", "sex", "cl.sex", "age", "cl.age", "tv", "eta.v", "v.wt", "v.sex", "v.age", "tvp", "vp.wt", "vp.sex", "vp.age"))
+})
+
+test_that("rxInit works with ui obects", {
+  expect_equal(rxInits(one.cmt), structure(numeric(0), .Names = character(0)))
+  expect_equal(rxInits(f), structure(numeric(0), .Names = character(0)))
+  expect_equal(rxInits(cov), structure(numeric(0), .Names = character(0)))
+  expect_equal(rxInits(f2), structure(numeric(0), .Names = character(0)))
+})
+
+
+test_that("data frame doesn't work by itself", {
+  matt <- data.frame(a=3)
+  expect_error(rxModelVars(matt))
+})
+

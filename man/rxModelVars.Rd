@@ -2,9 +2,15 @@
 % Please edit documentation in R/rxode2.R
 \name{rxModelVars}
 \alias{rxModelVars}
+\alias{rxModelVarsS3}
+\alias{rxModelVarsS3.default}
 \title{All model variables for a rxode2 object}
 \usage{
 rxModelVars(obj)
+
+rxModelVarsS3(obj)
+
+\method{rxModelVarsS3}{default}(obj)
 }
 \arguments{
 \item{obj}{rxode2 family of objects}
@@ -31,6 +37,8 @@ Return all the known model variables for a specified rxode2 object
 \details{
 These items are only calculated after compilation; they are
 built-into the rxode2 compiled DLL.
+
+To allow extensible a s3 hook is added in the function \code{rxModelVarsS3}
 }
 \seealso{
 Other Query model information: 
