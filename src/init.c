@@ -60,7 +60,7 @@ SEXP _rxode2_rxSymInvCholEnvCalculate(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxSymInvChol(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxIs(SEXP,SEXP);
 SEXP _rxode2_rxModelVars_(SEXP);
-SEXP _rxode2_rxState(SEXP, SEXP);
+SEXP _rxode2_rxState_(SEXP, SEXP);
 SEXP _rxode2_rxParams_(SEXP);
 SEXP _rxode2_rxDfdy(SEXP);
 SEXP _rxode2_rxLhs(SEXP);
@@ -334,7 +334,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSymInvChol", (DL_FUNC) &_rxode2_rxSymInvChol, 4},
     {"_rxode2_rxIs", (DL_FUNC) &_rxode2_rxIs, 2},
     {"_rxode2_rxModelVars_", (DL_FUNC) &_rxode2_rxModelVars_, 1},
-    {"_rxode2_rxState", (DL_FUNC) &_rxode2_rxState, 2},
+    {"_rxode2_rxState_", (DL_FUNC) &_rxode2_rxState_, 2},
     {"_rxode2_rxParams_", (DL_FUNC) &_rxode2_rxParams_, 1},
     {"_rxode2_rxDfdy", (DL_FUNC) &_rxode2_rxDfdy, 1},
     {"_rxode2_rxLhs", (DL_FUNC) &_rxode2_rxLhs, 1},

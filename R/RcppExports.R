@@ -327,8 +327,8 @@ rxModelVars_ <- function(obj) {
 #' @author Matthew L.Fidler
 #'
 #' @export
-rxState <- function(obj = NULL, state = NULL) {
-    .Call(`_rxode2_rxState`, obj, state)
+rxState_ <- function(obj = NULL, state = NULL) {
+    .Call(`_rxode2_rxState_`, obj, state)
 }
 
 rxParams_ <- function(obj) {

@@ -1780,6 +1780,12 @@ rxModelVars <- function(obj) {
   if (is(obj, "rxModelVars")) {
     return(obj)
   }
+  if (is(obj, "function")) {
+    obj <- assertRxUi(obj)
+  }
+  if (is(obj, "rxUi")) {
+    return(rxModelVars_(obj$mv0))
+  }
   .tmp <- try(obj, silent = TRUE)
   if (inherits(.tmp, "try-error")) {
     obj <- as.character(substitute(obj))

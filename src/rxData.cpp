@@ -874,27 +874,8 @@ List rxModelVars_(const RObject &obj){
   }
 }
 
-
-//' State variables
-//'
-//' This returns the model's compartments or states.
-//'
-//' @inheritParams rxModelVars
-//'
-//' @param state is a string indicating the state or compartment that
-//'     you would like to lookup.
-//'
-//' @return If state is missing, return a character vector of all the states.
-//'
-//' If state is a string, return the compartment number of the named state.
-//'
-//' @seealso [rxode2()]
-//' @family Query model information
-//' @author Matthew L.Fidler
-//'
-//' @export
 // [[Rcpp::export]]
-RObject rxState(const RObject &obj = R_NilValue, RObject state = R_NilValue){
+RObject rxState_(const RObject &obj = R_NilValue, RObject state = R_NilValue){
   List modVar = rxModelVars(obj);
   CharacterVector states = modVar["state"];
   if (state.isNULL()){
