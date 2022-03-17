@@ -189,6 +189,57 @@ rxUiGet.simulationModel <- function(x, ...) {
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 
+.rxModelNoErrorLines <- function(uiModel, prefixLines=NULL, paramsLine=NULL,
+                                 modelVars=FALSE, cmtLines=TRUE,
+                                 lstExpr=NULL) {
+  if (is.null(lstExpr)) {
+    .expr <- uiModel$lstExpr
+  } else {
+    .expr <- lstExpr
+  }
+  .cmtLines <- NULL
+  if (cmtLines) {
+    .cmtLines <- uiModel$cmtLines
+  }
+
+  .lenLines <- length(uiModel$lstExpr) + length(.cmtLines) + length(prefixLines)
+
+  .k <- 2
+
+  if (is.null(paramsLine)) {
+  } else if (is.na(paramsLine)) {
+    .lenLines <- .lenLines - 1
+  }
+  .ret <- vector("list", .lenLines + .k)
+  .curErrLine <- 1
+  .ret[[1]] <- quote(`{`)
+  .k <- 3
+  if (is.null(paramsLine)) {
+    .ret[[2]] <- uiModel$paramsLine
+  } else if (is.na(paramsLine)) {
+    .k <- 2
+  } else {
+    .ret[[2]] <- paramsLine
+  }
+  for (.i in seq_along(prefixLines)) {
+    .ret[[.k]] <- prefixLines[[.i]]
+    .k <- .k + 1
+  }
+  for (.i in seq_along(.expr)) {
+    .ret[[.k]] <- .expr[[.i]]
+    .k <- .k + 1
+  }
+  for(.i in seq_along(.cmtLines)) {
+    .ret[[.k]] <- .cmtLines[[.i]]
+    .k <- .k + 1
+  }
+  if (modelVars) {
+    as.call(list(quote(`rxModelVars`), as.call(.ret)))
+  } else {
+    as.call(list(quote(`rxode2`), as.call(.ret)))
+  }
+}
+
 #' Combine Error Lines and create rxode2 expression
 #'
 #' @param uiModel UI model
@@ -314,10 +365,15 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
   }
+  .predDf <- uiModel$predDf
+  if (is.null(.predDf)) {
+    return(.rxModelNoErrorLines(uiModel, prefixLines=prefixLines, paramsLine=paramsLine,
+                                modelVars=modelVars, cmtLines=cmtLines,
+                                lstExpr=lstExpr))
+  }
   if (is.null(errLines)) {
     errLines <- rxGetDistributionSimulationLines(uiModel)
   }
-  .predDf <- uiModel$predDf
   .if <- FALSE
   if (length(.predDf$line) > 1) {
     .lenLines <- length(.predDf$line)

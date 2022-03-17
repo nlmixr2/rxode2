@@ -34,6 +34,8 @@
 #' - `assertRxUiMixedOnly` -- This makes sure the model is a mixed
 #'   effect model (not a population effect)
 #'
+#' - `assertRxUiPrediction` -- This makes sure the model has predictions
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -87,10 +89,25 @@ assertRxUi <- function(model, extra="", .var.name=.vname(model)) {
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiSingleEndpoint <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiPrediction <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .predDf <- model$predDf
+  if (is.null(.predDf)) {
+    stop("there must be at least one prediction in the model({}) block.  Use `~` for predictions",
+         call.=FALSE)
+  }
+  invisible(model)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiSingleEndpoint <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
+  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(model)
+  .predDf <- model$predDf
+  .err <- FALSE
   if (length(.predDf$cond) > 1L) {
     stop("'", .var.name, "' needs to be a single endpoint model", extra, call.=FALSE)
   }
@@ -102,6 +119,7 @@ assertRxUiSingleEndpoint <- function(model, extra="", .var.name=.vname(model)) {
 assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(model)
   .predDf <- model$predDf
   if (!all(.predDf$distribution == "norm")) {
     stop("'", .var.name, "' needs to be a (transformably) normal model", extra, call.=FALSE)
@@ -114,6 +132,7 @@ assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
 assertRxUiEstimatedResiduals <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(model)
   .predDf <- model$predDf
   if (!all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda")], use.names=FALSE)))) {
     stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call.=FALSE)

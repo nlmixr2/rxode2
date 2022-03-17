@@ -2,6 +2,7 @@
 % Please edit documentation in R/assert.R
 \name{assertRxUi}
 \alias{assertRxUi}
+\alias{assertRxUiPrediction}
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiNormal}
 \alias{assertRxUiEstimatedResiduals}
@@ -10,6 +11,8 @@
 \title{Assert properties of the rxUi models}
 \usage{
 assertRxUi(model, extra = "", .var.name = .vname(model))
+
+assertRxUiPrediction(model, extra = "", .var.name = .vname(model))
 
 assertRxUiSingleEndpoint(model, extra = "", .var.name = .vname(model))
 
@@ -51,6 +54,7 @@ residual error parameter are estimated (not modeled).
 population only model (no mixed effects)
 \item \code{assertRxUiMixedOnly} -- This makes sure the model is a mixed
 effect model (not a population effect)
+\item \code{assertRxUiPrediction} -- This makes sure the model has predictions
 }
 }
 \examples{

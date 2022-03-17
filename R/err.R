@@ -1075,7 +1075,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .env$lstExpr <- vector(length(.y), mode="list")
       .env$hasErrors <- FALSE
       for (.i in seq_along(.y)) {
-         .env$line <- .i
+        .env$line <- .i
         if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
         }
@@ -1089,19 +1089,24 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       }
       .env$iniDf <- .env$df
       if (is.null(.env$predDf)) {
-        .env$errGlobal <- c(.env$errGlobal,
-                            "there must be at least one prediction in the model({}) block.  Use `~` for predictions")
+        ## .env$errGlobal <- c(.env$errGlobal,
+        ##                     "there must be at least one prediction in the model({}) block.  Use `~` for predictions")
       } else if (length(.env$predDf[, 1]) == 0L) {
-        .env$errGlobal <- c(.env$errGlobal,
-                            "there must be at least one prediction in the model({}) block.  Use `~` for predictions")
+        .env$predDf <- NULL
+        ## .env$errGlobal <- c(.env$errGlobal,
+        ##                     "there must be at least one prediction in the model({}) block.  Use `~` for predictions")
       }
       if (!is.null(.env$errGlobal)) {
         stop(paste(.env$errGlobal, collapse="\n"), call.=FALSE)
       }
-      if (any(.env$predDf$linCmt)) {
-        .env$mv0 <- rxModelVars(paste(c(.env$lstChr[-.env$predDf$line], "rxLinCmt ~ linCmt()"), collapse="\n"))
+      if (!is.null(.env$predDf)) {
+        if (any(.env$predDf$linCmt)) {
+          .env$mv0 <- rxModelVars(paste(c(.env$lstChr[-.env$predDf$line], "rxLinCmt ~ linCmt()"), collapse="\n"))
+        } else {
+          .env$mv0 <- rxModelVars(paste(.env$lstChr[-.env$predDf$line], collapse="\n"))
+        }
       } else {
-        .env$mv0 <- rxModelVars(paste(.env$lstChr[-.env$predDf$line], collapse="\n"))
+        .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
       }
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
       if (.Call(`_rxode2_isLinCmt`) == 1L) {
@@ -1124,18 +1129,19 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       }
       .env$curCmt <- length(.env$mv0$state)
       .env$extraCmt <- NULL
-      .env$predDf$cmt <- vapply(seq_along(.env$predDf$line),
-                                function(i) {
-                                  .cmtName <- .env$predDf$cond[i]
-                                  .w <- which(.cmtName == .env$mv0$state)
-                                  if (length(.w) == 1L) return(.w)
-                                  assign("curCmt", .env$curCmt + 1L, envir=.env)
-                                  assign("extraCmt", c(.env$extraCmt,
-                                                       paste0("cmt(", .cmtName, ")")),
-                                         envir=.env)
-                                  .env$curCmt
-                                }, integer(1))
-
+      if (!is.null(.env$predDf)) {
+        .env$predDf$cmt <- vapply(seq_along(.env$predDf$line),
+                                  function(i) {
+                                    .cmtName <- .env$predDf$cond[i]
+                                    .w <- which(.cmtName == .env$mv0$state)
+                                    if (length(.w) == 1L) return(.w)
+                                    assign("curCmt", .env$curCmt + 1L, envir=.env)
+                                    assign("extraCmt", c(.env$extraCmt,
+                                                         paste0("cmt(", .cmtName, ")")),
+                                           envir=.env)
+                                    .env$curCmt
+                                  }, integer(1))
+      }
       .env$extraDvid <- paste0("dvid(", paste(.env$predDf$cmt, collapse = ","), ")")
       # Cleanup the environment
       .rm <- intersect(c("curCondition", "curDvid", "curVar", "df",

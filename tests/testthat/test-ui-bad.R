@@ -506,32 +506,3 @@ test_that("Parameters cannot be missing or Infinite", {
   expect_error(rxode2(uif), NA)
 
 })
-
-test_that("There must be at least one prediction", {
-
-  uif <- function() {
-    ini({
-      tka <- 4
-      tcl <- exp(-3.2)
-      tv <- exp(1)
-      eta.ka ~ 0.1
-      eta.cl ~ 0.2
-      add.err <- 1
-    })
-    model({
-      ka <- tka + eta.ka
-      cl <- tcl + eta.cl
-
-      v <- tv
-      d / dt(depot) <- -ka * depot
-      d / dt(center) <- ka * depot - cl / v * center
-      cp <- center / v
-      cp <- add(add.err)
-    })
-  }
-
-  expect_error(
-    rxode2(uif),
-    regexp="there must be at least one prediction"
-  )
-})
