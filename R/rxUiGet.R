@@ -32,7 +32,6 @@
 #'   parsed function for rxode2.  `exact` is a boolean that says if an
 #'   exact match is required.
 #' @param ... Other arguments
-#' @family Query model information
 #' @return value that was requested from the UI object
 #' @author Matthew Fidler
 #' @export
