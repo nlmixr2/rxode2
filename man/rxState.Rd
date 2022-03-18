@@ -24,10 +24,8 @@ This returns the model's compartments or states.
 \code{\link[=rxode2]{rxode2()}}
 
 Other Query model information: 
-\code{\link{rxLhs}()},
 \code{\link{rxModelVars}()},
-\code{\link{rxParams}()},
-\code{\link{rxUiGet.cmtLines}()}
+\code{\link{rxParams}()}
 }
 \author{
 Matthew L.Fidler

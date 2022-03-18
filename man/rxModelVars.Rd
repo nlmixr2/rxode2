@@ -42,10 +42,8 @@ To allow extensible a s3 hook is added in the function \code{rxModelVarsS3}
 }
 \seealso{
 Other Query model information: 
-\code{\link{rxLhs}()},
 \code{\link{rxParams}()},
-\code{\link{rxState}()},
-\code{\link{rxUiGet.cmtLines}()}
+\code{\link{rxState}()}
 }
 \author{
 Matthew L. Fidler
