@@ -89,6 +89,8 @@ test_that("assert properties of rxUi models", {
 
   expect_error(assertRxUiNormal(one.cmt), NA)
 
+  expect_error(assertRxUiTransformNormal(one.cmt), NA)
+
   one.cmt.t <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -113,6 +115,8 @@ test_that("assert properties of rxUi models", {
   }
 
   expect_error(assertRxUiNormal(one.cmt.t))
+
+  expect_error(assertRxUiTransformNormal(one.cmt.t))
 
   expect_error(assertRxUiEstimatedResiduals(one.cmt.t), NA)
 
@@ -198,5 +202,91 @@ test_that("There must be at least one prediction assertion", {
     assertRxUiPrediction(tmp),
     regexp="there must be at least one prediction"
   )
+
+
 })
 
+test_that("Transformably and non-transformably normal", {
+
+  one.cmt <- function() {
+    ini({
+      ## You may label each parameter with a comment
+      tka <- 0.45 # Ka
+      tcl <- log(c(0, 2.7, 100)) # Log Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      tv <- 3.45; label("log V")
+      ## the label("Label name") works with all models
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+      lambda <- c(-2, 1, 2)
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd) + boxCox(lambda)
+    })
+  }
+
+  expect_error(assertRxUiNormal(one.cmt))
+  expect_error(assertRxUiTransformNormal(one.cmt), NA)
+
+})
+
+
+test_that("mu ref only", {
+
+  one.cmt <- function() {
+    ini({
+      ## You may label each parameter with a comment
+      tka <- 0.45 # Ka
+      tcl <- log(c(0, 2.7, 100)) # Log Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      tv <- 3.45; label("log V")
+      ## the label("Label name") works with all models
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+      lambda <- c(-2, 1, 2)
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd) + boxCox(lambda)
+    })
+  }
+
+  expect_error(assertRxUiMuRefOnly(one.cmt), NA)
+
+  one.cmt <- function() {
+    ini({
+      ## You may label each parameter with a comment
+      tka <- 0.45 # Ka
+      tcl <- log(c(0, 2.7, 100)) # Log Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      tv <- 3.45; label("log V")
+      ## the label("Label name") works with all models
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+      lambda <- c(-2, 1, 2)
+    })
+    model({
+      ka <- tka * exp(eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd) + boxCox(lambda)
+    })
+  }
+
+  expect_error(assertRxUiMuRefOnly(one.cmt))
+
+})

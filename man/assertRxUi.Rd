@@ -4,7 +4,9 @@
 \alias{assertRxUi}
 \alias{assertRxUiPrediction}
 \alias{assertRxUiSingleEndpoint}
+\alias{assertRxUiTransformNormal}
 \alias{assertRxUiNormal}
+\alias{assertRxUiMuRefOnly}
 \alias{assertRxUiEstimatedResiduals}
 \alias{assertRxUiPopulationOnly}
 \alias{assertRxUiMixedOnly}
@@ -16,7 +18,11 @@ assertRxUiPrediction(model, extra = "", .var.name = .vname(model))
 
 assertRxUiSingleEndpoint(model, extra = "", .var.name = .vname(model))
 
+assertRxUiTransformNormal(model, extra = "", .var.name = .vname(model))
+
 assertRxUiNormal(model, extra = "", .var.name = .vname(model))
+
+assertRxUiMuRefOnly(model, extra = "", .var.name = .vname(model))
 
 assertRxUiEstimatedResiduals(model, extra = "", .var.name = .vname(model))
 
@@ -55,6 +61,7 @@ population only model (no mixed effects)
 \item \code{assertRxUiMixedOnly} -- This makes sure the model is a mixed
 effect model (not a population effect)
 \item \code{assertRxUiPrediction} -- This makes sure the model has predictions
+\item \code{assertRxUiMuRefOnly} -- This make sure that all the parameters are mu-referenced
 }
 }
 \examples{

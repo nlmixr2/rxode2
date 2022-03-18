@@ -22,8 +22,10 @@
 #' - `assertRxUiSingleEndpoint` -- Make sure the rxode2 model is only
 #'    a single endpoint model (if not throw error)
 #'
-#' - `assertRxUiNormal` -- This needs to be a normal or transformably
+#' - `assertRxUiTransformNormal` -- This needs to be a normal or transformably
 #'    normal residual distribution
+#'
+#' - `assertRxUiNormal` -- This needs to be a normal residual distribution
 #'
 #' - `assertRxUiEstimatedResiduals` -- This makes sure that the
 #'    residual error parameter are estimated (not modeled).
@@ -35,6 +37,8 @@
 #'   effect model (not a population effect)
 #'
 #' - `assertRxUiPrediction` -- This makes sure the model has predictions
+#'
+#' - `assertRxUiMuRefOnly` -- This make sure that all the parameters are mu-referenced
 #'
 #' @return the rxUi model
 #'
@@ -94,7 +98,7 @@ assertRxUiPrediction <- function(model, extra="", .var.name=.vname(model)) {
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   .predDf <- model$predDf
   if (is.null(.predDf)) {
-    stop("there must be at least one prediction in the model({}) block.  Use `~` for predictions",
+    stop("there must be at least one prediction in the model({}) block", extra, ".  Use `~` for predictions",
          call.=FALSE)
   }
   invisible(model)
@@ -116,7 +120,7 @@ assertRxUiSingleEndpoint <- function(model, extra="", .var.name=.vname(model)) {
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiTransformNormal <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   model <- assertRxUi(model, extra=extra, .var.name=.var.name)
   assertRxUiPrediction(model)
@@ -125,6 +129,30 @@ assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
     stop("'", .var.name, "' needs to be a (transformably) normal model", extra, call.=FALSE)
   }
   invisible(model)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
+  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(model)
+  .predDf <- model$predDf
+  if (!all(.predDf$distribution == "norm" & .predDf$transform == "untransformed")) {
+    stop("'", .var.name, "' needs to be a normal model", extra, call.=FALSE)
+  }
+  invisible(model)
+}
+
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiMuRefOnly <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
+  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  if (length(model$nonMuEtas) != 0) {
+    stop("'", .var.name, "' needs to be a completely mu-referenced model (ie tcl+eta.cl)", extra, call.=FALSE)
+  }
 }
 
 #' @export
