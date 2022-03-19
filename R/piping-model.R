@@ -43,7 +43,7 @@ model.function <- function(x, ..., append=FALSE, envir=parent.frame()) {
     }
     .rhs <- .rhs[!(.rhs %in% c(rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name))]
     for (v in .rhs) {
-      .addVariableToIniDf(v, rxui)
+      .addVariableToIniDf(v, rxui, promote=NA)
     }
     return(rxui$fun())
   }
@@ -51,12 +51,12 @@ model.function <- function(x, ..., append=FALSE, envir=parent.frame()) {
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
     lapply(.v$rm, function(x){
-      .removeVariableFromIniDf(x, rxui)
+      .removeVariableFromIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
     })
   }
   if (length(.v$new) > 0) {
     lapply(.v$new, function(x){
-      .addVariableToIniDf(x, rxui)
+      .addVariableToIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
     })
   }
   rxui$fun()
@@ -480,6 +480,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .new1 <- setdiff(.new, .both)
 
   .old <- rxui$errParams0
+  .err <- rxui$errParams
   .new <- rxui$errParams
   .both <- intersect(.old, .new)
   .rm2 <- setdiff(.old, .both)
@@ -488,17 +489,18 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .new <- c(.new1, .new2)
   .new <- setdiff(.new, rxui$mv0$lhs)
 
-  list(rm=c(.rm1, .rm2), new=.new)
+  list(rm=c(.rm1, .rm2), new=.new, err=.err)
 }
 
 #' Remove a single variable from the initialization data frame
 #'
 #' @param var Variable that is removed
 #' @param rxui UI function where the initial estimate data frame is modified
+#' @inheritParams .addVariableToIniDf
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
-.removeVariableFromIniDf <- function(var, rxui) {
+.removeVariableFromIniDf <- function(var, rxui, promote=FALSE) {
   .iniDf <- rxui$iniDf
   .w <- which(.iniDf$name == var)
   if (length(.w) == 1L) {
@@ -514,7 +516,11 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
         .mwarn(paste0("remove between subject variability {.code ", var, "}"))
       }
     } else if (rxode2.verbose.pipe) {
-      .mwarn(paste0("remove population/residual parameter {.code ", var, "}"))
+      if (is.na(promote)) {
+        .mwarn(paste0("remove residual parameter {.code ", var, "}"))
+      } else {
+        .mwarn(paste0("remove population parameter {.code ", var, "}"))
+      }
     }
     assign("iniDf", .iniDf, rxui)
   }
@@ -560,8 +566,10 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 #'   (`NA`)
 #' @param value This is the value to assign to the ini block
 #' @param promote This boolean determines if the parameter was
-#'   promoted from an initial covariate parameter.  If so it changes
-#'   the verbose message to the user
+#'   promoted from an initial covariate parameter (`TRUE`).  If so it
+#'   changes the verbose message to the user.  If not, (`FALSE`) it
+#'   will only add if it is a covariate.  If `NA` it will assume that
+#'   the parameter is an error term.
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
@@ -570,7 +578,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .isEta <- TRUE
   checkmate::assertLogical(toEta, len=1)
   checkmate::assertNumeric(value, len=1, any.missing=FALSE)
-  checkmate::assertLogical(promote, len=1, any.missing=FALSE)
+  checkmate::assertLogical(promote, len=1)
   if (is.na(toEta)) {
     .isEta <- (regexpr(.etaModelReg, var)  != -1)
   } else  {
@@ -597,7 +605,8 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   } else {
-    if (!promote) {
+    if (is.na(promote)) {
+    } else if (!promote) {
       if (regexpr(.covariateExceptions, tolower(var)) != -1 || regexpr(.thetaModelReg, var, perl=TRUE) == -1) {
         if (rxode2.verbose.pipe) {
           .minfo(paste0("add covariate {.code ", var, "}"))
@@ -611,10 +620,12 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     .extra$ntheta <- .theta
     .extra$name <- var
     if (rxode2.verbose.pipe) {
-      if (promote) {
+      if (is.na(promote)) {
+        .minfo(paste0("add residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
+      } else if (promote) {
         .minfo(paste0("promote {.code ", var, "} to population/residual parameter with initial estimate {.number ", value, "}"))
       } else {
-        .minfo(paste0("add population/residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
+        .minfo(paste0("add population parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       }
     }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
