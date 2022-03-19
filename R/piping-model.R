@@ -532,7 +532,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   group(start, .thetamodelVars),
   group(.thetamodelVars, end)))
 
-.covariateExceptions <- rex::rex(or("wt", "sex", "crcl"))
+.covariateExceptions <- rex::rex(start, or("wt", "sex", "crcl"), end)
 
 .etaParts <- c(
   "eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv", "bsv", "Bsv", "BSV",

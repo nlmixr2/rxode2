@@ -1268,6 +1268,65 @@ test_that("Add an eta to a model that does not have an eta will work", {
 })
 
 
+test_that("Add covariate to model works", {
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      tv <- exp(3.45); # log V
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- tv
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  expect_error(ocmt %>%
+                 model(ka <- exp(tka + covKa * wt + eta.ka)),
+               NA)
+
+  tmp <- ocmt %>%
+    model(ka <- exp(tka + covKaWt * wt + eta.ka))
+
+  expect_equal(tmp$allCovs, "wt")
+
+  expect_true("covKaWt" %in% tmp$iniDf$name)
+  expect_true("tka" %in% tmp$iniDf$name)
+  expect_true("eta.ka" %in% tmp$iniDf$name)
+
+  tmp <- ocmt %>%
+    model(ka <- exp(covKaWt * wt + eta.ka))
+
+  expect_equal(tmp$allCovs, "wt")
+  expect_true("covKaWt" %in% tmp$iniDf$name)
+  expect_false("tka" %in% tmp$iniDf$name)
+  expect_true("eta.ka" %in% tmp$iniDf$name)
+
+  tmp <- tmp %>%
+    model(ka <- exp(tka + covKaWt * wt + eta.ka))
+
+  expect_equal(tmp$allCovs, "wt")
+  expect_true("covKaWt" %in% tmp$iniDf$name)
+  expect_true("tka" %in% tmp$iniDf$name)
+  expect_true("eta.ka" %in% tmp$iniDf$name)
+
+
+
+})
+
+
+
+
 test_that("Appending or pre-pending items to a model works", {
 
   ocmt <- function() {
