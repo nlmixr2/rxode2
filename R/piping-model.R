@@ -526,6 +526,8 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   group(start, .thetamodelVars),
   group(.thetamodelVars, end)))
 
+.covariateExceptions <- rex::rex(or("wt", "sex", "crcl"))
+
 .etaParts <- c(
   "eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv", "bsv", "Bsv", "BSV",
   "bpv", "Bpv", "BPV", "psv", "PSV", "Psv")
@@ -595,6 +597,14 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   } else {
+    if (!promote) {
+      if (regexpr(.covariateExceptions, tolower(var)) != -1 || regexpr(.thetaModelReg, var, perl=TRUE) == -1) {
+        if (rxode2.verbose.pipe) {
+          .minfo(paste0("add covariate {.code ", var, "}"))
+        }
+        return(invisible())
+      }
+    }
     .theta <- max(.iniDf$ntheta, na.rm=TRUE) + 1
     .extra <- .rxIniDfTemplate
     .extra$est <- value
