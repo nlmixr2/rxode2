@@ -543,35 +543,52 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     err = NA_character_
   )
 
-
 #' Add a single variable from the initialization data frame
 #'
 #' @param var Variable that is added
-#' @param rxui UI function where the initial estimate data frame is modified
+#' @param rxui UI function where the initial estimate data frame is
+#'   modified
+#' @param toEta This boolean determines if it should be added to the
+#'   etas (`TRUE`), thetas (`FALSE`) or determined by `.etaModelReg`
+#'   (`NA`)
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
-.addVariableToIniDf <- function(var, rxui) {
+.addVariableToIniDf <- function(var, rxui, toEta=NA, value=1) {
   .iniDf <- rxui$iniDf
-  if (regexpr(.etaModelReg, var) != -1) {
+  .isEta <- TRUE
+  checkmate::assertLogical(toEta, len=1)
+  checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+  if (is.na(toEta)) {
+    .isEta <- (regexpr(.etaModelReg, var)  != -1)
+  } else  {
+    .isEta <- toEta
+  }
+  if (.isEta) {
     if (all(is.na(.iniDf$neta1))) {
       .eta <- 1
     } else {
       .eta <- max(.iniDf$neta1, na.rm=TRUE) + 1
     }
     .extra <- .rxIniDfTemplate
-    .extra$est <- 1
+    .extra$est <- value
     .extra$neta1 <- .eta
     .extra$neta2 <- .eta
     .extra$name <- var
     .extra$condition <- "id"
+    if (rxode2.verbose.pipe) {
+      .malert("add between subject variability {.code var} and set estimate to {.number ", value, "}")
+    }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   } else {
     .theta <- max(.iniDf$ntheta, na.rm=TRUE) + 1
     .extra <- .rxIniDfTemplate
-    .extra$est <- 1
+    .extra$est <- value
     .extra$ntheta <- .theta
     .extra$name <- var
+    if (rxode2.verbose.pipe) {
+      .malert(paste0("add population/residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
+    }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   }
   invisible()

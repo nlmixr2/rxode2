@@ -1119,6 +1119,7 @@ test_that("piping works for correlations #4", {
 })
 
 test_that("expected piping errors", {
+
   f <- function() {
     ini({
       ke <- 0.5
@@ -1131,6 +1132,7 @@ test_that("expected piping errors", {
       ipre ~ prop(prop.sd)
     })
   }
+
   f <- rxode2::rxode2(f)
 
   expect_error(f %>% model(ipre ~ add(add.sd)) %>% ini(add.sd=sqrt(0.1)), NA)
