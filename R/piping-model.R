@@ -510,6 +510,11 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
       if (length(.w1) > 0) .iniDf <- .iniDf[-.w1, ]
       .w1 <- which(.iniDf$neta2 == .neta)
       if (length(.w1) > 0) .iniDf <- .iniDf[-.w1, ]
+      if (rxode2.verbose.pipe) {
+        .malert(paste0("remove between subject variability {.code ", var, "}"))
+      }
+    } else if (rxode2.verbose.pipe) {
+      .malert(paste0("remove population/residual parameter {.code ", var, "}"))
     }
     assign("iniDf", .iniDf, rxui)
   }
@@ -577,7 +582,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     .extra$name <- var
     .extra$condition <- "id"
     if (rxode2.verbose.pipe) {
-      .malert("add between subject variability {.code var} and set estimate to {.number ", value, "}")
+      .malert(paste0("add between subject variability {.code ", var, "} and set estimate to {.number ", value, "}"))
     }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   } else {
