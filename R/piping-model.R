@@ -511,10 +511,10 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
       .w1 <- which(.iniDf$neta2 == .neta)
       if (length(.w1) > 0) .iniDf <- .iniDf[-.w1, ]
       if (rxode2.verbose.pipe) {
-        .malert(paste0("remove between subject variability {.code ", var, "}"))
+        .mwarn(paste0("remove between subject variability {.code ", var, "}"))
       }
     } else if (rxode2.verbose.pipe) {
-      .malert(paste0("remove population/residual parameter {.code ", var, "}"))
+      .mwarn(paste0("remove population/residual parameter {.code ", var, "}"))
     }
     assign("iniDf", .iniDf, rxui)
   }
@@ -556,14 +556,19 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 #' @param toEta This boolean determines if it should be added to the
 #'   etas (`TRUE`), thetas (`FALSE`) or determined by `.etaModelReg`
 #'   (`NA`)
+#' @param value This is the value to assign to the ini block
+#' @param promote This boolean determines if the parameter was
+#'   promoted from an initial covariate parameter.  If so it changes
+#'   the verbose message to the user
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
-.addVariableToIniDf <- function(var, rxui, toEta=NA, value=1) {
+.addVariableToIniDf <- function(var, rxui, toEta=NA, value=1, promote=FALSE) {
   .iniDf <- rxui$iniDf
   .isEta <- TRUE
   checkmate::assertLogical(toEta, len=1)
   checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+  checkmate::assertLogical(promote, len=1, any.missing=FALSE)
   if (is.na(toEta)) {
     .isEta <- (regexpr(.etaModelReg, var)  != -1)
   } else  {
@@ -582,7 +587,11 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     .extra$name <- var
     .extra$condition <- "id"
     if (rxode2.verbose.pipe) {
-      .malert(paste0("add between subject variability {.code ", var, "} and set estimate to {.number ", value, "}"))
+      if (promote) {
+        .minfo(paste0("promote {.code ", var, "} to between subject variability with initial estimate {.number ", value, "}"))
+      } else {
+        .minfo(paste0("add between subject variability {.code ", var, "} and set estimate to {.number ", value, "}"))
+      }
     }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   } else {
@@ -592,7 +601,11 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     .extra$ntheta <- .theta
     .extra$name <- var
     if (rxode2.verbose.pipe) {
-      .malert(paste0("add population/residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
+      if (promote) {
+        .minfo(paste0("promote {.code ", var, "} to population/residual parameter with initial estimate {.number ", value, "}"))
+      } else {
+        .minfo(paste0("add population/residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
+      }
     }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   }
