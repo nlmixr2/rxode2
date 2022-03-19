@@ -200,6 +200,7 @@ rxOpt <- list(
   rxode2.calculate.jacobian = c(FALSE, FALSE),
   rxode2.calculate.sensitivity = c(FALSE, FALSE),
   rxode2.verbose = c(TRUE, TRUE),
+  rxode2.verbose.pipe = c(TRUE, TRUE),
   rxode2.suppress.syntax.info = c(FALSE, FALSE),
   rxode2.sympy.engine = c("", ""),
   rxode2.cache.directory = c(.cacheDefault, .cacheDefault),
@@ -227,6 +228,7 @@ rxode2.syntax.require.ode.first <- NULL
 rxode2.compile.O <- NULL
 rxode2.unload.unused <- NULL
 rxode2.debug <- NULL
+rxode2.verbose.pipe <- NULL
 
 .isTestthat <- function() {
   return(regexpr("/tests/testthat/", getwd(), fixed = TRUE) != -1) # nolint

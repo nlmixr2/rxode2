@@ -43,7 +43,7 @@ model.function <- function(x, ..., append=FALSE, envir=parent.frame()) {
     }
     .rhs <- .rhs[!(.rhs %in% c(rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name))]
     for (v in .rhs) {
-      .addVariableToIniDf(v, rxui)
+      .addVariableToIniDf(v, rxui, promote=NA)
     }
     return(rxui$fun())
   }
@@ -51,12 +51,12 @@ model.function <- function(x, ..., append=FALSE, envir=parent.frame()) {
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
     lapply(.v$rm, function(x){
-      .removeVariableFromIniDf(x, rxui)
+      .removeVariableFromIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
     })
   }
   if (length(.v$new) > 0) {
     lapply(.v$new, function(x){
-      .addVariableToIniDf(x, rxui)
+      .addVariableToIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
     })
   }
   rxui$fun()
@@ -480,6 +480,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .new1 <- setdiff(.new, .both)
 
   .old <- rxui$errParams0
+  .err <- rxui$errParams
   .new <- rxui$errParams
   .both <- intersect(.old, .new)
   .rm2 <- setdiff(.old, .both)
@@ -488,17 +489,18 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .new <- c(.new1, .new2)
   .new <- setdiff(.new, rxui$mv0$lhs)
 
-  list(rm=c(.rm1, .rm2), new=.new)
+  list(rm=c(.rm1, .rm2), new=.new, err=.err)
 }
 
 #' Remove a single variable from the initialization data frame
 #'
 #' @param var Variable that is removed
 #' @param rxui UI function where the initial estimate data frame is modified
+#' @inheritParams .addVariableToIniDf
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
-.removeVariableFromIniDf <- function(var, rxui) {
+.removeVariableFromIniDf <- function(var, rxui, promote=FALSE) {
   .iniDf <- rxui$iniDf
   .w <- which(.iniDf$name == var)
   if (length(.w) == 1L) {
@@ -510,6 +512,15 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
       if (length(.w1) > 0) .iniDf <- .iniDf[-.w1, ]
       .w1 <- which(.iniDf$neta2 == .neta)
       if (length(.w1) > 0) .iniDf <- .iniDf[-.w1, ]
+      if (rxode2.verbose.pipe) {
+        .mwarn(paste0("remove between subject variability {.code ", var, "}"))
+      }
+    } else if (rxode2.verbose.pipe) {
+      if (is.na(promote)) {
+        .mwarn(paste0("remove residual parameter {.code ", var, "}"))
+      } else {
+        .mwarn(paste0("remove population parameter {.code ", var, "}"))
+      }
     }
     assign("iniDf", .iniDf, rxui)
   }
@@ -520,6 +531,8 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 .thetaModelReg <- rex::rex(or(
   group(start, .thetamodelVars),
   group(.thetamodelVars, end)))
+
+.covariateExceptions <- rex::rex(start, or("wt", "sex", "crcl"), end)
 
 .etaParts <- c(
   "eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv", "bsv", "Bsv", "BSV",
@@ -543,35 +556,78 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     err = NA_character_
   )
 
-
 #' Add a single variable from the initialization data frame
 #'
 #' @param var Variable that is added
-#' @param rxui UI function where the initial estimate data frame is modified
+#' @param rxui UI function where the initial estimate data frame is
+#'   modified
+#' @param toEta This boolean determines if it should be added to the
+#'   etas (`TRUE`), thetas (`FALSE`) or determined by `.etaModelReg`
+#'   (`NA`)
+#' @param value This is the value to assign to the ini block
+#' @param promote This boolean determines if the parameter was
+#'   promoted from an initial covariate parameter (`TRUE`).  If so it
+#'   changes the verbose message to the user.  If not, (`FALSE`) it
+#'   will only add if it is a covariate.  If `NA` it will assume that
+#'   the parameter is an error term.
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
-.addVariableToIniDf <- function(var, rxui) {
+.addVariableToIniDf <- function(var, rxui, toEta=NA, value=1, promote=FALSE) {
   .iniDf <- rxui$iniDf
-  if (regexpr(.etaModelReg, var) != -1) {
+  .isEta <- TRUE
+  checkmate::assertLogical(toEta, len=1)
+  checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+  checkmate::assertLogical(promote, len=1)
+  if (is.na(toEta)) {
+    .isEta <- (regexpr(.etaModelReg, var)  != -1)
+  } else  {
+    .isEta <- toEta
+  }
+  if (.isEta) {
     if (all(is.na(.iniDf$neta1))) {
       .eta <- 1
     } else {
       .eta <- max(.iniDf$neta1, na.rm=TRUE) + 1
     }
     .extra <- .rxIniDfTemplate
-    .extra$est <- 1
+    .extra$est <- value
     .extra$neta1 <- .eta
     .extra$neta2 <- .eta
     .extra$name <- var
     .extra$condition <- "id"
+    if (rxode2.verbose.pipe) {
+      if (promote) {
+        .minfo(paste0("promote {.code ", var, "} to between subject variability with initial estimate {.number ", value, "}"))
+      } else {
+        .minfo(paste0("add between subject variability {.code ", var, "} and set estimate to {.number ", value, "}"))
+      }
+    }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   } else {
+    if (is.na(promote)) {
+    } else if (!promote) {
+      if (regexpr(.covariateExceptions, tolower(var)) != -1 || regexpr(.thetaModelReg, var, perl=TRUE) == -1) {
+        if (rxode2.verbose.pipe) {
+          .minfo(paste0("add covariate {.code ", var, "}"))
+        }
+        return(invisible())
+      }
+    }
     .theta <- max(.iniDf$ntheta, na.rm=TRUE) + 1
     .extra <- .rxIniDfTemplate
-    .extra$est <- 1
+    .extra$est <- value
     .extra$ntheta <- .theta
     .extra$name <- var
+    if (rxode2.verbose.pipe) {
+      if (is.na(promote)) {
+        .minfo(paste0("add residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
+      } else if (promote) {
+        .minfo(paste0("promote {.code ", var, "} to population/residual parameter with initial estimate {.number ", value, "}"))
+      } else {
+        .minfo(paste0("add population parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
+      }
+    }
     assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
   }
   invisible()
