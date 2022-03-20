@@ -1403,6 +1403,39 @@ test_that("ini promotion works", {
   expect_equal(f3$omega, matrix(0.01, dimnames=list("eta.ka", "eta.ka")))
 
   # now promote a correlation between eta.cl and eta.v
+  f4 <- f2 %>% ini(eta.cl + eta.v ~ c(1,
+                                      0.01, 1))
+
+  expect_equal(f4$allCovs, c("eta.ka"))
+  expect_equal(f4$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+
+  expect_equal(f4$omega, lotri(eta.cl + eta.v ~ c(1,
+                                                  0.01, 1)))
+
+  # Now promote independent eta block
+  f5 <- f3 %>% ini(eta.cl + eta.v ~ c(1,
+                                      0.01, 1))
+
+  expect_length(f5$allCovs, 0)
+
+  expect_equal(f5$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+
+  expect_equal(f5$omega, lotri(eta.ka ~ 0.01,
+                               eta.cl + eta.v ~ c(1,
+                                                  0.01, 1)))
+
+  # Now promote eta block that includes prior eta information
+  f6 <- f3 %>% ini(eta.ka + eta.cl + eta.v ~ c(1,
+                                               0.01, 1,
+                                               -0.01, 0.01, 1))
+
+  expect_length(f6$allCovs, 0)
+
+  expect_equal(f6$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+
+  expect_equal(f6$omega, lotri(eta.ka + eta.cl + eta.v ~ c(1,
+                                                           0.01, 1,
+                                                           -0.01, 0.01, 1)))
 
 
 

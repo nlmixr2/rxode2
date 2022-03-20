@@ -578,7 +578,19 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .iniDf <- rxui$iniDf
   .isEta <- TRUE
   checkmate::assertLogical(toEta, len=1)
-  checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+  if (is.na(promote)) {
+    checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+  } else if (promote) {
+    if (is.na(toEta)) {
+      checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+    } else if (toEta) {
+      checkmate::assertNumeric(value, len=1, any.missing=TRUE)
+    } else {
+      checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+    }
+  } else {
+    checkmate::assertNumeric(value, len=1, any.missing=FALSE)
+  }
   checkmate::assertLogical(promote, len=1)
   if (is.na(toEta)) {
     .isEta <- (regexpr(.etaModelReg, var)  != -1)
@@ -599,7 +611,12 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     .extra$condition <- "id"
     if (rxode2.verbose.pipe) {
       if (promote) {
-        .minfo(paste0("promote {.code ", var, "} to between subject variability with initial estimate {.number ", value, "}"))
+        if (is.na(value))  {
+          value <- 1
+          .minfo(paste0("promote {.code ", var, "} to between subject variability"))
+        } else {
+          .minfo(paste0("promote {.code ", var, "} to between subject variability with initial estimate {.number ", value, "}"))
+        }
         .cov <- get("covariates", envir=rxui)
         .cov <- .cov[.cov != var]
         assign("covariates", .cov, envir=rxui)
