@@ -569,7 +569,8 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 #'   promoted from an initial covariate parameter (`TRUE`).  If so it
 #'   changes the verbose message to the user.  If not, (`FALSE`) it
 #'   will only add if it is a covariate.  If `NA` it will assume that
-#'   the parameter is an error term.
+#'   the parameter is an error term. When `promote` is `TRUE`, it will
+#'   also remove the parameter from the `$allCovs`.
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @noRd
@@ -599,6 +600,9 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     if (rxode2.verbose.pipe) {
       if (promote) {
         .minfo(paste0("promote {.code ", var, "} to between subject variability with initial estimate {.number ", value, "}"))
+        .cov <- get("covariates", envir=rxui)
+        .cov <- .cov[.cov != var]
+        assign("covariates", .cov, envir=rxui)
       } else {
         .minfo(paste0("add between subject variability {.code ", var, "} and set estimate to {.number ", value, "}"))
       }
@@ -623,7 +627,10 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
       if (is.na(promote)) {
         .minfo(paste0("add residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       } else if (promote) {
-        .minfo(paste0("promote {.code ", var, "} to population/residual parameter with initial estimate {.number ", value, "}"))
+        .minfo(paste0("promote {.code ", var, "} to population parameter with initial estimate {.number ", value, "}"))
+        .cov <- get("covariates", envir=rxui)
+        .cov <- .cov[.cov != var]
+        assign("covariates", .cov, envir=rxui)
       } else {
         .minfo(paste0("add population parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       }

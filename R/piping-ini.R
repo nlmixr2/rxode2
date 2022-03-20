@@ -80,6 +80,8 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .iniHandleFixOrUnfixEqual <- function(expr, rxui, envir=parent.frame(), maxLen=3L) {
+  .tilde <- identical(expr[[1]], quote(`~`))
+  .covs <- rxui$allCovs
   .lhs <- as.character(expr[[2]])
   .rhs <- expr[[3]]
   .doFix <- .doUnfix <- FALSE
@@ -121,8 +123,12 @@
            call.=FALSE)
     }
   }
+  if (.lhs %in% .covs) {
+    .addVariableToIniDf(.lhs, rxui, toEta=.tilde, value=.rhs, promote=TRUE)
+    # assign is called again to handle the fixing of the variable
+  }
   assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$ini, .lhs, .rhs, .doFix, .doUnfix, maxLen=maxLen),
-         envir=rxui)
+           envir=rxui)
   invisible()
 }
 
