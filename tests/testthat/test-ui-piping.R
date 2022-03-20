@@ -1406,7 +1406,7 @@ test_that("ini promotion works", {
   f4 <- f2 %>% ini(eta.cl + eta.v ~ c(1,
                                       0.01, 1))
 
-  expect_equal(f4$allCovs, c("eta.ka"))
+  expect_equal(f4$allCovs, "eta.ka")
   expect_equal(f4$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
 
   expect_equal(f4$omega, lotri(eta.cl + eta.v ~ c(1,
