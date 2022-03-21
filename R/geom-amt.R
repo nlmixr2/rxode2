@@ -46,6 +46,7 @@ StatAmt <- ggplot2::ggproto("StatAmt", ggplot2::Stat,
 #' @examples
 #'
 #' library(rxode2)
+#' library(units)
 #'
 #'
 #' ## Model from RxODE tutorial
