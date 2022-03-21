@@ -80,6 +80,8 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .iniHandleFixOrUnfixEqual <- function(expr, rxui, envir=parent.frame(), maxLen=3L) {
+  .tilde <- identical(expr[[1]], quote(`~`))
+  .covs <- rxui$allCovs
   .lhs <- as.character(expr[[2]])
   .rhs <- expr[[3]]
   .doFix <- .doUnfix <- FALSE
@@ -121,8 +123,12 @@
            call.=FALSE)
     }
   }
+  if (.lhs %in% .covs) {
+    .addVariableToIniDf(.lhs, rxui, toEta=.tilde, value=.rhs, promote=TRUE)
+    # assign is called again to handle the fixing of the variable
+  }
   assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$ini, .lhs, .rhs, .doFix, .doUnfix, maxLen=maxLen),
-         envir=rxui)
+           envir=rxui)
   invisible()
 }
 
@@ -133,10 +139,22 @@
 #' @param neta2 Name of the second eta term
 #' @param est Estimate of the covariance
 #' @param doFix Should this term be fixed
+#' @param rxui is the rxui value
 #' @return A modified (unsorted) data frame with the new covariance term appended
 #' @author Matthew L. Fidler
 #' @noRd
-.iniAddCovarianceBetweenTwoEtaValues <- function(ini, neta1, neta2, est, doFix) {
+.iniAddCovarianceBetweenTwoEtaValues <- function(ini, neta1, neta2, est, doFix, rxui) {
+  .covs <- rxui$allCovs
+  if (neta1 %in% .covs) {
+    .addVariableToIniDf(neta1, rxui, toEta=TRUE, value=NA, promote=TRUE)
+    ini <- rxui$iniDf
+    .covs <- rxui$allCovs
+  }
+  if (neta2 %in% .covs) {
+    .addVariableToIniDf(neta2, rxui, toEta=TRUE, value=NA, promote=TRUE)
+    ini <- rxui$iniDf
+    .covs <- rxui$allCovs
+  }
   .w1 <- which(ini$name == neta1)
   .w2 <- which(ini$name == neta2)
   if (length(.w1) != 1) stop("Cannot find parameter '", neta1, "'", call.=FALSE)
@@ -173,6 +191,7 @@
 #'
 #' @noRd
 .iniHandleLotriMatrix <- function(mat, rxui) {
+  .covs <- rxui$allCovs
   .fixMatrix <- attr(mat, "lotriFix")
   .unfixMatrix <- attr(mat, "lotriUnfix")
   .n <- dimnames(mat)[[1]]
@@ -180,7 +199,7 @@
   if (!inherits(.mat, "lotriFix"))
     class(.mat) <- c("lotriFix", class(.mat))
   .df <- as.data.frame(.mat)
-  lapply(seq_along(.df$neta1), function(i) {
+  for (i in seq_along(.df$neta1)) {
     if (!is.na(.df$neta1[i])) {
       .doFix <- FALSE
       .doUnfix <- FALSE
@@ -191,22 +210,32 @@
         .doUnfix <- TRUE
       }
       if (.df$neta1[i] == .df$neta2[i]) {
-        assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, as.character(.df$name[i]), .df$est[i], .doFix, .doUnfix, 1L),
+        .var <- as.character(.df$name[i])
+        if (.var %in% .covs) {
+          .addVariableToIniDf(.var, rxui, toEta=TRUE, value=.df$est[i], promote=TRUE)
+          .covs <- rxui$allCovs
+        }
+        assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .var, .df$est[i], .doFix, .doUnfix, 1L),
                envir=rxui)
       } else {
         .n1 <- .df$name[i]
         if (!any(rxui$iniDf$name == .n1)) .n1 <- paste0("(", .n[.df$neta1[i]], ",", .n[.df$neta2[i]], ")")
         if (any(rxui$iniDf$name == .n1)) {
+          if (.var %in% .covs) {
+            .addVariableToIniDf(.n1, rxui, toEta=TRUE, value=.df$est, promote=TRUE)
+            .covs <- rxui$allCovs
+          }
           assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .n1, .df$est[i], .doFix, .doUnfix, 1L),
-               envir=rxui)
+                 envir=rxui)
         } else {
           assign("iniDf", .iniAddCovarianceBetweenTwoEtaValues(rxui$iniDf, .n[.df$neta1[i]], .n[.df$neta2[i]], .df$est[i],
-                                                               .doFix),
+                                                               .doFix, rxui),
                  envir=rxui)
+          .covs <- rxui$allCovs
         }
-       }
+      }
     }
-  })
+  }
 }
 
 

@@ -1324,9 +1324,6 @@ test_that("Add covariate to model works", {
 
 })
 
-
-
-
 test_that("Appending or pre-pending items to a model works", {
 
   ocmt <- function() {
@@ -1359,5 +1356,88 @@ test_that("Appending or pre-pending items to a model works", {
   f2 <- f %>% model(f2 <- 3 * 2, append=NA)
   expect_true("f2" %in% f2$mv0$lhs)
   expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
+
+})
+
+
+test_that("ini promotion works", {
+
+  ocmt <- function() {
+    ini({
+      tka <- 0.45 # Ka
+      tcl <- 1 # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  f <- rxode2(ocmt)
+
+  expect_equal(f$allCovs, c("eta.ka", "eta.cl", "tv", "eta.v"))
+  expect_equal(f$theta, c(tka=0.45, tcl=1, add.sd=0.7))
+  expect_equal(f$omega, NULL)
+
+  # now promote tv
+  f2 <- f %>% ini(tv=0.5)
+
+  expect_equal(f2$allCovs, c("eta.ka", "eta.cl", "eta.v"))
+  expect_equal(f2$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+  expect_equal(f2$omega, NULL)
+
+  # now promote eta.ka
+  f3 <- f2 %>% ini(eta.ka ~ 0.01)
+
+  expect_equal(f3$allCovs, c("eta.cl", "eta.v"))
+  expect_equal(f3$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+  expect_equal(f3$omega, matrix(0.01, dimnames=list("eta.ka", "eta.ka")))
+
+  # now promote a correlation between eta.cl and eta.v
+  f4 <- f2 %>% ini(eta.cl + eta.v ~ c(1,
+                                      0.01, 1))
+
+  expect_equal(f4$allCovs, "eta.ka")
+  expect_equal(f4$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+
+  expect_equal(f4$omega, lotri(eta.cl + eta.v ~ c(1,
+                                                  0.01, 1)))
+
+  # Now promote independent eta block
+  f5 <- f3 %>% ini(eta.cl + eta.v ~ c(1,
+                                      0.01, 1))
+
+  expect_length(f5$allCovs, 0)
+
+  expect_equal(f5$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+
+  expect_equal(f5$omega, lotri(eta.ka ~ 0.01,
+                               eta.cl + eta.v ~ c(1,
+                                                  0.01, 1)))
+
+  # Now promote eta block that includes prior eta information
+  f6 <- f3 %>% ini(eta.ka + eta.cl + eta.v ~ c(1,
+                                               0.01, 1,
+                                               -0.01, 0.01, 1))
+
+  expect_length(f6$allCovs, 0)
+
+  expect_equal(f6$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
+
+  expect_equal(f6$omega, lotri(eta.ka + eta.cl + eta.v ~ c(1,
+                                                           0.01, 1,
+                                                           -0.01, 0.01, 1)))
+
+
+
 
 })
