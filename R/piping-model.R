@@ -1,23 +1,37 @@
 #' @export
 #' @rdname model
-model.function <- function(x, ..., append=FALSE, envir=parent.frame()) {
+model.function <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxode2(x)
-  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, envir)
+  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
 }
+
+#' @export
+#' @rdname model
+model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
+  .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
+  .ret <- .copyUi(x) # copy so (as expected) old UI isn't affected by the call
+  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
+}
+
 #'  Handle model lines
 #'
 #' @param modelLines The model lines that are being considered
 #' @param rxui The rxode2 UI object
 #' @param modifyIni Should the ini({}) be considered
+#' @param append Append model lines (TRUE), prepend model lines (NA),
+#'   or simply handle piping (FALSE)
+#' @param auto Use automatic variable assignment to eta or pop
+#'   parameters
 #' @param envir Environment for evaluation
 #' @inheritParams model
 #' @return New UI
 #' @author Matthew L. Fidler
 #' @export
-.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, envir) {
+.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, auto=TRUE, envir) {
   checkmate::assertLogical(modifyIni, any.missing=FALSE, len=1)
   checkmate::assertLogical(append, any.missing=TRUE, len=1)
+  checkmate::assertLogical(auto, any.missing=TRUE, len=1)
   .doAppend <- FALSE
   if (is.na(append)) {
     assign("lstExpr", c(modelLines, rxui$lstExpr), envir=rxui)
@@ -56,18 +70,15 @@ model.function <- function(x, ..., append=FALSE, envir=parent.frame()) {
   }
   if (length(.v$new) > 0) {
     lapply(.v$new, function(x){
-      .addVariableToIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
+      .isErr <- x %in% .v$err
+      if (auto || .isErr) {
+        .addVariableToIniDf(x, rxui, promote=ifelse(.isErr, NA, FALSE))
+      } else if (rxode2.verbose.pipe) {
+        .minfo(paste0("add covariate {.code ", x, "}"))
+      }
     })
   }
   rxui$fun()
-}
-
-#' @export
-#' @rdname model
-model.rxUi <- function(x, ..., append=FALSE, envir=parent.frame()) {
-  .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
-  .ret <- .copyUi(x) # copy so (as expected) old UI isn't affected by the call
-  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, envir)
 }
 
 .getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {

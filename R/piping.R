@@ -116,7 +116,7 @@
   .ret <- lapply(seq_along(callInfo), function(i) {
     .name <- names(callInfo)[i]
     if (!is.null(.name)) {
-      if (.name %in% c("envir", "append")) {
+      if (.name %in% c("envir", "append", "auto")) {
         return(NULL)
       } else if (.name != "") {
         # Changed named items to
