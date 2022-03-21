@@ -80,6 +80,7 @@ Requires the following aesthetics:
 \examples{
 
 library(rxode2)
+library(units)
 
 
 ## Model from RxODE tutorial
