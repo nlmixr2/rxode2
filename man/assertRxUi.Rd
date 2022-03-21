@@ -52,8 +52,9 @@ These functions have different types of assertions
 \item \code{assertRxUi} -- Make sure this is a proper rxode2 model (if not throw error)
 \item \code{assertRxUiSingleEndpoint} -- Make sure the rxode2 model is only
 a single endpoint model (if not throw error)
-\item \code{assertRxUiNormal} -- This needs to be a normal or transformably
+\item \code{assertRxUiTransformNormal} -- This needs to be a normal or transformably
 normal residual distribution
+\item \code{assertRxUiNormal} -- This needs to be a normal residual distribution
 \item \code{assertRxUiEstimatedResiduals} -- This makes sure that the
 residual error parameter are estimated (not modeled).
 \item \code{assertRxUiPopulationOnly} -- This makes sure the model is the
