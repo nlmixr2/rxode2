@@ -446,7 +446,7 @@ symengineCEnv <- function(expr) {
 }
 
 seC <- function(x) {
-  expr <- eval(parse(text = sprintf("quote(%s)", as.character(x))))
+  expr <- str2lang(x)
   .ret <- eval(expr, symengineCEnv(expr))
 }
 

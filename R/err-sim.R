@@ -65,7 +65,7 @@ rxGetDistributionSimulationLines <- function(line) {
   }, character(1))
 
 
-  as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), .enQuote))
+  as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), str2lang))
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -73,7 +73,7 @@ rxGetDistributionSimulationLines <- function(line) {
 rxGetDistributionSimulationLines.norm <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
-  .err <- .enQuote(paste0("err.", pred1$var))
+  .err <- str2lang(paste0("err.", pred1$var))
   .ret <- vector("list", 2)
   #.ret[[1]] <- bquote(.(.err) <- 0)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
@@ -133,7 +133,7 @@ rxUiGet.cmtLines <- function(x, ...) {
   .len <- length(.x$mv0$state)
   .predDf <- get("predDf", .x)
   lapply(.predDf[.predDf$cmt > .len, "cond"], function(cmt) {
-    call("cmt", .enQuote(cmt))
+    call("cmt", str2lang(cmt))
   })
 }
 attr(rxUiGet.cmtLines, "desc") <- "cmt lines for model"

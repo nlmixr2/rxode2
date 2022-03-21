@@ -1,13 +1,3 @@
-#' Turn a character expression into quoted symbol
-#'
-#' @param chr Character symbol
-#' @return Quoted symbol
-#' @author Matthew Fidler
-#' @noRd
-.enQuote <- function(chr) {
-  eval(parse(text=paste0("quote(", chr, ")")))
-}
-
 #' Get the lambda value based on the pred information
 #'
 #' @param env Environment that has the environment
@@ -18,13 +8,13 @@
 #' @export
 .rxGetLambdaFromPred1AndIni <- function(env, pred1) {
   if (!is.na(pred1$lambda)) {
-    return(.enQuote(pred1$lambda))
+    return(str2lang(pred1$lambda))
   }
   if (.rxTransformHasALambdaParameter(pred1$transform)) {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("boxCox", "yeoJohnson") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      return(.enQuote(env$iniDf$name[.w]))
+      return(str2lang(env$iniDf$name[.w]))
     } else {
       stop("cannot find lambda", call.=FALSE)
     }
@@ -73,7 +63,7 @@
   if (.f == "rxLinCmt") {
     return(quote(linCmt()))
   }
-  .enQuote(.f)
+  str2lang(.f)
 }
 
 #' Get the prediction transformation
@@ -104,12 +94,12 @@
 #' @noRd
 .rxGetVarianceForErrorAdd <- function(env, pred1) {
   if (!is.na(pred1$a)) {
-    .p1 <- .enQuote(pred1$a)
+    .p1 <- str2lang(pred1$a)
   } else {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("add", "lnorm", "logitNorm", "probitNorm") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p1 <- .enQuote(env$iniDf$name[.w])
+      .p1 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find additive standard deviation for '", .cnd, "'",
            ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
@@ -137,7 +127,7 @@
   switch(.type,
          untransformed=quote(rx_pred_f_),
          transformed=quote(rx_pred_),
-         f=.enQuote(.f),
+         f=str2lang(.f),
          none=quote(rx_pred_f_))
 }
 
@@ -151,12 +141,12 @@
 .rxGetVarianceForErrorProp <- function(env, pred1) {
   .f <- .rxGetVarianceForErrorPropOrPowF(env, pred1)
   if (!is.na(pred1$b)) {
-    .p1 <- .enQuote(pred1$b)
+    .p1 <- str2lang(pred1$b)
   } else {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("prop", "propF", "propT") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p1 <- .enQuote(env$iniDf$name[.w])
+      .p1 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find proportional standard deviation", call.=FALSE)
     }
@@ -175,21 +165,21 @@
   .f <- .rxGetVarianceForErrorPropOrPowF(env, pred1)
   .cnd <- pred1$cond
   if (!is.na(pred1$b)) {
-    .p1 <- .enQuote(pred1$b)
+    .p1 <- str2lang(pred1$b)
   } else {
     .w <- which(env$iniDf$err %in% c("pow", "powF", "powT") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p1 <- .enQuote(env$iniDf$name[.w])
+      .p1 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find power standard deviation", call.=FALSE)
     }
   }
   if (!is.na(pred1$c)) {
-    .p2 <- .enQuote(pred1$c)
+    .p2 <- str2lang(pred1$c)
   } else {
     .w <- which(env$iniDf$err %in% c("pow2", "powF2", "powT2") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p2 <- .enQuote(env$iniDf$name[.w])
+      .p2 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find exponent of power expression", call.=FALSE)
     }
@@ -206,24 +196,24 @@
 #' @noRd
 .rxGetVarianceForErrorAddProp <- function(env, pred1) {
   if (!is.na(pred1$a)) {
-    .p1 <- .enQuote(pred1$a)
+    .p1 <- str2lang(pred1$a)
   } else {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("add", "lnorm", "probitNorm", "logitNorm") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p1 <- .enQuote(env$iniDf$name[.w])
+      .p1 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find additive standard deviation", call.=FALSE)
     }
   }
   .f <- .rxGetVarianceForErrorPropOrPowF(env, pred1)
   if (!is.na(pred1$b)) {
-    .p2 <- .enQuote(pred1$b)
+    .p2 <- str2lang(pred1$b)
   } else {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("prop", "propT", "propF") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p2 <- .enQuote(env$iniDf$name[.w])
+      .p2 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find proportional standard deviation", call.=FALSE)
     }
@@ -248,35 +238,35 @@
 #' @author Matthew Fidler
 .rxGetVarianceForErrorAddPow <- function(env, pred1) {
   if (!is.na(pred1$a)) {
-    .p1 <- .enQuote(pred1$a)
+    .p1 <- str2lang(pred1$a)
   } else {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("add", "lnorm", "logitNorm", "probitNorm") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p1 <- .enQuote(env$iniDf$name[.w])
+      .p1 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find additive standard deviation", call.=FALSE)
     }
   }
   .f <- .rxGetVarianceForErrorPropOrPowF(env, pred1)
   if (!is.na(pred1$b)) {
-    .p2 <- .enQuote(pred1$b)
+    .p2 <- str2lang(pred1$b)
   } else {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("pow", "powF", "powT") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p2 <- .enQuote(env$iniDf$name[.w])
+      .p2 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find pow standard deviation", call.=FALSE)
     }
   }
   if (!is.na(pred1$c)) {
-    .p3 <- .enQuote(pred1$c)
+    .p3 <- str2lang(pred1$c)
   } else {
     .cnd <- pred1$cond
     .w <- which(env$iniDf$err %in% c("pow2", "powF2", "powT2") & env$iniDf$condition == .cnd)
     if (length(.w) == 1L) {
-      .p3 <- .enQuote(env$iniDf$name[.w])
+      .p3 <- str2lang(env$iniDf$name[.w])
     } else {
       stop("cannot find pow exponent", call.=FALSE)
     }
