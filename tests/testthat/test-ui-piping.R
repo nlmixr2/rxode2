@@ -1437,7 +1437,64 @@ test_that("ini promotion works", {
                                                            0.01, 1,
                                                            -0.01, 0.01, 1)))
 
+})
 
+
+test_that("Ignoring auto-selected parameter types work", {
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      eta.v ~ 0.01 # log V
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- eta.v
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  f <- rxode2(ocmt)
+
+  expect_equal(f$allCovs, character(0))
+  expect_equal(f$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
+  expect_equal(f$omega, matrix(0.01, dimnames=list("eta.v", "eta.v")))
+
+  f2 <- f %>% model(ka <- tka * exp(eta.ka), auto=FALSE)
+
+  expect_equal(f2$allCovs, "eta.ka")
+  expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
+  expect_equal(f2$omega, matrix(0.01, dimnames=list("eta.v", "eta.v")))
+
+  f2 <- f %>% model(ka <- tka * exp(eta.ka), auto=FALSE) %>%
+    ini(eta.ka ~ 0.02)
+
+  expect_equal(f2$allCovs, character(0))
+  expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
+  expect_equal(f2$omega, lotri(eta.v ~ 0.01,
+                              eta.ka ~ 0.02))
+
+  f2 <- f %>% model(v <- tv + eta.v, auto=FALSE)
+
+  expect_equal(f2$allCovs, "tv")
+  expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
+  expect_equal(f2$omega, lotri(eta.v ~ 0.01))
+
+  f2 <- f %>% model(v <- tv + eta.v, auto=FALSE) %>%
+    ini(tv=0.2)
+
+  expect_equal(f2$allCovs, character(0))
+  expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7, tv=0.2))
+  expect_equal(f2$omega, lotri(eta.v ~ 0.01))
 
 
 })

@@ -200,21 +200,36 @@ ini.default <- function(x, ...) {
 #' Model block for rxode2/nlmixr models
 #'
 #' @param x model expression
+#'
 #' @param ... Other arguments
+#'
 #' @param append This is a boolean to determine if the lines are
 #'   appended in piping.  The possible values for this is:
 #'
 #'  - `TRUE` which is when the lines are appended to the model instead of replaced (default)
 #'  - `FALSE` when the lines are replaced in the model
 #'  - `NA` is when the lines are pre-pended to the model instead of replaced
+#'
+#' @param auto This boolean tells if piping automatically selects the
+#'   parameters should be characterized as a population parameter,
+#'   between subject variability, or a covariate.  When `TRUE` this
+#'   automatic selection occurs.  When `FALSE` this automatic
+#'   selection is turned off and everything is added as a covariate
+#'   (which can be promoted to a parameter with the `ini` statement).
+#'   By default this is `TRUE`, but it can be changed by
+#'   `options(rxode2.autoVarPiping=FALSE)`.
+#'
 #' @param envir the `environment` in which unevaluated model
 #'   expressions is to be evaluated.  May also be `NULL`, a list, a
 #'   data frame, a pairlist or an integer as specified to `sys.call`.
+#'
 #' @return Model block with ini information included.  `ini` must be
 #'   called before `model` block
+#'
 #' @author Matthew Fidler
+#'
 #' @export
-model <- function(x, ..., append=FALSE, envir=parent.frame()) {
+model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE), envir=parent.frame()) {
   if (is(substitute(x), "{")) {
     .ini <- .lastIni
     .iniQ <- .lastIniQ
