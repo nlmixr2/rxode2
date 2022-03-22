@@ -1496,5 +1496,41 @@ test_that("Ignoring auto-selected parameter types work", {
   expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7, tv=0.2))
   expect_equal(f2$omega, lotri(eta.v ~ 0.01))
 
+})
+
+
+test_that("Ignoring auto-selected parameter types work", {
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      eta.v ~ 0.01 # log V
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+      tprop <- 0.5
+      prop.eta ~ 0.01
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- eta.v
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      prop.sd <- exp(tprop + prop.eta)
+      cp ~ add(add.sd)
+    })
+  }
+
+  f1 <- ocmt()
+
+  f2 <- ocmt %>% model(cp ~ add(add.sd) + prop(prop.sd))
+
+  expect_equal(f2$theta, f1$theta)
+
+  expect_equal(f2$omega, f1$omega)
 
 })
