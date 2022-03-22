@@ -19,10 +19,6 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
 #' @param modelLines The model lines that are being considered
 #' @param rxui The rxode2 UI object
 #' @param modifyIni Should the ini({}) be considered
-#' @param append Append model lines (TRUE), prepend model lines (NA),
-#'   or simply handle piping (FALSE)
-#' @param auto Use automatic variable assignment to eta or pop
-#'   parameters
 #' @param envir Environment for evaluation
 #' @inheritParams model
 #' @return New UI

@@ -7,11 +7,17 @@
 \alias{model.default}
 \title{Model block for rxode2/nlmixr models}
 \usage{
-\method{model}{`function`}(x, ..., append = FALSE, envir = parent.frame())
+\method{model}{`function`}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
 
-\method{model}{rxUi}(x, ..., append = FALSE, envir = parent.frame())
+\method{model}{rxUi}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
 
-model(x, ..., append = FALSE, envir = parent.frame())
+model(
+  x,
+  ...,
+  append = FALSE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
+  envir = parent.frame()
+)
 
 \method{model}{default}(x, ..., append = FALSE, envir = parent.frame())
 }
@@ -27,6 +33,15 @@ appended in piping.  The possible values for this is:
 \item \code{FALSE} when the lines are replaced in the model
 \item \code{NA} is when the lines are pre-pended to the model instead of replaced
 }}
+
+\item{auto}{This boolean tells if piping automatically selects the
+parameters should be characterized as a population parameter,
+between subject variability, or a covariate.  When \code{TRUE} this
+automatic selection occurs.  When \code{FALSE} this automatic
+selection is turned off and everything is added as a covariate
+(which can be promoted to a parameter with the \code{ini} statement).
+By default this is \code{TRUE}, but it can be changed by
+\code{options(rxode2.autoVarPiping=FALSE)}.}
 
 \item{envir}{the \code{environment} in which unevaluated model
 expressions is to be evaluated.  May also be \code{NULL}, a list, a
