@@ -801,9 +801,27 @@ test_that("simple ini piping, correlated model", {
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
   testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
 
-  testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE)
-  testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
-  testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
+  expect_warning(
+    expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
+      regexp="trying to fix '(eta.cl,eta.v)', but already fixed", fixed=TRUE
+    ),
+    regexp="trying to fix 'eta.v', but already fixed", fixed=TRUE
+  )
+  expect_warning(
+    expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
+      regexp="trying to fix '(eta.cl,eta.v)', but already fixed", fixed=TRUE
+    ),
+    regexp="trying to fix 'eta.v', but already fixed", fixed=TRUE
+  )
+  expect_warning(
+    expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
+      regexp="trying to fix '(eta.cl,eta.v)', but already fixed", fixed=TRUE
+    ),
+    regexp="trying to fix 'eta.v', but already fixed", fixed=TRUE
+  )
 
   expect_warning(expect_warning(expect_warning(
     testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
@@ -884,9 +902,27 @@ test_that("simple ini piping, fixed correlated model", {
     regexp="fix.*eta.cl"), regexp="fix.*eta.cl,eta.v"), regexp="fix.*eta.v"
   )
 
-  testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE)
-  testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE)
-  testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE)
+  expect_warning(
+    expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
+      regexp="trying to unfix '(eta.cl,eta.v)', but already unfixed", fixed=TRUE
+    ),
+    regexp="trying to unfix 'eta.v', but already unfixed", fixed=TRUE
+  )
+  expect_warning(
+    expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
+      regexp="trying to unfix '(eta.cl,eta.v)', but already unfixed", fixed=TRUE
+    ),
+    regexp="trying to unfix 'eta.v', but already unfixed", fixed=TRUE
+  )
+  expect_warning(
+    expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
+      regexp="trying to unfix '(eta.cl,eta.v)', but already unfixed", fixed=TRUE
+    ),
+    regexp="trying to unfix 'eta.v', but already unfixed", fixed=TRUE
+  )
 })
 
 # %>% ini(tka=0.5)
