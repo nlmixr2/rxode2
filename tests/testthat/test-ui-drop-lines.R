@@ -162,7 +162,7 @@ test_that("drop endpoint from  multiple endpoint model", {
     })
   }
 
-  f2 <- pk.turnover.emax %>% model(-cp)
+  f2 <- suppressMessages(pk.turnover.emax %>% model(-cp))
 
   expect_length(f2$predDf$cond, 1)
   expect_equal(f2$predDf$cond, "effect")
@@ -196,7 +196,7 @@ test_that("drop compartment and compartment-related properties", {
     })
   }
 
-  f2 <- one.compartment %>% model(-d/dt(depot))
+  f2 <- suppressMessages(one.compartment %>% model(-d/dt(depot)))
 
   expect_equal(f2$mv0$state, "center")
   expect_length(f2$lstExpr, 7L)
@@ -232,12 +232,18 @@ test_that("drop endpoint test", {
     })
   }
 
-  f2 <- ocmt %>% model(-cp ~ .)
+  expect_message(
+    f2 <- ocmt %>% model(-cp ~ .),
+    regexp="remove population parameter `add.err`"
+  )
 
   expect_true(is.null(f2$predDf))
   expect_equal(f2$theta, c(tka = 0.45, tcl = 1, tv = 3.45))
 
-  f3 <- f2 %>% model(cp ~ add(add.sd), append=TRUE)
+  expect_message(
+    f3 <- f2 %>% model(cp ~ add(add.sd), append=TRUE),
+    regexp="add residual parameter `add.sd` and set estimate to 1"
+  )
 
   expect_false(is.null(f3$predDf))
   expect_equal(f3$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd=1))
