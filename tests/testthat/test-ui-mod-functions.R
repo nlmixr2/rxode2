@@ -37,7 +37,10 @@ test_that("binding together", {
 
   m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
 
-  expect_error(print(m1), NA)
+  expect_output(
+    expect_error(print(m1), NA),
+    regexp="Multiple Endpoint Model"
+  )
   expect_true("idr.sd" %in% m1$iniDf$name)
   expect_true("tv" %in% m1$iniDf$name)
 
