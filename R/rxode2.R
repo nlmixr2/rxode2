@@ -287,8 +287,9 @@ rxode2 <- # nolint
            linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
            indLin = FALSE,
            verbose = FALSE) {
-    .modelName <- as.character(substitute(model))
     rxSuppressMsg()
+    .modelName <- try(as.character(substitute(model)), silent=TRUE)
+    if (inherits(.modelName, "try-error")) .modelName <- NULL
     if (!missing(modName)) {
       if (!checkmate::testCharacter(modName, max.len = 1)) {
         stop("'modName' has to be a single length character", call. = FALSE)
