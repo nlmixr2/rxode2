@@ -1179,7 +1179,14 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     .var <- "cl=abc\nv=d\nrxDummyVarNotUsedInModel"
     .lin <- TRUE
   } else {
-    .pre <- allNames(expr[[2]])
+    .expr2 <- expr[[2]]
+    if (length(.expr2) == 2L) {
+      if (identical(.expr2[[1]], quote(`-`)) &&
+            is.name(.expr2[[2]])) {
+        return(TRUE)
+      }
+    }
+    .pre <- allNames(.expr2)
     if (length(.pre) != 1L) return(FALSE)
     .var <- .pre
     .lin <- FALSE

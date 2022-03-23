@@ -77,6 +77,21 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   rxui$fun()
 }
 
+.getModelLineEquivalentLhsExpressionDropEndpoint <- function(expr) {
+  if (length(expr) == 3L) {
+    if (identical(expr[[1]], quote(`~`))) {
+      .expr2 <- expr[[2]]
+      if (length(.expr2) == 2L) {
+        if (identical(.expr2[[1]], quote(`-`)) &&
+              is.name(.expr2[[2]])) {
+          return(.expr2[[2]])
+        }
+      }
+    }
+  }
+  NULL
+}
+
 .getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {
   .expr3 <- NULL
   if (length(expr) == 3L) {
@@ -105,6 +120,7 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
 #' @noRd
 .getModelLineEquivalentLhsExpression <- function(expr) {
   .expr3 <- .getModelLineEquivalentLhsExpressionDropDdt(expr)
+  if (is.null(.expr3)) .expr3 <- .getModelLineEquivalentLhsExpressionDropEndpoint(expr)
   if (length(expr) == 2L) {
     .expr1 <- expr[[1]]
     .expr2 <- expr[[2]]
@@ -290,7 +306,11 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
 rxUiGet.mvFromExpression <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  eval(call("rxModelVars",as.call(c(list(quote(`{`)), .x$lstExpr[-.x$predDf$line]))))
+  if (is.null(.x$predDf)) {
+    eval(call("rxModelVars",as.call(c(list(quote(`{`)), .x$lstExpr))))
+  } else {
+    eval(call("rxModelVars",as.call(c(list(quote(`{`)), .x$lstExpr[-.x$predDf$line]))))
+  }
 }
 attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored (possibly changed) expression"
 
@@ -302,6 +322,9 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 #' @noRd
 .isDropExpression <- function(line) {
   if (!is.null(.getModelLineEquivalentLhsExpressionDropDdt(line))) {
+    return(TRUE)
+  }
+  if (!is.null(.getModelLineEquivalentLhsExpressionDropEndpoint(line))) {
     return(TRUE)
   }
   if (length(line) == 2L) {
@@ -368,7 +391,9 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     } else {
       .isErr <- .isErrorExpression(line)
       .isDrop <- .isDropExpression(line)
-      if (.isDrop) {
+      if (.isDrop && .isErr) {
+        .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, FALSE)
+      } else if (.isDrop) {
         .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
         .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
       } else {
@@ -394,18 +419,23 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
           .lstExpr <- get("lstExpr", rxui)
           .predDf <- get("predDf", rxui)
           .ret0 <- sort(.ret, decreasing=TRUE)
-          for (.i in .ret0) {
-            ## Drop lines that match
-            .w <- which(.predDf$line == .i)
-            if (length(.w) > 0) {
-              .predDf <- .predDf[-.w,, drop = FALSE]
+          if (length(.predDf$cond) == 1L && any(.ret0 %in% .predDf$line)) {
+            .predDf <- NULL
+            .lstExpr <- .lstExpr[-.ret]
+          } else {
+            for (.i in .ret0) {
+              ## Drop lines that match
+              .w <- which(.predDf$line == .i)
+              if (length(.w) > 0) {
+                .predDf <- .predDf[-.w,, drop = FALSE]
+              }
+              # renumber lines greater
+              .w <- which(.predDf$line > .i)
+              if (length(.w) > 0) {
+                .predDf$line[.w] <- .predDf$line[.w] - 1L
+              }
+              .lstExpr <- .lstExpr[-.i]
             }
-            # renumber lines greater
-            .w <- which(.predDf$line > .i)
-            if (length(.w) > 0) {
-              .predDf$line[.w] <- .predDf$line[.w] - 1L
-            }
-            .lstExpr <- .lstExpr[-.i]
           }
           assign("predDf", .predDf, rxui)
           assign("lstExpr", .lstExpr, rxui)
