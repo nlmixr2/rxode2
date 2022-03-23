@@ -878,10 +878,14 @@
     .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
     .ret <- .ret[!is.na(.ret)]
     .ret <- setdiff(.ret, .mv$lhs)
-    if (length(.ret)) {
+    if (length(.ret) > 0L) {
       ui$err <- c(ui$err,
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
                          paste(.ret, collapse=", ")))
+    }
+    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% .mv$lhs)) {
+      ui$err <- c(ui$err,
+                  paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not modeled in the dataset"))
     }
   })
 }

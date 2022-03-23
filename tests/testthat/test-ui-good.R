@@ -159,5 +159,33 @@ test_that("complex models that used to raise errors but should not", {
 })
 
 
+test_that("modeled expressions don't have to be in the model if non-normal", {
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      eta.v ~ 0.01 # log V
+      ## the label("Label name") works with all models
+      lower <- 0.1
+      upper <- 0.9
+      prop.eta ~ 0.01
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- eta.v
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      prop.sd <- exp(tprop + prop.eta)
+      cp2 ~ dunif(lower, upper)
+    })
+  }
+
+  expect_error(ocmt(), NA)
+})
 
 
