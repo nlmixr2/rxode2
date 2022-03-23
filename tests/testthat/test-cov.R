@@ -345,10 +345,22 @@ for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match pr
   )
 
   test_that("All covariates are NA give a warning", {
-    expect_warning(
-      rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
-      "one or more covariates were all 'NA' for subject 'id=2'"
-    )
+    if (meth == "lsoda") {
+      expect_output(
+        suppressWarnings( # meth="lsoda" gives an extra warning
+          expect_warning(
+            rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
+            "one or more covariates were all 'NA' for subject 'id=2'"
+          )
+        ),
+        regexp="too much accuracy"
+      )
+    } else {    
+      expect_warning(
+        rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
+        "one or more covariates were all 'NA' for subject 'id=2'"
+      )
+    }
   })
 }
 
