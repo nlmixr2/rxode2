@@ -2,18 +2,18 @@ test_that("nopred ui", {
 
   pheno2 <- function() {
     ini({
-      tcl <- log(0.008) # typical value of clearance
-      tv <-  log(0.6)   # typical value of volume
+      tcl <- log(0.008)
+      tv <-  log(0.6)
       ## var(eta.cl)
       eta.cl + eta.v ~ c(1,
-                         0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
+                         0.01, 1)
     })
     model({
-      cl <- exp(tcl + eta.cl) # individual value of clearance
-      v <- exp(tv + eta.v)    # individual value of volume
-      ke <- cl / v            # elimination rate constant
-      d/dt(A1) = - ke * A1    # model differential equation
-      cp = A1 / v             # concentration in plasma
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      ke <- cl / v
+      d/dt(A1) = - ke * A1
+      cp = A1 / v
     })
   }
 
