@@ -883,9 +883,9 @@
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
                          paste(.ret, collapse=", ")))
     }
-    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% .mv$lhs)) {
+    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
       ui$err <- c(ui$err,
-                  paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not modeled in the dataset"))
+                  paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not defined in the model"))
     }
   })
 }
