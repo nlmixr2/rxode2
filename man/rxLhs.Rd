@@ -17,8 +17,15 @@ This returns the model calculated variables
 }
 \seealso{
 \code{\link{rxode2}}
+
+Other Query model information: 
+\code{\link{rxDfdy}()},
+\code{\link{rxInits}()},
+\code{\link{rxModelVars}()},
+\code{\link{rxParams}()},
+\code{\link{rxState}()}
 }
 \author{
 Matthew L.Fidler
 }
-\concept{Query model informatione}
+\concept{Query model information}
