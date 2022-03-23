@@ -194,21 +194,29 @@
   .dn <- dimnames(mat)[[1]]
   .iniDf <- rxui$iniDf
   .drop <- FALSE
-  .maxEta <- max(rxui$iniDf$neta1, na.rm=TRUE)
-  .shift <- .maxEta - length(.dn)
+  .common <- rxui$iniDf$name[rxui$iniDf$name %in% .dn]
+  if (all(is.na(rxui$iniDf$neta1))) {
+    .maxEta <- 0
+    .shift <- 0
+  } else {
+    .maxEta <- max(rxui$iniDf$neta1, na.rm=TRUE)
+    .shift <- .maxEta - length(.common)
+  }
   .ini2 <- NULL
   for (.i in seq_along(.dn)) {
     .n <- .dn[.i]
     .w <- which(.iniDf$name == .n)
-    .oNum <- .iniDf$neta1[.w]
-    .w2 <- which(.iniDf$neta1 == .oNum & .iniDf$neta2 != .oNum)
-    .df1 <- .iniDf[.w, ]
-    .df1$neta1 <- .i + .shift
-    .df1$neta2 <- .i + .shift
-    .ini2 <- c(.ini2, list(.df1))
-    if (length(.w2) > 0) {
-      .iniDf <- .iniDf[-.w2, ]
-      .drop <- TRUE
+    if (length(.w) == 1) {
+      .oNum <- .iniDf$neta1[.w]
+      .w2 <- which(.iniDf$neta1 == .oNum & .iniDf$neta2 != .oNum)
+      .df1 <- .iniDf[.w, ]
+      .df1$neta1 <- .i + .shift
+      .df1$neta2 <- .i + .shift
+      .ini2 <- c(.ini2, list(.df1))
+      if (length(.w2) > 0) {
+        .iniDf <- .iniDf[-.w2, ]
+        .drop <- TRUE
+      }
     }
   }
   if (rxode2.verbose.pipe && .drop) {
