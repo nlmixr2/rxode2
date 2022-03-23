@@ -77,6 +77,21 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   rxui$fun()
 }
 
+.getModelLineEquivalentLhsExpressionDropEndpoint <- function(expr) {
+  if (length(expr) == 3L) {
+    if (identical(expr[[1]], quote(`~`))) {
+      .expr2 <- expr[[2]]
+      if (length(.expr2) == 2L) {
+        if (identical(.expr2[[1]], quote(`-`)) &&
+              is.name(.expr2[[2]])) {
+          return(.expr2[[2]])
+        }
+      }
+    }
+  }
+  NULL
+}
+
 .getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {
   .expr3 <- NULL
   if (length(expr) == 3L) {
@@ -105,6 +120,7 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
 #' @noRd
 .getModelLineEquivalentLhsExpression <- function(expr) {
   .expr3 <- .getModelLineEquivalentLhsExpressionDropDdt(expr)
+  if (is.null(.expr3)) .expr3 <- .getModelLineEquivalentLhsExpressionDropEndpoint(expr)
   if (length(expr) == 2L) {
     .expr1 <- expr[[1]]
     .expr2 <- expr[[2]]
@@ -302,6 +318,9 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 #' @noRd
 .isDropExpression <- function(line) {
   if (!is.null(.getModelLineEquivalentLhsExpressionDropDdt(line))) {
+    return(TRUE)
+  }
+  if (!is.null(.getModelLineEquivalentLhsExpressionDropEndpoint(line))) {
     return(TRUE)
   }
   if (length(line) == 2L) {

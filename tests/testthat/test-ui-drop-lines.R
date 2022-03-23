@@ -11,6 +11,7 @@ test_that("drop support functions", {
   expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-dur(matt))), quote(dur(matt)))
   expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-matt(0))), quote(matt(0)))
   expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-d/dt(matt))), quote(d/dt(matt)))
+  expect_equal(.rx$.getModelLineEquivalentLhsExpression(quote(-cp ~ .)), quote(cp))
 
   expect_true(.rx$.isDropExpression(quote(-v)))
   expect_false(.rx$.isDropExpression(quote(-v+3)))
@@ -30,6 +31,8 @@ test_that("drop support functions", {
 
   expect_true(.rx$.isDropExpression(quote(-depot(0))))
   expect_true(.rx$.isDropExpression(quote(-d/dt(depot))))
+
+  expect_true(.rx$.isDropExpression(quote(-cp~.)))
 
 })
 
