@@ -619,7 +619,7 @@
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
           if (rxode2.debug) {
-            lapply(x, .rxMuRef0, env=env)
+            .tmp <- lapply(x, .rxMuRef0, env=env)
           } else {
             .tmp <- try(lapply(x, .rxMuRef0, env=env), silent=TRUE)
           }
