@@ -983,24 +983,42 @@ test_that("update: Test Base model", {
 })
 
 test_that("UI updates work correctly", {
-  # context("update: Multiple component change with c()")
-  testUi(
-    f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), c(tcl = 3, tv = 4)),
-    c("tka", "tcl", "tv", "eta.v", "add.err"),
-    c("eta.ka", "eta.cl"),
-    c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7))
-
-  # context("update: Multiple component change with list()")
-  testUi(
-    f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), list(tcl = 3, tv = 4)),
-    c("tka", "tcl", "tv", "eta.v", "add.err"),
-    c("eta.ka", "eta.cl"),
-    c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
+  # update: Multiple component change with c()
+  expect_message(
+    expect_message(
+      testUi(
+        f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), c(tcl = 3, tv = 4)),
+        c("tka", "tcl", "tv", "eta.v", "add.err"),
+        c("eta.ka", "eta.cl"),
+        c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)),
+      regexp="remove between subject variability `eta.ka`",
+    ),
+    regexp="remove between subject variability `eta.cl`"
   )
 
-  # context("update: Multiple component change with assigned .tmp=list()")
+  # update: Multiple component change with list()
+  expect_message(
+    expect_message(
+      testUi(
+        f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), list(tcl = 3, tv = 4)),
+        c("tka", "tcl", "tv", "eta.v", "add.err"),
+        c("eta.ka", "eta.cl"),
+        c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
+      ),
+      regexp="remove between subject variability `eta.ka`",
+    ),
+    regexp="remove between subject variability `eta.cl`"
+  )
+
+  # update: Multiple component change with assigned .tmp=list()
   .tmp <- list(tcl = 3, tv = 4)
-  .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp)
+  expect_message(
+    expect_message(
+      .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp),
+      regexp="remove between subject variability `eta.ka`",
+    ),
+    regexp="remove between subject variability `eta.cl`"
+  )
   testUi(
     .ui,
     c("tka", "tcl", "tv", "eta.v", "add.err"),
@@ -1008,9 +1026,16 @@ test_that("UI updates work correctly", {
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
 
-  # context("update: Multiple component change with assigned .tmp=c()")
+  # update: Multiple component change with assigned .tmp=c()
   .tmp <- c(tcl = 3, tv = 4)
-  .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp)
+  expect_message(
+    expect_message(
+      .ui <- f %>% update(tka = 4, cl = exp(tcl), ka = exp(tka), .tmp),
+      regexp="remove between subject variability `eta.ka`",
+    ),
+    regexp="remove between subject variability `eta.cl`"
+  )
+
   testUi(
     .ui,
     c("tka", "tcl", "tv", "eta.v", "add.err"),
@@ -1018,11 +1043,17 @@ test_that("UI updates work correctly", {
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
 
-  # context("update: Multiple component change with assigned .tmp={}")
+  # update: Multiple component change with assigned .tmp={}
   .tmp <- quote({
     ka <- exp(tka)
   })
-  .ui <- f %>% update(tka = 4, cl = exp(tcl), .tmp, c(tcl = 3, tv = 4))
+  expect_message(
+    expect_message(
+      .ui <- f %>% update(tka = 4, cl = exp(tcl), .tmp, c(tcl = 3, tv = 4)),
+      regexp="remove between subject variability `eta.ka`",
+    ),
+    regexp="remove between subject variability `eta.cl`"
+  )
   testUi(
     .ui,
     c("tka", "tcl", "tv", "eta.v", "add.err"),
@@ -1030,7 +1061,7 @@ test_that("UI updates work correctly", {
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
   )
 
-  testUi(
+  suppressMessages(testUi(
     f %>% update(
       tka = 4,
       cl = exp(tcl),
@@ -1042,13 +1073,13 @@ test_that("UI updates work correctly", {
     c("tka", "tcl", "tv", "eta.v", "add.err"),
     c("eta.ka", "eta.cl"),
     c(tka = 4, tcl = 3, tv = 4, eta.v = 0.1, add.err = 0.7)
-  )
+  ))
 
-  testUi(
+  suppressMessages(testUi(
     f %>% update(ka = exp(tka)),
     c("tka", "tcl", "tv", "eta.cl", "eta.v", "add.err"),
     "eta.ka", c(tka = 0.45, tcl = 1, tv = 3.45, eta.cl = 0.3, eta.v = 0.1, add.err = 0.7)
-  )
+  ))
 
   ## Now test linCmt() issue #166
   one.cmt <- function() {
@@ -1069,10 +1100,13 @@ test_that("UI updates work correctly", {
     })
   }
 
-  .ui <- one.cmt %>% update({
-    linCmt() ~ add(add.err) + prop(prop.err)
-  })
-
+  .ui <-
+    suppressMessages(
+      one.cmt %>%
+      update({
+        linCmt() ~ add(add.err) + prop(prop.err)
+      })
+    )
   expect_s3_class(.ui, "rxUi")
 })
 
@@ -1171,7 +1205,15 @@ test_that("expected piping errors", {
 
   f <- rxode2::rxode2(f)
 
-  expect_error(f %>% model(ipre ~ add(add.sd)) %>% ini(add.sd=sqrt(0.1)), NA)
+  expect_message(
+    expect_message(
+      expect_error(
+        f %>% model(ipre ~ add(add.sd)) %>% ini(add.sd=sqrt(0.1)), NA
+      ),
+      regexp="remove population parameter `prop.sd`",
+    ),
+    regexp="add residual parameter `add.sd` and set estimate to 1"
+  )
 })
 
 test_that("new ipre", {
@@ -1270,20 +1312,14 @@ test_that("invalid model pipe (more arguments than expected) throws an error", {
   }
 
   expect_error(f %>% model(ipre~prop(f2,f3,c)))
-
-
 })
 
 test_that("Add an eta to a model that does not have an eta will work", {
-
   ocmt <- function() {
     ini({
-      tka <- exp(0.45) # Ka
-      tcl <- exp(1) # Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- exp(3.45); # log V
-      ## the label("Label name") works with all models
+      tka <- exp(0.45)
+      tcl <- exp(1)
+      tv <- exp(3.45)
       add.sd <- 0.7
     })
     model({
@@ -1297,9 +1333,14 @@ test_that("Add an eta to a model that does not have an eta will work", {
     })
   }
 
-  expect_error(ocmt %>%
-                 model(ka <- exp(tka + eta.ka)),
-               NA)
+  expect_message(
+    expect_error(
+      ocmt %>%
+        model(ka <- exp(tka + eta.ka)),
+      NA
+    ),
+    regexp="add between subject variability `eta.ka` and set estimate to 1"
+  )
 
 })
 
@@ -1308,12 +1349,9 @@ test_that("Add covariate to model works", {
 
   ocmt <- function() {
     ini({
-      tka <- exp(0.45) # Ka
-      tcl <- exp(1) # Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- exp(3.45) # log V
-      ## the label("Label name") works with all models
+      tka <- exp(0.45)
+      tcl <- exp(1)
+      tv <- exp(3.45)
       add.sd <- 0.7
     })
     model({
@@ -1327,12 +1365,25 @@ test_that("Add covariate to model works", {
     })
   }
 
-  expect_error(ocmt %>%
-                 model(ka <- exp(tka + covKa * wt + eta.ka)),
-               NA)
+  expect_message(expect_message(expect_message(
+    expect_error(
+      ocmt %>%
+        model(ka <- exp(tka + covKa * wt + eta.ka)),
+      NA
+    ),
+    regexp="add population parameter `covKa` and set estimate to 1"),
+    regexp="add covariate `wt`"),
+    regexp="add between subject variability `eta.ka` and set estimate to 1"
+  )
 
-  tmp <- ocmt %>%
-    model(ka <- exp(tka + covKaWt * wt + eta.ka))
+  expect_message(expect_message(expect_message(
+    tmp <-
+      ocmt %>%
+      model(ka <- exp(tka + covKaWt * wt + eta.ka)),
+    regexp="add population parameter `covKaWt` and set estimate to 1"),
+    regexp="add covariate `wt`"),
+    regexp="add between subject variability `eta.ka` and set estimate to 1"
+  )
 
   expect_equal(tmp$allCovs, "wt")
 
@@ -1340,36 +1391,41 @@ test_that("Add covariate to model works", {
   expect_true("tka" %in% tmp$iniDf$name)
   expect_true("eta.ka" %in% tmp$iniDf$name)
 
-  tmp <- ocmt %>%
-    model(ka <- exp(covKaWt * wt + eta.ka))
+  expect_message(expect_message(expect_message(expect_message(
+    tmp <-
+      ocmt %>%
+      model(ka <- exp(covKaWt * wt + eta.ka)),
+    regexp="remove population parameter `tka`"),
+    regexp="add population parameter `covKaWt` and set estimate to 1"),
+    regexp="add covariate `wt`"),
+    regexp="add between subject variability `eta.ka` and set estimate to 1"
+  )
 
   expect_equal(tmp$allCovs, "wt")
   expect_true("covKaWt" %in% tmp$iniDf$name)
   expect_false("tka" %in% tmp$iniDf$name)
   expect_true("eta.ka" %in% tmp$iniDf$name)
 
-  tmp <- tmp %>%
-    model(ka <- exp(tka + covKaWt * wt + eta.ka))
+  expect_message(
+    tmp_tka <-
+      tmp %>%
+      model(ka <- exp(tka + covKaWt * wt + eta.ka)),
+    regexp="add population parameter `tka` and set estimate to 1"
+  )
 
-  expect_equal(tmp$allCovs, "wt")
-  expect_true("covKaWt" %in% tmp$iniDf$name)
-  expect_true("tka" %in% tmp$iniDf$name)
-  expect_true("eta.ka" %in% tmp$iniDf$name)
-
-
-
+  expect_equal(tmp_tka$allCovs, "wt")
+  expect_true("covKaWt" %in% tmp_tka$iniDf$name)
+  expect_true("tka" %in% tmp_tka$iniDf$name)
+  expect_true("eta.ka" %in% tmp_tka$iniDf$name)
 })
 
 test_that("Appending or pre-pending items to a model works", {
 
   ocmt <- function() {
     ini({
-      tka <- exp(0.45) # Ka
-      tcl <- exp(1) # Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- exp(3.45) # log V
-      ## the label("Label name") works with all models
+      tka <- exp(0.45)
+      tcl <- exp(1)
+      tv <- exp(3.45)
       add.sd <- 0.7
     })
     model({
@@ -1392,7 +1448,6 @@ test_that("Appending or pre-pending items to a model works", {
   f2 <- f %>% model(f2 <- 3 * 2, append=NA)
   expect_true("f2" %in% f2$mv0$lhs)
   expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
-
 })
 
 
@@ -1400,11 +1455,8 @@ test_that("ini promotion works", {
 
   ocmt <- function() {
     ini({
-      tka <- 0.45 # Ka
-      tcl <- 1 # Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      ## the label("Label name") works with all models
+      tka <- 0.45
+      tcl <- 1
       add.sd <- 0.7
     })
     model({
@@ -1425,22 +1477,32 @@ test_that("ini promotion works", {
   expect_equal(f$omega, NULL)
 
   # now promote tv
-  f2 <- f %>% ini(tv=0.5)
+  expect_message(
+    f2 <- f %>% ini(tv=0.5),
+    regexp="promote `tv` to population parameter with initial estimate 0.5"
+  )
 
   expect_equal(f2$allCovs, c("eta.ka", "eta.cl", "eta.v"))
   expect_equal(f2$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
   expect_equal(f2$omega, NULL)
 
   # now promote eta.ka
-  f3 <- f2 %>% ini(eta.ka ~ 0.01)
+  expect_message(
+    f3 <- f2 %>% ini(eta.ka ~ 0.01),
+    regexp="promote `eta.ka` to between subject variability with initial estimate 0.01"
+  )
 
   expect_equal(f3$allCovs, c("eta.cl", "eta.v"))
   expect_equal(f3$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
   expect_equal(f3$omega, matrix(0.01, dimnames=list("eta.ka", "eta.ka")))
 
   # now promote a correlation between eta.cl and eta.v
-  f4 <- f2 %>% ini(eta.cl + eta.v ~ c(1,
-                                      0.01, 1))
+  expect_message(expect_message(
+    f4 <- f2 %>% ini(eta.cl + eta.v ~ c(1,
+                                        0.01, 1)),
+    regexp="promote `eta.cl` to between subject variability with initial estimate 1"),
+    regexp="promote `eta.v` to between subject variability"
+  )
 
   expect_equal(f4$allCovs, "eta.ka")
   expect_equal(f4$theta, c(tka=0.45, tcl=1, add.sd=0.7, tv=0.5))
@@ -1449,8 +1511,12 @@ test_that("ini promotion works", {
                                                   0.01, 1)))
 
   # Now promote independent eta block
-  f5 <- f3 %>% ini(eta.cl + eta.v ~ c(1,
-                                      0.01, 1))
+  expect_message(expect_message(
+    f5 <- f3 %>% ini(eta.cl + eta.v ~ c(1,
+                                        0.01, 1)),
+    regexp="promote `eta.cl` to between subject variability with initial estimate 1"),
+    regexp="promote `eta.v` to between subject variability"
+  )
 
   expect_length(f5$allCovs, 0)
 
@@ -1461,9 +1527,13 @@ test_that("ini promotion works", {
                                                   0.01, 1)))
 
   # Now promote eta block that includes prior eta information
-  f6 <- f3 %>% ini(eta.ka + eta.cl + eta.v ~ c(1,
-                                               0.01, 1,
-                                               -0.01, 0.01, 1))
+  expect_message(expect_message(
+    f6 <- f3 %>% ini(eta.ka + eta.cl + eta.v ~ c(1,
+                                                 0.01, 1,
+                                                 -0.01, 0.01, 1)),
+    regexp="promote `eta.cl` to between subject variability"),
+    regexp="promote `eta.v` to between subject variability"
+  )
 
   expect_length(f6$allCovs, 0)
 
@@ -1475,17 +1545,13 @@ test_that("ini promotion works", {
 
 })
 
-
 test_that("Ignoring auto-selected parameter types work", {
 
   ocmt <- function() {
     ini({
-      tka <- exp(0.45) # Ka
-      tcl <- exp(1) # Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      eta.v ~ 0.01 # log V
-      ## the label("Label name") works with all models
+      tka <- exp(0.45)
+      tcl <- exp(1)
+      eta.v ~ 0.01
       add.sd <- 0.7
     })
     model({
@@ -1505,46 +1571,59 @@ test_that("Ignoring auto-selected parameter types work", {
   expect_equal(f$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
   expect_equal(f$omega, matrix(0.01, dimnames=list("eta.v", "eta.v")))
 
-  f2 <- f %>% model(ka <- tka * exp(eta.ka), auto=FALSE)
+  expect_message(
+    f2 <- f %>% model(ka <- tka * exp(eta.ka), auto=FALSE),
+    regexp="add covariate `eta.ka`"
+  )
 
   expect_equal(f2$allCovs, "eta.ka")
   expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
   expect_equal(f2$omega, matrix(0.01, dimnames=list("eta.v", "eta.v")))
 
-  f2 <- f %>% model(ka <- tka * exp(eta.ka), auto=FALSE) %>%
-    ini(eta.ka ~ 0.02)
+  expect_message(expect_message(
+    f2 <-
+      f %>%
+      model(ka <- tka * exp(eta.ka), auto=FALSE) %>%
+      ini(eta.ka ~ 0.02),
+    regexp="add covariate `eta.ka`"),
+    regexp="promote `eta.ka` to between subject variability with initial estimate 0.02"
+  )
 
   expect_equal(f2$allCovs, character(0))
   expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
   expect_equal(f2$omega, lotri(eta.v ~ 0.01,
                               eta.ka ~ 0.02))
 
-  f2 <- f %>% model(v <- tv + eta.v, auto=FALSE)
+  expect_message(
+    f2 <- f %>% model(v <- tv + eta.v, auto=FALSE),
+    regexp="add covariate `tv`"
+  )
 
   expect_equal(f2$allCovs, "tv")
   expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7))
   expect_equal(f2$omega, lotri(eta.v ~ 0.01))
 
-  f2 <- f %>% model(v <- tv + eta.v, auto=FALSE) %>%
-    ini(tv=0.2)
+  expect_message(expect_message(
+    f2 <-
+      f %>%
+      model(v <- tv + eta.v, auto=FALSE) %>%
+      ini(tv=0.2),
+    regexp="add covariate `tv`"),
+    regexp="promote `tv` to population parameter with initial estimate 0.2"
+  )
 
   expect_equal(f2$allCovs, character(0))
   expect_equal(f2$theta, c(tka=exp(0.45), tcl=exp(1), add.sd=0.7, tv=0.2))
   expect_equal(f2$omega, lotri(eta.v ~ 0.01))
-
 })
-
 
 test_that("Ignoring auto-selected parameter types work", {
 
   ocmt <- function() {
     ini({
-      tka <- exp(0.45) # Ka
-      tcl <- exp(1) # Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      eta.v ~ 0.01 # log V
-      ## the label("Label name") works with all models
+      tka <- exp(0.45)
+      tcl <- exp(1)
+      eta.v ~ 0.01
       add.sd <- 0.7
       tprop <- 0.5
       prop.eta ~ 0.01
