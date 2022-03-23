@@ -191,6 +191,41 @@
 #'
 #' @noRd
 .iniHandleLotriMatrix <- function(mat, rxui) {
+  .dn <- dimnames(mat)[[1]]
+  .iniDf <- rxui$iniDf
+  .drop <- FALSE
+  .maxEta <- max(rxui$iniDf$neta1, na.rm=TRUE)
+  .shift <- .maxEta - length(.dn)
+  .ini2 <- NULL
+  for (.i in seq_along(.dn)) {
+    .n <- .dn[.i]
+    .w <- which(.iniDf$name == .n)
+    .oNum <- .iniDf$neta1[.w]
+    .w2 <- which(.iniDf$neta1 == .oNum & .iniDf$neta2 != .oNum)
+    if (length(.w2) > 0) {
+      .iniDf <- .iniDf[-.w2, ]
+      .drop <- TRUE
+    }
+    .df1 <- .iniDf[.w, ]
+    .df1$neta1 <- .i + .shift
+    .df1$neta2 <- .i + .shift
+    .ini2 <- c(.ini2, list(.df1))
+  }
+  if (rxode2.verbose.pipe && .drop) {
+    .minfo(paste0("some correlations may have been dropped for the variables: {.code ", paste(.dn, collapse="}, {.code "), "}"))
+    .minfo("the piping should specify the needed covariances directly")
+  }
+  .dfTheta <- .iniDf[is.na(.iniDf$neta1), ]
+  .dfEta <- .iniDf[!is.na(.iniDf$neta1), ]
+  .dfEta <- .dfEta[!(.dfEta$name %in% .dn),, drop = FALSE]
+  if (length(.dfEta$neta1) > 0) {
+    .dfEta$neta1 <- factor(paste(.dfEta$neta1))
+    .dfEta$neta2 <- factor(paste(.dfEta$neta2), levels=levels(.dfEta$neta1))
+    .dfEta$neta1 <- as.integer(.dfEta$neta1)
+    .dfEta$neta2 <- as.integer(.dfEta$neta2)
+  }
+  .iniDf <- do.call("rbind", c(list(.dfTheta), list(.dfEta), .ini2))
+  assign("iniDf", .iniDf, envir=rxui)
   .covs <- rxui$allCovs
   .fixMatrix <- attr(mat, "lotriFix")
   .unfixMatrix <- attr(mat, "lotriUnfix")
