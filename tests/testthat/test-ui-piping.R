@@ -1534,3 +1534,5 @@ test_that("Ignoring auto-selected parameter types work", {
   expect_equal(f2$omega, f1$omega)
 
 })
+
+
