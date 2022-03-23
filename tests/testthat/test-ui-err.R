@@ -1559,7 +1559,7 @@ test_that("test different distributions", {
 })
 
 test_that(".isErrorExpression", {
-
+  expect_true(.rx$.isErrorExpression(quote(-cp ~ .)))
   expect_false(.rx$.isErrorExpression(quote(lipre~add(add.err) + 3*x | matt)))
   expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) | matt)))
   expect_true(.rx$.isErrorExpression(quote(lipre~add(add.err) + prop(prop.sd) + boxCox(lambda)| matt)))
