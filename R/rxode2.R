@@ -287,6 +287,7 @@ rxode2 <- # nolint
            linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
            indLin = FALSE,
            verbose = FALSE) {
+    .modelName <- as.character(substitute(model))
     rxSuppressMsg()
     if (!missing(modName)) {
       if (!checkmate::testCharacter(modName, max.len = 1)) {
@@ -344,7 +345,9 @@ rxode2 <- # nolint
         if (length(.args) != 1L) {
           stop("model functions can only be called with one argument", call.=FALSE)
         }
-        return(.rxFunction2ui(model))
+        .tmp <- .rxFunction2ui(model)
+        assign("modelName", .modelName, envir=.tmp)
+        return(.tmp)
       } else if (is(model, "rxode2")) {
         package <- get("package", model)
         if (!is.null(package)) {
