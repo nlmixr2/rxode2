@@ -38,6 +38,8 @@ test_that("ini will strip covariances and renumber if needed", {
   expect_equal(dimnames(f$omega)[[1]],
                c("eta.ka", "eta.v", "eta.cl"))
 
-
+  f2 <- f %>%
+    ini(eta.v + eta.cl ~ c(1,
+                           0.01, 1))
 
 })

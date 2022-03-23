@@ -211,6 +211,10 @@
     .df1$neta2 <- .i + .shift
     .ini2 <- c(.ini2, list(.df1))
   }
+  if (rxode2.verbose.pipe && .drop) {
+    .minfo(paste0("some correlations may have been dropped for the variables: {.code ", paste(.dn, collapse="}, {.code "), "}"))
+    .minfo("the piping should specify the needed covariances directly")
+  }
   .dfTheta <- .iniDf[is.na(.iniDf$neta1), ]
   .dfEta <- .iniDf[!is.na(.iniDf$neta1), ]
   .dfEta <- .dfEta[!(.dfEta$name %in% .dn),, drop = FALSE]
