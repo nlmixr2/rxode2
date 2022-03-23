@@ -202,14 +202,14 @@
     .w <- which(.iniDf$name == .n)
     .oNum <- .iniDf$neta1[.w]
     .w2 <- which(.iniDf$neta1 == .oNum & .iniDf$neta2 != .oNum)
-    if (length(.w2) > 0) {
-      .iniDf <- .iniDf[-.w2, ]
-      .drop <- TRUE
-    }
     .df1 <- .iniDf[.w, ]
     .df1$neta1 <- .i + .shift
     .df1$neta2 <- .i + .shift
     .ini2 <- c(.ini2, list(.df1))
+    if (length(.w2) > 0) {
+      .iniDf <- .iniDf[-.w2, ]
+      .drop <- TRUE
+    }
   }
   if (rxode2.verbose.pipe && .drop) {
     .minfo(paste0("some correlations may have been dropped for the variables: {.code ", paste(.dn, collapse="}, {.code "), "}"))
@@ -234,6 +234,7 @@
   if (!inherits(.mat, "lotriFix"))
     class(.mat) <- c("lotriFix", class(.mat))
   .df <- as.data.frame(.mat)
+  .lastFix <- FALSE
   for (i in seq_along(.df$neta1)) {
     if (!is.na(.df$neta1[i])) {
       .doFix <- FALSE
@@ -252,22 +253,13 @@
         }
         assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .var, .df$est[i], .doFix, .doUnfix, 1L),
                envir=rxui)
+        .lastFix <- rxui$iniDf$fix[rxui$iniDf$name == .var]
       } else {
-        .n1 <- .df$name[i]
-        if (!any(rxui$iniDf$name == .n1)) .n1 <- paste0("(", .n[.df$neta1[i]], ",", .n[.df$neta2[i]], ")")
-        if (any(rxui$iniDf$name == .n1)) {
-          if (.var %in% .covs) {
-            .addVariableToIniDf(.n1, rxui, toEta=TRUE, value=.df$est, promote=TRUE)
-            .covs <- rxui$allCovs
-          }
-          assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .n1, .df$est[i], .doFix, .doUnfix, 1L),
-                 envir=rxui)
-        } else {
-          assign("iniDf", .iniAddCovarianceBetweenTwoEtaValues(rxui$iniDf, .n[.df$neta1[i]], .n[.df$neta2[i]], .df$est[i],
-                                                               .doFix, rxui),
-                 envir=rxui)
-          .covs <- rxui$allCovs
-        }
+        .n1 <- paste0("(", .n[.df$neta1[i]], ",", .n[.df$neta2[i]], ")")
+        assign("iniDf", .iniAddCovarianceBetweenTwoEtaValues(rxui$iniDf, .n[.df$neta1[i]], .n[.df$neta2[i]], .df$est[i],
+                                                             .lastFix, rxui),
+               envir=rxui)
+        .covs <- rxui$allCovs
       }
     }
   }
