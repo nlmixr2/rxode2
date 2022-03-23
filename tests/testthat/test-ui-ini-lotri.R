@@ -31,5 +31,13 @@ test_that("ini will strip covariances and renumber if needed", {
                c("eta.v", "eta.ka", "eta.cl"))
 
 
+  f <- rxode2(one.cmt) %>%
+    ini(eta.v + eta.cl ~ c(1,
+                           0.01, 1))
+
+  expect_equal(dimnames(f$omega)[[1]],
+               c("eta.ka", "eta.v", "eta.cl"))
+
+
 
 })
