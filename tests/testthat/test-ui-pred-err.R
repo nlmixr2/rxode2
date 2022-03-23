@@ -268,7 +268,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn11)))
+  suppressMessages(expect_error(expect_message(rxode2(fn11))))
 
   fn12 <- function() {
     ini({
@@ -292,7 +292,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn12)))
+  suppressMessages(expect_error(expect_message(rxode2(fn12))))
 
   fn13 <- function() {
     ini({
@@ -332,7 +332,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn14)))
+  suppressMessages(expect_error(expect_message(rxode2(fn14))))
 
   fn15 <- function() {
     ini({
@@ -416,7 +416,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn17)))
+  suppressMessages(expect_error(expect_message(rxode2(fn17))))
 
   fn18 <- function() {
     ini({
@@ -457,7 +457,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn19)))
+  suppressMessages(expect_error(expect_message(rxode2(fn19))))
 
   fn20 <- function() {
     ini({
@@ -481,7 +481,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn20)))
+  suppressMessages(expect_error(expect_message(rxode2(fn20))))
 
   fn21 <- function() {
     ini({
@@ -524,7 +524,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(rxode2(fn22))
+  suppressMessages(expect_error(rxode2(fn22)))
 
   fn23 <- function() {
     ini({
@@ -566,7 +566,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn24)))
+  suppressMessages(expect_error(expect_message(rxode2(fn24))))
 
   fn25 <- function() {
     ini({
@@ -608,7 +608,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn26)))
+  suppressMessages(expect_error(expect_message(rxode2(fn26))))
 
   fn27 <- function() {
     ini({
@@ -650,7 +650,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn28)))
+  suppressMessages(expect_error(expect_message(rxode2(fn28))))
 
   fn29 <- function() {
     ini({
@@ -693,7 +693,7 @@ test_that("pred model errors", {
       linCmt() ~ dnorm(par1, par2)
     })
   }
-  expect_error(rxode2(fn30))
+  suppressMessages(expect_error(rxode2(fn30)))
 
   fn31 <- function() {
     ini({
@@ -736,7 +736,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn32)))
+  suppressMessages(expect_error(expect_message(rxode2(fn32))))
 
   fn33 <- function() {
     ini({
@@ -758,9 +758,9 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(expect_message(rxode2(fn33)))
+  suppressMessages(expect_error(expect_message(rxode2(fn33))))
 
-  fn1 <- function() {
+  fn33a <- function() {
     ini({
       KA <- c(0, 1)
       CL <- c(0, 0.5)
@@ -773,7 +773,7 @@ test_that("pred model errors", {
     })
   }
 
-  expect_error(rxode2(fn1))
+  expect_error(rxode2(fn33a))
 
   fn34 <- function() {
     ini({
