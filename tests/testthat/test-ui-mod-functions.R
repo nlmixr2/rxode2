@@ -2,10 +2,9 @@ test_that("binding together", {
 
   ocmt <- function() {
     ini({
-      tka <- exp(0.45) # Ka
-      tcl <- exp(1) # Cl
-      tv <- exp(3.45) # log V
-      ## the label("Label name") works with all models
+      tka <- exp(0.45)
+      tcl <- exp(1)
+      tv <- exp(3.45)
       add.sd <- 0.7
     })
     model({
@@ -53,8 +52,11 @@ test_that("binding together", {
   expect_true("idr.sd" %in% m1$iniDf$name)
   expect_true("tv" %in% m1$iniDf$name)
 
-  m1 <- c(ocmt %>% model(ceff=cp,append=TRUE) %>% model(ka <- tka + eta.ka),
-          idr %>% model(kout <- exp(tkout + eta.kout)))
+  m1 <-
+    suppressMessages(c(
+      ocmt %>% model(ceff=cp,append=TRUE) %>% model(ka <- tka + eta.ka),
+      idr %>% model(kout <- exp(tkout + eta.kout))
+    ))
 
   expect_true("idr.sd" %in% m1$iniDf$name)
   expect_true("tv" %in% m1$iniDf$name)
@@ -78,30 +80,55 @@ test_that("binding together", {
     })
   }
 
-  expect_error(idr %>% model({
-    eff2 <- eff + 3
-    eff2 ~ add(idr.sd2)
-  }, append=TRUE), NA)
+  suppressMessages(expect_error(
+    idr %>%
+      model({
+        eff2 <- eff + 3
+        eff2 ~ add(idr.sd2)
+      },
+      append=TRUE),
+    NA
+  ))
 
-  addModelLine <- idr %>% model({
-    eff2 <- eff + 3
-    eff2 ~ add(idr.sd2)
-  }, append=TRUE)
+  addModelLine <-
+    suppressMessages(
+      idr %>%
+      model(
+        {
+          eff2 <- eff + 3
+          eff2 ~ add(idr.sd2)
+        },
+        append=TRUE
+      )
+    )
 
   expect_true(any(addModelLine$iniDf$name == "idr.sd2"))
   expect_false(any(addModelLine$iniDf$name == "eff"))
   expect_false(any(addModelLine$iniDf$name == "eff2"))
 
-  expect_error(idr %>% model({
-    eff2 <- eff + 3
-    eff2 ~ add(idr.sd2) | matt
-  }, append=TRUE), NA)
+  suppressMessages(expect_error(
+    idr %>%
+      model(
+        {
+          eff2 <- eff + 3
+          eff2 ~ add(idr.sd2) | matt
+        },
+        append=TRUE
+      ),
+      NA
+  ))
 
-  addModelLine <- idr %>% model({
-    eff2 <- eff + 3
-    eff2 ~ add(idr.sd2) | matt
-  }, append=TRUE)
-
+  addModelLine <-
+    suppressMessages(
+      idr %>%
+        model(
+          {
+            eff2 <- eff + 3
+            eff2 ~ add(idr.sd2) | matt
+          },
+          append=TRUE
+        )
+    )
 
   expect_true(any(addModelLine$iniDf$name == "idr.sd2"))
   expect_false(any(addModelLine$iniDf$name == "eff"))
