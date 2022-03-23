@@ -306,7 +306,11 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
 rxUiGet.mvFromExpression <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  eval(call("rxModelVars",as.call(c(list(quote(`{`)), .x$lstExpr[-.x$predDf$line]))))
+  if (is.null(.x$predDf)) {
+    eval(call("rxModelVars",as.call(c(list(quote(`{`)), .x$lstExpr))))
+  } else {
+    eval(call("rxModelVars",as.call(c(list(quote(`{`)), .x$lstExpr[-.x$predDf$line]))))
+  }
 }
 attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored (possibly changed) expression"
 
@@ -387,7 +391,9 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     } else {
       .isErr <- .isErrorExpression(line)
       .isDrop <- .isDropExpression(line)
-      if (.isDrop) {
+      if (.isDrop && .isErr) {
+        .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, FALSE)
+      } else if (.isDrop) {
         .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
         .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
       } else {
@@ -413,18 +419,23 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
           .lstExpr <- get("lstExpr", rxui)
           .predDf <- get("predDf", rxui)
           .ret0 <- sort(.ret, decreasing=TRUE)
-          for (.i in .ret0) {
-            ## Drop lines that match
-            .w <- which(.predDf$line == .i)
-            if (length(.w) > 0) {
-              .predDf <- .predDf[-.w,, drop = FALSE]
+          if (length(.predDf$cond) == 1L && any(.ret0 %in% .predDf$line)) {
+            .predDf <- NULL
+            .lstExpr <- .lstExpr[-.ret]
+          } else {
+            for (.i in .ret0) {
+              ## Drop lines that match
+              .w <- which(.predDf$line == .i)
+              if (length(.w) > 0) {
+                .predDf <- .predDf[-.w,, drop = FALSE]
+              }
+              # renumber lines greater
+              .w <- which(.predDf$line > .i)
+              if (length(.w) > 0) {
+                .predDf$line[.w] <- .predDf$line[.w] - 1L
+              }
+              .lstExpr <- .lstExpr[-.i]
             }
-            # renumber lines greater
-            .w <- which(.predDf$line > .i)
-            if (length(.w) > 0) {
-              .predDf$line[.w] <- .predDf$line[.w] - 1L
-            }
-            .lstExpr <- .lstExpr[-.i]
           }
           assign("predDf", .predDf, rxui)
           assign("lstExpr", .lstExpr, rxui)

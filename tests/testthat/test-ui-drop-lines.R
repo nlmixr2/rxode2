@@ -206,3 +206,40 @@ test_that("drop compartment and compartment-related properties", {
   expect_length(f2$lstExpr, 8L)
 
 })
+
+
+test_that("drop endpoint test", {
+
+  ocmt <- function() {
+    ini({
+      tka <- 0.45 ; label("Log Ka")
+      tcl <- 1 ; label("Log Cl")
+      tv <- 3.45 ; label("Log V")
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.err <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      f(depot) <- 3
+      cp <- center / v
+      cp ~ add(add.err)
+    })
+  }
+
+  f2 <- ocmt %>% model(-cp ~ .)
+
+  expect_true(is.null(f2$predDf))
+  expect_equal(f2$theta, c(tka = 0.45, tcl = 1, tv = 3.45))
+
+  f3 <- f2 %>% model(cp ~ add(add.sd), append=TRUE)
+
+  expect_false(is.null(f3$predDf))
+  expect_equal(f3$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd=1))
+
+})
