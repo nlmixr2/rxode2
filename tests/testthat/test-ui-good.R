@@ -2,9 +2,9 @@ test_that("model properties after are parsed OK", {
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 # Log Ka
-      tcl <- 1 # Log Cl
-      tv <- 3.45    # Log V
+      tka <- 0.45
+      tcl <- 1
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
