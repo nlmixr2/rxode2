@@ -619,7 +619,7 @@
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
           if (rxode2.debug) {
-            lapply(x, .rxMuRef0, env=env)
+            .tmp <- lapply(x, .rxMuRef0, env=env)
           } else {
             .tmp <- try(lapply(x, .rxMuRef0, env=env), silent=TRUE)
           }
@@ -878,10 +878,14 @@
     .ret <- as.character(.predDf[i, c("a", "b", "c", "d", "e", "f", "lambda")])
     .ret <- .ret[!is.na(.ret)]
     .ret <- setdiff(.ret, .mv$lhs)
-    if (length(.ret)) {
+    if (length(.ret) > 0L) {
       ui$err <- c(ui$err,
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
                          paste(.ret, collapse=", ")))
+    }
+    if (.predDf$distribution[i] %in% c("norm", "t") && !(.predDf$var[i] %in% c(.mv$lhs, .mv$state, "rxLinCmt"))) {
+      ui$err <- c(ui$err,
+                  paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' is not defined in the model"))
     }
   })
 }

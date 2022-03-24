@@ -506,3 +506,64 @@ test_that("Parameters cannot be missing or Infinite", {
   expect_error(rxode2(uif), NA)
 
 })
+
+
+test_that("modeled endpoints", {
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      eta.v ~ 0.01 # log V
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+      add.sd2 <- 0.7
+      tprop <- 0.5
+      prop.eta ~ 0.01
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- eta.v
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      prop.sd <- exp(tprop + prop.eta)
+      cp ~ add(add.sd)
+      cp2 ~ add(add.sd2)
+    })
+  }
+
+
+  expect_error(ocmt())
+
+  ocmt <- function() {
+    ini({
+      tka <- exp(0.45) # Ka
+      tcl <- exp(1) # Cl
+      ## This works with interactive models
+      ## You may also label the preceding line with label("label text")
+      eta.v ~ 0.01 # log V
+      ## the label("Label name") works with all models
+      add.sd <- 0.7
+      add.sd2 <- 0.7
+      tprop <- 0.5
+      prop.eta ~ 0.01
+      df <- 3
+    })
+    model({
+      ka <- tka
+      cl <- tcl
+      v <- eta.v
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      prop.sd <- exp(tprop + prop.eta)
+      cp ~ add(add.sd)
+      cp2 ~ add(add.sd2) + dt(df)
+    })
+  }
+
+})

@@ -1409,7 +1409,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .envReset$cacheReset <- FALSE
   .envReset$unload <- FALSE
   # take care of too many DLLs or not provided simulation errors
-  while (.envReset$reset) {
+  if (rxode2.debug) {
+    .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
+                                                  params, events, inits,
+                                                  setupOnlyS = .setupOnly
+                                                  ), lst = TRUE)
+  } else {
+    while (.envReset$reset) {
     .envReset$reset <- FALSE
     tryCatch({
       .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
@@ -1449,6 +1455,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         stop(e)
       }
     })
+  }
+
   }
   .ret <- .envReset$ret
   .ws <- .ret[[2]]

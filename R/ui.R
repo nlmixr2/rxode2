@@ -231,6 +231,8 @@ ini.default <- function(x, ...) {
 #' @export
 model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE), envir=parent.frame()) {
   if (is(substitute(x), "{")) {
+    .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
+    if (inherits(.funName, "try-error")) .funName <- NULL
     .ini <- .lastIni
     .iniQ <- .lastIniQ
     if (is.null(.ini)) {
@@ -252,6 +254,7 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
       stop("the parameter(s) '", paste(.mod$iniDf$name[.w], collapse="', '"), "' cannot be an error and between subject variability",
            call.=FALSE)
     }
+    assign("modelName", .funName, envir=.mod)
     class(.mod) <- "rxUi"
     return(.mod)
   }

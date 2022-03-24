@@ -191,6 +191,49 @@
 #'
 #' @noRd
 .iniHandleLotriMatrix <- function(mat, rxui) {
+  .dn <- dimnames(mat)[[1]]
+  .iniDf <- rxui$iniDf
+  .drop <- FALSE
+  .common <- rxui$iniDf$name[rxui$iniDf$name %in% .dn]
+  if (all(is.na(rxui$iniDf$neta1))) {
+    .maxEta <- 0
+    .shift <- 0
+  } else {
+    .maxEta <- max(rxui$iniDf$neta1, na.rm=TRUE)
+    .shift <- .maxEta - length(.common)
+  }
+  .ini2 <- NULL
+  for (.i in seq_along(.dn)) {
+    .n <- .dn[.i]
+    .w <- which(.iniDf$name == .n)
+    if (length(.w) == 1) {
+      .oNum <- .iniDf$neta1[.w]
+      .w2 <- which(.iniDf$neta1 == .oNum & .iniDf$neta2 != .oNum)
+      .df1 <- .iniDf[.w, ]
+      .df1$neta1 <- .i + .shift
+      .df1$neta2 <- .i + .shift
+      .ini2 <- c(.ini2, list(.df1))
+      if (length(.w2) > 0) {
+        .iniDf <- .iniDf[-.w2, ]
+        .drop <- TRUE
+      }
+    }
+  }
+  if (rxode2.verbose.pipe && .drop) {
+    .minfo(paste0("some correlations may have been dropped for the variables: {.code ", paste(.dn, collapse="}, {.code "), "}"))
+    .minfo("the piping should specify the needed covariances directly")
+  }
+  .dfTheta <- .iniDf[is.na(.iniDf$neta1), ]
+  .dfEta <- .iniDf[!is.na(.iniDf$neta1), ]
+  .dfEta <- .dfEta[!(.dfEta$name %in% .dn),, drop = FALSE]
+  if (length(.dfEta$neta1) > 0) {
+    .dfEta$neta1 <- factor(paste(.dfEta$neta1))
+    .dfEta$neta2 <- factor(paste(.dfEta$neta2), levels=levels(.dfEta$neta1))
+    .dfEta$neta1 <- as.integer(.dfEta$neta1)
+    .dfEta$neta2 <- as.integer(.dfEta$neta2)
+  }
+  .iniDf <- do.call("rbind", c(list(.dfTheta), list(.dfEta), .ini2))
+  assign("iniDf", .iniDf, envir=rxui)
   .covs <- rxui$allCovs
   .fixMatrix <- attr(mat, "lotriFix")
   .unfixMatrix <- attr(mat, "lotriUnfix")
@@ -199,6 +242,7 @@
   if (!inherits(.mat, "lotriFix"))
     class(.mat) <- c("lotriFix", class(.mat))
   .df <- as.data.frame(.mat)
+  .lastFix <- FALSE
   for (i in seq_along(.df$neta1)) {
     if (!is.na(.df$neta1[i])) {
       .doFix <- FALSE
@@ -217,22 +261,13 @@
         }
         assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .var, .df$est[i], .doFix, .doUnfix, 1L),
                envir=rxui)
+        .lastFix <- rxui$iniDf$fix[rxui$iniDf$name == .var]
       } else {
-        .n1 <- .df$name[i]
-        if (!any(rxui$iniDf$name == .n1)) .n1 <- paste0("(", .n[.df$neta1[i]], ",", .n[.df$neta2[i]], ")")
-        if (any(rxui$iniDf$name == .n1)) {
-          if (.var %in% .covs) {
-            .addVariableToIniDf(.n1, rxui, toEta=TRUE, value=.df$est, promote=TRUE)
-            .covs <- rxui$allCovs
-          }
-          assign("iniDf", .iniModifyThetaOrSingleEtaDf(rxui$iniDf, .n1, .df$est[i], .doFix, .doUnfix, 1L),
-                 envir=rxui)
-        } else {
-          assign("iniDf", .iniAddCovarianceBetweenTwoEtaValues(rxui$iniDf, .n[.df$neta1[i]], .n[.df$neta2[i]], .df$est[i],
-                                                               .doFix, rxui),
-                 envir=rxui)
-          .covs <- rxui$allCovs
-        }
+        .n1 <- paste0("(", .n[.df$neta1[i]], ",", .n[.df$neta2[i]], ")")
+        assign("iniDf", .iniAddCovarianceBetweenTwoEtaValues(rxui$iniDf, .n[.df$neta1[i]], .n[.df$neta2[i]], .df$est[i],
+                                                             .lastFix, rxui),
+               envir=rxui)
+        .covs <- rxui$allCovs
       }
     }
   }
