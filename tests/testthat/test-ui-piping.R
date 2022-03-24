@@ -1,8 +1,17 @@
-
 .rx <- loadNamespace("rxode2")
 
 testPipeQuote <- function(..., envir=parent.frame()) {
   .rx$.quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir)
+}
+
+testEst <- function(ui, par, lower, value, upper, fix=FALSE) {
+  .ini <- ui$iniDf
+  .w <- which(.ini$name == par)
+  expect_equal(length(.w), 1)
+  expect_equal(.ini$lower[.w], lower)
+  expect_equal(.ini$est[.w], value)
+  expect_equal(.ini$upper[.w], upper)
+  expect_equal(.ini$fix[.w], fix)
 }
 
 test_that("test of standard quoting of piping arguments", {
@@ -714,16 +723,6 @@ one.compartment <- function() {
 
 f <- rxode2(one.compartment)
 
-testEst <- function(ui, par, lower, value, upper, fix=FALSE) {
-  .ini <- ui$iniDf
-  .w <- which(.ini$name == par)
-  expect_equal(length(.w), 1)
-  expect_equal(.ini$lower[.w], lower)
-  expect_equal(.ini$est[.w], value)
-  expect_equal(.ini$upper[.w], upper)
-  expect_equal(.ini$fix[.w], fix)
-}
-
 test_that("simple ini piping, uncorrelated model", {
 
   testEst(f, "tka", -Inf, 0.45, Inf, FALSE)
@@ -816,48 +815,78 @@ test_that("simple ini piping, correlated model", {
 
   testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, FALSE)
 
-  testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
-  testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
-  testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
-
-  testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE)
-  testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE)
-  testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE)
-
-  expect_warning(
-    expect_warning(
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
-      regexp="trying to fix '(eta.cl,eta.v)', but already fixed", fixed=TRUE
-    ),
-    regexp="trying to fix 'eta.v', but already fixed", fixed=TRUE
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
-  expect_warning(
-    expect_warning(
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
-      regexp="trying to fix '(eta.cl,eta.v)', but already fixed", fixed=TRUE
-    ),
-    regexp="trying to fix 'eta.v', but already fixed", fixed=TRUE
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
-  expect_warning(
-    expect_warning(
-      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
-      regexp="trying to fix '(eta.cl,eta.v)', but already fixed", fixed=TRUE
-    ),
-    regexp="trying to fix 'eta.v', but already fixed", fixed=TRUE
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
 
-  expect_warning(expect_warning(
-    testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
-    regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
-  expect_warning(expect_warning(
-    testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
-    regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
-  expect_warning(expect_warning(
-    testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
-    regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
-    )
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+
+  expect_message(expect_message(
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
+      regexp="unfix.*eta.cl"),
+      regexp="unfix.*eta.v"),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
+      regexp="unfix.*eta.cl"),
+      regexp="unfix.*eta.v"),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
+      regexp="unfix.*eta.cl"),
+      regexp="unfix.*eta.v"),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
 
 })
 
@@ -881,6 +910,7 @@ one.compartment <- function() {
     cp ~ add(add.err)
   })
 }
+print("FINDME 3")
 
 f <- rxode2(one.compartment)
 
@@ -906,47 +936,77 @@ test_that("simple ini piping, fixed correlated model", {
   # should warn? Modify fixed value
   testEst(f %>% ini(eta.v ~ 0.2), "eta.v", -Inf, 0.2, Inf, TRUE)
 
-  testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
-  testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
-  testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, TRUE)
-
-  testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE)
-  testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE)
-  testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, TRUE)
-
-  expect_warning(expect_warning(
-    testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
-    regexp="fix.*eta.cl"), regexp="fix.*eta.v"
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
-  expect_warning(expect_warning(
-    testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
-    regexp="fix.*eta.cl"), regexp="fix.*eta.v"
-    )
-  expect_warning(expect_warning(
-    testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
-    regexp="fix.*eta.cl"), regexp="fix.*eta.v"
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~c(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
 
-  expect_warning(
-    expect_warning(
-      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
-      regexp="trying to unfix '(eta.cl,eta.v)', but already unfixed", fixed=TRUE
-    ),
-    regexp="trying to unfix 'eta.v', but already unfixed", fixed=TRUE
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.cl", -Inf, 0.3, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
-  expect_warning(
-    expect_warning(
-      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
-      regexp="trying to unfix '(eta.cl,eta.v)', but already unfixed", fixed=TRUE
-    ),
-    regexp="trying to unfix 'eta.v', but already unfixed", fixed=TRUE
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "eta.v", -Inf, 0.1, Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
-  expect_warning(
-    expect_warning(
-      testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
-      regexp="trying to unfix '(eta.cl,eta.v)', but already unfixed", fixed=TRUE
-    ),
-    regexp="trying to unfix 'eta.v', but already unfixed", fixed=TRUE
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~cor(0.3, 0.02, 0.1)), "(eta.cl,eta.v)", -Inf, 0.02*(sqrt(0.3)*sqrt(0.1)), Inf, TRUE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+
+  expect_message(expect_message(
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, TRUE),
+      regexp="fix.*eta.cl"),
+      regexp="fix.*eta.v"),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE),
+      regexp="fix.*eta.cl"),
+      regexp="fix.*eta.v"),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    expect_warning(expect_warning(
+      testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE),
+      regexp="fix.*eta.cl"),
+      regexp="fix.*eta.v"),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
+  expect_message(expect_message(
+    testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
+    regexp="some correlations may have been dropped for the variables: `eta.cl`, `eta.v`"),
+    regexp="the piping should specify the needed covariances directly"
   )
 })
 
@@ -1475,7 +1535,6 @@ test_that("Appending or pre-pending items to a model works", {
   expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
 })
 
-
 test_that("ini promotion works", {
 
   ocmt <- function() {
@@ -1674,5 +1733,3 @@ test_that("Ignoring auto-selected parameter types work", {
   expect_equal(f2$omega, f1$omega)
 
 })
-
-
