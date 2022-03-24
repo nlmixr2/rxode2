@@ -283,7 +283,8 @@
 #' @param envir Environment for parsing
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
-#' @noRd
+#' @keywords internal
+#' @export
 .iniHandleFixOrUnfix <- function(expr, rxui, envir=parent.frame()) {
   if (is.call(expr) && length(expr) == 2 && is.name(expr[[2]])) {
     if (identical(expr[[1]], quote(`fix`)) ||
