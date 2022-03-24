@@ -1,12 +1,8 @@
 one.cmt <- function() {
   ini({
-    ## You may label each parameter with a comment
-    tka <- 0.45 # Log Ka
-    tcl <- log(c(0, 2.7, 100)) # Log Cl
-    ## This works with interactive models
-    ## You may also label the preceding line with label("label text")
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
     tv <- 3.45; label("log V")
-    ## the label("Label name") works with all models
     eta.ka ~ 0.6
     eta.cl ~ 0.3
     eta.v ~ 0.1
@@ -24,13 +20,10 @@ f <- one.cmt()
 
 cov <- function() {
   ini({
-    ## You may label each parameter with a comment
-    tka <- 0.45 # Log Ka
-    tcl <- log(c(0, 2.7, 100)) # Log Cl
-    ## This works with interactive models
-    ## You may also label the preceding line with label("label text")
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
     tv <- 3.45; label("log V")
-    tvp <- 3.45; label("log V")
+    tvp <- 3.45; label("log Vp")
     cl.wt <- 0.1
     v.wt <- 0.1
     cl.sex <- 0.1
@@ -40,7 +33,6 @@ cov <- function() {
     vp.wt <- 1
     vp.sex <- 1
     vp.age <- 1
-    ## the label("Label name") works with all models
     eta.ka ~ 0.6
     eta.cl ~ 0.3
     eta.v ~ 0.1
