@@ -20,7 +20,14 @@ test_that("single or multiple endpoint model", {
   f <- rxode2(f)
 
   expect_equal("ipre", f$predDf$var)
-  expect_warning(.tmp <- f %>% model(lipre ~ add(log.add.sd)))
+  expect_message(expect_message(
+    expect_warning(
+      .tmp <- f %>% model(lipre ~ add(log.add.sd)),
+      regexp="with single endpoint model prediction 'ipre' is changed to 'lipre'"
+    ),
+    regexp="remove population parameter `prop.sd`"),
+    regexp="add residual parameter `log.add.sd` and set estimate to 1"
+  )
   expect_equal("lipre", .tmp$predDf$var)
 
   expect_error(f %>% model(PD ~ add(log.add.sd)))
@@ -44,7 +51,13 @@ test_that("single or multiple endpoint model", {
   fo <- rxode2(fo)
 
   expect_equal("ipre", fo$predDf$var)
-  expect_warning(.tmp <- fo %>% model(lipre ~ add(log.add.sd)))
+  expect_message(expect_message(
+    expect_warning(
+      .tmp <- fo %>% model(lipre ~ add(log.add.sd)),
+      regexp="with single endpoint model prediction 'ipre' is changed to 'lipre'"),
+    regexp="remove population parameter `prop.sd`"),
+    regexp="add residual parameter `log.add.sd` and set estimate to 1"
+  )
   expect_equal("lipre", .tmp$predDf$var)
 
   expect_error(fo %>% model(PD ~ add(log.add.sd)))
@@ -106,5 +119,9 @@ test_that("single or multiple endpoint model", {
   multiple <- rxode2(pk.turnover.emax2)
 
   expect_error(multiple %>% model(PD ~ add(add.sd)))
-  expect_error(multiple %>% model(effect ~ add(add.sd)), NA)
+  expect_message(expect_message(
+    multiple %>% model(effect ~ add(add.sd)),
+    regexp="remove population parameter `pdadd.err`"),
+    regexp="add residual parameter `add.sd` and set estimate to 1"
+  )
 })
