@@ -40,6 +40,8 @@
 #'
 #' - `assertRxUiMuRefOnly` -- This make sure that all the parameters are mu-referenced
 #'
+#' - `assertRxUiRandomOnIdOnly` -- This makes sure there is only random effects at the ID level
+#'
 #' @return the rxUi model
 #'
 #' @inheritParams checkmate::assertIntegerish
@@ -188,6 +190,19 @@ assertRxUiMixedOnly <- function(model, extra="", .var.name=.vname(model)) {
   .iniDf <- model$iniDf
   if (all(is.na(.iniDf$neta1))) {
     stop("'", .var.name, "' needs to be a mixed effect model", extra, call.=FALSE)
+  }
+  invisible(model)
+}
+
+#' @export
+#' @rdname assertRxUi
+assertRxUiRandomOnIdOnly <- function(model, extra="", .var.name=.vname(model)) {
+  force(.var.name)
+  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
+  .iniDf <- model$iniDf
+  .eta <- .iniDf[!is.na(.iniDf$neta1), "condition"]
+  if (!all(.eta == "id")) {
+    stop("'", .var.name, "' can only have random effects on ID", extra, call.=FALSE)
   }
   invisible(model)
 }
