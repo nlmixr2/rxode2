@@ -10,6 +10,7 @@
 \alias{assertRxUiEstimatedResiduals}
 \alias{assertRxUiPopulationOnly}
 \alias{assertRxUiMixedOnly}
+\alias{assertRxUiRandomOnIdOnly}
 \title{Assert properties of the rxUi models}
 \usage{
 assertRxUi(model, extra = "", .var.name = .vname(model))
@@ -29,6 +30,8 @@ assertRxUiEstimatedResiduals(model, extra = "", .var.name = .vname(model))
 assertRxUiPopulationOnly(model, extra = "", .var.name = .vname(model))
 
 assertRxUiMixedOnly(model, extra = "", .var.name = .vname(model))
+
+assertRxUiRandomOnIdOnly(model, extra = "", .var.name = .vname(model))
 }
 \arguments{
 \item{model}{Model to check}
@@ -63,6 +66,7 @@ population only model (no mixed effects)
 effect model (not a population effect)
 \item \code{assertRxUiPrediction} -- This makes sure the model has predictions
 \item \code{assertRxUiMuRefOnly} -- This make sure that all the parameters are mu-referenced
+\item \code{assertRxUiRandomOnIdOnly} -- This makes sure there is only random effects at the ID level
 }
 }
 \examples{
