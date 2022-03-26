@@ -288,18 +288,15 @@ print.rxUi <-function(x, ...) {
 
   # Multiple Endpoint
   .me <- x$multipleEndpoint
-  .hasHux <- requireNamespace("huxtable", quietly = TRUE)
   if (!is.null(.me)) {
     .met <- crayon::bold("Multiple Endpoint Model")
     .med <- crayon::bold$blue("$multipleEndpoint")
     cat(cli::cli_format_method({
       cli::cli_h2("{.met} ({.med}):")
     }), "\n")
-    if (.hasHux) {
-      .me %>%
-        huxtable::print_screen(colnames = FALSE)
-    } else {
-      print(.me)
+    print(.me)
+    if (getOption("rxode2.combine.dvid", TRUE)) {
+      cat("  * If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc\n")
     }
     cat("\n")
   }
@@ -312,12 +309,7 @@ print.rxUi <-function(x, ...) {
     cat(cli::cli_format_method({
       cli::cli_h2("{.muU} ({.muR}):")
     }), "\n")
-    if (.hasHux) {
-      .mu %>%
-        huxtable::print_screen(colnames = FALSE)
-    } else {
-      print(.mu)
-    }
+    print(.mu)
     cat("\n")
   }
   cat(cli::cli_format_method({
