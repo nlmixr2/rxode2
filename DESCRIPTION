@@ -70,8 +70,7 @@ Suggests:
     units (>= 0.6-0),
     rsconnect,
     devtools,
-    patchwork,
-    huxtable
+    patchwork
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),

@@ -111,16 +111,9 @@ rxUiGet.muRefTable <- function(x, ...) {
       return("")
     }, character(1), USE.NAMES=FALSE)
   }
-  if (requireNamespace("huxtable", quietly = TRUE)) {
-    .muRef <- huxtable::hux(.muRef) %>%
-      ## huxtable::add_colnames() %>%
-      huxtable::set_bold(row = 1, col = huxtable::everywhere, value = TRUE) %>%
-      huxtable::set_position("center") %>%
-      huxtable::set_all_borders(TRUE)
-  }
   .muRef
 }
-attr(rxUiGet.muRefTable, "desc") <- "table/huxtable of mu-referenced items in a model"
+attr(rxUiGet.muRefTable, "desc") <- "table of mu-referenced items in a model"
 
 #' @rdname rxUiGet
 #' @export
@@ -145,22 +138,9 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
   if (!getOption("rxode2.combine.dvid", TRUE)) {
     .info <- .info[, names(.info) != "dvid*"]
   }
-  if (requireNamespace("huxtable", quietly = TRUE)) {
-    .hux <- huxtable::hux(.info) %>%
-      huxtable::add_colnames() %>%
-      huxtable::set_bold(row = 1, col = huxtable::everywhere, value = TRUE) %>%
-      huxtable::set_position("center") %>%
-      huxtable::set_all_borders(TRUE)
-    if (getOption("rxode2.combine.dvid", TRUE)) {
-      .hux <- .hux %>%
-        huxtable::add_footnote("* If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc")
-    }
-  } else {
-    .hux <- .info
-  }
-  .hux
+  .info
 }
-attr(rxUiGet.multipleEndpoint, "desc") <- "table/huxtable of multiple endpoint translations"
+attr(rxUiGet.multipleEndpoint, "desc") <- "table of multiple endpoint translations"
 
 #' @rdname rxUiGet
 #' @export
