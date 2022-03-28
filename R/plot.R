@@ -197,7 +197,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   .y <- as.character(substitute(y))
   .call0 <- match.call()[-(1:2)]
   .call <- as.list(.call0)
-  .w <- names(.call) %in% c("x", "y", "log")
+  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
   if (length(.w) > 0) {
     .call <- .call[-.w]
   }
