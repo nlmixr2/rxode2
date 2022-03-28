@@ -1211,6 +1211,21 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .setupOnly <- .lst$.setupOnly
   }
   .ctl <- rxControl(..., events = events, params = params)
+  if (.ctl$addCov && length(.ctl$keep) > 0) {
+    .mv <- rxModelVars(object)
+    .both <- intersect(.mv$params, .ctl$keep)
+    if (length(.both) > 0) {
+      .keep <- .ctl$keep[!(.ctl$keep %in% .both)]
+       if (length(.keep) == 0L) {
+          .keep <- NULL
+       }
+      .w <- which(names(.ctl) == "keep")
+      .ctl[[.w]] <- .keep
+      .ctl <- do.call(rxControl,
+                      c(.ctl, list(events = events, params = params)))
+
+    }
+  }
   .n1 <- setdiff(intersect(tolower(names(params)), tolower(names(.ctl$iCov))), "id")
   .n2 <- c(.n1, setdiff(intersect(tolower(names(events)), tolower(names(.ctl$iCov))), "id"))
   .n1 <- unique(c(.n1, .n2))
