@@ -35,9 +35,7 @@ rxSetSeed(10)
 ## Now use iCov to simulate a 4-id sample
 r1 <- solve(mod3, ev,
             # Create individual covariate data-frame
-            iCov=data.frame(id=1:4, WT=rnorm(4, 70, 10)),
-            # in this case it would be useful to keep the WT in the output dataset
-            keep="WT")
+            iCov=data.frame(id=1:4, WT=rnorm(4, 70, 10)))
 print(r1)
 
 plot(r1, C2, log="y")
@@ -101,7 +99,7 @@ Now there is a covariate present in the event dataset, the system can
 be solved by combining the dataset and the model:
 
 ```{r}
-r1 <- solve(mod3, ev, covs_interpolation="linear")
+r1 <- solve(mod3, ev, covsInterpolation="linear")
 print(r1)
 ```
 
@@ -115,7 +113,7 @@ plot(r1,C2, ylab="Central Concentration")
 ```
 
 ```{r time-varying-linear-effect}
-plot(r1,eff) + ylab("Effect") + xlab("Time");
+plot(r1,eff) + ylab("Effect") + xlab("Time")
 ```
 
 Note that the linear approximation in this case leads to some kinks in
@@ -130,7 +128,7 @@ equivalent to R's `approxfun` with `method="constant"`.
 
 
 ```{r}
-r1 <- solve(mod3, ev,covs_interpolation="constant")
+r1 <- solve(mod3, ev,covsInterpolation="locf")
 print(r1)
 ```
 
@@ -150,7 +148,7 @@ You can also use NONMEM's preferred interpolation style of next
 observation carried backward (NOCB):
 
 ```{r}
-r1 <- solve(mod3, ev,covs_interpolation="nocb")
+r1 <- solve(mod3, ev,covsInterpolation="nocb")
 print(r1)
 ```
 

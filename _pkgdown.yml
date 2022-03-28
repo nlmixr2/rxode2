@@ -29,6 +29,15 @@ reference:
   contents:
   - rxSolve
   - rxCbindStudyIndividual
+- title: Functions for working with nlmixr2/rxode2 functions
+  contents:
+  - model
+  - ini
+  - assertRxUi
+  - .copyUi
+  - .handleSingleErrTypeNormOrTFoceiBase
+  - .modelHandleModelLines
+  - .quoteCallInfoLines
 - title: Exploring rxode2 and creating models with Shiny
   contents:
   - rxShiny
@@ -82,6 +91,7 @@ reference:
     - probit
     - rxRmvn
     - rxSetSeed
+    - erf
 - title: Parallel processing support commands
   contents:
   -  getRxThreads
@@ -105,6 +115,7 @@ reference:
   - uppergamma
 - title: Internal Functions
   contents:
+  - .rxLinCmtGen
   - .rxGenFoce
   - .rxWithOptions
   - .rxWithWd

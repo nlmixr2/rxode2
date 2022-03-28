@@ -96,7 +96,7 @@
 }
 
 
-#'  Returns quoted call information
+#' Returns quoted call information
 #'
 #' @param callInfo Call information
 #'

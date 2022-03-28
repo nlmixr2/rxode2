@@ -984,6 +984,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @param env Environment to check for error exceptions
 #' @return Nothing called for side effects
 #' @author Matthew L. Fidler
+#' @noRd
 .checkForMissingOrDupliacteInitials <- function(env) {
   .predDf <- env$predDf
   .iniDf <- env$iniDf

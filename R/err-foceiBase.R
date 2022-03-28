@@ -236,6 +236,7 @@
 #' @param pred1 The `data.frame` of the current error
 #' @return additive + power
 #' @author Matthew Fidler
+#' @noRd
 .rxGetVarianceForErrorAddPow <- function(env, pred1) {
   if (!is.na(pred1$a)) {
     .p1 <- str2lang(pred1$a)
