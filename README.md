@@ -352,7 +352,6 @@ values in the plot below:
 
 ```r
 library(ggplot2)
-#> Learn more about the underlying theory at https://ggplot2-book.org/
 plot(x,C2) + ylab("Central Concentration")
 ```
 
