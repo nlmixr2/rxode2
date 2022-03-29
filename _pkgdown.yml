@@ -2,9 +2,6 @@ url: https://nlmixr2.github.io/rxode2
 template:
   params:
     bootswatch: flatly
-    docsearch:
-      api_key: 038b4d83946a52a95a9f8bdafe822dbe
-      index_name: rxode2
 reference:
 - title: Creating/Deleting/Loading rxode2 compiled objects
   contents:
@@ -34,10 +31,14 @@ reference:
   - model
   - ini
   - assertRxUi
-  - .copyUi
-  - .handleSingleErrTypeNormOrTFoceiBase
-  - .modelHandleModelLines
-  - .quoteCallInfoLines
+  - rxAppendModel
+  - rxRename
+  - update.rxUi
+- title: ggplot2/plot support functions
+  contents:
+  - stat_cens
+  - stat_amt
+  - plot.rxSolve
 - title: Exploring rxode2 and creating models with Shiny
   contents:
   - rxShiny
@@ -63,8 +64,12 @@ reference:
   - rxgamma
   - rxgeom
   - rxunif
+  - rxord
   - rxweibull
   - rxSimThetaOmega
+  - rxGetSeed
+  - rxWithSeed
+  - rxSetSeed
 - title: Optimizing models and/or adding precision
   contents:
   - rxOptExpr
@@ -90,15 +95,10 @@ reference:
     - phi
     - probit
     - rxRmvn
-    - rxSetSeed
     - erf
 - title: Parallel processing support commands
   contents:
   -  getRxThreads
-- title: ggplot2 support functions
-  contents:
-  - stat_cens
-  - stat_amt
 - title: rxode2 utility functions
   contents:
   - rxDerived
@@ -115,8 +115,11 @@ reference:
   - uppergamma
 - title: Internal Functions
   contents:
+  - .copyUi
+  - .handleSingleErrTypeNormOrTFoceiBase
+  - .modelHandleModelLines
+  - .quoteCallInfoLines
   - .rxLinCmtGen
-  - .rxGenFoce
   - .rxWithOptions
   - .rxWithWd
   - .setWarnIdSort
@@ -149,6 +152,14 @@ reference:
   - rxTrans
   - rxWinSetup
   - summary.rxode2
+  - rxAssignControlValue
+  - rxControlUpdateSens
+  - rxGetControl
+  - rxIndLin_
+  - rxPreferredDistributionName
+  - rxRemoveControl
+  - rxSetControl
+  - rxUiGet
 navbar:
   left:
   - text: Articles
@@ -157,7 +168,6 @@ navbar:
         - text: "--------------------------"
         - text: "Getting started"
         - text: "Introduction"
-          href: articles/rxode2-intro.html
         - text: "rxode2 mini language syntax"
           href: articles/rxode2-syntax.html
         - text: "rxode2 with piping ie %>%"
