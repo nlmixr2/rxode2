@@ -4,13 +4,11 @@ test_that("rxStack preserves factors", {
 
   pheno2 <- function() {
     ini({
-      tcl <- log(0.008) # typical value of clearance
-      tv <-  log(0.6)   # typical value of volume
-      ## var(eta.cl)
+      tcl <- log(0.008)
+      tv <-  log(0.6)
       eta.cl + eta.v ~ c(1,
-                         0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
-      # interindividual variability on clearance and volume
-      add.err <- 0.1    # residual variability
+                         0.01, 1)
+      add.err <- 0.1
     })
     model({
       cl <- exp(tcl + eta.cl) # individual value of clearance

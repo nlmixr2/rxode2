@@ -45,7 +45,16 @@ Initial values of the rxDll object
 \description{
 Returns the initial values of the rxDll object
 }
+\seealso{
+Other Query model information: 
+\code{\link{rxDfdy}()},
+\code{\link{rxLhs}()},
+\code{\link{rxModelVars}()},
+\code{\link{rxParams}()},
+\code{\link{rxState}()}
+}
 \author{
 Matthew L.Fidler
 }
+\concept{Query model information}
 \keyword{internal}

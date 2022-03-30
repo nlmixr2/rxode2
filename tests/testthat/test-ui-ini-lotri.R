@@ -2,13 +2,9 @@ test_that("ini will strip covariances and renumber if needed", {
 
   one.cmt <- function() {
     ini({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
       tv <- 3.45; label("log V")
-      ## the label("Label name") works with all models
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -38,8 +34,12 @@ test_that("ini will strip covariances and renumber if needed", {
   expect_equal(dimnames(f$omega)[[1]],
                c("eta.ka", "eta.v", "eta.cl"))
 
-  f2 <- f %>%
-    ini(eta.v + eta.cl ~ c(1,
-                           0.01, 1))
-
+  expect_message(expect_message(
+    f2 <-
+      f %>%
+      ini(eta.v + eta.cl ~ c(1,
+                             0.01, 1)),
+    regexp="some correlations may have been dropped for the variables: `eta.v`, `eta.cl`"),
+    regexp="the piping should specify the needed covariances directly"
+  )
 })

@@ -19,7 +19,10 @@ test_that("comments are parsed correctly", {
           "        v <- exp(tv + eta.v)", "        linCmt() ~ add(add.sd)",
           "    })", "}")
   
-  expect_equal(.rx$.rxReplaceCommentWithLabel(cmt), eq)
+  expect_message(
+    expect_equal(.rx$.rxReplaceCommentWithLabel(cmt), eq),
+    regexp="parameter labels from comments will be replaced by 'label()'", fixed=TRUE
+  )
   
   one.cmt <- function() {
     ini({
@@ -43,7 +46,10 @@ test_that("comments are parsed correctly", {
     })
   }
   
-  str <- .rx$.rxFunction2string(one.cmt)
+  expect_message(
+    str <- .rx$.rxFunction2string(one.cmt),
+    regexp="parameter labels from comments will be replaced by 'label()'", fixed=TRUE
+  )
   
   if (!is.null(attr(one.cmt, "srcref"))) {
     expect_equal(str, eq)
@@ -72,7 +78,10 @@ test_that("comments are parsed correctly", {
     })
   }
   
-  mkstr <- .rx$.rxFunction2string(one.cmt)
+  expect_message(
+    mkstr <- .rx$.rxFunction2string(one.cmt),
+    regexp="parameter labels from comments will be replaced by 'label()'", fixed=TRUE
+  )
   
   expect_equal(mkstr,
                c("function () ", "{", "    ini({", "        tka <- 0.45", "        label(\"Log Ka\")",
