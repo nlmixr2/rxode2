@@ -1141,10 +1141,13 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
     on.exit({rm(list="control", envir=.env)})
   }
   .rxControl <- object$rxControlWithVar
+  .lst[[2]] <- .rxControl
   .lst <- do.call("c", .lst)
-  do.call("rxSolve", c(list(object=.rx, params = params, events = events, inits = inits),
-                       .rxControl,
-                       list(theta = theta, eta = eta)))
+  if (is.null(.lst$events)) {
+    .lst$events <- object$origData
+    .minfo("using original fit data for simulation")
+  }
+  do.call("rxSolve", .lst)
 }
 
 #' @rdname rxSolve
