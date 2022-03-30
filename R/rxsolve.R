@@ -1077,10 +1077,9 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                        list(...),
                        list(theta = theta, eta = eta)))
 }
-#' @rdname rxSolve
-#' @export
-rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                         theta = NULL, eta = NULL) {
+
+.rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                           theta = NULL, eta = NULL) {
   .rxControl <- rxSolve(NULL, params = params, events = events, inits = inits, ...,
                         theta = theta, eta = eta)
   if (rxIs(params, "rx.event")) {
@@ -1109,10 +1108,48 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     .rxControl$sigma <- object$simulationSigma
   }
   .rx <- object$simulationModel
+  list(list(object=.rx, params = params, events = events, inits = inits),
+                       .rxControl,
+                       list(theta = theta, eta = eta))
+}
+
+#' @rdname rxSolve
+#' @export
+rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                         theta = NULL, eta = NULL) {
+  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
+  .lst <- do.call("c", .lst)
+  do.call("rxSolve", .lst)
+}
+
+
+#nlmixr2.nlmixr2FitData <- nlmixr2.nlmixr2FitCore
+#' @rdname rxSolve
+#' @export
+rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
+                                   theta = NULL, eta = NULL) {
+  .lst <- .rxSolveFromUi(object$ui, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
+  .rxControl <- .lst[[2]]
+  .env <- object$env
+  # assign current control to object for expanded thetaMat
+  if (exists("control", envir=.env)) {
+    .oldControl <- get("control", envir=.env)
+    assign("control", .rxControl, envir=.env)
+    on.exit({assign("control", .oldControl, envir=.env)})
+  } else {
+    assign("control", .rxControl, envir=.env)
+    on.exit({rm(list="control", envir=.env)})
+  }
+  .rxControl <- object$rxControlWithVar
+  .lst <- do.call("c", .lst)
   do.call("rxSolve", c(list(object=.rx, params = params, events = events, inits = inits),
                        .rxControl,
                        list(theta = theta, eta = eta)))
 }
+
+#' @rdname rxSolve
+#' @export
+rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
 #' @rdname rxSolve
 #' @export
