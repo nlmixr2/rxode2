@@ -878,6 +878,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (IntegerVector::is_na(lastId)) {
       lastId = cid;
     } else if (lastId != cid) {
+			lastId = cid;
     } else if (lastTime > ctime) {
       if (inEvid[i] != 3 && inEvid[i] != 4) {
         isSorted = false; // The prior EVID=3 w/reset a reset time
@@ -1474,7 +1475,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
   }
-  if (hasReset && isSorted){
+  if (hasReset && isSorted) {
     // Here EVID=3 resets time
     // need to reset times here based on maxShift
     if (maxShift > 0) {

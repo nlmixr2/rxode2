@@ -39,6 +39,16 @@ test_that("evid=3 reset time", {
 
   expect_equal(tmp$TIME, et$time)
 
+  et2 <- rbind(data.frame(id=1, et[, names(et) != "id"]),
+               data.frame(id=2, et[, names(et) != "id"]))
+
+  tmp <- etTrans(et2, mod1)
+
+  expect_true(!identical(tmp$TIME, et2$time))
+
+  tmp <- as.data.frame(tmp)
+
+  expect_equal(tmp$TIME, et2$time)
 
   t <- tempfile("test-evid3", fileext = ".csv")
 
