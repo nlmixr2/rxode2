@@ -126,6 +126,9 @@ ODE system, and can be used to pipe parameters into an rxode2 solve
 }
 \seealso{
 Other Query model information: 
+\code{\link{rxDfdy}()},
+\code{\link{rxInits}()},
+\code{\link{rxLhs}()},
 \code{\link{rxModelVars}()},
 \code{\link{rxState}()}
 }

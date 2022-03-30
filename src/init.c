@@ -219,6 +219,8 @@ SEXP _rxode2_rxQs(SEXP);
 
 SEXP _rxode2_rxQr(SEXP);
 
+SEXP _rxode2_rxEtTransAsDataFrame_(SEXP);
+
 extern int rxIsCurrentC(SEXP obj);
 
 rx_solve *getRxSolve_();
@@ -448,6 +450,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxrandnV", (DL_FUNC) _rxode2_rxrandnV, 2},
     {"_rxode2_rxQs", (DL_FUNC) _rxode2_rxQs, 1},
     {"_rxode2_rxQr", (DL_FUNC) _rxode2_rxQr, 1},
+    {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) _rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},

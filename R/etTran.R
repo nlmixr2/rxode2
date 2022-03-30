@@ -259,3 +259,8 @@
 .getLastIdLvl <- function() {
   .lastIdLvl
 }
+
+#' @export
+as.data.frame.rxEtTran <- function(x, row.names = NULL, optional = FALSE, ...) {
+  .Call(`_rxode2_rxEtTransAsDataFrame_`, x)
+}

@@ -1,4 +1,5 @@
 test_that("evid=3 reset time", {
+
   mod1 <- rxode2({
     KA <- 2.94E-01
     CL <- 1.86E+01
@@ -17,29 +18,38 @@ test_that("evid=3 reset time", {
     eff(0) <- 1
     printf("%f\n", time)
   })
-  
+
   et_1 <-
     et(dose = 10000, addl = 0, ii = 0) %>%
     et(0:8)
-  
+
   et_reset <- et(evid = 3)
-  
+
   et_2 <-
     et(dose = 20000, addl = 0, ii = 0) %>%
     et(0:8)
-  
+
   et <- dplyr::bind_rows(et_1, et_reset, et_2)
-  
+
+  tmp <- etTrans(et, mod1)
+
+  expect_true(!identical(tmp$TIME, et$time))
+
+  tmp <- as.data.frame(tmp)
+
+  expect_equal(tmp$TIME, et$time)
+
+
   t <- tempfile("test-evid3", fileext = ".csv")
-  
+
   .rxWithSink(t, {
     cat("t\n")
     x <- rxSolve(mod1, et)
   })
-  
+
   d <- read.csv(t)
   unlink(t)
-  
+
   expect_true(all(d$t < 9))
   expect_true(all(x$time < 9))
   expect_true(!all(x$C2[x$resetno == 1] == x$C2[x$resetno == 2]))
@@ -62,30 +72,30 @@ test_that("evid=3 reset time mixed", {
     eff(0) <- 1
     printf("%f\n", time)
   })
-  
+
   et_1 <-
     et(dose = 10000, addl = 0, ii = 0) %>%
     et(0:8)
-  
+
   et_reset <- et(evid = 3)
-  
+
   et_2 <-
     et(dose = 20000, addl = 0, ii = 0) %>%
     et(0:8)
-  
+
   et <- dplyr::bind_rows(et_1, et_reset, et_2)
   et
-  
+
   t <- tempfile("test-evid3", fileext = ".csv")
-  
+
   .rxWithSink(t, {
     cat("t\n")
     x <- rxSolve(mod1, et)
   })
-  
+
   d <- read.csv(t)
   unlink(t)
-  
+
   expect_true(all(d$t < 9))
   expect_true(all(x$time < 9))
   expect_true(!all(x$C2[x$resetno == 1] == x$C2[x$resetno == 2]))
@@ -107,33 +117,33 @@ test_that("evid=3 reset time linCmt", {
     C2 <- linCmt()
     printf("%f\n", time)
   })
-  
+
   et1 <-
     # et(amount.units='mg', time.units='hours') %>%
     et(dose = 10000, addl = 0, ii = 0) %>%
     # et(amt=20000, nbr.doses=5, start.time=120, dosing.interval=24) %>%
     et(0:8)
-  
+
   et_reset <- et(evid = 3)
-  
+
   et_2 <-
     # et(amount.units='mg', time.units='hours') %>%
     et(dose = 20000, addl = 0, ii = 0) %>%
     # et(amt=20000, nbr.doses=5, start.time=120, dosing.interval=24) %>%
     et(0:8)
-  
+
   et <- dplyr::bind_rows(et1, et_reset, et_2)
-  
+
   t <- tempfile("test-evid3", fileext = ".csv")
-  
+
   .rxWithSink(t, {
     cat("t\n")
     x <- rxSolve(mod1, et)
   })
-  
+
   d <- read.csv(t)
   unlink(t)
-  
+
   expect_true(all(d$t < 9))
   expect_true(all(x$time < 9))
   expect_true(!all(x$C2[x$resetno == 1] == x$C2[x$resetno == 2]))
@@ -151,21 +161,21 @@ test_that("warning for unsorted data with evid=3", {
     EC50 <- 200
     C2 <- linCmt()
   })
-  
+
   et1 <-
     et(dose = 10000, addl = 0, ii = 0) %>%
     et(0:8)
-  
+
   etReset <- et(evid = 3)
-  
+
   et2 <-
     et(dose = 20000, addl = 0, ii = 0) %>%
     et(0:8)
-  
+
   et <- dplyr::bind_rows(et1, etReset, et2)
-  
+
   et$time[5] <- 9
-  
+
   expect_warning(x <- rxSolve(mod1, et))
   expect_false(any(names(x) == "resetno"))
 })

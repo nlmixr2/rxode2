@@ -280,6 +280,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rxEtTransAsDataFrame_
+List rxEtTransAsDataFrame_(List inData1);
+RcppExport SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type inData1(inData1SEXP);
+    rcpp_result_gen = Rcpp::wrap(rxEtTransAsDataFrame_(inData1));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxExpandGrid_
 List rxExpandGrid_(RObject& c1, RObject& c2, RObject& type);
 static SEXP _rxode2_rxExpandGrid__try(SEXP c1SEXP, SEXP c2SEXP, SEXP typeSEXP) {
