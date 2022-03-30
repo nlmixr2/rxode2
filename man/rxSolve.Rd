@@ -4,6 +4,8 @@
 \alias{rxSolve}
 \alias{rxSolve.function}
 \alias{rxSolve.rxUi}
+\alias{rxSolve.nlmixr2FitData}
+\alias{rxSolve.nlmixr2FitCore}
 \alias{rxSolve.default}
 \alias{update.rxSolve}
 \alias{predict.rxode2}
@@ -133,6 +135,26 @@ rxSolve(
 )
 
 \method{rxSolve}{rxUi}(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL
+)
+
+\method{rxSolve}{nlmixr2FitData}(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL
+)
+
+\method{rxSolve}{nlmixr2FitCore}(
   object,
   params = NULL,
   events = NULL,
