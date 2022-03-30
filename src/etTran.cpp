@@ -2047,3 +2047,35 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 #endif
   return lstF;
 }
+
+
+//[[Rcpp::export]]
+List rxEtTransAsDataFrame_(List inData1) {
+	List inData = clone(inData1);
+	CharacterVector cls = Rf_getAttrib(inData, R_ClassSymbol);
+	List e = cls.attr(".rxode2.lst");
+	double maxShift = as<double>(e[RxTrans_maxShift]);
+	if (maxShift > 0) {
+	IntegerVector id = as<IntegerVector>(inData[0]);
+	NumericVector time = as<NumericVector>(inData[1]);
+	IntegerVector evid = as<IntegerVector>(inData[2]);
+	int lastId = NA_INTEGER;
+	double lastTime = time[0];
+	double curShift = 0.0;
+	for (int j = 0; j < (int)evid.size(); ++j) {
+		if (lastId != id[j]) {
+			lastId = id[j];
+			curShift = 0.0;
+			lastTime = time[j];
+		}
+		if (evid[j] == 3) {
+			curShift -= maxShift;
+		}
+		time[j] += curShift;
+		lastTime = time[j];
+    }
+	}
+	cls = CharacterVector::create("data.frame");	
+  Rf_setAttrib(inData, R_ClassSymbol, cls);
+	return inData;
+}
