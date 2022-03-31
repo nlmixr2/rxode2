@@ -94,7 +94,6 @@ test_that("evid=3 reset time mixed", {
     et(0:8)
 
   et <- dplyr::bind_rows(et_1, et_reset, et_2)
-  et
 
   t <- tempfile("test-evid3", fileext = ".csv")
 
@@ -115,6 +114,7 @@ test_that("evid=3 reset time mixed", {
 
 
 test_that("evid=3 reset time linCmt", {
+
   mod1 <- rxode2({
     KA <- 2.94E-01
     CL <- 1.86E+01
