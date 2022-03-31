@@ -39,6 +39,16 @@ test_that("evid=3 reset time", {
 
   expect_equal(tmp$TIME, et$time)
 
+  et2 <- rbind(data.frame(id=1, et[, names(et) != "id"]),
+               data.frame(id=2, et[, names(et) != "id"]))
+
+  tmp <- etTrans(et2, mod1)
+
+  expect_true(!identical(tmp$TIME, et2$time))
+
+  tmp <- as.data.frame(tmp)
+
+  expect_equal(tmp$TIME, et2$time)
 
   t <- tempfile("test-evid3", fileext = ".csv")
 
@@ -84,7 +94,6 @@ test_that("evid=3 reset time mixed", {
     et(0:8)
 
   et <- dplyr::bind_rows(et_1, et_reset, et_2)
-  et
 
   t <- tempfile("test-evid3", fileext = ".csv")
 
@@ -105,6 +114,7 @@ test_that("evid=3 reset time mixed", {
 
 
 test_that("evid=3 reset time linCmt", {
+
   mod1 <- rxode2({
     KA <- 2.94E-01
     CL <- 1.86E+01
