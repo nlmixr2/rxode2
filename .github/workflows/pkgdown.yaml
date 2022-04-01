@@ -28,6 +28,11 @@ jobs:
             eval sudo $cmd
           done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "20.04"))')
 
+
+      - name: Install udunits on Ubuntu
+        if: runner.os == 'Linux'
+        run: sudo apt-get install udunits2-dev
+
       - name: Install packages from cran (source)
         run: |
           install.packages('remotes')
