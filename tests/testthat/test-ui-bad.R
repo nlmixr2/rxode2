@@ -567,3 +567,96 @@ test_that("modeled endpoints", {
   }
 
 })
+
+
+test_that("if/else in endpoints should error", {
+  myModel_OS <- function(){           # TTE model for OS. Weibull baseline hazard.
+    ini({
+
+      tLAM <- log(0.001)               # scale parameter
+      tSHP <- log(2)                   # shape parameter
+      tBSLD0 <- log(0.1)               # parameter for SLD (sum of longest diameter) at enrolment
+      tBTSR <- log(0.1)                # parameter for TSR(t) (tumour size ratio)
+      tBNWLS <- log(0.1)               # parameter for NewLesion(t)
+      tBECOG <- log(0.1)               # parameter for ECOG at enrolment
+      eta.LAM ~ 0.01                   # inter-individual variability in scale parameter
+      add.err <- 0
+
+    })
+    model({
+
+      LAM = exp(tLAM + eta.LAM)
+      SHP = exp(tSHP)
+      BSLD0 = exp(tBSLD0)
+      BTSR = exp(tBTSR)
+      BNWLS = exp(tBNWLS)
+      BECOG = exp(tBECOG)
+
+      #Time constant covariates
+      TVSLD0 = 70                      # average SLD at enrolment
+      NSLD0 = SLD0/TVSLD0              # normalised SLD at enrolment
+      IECOG=ECOG                       # ECOG at enrolment
+
+      # Model for dSLD(t)
+      A(0) = IBASE*1000                # SLD baseline
+      MMBAS = IBASE*1000               # Parameter of the SLD(t) model were estimated previously (IPP approach)
+      d/dt(A) = KG/1000 * A - (KD0/1000 * AUC0 + + KD1/100 * AUC1) * A
+      TUM = A
+      TSR = (TUM-MMBAS)/MMBAS
+
+      if(time==0){                     #TSR(t) for t<= week 12 and TSR(week12) for t> week 12
+        WTS = 0
+        TM12 = 0
+      }
+      if(time<=84){
+        WTS = TSR
+        TM12 = WTS
+      }
+      else {
+        WTS = WTS
+      }
+
+      # survival model
+      DEL = 1E-6
+      d/dt(A2) = LAM*SHP*(LAM*(T+DEL))**(SHP-1) *exp(BSLD0*NSLD0+BTSR*WTS+BNWLS*NWLS+BECOG*IECOG)
+
+      # Death hazard
+      CHZ = A2
+      SUR=exp(-CHZ)
+      DELX = 1E-6
+      xTUM = A
+      xTSR = (xTUM-MMBAS)/MMBAS
+      if(time==0){
+        XWTS=0
+        XTM12=0
+      }
+
+      if(time<=84){
+        XWTS = XTSR
+        XTM12 = XWTS
+      }
+      else {
+        XWTS=XWTS
+      }
+
+      HAZN = LAM*SHP*(LAM*(TIME+DELx))**(SHP-1)*exp(BSLD0*NSLD0+BTSR*XWTS+BNWLS*NWLS+BECOG*IECOG)
+      # prediction
+      if(FLAG == 9 & EVID == 0 & OSCENS == 1){
+        IPRED=SUR                      # probability of survival (censored event)
+        Y = IPRED                      # Y is probability for TTE data
+        Y ~ add(add.err)
+      }
+      if(FLAG == 9 & EVID == 0 & OSCENS == 0){
+        IPRED=SUR*HAZN                # probability of event (death) at time=TIME
+        Y = IPRED                     # Y is probability for TTE data
+      }
+      Y ~ add(add.err)
+    })
+  }
+
+  expect_error(rxode2(myModel_OS))
+
+  expect_error(myModel_OS())
+
+
+})
