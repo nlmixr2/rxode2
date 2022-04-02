@@ -31,7 +31,7 @@ jobs:
 
       - name: Install udunits on Ubuntu
         if: runner.os == 'Linux'
-        run: sudo apt-get install udunits2-dev
+        run: sudo apt-get install libudunits2-dev
 
       - name: Install packages from cran (source)
         run: |
