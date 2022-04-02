@@ -526,3 +526,63 @@ test_that("rgeom simulations", {
   })
 
 })
+
+
+
+test_that("omega/sigma=NA simulations", {
+
+  f <- function() {
+    ini({
+      tcl <- log(0.008) # typical value of clearance
+      tv <-  log(0.6)   # typical value of volume
+      ## var(eta.cl)
+      eta.cl + eta.v ~ c(1,
+                         0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
+      # interindividual variability on clearance and volume
+      add.err <- 0.1    # residual variability
+      lambda <- 0.5
+      nu <- 3
+    })
+    model({
+      cl <- exp(tcl + eta.cl) # individual value of clearance
+      v <- exp(tv + eta.v)    # individual value of volume
+      ke <- cl / v            # elimination rate constant
+      d/dt(A1) = - ke * A1    # model differential equation
+      cp = A1 / v             # concentration in plasma
+      cp ~ add(add.err) + boxCox(lambda) + dt(nu)# define error model
+    })
+  }
+
+  tmp <- rxode2(f)
+
+  expect_error(tmp$simulationModel, NA)
+
+  expect_true(regexpr("rxt[(]nu[)]", rxNorm(tmp$simulationModel)) != -1)
+
+  ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
+    et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
+    et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
+    et(id=1:20) %>%
+    dplyr::as_tibble()
+
+  rxWithPreserveSeed({
+
+    .rx1 <- rxSolve(tmp, ev, addCov=TRUE)
+    expect_true(all(.rx1$ipredSim != .rx1$sim))
+    expect_true(all(.rx1$params$eta.cl != 0))
+    expect_true(all(.rx1$params$eta.v != 0))
+
+    .rx2 <- rxSolve(tmp, ev, omega=NA, addCov=TRUE)
+    expect_true(all(.rx2$ipredSim != .rx2$sim))
+    expect_true(all(.rx2$params$eta.cl == 0))
+    expect_true(all(.rx2$params$eta.v == 0))
+
+    .rx3 <- rxSolve(tmp, ev, omega=NA, sigma=NA, addCov=TRUE)
+    expect_true(any(names(.rx3) == "pred"))
+    expect_true(all(.rx3$params$eta.cl == 0))
+    expect_true(all(.rx3$params$eta.v == 0))
+
+
+  })
+
+})

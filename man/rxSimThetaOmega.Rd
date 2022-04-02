@@ -39,8 +39,10 @@ rxSimThetaOmega(
 \item{params}{Named Vector of rxode2 model parameters}
 
 \item{omega}{Estimate of Covariance matrix. When omega is a list,
-assume it is a block matrix and convert it to a full matrix
-for simulations.}
+assume it is a block matrix and convert it to a full matrix for
+simulations.  When \code{omega} is \code{NA} and you are using it with a
+\code{rxode2} ui model, the between subject variability described by
+the \code{omega} matrix are set to zero.}
 
 \item{omegaDf}{The degrees of freedom of a t-distribution for
 simulation.  By default this is \code{NULL} which is
@@ -126,7 +128,9 @@ parameters.}
 \item{sigma}{Named sigma covariance or Cholesky decomposition of a
 covariance matrix.  The names of the columns indicate
 parameters that are simulated.  These are simulated for every
-observation in the solved system.}
+observation in the solved system. When \code{sigma} is \code{NA} and you are using it with a
+\code{rxode2} ui model, the unexplained variability described by
+the \code{sigma} matrix are set to zero.}
 
 \item{sigmaLower}{Lower bounds for simulated unexplained variability (by default -Inf)}
 
