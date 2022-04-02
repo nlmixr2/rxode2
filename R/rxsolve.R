@@ -323,8 +323,10 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'        parameters.
 #'
 #' @param omega Estimate of Covariance matrix. When omega is a list,
-#'     assume it is a block matrix and convert it to a full matrix
-#'     for simulations.
+#'   assume it is a block matrix and convert it to a full matrix for
+#'   simulations.  When `omega` is `NA` and you are using it with a
+#'   `rxode2` ui model, the between subject variability described by
+#'   the `omega` matrix are set to zero.
 #'
 #' @param omegaIsChol Indicates if the `omega` supplied is a
 #'     Cholesky decomposed matrix instead of the traditional
@@ -398,7 +400,9 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #' @param sigma Named sigma covariance or Cholesky decomposition of a
 #'     covariance matrix.  The names of the columns indicate
 #'     parameters that are simulated.  These are simulated for every
-#'     observation in the solved system.
+#'     observation in the solved system. When `sigma` is `NA` and you are using it with a
+#'    `rxode2` ui model, the unexplained variability described by
+#'    the `sigma` matrix are set to zero.
 #'
 #' @param sigmaLower Lower bounds for simulated unexplained variability (by default -Inf)
 #'
@@ -812,12 +816,16 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertIntegerish(cores, lower = 0L, len = 1)
       cores <- as.integer(cores)
     }
-    if (inherits(sigma, "character")) {
+    if (inherits(sigma, "logical")) {
+      .sigma <- sigma
+    } else if (inherits(sigma, "character")) {
       .sigma <- sigma
     } else {
       .sigma <- lotri::lotri(sigma)
     }
-    if (inherits(omega, "character")) {
+    if (inherits(omega, "logical")) {
+      .omega <- omega
+    }  else if (inherits(omega, "character")) {
       .omega <- omega
     } else if (inherits(omega, "lotri")) {
       .omega <- omega
@@ -1095,6 +1103,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   if (is.null(params)) {
     params <- object$theta
   }
+
   if (is.null(.rxControl$thetaLower)) {
     .rxControl$thetaLower <- object$thetaLower
   }
@@ -1103,9 +1112,21 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
   if (is.null(.rxControl$omega)) {
     .rxControl$omega <- object$omega
+  } else if (is.logical(.rxControl$omega)) {
+    if (is.na(.rxControl$omega)) {
+      .omega <- object$omega
+      params <- c(params, setNames(rep(0, dim(.omega)[1]), dimnames(.omega)[[2]]))
+      .rxControl$omega <- NULL
+    }
   }
   if (is.null(.rxControl$sigma)) {
     .rxControl$sigma <- object$simulationSigma
+  } else if (is.logical(.rxControl$sigma)) {
+    if (is.na(.rxControl$sigma)) {
+      .sigma <- object$simulationSigma
+      params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
+      .rxControl$sigma <- NULL
+    }
   }
   .rx <- object$simulationModel
   list(list(object=.rx, params = params, events = events, inits = inits),
@@ -1119,7 +1140,24 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
                          theta = NULL, eta = NULL) {
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .lst <- do.call("c", .lst)
-  do.call("rxSolve", .lst)
+  .pred <- FALSE
+  if (is.null(.lst$omega) && is.null(.lst$sigma)) {
+    .pred <- TRUE
+    .lst$drop <- c(.lst$drop, "ipredSim")
+  }
+  .ret <- do.call("rxSolve", .lst)
+  if (.pred) {
+    .e <- attr(class(.ret), ".rxode2.env")
+    .w <- which(names(.ret) == "sim")
+    names(.ret)[.w] <- "pred"
+    # don't break rxSolve, though maybe it should...
+    if (is.environment(.e)) {
+      .n2 <- .e$.check.names
+      .n2[.w] <- "pred"
+      .e$.check.names <- .n2
+    }
+  }
+  .ret
 }
 
 
