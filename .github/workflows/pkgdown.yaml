@@ -20,6 +20,11 @@ jobs:
 
       - uses: r-lib/actions/setup-tinytex@v1
 
+      - name: Install remotes
+        run: |
+          install.packages('remotes')
+        shell: Rscript {0}
+
       - name: Install system dependencies
         if: runner.os == 'Linux'
         run: |
@@ -28,20 +33,12 @@ jobs:
             eval sudo $cmd
           done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "20.04"))')
 
-
       - name: Install udunits on Ubuntu
         if: runner.os == 'Linux'
         run: sudo apt-get install libudunits2-dev
 
-      - name: Install packages from cran (source)
-        run: |
-          install.packages('remotes')
-          remotes::install_github("nlmixr2/lotri")
-        shell: Rscript {0}
-
       - name: Query dependencies
         run: |
-          install.packages('remotes')
           saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2)
           writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version")
         shell: Rscript {0}
