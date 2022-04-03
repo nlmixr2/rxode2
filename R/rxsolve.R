@@ -1130,10 +1130,6 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .rxControl$sigma <- NULL
     }
   }
-  print(length(.rxControl$sigma))
-  print(object$simulationSigma)
-  print(.rxControl$sigma)
-  print(.rxControl$dfObs)
   .rx <- object$simulationModel
   list(list(object=.rx, params = params, events = events, inits = inits),
                        .rxControl,
