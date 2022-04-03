@@ -340,6 +340,12 @@ print.rxSolveInits <- function(x, ...) {
 print.rxSolveSimType <- function(x, ...) {
   if (any(names(x) == "sim.id")) {
     cat(format(x, ...), sep = "\n")
+  } else if (!is.null(x$omegaList)) {
+    cat(format(x, ...), sep = "\n")
+  } else if (!is.null(x$sigmaList)) {
+    cat(format(x, ...), sep = "\n")
+  } else if (!is.null(x$thetaMat)) {
+    cat(format(x, ...), sep = "\n")
   }
 }
 
