@@ -1121,6 +1121,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
   if (is.null(.rxControl$sigma)) {
     .rxControl$sigma <- object$simulationSigma
+  } else if (length(.rxControl$sigma) == 0) {
+    .rxControl$sigma <- object$simulationSigma
   } else if (is.logical(.rxControl$sigma)) {
     if (is.na(.rxControl$sigma)) {
       .sigma <- object$simulationSigma

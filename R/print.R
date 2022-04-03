@@ -340,6 +340,12 @@ print.rxSolveInits <- function(x, ...) {
 print.rxSolveSimType <- function(x, ...) {
   if (any(names(x) == "sim.id")) {
     cat(format(x, ...), sep = "\n")
+  } else if (!is.null(x$omegaList)) {
+    cat(format(x, ...), sep = "\n")
+  } else if (!is.null(x$sigmaList)) {
+    cat(format(x, ...), sep = "\n")
+  } else if (!is.null(x$thetaMat)) {
+    cat(format(x, ...), sep = "\n")
   }
 }
 
@@ -363,6 +369,10 @@ print.rxSolve <- function(x, ...) {
       .bound <- .args$bound
     } else {
       .bound <- .getBound(x, parent.frame(2))
+      assignInMyNamespace(".getBoundRemember", .bound)
+      on.exit({
+        assignInMyNamespace(".getBoundRemember", NULL)
+      }, add=TRUE)
     }
     if (.nb) {
       .df <- x$pars
@@ -392,7 +402,7 @@ print.rxSolve <- function(x, ...) {
       if (length(.out) > 0) .nb <- FALSE
     }
     if (.nb) {
-      print.rxSolveSimType(x, bound = .bound)
+      print.rxSolveSimType(x)
       .df <- x
       .cls <- c(
         paste0("Solved\u00A0Data: ", .bound),
