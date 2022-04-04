@@ -31,6 +31,7 @@
 #include "handle_evid.h"
 #include "getTime.h"
 #include "par_solve.h"
+#include <Rcpp.h>
 #include "strncmp.h"
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -135,7 +136,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int errNrow = rxGetErrsNrow();
   if (op->nsvar != errNcol){
     rxSolveFreeC();
-    Rf_errorcall(R_NilValue, "The simulated residual errors do not match the model specification (%d=%d)",op->nsvar, errNcol);
+    Rf_errorcall(R_NilValue, _("The simulated residual errors do not match the model specification (%d=%d)"),op->nsvar, errNcol);
   }
   int doDose;
   int evid0 = 0;
@@ -206,7 +207,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int ms = 0;
   if (rx->maxShift != 0.0) ms = 1;
   int nidCols = md + sm + ms;
-  int pro = 0;
   if (op->badSolve){
     if (op->naTime){
       rxSolveFreeC();
@@ -220,9 +220,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     }
   }
   int ncol = ncols+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
-  SEXP df = PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
+  List df = List(ncol);//PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
   for (i = nidCols; i--;){
-    SET_VECTOR_ELT(df, i, PROTECT(Rf_allocVector(INTSXP, rx->nr))); pro++;
+    df[i] = IntegerVector(rx->nr);
   }
   i = nidCols;
   double *par_ptr;
@@ -234,23 +234,23 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   }
   if (doDose){
     //evid
-    SET_VECTOR_ELT(df, i++, PROTECT(Rf_allocVector(INTSXP, rx->nr))); pro++;
+    df[i++] = IntegerVector(rx->nr);
     if (nmevid){
       // cmt
-      SET_VECTOR_ELT(df, i++, PROTECT(Rf_allocVector(INTSXP, rx->nr))); pro++;
+      df[i++] = IntegerVector(rx->nr);
       // ss
-      SET_VECTOR_ELT(df, i++, PROTECT(Rf_allocVector(INTSXP, rx->nr))); pro++;
+      df[i++] = IntegerVector(rx->nr);
     }
     // amt
-    SET_VECTOR_ELT(df, i++, PROTECT(Rf_allocVector(REALSXP, rx->nr))); pro++;
+    df[i++] = NumericVector(rx->nr);
   } else if (nevid2col) {
-    SET_VECTOR_ELT(df, i++, PROTECT(Rf_allocVector(INTSXP, rx->nr))); pro++;
+    df[i++] = IntegerVector(rx->nr);
   }
   doseCols += nevid2col;
-  SEXP paramNames = PROTECT(rxParamNames(op->modNamePtr)); pro++;
-  SEXP fkeepNames = PROTECT(get_fkeepn()); pro++;
+  CharacterVector paramNames = rxParamNames(op->modNamePtr);
+  CharacterVector fkeepNames = get_fkeepn();
   for (i = md + sm + ms + doseCols + 2*nmevid; i < ncols + doseCols + nidCols + 2*nmevid; i++){
-    SET_VECTOR_ELT(df, i, PROTECT(Rf_allocVector(REALSXP, rx->nr))); pro++;
+    df[i] = NumericVector(rx->nr);
   }
   // These could be factors
   j = ncols + doseCols + nidCols + 2*nmevid;
@@ -259,20 +259,20 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   SEXP tmp;
   for (i = 0; i < ncov*add_cov; i++){
     charItem =CHAR(STRING_ELT(paramNames, par_cov[i]-1));
-    SET_VECTOR_ELT(df, j++, PROTECT(getDfLevels(charItem, rx))); pro++;
+    df[j++] = getDfLevels(charItem, rx);
   }
   par_cov = rx->cov0;
   for (i = 0; i < ncov0*add_cov; i++){
     charItem =CHAR(STRING_ELT(paramNames, par_cov[i]));
-    SET_VECTOR_ELT(df, j++, PROTECT(getDfLevels(charItem, rx))); pro++;
+    df[j++] = getDfLevels(charItem, rx);
   }
   for (i = 0; i < nkeep; i++){
     charItem = CHAR(STRING_ELT(fkeepNames, i));
-    SET_VECTOR_ELT(df, j++, PROTECT(getDfLevels(charItem, rx))); pro++;
+    df[j++] = getDfLevels(charItem, rx);
   }
   ncols+= ncols2;
   for (i = ncols + doseCols + nidCols + 2*nmevid; i < ncols + doseCols + nidCols + doTBS*4 + nmevid*5; i++){
-    SET_VECTOR_ELT(df, i, PROTECT(Rf_allocVector(REALSXP, rx->nr))); pro++;
+    df[i] = NumericVector(rx->nr);
   }
   // Now create the data frame
   int resetno = 0;
@@ -721,64 +721,64 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       ind->inLhs = 0;
     }
   }
-  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
-  INTEGER(sexp_rownames)[0] = NA_INTEGER;
-  INTEGER(sexp_rownames)[1] = -rx->nr;
+  IntegerVector sexp_rownames = IntegerVector(2);
+  sexp_rownames[0] = NA_INTEGER;
+  sexp_rownames[1] = -rx->nr;
   Rf_setAttrib(df, R_RowNamesSymbol, sexp_rownames);
-  SEXP sexp_colnames = PROTECT(Rf_allocVector(STRSXP, ncol)); pro++;
+  CharacterVector sexp_colnames = CharacterVector(ncol);
   jj = 0;
   if (sm){
-    SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("sim.id"));
+    sexp_colnames[jj] = Rf_mkChar("sim.id");
     jj++;
   }
   // id
   if (md){
-    SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("id"));
+    sexp_colnames[jj] = Rf_mkChar("id");
     jj++;
   }
   if (ms) {
-    SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("resetno"));
+    sexp_colnames[jj] = Rf_mkChar("resetno");
     jj++;
   }
 
   if (doDose){
-    SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("evid"));
+    sexp_colnames[jj] = Rf_mkChar("evid");
     jj++;
     if (nmevid){
-      SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("cmt"));
+      sexp_colnames[jj] = Rf_mkChar("cmt");
       jj++;
-      SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("ss"));
+      sexp_colnames[jj] = Rf_mkChar("ss");
       jj++;
     }
-    SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("amt"));
+    sexp_colnames[jj] = Rf_mkChar("amt");
     jj++;
     if (nmevid){
-      SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("rate"));
+      sexp_colnames[jj] = Rf_mkChar("rate");
       jj++;
-      SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("dur"));
+      sexp_colnames[jj] = Rf_mkChar("dur");
       jj++;
-      SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("ii"));
+      sexp_colnames[jj] = Rf_mkChar("ii");
       jj++;
     }
   } else if (nevid2col) {
-    SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("evid"));
+    sexp_colnames[jj] = Rf_mkChar("evid");
     jj++;
   }
-  SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("time"));
+  sexp_colnames[jj] = Rf_mkChar("time");
   jj++;
 
   // Put in LHS names
-  SEXP lhsNames = PROTECT(rxLhsNames(op->modNamePtr)); pro++;
+  CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
   for (i = 0; i < nlhs; i++){
-    SET_STRING_ELT(sexp_colnames, jj, STRING_ELT(lhsNames,i));
+    sexp_colnames[jj] = STRING_ELT(lhsNames,i);
     jj++;
   }
   // Put in state names
-  SEXP stateNames = PROTECT(rxStateNames(op->modNamePtr)); pro++;
+  CharacterVector stateNames = rxStateNames(op->modNamePtr);
   if (nPrnState){
     for (j = 0; j < neq[0]; j++){
       if (!rmState[j]){
-        SET_STRING_ELT(sexp_colnames, jj, STRING_ELT(stateNames,j));
+        sexp_colnames[jj] = STRING_ELT(stateNames,j);
         jj++;
       }
     }
@@ -809,11 +809,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     jj++;
   }
   Rf_setAttrib(df, R_NamesSymbol, sexp_colnames);
-  SEXP df2;
+  List df2;
   if (nmevid) {
     int ncol2 = ncol - dullRate - dullDur-dullSS-dullIi;
-    df2 = PROTECT(Rf_allocVector(VECSXP,ncol2)); pro++;
-    SEXP sexp_colnames2 = PROTECT(Rf_allocVector(STRSXP,ncol2)); pro++;
+    df2 = List(ncol2);
+    CharacterVector sexp_colnames2 = CharacterVector(ncol2);
     jj = 0;
     kk = 0;
     if (sm){
@@ -874,14 +874,14 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     jj++;kk++;
 
     // Put in LHS names
-    SEXP lhsNames2 = PROTECT(rxLhsNames(op->modNamePtr)); pro++;
+    CharacterVector lhsNames2 = rxLhsNames(op->modNamePtr);
     for (i = 0; i < nlhs; i++){
       SET_STRING_ELT(sexp_colnames2, jj, STRING_ELT(lhsNames2,i));
       SET_VECTOR_ELT(df2, jj, VECTOR_ELT(df, kk));
       jj++;kk++;
     }
     // Put in state names
-    SEXP stateNames2 = PROTECT(rxStateNames(op->modNamePtr)); pro++;
+    CharacterVector stateNames2 = rxStateNames(op->modNamePtr); 
     if (nPrnState){
       for (j = 0; j < neq[0]; j++){
         if (!rmState[j]){
@@ -892,7 +892,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       }
     }
     // Put in Cov names
-    SEXP paramNames2 = PROTECT(rxParamNames(op->modNamePtr)); pro++;
+    CharacterVector paramNames2 = rxParamNames(op->modNamePtr);
     int *par_cov = op->par_cov;
     for (i = 0; i < ncov*add_cov; i++){
       SET_STRING_ELT(sexp_colnames2,jj, STRING_ELT(paramNames2, par_cov[i]-1));
@@ -929,6 +929,5 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   } else {
     df2=df;
   }
-  UNPROTECT(pro);
-  return df2;
+  return wrap(df2);
 }
