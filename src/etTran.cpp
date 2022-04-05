@@ -60,7 +60,7 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   IntegerVector udvid = sort_unique(id);
   int mDvid = udvid[udvid.size()-1];
   if (mDvid > maxDvid) {
-    return match(id, udvid);
+    return Rcpp::match(id, udvid);
   }
   return id;
 }
