@@ -57,6 +57,7 @@ jobs:
           remotes::install_cran("devtools")
           remotes::install_deps(dependencies = TRUE)
           remotes::install_dev("pkgdown")
+          remotes::install_github('nlmixr2/lotri')
         shell: Rscript {0}
 
       - name: Install package
