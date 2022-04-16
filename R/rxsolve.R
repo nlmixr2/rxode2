@@ -1505,11 +1505,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .envReset$unload <- FALSE
   # take care of too many DLLs or not provided simulation errors
   if (rxode2.debug) {
+    rxSetCovariateNamesForPiping(NULL)
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,
                                                   setupOnlyS = .setupOnly
                                                   ), lst = TRUE)
   } else {
+    rxSetCovariateNamesForPiping(NULL)
     while (.envReset$reset) {
     .envReset$reset <- FALSE
     tryCatch({
