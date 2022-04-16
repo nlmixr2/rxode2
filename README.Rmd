@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-# RxODE2
+# rxode2
 
 <!-- badges: start -->
 [![R build status](https://github.com/nlmixr2/rxode2/workflows/R-CMD-check/badge.svg)](https://github.com/nlmixr2/rxode2/actions)
