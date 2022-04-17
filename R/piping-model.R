@@ -639,14 +639,14 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 #' # now TC is detected as a covariate instead of a population parameter
 #'
 #' one.compartment %>%
-#'   model({ka <- exp(tka + eta.ka + TC + cov_C)})
+#'   model({ka <- exp(tka + eta.ka + TC * cov_C)})
 #'
 #' # You can turn it off by simply adding it back
 #'
 #' rxSetCovariateNamesForPiping()
 #'
 #' one.compartment %>%
-#'   model({ka <- exp(tka + eta.ka + TC + cov_C)})
+#'   model({ka <- exp(tka + eta.ka + TC * cov_C)})
 #'
 #' # The covariates you set with `rxSetCovariateNamesForPiping()`
 #' # are turned off every time you solve (or fit in nlmixr)

@@ -1592,6 +1592,20 @@ test_that("Pre-declaring list of covariates works", {
   # now TC is detected as a covariate instead of a population parameter
 
   one.compartment %>%
-    model({ka <- exp(tka + eta.ka + TC*cov_C)})
+    model({ka <- exp(tka + eta.ka + TC * cov_C)}) ->
+    mod
+
+  expect_true("cov_C" %in% mod$iniDf$name)
+  expect_false("TC" %in% mod$iniDf$name)
+
+  rxSetCovariateNamesForPiping()
+
+  one.compartment %>%
+    model({ka <- exp(tka + eta.ka + TC * cov_C)}) ->
+    mod
+
+  expect_true("cov_C" %in% mod$iniDf$name)
+  expect_true("TC" %in% mod$iniDf$name)
+
 
 })
