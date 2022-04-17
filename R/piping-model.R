@@ -593,6 +593,69 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     err = NA_character_
   )
 
+.covariteNames <- NULL
+#' Assign covariates for piping
+#'
+#'
+#' @param covariates NULL (for no covariates), or the list of
+#'   covariates. nlmixr uses this function to set covariates if you
+#'   pipe from a nlmixr fit.
+#'
+#' @return Nothing, called for side effects
+#'
+#' @author Matthew L. Fidler
+#'
+#' @export
+#'
+#' @examples
+#'
+#' # First set the name of known covariates
+#' # Note this is case sensitive
+#'
+#' rxSetCovariateNamesForPiping(c("WT","HT", "TC"))
+#'
+#' one.compartment <- function() {
+#'  ini({
+#'    tka <- 0.45 ; label("Log Ka")
+#'    tcl <- 1 ; label("Log Cl")
+#'    tv <- 3.45 ; label("Log V")
+#'    eta.ka ~ 0.6
+#'    eta.cl ~ 0.3
+#'    eta.v ~ 0.1
+#'    add.err <- 0.7
+#'  })
+#'  model({
+#'    ka <- exp(tka + eta.ka)
+#'    cl <- exp(tcl + eta.cl)
+#'    v <- exp(tv + eta.v)
+#'    d / dt(depot) <- -ka * depot
+#'    d/dt(depot) <- -ka * depot
+#'    d / dt(center) <- ka * depot - cl / v * center
+#'    cp <- center / v
+#'    cp ~ add(add.err)
+#'  })
+#' }
+#'
+#' # now TC is detected as a covariate instead of a population parameter
+#'
+#' one.compartment %>%
+#'   model({ka <- exp(tka + eta.ka + TC * cov_C)})
+#'
+#' # You can turn it off by simply adding it back
+#'
+#' rxSetCovariateNamesForPiping()
+#'
+#' one.compartment %>%
+#'   model({ka <- exp(tka + eta.ka + TC * cov_C)})
+#'
+#' # The covariates you set with `rxSetCovariateNamesForPiping()`
+#' # are turned off every time you solve (or fit in nlmixr)
+rxSetCovariateNamesForPiping <- function(covariates=NULL) {
+  if (!is.null(covariates)) {
+    checkmate::assertCharacter(covariates, any.missing=FALSE, unique=TRUE)
+  }
+  assignInMyNamespace(".covariteNames", covariates)
+}
 #' Add a single variable from the initialization data frame
 #'
 #' @param var Variable that is added
@@ -670,6 +733,13 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
           .minfo(paste0("add covariate {.code ", var, "}"))
         }
         return(invisible())
+      } else if (!is.null(.covariteNames)) {
+        if (var %in% .covariteNames) {
+          if (rxode2.verbose.pipe) {
+            .minfo(paste0("add covariate {.code ", var, "} (known covariate)"))
+          }
+          return(invisible())
+        }
       }
     }
     .theta <- max(.iniDf$ntheta, na.rm=TRUE) + 1
