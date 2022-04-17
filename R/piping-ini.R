@@ -52,6 +52,9 @@
   if (is.null(rhs)) {
   } else if (length(rhs) == 1)  {
     ini$est[.w] <- rhs
+    if (rxode2.verbose.pipe) {
+      .minfo(paste0("change initial estimate of {.code ", ini$name[.w], "} to {.code ", ini$est[.w], "}"))
+    }
   } else {
     if (maxLen == 1) {
       stop("piping for '", lhs, "' failed, the estimate should only be 1 value",
@@ -59,10 +62,16 @@
     } else if (length(rhs) == 2) {
       ini$lower[.w] <- rhs[1]
       ini$est[.w] <- rhs[2]
+      if (rxode2.verbose.pipe) {
+        .minfo(paste0("change initial estimate (", ini$est[.w], ") and lower bound (", ini$lower[.w], ") of {.code ", ini$name[.w], "}"))
+      }
     } else if (length(rhs) == 3) {
       ini$lower[.w] <- rhs[1]
       ini$est[.w] <- rhs[2]
       ini$upper[.w] <- rhs[3]
+      if (rxode2.verbose.pipe) {
+        .minfo(paste0("change initial estimate (", ini$est[.w], ") and upper/lower bound (", ini$lower[.w], " to ", ini$upper[.w], ") of {.code ", ini$name[.w], "}"))
+      }
     }
   }
   ini
@@ -174,6 +183,9 @@
                       name=paste0("(", neta2, ",", neta1, ")"), lower= -Inf, est=est, upper=Inf,
                       fix=.fix, label=NA_character_, backTransform=NA_character_, condition="id",
                       err=NA_character_)
+  if (rxode2.verbose.pipe) {
+    .minfo(paste0("add covariance between {.code ", ini$name[.w1], "} and {.code ", ini$name[.w2], "} with initial estimate {.code ", est, "}"))
+  }
   rbind(ini,.ini2)
 }
 
