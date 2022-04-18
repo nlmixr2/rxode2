@@ -157,7 +157,7 @@
   <main id="main"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changing rxode2 compartment numbers</h1>
             
-            <h4 data-toc-skip class="date">2022-04-17</h4>
+            <h4 data-toc-skip class="date">2022-04-18</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-cmt.Rmd" class="external-link"><code>vignettes/rxode2-cmt.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-cmt.Rmd</code></div>
@@ -266,8 +266,8 @@
 <p>If you look at the summary, you can see where rxode2 assigned the compartment number(s)</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>1.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_0d887d95111c2ea4b50bf96a1e3f54d7</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
-<span class="co">#&gt; DLL: /tmp/RtmpyIrDY2/rxode2/rx_0d887d95111c2ea4b50bf96a1e3f54d7__.rxd/rx_0d887d95111c2ea4b50bf96a1e3f54d7_.so</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>1.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_e276a1cb7b4029515e8736ff170e2e88</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="co">#&gt; DLL: /tmp/RtmpGfeMnN/rxode2/rx_e276a1cb7b4029515e8736ff170e2e88__.rxd/rx_e276a1cb7b4029515e8736ff170e2e88_.so</span>
 <span class="co">#&gt; NULL</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Calculated Variables:</span>
@@ -458,7 +458,7 @@
 <p>You can see this change in the simple printout</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">pbpk2</span></code></pre></div>
-<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>1.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_1e8b3ff77ecd9f08e4870f8885d10ee6</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>1.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_4419d58500f30797f076579ece4f3a58</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: Venous_Blood, Skin, Lungs, Heart, Brain, Muscles, Adipose, Spleen, Pancreas, Liver, Stomach, Gut, Bones, Kidneys, Arterial_Blood, Rest_of_Body</span>
 <span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: lKbBR, lKbMU, lKbAD, lCLint, eta.LClint, lKbBO, lKbRB, WT, BP, fup</span>
 <span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$lhs</span>: KbBR, KbMU, KbAD, CLint, KbBO, KbRB, CO, QHT, QBR, QMU, QAD, QSK, QSP, QPA, QLI, QST, QGU, QHA, QBO, QKI, QRB, QLU, VLU, VHT, VBR, VMU, VAD, VSK, VSP, VPA, VLI, VST, VGU, VBO, VKI, VAB, VVB, VRB, fub, KbLU, KbHT, KbSK, KbSP, KbPA, KbLI, KbST, KbGU, KbKI, S15, C15</span></code></pre>
@@ -477,7 +477,7 @@
     <span class="fu">cmt</span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>;
 <span class="op">}</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">ode.1c.ka</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>1.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_e1ff69f170603e5d855c2d366d1f2a52</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>1.0.0 model named <span style="color: #BBBB00; font-weight: bold;">rx_e48061af6bb91281dc49ab50c66ebb4d</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span>
 <span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: eff</span>
 <span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$params</span>: V, KA, CL</span>
