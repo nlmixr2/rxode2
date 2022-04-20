@@ -10,9 +10,6 @@ output:
 options(cli.unicode=FALSE, crayon.enabled=FALSE);
 options(knitr.table.format = "html")
 knitr::opts_chunk$set( comment = "#>")
-htmltools::img(src = knitr::image_uri("logo.png"), 
-               alt = 'rxode2', 
-               style = 'position:absolute; top:0; right:0; padding:10px; border: 0;')
 options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
