@@ -1,4 +1,4 @@
-ackage: rxode2
+Package: rxode2
 Version: 2.0.6
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
