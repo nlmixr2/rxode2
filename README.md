@@ -169,8 +169,6 @@ To load `rxode2` package and compile the model:
 
 ```r
 library(rxode2)
-#> detected new version of rxode2, cleaning cache
-#> rxode2 2.0.6 using 4 threads (see ?getRxThreads)
 
 mod1 <- rxode2({
   C2 <- centr/V2;
@@ -181,10 +179,6 @@ mod1 <- rxode2({
   d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff;
 })
 #> 
-#> → creating rxode2 include directory
-#> → getting R compile options
-#> → precompiling headers
-#> ✔ done
 ```
 
 ## Specify ODE parameters and initial conditions
@@ -331,14 +325,14 @@ You can also solve this and create a rxode2 data frame:
 ```r
 x <- mod1 %>% rxSolve(theta, ev, inits);
 x
-#> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ Solved rxode2 object ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂
-#> ── Parameters (x$params): ──────────────────────────────────────────────────────
+#> ── Solved rxode2 object ──
+#> ── Parameters (x$params): ──
 #>      V2      V3      KA      CL       Q     Kin    Kout    EC50 
 #>  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 
-#> ── Initial Conditions (x$inits): ───────────────────────────────────────────────
+#> ── Initial Conditions (x$inits): ──
 #> depot centr  peri   eff 
 #>     0     0     0     1 
-#> ── First part of data (object): ────────────────────────────────────────────────
+#> ── First part of data (object): ──
 #> # A tibble: 241 × 7
 #>   time    C2    C3  depot centr  peri   eff
 #>    [h] <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl>
@@ -349,7 +343,6 @@ x
 #> 5    4  44.5 5.98   3085. 1789. 1776.  1.23
 #> 6    5  36.5 7.18   2299. 1467. 2132.  1.21
 #> # … with 235 more rows
-#> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂
 ```
 
 This returns a modified data frame.  You can see the compartment
