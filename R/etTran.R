@@ -4,19 +4,6 @@
   )
 }
 
-.warnIdSort0 <- TRUE
-#' Turn on/off warnings for ID sorting.
-#'
-#' @param warnIdSort Boolean for if the sorting warning is turned on
-#'     or off.
-#' @return Nothing
-#' @author Matthew Fidler
-#' @export
-.setWarnIdSort <- function(warnIdSort = TRUE) {
-  assignInMyNamespace(".warnIdSort0", warnIdSort)
-  invisible()
-}
-
 .DTEnv <- NULL
 .getDTEnv <- function() {
   if (is.null(.DTEnv)) {
@@ -37,80 +24,6 @@
     return(.env)
   } else {
     return(.DTEnv)
-  }
-}
-
-#' This function sorts the parameter or iCov data based on the event
-#' table data
-#'
-#' @param idData This is the individual parameter data or iCov data
-#'
-#' @param goodLvl These are the "good" levels based on the event
-#'     table
-#'
-#' @param type Type can be "iCov" or "parameter"
-#'
-#' @param warnIdSort When `TRUE` warnings about merging the
-#'     parameter/id with rxode2 event tables are issued.
-#'
-#' @return A sorted parameter table that can be used directly in the
-#'     C-based routines.
-#'
-#' @author Matthew Fidler
-#'
-#' @noRd
-.sortId <- function(idData, goodLvl, type = "parameter",
-                    warnIdSort, skipStop = TRUE) {
-  ## print(str(idData))
-  .n <- tolower(names(idData))
-  .w <- which(.n == "id")
-  .nid <- length(goodLvl)
-  if (length(.w) == 1) {
-    if (.nid == 1 && length(idData[[.w]]) == 1) {
-      .idData <- as.data.frame(idData)
-      goodLvl <- paste(.idData[[.w]])
-    } else {
-      .idData <- as.data.frame(idData)
-    }
-    .oId <- .idData[[.w]]
-    if (inherits(.idData[[.w]], "numeric")) {
-      .idData[[.w]] <- factor(.idData[[.w]], levels = as.numeric(goodLvl), labels = goodLvl)
-    } else {
-      .idData[[.w]] <- factor(.idData[[.w]], levels = goodLvl, labels = goodLvl)
-    }
-    .wrn <- ""
-    if (any(is.na(.idData[[.w]]))) {
-      .w2 <- which(is.na(.idData[[.w]]))
-      .oId <- unique(.oId[.w2])
-      .wrn <- sprintf("Some IDs are in the %s dataset that are not in the event dataset.\nParameter information for these IDs were dropped (%s)", type, paste(.oId, collapse = ", "))
-      .idData <- .idData[!is.na(.idData[[.w]]), ]
-    }
-    .idData <- .idData[order(.idData[[.w]]), ]
-    .idData <- .idData[, -.w, drop = FALSE]
-    if (length(.idData[, 1]) == 0) {
-      if (skipStop) {
-        return(.idData)
-      } else {
-        stop(sprintf(gettext("there are no individuals left to solve in %s data"), type),
-          call. = FALSE
-        )
-      }
-    }
-    if (.wrn != "") warning(.wrn, call. = FALSE)
-    return(.idData)
-  } else if (length(.w) == 0L) {
-    if (length(idData[, 1]) > 1) {
-      if (warnIdSort && .warnIdSort0 && .nid > 1) {
-        warning(sprintf(gettext("'ID' missing in '%s' dataset\nindividual parameters are assumed to have the same order as the event dataset"), type), call. = FALSE)
-      }
-    }
-    return(as.data.frame(idData))
-  } else {
-    if (length(idData[, 1]) > 1) {
-      warning(sprintf("unable to detect 'ID' correctly in '%s' dataset\nindividual parameters are assumed to have the same order as the dataset", type), call. = FALSE)
-    }
-    .idData <- idData[, -.w, drop = FALSE]
-    return(as.data.frame(.idData))
   }
 }
 

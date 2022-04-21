@@ -3007,11 +3007,6 @@ static inline void rxSolve_parSetup(const RObject &obj,
       stop(_("if parameters are not named, they must match the order and size of the parameters in the model"));
     }
   } else if (rxIs(rxSolveDat->par1, "data.frame")) {
-    Function sortId = getRxFn(".sortId");
-    if (rxSolveDat->idLevels.size() > 0){
-      rxSolveDat->par1 = clone(sortId(rxSolveDat->par1, rxSolveDat->idLevels, "parameters", rxSolveDat->warnIdSort));
-      rxSolveDat->usePar1=true;
-    }
     rxSolveDat->parDf = as<DataFrame>(rxSolveDat->par1);
     rxSolveDat->parType = 2;
     rxSolveDat->nmP = rxSolveDat->parDf.names();
@@ -4091,7 +4086,7 @@ static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
 //   if (rxIs(rxSolveDat->par1, "data.frame")){
 //     if (rxSolveDat->idLevels.size() > 0){
 //       // FIXME: check to see if IDs are dropped.
-//       Function sortId = getRxFn(".sortId");
+//       Function sort = getRxFn(".sortId");
 //       rxSolveDat->parDf = clone(sortId(rxSolveDat->par1, rxSolveDat->idLevels, "parameters",
 // 				      rxSolveDat->warnIdSort));
 //       rxSolveDat->par1 = rxSolveDat->parDf;

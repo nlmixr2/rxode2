@@ -62,6 +62,11 @@
   
 * Transit compartments need to use a new `evid`, `evid=7`.  That being
   said, the `transitAbs` option is no longer supported.
+  
+* `ID` columns are not sorted or merged with original dataset any
+  more; The underlying assumption of ID order should now be checked
+  outside of `rxode2()`
+
 
 ## Additional features
 
