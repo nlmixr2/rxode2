@@ -60,7 +60,7 @@ summary.rxDll <- function(object, ...) {
   .mv <- rxModelVars(object)
   if (length(.mv$indLin) > 0) {
     cat(cli::cli_format_method({
-      cli::cli_rule(left = "Inductive Linearization Matrix/Matrices:")
+      .h2("Inductive Linearization Matrix/Matrices:")
     }), "\n")
     print(.mv$indLin)
   }
@@ -79,11 +79,7 @@ summary.rxDll <- function(object, ...) {
 summary.rxSolve <- function(object, ...) {
   if (rxIs(object, "rxSolve")) {
     cat(cli::cli_format_method({
-      d <- cli::cli_div(theme = list(rule = list(
-        "line-type" = "bar2"
-      )))
-      cli::cli_rule(center = crayon::bold("Summary of Solved rxode2 object"))
-      cli::cli_end(d)
+      .h2(crayon::bold("Summary of Solved rxode2 object"))
     }), sep = "\n")
     .model <- object$model
     print(.model, .summary = TRUE)

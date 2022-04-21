@@ -31,6 +31,10 @@ print.rxRateDur <- function(x, ...) {
   return(invisible(x))
 }
 
+.h2 <- function(x) {
+  cli::cli_text(crayon::bold(paste0(cli::symbol$line, cli::symbol$line, " ", x, " ", cli::symbol$line, cli::symbol$line)))
+}
+
 #' @export
 print.rxEt <- function(x, ...) {
   if (rxIs(x, "rxEt")) {
@@ -72,32 +76,30 @@ print.rxEt <- function(x, ...) {
     if (length(.out) > 0) {
       .nb <- FALSE
       cat(cli::cli_format_method({
-        cli::cli_rule(center = crayon::bold(.et1))
+        .h2(.et1)
+        cli::cli_text(sprintf(
+          "   %s dosing records (see %s$%s(); add with %s or %s)\n",
+          x$ndose, crayon::yellow(bound), crayon::blue("get.dosing"),
+          crayon::blue("add.dosing"), crayon::blue("et")))
+        cli::cli_text(sprintf(
+          "   %s observation times (see %s$%s(); add with %s or %s)\n",
+          x$nobs, crayon::yellow(bound), crayon::blue("get.sampling"),
+          crayon::blue("add.sampling"), crayon::blue("et")))
+        if (x$show["addl"]) {
+          cli::cli_text(sprintf(
+            "   multiple doses in `addl` columns, expand with %s$%s(); or %s(%s)\n",
+            crayon::yellow(bound), crayon::blue("expand"),
+            crayon::blue("etExpand"), crayon::yellow(bound)
+          ))
+        }
       }), sep = "\n")
-      cat(paste0(.et2, "\n"))
-      cat(sprintf(
-        "   %s dosing records (see %s$%s(); add with %s or %s)\n",
-        x$ndose, crayon::yellow(bound), crayon::blue("get.dosing"),
-        crayon::blue("add.dosing"), crayon::blue("et")
-      ))
-      cat(sprintf(
-        "   %s observation times (see %s$%s(); add with %s or %s)\n",
-        x$nobs, crayon::yellow(bound), crayon::blue("get.sampling"),
-        crayon::blue("add.sampling"), crayon::blue("et")
-      ))
-      if (x$show["addl"]) {
-        cat(sprintf(
-          "   multiple doses in `addl` columns, expand with %s$%s(); or %s(%s)\n",
-          crayon::yellow(bound), crayon::blue("expand"),
-          crayon::blue("etExpand"), crayon::yellow(bound)
-        ))
-      }
+
+
     }
     if (x$nobs != 0 | x$ndose != 0) {
       if (!.nb) {
         cat(cli::cli_format_method({
-          cli::cli_rule(crayon::bold(paste0("First part of ", crayon::yellow(bound), ":")))
-        }), sep = "\n")
+          .h2(paste0("First part of ", crayon::yellow(bound), ":"))        }), sep = "\n")
       }
       print(tibble::as_tibble(data.frame(.etAddCls(x))))
     }
@@ -238,11 +240,11 @@ print.rxCoef <- function(x, ...) {
   .rxDllObj <- x$rxode2
   if (length(rxParams(.rxDllObj)) > 0) {
     cat(cli::cli_format_method({
-      cli::cli_rule(left = "User supplied parameters:")
+      .h2("User supplied parameters:")
     }), "\n")
     print(rxode2::rxInits(.rxDllObj, NULL, rxode2::rxParams(.rxDllObj), NA, TRUE))
     cat(cli::cli_format_method({
-      cli::cli_rule(left = "User initial conditions:")
+      .h2("User initial conditions:")
     }), "\n")
     .tmp <- rxode2::rxInits(.rxDllObj, NULL, rxode2::rxState(.rxDllObj), 0, TRUE)
     if (length(x$sens) > 0) {
@@ -251,7 +253,7 @@ print.rxCoef <- function(x, ...) {
     print(.tmp)
   }
   cat(cli::cli_format_method({
-    cli::cli_rule(left = "Compartments:")
+    .h2("Compartments:")
   }), "\n")
   .tmp <- rxode2::rxState(.rxDllObj)
   if (length(.tmp) > 0) {
@@ -260,7 +262,7 @@ print.rxCoef <- function(x, ...) {
       .tmp1 <- .tmp[regexpr(getFromNamespace("regSens", "rxode2"), .tmp) == -1]
       print(.tmp1)
       cat(cli::cli_format_method({
-        cli::cli_rule(left = "Sensitivities:")
+        .h2("Sensitivities:")
       }), "\n")
       .tmp2 <- gsub(
         getFromNamespace("regSens", "rxode2"), "d/dt(d(\\1)/d(\\2))",
@@ -415,30 +417,18 @@ print.rxSolve <- function(x, ...) {
       .summary <- any(names(.args) == ".summary")
       if (!.summary) {
         cat(cli::cli_format_method({
-          d <- cli::cli_div(theme = list(rule = list(
-            "line-type" = "bar2"
-          )))
-          cli::cli_rule(center = crayon::bold("Solved rxode2 object"))
-          cli::cli_end(d)
+          .h2(crayon::bold("Solved rxode2 object"))
         }), sep = "\n")
       }
       NextMethod()
       if (.summary) {
         cat(cli::cli_format_method({
-          cli::cli_rule(left = crayon::bold("Summary of data (object):"))
+          .h2(crayon::bold("Summary of data (object):"))
         }), sep = "\n")
         print(summary.data.frame(x))
-        cat(cli::cli_format_method({
-          d <- cli::cli_div(
-            theme =
-              list(rule = list("line-type" = "bar2"))
-          )
-          cli::cli_rule()
-          cli::cli_end(d)
-        }), sep = "\n")
       } else {
         cat(cli::cli_format_method({
-          cli::cli_rule(left = crayon::bold("First part of data (object):"))
+          .h2(crayon::bold("First part of data (object):"))
         }), sep = "\n")
         .isDplyr <- requireNamespace("tibble", quietly = TRUE) &&
           getOption("rxode2.display.tbl", TRUE)
@@ -447,13 +437,6 @@ print.rxSolve <- function(x, ...) {
         } else {
           print(tibble::as_tibble(x), n = .n, width = .width)
         }
-        cat(cli::cli_format_method({
-          d <- cli::cli_div(theme = list(rule = list(
-            "line-type" = "bar2"
-          )))
-          cli::cli_rule()
-          cli::cli_end(d)
-        }), sep = "\n")
       }
     }
   } else {
@@ -475,27 +458,14 @@ print.rxModelText <- function(x, ...) {
   .code[length(.code)] <- "})"
   if (.summary) {
     cat(cli::cli_format_method({
-      cli::cli_rule(left = .fmt3("Model", .bound, "model"))
+      .h2(.fmt3("Model", .bound, "model"))
     }), sep = "\n")
   } else {
     cat(cli::cli_format_method({
-      d <- cli::cli_div(theme = list(rule = list(
-        "line-type" = "bar2"
-      )))
-      cli::cli_rule(center = crayon::bold("rxode2 Model Syntax"))
-      cli::cli_end(d)
+      .h2(crayon::bold("rxode2 Model Syntax"))
     }), sep = "\n")
   }
   cat(paste(.code, collapse = "\n"), "\n")
-  if (!.summary) {
-    cat(cli::cli_format_method({
-      d <- cli::cli_div(theme = list(rule = list(
-        "line-type" = "bar2"
-      )))
-      cli::cli_rule()
-      cli::cli_end(d)
-    }), sep = "\n")
-  }
 }
 
 #' @export

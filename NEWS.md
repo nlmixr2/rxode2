@@ -92,6 +92,9 @@
 * Since there are many changes that could be incompatible, this
   version has been renamed to `rxode2`
   
+* `rxode2()` printout no longer uses rules and centered headings to
+  make it display better on a larger variety of systems.
+  
 ## Bug fixes
 
 * `tad()` and related time features only reset at the start of an

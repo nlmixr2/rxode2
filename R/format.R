@@ -21,14 +21,14 @@ format.rxRateDur <- function(x, ...) {
 #' @export
 format.boundParams <- function(x, ...) {
   cli::cli_format_method({
-    cli::cli_rule(left = .fmt3("Parameters", x, "params"))
+    .h2(.fmt3("Parameters", x, "params"))
   })
 }
 
 #' @export
 format.boundInits <- function(x, ...) {
   cli::cli_format_method({
-    cli::cli_rule(left = .fmt3("Initial Conditions", x, "inits"))
+    .h2(.fmt3("Initial Conditions", x, "inits"))
   })
 }
 
