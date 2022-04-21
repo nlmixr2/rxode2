@@ -157,7 +157,7 @@
   <main id="main"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Event Types</h1>
             
-            <h4 data-toc-skip class="date">2022-04-20</h4>
+            <h4 data-toc-skip class="date">2022-04-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-event-types.Rmd" class="external-link"><code>vignettes/rxode2-event-types.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-event-types.Rmd</code></div>
@@ -329,12 +329,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 101 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 101 records --</span></span>
+<span class="co">#&gt; 1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 101 x 5</span></span>
 <span class="co">#&gt;     time   amt  ii  addl evid         </span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span>
@@ -375,12 +374,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 101 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 101 records --</span></span>
+<span class="co">#&gt; 1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 101 x 6</span></span>
 <span class="co">#&gt;     time   amt  ii  addl evid          dur</span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>        <span style="color: #949494;">[h]</span></span>
@@ -406,12 +404,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 101 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 101 records --</span></span>
+<span class="co">#&gt; 1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 101 x 6</span></span>
 <span class="co">#&gt;     time   amt rate        ii  addl evid         </span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;rate/dur&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span>
@@ -472,12 +469,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 101 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 101 records --</span></span>
+<span class="co">#&gt; 1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 101 x 6</span></span>
 <span class="co">#&gt;     time   amt rate        ii  addl evid         </span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;rate/dur&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span>
@@ -503,12 +499,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 101 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 101 records --</span></span>
+<span class="co">#&gt; 1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 101 x 6</span></span>
 <span class="co">#&gt;     time   amt rate        ii  addl evid         </span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;rate/dur&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span>
@@ -539,11 +534,10 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 101 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 101 records --</span></span>
+<span class="co">#&gt; 1 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 101 x 5</span></span>
 <span class="co">#&gt;     time   amt  ii evid             ss</span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
@@ -638,12 +632,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 102 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    2 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 102 records --</span></span>
+<span class="co">#&gt; 2 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 102 x 5</span></span>
 <span class="co">#&gt;     time   amt  ii  addl evid         </span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span>
@@ -670,12 +663,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 102 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    2 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 102 records --</span></span>
+<span class="co">#&gt; 2 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 102 x 5</span></span>
 <span class="co">#&gt;     time   amt  ii  addl evid         </span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span>
@@ -706,12 +698,11 @@
     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span>, length.out<span class="op">=</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>
 
 <span class="va">ev</span></code></pre></div>
-<pre><code><span class="co">#&gt; -------------------------- <span style="font-weight: bold;">EventTable with 102 records</span> -------------------------</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    2 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
-<span class="co">#&gt;    multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">:</span> ------------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- EventTable with 102 records --</span></span>
+<span class="co">#&gt; 2 dosing records (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.dosing</span>(); add with <span style="color: #0000BB;">add.dosing</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; 100 observation times (see <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">get.sampling</span>(); add with <span style="color: #0000BB;">add.sampling</span> or <span style="color: #0000BB;">et</span>)</span>
+<span class="co">#&gt; multiple doses in `addl` columns, expand with <span style="color: #BBBB00;">x</span>$<span style="color: #0000BB;">expand</span>(); or <span style="color: #0000BB;">etExpand</span>(<span style="color: #BBBB00;">x</span>)</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of </span><span style="color: #BBBB00; font-weight: bold;">x</span><span style="font-weight: bold;">: --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 102 x 6</span></span>
 <span class="co">#&gt;     time cmt         amt  ii  addl evid         </span>
 <span class="co">#&gt;      <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;evid&gt;</span>       </span>

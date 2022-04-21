@@ -157,7 +157,7 @@
   <main id="main"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Jacobian specification and Stiff Systems</h1>
             
-            <h4 data-toc-skip class="date">2022-04-20</h4>
+            <h4 data-toc-skip class="date">2022-04-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-stiff.Rmd" class="external-link"><code>vignettes/rxode2-stiff.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-stiff.Rmd</code></div>
@@ -195,14 +195,14 @@
 
 <span class="va">s1</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">et</span>, method<span class="op">=</span><span class="st">"lsoda"</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## _____________________________ <span style="font-weight: bold;">Solved rxode2 object</span> _____________________________</span>
-<span class="co">## -- <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): -------------------------------------------------------</span>
+<pre><code><span class="co">## <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
+<span class="co">## <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
 <span class="co">## mu </span>
 <span class="co">##  1 </span>
-<span class="co">## -- <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ------------------------------------------------</span>
+<span class="co">## <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
 <span class="co">##  y dy </span>
 <span class="co">##  2  0 </span>
-<span class="co">## -- <span style="font-weight: bold;">First part of data (object):</span> ------------------------------------------------</span>
+<span class="co">## <span style="font-weight: bold;">-- First part of data (object): --</span></span>
 <span class="co">## <span style="color: #949494;"># A tibble: 200 x 3</span></span>
 <span class="co">##     time     y      dy</span>
 <span class="co">##    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
@@ -212,20 +212,19 @@
 <span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span>
 <span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span>
 <span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span>
-<span class="co">## <span style="color: #949494;"># ... with 194 more rows</span></span>
-<span class="co">## ________________________________________________________________________________</span></code></pre>
+<span class="co">## <span style="color: #949494;"># ... with 194 more rows</span></span></code></pre>
 <p>While this is not stiff at mu=1, mu=1000 is a stiff system</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">s2</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mu<span class="op">=</span><span class="fl">1000</span><span class="op">)</span>, <span class="va">et</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## _____________________________ <span style="font-weight: bold;">Solved rxode2 object</span> _____________________________</span>
-<span class="co">## -- <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): -------------------------------------------------------</span>
+<pre><code><span class="co">## <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
+<span class="co">## <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
 <span class="co">##   mu </span>
 <span class="co">## 1000 </span>
-<span class="co">## -- <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ------------------------------------------------</span>
+<span class="co">## <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
 <span class="co">##  y dy </span>
 <span class="co">##  2  0 </span>
-<span class="co">## -- <span style="font-weight: bold;">First part of data (object):</span> ------------------------------------------------</span>
+<span class="co">## <span style="font-weight: bold;">-- First part of data (object): --</span></span>
 <span class="co">## <span style="color: #949494;"># A tibble: 200 x 3</span></span>
 <span class="co">##     time     y         dy</span>
 <span class="co">##    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
@@ -235,8 +234,7 @@
 <span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span>
 <span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span>
 <span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span>
-<span class="co">## <span style="color: #949494;"># ... with 194 more rows</span></span>
-<span class="co">## ________________________________________________________________________________</span></code></pre>
+<span class="co">## <span style="color: #949494;"># ... with 194 more rows</span></span></code></pre>
 <p>While this is easy enough to do, it is a bit tedious. If you have rxode2 setup appropriately, you can use the computer algebra system sympy to calculate the Jacobian automatically.</p>
 <p>This is done by the rxode2 option <code>calcJac</code> option:</p>
 <pre><code><span class="va">Vtpol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>

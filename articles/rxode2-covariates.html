@@ -157,7 +157,7 @@
   <main id="main"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Covariates</h1>
             
-            <h4 data-toc-skip class="date">2022-04-20</h4>
+            <h4 data-toc-skip class="date">2022-04-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-covariates.Rmd" class="external-link"><code>vignettes/rxode2-covariates.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-covariates.Rmd</code></div>
@@ -209,14 +209,14 @@
             <span class="co"># Create individual covariate data-frame</span>
             iCov<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, WT<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">70</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r1</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ <span style="font-weight: bold;">Solved rxode2 object</span> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
-<span class="co">## ── <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): ───────────────────────────────────────────────────────</span>
+<pre><code><span class="co">## <span style="font-weight: bold;">── Solved rxode2 object ──</span></span>
+<span class="co">## <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">##      KA      V2       Q      V3     Kin    Kout    EC50      Tz     amp </span>
 <span class="co">##   0.294  40.200  10.500 297.000   1.000   1.000 200.000   8.000   0.100 </span>
-<span class="co">## ── <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ────────────────────────────────────────────────</span>
+<span class="co">## <span style="font-weight: bold;">── Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">## eff </span>
 <span class="co">##   1 </span>
-<span class="co">## ── <span style="font-weight: bold;">First part of data (object):</span> ────────────────────────────────────────────────</span>
+<span class="co">## <span style="font-weight: bold;">── First part of data (object): ──</span></span>
 <span class="co">## <span style="color: #949494;"># A tibble: 400 × 6</span></span>
 <span class="co">##      id  time    CL    C2   eff    WT</span>
 <span class="co">##   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
@@ -226,8 +226,7 @@
 <span class="co">## <span style="color: #BCBCBC;">4</span>     1 1.45   18.6  51.7  1.13  70.2</span>
 <span class="co">## <span style="color: #BCBCBC;">5</span>     1 1.94   18.6  54.7  1.18  70.2</span>
 <span class="co">## <span style="color: #BCBCBC;">6</span>     1 2.42   18.6  54.5  1.21  70.2</span>
-<span class="co">## <span style="color: #949494;"># … with 394 more rows</span></span>
-<span class="co">## ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span></code></pre>
+<span class="co">## <span style="color: #949494;"># … with 394 more rows</span></span></code></pre>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>, <span class="va">C2</span>, log<span class="op">=</span><span class="st">"y"</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## Warning: Transformation introduced infinite values in continuous y-axis</span></code></pre>
@@ -273,16 +272,16 @@
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">r1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod3</span>, <span class="va">ev</span>, covsInterpolation<span class="op">=</span><span class="st">"linear"</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r1</span><span class="op">)</span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ <span style="font-weight: bold;">Solved rxode2 object</span> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): ───────────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">#&gt;         KA         CL         V2          Q         V3       Kin0       Kout </span>
 <span class="co">#&gt;   0.294000  18.600000  40.200000  10.500000 297.000000   1.000000   1.000000 </span>
 <span class="co">#&gt;       EC50         Tz        amp         pi </span>
 <span class="co">#&gt; 200.000000   8.000000   0.100000   3.141593 </span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">#&gt; eff </span>
 <span class="co">#&gt;   1 </span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">First part of data (object):</span> ────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 5</span></span>
 <span class="co">#&gt;    time    C2   Kin   eff ctime</span>
 <span class="co">#&gt;     <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494;">[h]</span></span>
@@ -292,8 +291,7 @@
 <span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 1.45   51.8  1.09  1.22  9.45</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.94   54.8  1.09  1.27  9.94</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 2.42   54.6  1.08  1.30 10.4 </span>
-<span class="co">#&gt; <span style="color: #949494;"># … with 94 more rows</span></span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span></code></pre></div>
+<span class="co">#&gt; <span style="color: #949494;"># … with 94 more rows</span></span></code></pre></div>
 <p>When solving ODE equations, the solver may sample times outside of the data. When this happens, this ODE solver can use linear interpolation between the covariate values. It is equivalent to R’s <code>approxfun</code> with <code>method="linear"</code>.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>,<span class="va">C2</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></code></pre></div>
@@ -306,16 +304,16 @@
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">r1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod3</span>, <span class="va">ev</span>,covsInterpolation<span class="op">=</span><span class="st">"locf"</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r1</span><span class="op">)</span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ <span style="font-weight: bold;">Solved rxode2 object</span> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): ───────────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">#&gt;         KA         CL         V2          Q         V3       Kin0       Kout </span>
 <span class="co">#&gt;   0.294000  18.600000  40.200000  10.500000 297.000000   1.000000   1.000000 </span>
 <span class="co">#&gt;       EC50         Tz        amp         pi </span>
 <span class="co">#&gt; 200.000000   8.000000   0.100000   3.141593 </span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">#&gt; eff </span>
 <span class="co">#&gt;   1 </span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">First part of data (object):</span> ────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 5</span></span>
 <span class="co">#&gt;    time    C2   Kin   eff ctime</span>
 <span class="co">#&gt;     <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494;">[h]</span></span>
@@ -325,8 +323,7 @@
 <span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 1.45   51.8  1.09  1.22  9.45</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.94   54.8  1.09  1.27  9.94</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 2.42   54.6  1.08  1.31 10.4 </span>
-<span class="co">#&gt; <span style="color: #949494;"># … with 94 more rows</span></span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span></code></pre></div>
+<span class="co">#&gt; <span style="color: #949494;"># … with 94 more rows</span></span></code></pre></div>
 <p>which gives the following plots:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>,<span class="va">C2</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span>, xlab<span class="op">=</span><span class="st">"Time"</span><span class="op">)</span></code></pre></div>
@@ -339,16 +336,16 @@
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">r1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod3</span>, <span class="va">ev</span>,covsInterpolation<span class="op">=</span><span class="st">"nocb"</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">r1</span><span class="op">)</span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ <span style="font-weight: bold;">Solved rxode2 object</span> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): ───────────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">#&gt;         KA         CL         V2          Q         V3       Kin0       Kout </span>
 <span class="co">#&gt;   0.294000  18.600000  40.200000  10.500000 297.000000   1.000000   1.000000 </span>
 <span class="co">#&gt;       EC50         Tz        amp         pi </span>
 <span class="co">#&gt; 200.000000   8.000000   0.100000   3.141593 </span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): ──</span></span>
 <span class="co">#&gt; eff </span>
 <span class="co">#&gt;   1 </span>
-<span class="co">#&gt; ── <span style="font-weight: bold;">First part of data (object):</span> ────────────────────────────────────────────────</span>
+<span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 5</span></span>
 <span class="co">#&gt;    time    C2   Kin   eff ctime</span>
 <span class="co">#&gt;     <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494;">[h]</span></span>
@@ -358,8 +355,7 @@
 <span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 1.45   51.8  1.09  1.21  9.45</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.94   54.8  1.09  1.27  9.94</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 2.42   54.6  1.08  1.30 10.4 </span>
-<span class="co">#&gt; <span style="color: #949494;"># … with 94 more rows</span></span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span></code></pre></div>
+<span class="co">#&gt; <span style="color: #949494;"># … with 94 more rows</span></span></code></pre></div>
 <p>which gives the following plots:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>,<span class="va">C2</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span>, xlab<span class="op">=</span><span class="st">"Time"</span><span class="op">)</span></code></pre></div>

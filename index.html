@@ -175,7 +175,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="rxode2">RxODE2<a class="anchor" aria-label="anchor" href="#rxode2"></a>
+<img src="logo.png" class="logo" alt=""><h1 id="rxode2">rxode2<a class="anchor" aria-label="anchor" href="#rxode2"></a>
 </h1>
 </div>
 <!-- badges: start -->
@@ -270,6 +270,8 @@
 <p>To load <code>rxode2</code> package and compile the model:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>
+<span class="co">#&gt; detected new version of rxode2, cleaning cache</span>
+<span class="co">#&gt; rxode2 2.0.6 using 4 threads (see ?getRxThreads)</span>
 
 <span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
   <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;
@@ -279,7 +281,11 @@
   <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
   <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;
 <span class="op">}</span><span class="op">)</span>
-<span class="co">#&gt; </span></code></pre></div>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; → creating rxode2 include directory</span>
+<span class="co">#&gt; → getting R compile options</span>
+<span class="co">#&gt; → precompiling headers</span>
+<span class="co">#&gt; ✔ done</span></code></pre></div>
 <div class="section level2">
 <h2 id="specify-ode-parameters-and-initial-conditions">Specify ODE parameters and initial conditions<a class="anchor" aria-label="anchor" href="#specify-ode-parameters-and-initial-conditions"></a>
 </h2>
@@ -416,14 +422,14 @@
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>;
 <span class="va">x</span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ Solved rxode2 object ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
-<span class="co">#&gt; ── Parameters (x$params): ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ Solved rxode2 object ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
+<span class="co">#&gt; ── Parameters (x$params): ──────────────────────────────────────────────────────</span>
 <span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
 <span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; ── Initial Conditions (x$inits): ─────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span class="co">#&gt; ── Initial Conditions (x$inits): ───────────────────────────────────────────────</span>
 <span class="co">#&gt; depot centr  peri   eff </span>
 <span class="co">#&gt;     0     0     0     1 </span>
-<span class="co">#&gt; ── First part of data (object): ──────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span class="co">#&gt; ── First part of data (object): ────────────────────────────────────────────────</span>
 <span class="co">#&gt; # A tibble: 241 × 7</span>
 <span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
 <span class="co">#&gt;    [h] &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span>
@@ -434,7 +440,7 @@
 <span class="co">#&gt; 5    4  44.5 5.98   3085. 1789. 1776.  1.23</span>
 <span class="co">#&gt; 6    5  36.5 7.18   2299. 1467. 2132.  1.21</span>
 <span class="co">#&gt; # … with 235 more rows</span>
-<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span></code></pre></div>
+<span class="co">#&gt; ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span></code></pre></div>
 <p>This returns a modified data frame. You can see the compartment values in the plot below:</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>
@@ -468,9 +474,6 @@
 <p>Like <code>rxode2</code>, <code>dMod</code> supports symbolic manipulation of ODE systems and calculates forward sensitivities and adjoint sensitivities of systems.</p>
 <p>Unlike <code>rxode2</code>, <code>dMod</code> is not thread-safe since <code>deSolve</code> is not yet thread-safe.</p>
 </li>
-</ul>
-<p>And there is one package that is not released on CRAN:</p>
-<ul>
 <li>
 <p><a href="https://github.com/InsightRX/PKPDsim" class="external-link">PKPDsim</a> which defines models in an R-like syntax and converts the system to compiled code.</p>
 <p>Like <code>mrgsolve</code>, <code>PKPDsim</code> does not currently support symbolic manipulation of ODE systems.</p>
@@ -488,12 +491,10 @@
 <h3 id="the-following-packages-for-solved-pk-systems-are-on-cran">The following packages for solved PK systems are on CRAN<a class="anchor" aria-label="anchor" href="#the-following-packages-for-solved-pk-systems-are-on-cran"></a>
 </h3>
 <ul>
-<li>
-<a href="https://cran.r-project.org/package=mrgsolve" class="external-link">mrgsolve</a> currently has 1-2 compartment (poly-exponential models) models built-in. The solved systems and ODEs cannot currently be mixed.</li>
-<li>
-<a href="https://github.com/kestrel99/pmxTools" class="external-link">pmxTools</a> currently have 1-3 compartment (super-positioning) models built-in. This is a R-only implementation.</li>
-<li>
-<a href="https://CRAN.R-project.org/package=PKPDmodels" class="external-link">PKPDmodels</a> has a one-compartment model with gradients.</li>
+<li><p><a href="https://cran.r-project.org/package=mrgsolve" class="external-link">mrgsolve</a> currently has 1-2 compartment (poly-exponential models) models built-in. The solved systems and ODEs cannot currently be mixed.</p></li>
+<li><p><a href="https://github.com/kestrel99/pmxTools" class="external-link">pmxTools</a> currently have 1-3 compartment (super-positioning) models built-in. This is a R-only implementation.</p></li>
+<li><p><a href="https://github.com/InsightRX/PKPDsim" class="external-link">PKPDsim</a> uses 1-3 “ADVAN” solutions using non-superpositioning.</p></li>
+<li><p><a href="https://CRAN.R-project.org/package=PKPDmodels" class="external-link">PKPDmodels</a> has a one-compartment model with gradients.</p></li>
 </ul>
 </div>
 <div class="section level3">

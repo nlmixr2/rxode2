@@ -503,7 +503,7 @@ Springer-Verlag (1993).</p>
 <span class="r-in"><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu">rxode</span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode</span><span class="op">)</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.6 model named <span style="color: #BBBB00; font-weight: bold;">rx_e5ee9e24cc45f3be33212348187982cb</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.6 model named <span style="color: #BBBB00; font-weight: bold;">rx_2d120938802ab67d4516a08100479414</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: V2, V3, KA, CL, Q, Kin, Kout, EC50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$lhs</span>: C2, C3</span>
@@ -554,14 +554,14 @@ Springer-Verlag (1993).</p>
 <span class="r-in"><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eff <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span class="r-in"><span class="va">qd.cp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">theta</span>, events <span class="op">=</span> <span class="va">qd</span>, <span class="va">inits</span><span class="op">)</span></span>
 <span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ <span style="font-weight: bold;">Solved rxode2 object</span> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> ── <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): ───────────────────────────────────────────────────────</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── Solved rxode2 object ──</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  40.200 297.000   0.291  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> ── <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ────────────────────────────────────────────────</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): ──</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> depot centr  peri   eff </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     0     0     0     1 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> ── <span style="font-weight: bold;">First part of data (object):</span> ────────────────────────────────────────────────</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── First part of data (object): ──</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 37 × 7</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   time    C2    C3  depot centr  peri   eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
@@ -572,7 +572,6 @@ Springer-Verlag (1993).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>    4  44.4 5.94   <span style="text-decoration: underline;">3</span>122. <span style="text-decoration: underline;">1</span>784. <span style="text-decoration: underline;">1</span>765.  1.23</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>    5  36.5 7.14   <span style="text-decoration: underline;">2</span>334. <span style="text-decoration: underline;">1</span>466. <span style="text-decoration: underline;">2</span>120.  1.21</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># … with 31 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span>
 <span class="r-in"></span>
 <span class="r-in"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span>
 <span class="r-plt img"><img src="rxode2-1.png" alt="" width="700" height="433"></span>

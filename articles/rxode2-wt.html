@@ -157,7 +157,7 @@
   <main id="main"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Weight Based Dosing in rxode2</h1>
             
-            <h4 data-toc-skip class="date">2022-04-20</h4>
+            <h4 data-toc-skip class="date">2022-04-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-wt.Rmd" class="external-link"><code>vignettes/rxode2-wt.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-wt.Rmd</code></div>
@@ -282,8 +282,8 @@
              addDosing <span class="op">=</span> <span class="cn">TRUE</span>, addCov <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">#&gt; _____________________________ <span style="font-weight: bold;">Solved rxode2 object</span> _____________________________</span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">Parameters</span> (<span style="color: #0000BB; font-weight: bold;">$params</span>): -------------------------------------------------------</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 30 x 5</span></span>
 <span class="co">#&gt;    id     eta.cl  eta.v1    eta.q  eta.v2</span>
 <span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
@@ -298,10 +298,10 @@
 <span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9     -<span style="color: #BB0000;">0.632</span>  -<span style="color: #BB0000;">0.569</span>   0.146   -<span style="color: #BB0000;">0.198</span> </span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10    -<span style="color: #BB0000;">0.392</span>   1.90   -<span style="color: #BB0000;">0.094</span><span style="color: #BB0000; text-decoration: underline;">2</span>  -<span style="color: #BB0000;">0.181</span> </span>
 <span class="co">#&gt; <span style="color: #949494;"># ... with 20 more rows</span></span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">Initial Conditions</span> (<span style="color: #0000BB; font-weight: bold;">$inits</span>): ------------------------------------------------</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
 <span class="co">#&gt; centr  peri </span>
 <span class="co">#&gt;     0     0 </span>
-<span class="co">#&gt; -- <span style="font-weight: bold;">First part of data (object):</span> ------------------------------------------------</span>
+<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 900 x 9</span></span>
 <span class="co">#&gt;      id  evid   cmt   amt  time    DV   SEX    WT  CRCL</span>
 <span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
@@ -311,8 +311,7 @@
 <span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1     0    <span style="color: #BB0000;">NA</span>   <span style="color: #BB0000;">NA</span>  0.516 22.0      1  49.4    83</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1     0    <span style="color: #BB0000;">NA</span>   <span style="color: #BB0000;">NA</span>  0.729 17.5      1  49.4    83</span>
 <span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1     0    <span style="color: #BB0000;">NA</span>   <span style="color: #BB0000;">NA</span>  0.921  3.46     1  49.4    83</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 894 more rows</span></span>
-<span class="co">#&gt; ________________________________________________________________________________</span></code></pre>
+<span class="co">#&gt; <span style="color: #949494;"># ... with 894 more rows</span></span></code></pre>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">data</span>, log<span class="op">=</span><span class="st">"y"</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">#&gt; Warning: Transformation introduced infinite values in continuous y-axis</span></code></pre>
