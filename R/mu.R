@@ -610,7 +610,6 @@
     y <- x
     for (.i in seq_along(y)) {
       x <- y[[.i]]
-      assign(".curEval", "", env)
       if (identical(x[[1]], quote(`=`)) ||
             identical(x[[1]], quote(`~`))) {
         #.handleSingleEtaIfExists(x[[3]], env)
@@ -624,7 +623,8 @@
               .rxMuRef0(y, env=env)
             }, env=env)
           } else {
-            .tmp <- try(lapply(x, function(y, env){
+            .tmp <- try(lapply(x, function(y, env) {
+              assign(".curEval", "", env)
               .rxMuRef0(y, env=env)
             }, env=env), silent=TRUE)
           }
