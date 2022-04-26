@@ -610,7 +610,6 @@
     y <- x
     for (.i in seq_along(y)) {
       x <- y[[.i]]
-      assign(".curEval", "", env)
       if (identical(x[[1]], quote(`=`)) ||
             identical(x[[1]], quote(`~`))) {
         #.handleSingleEtaIfExists(x[[3]], env)
@@ -619,9 +618,15 @@
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
           if (rxode2.debug) {
-            .tmp <- lapply(x, .rxMuRef0, env=env)
+            .tmp <- lapply(x, function(y, env){
+              assign(".curEval", "", env)
+              .rxMuRef0(y, env=env)
+            }, env=env)
           } else {
-            .tmp <- try(lapply(x, .rxMuRef0, env=env), silent=TRUE)
+            .tmp <- try(lapply(x, function(y, env) {
+              assign(".curEval", "", env)
+              .rxMuRef0(y, env=env)
+            }, env=env), silent=TRUE)
           }
           if (inherits(.tmp, "try-error")) {
             .msg <- paste0("mu-ref err: ", attr(.tmp,"condition")$message)
@@ -643,7 +648,7 @@
     }
   } else if (is.call(x)) {
     if (identical(x[[1]], quote(`+`))) {
-    .muRefHandlePlus(x, env)
+      .muRefHandlePlus(x, env)
     } else {
       assign(".curEval", as.character(x[[1]]), env)
       .handleSingleEtaIfExists(x[[2]], env)
