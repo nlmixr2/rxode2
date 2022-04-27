@@ -25,6 +25,7 @@ expect_plotlog <- function(o, timex, logx, logy, dat) {
 }
 
 test_that(".plotLog works without xgxr", {
+  skip_on_os("mac")
   d <- data.frame(time=-1:2, conc=0:3)
   expect_equal(
     .plotLog(.dat=d, .timex="A", log=""),
@@ -51,6 +52,7 @@ test_that(".plotLog works without xgxr", {
 
 test_that(".plotLog works with xgxr", {
   skip_if_not_installed("xgxr")
+  skip_on_os("mac")
   skip("See https://github.com/Novartis/xgxr/issues/50 for why xgxr is not uniquely tested as of 2022-03-15")
   current_xgxr_option <- getOption("rxode2.xgxr")
   withr::with_options(
@@ -62,6 +64,7 @@ test_that(".plotLog works with xgxr", {
 })
 
 test_that(".plotLog gives expected errors", {
+  skip_on_os("mac")
   expect_error(.plotLog(log=c("x", "y")))
   expect_error(.plotLog(log=1))
   expect_error(.plotLog(log="foo"))
@@ -72,7 +75,7 @@ test_that(".plotLog gives expected errors", {
 })
 
 test_that("plot() with invalid component throws an error", {
-
+  skip_on_os("mac")
   pheno2 <- function() {
     ini({
       tcl <- log(0.008) # typical value of clearance
