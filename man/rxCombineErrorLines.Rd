@@ -12,7 +12,8 @@ rxCombineErrorLines(
   modelVars = FALSE,
   cmtLines = TRUE,
   dvidLine = TRUE,
-  lstExpr = NULL
+  lstExpr = NULL,
+  useIf = TRUE
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ rxCombineErrorLines(
 \item{lstExpr}{A list of expressions for model, or NULL.  When NULL
 defaults to the model expressions accessible by
 \code{uiModel$lstExpr}.}
+
+\item{useIf}{Use an \verb{if (CMT == X)} for endpoints}
 }
 \value{
 quoted expression that can be evaluated to compiled rxode2

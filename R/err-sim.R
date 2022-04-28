@@ -253,6 +253,7 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' @param lstExpr A list of expressions for model, or NULL.  When NULL
 #'   defaults to the model expressions accessible by
 #'   `uiModel$lstExpr`.
+#' @param useIf Use an `if (CMT == X)` for endpoints
 #' @return quoted expression that can be evaluated to compiled rxode2
 #'   model
 #' @export
@@ -360,7 +361,8 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #'
 rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, paramsLine=NULL,
                                 modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE,
-                                lstExpr=NULL) {
+                                lstExpr=NULL,
+                                useIf=TRUE) {
   if(!inherits(uiModel, "rxUi")) {
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
@@ -377,7 +379,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   .if <- FALSE
   if (length(.predDf$line) > 1) {
     .lenLines <- length(.predDf$line)
-    .if <- TRUE
+    .if <- useIf
   } else {
     .lenLines <- sum(vapply(seq_along(errLines), function(i){
       length(errLines[[i]])
@@ -443,10 +445,15 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   if (dvidLine) {
     .ret[[.k]] <- uiModel$dvidLine
   }
+  .drop <- which(vapply(seq_along(.ret), function(.i) {
+    identical(.ret[[.i]], quote(`_drop`))
+  }, logical(1), USE.NAMES=FALSE))
+  if (length(.drop) > 0) {
+    .ret <- .ret[-.drop]
+  }
   if (modelVars) {
     as.call(list(quote(`rxModelVars`), as.call(.ret)))
   } else {
-
     as.call(list(quote(`rxode2`), as.call(.ret)))
   }
 }
