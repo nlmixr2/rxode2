@@ -169,7 +169,6 @@ navbar:
     menu:
         - text: "--------------------------"
         - text: "Getting started"
-        - text: "Introduction"
         - text: "rxode2 mini language syntax"
           href: articles/rxode2-syntax.html
         - text: "rxode2 with piping ie %>%"
