@@ -134,13 +134,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxAppendModel</span><span class="op">(</span><span class="va">model1</span>, <span class="va">model2</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxUi</span>
-<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxUi</span>
-<span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">...</span>, deparse.level <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxAppendModel</span><span class="op">(</span><span class="va">model1</span>, <span class="va">model2</span><span class="op">)</span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -152,8 +146,6 @@
 <dt>...</dt>
 <dd><p>Models sent (in order) to <code>rxAppendModel</code> to
 concatenate/bind the models together</p></dd>
-<dt>deparse.level</dt>
-<dd><p>ignored parameter that is used with <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code></p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -253,112 +245,6 @@ concatenate/bind the models together</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"></span>
-<span class="r-in"><span class="co"># You may also use c(...) or rbind(...) but this requires the first</span></span>
-<span class="r-in"><span class="co"># argument to be an compiled/evaluated rxode2 model.  This can be</span></span>
-<span class="r-in"><span class="co"># done by calling the function like 'ocmt()', or evaluating within</span></span>
-<span class="r-in"><span class="co"># rxode2 ('rxode2(ocmt)') or piping /modifying it</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">ocmt</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="model.html">model</a></span><span class="op">(</span>ceff<span class="op">=</span><span class="va">cp</span>,append<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span>, <span class="va">idr</span><span class="op">)</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ── <span style="font-weight: bold;">Initalization:</span> ──  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       tka       tcl        tv    add.sd      tkin     tkout     tic50     gamma </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.568312  2.718282 31.500392  0.700000  0.000000  0.000000  2.302585  1.000000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    idr.sd </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.000000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ── <span style="font-weight: bold;">Multiple Endpoint Model (</span><span style="color: #0000BB; font-weight: bold;">$multipleEndpoint</span><span style="font-weight: bold;">):</span> ──  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   variable                cmt                dvid*</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1   cp ~ …  cmt='cp' or cmt=4  dvid='cp' or dvid=1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  eff ~ … cmt='eff' or cmt=3 dvid='eff' or dvid=2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   * If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ── <span style="font-weight: bold;">Model (Normalized Syntax):</span> ── </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> function() {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     ini({</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tka &lt;- 1.56831218549017</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         label("Ka")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tcl &lt;- 2.71828182845905</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         label("Cl")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tv &lt;- 31.5003923087479</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         label("log V")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         add.sd &lt;- c(0, 0.7)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tkin &lt;- 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tkout &lt;- 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tic50 &lt;- 2.30258509299405</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         gamma &lt;- fix(1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         idr.sd &lt;- c(0, 1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     model({</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         ka &lt;- tka</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         cl &lt;- tcl</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         v &lt;- tv</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(depot) = -ka * depot</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(center) = ka * depot - cl/v * center</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         cp = center/v</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         cp ~ add(add.sd)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         ceff &lt;- cp</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         kin &lt;- exp(tkin)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         kout &lt;- exp(tkout)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         ic50 &lt;- exp(tic50)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(eff) &lt;- kin - kout * (1 - ceff^gamma/(ic50^gamma + </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>             ceff^gamma))</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         eff ~ add(idr.sd)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">ocmt</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="model.html">model</a></span><span class="op">(</span>ceff<span class="op">=</span><span class="va">cp</span>,append<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span>, <span class="va">idr</span><span class="op">)</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ── <span style="font-weight: bold;">Initalization:</span> ──  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       tka       tcl        tv    add.sd      tkin     tkout     tic50     gamma </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.568312  2.718282 31.500392  0.700000  0.000000  0.000000  2.302585  1.000000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    idr.sd </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.000000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ── <span style="font-weight: bold;">Multiple Endpoint Model (</span><span style="color: #0000BB; font-weight: bold;">$multipleEndpoint</span><span style="font-weight: bold;">):</span> ──  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   variable                cmt                dvid*</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1   cp ~ …  cmt='cp' or cmt=4  dvid='cp' or dvid=1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  eff ~ … cmt='eff' or cmt=3 dvid='eff' or dvid=2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   * If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ── <span style="font-weight: bold;">Model (Normalized Syntax):</span> ── </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> function() {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     ini({</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tka &lt;- 1.56831218549017</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         label("Ka")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tcl &lt;- 2.71828182845905</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         label("Cl")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tv &lt;- 31.5003923087479</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         label("log V")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         add.sd &lt;- c(0, 0.7)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tkin &lt;- 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tkout &lt;- 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         tic50 &lt;- 2.30258509299405</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         gamma &lt;- fix(1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         idr.sd &lt;- c(0, 1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     model({</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         ka &lt;- tka</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         cl &lt;- tcl</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         v &lt;- tv</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(depot) = -ka * depot</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(center) = ka * depot - cl/v * center</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         cp = center/v</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         cp ~ add(add.sd)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         ceff &lt;- cp</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         kin &lt;- exp(tkin)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         kout &lt;- exp(tkout)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         ic50 &lt;- exp(tic50)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(eff) &lt;- kin - kout * (1 - ceff^gamma/(ic50^gamma + </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>             ceff^gamma))</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         eff ~ add(idr.sd)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"></span>
 </code></pre></div>
     </div>
