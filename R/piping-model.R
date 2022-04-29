@@ -650,6 +650,8 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 #'
 #' # The covariates you set with `rxSetCovariateNamesForPiping()`
 #' # are turned off every time you solve (or fit in nlmixr)
+#'
+#' @export
 rxSetCovariateNamesForPiping <- function(covariates=NULL) {
   if (!is.null(covariates)) {
     checkmate::assertCharacter(covariates, any.missing=FALSE, unique=TRUE)
