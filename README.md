@@ -35,7 +35,7 @@ few key parts:
    [simple syntax](https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html) related to Leibnitz notation.
  - The event data, which can be:
    - a `NONMEM` or `deSolve` [compatible data frame](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html), or
-   - created with `et()` or `EventTable()` for [easy simulation of events](https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html)
+   - created with `et()` or `eventTable()` for [easy simulation of events](https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html)
    - The data frame can be augmented by adding
      [time-varying](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#time-varying-covariates)
      or adding [individual covariates](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#individual-covariates) (`iCov=` as needed)
