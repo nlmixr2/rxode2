@@ -277,8 +277,7 @@ An example model is shown below:\preformatted{   # simple assignment
    d/dt(centr) = F*KA*depot - CL*C2 - Q*C2 + Q*C3; 
 }
 
-Expressions in assignment and \code{if} statements can be numeric or logical,
-however, no character nor integer expressions are currently supported.
+Expressions in assignment and \code{if} statements can be numeric or logical.
 
 Numeric expressions can include the following numeric operators \verb{+, -, *, /, ^} and those mathematical functions defined in the C or the R math
 libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).

@@ -71,8 +71,7 @@ An example model is shown below:
    d/dt(centr) = F*KA*depot - CL*C2 - Q*C2 + Q*C3; 
 ```
 
-Expressions in assignment and `if` statements can be numeric or logical,
-however, no character nor integer expressions are currently supported. 
+Expressions in assignment and `if` statements can be numeric or logical.
 
 Numeric expressions can include the following numeric operators `+, -,
 *, /, ^` and those mathematical functions defined in the C or the R
