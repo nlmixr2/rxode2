@@ -51,6 +51,8 @@ to make other types of estimation methods (if needed)
 }
 \examples{
 
+\donttest{
+
 one.cmt <- function() {
    ini({
      ## You may label each parameter with a comment
@@ -144,6 +146,7 @@ rxCombineErrorLines(f)
 
 f$simulationModel
 
+}
 }
 \author{
 Matthew L. Fidler

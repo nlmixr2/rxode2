@@ -266,6 +266,8 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #'
 #' @examples
 #'
+#' \donttest{
+#'
 #' one.cmt <- function() {
 #'    ini({
 #'      ## You may label each parameter with a comment
@@ -359,6 +361,7 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #'
 #' f$simulationModel
 #'
+#' }
 rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, paramsLine=NULL,
                                 modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE,
                                 lstExpr=NULL,

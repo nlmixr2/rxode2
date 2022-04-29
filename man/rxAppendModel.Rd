@@ -2,15 +2,9 @@
 % Please edit documentation in R/ui-bind.R
 \name{rxAppendModel}
 \alias{rxAppendModel}
-\alias{c.rxUi}
-\alias{rbind.rxUi}
 \title{Append two rxui models together}
 \usage{
 rxAppendModel(model1, model2)
-
-\method{c}{rxUi}(...)
-
-\method{rbind}{rxUi}(..., deparse.level = 1)
 }
 \arguments{
 \item{model1}{rxUi model 1}
@@ -19,8 +13,6 @@ rxAppendModel(model1, model2)
 
 \item{...}{Models sent (in order) to \code{rxAppendModel} to
 concatenate/bind the models together}
-
-\item{deparse.level}{ignored parameter that is used with \code{rbind()}}
 }
 \value{
 New model with both models appended together
@@ -67,14 +59,6 @@ idr <- function() {
 
 rxAppendModel(ocmt \%>\% model(ceff=cp,append=TRUE), idr)
 
-# You may also use c(...) or rbind(...) but this requires the first
-# argument to be an compiled/evaluated rxode2 model.  This can be
-# done by calling the function like 'ocmt()', or evaluating within
-# rxode2 ('rxode2(ocmt)') or piping /modifying it
-
-c(ocmt \%>\% model(ceff=cp,append=TRUE), idr)
-
-rbind(ocmt \%>\% model(ceff=cp,append=TRUE), idr)
 
 }
 \author{
