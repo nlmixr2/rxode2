@@ -169,7 +169,6 @@ To load `rxode2` package and compile the model:
 
 ```r
 library(rxode2)
-#> rxode2 2.0.6 using 4 threads (see ?getRxThreads)
 
 mod1 <- rxode2({
   C2 <- centr/V2;
@@ -293,7 +292,7 @@ These events can also be combined and expanded (to multi-subject
 events and complex regimens) with `rbind`, `c`, `seq`, and `rep`. For
 more information about creating complex dosing regimens using rxode2
 see the [rxode2 events
-vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-events.html).
+vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 
 
 ## Solving ODEs

@@ -111,7 +111,7 @@ These events can also be combined and expanded (to multi-subject
 events and complex regimens) with `rbind`, `c`, `seq`, and `rep`. For
 more information about creating complex dosing regimens using rxode2
 see the [rxode2 events
-vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-events.html).
+vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 
 
 ## Solving ODEs
