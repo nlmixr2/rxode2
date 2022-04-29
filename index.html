@@ -72,7 +72,6 @@
   </a>
   <div class="dropdown-menu" aria-labelledby="dropdown--articles">
     <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
-    <h6 class="dropdown-header" data-toc-skip>Introduction</h6>
     <a class="dropdown-item" href="articles/rxode2-syntax.html">rxode2 mini language syntax</a>
     <a class="dropdown-item" href="articles/rxode2-pipeline.html">rxode2 with piping ie %&gt;%</a>
     <a class="dropdown-item" href="articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
@@ -188,7 +187,7 @@
 <code><a href="reference/rxode2.html">rxode()</a></code> which creates the C code for fast ODE solving based on a <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html">simple syntax</a> related to Leibnitz notation.</li>
 <li>The event data, which can be:<ul>
 <li>a <code>NONMEM</code> or <code>deSolve</code> <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html">compatible data frame</a>, or</li>
-<li>created with <code><a href="reference/et.html">et()</a></code> or <code>EventTable()</code> for <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html">easy simulation of events</a>
+<li>created with <code><a href="reference/et.html">et()</a></code> or <code><a href="reference/eventTable.html">eventTable()</a></code> for <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html">easy simulation of events</a>
 </li>
 <li>The data frame can be augmented by adding <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#time-varying-covariates">time-varying</a> or adding <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#individual-covariates">individual covariates</a> (<code>iCov=</code> as needed)</li>
 </ul>
