@@ -44,23 +44,6 @@ test_that("binding together", {
 
   expect_error(rxAppendModel(ocmt, idr))
 
-  m1 <- c(ocmt %>% model(ceff=cp,append=TRUE), idr)
-  expect_true("idr.sd" %in% m1$iniDf$name)
-  expect_true("tv" %in% m1$iniDf$name)
-
-
-  m1 <- rbind(ocmt %>% model(ceff=cp,append=TRUE), idr)
-  expect_true("idr.sd" %in% m1$iniDf$name)
-  expect_true("tv" %in% m1$iniDf$name)
-
-  m1 <- c(ocmt %>% model(ceff=cp,append=TRUE) %>% model(ka <- tka + eta.ka),
-          idr %>% model(kout <- exp(tkout + eta.kout)))
-
-  expect_true("idr.sd" %in% m1$iniDf$name)
-  expect_true("tv" %in% m1$iniDf$name)
-  expect_true("eta.ka" %in% m1$iniDf$name)
-  expect_true("eta.kout" %in% m1$iniDf$name)
-
   idr <- function() {
     ini({
       tkin <- log(1)
