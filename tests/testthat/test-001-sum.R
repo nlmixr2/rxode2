@@ -1,7 +1,8 @@
 test_that("PreciseSums::fsum", {
+  skip_on_cran()
   et <- eventTable() %>%
     add.sampling(0)
-  
+
   rx <- rxode2({
     s1 <- sum(1e100, 1.0, -1e100, 1e-100, 1e50, -1.0, -1e50)
     s2 <- sum(2.0^53, -0.5, -2.0^-54)
@@ -13,7 +14,7 @@ test_that("PreciseSums::fsum", {
     s8 <- sum(1e100, 1, -1e100, 1)
     s9 <- sum(R_pow(prod(2, 3), 2), 6)
   })
-  
+
   s <- rxSolve(rx,
                params = c(
                  a = 1e16 - 2.,
@@ -23,7 +24,7 @@ test_that("PreciseSums::fsum", {
                ), et,
                sumType = "fsum"
   )
-  
+
   expect_identical(s$s1, 1e-100)
   expect_identical(s$s2, 2.0^53 - 1.0)
   expect_identical(s$s3, 2.0^53 + 2.0)
@@ -32,7 +33,7 @@ test_that("PreciseSums::fsum", {
   expect_identical(s$s6, 10000000000000002.0)
   expect_identical(s$s7, 0.0)
   expect_identical(s$s8, 2.0)
-  
+
   expect_error(rxSetSum("c"))
   expect_error(rxSetProd("double"))
 })

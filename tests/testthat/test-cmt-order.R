@@ -1,6 +1,4 @@
-fileWarfarin <- test_path("warfarin.qs")
-skip_if_not(file.exists(fileWarfarin))
-warfarin <- qs::qread(fileWarfarin)
+warfarin <- nlmixr2data::warfarin
 
 test_that("cmt() syntax makes sense", {
   mod <- rxode2({
@@ -10,18 +8,18 @@ test_that("cmt() syntax makes sense", {
     d / dt(intestine) <- -a * intestine
     d / dt(blood) <- a * intestine - b * blood
   })
-  
+
   expect_equal(c("blood", "intestine"), rxState(mod))
-  
+
   mod <- rxode2({
     a <- 6
     b <- 0.6
     d / dt(intestine) <- -a * intestine
     d / dt(blood) <- a * intestine - b * blood
   })
-  
+
   expect_equal(c("intestine", "blood"), rxState(mod))
-  
+
   expect_error(expect_message(rxode2({
     a <- 6
     b <- 0.6
@@ -29,7 +27,7 @@ test_that("cmt() syntax makes sense", {
     d / dt(intestine) <- -a * intestine
     d / dt(blood) <- a * intestine - b * blood
   })))
-  
+
   tmp <- rxode2({
     a <- 6
     b <- 0.6
@@ -70,7 +68,7 @@ test_that("Compartment melding with dvid", {
     ## These dvid w/ negative values are counted backward from the last
     dvid(-1, 4)
   })
-  
+
   w2 <- warfarin
   tmp <- etTrans(w2, w, addCmt = TRUE)
   expect_equal(
@@ -80,7 +78,7 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   w <- rxode2({
     ktr <- exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -107,7 +105,7 @@ test_that("Compartment melding with dvid", {
     cmt(cp)
     dvid(5, 4)
   })
-  
+
   w2 <- warfarin
   tmp <- etTrans(w2, w, addCmt = TRUE)
   expect_equal(
@@ -117,7 +115,7 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   w2$dvid <- paste(w2$dvid)
   tmp <- etTrans(w2, w, addCmt = TRUE)
   expect_equal(
@@ -127,7 +125,7 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   w2 <- warfarin
   w2$dvid <- as.integer(w2$dvid)
   tmp <- etTrans(w2, w, addCmt = TRUE)
@@ -138,7 +136,7 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   w2 <- warfarin
   w2$dvid <- as.integer(w2$dvid) * 10
   expect_warning(tmp <- etTrans(w2, w, addCmt = TRUE))
@@ -149,7 +147,7 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   w <- rxode2({
     ktr <- exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -176,7 +174,7 @@ test_that("Compartment melding with dvid", {
     cmt(cp)
     dvid(5)
   })
-  
+
   w2 <- warfarin
   w2$dvid <- as.integer(w2$dvid) * 10
   expect_warning(tmp <- etTrans(w2, w, addCmt = TRUE))
@@ -187,7 +185,7 @@ test_that("Compartment melding with dvid", {
       1L, 1L, 1L, 1L
     )
   )
-  
+
   w <- rxode2({
     ktr <- exp(tktr + eta.ktr)
     ka <- exp(tka + eta.ka)
@@ -214,7 +212,7 @@ test_that("Compartment melding with dvid", {
     cmt(cp)
     dvid(4, 5)
   })
-  
+
   w2 <- warfarin
   w2$dvid <- as.integer(w2$dvid)
   tmp <- etTrans(w2, w, addCmt = TRUE)
@@ -225,7 +223,7 @@ test_that("Compartment melding with dvid", {
       5L, 5L, 5L, 5L
     )
   )
-  
+
   ## Warfarin model
   inner <- rxode2({
     cmt(depot)
@@ -378,16 +376,16 @@ test_that("Compartment melding with dvid", {
     cmt(pca)
     dvid(3, 4, 5, 6)
   })
-  
+
   # context("warfarin inner test")
-  
+
   data.pkpd <- warfarin
   data.pkpd$dvid <- as.integer(data.pkpd$dvid)
   data.pkpd$cmt <- paste(factor(data.pkpd$dvid, c(1, 2), c("center", "effect")))
   data.pkpd$cmt[data.pkpd$amt > 0] <- "depot"
-  
+
   t2 <- etTrans(data.pkpd[, names(data.pkpd) != "dvid"], inner)
-  
+
   expect_equal(
     t2$CMT[t2$ID == 1],
     c(
@@ -395,12 +393,12 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   data.pkpd$cmt <- paste(factor(data.pkpd$dvid, c(1, 2), c("cp", "pca")))
   data.pkpd$cmt[data.pkpd$amt > 0] <- "depot"
-  
+
   t2 <- etTrans(data.pkpd[, names(data.pkpd) != "dvid"], inner)
-  
+
   expect_equal(
     t2$CMT[t2$ID == 1],
     c(
@@ -408,11 +406,11 @@ test_that("Compartment melding with dvid", {
       38L, 38L, 38L, 38L
     )
   )
-  
+
   data.pkpd$cmt <- factor(data.pkpd$cmt)
-  
+
   t2 <- etTrans(data.pkpd[, names(data.pkpd) != "dvid"], inner)
-  
+
   expect_equal(
     t2$CMT[t2$ID == 1],
     c(
@@ -420,16 +418,16 @@ test_that("Compartment melding with dvid", {
       38L, 38L, 38L, 38L
     )
   )
-  
+
   data.pkpd$cmt <- paste(data.pkpd$cmt)
   .cmt <- data.pkpd$cmt
   data.pkpd$cmt <- 1
   data.pkpd$cmt[.cmt == "cp"] <- 5
   data.pkpd$cmt[.cmt == "pca"] <- 6
-  
+
   ## This skips the sensitivity equations
   t2 <- etTrans(data.pkpd[, names(data.pkpd) != "dvid"], inner)
-  
+
   expect_equal(
     t2$CMT[t2$ID == 1],
     c(
@@ -437,13 +435,13 @@ test_that("Compartment melding with dvid", {
       38L, 38L, 38L, 38L
     )
   )
-  
+
   data.pkpd$cmt <- 1
   data.pkpd$cmt[.cmt == "cp"] <- 3
   data.pkpd$cmt[.cmt == "pca"] <- 4
-  
+
   t2 <- etTrans(data.pkpd[, names(data.pkpd) != "dvid"], inner)
-  
+
   expect_equal(
     t2$CMT[t2$ID == 1],
     c(
@@ -451,9 +449,9 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   t2 <- etTrans(data.pkpd, inner)
-  
+
   expect_equal(
     t2$CMT[t2$ID == 1],
     c(
@@ -461,14 +459,14 @@ test_that("Compartment melding with dvid", {
       4L, 4L, 4L, 4L
     )
   )
-  
+
   data.pkpd$dvid[data.pkpd$dvid == 1] <- 3
   data.pkpd$dvid[data.pkpd$dvid == 2] <- 4
-  
+
   expect_error(etTrans(data.pkpd, inner))
-  
+
   t2 <- etTrans(data.pkpd[, names(data.pkpd) != "cmt"], inner, addCmt = TRUE)
-  
+
   expect_equal(
     t2$CMT[t2$ID == 1],
     c(
@@ -476,10 +474,10 @@ test_that("Compartment melding with dvid", {
       38L, 38L, 38L, 38L
     )
   )
-  
+
   ## TEST NA cmt/dvid w/factors
   ## TEST NA strings for cmt/dvid
-  
+
   tmp <- rxode2({
     d / dt(depot) <- -ka * depot
     d / dt(center) <- ka * depot - cl / v * center
@@ -488,51 +486,51 @@ test_that("Compartment melding with dvid", {
     cmt(central)
     cmt(c20)
   })
-  
+
   expect_s3_class(tmp, "rxode2")
-  
+
   # context("Check lhs allowed stateExtra while preserving lhs properties.")
-  
+
   tmp <- rxode2({
     d / dt(depot) <- -ka * depot
     d / dt(center) <- ka * depot - cl / v * center
     cp <- center / v
     cmt(cp)
   })
-  
+
   expect_s3_class(tmp, "rxode2")
   expect_equal(tmp$lhs, "cp")
   expect_equal(tmp$stateExtra, "cp")
-  
+
   tmp <- rxode2({
     d / dt(depot) <- -ka * depot
     d / dt(center) <- ka * depot - cl / v * center
     cmt(cp)
     cp <- center / v
   })
-  
+
   expect_s3_class(tmp, "rxode2")
   expect_equal(tmp$lhs, "cp")
   expect_equal(tmp$stateExtra, "cp")
-  
+
   tmp <- rxode2({
     d / dt(depot) <- -ka * depot
     d / dt(center) <- ka * depot - cl / v * center
     cmt(cp)
     cp <- 3
   })
-  
+
   expect_s3_class(tmp, "rxode2")
   expect_equal(tmp$lhs, "cp")
   expect_equal(tmp$stateExtra, "cp")
-  
+
   tmp <- rxode2({
     d / dt(depot) <- -ka * depot
     d / dt(center) <- ka * depot - cl / v * center
     cp <- 3
     cmt(cp)
   })
-  
+
   expect_s3_class(tmp, "rxode2")
   expect_equal(tmp$lhs, "cp")
   expect_equal(tmp$stateExtra, "cp")
@@ -545,7 +543,7 @@ test_that("cmt() and hidden lhs variables", {
     cp ~ 3
     cmt(cp)
   })
-  
+
   expect_s3_class(tmp, "rxode2")
   expect_equal(tmp$lhs, character(0))
   expect_equal(tmp$stateExtra, "cp")

@@ -1,4 +1,5 @@
 test_that("modelvars", {
+  skip_on_cran()
   rxClean()
   rigid.txt <- "
 y1(0)    = 1
@@ -12,12 +13,12 @@ d/dt(y2) = a2*y1*y3
 d/dt(y3) = a3*y1*y2
 "
   rigid0 <- rxGetModel(rigid.txt)
-  
+
   rigid <- rxode2(rigid.txt)
-  
+
   et <- eventTable()
   et$add.sampling(seq(0, 20, by = 0.01))
-  
+
   out <- solve(rigid, et)
 
   expect_equal(rxModelVars(rigid), rxModelVars(rigid$cmpMgr$rxDll()))

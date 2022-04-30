@@ -2,8 +2,6 @@
 #'
 #' @param model1 rxUi model 1
 #' @param model2 rxUi model 2
-#' @param ... Models sent (in order) to `rxAppendModel` to
-#'   concatenate/bind the models together
 #' @return New model with both models appended together
 #' @author Matthew L. Fidler
 #' @export
