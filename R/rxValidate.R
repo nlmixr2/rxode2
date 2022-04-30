@@ -11,7 +11,8 @@
 rxValidate <- function(type = NULL, skipOnCran=TRUE) {
   if (is(substitute(type), "{")) {
     if (isTRUE(skipOnCran)) {
-      if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
+      if (!identical(Sys.getenv("NOT_CRAN"), "true") ||
+            !identical(Sys.getenv("rxTest"), "")) {
         return(invisible())
       }
     }
@@ -26,8 +27,16 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
   }
   if (type == TRUE) {
     .oldCran <- Sys.getenv("NOT_CRAN")
+    .oldRxTest <- Sys.getenv("rxTest")
     Sys.setenv("NOT_CRAN" = "true")
-    on.exit(Sys.setenv("NOT_CRAN" = .oldCran))
+    Sys.setenv("rxTest" = "")
+    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest))
+  } else if (type == FALSE) {
+    .oldCran <- Sys.getenv("NOT_CRAN")
+    .oldRxTest <- Sys.getenv("rxTest")
+    Sys.setenv("NOT_CRAN" = "false")
+    Sys.setenv("rxTest" = "false")
+    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest))
   }
   .rxWithOptions(list(testthat.progress.max_fails = 10000000000), {
     path <- file.path(system.file("tests", package = "rxode2"), "testthat")
