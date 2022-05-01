@@ -36,7 +36,6 @@ Maintainer: Matthew Fidler <matthew.fidler@gmail.com>
 Depends:
     R (>= 4.0.0)
 Suggests:
-    spelling,
     Matrix,
     DT,
     covr,
