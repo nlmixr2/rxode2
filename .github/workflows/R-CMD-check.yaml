@@ -91,7 +91,6 @@ jobs:
         run: |
           install.packages('remotes')
           remotes::install_github("nlmixr2/lotri")
-          remotes::install_github("nlmixr2/nlmixr2data")
         shell: Rscript {0}
 
       - name: Install dependencies

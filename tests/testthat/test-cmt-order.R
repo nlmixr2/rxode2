@@ -1,5 +1,7 @@
 rxTest({
-  warfarin <- nlmixr2data::warfarin
+  qs <- test_path("warfarin.qs")
+  skip_if_not(file.exists(qs))
+  warfarin <- qs::qread(qs)
 
   test_that("cmt() syntax makes sense", {
     mod <- rxode2({
