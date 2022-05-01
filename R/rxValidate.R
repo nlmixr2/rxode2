@@ -34,7 +34,7 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
   } else if (type == FALSE) {
     .oldCran <- Sys.getenv("NOT_CRAN")
     .oldRxTest <- Sys.getenv("rxTest")
-    Sys.setenv("NOT_CRAN" = "false") # nolit
+    Sys.setenv("NOT_CRAN" = "false") # nolint
     Sys.setenv("rxTest" = "false") # nolint
     on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest)) # nolint
   }
