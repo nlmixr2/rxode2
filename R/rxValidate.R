@@ -28,15 +28,15 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
   if (type == TRUE) {
     .oldCran <- Sys.getenv("NOT_CRAN")
     .oldRxTest <- Sys.getenv("rxTest")
-    Sys.setenv("NOT_CRAN" = "true")
-    Sys.setenv("rxTest" = "")
-    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest))
+    Sys.setenv("NOT_CRAN" = "true") # nolint
+    Sys.setenv("rxTest" = "") # nolint
+    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest)) # nolint
   } else if (type == FALSE) {
     .oldCran <- Sys.getenv("NOT_CRAN")
     .oldRxTest <- Sys.getenv("rxTest")
-    Sys.setenv("NOT_CRAN" = "false")
-    Sys.setenv("rxTest" = "false")
-    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest))
+    Sys.setenv("NOT_CRAN" = "false") # nolit
+    Sys.setenv("rxTest" = "false") # nolint
+    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest)) # nolint
   }
   .rxWithOptions(list(testthat.progress.max_fails = 10000000000), {
     path <- file.path(system.file("tests", package = "rxode2"), "testthat")
