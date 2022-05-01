@@ -1625,6 +1625,10 @@ solve.rxSolve <- function(a, b, ...) {
 
 #' @rdname rxSolve
 #' @export
+solve.rxUi <- solve.rxSolve
+
+#' @rdname rxSolve
+#' @export
 solve.rxode2 <- solve.rxSolve
 
 #' @rdname rxSolve

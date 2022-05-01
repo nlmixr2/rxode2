@@ -10,9 +10,6 @@ rxAppendModel(model1, model2)
 \item{model1}{rxUi model 1}
 
 \item{model2}{rxUi model 2}
-
-\item{...}{Models sent (in order) to \code{rxAppendModel} to
-concatenate/bind the models together}
 }
 \value{
 New model with both models appended together

@@ -413,6 +413,41 @@ qd.cp <- solve(m1, theta, events = qd, inits)
 print(qd.cp)
 
 plot(qd.cp)
+
+# You can also directly simulate from a nlmixr model
+ f <- function() {
+   ini({
+     KA <- .291
+     CL <- 18.6
+     V2 <- 40.2
+     Q <- 10.5
+     V3 <- 297.0
+     Kin <- 1.0
+     Kout <- 1.0
+     EC50 <- 200.0
+   })
+   model({
+     # A 4-compartment model, 3 PK and a PD (effect) compartment
+     # (notice state variable names 'depot', 'centr', 'peri', 'eff')
+     C2 <- centr/V2
+     C3 <- peri/V3
+     d/dt(depot) <- -KA*depot
+     d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+     d/dt(peri)  <-                    Q*C2 - Q*C3
+     d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+     eff(0) <- 1
+   })
+ }
+
+ u <- f()
+
+ # this pre-compiles and displays the simulation model
+ u$simulationModel
+
+ qd.cp <-solve(u, qd)
+
+ print(qd.cp)
+
 }
 
 }
