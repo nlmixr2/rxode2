@@ -7,12 +7,15 @@
 This allows easy validation/qualification of nlmixr by running the
 testing suite on your system.}
 \usage{
-rxValidate(type = NULL)
+rxValidate(type = NULL, skipOnCran = TRUE)
 
-rxTest(type = NULL)
+rxTest(type = NULL, skipOnCran = TRUE)
 }
 \arguments{
-\item{type}{Type of test or filter of test type}
+\item{type}{Type of test or filter of test type, When this is an
+expression, evaluate the contents, respecting \code{skipOnCran}}
+
+\item{skipOnCran}{when \code{TRUE} skip the test on CRAN.}
 }
 \value{
 nothing

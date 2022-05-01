@@ -16,6 +16,7 @@
 \alias{simulate.rxSolve}
 \alias{simulate.rxParams}
 \alias{solve.rxSolve}
+\alias{solve.rxUi}
 \alias{solve.rxode2}
 \alias{solve.rxParams}
 \alias{solve.rxEt}
@@ -191,6 +192,8 @@ rxSolve(
 \method{simulate}{rxParams}(object, nsim = 1L, seed = NULL, ...)
 
 \method{solve}{rxSolve}(a, b, ...)
+
+\method{solve}{rxUi}(a, b, ...)
 
 \method{solve}{rxode2}(a, b, ...)
 
