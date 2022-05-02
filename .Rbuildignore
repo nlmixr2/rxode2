@@ -76,7 +76,11 @@ vignettes/rxode2-sim-var_files
 vignettes/rxode2-speed_files
 vignettes/rxode2-stiff_files
 vignettes/rxode2-transit-compartments_files
-vignettes/rxode2-single-subject_files
+vignettes/rxode2?-single-subject_files/?.*
+vignettes/rxode2?-dataset_files/?.*
+vignettes/events-classic.Rmdh
+vignettes/df.Rmdh
+vignettes/events-et.Rmdh
 vignettes/rxode2-cmt.html
 vignettes/rxode2-wt.html
 vignettes/rxode2-plot.html
@@ -111,6 +115,7 @@ vignettes/rxode2-intro.Rmd
 vignettes/rxode2-intro.html
 vignettes/build.R
 vignettes/theo_sd.qs
+vignettes/logo.png
 ^README\.Rmd$
 ^.*\.Rproj$
 ^\.Rproj\.user$
