@@ -122,4 +122,4 @@ authors.md
 ^cran-comments\.md$
 ^authors\.md$
 tests/testthat/test-lincmt-parse.R
-
+^/?po/.*$
