@@ -108,7 +108,8 @@ vignettes/rxode2-plot.html
 vignettes/rxode2-nesting.html
 vignettes/rxode2-single-subject.html
 vignettes/alpha-lincmt.csv
-vignettes/*.html
+vignettes/?.*_files/?.*
+vignettes/?.*.html
 vignettes/cl-lincmt.csv
 vignettes/kel-lincmt.csv
 vignettes/rxode2-intro.Rmd
