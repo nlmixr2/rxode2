@@ -1374,6 +1374,9 @@ extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
 }
 
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
+extern "C" void setSeedEng1(uint32_t seed);
+extern "C" void setRxSeedFinal(uint32_t seed);
+uint32_t getRxSeed1(int ncores);
 
 extern "C" void par_liblsodaR(rx_solve *rx) {
   rx_solving_options *op = &op_global;
@@ -1406,12 +1409,14 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
   // http://permalink.gmane.org/gmane.comp.lang.r.devel/27627
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
   int abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
   for (int thread=0; thread < cores; thread++) {
     for (int solveid = thread; solveid < nsim*nsub; solveid+=cores){
       if (abort == 0){
+        setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
         ind_liblsoda0(rx, op, opt, solveid, dydt_liblsoda, update_inis);
         if (displayProgress && thread == 0) {
 #pragma omp critical
@@ -1425,10 +1430,11 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
                 if (checkInterrupt()) abort =1;
               }
             }
-        }
+        }  
       }
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */

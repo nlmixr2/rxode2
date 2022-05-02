@@ -4546,7 +4546,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           // Thread safe, but possibly not reproducible
           if (op->cores > 1) {
             op->stiff = method = 4;
-            warning(_("results depend on the number of cores used"));
           }
           rxSolveDat->throttle = false;
           break;
@@ -4568,7 +4567,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           // Thread safe, but possibly not reproducible
           if (op->cores > 1) {
             op->stiff = method = 4;
-            warning(_("results depend on the number of cores used"));
           }
           break;
         case 1:

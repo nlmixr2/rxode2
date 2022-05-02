@@ -61,6 +61,12 @@ uint32_t getRxSeed1(int ncores) {
   return seed;
 }
 
+extern "C" void setRxSeedFinal(uint32_t seed) {
+  if (useRxSeed) {
+    rxSeed = seed;
+  }
+}
+
 //' Get the rxode2 seed
 //'
 //' @return rxode2 seed state or -1 when the seed isn't set

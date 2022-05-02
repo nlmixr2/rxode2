@@ -19,6 +19,10 @@
   between endpoints.  Simulation with uncertainty will still draw from
   this identity diagonal matrix
 
+* Parallel solving now seeds each simulation per each individual based
+    on the initial seed plus the simulation id.  This makes the
+    simulation reproducible regardless of the number of cores running the simulation.
+
 ### Other breaking changes
 
 * Solved objects now access the underlying rxode model with `$rxode2`

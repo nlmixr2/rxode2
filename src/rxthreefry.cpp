@@ -811,6 +811,11 @@ extern "C" void seedEng(int ncores) {
   seed = getRxSeed1(ncores);
   seedEngV(seed, ncores);
 }
+extern "C" void setSeedEng1V(uint32_t seed);
+extern "C" void setSeedEng1(uint32_t seed) {
+  (_eng[rx_get_thread(op_global.cores)]).seed(seed);
+  setSeedEng1V(seed);
+}
 
 //[[Rcpp::export]]
 RObject rxSeedEng(int ncores = 1){

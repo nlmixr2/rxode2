@@ -29,6 +29,11 @@ void seedEngV(uint32_t seed, int ncores){
   }
 }
 
+extern "C" void setSeedEng1V(uint32_t seed) {
+  (_engV[rx_get_thread(op_global.cores)]).seed(seed);
+}
+
+
 extern "C" double rxnormV(rx_solving_options_ind* ind, double mean, double sd){
   if (!ind->inLhs) return 0;
   std::normal_distribution<double> d(mean, sd);
