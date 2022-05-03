@@ -461,7 +461,7 @@
 <li>
 <p><a href="https://cran.r-project.org/package=mrgsolve" class="external-link">mrgsolve</a>, which uses C++ lsoda solver to solve ODE systems. The user is required to write hybrid R/C++ code to create a mrgsolve model which is translated to C++ for solving.</p>
 <p>In contrast, <code>rxode2</code> has a R-like mini-language that is parsed into C code that solves the ODE system.</p>
-<p>Unlike <code>rxode2</code>, <code>mrgsolve</code> does not currently support symbolic manipulation of ODE systems, like automatic Jacobian calculation or forward sensitivity calculation (<code>rxode2</code> currently supports this and this is the basis of <a href="https://CRAN.R-project.org/package=nlmixr2" class="external-link">nlmixr2</a>’s FOCEi algorithm)</p>
+<p>Unlike <code>rxode2</code>, <code>mrgsolve</code> does not currently support symbolic manipulation of ODE systems, like automatic Jacobian calculation or forward sensitivity calculation (<code>rxode2</code> currently supports this and this is the basis of nlmixr2’s FOCEi algorithm)</p>
 </li>
 <li>
 <p><a href="https://CRAN.R-project.org/package=dMod" class="external-link">dMod</a>, which uses a unique syntax to create “reactions”. These reactions create the underlying ODEs and then created c code for a compiled deSolve model.</p>
