@@ -16,7 +16,7 @@
 ^\.covrignore$
 ^appveyor\.yml$
 rx_.*\.(so|dll)$
-.*\.(gcno|o|a|dll|zip)$
+.*\.(gcda|gcno|o|a|dll|zip)$
 testthat/.*\.(so|dll)$
 BinaryFiles$
 rxode2.*\.(zip|pdf)$

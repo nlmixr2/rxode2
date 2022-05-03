@@ -18,7 +18,6 @@ output:
 [![R build status](https://github.com/nlmixr2/rxode2/workflows/R-CMD-check/badge.svg)](https://github.com/nlmixr2/rxode2/actions)
 [![codecov.io](https://codecov.io/github/nlmixr2/rxode2/coverage.svg)](https://codecov.io/github/nlmixr2/rxode2)
 [![CRAN version](http://www.r-pkg.org/badges/version/rxode2)](https://cran.r-project.org/package=rxode2)
-[![CRAN checks](https://cranchecks.info/badges/worst/rxode2)](https://cran.r-project.org/web/checks/check_results_rxode2.html)
 [![CRAN total downloads](https://cranlogs.r-pkg.org/badges/grand-total/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CRAN total downloads](https://cranlogs.r-pkg.org/badges/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CodeFactor](https://www.codefactor.io/repository/github/nlmixr2/rxode2/badge)](https://www.codefactor.io/repository/github/nlmixr2/rxode2)
@@ -169,6 +168,8 @@ To load `rxode2` package and compile the model:
 
 ```r
 library(rxode2)
+#> detected new version of rxode2, cleaning cache
+#> rxode2 2.0.6 using 4 threads (see ?getRxThreads)
 
 mod1 <- rxode2({
   C2 <- centr/V2;
@@ -179,6 +180,10 @@ mod1 <- rxode2({
   d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff;
 })
 #> 
+#> → creating rxode2 include directory
+#> → getting R compile options
+#> → precompiling headers
+#> ✔ done
 ```
 
 ## Specify ODE parameters and initial conditions
