@@ -127,7 +127,59 @@
       <small>Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
-  </main></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2.0.6" id="rxode2-206">rxode2 2.0.6<a class="anchor" aria-label="anchor" href="#rxode2-206"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-2-0-6">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-2-0-6"></a></h3>
+<div class="section level4">
+<h4 id="solving-controls-2-0-6">Solving controls<a class="anchor" aria-label="anchor" href="#solving-controls-2-0-6"></a></h4>
+<ul><li><p>The options for <code>rxControl</code> and <code>rxSolve</code> are more strict. <code>camelCase</code> is now always used. Old options like <code>add.cov</code> and <code>transit_abs</code> are no longer supported, only <code>addCov</code> is supported.</p></li>
+<li><p>A new option, <code>sigdig</code> has been added to <code><a href="../reference/rxSolve.html">rxControl()</a></code>, which controls some of the more common significant figure options like <code>atol</code>, <code>rtol</code>, <code>ssAtol</code>, <code>ssRtol</code>, with a single option.</p></li>
+</ul></div>
+<div class="section level4">
+<h4 id="simulations-2-0-6">Simulations<a class="anchor" aria-label="anchor" href="#simulations-2-0-6"></a></h4>
+<ul><li><p>For simulations, <code>$simulationSigma</code> now assumes a diagonal matrix. The sigma values are assumed to be standard normal, and uncorrelated between endpoints. Simulation with uncertainty will still draw from this identity diagonal matrix</p></li>
+<li><p>Parallel solving now seeds each simulation per each individual based on the initial seed plus the simulation id. This makes the simulation reproducible regardless of the number of cores running the simulation.</p></li>
+</ul></div>
+<div class="section level4">
+<h4 id="other-breaking-changes-2-0-6">Other breaking changes<a class="anchor" aria-label="anchor" href="#other-breaking-changes-2-0-6"></a></h4>
+<ul><li><p>Solved objects now access the underlying rxode model with <code>$rxode2</code> instead of <code>$rxode</code></p></li>
+<li><p>Since this change names, <code>rxode2</code>, <code>rxode</code> and <code>RxODE</code> all perform the same function.</p></li>
+<li><p>Options were changed from <code>RxODE.syntax</code> to <code>rxode2.syntax</code>.</p></li>
+<li><p>Assigning states with <code>rxode2.syntax.assign.state</code> (was <code>RxODE.syntax.assign.state</code>) is no longer supported.</p></li>
+<li><p>Enforcing “pure” assignment syntax with <code>=</code> syntax is no longer supported so <code>rxode2.syntax.assign</code> is no longer supported (was <code>RxODE.syntax.assign</code>).</p></li>
+<li><p>Since R supports <code>**</code> as an exponentiation operator, the pure syntax without <code>**</code> can no longer be enabled. Hence <code>rxode2.syntax.star.pow</code> (was <code>RxODE.syntax.star.pow</code>) no longer has any effect.</p></li>
+<li><p>The “pure” syntax that requires a semicolon can no longer be enabled. Therefore <code>rxode2.syntax.require.semicolon</code> (was <code>RxODE.syntax.require.semicolon</code>) no longer has any effect.</p></li>
+<li><p>The syntax <code>state(0)</code> can no longer be turned off. <code>rxode2.syntax.allow.ini0</code> (was <code>RxODE.syntax.allow.ini0</code>) has been removed.</p></li>
+<li><p>Variable with dotss in variable and state names like <code>state.name</code> works in R. Therefore, “pure” syntax of excluding <code>.</code> values from variables cannot be enforced with <code>rxode2.syntax.allow.dots</code> (was <code>RxODE.syntax.allow.dots</code>).</p></li>
+<li><p>The mnemonic <code>et(rate=model)</code> and <code>et(dur=model)</code> mnemonics have been removed. <code>rate</code> needs to be set to <code>-1</code> and <code>-2</code> manually instead.</p></li>
+<li><p>The function <code>rxode2Test()</code> has been removed in favor of using testthat directly.</p></li>
+<li><p>Transit compartments need to use a new <code>evid</code>, <code>evid=7</code>. That being said, the <code>transitAbs</code> option is no longer supported.</p></li>
+<li><p><code>ID</code> columns are not sorted or merged with original dataset any more; The underlying assumption of ID order should now be checked outside of <code><a href="../reference/rxode2.html">rxode2()</a></code></p></li>
+</ul></div>
+</div>
+<div class="section level3">
+<h3 id="additional-features-2-0-6">Additional features<a class="anchor" aria-label="anchor" href="#additional-features-2-0-6"></a></h3>
+<ul><li><p>The UI functions of <code>nlmixr</code> have been ported to work in <code>rxode2</code> directly.</p></li>
+<li><p><code>rxModelVars({})</code> is now supported.</p></li>
+<li><p>You may now combine 2 models in <code>rxode2</code> with <code><a href="../reference/rxAppendModel.html">rxAppendModel()</a></code>. In fact, as long as the first value is a rxode2 evaluated ui model, you can use <code>c</code>/<code>rbind</code> to bind 2 or more models together.</p></li>
+<li><p>You may now append model lines with piping using <code>%&gt;% model(lines, append=TRUE)</code> you can also pre-pend lines by <code>%&gt;% model(lines, append=NA)</code></p></li>
+<li><p>You may now rename model variables, states and defined parameters with <code>%&gt;% rxRename(new=old)</code> or if <code>dplyr</code> is loaded: <code>%&gt;% rename(new=old)</code></p></li>
+<li><p>You can fix parameters with <code>%&gt;% ini(tcl=fix)</code> or <code>%&gt;% ini(fix(tcl))</code> as well as unfix parameters with <code>%&gt;% ini(tcl=unfix)</code> or <code>%&gt;% ini(unfix(tcl))</code></p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="internal-changes-2-0-6">Internal changes<a class="anchor" aria-label="anchor" href="#internal-changes-2-0-6"></a></h3>
+<ul><li><p>Strict R headers are enforced more places</p></li>
+<li><p>Since there are many changes that could be incompatible, this version has been renamed to <code>rxode2</code></p></li>
+<li><p><code><a href="../reference/rxode2.html">rxode2()</a></code> printout no longer uses rules and centered headings to make it display better on a larger variety of systems.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-2-0-6">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-2-0-6"></a></h3>
+<ul><li>
+<code>tad()</code> and related time features only reset at the start of an infusion (as opposed to starting at the beginning and end of an infusion)</li></ul></div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
