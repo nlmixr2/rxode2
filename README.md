@@ -408,7 +408,7 @@ released on CRAN. Each uses compiled code to have faster ODE solving.
     manipulation of ODE systems, like automatic Jacobian calculation or
     forward sensitivity calculation (`rxode2` currently supports this and
     this is the basis of
-    [nlmixr2](https://CRAN.R-project.org/package=nlmixr2)'s FOCEi
+    nlmixr2's FOCEi
     algorithm)
 
 -   [dMod](https://CRAN.R-project.org/package=dMod), which uses a unique
