@@ -32,7 +32,7 @@ Authors@R: c(
    person("Kevin", "Ushey", role="ctb"),
    person("Yu", "Feng", role="ctb")
    )
-Maintainer: Matthew Fidler <matthew.fidler@gmail.com>
+Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
 Depends:
     R (>= 4.0.0)
 Suggests:
