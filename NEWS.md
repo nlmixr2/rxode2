@@ -1,4 +1,4 @@
-# rxode2
+# rxode2 2.0.6
 
 ## Breaking changes
 
