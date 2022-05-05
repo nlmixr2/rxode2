@@ -129,4 +129,9 @@ authors.md
 ^authors\.md$
 tests/testthat/test-lincmt-parse.R
 ^/?po/.*$
-^/?build/.*$
+^/?build/buildRxODE.R$
+^/?build/depends.R$
+^/?build/dual.R$
+^/?build/refresh.R$
+^/?build/sensitivites.R$
+
