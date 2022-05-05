@@ -13,6 +13,9 @@ rxExpandGrid_(c1, c2, type)
 
 \item{type}{0 for a typical data frame, 1 for symengine sensitivity expansion}
 }
+\value{
+data frame (when type = 0) or symengine string (when type=1)
+}
 \description{
 Expand grid internal function
 }

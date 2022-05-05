@@ -13,6 +13,9 @@ rxExpandSens2_(state, s1, s2)
 
 \item{s2}{is the variables to calculate second order sensitivity}
 }
+\value{
+string for symengine second order sensitivity
+}
 \description{
 Expand second order sensitivity
 }

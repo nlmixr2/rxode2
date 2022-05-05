@@ -13,6 +13,9 @@
 
 \item{envir}{Environment for evaluating ini({}) style calls}
 }
+\value{
+a new rxode2 updated UI object
+}
 \description{
 Update for rxUi
 }

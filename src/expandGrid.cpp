@@ -22,6 +22,7 @@ std::string symengineRes(std::string val);
 //' @param c1 character vector of items to be expanded
 //' @param c2 second character vector of items to be expanded
 //' @param type 0 for a typical data frame, 1 for symengine sensitivity expansion
+//' @return data frame (when type = 0) or symengine string (when type=1) 
 //' @export
 //' @keywords internal
 //[[Rcpp::export]]
@@ -89,6 +90,7 @@ List rxExpandGrid_(RObject &c1, RObject &c2, RObject &type){
 //' @param state is the state to expand
 //' @param calcSens is the variables to calculate sensitivity
 //' @keywords internal
+//' @return symengine string for expanded sensitivity
 //' @export
 //[[Rcpp::export]]
 List rxExpandSens_(CharacterVector state, CharacterVector calcSens){
@@ -177,6 +179,7 @@ List rxExpandSens_(CharacterVector state, CharacterVector calcSens){
 //' @param s1 is the variables to calculate sensitivity
 //' @param s2 is the variables to calculate second order sensitivity
 //' @keywords internal
+//' @return string for symengine second order sensitivity
 //' @export
 //[[Rcpp::export]]
 List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s2){
@@ -246,6 +249,7 @@ List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s
 //' @param neta is the number of etas
 //' @param pred type of prediction 
 //' @keywords internal
+//' @return String of symengine expressions to evaluate to calculate df/deta
 //' @export
 //[[Rcpp::export]]
 List rxExpandFEta_(CharacterVector state, int neta, int pred){

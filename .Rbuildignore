@@ -129,3 +129,4 @@ authors.md
 ^authors\.md$
 tests/testthat/test-lincmt-parse.R
 ^/?po/.*$
+^/?build/.*$

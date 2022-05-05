@@ -13,6 +13,9 @@ rxExpandFEta_(state, neta, pred)
 
 \item{pred}{type of prediction}
 }
+\value{
+String of symengine expressions to evaluate to calculate df/deta
+}
 \description{
 Expand d(f)/d(eta)
 }

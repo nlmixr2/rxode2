@@ -3,6 +3,7 @@
 #' @param object rxode2 UI object
 #' @param ... Lines to update
 #' @param envir Environment for evaluating ini({}) style calls
+#' @return a new rxode2 updated UI object
 #' @export
 update.rxUi <- function(object, ..., envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)

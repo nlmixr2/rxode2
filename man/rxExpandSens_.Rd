@@ -11,6 +11,9 @@ rxExpandSens_(state, calcSens)
 
 \item{calcSens}{is the variables to calculate sensitivity}
 }
+\value{
+symengine string for expanded sensitivity
+}
 \description{
 Expand sensitivity
 }
