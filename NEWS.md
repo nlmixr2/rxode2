@@ -53,7 +53,7 @@
   off. `rxode2.syntax.allow.ini0` (was `RxODE.syntax.allow.ini0`) has
   been removed.
 
-* Variable with dotss in variable and state names like
+* Variable with dots in variable and state names like
   `state.name` works in R. Therefore, "pure" syntax of excluding `.` values
   from variables cannot be enforced with `rxode2.syntax.allow.dots`
   (was `RxODE.syntax.allow.dots`).
@@ -67,10 +67,10 @@
 * Transit compartments need to use a new `evid`, `evid=7`.  That being
   said, the `transitAbs` option is no longer supported.
   
-* `ID` columns are not sorted or merged with original dataset any
-  more; The underlying assumption of ID order should now be checked
-  outside of `rxode2()`
-
+* `ID` columns in input parameter data frames are not sorted or merged
+  with original dataset any more; The underlying assumption of ID
+  order should now be checked outside of `rxode2()`.  Note that the
+  event data frame is still sorted.
 
 ## Additional features
 
