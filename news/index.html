@@ -151,11 +151,11 @@
 <li><p>Since R supports <code>**</code> as an exponentiation operator, the pure syntax without <code>**</code> can no longer be enabled. Hence <code>rxode2.syntax.star.pow</code> (was <code>RxODE.syntax.star.pow</code>) no longer has any effect.</p></li>
 <li><p>The “pure” syntax that requires a semicolon can no longer be enabled. Therefore <code>rxode2.syntax.require.semicolon</code> (was <code>RxODE.syntax.require.semicolon</code>) no longer has any effect.</p></li>
 <li><p>The syntax <code>state(0)</code> can no longer be turned off. <code>rxode2.syntax.allow.ini0</code> (was <code>RxODE.syntax.allow.ini0</code>) has been removed.</p></li>
-<li><p>Variable with dotss in variable and state names like <code>state.name</code> works in R. Therefore, “pure” syntax of excluding <code>.</code> values from variables cannot be enforced with <code>rxode2.syntax.allow.dots</code> (was <code>RxODE.syntax.allow.dots</code>).</p></li>
+<li><p>Variable with dots in variable and state names like <code>state.name</code> works in R. Therefore, “pure” syntax of excluding <code>.</code> values from variables cannot be enforced with <code>rxode2.syntax.allow.dots</code> (was <code>RxODE.syntax.allow.dots</code>).</p></li>
 <li><p>The mnemonic <code>et(rate=model)</code> and <code>et(dur=model)</code> mnemonics have been removed. <code>rate</code> needs to be set to <code>-1</code> and <code>-2</code> manually instead.</p></li>
 <li><p>The function <code>rxode2Test()</code> has been removed in favor of using testthat directly.</p></li>
 <li><p>Transit compartments need to use a new <code>evid</code>, <code>evid=7</code>. That being said, the <code>transitAbs</code> option is no longer supported.</p></li>
-<li><p><code>ID</code> columns are not sorted or merged with original dataset any more; The underlying assumption of ID order should now be checked outside of <code><a href="../reference/rxode2.html">rxode2()</a></code></p></li>
+<li><p><code>ID</code> columns in input parameter data frames are not sorted or merged with original dataset any more; The underlying assumption of ID order should now be checked outside of <code><a href="../reference/rxode2.html">rxode2()</a></code>. Note that the event data frame is still sorted.</p></li>
 </ul></div>
 </div>
 <div class="section level3">
