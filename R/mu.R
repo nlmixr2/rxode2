@@ -530,8 +530,7 @@
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
 
-#' Handle unary plus as a noop
-#'
+#' Handle unary plus as a noop. Also recursively handle calls that are not additive expressions
 #'
 #' @param expr parameter expression
 #' @param env environment for assigning items
@@ -544,7 +543,10 @@
         length(expr) == 2L) {
     return(expr[[2]])
   } else if (is.call(expr) && !identical(expr[[1]], quote(`+`))) {
+    # save curEval
+    .curEval <- env$.curEval
     .rxMuRefHandleNonPlusCall(expr, env)
+    assign(".curEval", .curEval, envir=env) # restore curEval
   }
   expr
 }
@@ -594,7 +596,13 @@
   }
   invisible()
 }
-
+#'  Handle single eta value if it exists
+#'
+#' @param expr r language expression
+#' @param env environment for saving information
+#' @return Called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
 .handleSingleEtaIfExists <- function(expr, env) {
   .curEta <- deparse1(expr)
   if (any(.curEta == env$info$eta)) {
@@ -605,7 +613,12 @@
     .muRefSetCurEval(.curEta, env)
   }
 }
-
+#' Handle non plus calls
+#'
+#' @param x expression
+#' @param env Environment for saving information
+#' @author Matthew L. Fidler
+#' @examples
 .rxMuRefHandleNonPlusCall <- function(x, env) {
   assign(".curEval", as.character(x[[1]]), env)
   .handleSingleEtaIfExists(x[[2]], env)
@@ -628,7 +641,6 @@
       x <- y[[.i]]
       if (identical(x[[1]], quote(`=`)) ||
             identical(x[[1]], quote(`~`))) {
-        assign(".curRhs", x[[2]], env=env)
         #.handleSingleEtaIfExists(x[[3]], env)
         if (.rxMuRefHasThetaEtaOrCov(x[[3]], env)){
           # This line has etas or covariates and might need to be
@@ -972,7 +984,7 @@
   } else if (.env$hasErrors) {
     stop("syntax/parsing errors, see above", call.=FALSE)
   }
-  .rm <- intersect(c(".curEval", ".curRhs", ".curLineClean", ".expr", ".found", "body", "cov.ref",
+  .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
                      "logit.theta.low", "param", "probit.theta", "probit.theta.hi",
