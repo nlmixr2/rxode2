@@ -90,6 +90,31 @@
   assign("muRefCovariateDataFrame", .covDf, envir=ui)
   invisible()
 }
+#' Cleanup after the mu reference downgrade
+#'
+#' @param ui rxode2 ui
+#' @return Nothing, called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
+.muRefDowngradeCleanup <- function(ui) {
+  .names <- ui$iniDf$name[is.na(ui$iniDf$err)]
+  .namesCurEval <- ui$muRefCurEval$parameter
+  assign("muRefCurEval", do.call("rbind", c(list(ui$muRefCurEval), lapply(setdiff(.names, .namesCurEval), function(x) {
+    data.frame(parameter=x, curEval="", low=NA_real_, hi=NA_real_)
+  }))), envir=ui)
+  .etaNames <- ui$iniDf$name[which(ui$iniDf$neta1 == ui$iniDf$neta2)]
+  .extra <- setdiff(.etaNames, ui$muRefDataFrame$eta)
+  .extra <- setdiff(.extra, ui$nonMuEtas)
+  if (length(.extra) > 0) {
+    warning("some etas defaulted to non-mu referenced, possible parsing error: ",
+            paste(.extra, collapse=", "),
+            "\nas a work-around try putting the mu-referenced expression on a simple line",
+            call.=FALSE)
+    assign("nonMuEtas", c(ui$nonMuEtas, .extra), envir=ui)
+  }
+  invisible()
+}
+
 #' Downgrade mu referenced covariates
 #'
 #' When there is a mu referenced covariate and that covariate is also
@@ -112,7 +137,7 @@
 #' @noRd
 .muRefDowngrade <- function(ui) {
   .covData <- ui$muRefCovariateDataFrame
-  if (length(.covData$covariate) == 0) return(invisible())
+  if (length(.covData$covariate) == 0) return(.muRefDowngradeCleanup(ui))
   # First drop any mu referenced covariates
   .lst2 <- lapply(ui$lstExpr, .dropMuCovs, muRefCovariateDataFrame=.covData)
   # now see if any of the covariates are still in the model
@@ -120,21 +145,7 @@
   .env$covs <- NULL
   lapply(.lst2, .hasACovariateToDowngrade, unique(.covData$covariate), env=.env)
   .down <- unique(.env$covs)
-  if (length(.down) == 0) return(invisible())
+  if (length(.down) == 0) return(.muRefDowngradeCleanup(ui))
   lapply(.down, .muRefDowngradeForCovariate, ui=ui)
-  .names <- ui$iniDf$name[is.na(ui$iniDf$err)]
-  .namesCurEval <- ui$muRefCurEval$parameter
-  assign("muRefCurEval", do.call("rbind", c(list(ui$muRefCurEval), lapply(setdiff(.names, .namesCurEval), function(x) {
-    data.frame(parameter=x, curEval="", low=NA_real_, hi=NA_real_)
-  }))), envir=ui)
-  .etaNames <- ui$iniDf$name[which(ui$iniDf$neta1 == ui$iniDf$neta2)]
-  .extra <- setdiff(.etaNames, ui$muRefDataFrame$eta)
-  .extra <- setdiff(.extra, ui$nonMuEtas)
-  if (length(.extra) > 0) {
-    warning("some etas defaulted to non-mu referenced, possible parsing error: ",
-            paste(.extra, collapse=", "),
-            call.=FALSE)
-    assign("nonMuEtas", c(ui$nonMuEtas, .extra), envir=ui)
-  }
-  invisible()
+  .muRefDowngradeCleanup(ui)
 }
