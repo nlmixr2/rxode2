@@ -618,7 +618,7 @@
 #' @param x expression
 #' @param env Environment for saving information
 #' @author Matthew L. Fidler
-#' @examples
+#' @noRd
 .rxMuRefHandleNonPlusCall <- function(x, env) {
   assign(".curEval", as.character(x[[1]]), env)
   .handleSingleEtaIfExists(x[[2]], env)

@@ -1,7 +1,7 @@
 #' Replace the mu referencing covariates  with 0
 #'
 #' @param x Expression to change
-#' @param muRefCovariateDataFrame
+#' @param muRefCovariateDataFrame This is the mu referenced data frame from the ui
 #' @return expression with mu referenced covariates replaced with zero
 #' @author Matthew L. Fidler
 #' @noRd

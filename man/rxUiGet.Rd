@@ -8,6 +8,7 @@
 \alias{rxUiGet.simulationModel}
 \alias{rxUiGet}
 \alias{rxUiGet.theta}
+\alias{rxUiGet.lstChr}
 \alias{rxUiGet.omega}
 \alias{rxUiGet.funTxt}
 \alias{rxUiGet.allCovs}
@@ -38,6 +39,8 @@
 rxUiGet(x, ...)
 
 \method{rxUiGet}{theta}(x, ...)
+
+\method{rxUiGet}{lstChr}(x, ...)
 
 \method{rxUiGet}{omega}(x, ...)
 
