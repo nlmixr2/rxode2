@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.7</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -156,7 +156,7 @@
   <main id="main"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changing rxode2 compartment numbers</h1>
             
-            <h4 data-toc-skip class="date">2022-05-05</h4>
+            <h4 data-toc-skip class="date">2022-05-09</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-cmt.Rmd" class="external-link"><code>vignettes/rxode2-cmt.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-cmt.Rmd</code></div>
@@ -170,7 +170,7 @@
 <p>rxode2 automatically assigns compartment numbers when parsing. For example, with the Mavoglurant PBPK model the following model may be used:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">#&gt; rxode2 2.0.6 using 1 threads (see ?getRxThreads)</span>
+<pre><code><span class="co">#&gt; rxode2 2.0.7 using 1 threads (see ?getRxThreads)</span>
 <span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
@@ -264,8 +264,8 @@
 <p>If you look at the summary, you can see where rxode2 assigned the compartment number(s)</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.6 model named <span style="color: #BBBB00; font-weight: bold;">rx_4920ad96d6178ef37bc141e5f3b8f238</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
-<span class="co">#&gt; DLL: /tmp/Rtmpt9A8an/rxode2/rx_4920ad96d6178ef37bc141e5f3b8f238__.rxd/rx_4920ad96d6178ef37bc141e5f3b8f238_.so</span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.7 model named <span style="color: #BBBB00; font-weight: bold;">rx_90c931772711b7c506b30a46e18e94d7</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="co">#&gt; DLL: /tmp/Rtmpz8Zj0X/rxode2/rx_90c931772711b7c506b30a46e18e94d7__.rxd/rx_90c931772711b7c506b30a46e18e94d7_.so</span>
 <span class="co">#&gt; NULL</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Calculated Variables:</span>
@@ -455,7 +455,7 @@
 <p>You can see this change in the simple printout</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">pbpk2</span></code></pre></div>
-<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.6 model named <span style="color: #BBBB00; font-weight: bold;">rx_613768d564fccc5db479b368be50f6a1</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.7 model named <span style="color: #BBBB00; font-weight: bold;">rx_595d38348084ea2d068af1526fdbb769</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: Venous_Blood, Skin, Lungs, Heart, Brain, Muscles, Adipose, Spleen, Pancreas, Liver, Stomach, Gut, Bones, Kidneys, Arterial_Blood, Rest_of_Body</span>
 <span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: lKbBR, lKbMU, lKbAD, lCLint, eta.LClint, lKbBO, lKbRB, WT, BP, fup</span>
 <span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$lhs</span>: KbBR, KbMU, KbAD, CLint, KbBO, KbRB, CO, QHT, QBR, QMU, QAD, QSK, QSP, QPA, QLI, QST, QGU, QHA, QBO, QKI, QRB, QLU, VLU, VHT, VBR, VMU, VAD, VSK, VSP, VPA, VLI, VST, VGU, VBO, VKI, VAB, VVB, VRB, fub, KbLU, KbHT, KbSK, KbSP, KbPA, KbLI, KbST, KbGU, KbKI, S15, C15</span></code></pre>
@@ -474,7 +474,7 @@
     <span class="fu">cmt</span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>;
 <span class="op">}</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">ode.1c.ka</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.6 model named <span style="color: #BBBB00; font-weight: bold;">rx_73b4ba638fd198581addb8b5697f1277</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<pre><code><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.7 model named <span style="color: #BBBB00; font-weight: bold;">rx_4fba2a1073ebbd512126671941832d2b</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span>
 <span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: eff</span>
 <span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$params</span>: V, KA, CL</span>
