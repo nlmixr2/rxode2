@@ -434,7 +434,7 @@ rxTest({
 
     env <- .rx$.rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
-      cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
+      cl <- exp(tcl + eta.cl + log(wt2 / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
       vp <- exp(tvp + wt * vp.wt + sex * vp.sex + age * vp.age)
       d/dt(depot) = -ka * depot
@@ -461,7 +461,7 @@ rxTest({
                  muRefDropParameters = structure(list(parameter = character(0),
                                                       term = character(0)), class = "data.frame", row.names = integer(0)),
                  muRefExtra = structure(list(parameter = c("tcl", "tcl", "tv"
-                                                           ), extra = c("3", "log(wt/70) * cl.wt", "2")), row.names = c(NA,
+                                                           ), extra = c("3", "log(wt2/70) * cl.wt", "2")), row.names = c(NA,
                                                                                                                         -3L), class = "data.frame"), muRefExtraEmpty = c("tka", "tvp"
                                                                                                                                                                          ), nonMuEtas = NULL))
 
@@ -469,7 +469,7 @@ rxTest({
     # This one tv is used in 2 covariate references
     env <- .rx$.rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
-      cl <- exp(tcl + eta.cl + log(wt / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
+      cl <- exp(tcl + eta.cl + log(wt2 / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
       vp <- exp(tv + wt * vp.wt + sex * vp.sex + age * vp.age)
       d/dt(depot) = -ka * depot
@@ -492,7 +492,7 @@ rxTest({
                                                                          "tv", "tv", "tv", "tv", "tv", "tv"), term = c("age*vp.age",
                                                                                                                        "sex*vp.sex", "wt*vp.wt", "age*v.age", "sex*v.sex", "wt*v.wt",
                                                                                                                        "2")), row.names = c(NA, -7L), class = "data.frame"), muRefExtra = structure(list(
-                                                                                                                         parameter = c("tcl", "tcl"), extra = c("3", "log(wt/70) * cl.wt"
+                                                                                                                         parameter = c("tcl", "tcl"), extra = c("3", "log(wt2/70) * cl.wt"
                                                                                                                                                                 )), row.names = 1:2, class = "data.frame"), muRefExtraEmpty = c("tka",
                                                                                                                                                                                                                                 "tv"), nonMuEtas = "eta.v"))
 
@@ -591,6 +591,93 @@ rxTest({
     w <- which(curEval$parameter == "eta.depot")
 
     expect_equal(curEval$curEval[w], "")
+
+  })
+
+  test_that("test mu-reference covariate degradation", {
+
+    one.cmt <- function() {
+      ini({
+        tka <- 0.45 ; label("Ka")
+        tcl <- log(c(0, 2.7, 100)) ; label("Log Cl")
+        tv <- 3.45; label("log V")
+        cl.wt <- 0
+        v.wt <- 0
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl + WT * cl.wt)
+        v <- exp(tv + eta.v) + WT ^ 2 * v.wt
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    ui <- rxode(one.cmt)
+
+    expect_equal(length(ui$muRefCovariateDataFrame$theta), 0)
+    expect_true("eta.ka" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.cl" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.v" %in% ui$muRefDataFrame$eta)
+
+    one.cmt <- function() {
+      ini({
+        tka <- 0.45 ; label("Ka")
+        tcl <- log(c(0, 2.7, 100)) ; label("Log Cl")
+        tv <- 3.45; label("log V")
+        cl.wt <- 0
+        v.wt <- 0
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+        v <- exp(tv + eta.v+ WT * v.wt)
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    ui <- rxode(one.cmt)
+
+    expect_equal(length(ui$muRefCovariateDataFrame$theta), 0)
+    expect_true("eta.ka" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.cl" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.v" %in% ui$muRefDataFrame$eta)
+
+
+    one.cmt <- function() {
+      ini({
+        tka <- 0.45 ; label("Ka")
+        tcl <- log(c(0, 2.7, 100)) ; label("Log Cl")
+        tv <- 3.45; label("log V")
+        cl.wt <- 0
+        v.wt <- 0
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl + WT * cl.wt)
+        v <- exp(tv + eta.v)
+        v <- v + WT ^ 2 * v.wt
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    ui <- rxode(one.cmt)
+
+    expect_equal(length(ui$muRefCovariateDataFrame$theta), 0)
+    expect_true("eta.ka" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.cl" %in% ui$muRefDataFrame$eta)
+    expect_true("eta.v" %in% ui$muRefDataFrame$eta)
 
   })
 })

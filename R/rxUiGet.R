@@ -53,6 +53,16 @@ attr(rxUiGet.theta, "desc") <- "Initial Population/Fixed Effects estimates, thet
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.lstChr <- function(x, ...) {
+  vapply(get("lstExpr", envir=x[[1]]),
+         function(x) {
+           deparse1(x)
+         }, character(1), USE.NAMES=FALSE)
+}
+#attr(rxUiGet.lstChr, "desc") <- "Get a character vector of the model expressions (by line)"
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.omega <- function(x, ...) {
   .x <- x[[1]]
   .lotri <- lotri::as.lotri(.x$iniDf)
@@ -73,8 +83,7 @@ attr(rxUiGet.omega, "desc") <- "Initial Random Effects variability matrix, omega
 #' @export
 #' @rdname rxUiGet
 rxUiGet.funTxt <- function(x, ...) {
-  .x <- x[[1]]
-  paste(get("lstChr", envir=.x), collapse="\n")
+  paste(rxUiGet.lstChr(x, ...), collapse="\n")
 }
 attr(rxUiGet.funTxt, "desc") <- "Get function text for the model({}) block"
 

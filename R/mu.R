@@ -497,8 +497,6 @@
 #' @noRd
 .muRefHandleSingleThetaMuRef <- function(.we, .wt, .names, .doubleNames, .extraItems, env) {
   # Here the mu reference is possible
-  #print(.names)
-  #print(.doubleNames)
   if (length(.we) == 1) {
     # Simple theta/eta mu-referencing
     .curEta <- .names[.we]
@@ -532,18 +530,23 @@
   .muRefHandleSingleThetaCovAndExtra(.we, .wt, .names, .doubleNames, .extraItems, env)
 }
 
-#' Handle unary plus as a noop
-#'
+#' Handle unary plus as a noop. Also recursively handle calls that are not additive expressions
 #'
 #' @param expr parameter expression
+#' @param env environment for assigning items
 #' @return return plus
 #' @author Matthew L. Fidler
 #' @noRd
-.muRefHandlePlusNoop <- function(expr) {
+.muRefHandlePlusNoop <- function(expr, env) {
   if (is.symbol(expr)) return(expr)
   if (identical(expr[[1]], quote(`+`)) &&
         length(expr) == 2L) {
     return(expr[[2]])
+  } else if (is.call(expr) && !identical(expr[[1]], quote(`+`))) {
+    # save curEval
+    .curEval <- env$.curEval
+    .rxMuRefHandleNonPlusCall(expr, env)
+    assign(".curEval", .curEval, envir=env) # restore curEval
   }
   expr
 }
@@ -563,11 +566,13 @@
   .extraItems <- NULL
   while (!is.null(.x2)) {
     env$.found <- FALSE
-    .x2[[1]] <- .muRefHandlePlusNoop(.x2[[1]])
+    .x2[[1]] <- .muRefHandlePlusNoop(.x2[[1]], env)
     .names <- .muRefExtractSingleVariableNames(.x2, .names, env)
     .doubleNames <- .muRefExtractMultiplyMuCovariates(.x2, .doubleNames, env)
-    if (!env$.found && !is.name(.x2[[2]])) {
-      .extraItems <- c(.extraItems, deparse1(.x2[[2]]))
+    if (length(.x2) >= 2) {
+      if (!env$.found && !is.name(.x2[[2]])) {
+        .extraItems <- c(.extraItems, deparse1(.x2[[2]]))
+      }
     }
     .x2 <- .muRefNextAdditiveExpression(.x2)
   }
@@ -578,7 +583,6 @@
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
                                paste(env$info$theta[.wt], collapse="', '"), "'")))
   } else if (length(.wt) == 1) {
-    #print(.extraItems)
     if (!is.null(.extraItems)) {
       .ord <- order(vapply(.extraItems, nchar, integer(1)))
       .extraItems <- .extraItems[.ord]
@@ -592,7 +596,13 @@
   }
   invisible()
 }
-
+#'  Handle single eta value if it exists
+#'
+#' @param expr r language expression
+#' @param env environment for saving information
+#' @return Called for side effects
+#' @author Matthew L. Fidler
+#' @noRd
 .handleSingleEtaIfExists <- function(expr, env) {
   .curEta <- deparse1(expr)
   if (any(.curEta == env$info$eta)) {
@@ -602,6 +612,25 @@
   } else if (any(.curEta == env$info$theta)) {
     .muRefSetCurEval(.curEta, env)
   }
+}
+#' Handle non plus calls
+#'
+#' @param x expression
+#' @param env Environment for saving information
+#' @author Matthew L. Fidler
+#' @noRd
+.rxMuRefHandleNonPlusCall <- function(x, env) {
+  assign(".curEval", as.character(x[[1]]), env)
+  .handleSingleEtaIfExists(x[[2]], env)
+  env$curHi <- NA_real_
+  env$curLow <- NA_real_
+  if (env$.curEval == "probitInv" ||
+        env$.curEval == "expit" ||
+        env$.curEval == "logit" ||
+        env$.curEval == "probit") {
+    x <- .rxMuRefHandleLimits(x, env)
+  }
+  lapply(x[-1], .rxMuRef0, env=env)
 }
 
 .rxMuRef0 <- function(x, env) {
@@ -650,17 +679,7 @@
     if (identical(x[[1]], quote(`+`))) {
       .muRefHandlePlus(x, env)
     } else {
-      assign(".curEval", as.character(x[[1]]), env)
-      .handleSingleEtaIfExists(x[[2]], env)
-      env$curHi <- NA_real_
-      env$curLow <- NA_real_
-      if (env$.curEval == "probitInv" ||
-            env$.curEval == "expit" ||
-            env$.curEval == "logit" ||
-            env$.curEval == "probit") {
-        x <- .rxMuRefHandleLimits(x, env)
-      }
-      lapply(x[-1], .rxMuRef0, env=env)
+      .rxMuRefHandleNonPlusCall(x, env)
     }
   } else if (is.name(x)) {
     .name <- as.character(x)
@@ -731,6 +750,7 @@
 
   .params <- .mv$params
   .lhs <- .mv$lhs
+
   # Covariates are model based parameters not described by theta/eta
   .info <- list(state=.state,
                 lhs=NULL,
@@ -941,11 +961,11 @@
 .rxMuRef <- function(mod, ini=NULL) {
   .env <- .rxMuRefSetupInitialEnvironment(mod, ini)
   .rxMuRef0(.env$.expr, env=.env)
-
   .checkAndAdjustErrInformation(.env)
   .checkForIniParametersMissingFromModelBlock(.env)
   .checkForInfiniteOrNaParameters(.env)
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
+  .muRefDowngrade(.env)
   if (.env$hasErrors) {
     .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
                       paste(vapply(seq_along(.env$lstExpr),
@@ -969,7 +989,7 @@
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
                      "logit.theta.low", "param", "probit.theta", "probit.theta.hi",
                      "probit.theta.low", "probitInv.theta", "probitInv.theta.hi",
-                     "probitInv.theta.low", "top", "dupErr", "lstErr"),
+                     "probitInv.theta.low", "top", "dupErr", "lstErr", "lstChr"),
                    ls(envir=.env, all.names=TRUE))
   if (length(.rm) > 0) rm(list=.rm, envir=.env)
   return(invisible(.env))
