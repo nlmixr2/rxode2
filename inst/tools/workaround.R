@@ -63,10 +63,11 @@ unlink("R/rxode2_md5.R")
 
 cpp <- list.files("src", pattern = ".(c|h|cpp|f)$")
 include <- list.files("inst/include")
-Rfiles <- list.files("R/", pattern = ".R")
+#Rfiles <- list.files("R/", pattern = ".R")
 md5 <- digest::digest(lapply(c(paste0("src/", cpp),
-                               paste0("inst/include/", include),
-                               paste0("R/", Rfiles)), digest::digest, file = TRUE))
+                               paste0("inst/include/", include)#,
+                               #paste0("R/", Rfiles)
+                               ), digest::digest, file = TRUE))
 unlink("R/rxode2_md5.R")
 md5file <- file("R/rxode2_md5.R", "wb")
 writeLines(sprintf("rxode2.md5 <- \"%s\"\n", md5), md5file)

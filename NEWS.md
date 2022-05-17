@@ -1,3 +1,14 @@
+# rxode2 2.0.7
+
+- Removed accidental `^S` from news as requested by CRAN.
+
+- Bug fix for more complicated mu-referencing.
+
+- Change rxode2 md5 to only depend on the C/C++/Fortran code and
+  headers not the R files.  That way if there is binary compatibility
+  between `nlmixr2est` and `rxode2`, a new version of `nlmixr2est`
+  will not need to be submitted to CRAN.
+
 # rxode2 2.0.6
 
 ## Breaking changes
@@ -21,7 +32,8 @@
 
 * Parallel solving now seeds each simulation per each individual based
     on the initial seed plus the simulation id.  This makes the
-    simulation reproducible regardless of the number of cores running the simulation.
+    simulation reproducible regardless of the number of cores running
+    the simulation.
 
 ### Other breaking changes
 
