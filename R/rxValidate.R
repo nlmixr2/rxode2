@@ -16,6 +16,7 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
         return(invisible())
       }
     }
+    rxUnloadAll()
     return(force(type))
   }
   pt <- proc.time()
