@@ -1116,7 +1116,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
       if (.Call(`_rxode2_isLinCmt`) == 1L) {
         .env$.linCmtM <- rxNorm(.env$mv0)
-        .vars <- c(.env$mv0$params, .env$mv0$lhs, .env$mv0$slhs)
+        .ini <- .env$mv0$ini
+        .ini <- which(!is.na(.ini))
+        .vars <- c(.env$mv0$params, .env$mv0$lhs, .env$mv0$slhs, names(.ini))
         .env$mvL <- rxGetModel(.Call(
           `_rxode2_linCmtGen`,
           length(.env$mv0$state),

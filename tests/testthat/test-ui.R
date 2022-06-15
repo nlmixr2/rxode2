@@ -438,4 +438,17 @@ test_that("model only", {
 
   expect_error(one.cmt(), NA)
 
+
+  one.cmt <- function() {
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      add.sd <- 4
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  expect_error(one.cmt(), NA)
+
 })
