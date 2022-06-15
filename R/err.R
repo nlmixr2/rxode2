@@ -1061,7 +1061,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$err <- NULL
   .env$errGlobal <- NULL
   # Add error structure like nlmixr ui had before transitioning to rxode2
-  if (length(.env$df$err) > 0) {
+  if (length(.env$df$ntheta) > 0) {
     .env$df$err <- NA_character_
   } else {
     .env$df$err <- character(0)
