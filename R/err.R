@@ -1063,6 +1063,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   # Add error structure like nlmixr ui had before transitioning to rxode2
   if (length(.env$df$err) > 0) {
     .env$df$err <- NA_character_
+  } else {
+    .env$df$err <- character(0)
   }
   #.env$df$trLow <- .env$df$trHi <- NA_real_
   .env$curDvid <- 1L
