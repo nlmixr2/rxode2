@@ -1,7 +1,7 @@
 .rx <- loadNamespace("rxode2")
 
 test_that("comments are parsed correctly", {
-  
+
   cmt <- c("function() {", "      ini({", "        ## You may label each parameter with a comment",
            "        tka <- 0.45 # Log Ka", "        tcl <- log(c(0, 2.7, 100)) # Log Cl",
            "        ## This works with interactive models", "        ## You may also label the preceding line with label(\"label text\")",
@@ -10,7 +10,7 @@ test_that("comments are parsed correctly", {
            "        add.sd <- 0.7", "      })", "      model({", "        ka <- exp(tka + eta.ka)",
            "        cl <- exp(tcl + eta.cl)", "        v <- exp(tv + eta.v)",
            "        linCmt() ~ add(add.sd)", "      })", "    }")
-  
+
   eq <- c("function () ", "{", "    ini({", "        tka <- 0.45", "        label(\"Log Ka\")",
           "        tcl <- log(c(0, 2.7, 100))", "        label(\"Log Cl\")",
           "        tv <- 3.45", "        label(\"log V\")", "        eta.ka ~ 0.6",
@@ -18,9 +18,9 @@ test_that("comments are parsed correctly", {
           "    })", "    model({", "        ka <- exp(tka + eta.ka)", "        cl <- exp(tcl + eta.cl)",
           "        v <- exp(tv + eta.v)", "        linCmt() ~ add(add.sd)",
           "    })", "}")
-  
+
   expect_equal(.rx$.rxReplaceCommentWithLabel(cmt), eq)
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -42,14 +42,14 @@ test_that("comments are parsed correctly", {
       linCmt() ~ add(add.sd)
     })
   }
-  
+
   str <- .rx$.rxFunction2string(one.cmt)
-  
+
   if (!is.null(attr(one.cmt, "srcref"))) {
     expect_equal(str, eq)
     attr(one.cmt, "srcref") <- NULL
   }
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -71,9 +71,9 @@ test_that("comments are parsed correctly", {
       linCmt() ~ add(add.sd) | tmp
     })
   }
-  
+
   mkstr <- .rx$.rxFunction2string(one.cmt)
-  
+
   expect_equal(mkstr,
                c("function () ", "{", "    ini({", "        tka <- 0.45", "        label(\"Log Ka\")",
                  "        tcl <- log(c(0, 2.7, 100))", "        label(\"Log Cl\")",
@@ -82,7 +82,7 @@ test_that("comments are parsed correctly", {
                  "    })", "    model({", "        ka <- exp(tka + eta.ka)", "        cl <- exp(tcl + eta.cl)",
                  "        v <- exp(tv + eta.v)", "        linCmt() ~ add(add.sd) | tmp",
                  "    })", "}"))
-  
+
 })
 
 test_that("meta information parsing", {
@@ -109,12 +109,12 @@ test_that("meta information parsing", {
       linCmt() ~ add(add.sd)
     })
   }
-  
+
   tmp1 <- one.cmt()
-  
+
   expect_equal(tmp1$meta$meta1, "meta")
   expect_equal(tmp1$meta$meta2, "meta2")
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -136,7 +136,7 @@ test_that("meta information parsing", {
       linCmt() ~ add(add.sd)
     })
   }
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -159,7 +159,7 @@ test_that("meta information parsing", {
       linCmt() ~ add(add.sd) + boxCox(lambda) | tmp
     })
   }
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -182,7 +182,7 @@ test_that("meta information parsing", {
       linCmt() ~ add(add.sd) + boxCox(lambda) | tmp
     })
   }
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -204,7 +204,7 @@ test_that("meta information parsing", {
       linCmt() ~ lnorm(add.sd) | tmp
     })
   }
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -228,7 +228,7 @@ test_that("meta information parsing", {
       tmp2 ~ dpois(bLambda)
     })
   }
-  
+
   cov <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -264,7 +264,7 @@ test_that("meta information parsing", {
       cp ~ add(add.sd)
     })
   }
-  
+
   pk.turnover.emax <- function() {
     ini({
       tktr <- log(1)
@@ -321,7 +321,7 @@ test_that("meta information parsing", {
       effect ~ add(pdadd.err)
     })
   }
-  
+
   turnover.emax.noeta <- function() {
     ini({
       tktr <- log(1)
@@ -368,7 +368,7 @@ test_that("meta information parsing", {
       effect ~ add(pdadd.err)
     })
   }
-  
+
   f <- function() {
     ini({
       lKA <- log(0.294)
@@ -394,9 +394,9 @@ test_that("meta information parsing", {
       C2 ~ prop(prop.sd)
     })
   }
-  
+
   expect_error(f(), "prop.sd")
-  
+
   one.cmt <- function() {
     ini({
       ## You may label each parameter with a comment
@@ -419,6 +419,23 @@ test_that("meta information parsing", {
       vv ~ add(add.sd)
     })
   }
-  
+
   expect_error(one.cmt())
+})
+
+
+test_that("model only", {
+
+  one.cmt <- function() {
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      add.sd <- 4
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+
+
 })

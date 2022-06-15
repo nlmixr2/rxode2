@@ -1061,7 +1061,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$err <- NULL
   .env$errGlobal <- NULL
   # Add error structure like nlmixr ui had before transitioning to rxode2
-  .env$df$err <- NA_character_
+  if (length(.env$df$err) > 0) {
+    .env$df$err <- NA_character_
+  }
   #.env$df$trLow <- .env$df$trHi <- NA_real_
   .env$curDvid <- 1L
   # Pred df needs to be finalized with compartment information from parsing the raw rxode2 model

@@ -236,8 +236,21 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     .ini <- .lastIni
     .iniQ <- .lastIniQ
     if (is.null(.ini)) {
-      stop("ini({}) block must be called before the model block",
-           call.=FALSE)
+      .ini <- data.frame(ntheta=integer(0),
+                         neta1=numeric(0),
+                         neta2=numeric(0),
+                         name=character(0),
+                         lower=numeric(0),
+                         est=numeric(0),
+                         upper=numeric(0),
+                         fix=logical(0),
+                         label=character(0),
+                         backTransform=character(0),
+                         condition=character(0),
+                         err=character(0))
+      .iniQ <- NULL
+      ## stop("ini({}) block must be called before the model block",
+      ##      call.=FALSE)
     }
     assignInMyNamespace(".lastIni", NULL)
     assignInMyNamespace(".lastIniQ", NULL)
