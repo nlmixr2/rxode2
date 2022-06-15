@@ -431,11 +431,11 @@ test_that("model only", {
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
       v <- exp(tv + eta.v)
-      add.sd <- 4
+      add.sd <- 4 + 3
       linCmt() ~ add(add.sd)
     })
   }
 
-
+  expect_error(one.cmt(), NA)
 
 })
