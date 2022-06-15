@@ -156,7 +156,7 @@ attr(rxUiGet.multipleEndpoint, "desc") <- "table of multiple endpoint translatio
 rxUiGet.funPrint <- function(x, ...) {
   .x <- x[[1]]
   .ls <- ls(.x$meta, all.names=TRUE)
-  .hasIni <- length(x$iniDf$cond) > 0
+  .hasIni <- length(.x$iniDf$cond) > 0
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {

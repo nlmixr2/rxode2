@@ -904,7 +904,8 @@
     .ret <- .ret[!is.na(.ret)]
     .ini <- .mv$ini
     .ini <- .ini[!is.na(.ini)]
-    .ret <- setdiff(.ret, c(.mv$lhs, names(.ini)))
+    .names <- c(.mv$lhs, names(.ini))
+    .ret <- setdiff(.ret, .names)
     if (length(.ret) > 0L) {
       ui$err <- c(ui$err,
                   paste0("endpoint '", .userEndpointNames(.predDf$cond[i]), "' needs the following parameters estimated or modeled: ",
