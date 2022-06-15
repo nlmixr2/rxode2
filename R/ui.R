@@ -284,14 +284,19 @@ model.default <- function(x, ..., append=FALSE, envir=parent.frame()) {
 print.rxUi <-function(x, ...) {
   .md <- x$modelDesc
   cat(cli::cli_format_method({
-        cli::cli_h1("{.md}")
-    }), "\n")
-  cat(cli::cli_format_method({
-    cli::cli_h2("Initalization:")
+    cli::cli_h1("{.md}")
   }), "\n")
-  cat(paste0(crayon::bold("Fixed Effects"), " (", crayon::bold$blue("$theta"), "):"), "\n")
-  print(x$theta)
+  .theta <- x$theta
   .omega <- x$omega
+  if (length(x$iniDf$cond) > 0) {
+    cat(cli::cli_format_method({
+      cli::cli_h2("Initalization:")
+    }), "\n")
+  }
+  if (length(.theta) > 0) {
+    cat(paste0(crayon::bold("Fixed Effects"), " (", crayon::bold$blue("$theta"), "):"), "\n")
+    print(.theta)
+  }
   if (!is.null(dim(.omega))) {
     if (dim(.omega)[1] > 0) {
       cat(paste0("\n", crayon::bold("Omega"), " (", crayon::bold$blue("$omega"), "):"), "\n")

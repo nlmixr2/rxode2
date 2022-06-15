@@ -156,14 +156,22 @@ attr(rxUiGet.multipleEndpoint, "desc") <- "table of multiple endpoint translatio
 rxUiGet.funPrint <- function(x, ...) {
   .x <- x[[1]]
   .ls <- ls(.x$meta, all.names=TRUE)
-  .ret <- vector("list", length(.ls) + 3)
+  .hasIni <- length(x$iniDf$cond) > 0
+  .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
     .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .ls[.i], "<-", deparse1(.x$meta[[.ls[.i]]]), ")")))
   }
-  .len <- length(.ls)
-  .ret[[.len + 2]] <- .x$iniFun
-  .ret[[.len + 3]] <- .x$modelFun
+  .theta <- x$theta
+  .omega <- x$omega
+  if (.hasIni) {
+    .len <- length(.ls)
+    .ret[[.len + 2]] <- .x$iniFun
+    .ret[[.len + 3]] <- .x$modelFun
+  } else {
+    .len <- length(.ls)
+    .ret[[.len + 2]] <- .x$modelFun
+  }
   .ret
 }
 attr(rxUiGet.funPrint, "desc") <- "Normalized, quoted model function (for printing)"
