@@ -884,7 +884,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' @param expression Single tilde error expression
 #' @param env Environment with initial estimate data.frame
-#' @return
+#' @return nothing, called for side effects
 #' @author Matthew Fidler
 #' @noRd
 .errHandleTilde <- function(expression, env) {

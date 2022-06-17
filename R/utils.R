@@ -540,9 +540,12 @@ rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, i
 
 #' Cumulative distribution of standard normal
 #'
-#' @inheritParams stats::pnorm
+#' @param q vector of quantiles
+#'
 #' @return cumulative distribution of standard normal distribution
+#'
 #' @author Matthew Fidler
+#'
 #' @examples
 #'
 #' # phi is equivalent to pnorm(x)

@@ -10,7 +10,7 @@
 #' @param obj rxode2 ui object
 #' @param arg argument that you are trying to get from rxui
 #' @param exact exact argument
-#' @return
+#' @return object for `rxUiGet`
 #' @author Matthew L. Fidler
 #' @noRd
 .uiToRxUiGet <- function(obj, arg, exact=TRUE) {

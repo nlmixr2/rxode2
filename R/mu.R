@@ -929,7 +929,7 @@
 #'
 #' @param mod Model
 #' @param ini lotri initialization information
-#' @return
+#' @return parsed environment
 #' @author Matthew Fidler
 #' @examples
 #'
