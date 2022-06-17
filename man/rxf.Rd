@@ -7,9 +7,7 @@
 rxf(df1, df2, n = 1L, ncores = 1L)
 }
 \arguments{
-\item{df1}{degrees of freedom.  \code{Inf} is allowed.}
-
-\item{df2}{degrees of freedom.  \code{Inf} is allowed.}
+\item{df1, df2}{degrees of freedom.  \code{Inf} is allowed.}
 
 \item{n}{number of observations. If \code{length(n) > 1}, the length
     is taken to be the number required.}

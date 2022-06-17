@@ -58,7 +58,9 @@ details, see the sections \dQuote{Details} and
 \verb{rxode2 Syntax} below.}
 
 \item{dir}{This is the model directory where the C file will be
-stored for compiling.\preformatted{If unspecified, the C code is stored in a temporary directory,
+stored for compiling.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{If unspecified, the C code is stored in a temporary directory,
 then the model is compiled and moved to the current directory.
 Afterwards the C code is removed.
 
@@ -66,7 +68,7 @@ If specified, the C code is stored in the specified directory
 and then compiled in that directory.  The C code is not removed
 after the DLL is created in the same directory.  This can be
 useful to debug the c-code outputs.
-}}
+}\if{html}{\out{</div>}}}
 
 \item{prefix}{is a string indicating the prefix to use in the C
 based functions.  If missing, it is calculated based on file

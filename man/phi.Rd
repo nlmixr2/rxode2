@@ -7,7 +7,7 @@
 phi(q)
 }
 \arguments{
-\item{q}{vector of quantiles.}
+\item{q}{vector of quantiles}
 }
 \value{
 cumulative distribution of standard normal distribution

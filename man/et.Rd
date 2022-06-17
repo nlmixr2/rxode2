@@ -73,10 +73,12 @@ integer starting at 1.  Negative compartments turn off a
 compartment. If the compartment is a name, the compartment name
 is changed to the correct state/compartment number before
 running the simulation.  For a compartment named "-cmt" the
-compartment is turned off.\preformatted{Can also specify `cmt` as `dosing.to`,
+compartment is turned off.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{Can also specify `cmt` as `dosing.to`,
 `dose.to`, `doseTo`, `dosingTo`, and
 `state`.
-}}
+}\if{html}{\out{</div>}}}
 
 \item{ii}{When specifying a dose, this is the inter-dose interval
 for \code{ss}, \code{addl} and \code{until} options (described below).}

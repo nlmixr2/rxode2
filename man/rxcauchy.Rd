@@ -7,9 +7,7 @@
 rxcauchy(location = 0, scale = 1, n = 1L, ncores = 1L)
 }
 \arguments{
-\item{location}{location and scale parameters.}
-
-\item{scale}{location and scale parameters.}
+\item{location, scale}{location and scale parameters.}
 
 \item{n}{number of observations. If \code{length(n) > 1}, the length
     is taken to be the number required.}

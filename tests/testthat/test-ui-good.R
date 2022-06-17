@@ -188,4 +188,20 @@ test_that("modeled expressions don't have to be in the model if non-normal", {
   expect_error(ocmt(), NA)
 })
 
+test_that("only specifying residual error", {
+
+  one.cmt <- function() {
+    ini({
+      add.sd <- 4
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+})
+
 

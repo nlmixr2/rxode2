@@ -884,7 +884,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' @param expression Single tilde error expression
 #' @param env Environment with initial estimate data.frame
-#' @return
+#' @return nothing, called for side effects
 #' @author Matthew Fidler
 #' @noRd
 .errHandleTilde <- function(expression, env) {
@@ -1061,7 +1061,11 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env$err <- NULL
   .env$errGlobal <- NULL
   # Add error structure like nlmixr ui had before transitioning to rxode2
-  .env$df$err <- NA_character_
+  if (length(.env$df$ntheta) > 0) {
+    .env$df$err <- NA_character_
+  } else {
+    .env$df$err <- character(0)
+  }
   #.env$df$trLow <- .env$df$trHi <- NA_real_
   .env$curDvid <- 1L
   # Pred df needs to be finalized with compartment information from parsing the raw rxode2 model
@@ -1112,7 +1116,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
       if (.Call(`_rxode2_isLinCmt`) == 1L) {
         .env$.linCmtM <- rxNorm(.env$mv0)
-        .vars <- c(.env$mv0$params, .env$mv0$lhs, .env$mv0$slhs)
+        .ini <- .env$mv0$ini
+        .ini <- which(!is.na(.ini))
+        .vars <- c(.env$mv0$params, .env$mv0$lhs, .env$mv0$slhs, names(.ini))
         .env$mvL <- rxGetModel(.Call(
           `_rxode2_linCmtGen`,
           length(.env$mv0$state),
