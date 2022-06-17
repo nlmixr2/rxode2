@@ -67,8 +67,9 @@
   .w <- which(vapply(.idx, function(x) {
     identical(.lst[[x]][[1]], quote(`ini`))
   }, logical(1), USE.NAMES=TRUE))
-  if (length(.w) != 1) {
-    stop("rxode2 model function requires one 'ini({})' block",
+  if (length(.w) == 0) {
+  } else if (length(.w) != 1) {
+    stop("rxode2 model function can only have one 'ini({})' block",
          call.=FALSE)
   }
   if (identical(.lst[[length(.lst)]][[1]], quote(`model`))) {
