@@ -7,13 +7,10 @@
 rxgamma(shape, rate = 1/scale, scale = 1, n = 1L, ncores = 1L)
 }
 \arguments{
-\item{shape}{shape and scale parameters.  Must be positive,
+\item{shape, scale}{shape and scale parameters.  Must be positive,
     \code{scale} strictly.}
 
 \item{rate}{an alternative way to specify the scale.}
-
-\item{scale}{shape and scale parameters.  Must be positive,
-    \code{scale} strictly.}
 
 \item{n}{number of observations. If \code{length(n) > 1}, the length
     is taken to be the number required.}

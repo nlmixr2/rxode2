@@ -7,9 +7,7 @@
 rxunif(min = 0, max = 1, n = 1L, ncores = 1L)
 }
 \arguments{
-\item{min}{lower and upper limits of the distribution.  Must be finite.}
-
-\item{max}{lower and upper limits of the distribution.  Must be finite.}
+\item{min, max}{lower and upper limits of the distribution.  Must be finite.}
 
 \item{n}{number of observations. If \code{length(n) > 1}, the length
     is taken to be the number required.}

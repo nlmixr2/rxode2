@@ -7,9 +7,7 @@
 rxbeta(shape1, shape2, n = 1L, ncores = 1L)
 }
 \arguments{
-\item{shape1}{non-negative parameters of the Beta distribution.}
-
-\item{shape2}{non-negative parameters of the Beta distribution.}
+\item{shape1, shape2}{non-negative parameters of the Beta distribution.}
 
 \item{n}{number of observations. If \code{length(n) > 1}, the length
     is taken to be the number required.}

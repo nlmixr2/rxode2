@@ -28,10 +28,12 @@ sensitivity-based solutions.}
 
 \item{unknownDerivatives}{When handling derivatives from unknown
 functions, the translator will translate into different types
-of numeric derivatives.  The currently supported methods are:\preformatted{- `forward` for forward differences
+of numeric derivatives.  The currently supported methods are:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{- `forward` for forward differences
 - `central` for central differences
 - `error` for throwing an error for unknown derivatives
-}}
+}\if{html}{\out{</div>}}}
 }
 \value{
 An rxode2 symengine environment

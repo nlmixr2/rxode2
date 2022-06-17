@@ -123,7 +123,9 @@ compartmental model}
 }
 \value{
 An object (environment) of class \code{rxode2} (see Chambers and Temple Lang (2001))
-consisting of the following list of strings and functions:\preformatted{* `model` a character string holding the source model specification.
+consisting of the following list of strings and functions:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{* `model` a character string holding the source model specification.
 * `get.modelVars`a function that returns a list with 3 character
     vectors, `params`, `state`, and `lhs` of variable names used in the model
     specification. These will be output when the model is computed (i.e., the ODE solved by integration).
@@ -187,7 +189,7 @@ consisting of the following list of strings and functions:\preformatted{* `model
   * `run` deprecated, use `solve`.
   * `get.index` deprecated.
   * `getObj` internal (not user callable) function.
-}
+}\if{html}{\out{</div>}}
 }
 \description{
 Create a dynamic ODE-based model object suitably for translation
@@ -270,12 +272,14 @@ parameter order the same when using 2 different ODE models. These
 are specified by \code{param(par1, par2,...)}
 }
 
-An example model is shown below:\preformatted{   # simple assignment
+An example model is shown below:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{   # simple assignment
    C2 = centr/V2;
 
    # time-derivative assignment
    d/dt(centr) = F*KA*depot - CL*C2 - Q*C2 + Q*C3; 
-}
+}\if{html}{\out{</div>}}
 
 Expressions in assignment and \code{if} statements can be numeric or logical.
 
@@ -345,8 +349,10 @@ use these variables starting with either the \code{rx} or \code{nlmixr} prefixes
 Logical operators support the standard R operators \code{==}, \code{!=} \code{>=} \code{<=}
 \code{>} and \code{<}. Like R these can be in \verb{if()} or \verb{while()} statements,
 \code{ifelse()} expressions. Additionally they can be in a standard
-assignment. For instance, the following is valid:\preformatted{cov1 = covm*(sexf == "female") + covm*(sexf != "female")
-}
+assignment. For instance, the following is valid:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{cov1 = covm*(sexf == "female") + covm*(sexf != "female")
+}\if{html}{\out{</div>}}
 
 Notice that you can also use character expressions in comparisons. This
 convenience comes at a cost since character comparisons are slower than

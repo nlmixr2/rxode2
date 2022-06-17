@@ -7,9 +7,7 @@
 rxweibull(shape, scale = 1, n = 1L, ncores = 1L)
 }
 \arguments{
-\item{shape}{shape and scale parameters, the latter defaulting to 1.}
-
-\item{scale}{shape and scale parameters, the latter defaulting to 1.}
+\item{shape, scale}{shape and scale parameters, the latter defaulting to 1.}
 
 \item{n}{number of observations. If \code{length(n) > 1}, the length
     is taken to be the number required.}
