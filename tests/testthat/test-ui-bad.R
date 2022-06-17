@@ -148,13 +148,14 @@ test_that("issue nlmixr#501", {
       d/dt(depot) = -ka * depot
       d/dt(center) = ka * depot - cl / v * center
       cp = center / v
+      add.sd <- 4
       cp ~ add(add.sd)
     })
     keep = "WT"
     drop = "depot"
   }
 
-  expect_error(rxode2(one.compartment), "ini")
+  expect_error(rxode2(one.compartment), NA)
 
 
   one.compartment <- function() {
