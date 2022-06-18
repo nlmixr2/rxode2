@@ -153,11 +153,11 @@
 
 
 <script src="rxode2-speed_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
-  <main id="main"><div class="page-header">
+  <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Speeding up rxode2</h1>
                         <h4 data-toc-skip class="author">Matthew Fidler</h4>
             
-            <h4 data-toc-skip class="date">2022-05-18</h4>
+            <h4 data-toc-skip class="date">2022-06-18</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-speed.Rmd" class="external-link"><code>vignettes/rxode2-speed.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-speed.Rmd</code></div>
@@ -257,10 +257,10 @@
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span>
 <span class="co">#&gt; Unit: milliseconds</span>
 <span class="co">#&gt;               expr      min        lq      mean    median       uq      max</span>
-<span class="co">#&gt;           runFor() 507.2244 560.15585 580.43375 575.28885 595.5154 741.8255</span>
-<span class="co">#&gt;        runSapply() 519.4408 558.04220 580.88544 575.65915 589.7437 793.6635</span>
-<span class="co">#&gt;  runSingleThread()  44.0405  45.21305  47.55863  46.23470  48.9834  73.3754</span>
-<span class="co">#&gt;       run2Thread()  26.2663  27.09205  29.33863  28.46325  30.9029  39.9880</span>
+<span class="co">#&gt;           runFor() 398.0382 424.05250 435.55396 433.08795 441.8370 560.2837</span>
+<span class="co">#&gt;        runSapply() 406.9275 423.44095 436.73540 434.12495 441.5872 553.7882</span>
+<span class="co">#&gt;  runSingleThread()  32.5632  36.87780  38.47613  38.78755  40.3443  45.9910</span>
+<span class="co">#&gt;       run2Thread()  19.5090  23.36665  26.31296  24.66055  26.7464 144.1764</span>
 <span class="co">#&gt;  neval</span>
 <span class="co">#&gt;    100</span>
 <span class="co">#&gt;    100</span>
@@ -282,9 +282,9 @@
                                            collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span>
 <span class="co">#&gt; Unit: milliseconds</span>
-<span class="co">#&gt;          expr     min      lq     mean   median       uq     max neval</span>
-<span class="co">#&gt;  runThread(1) 43.9440 44.6791 46.21634 45.12895 47.16780 55.0337   100</span>
-<span class="co">#&gt;  runThread(2) 25.9119 26.5237 27.85283 27.01030 27.90825 38.3616   100</span></code></pre></div>
+<span class="co">#&gt;          expr     min       lq     mean   median       uq     max neval</span>
+<span class="co">#&gt;  runThread(1) 33.6947 37.20775 38.92604 39.14160 40.63585 45.8670   100</span>
+<span class="co">#&gt;  runThread(2) 20.6057 23.42905 25.07847 24.45555 26.10430 33.0532   100</span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span>
 <span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></code></pre></div>
@@ -366,7 +366,7 @@
 <span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>
   
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span>
-<span class="co">#&gt; Time difference of 12.75513 secs</span></code></pre></div>
+<span class="co">#&gt; Time difference of 9.652546 secs</span></code></pre></div>
 <p>By applying some of the new parallel solving concepts you can simply run the same simulation both with less code and faster:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
@@ -405,7 +405,7 @@
 <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span>
 <span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span>
-<span class="co">#&gt; Time difference of 0.1716526 secs</span></code></pre></div>
+<span class="co">#&gt; Time difference of 0.1713176 secs</span></code></pre></div>
 <p>You can see a striking time difference between the two methods; A few things to keep in mind:</p>
 <ul>
 <li><p><code>rxode2</code> use the thread-safe sitmo <code>threefry</code> routines for simulation of <code>eta</code> values. Therefore the results are expected to be different (also the random samples are taken in a different order which would be different)</p></li>
@@ -448,7 +448,7 @@
 <span class="co">#&gt;  [1] tidyselect_1.1.2    xfun_0.31           bslib_0.3.1        </span>
 <span class="co">#&gt;  [4] purrr_0.3.4         colorspace_2.0-3    vctrs_0.4.1        </span>
 <span class="co">#&gt;  [7] generics_0.1.2      htmltools_0.5.2     yaml_2.3.5         </span>
-<span class="co">#&gt; [10] utf8_1.2.2          rlang_1.0.2         pkgdown_2.0.3.9000 </span>
+<span class="co">#&gt; [10] utf8_1.2.2          rlang_1.0.2         pkgdown_2.0.4.9000 </span>
 <span class="co">#&gt; [13] jquerylib_0.1.4     pillar_1.7.0        withr_2.5.0        </span>
 <span class="co">#&gt; [16] glue_1.6.2          lifecycle_1.0.1     stringr_1.4.0      </span>
 <span class="co">#&gt; [19] munsell_0.5.0       gtable_0.3.0        ragg_1.2.2         </span>
@@ -459,7 +459,7 @@
 <span class="co">#&gt; [34] checkmate_2.1.0     cachem_1.0.6        desc_1.4.1         </span>
 <span class="co">#&gt; [37] RcppParallel_5.1.5  jsonlite_1.8.0      farver_2.1.0       </span>
 <span class="co">#&gt; [40] systemfonts_1.0.4   fs_1.5.2            textshaping_0.3.6  </span>
-<span class="co">#&gt; [43] digest_0.6.29       stringi_1.7.6       lotri_0.4.1        </span>
+<span class="co">#&gt; [43] digest_0.6.29       stringi_1.7.6       lotri_0.4.2        </span>
 <span class="co">#&gt; [46] dplyr_1.0.9         qs_0.25.3           grid_4.2.0         </span>
 <span class="co">#&gt; [49] rprojroot_2.0.3     cli_3.3.0           tools_4.2.0        </span>
 <span class="co">#&gt; [52] dparser_1.3.1-5     magrittr_2.0.3      sass_0.4.1         </span>
@@ -481,7 +481,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer>

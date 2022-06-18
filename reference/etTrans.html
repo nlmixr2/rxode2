@@ -150,29 +150,46 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>inData</dt>
 <dd><p>Data frame to translate</p></dd>
+
+
 <dt>obj</dt>
 <dd><p>Model to translate data</p></dd>
+
+
 <dt>addCmt</dt>
 <dd><p>Add compartment to data frame (default <code>FALSE</code>).</p></dd>
+
+
 <dt>dropUnits</dt>
 <dd><p>Boolean to drop the units (default <code>FALSE</code>).</p></dd>
+
+
 <dt>allTimeVar</dt>
 <dd><p>Treat all covariates as if they were time-varying</p></dd>
+
+
 <dt>keepDosingOnly</dt>
 <dd><p>keep the individuals who only have dosing records and any
 trailing dosing records after the last observation.</p></dd>
+
+
 <dt>combineDvid</dt>
 <dd><p>is a boolean indicating if rxode2 will use <code>DVID</code> on observation
 records to change the <code>cmt</code> value; Useful for multiple-endpoint nlmixr models.  By default
 this is determined by <code>option("rxode2.combine.dvid")</code> and if the option has not been set,
 this is <code>TRUE</code>. This typically does not affect rxode2 simulations.</p></dd>
+
+
 <dt>keepF</dt>
 <dd><p>This is a named vector of items you want to keep in the final rxode2 dataset.
 For added rxode2 event records (if seen), last observation carried forward will be used.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Object for solving in rxode2</p>
+    
+
+<p>Object for solving in rxode2</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -184,7 +201,7 @@ For added rxode2 event records (if seen), last observation carried forward will 
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer></div>

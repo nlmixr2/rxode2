@@ -151,19 +151,28 @@ be a data frame with one pk parameter per row since it will
 output a data frame with one PK parameter per row.</p></li>
 <li><p>PK parameters as either a vector or a scalar</p></li>
 </ul></dd>
+
+
 <dt>verbose</dt>
 <dd><p>boolean that when TRUE provides a message about the detected pk parameters
 and the detected compartmental model.  By default this is <code>FALSE</code>.</p></dd>
+
+
 <dt>digits</dt>
 <dd><p>represents the number of significant digits for the
 output; If the number is zero or below (default), do not round.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Return a data.frame of derived PK parameters for a 1-, 2-,
+    
+
+<p>Return a data.frame of derived PK parameters for a 1-, 2-,
 or 3-compartment linear model given provided clearances and
-volumes based on the inferred model type.
-The model parameters that will be provided in the data frame are:</p><ul><li><p><code>vc</code>: Central Volume (for 1-, 2- and 3-
+volumes based on the inferred model type.</p>
+
+
+<p>The model parameters that will be provided in the data frame are:</p><ul><li><p><code>vc</code>: Central Volume (for 1-, 2- and 3-
 compartment models)</p></li>
 <li><p><code>kel</code>: First-order elimination rate (for 1-, 2-, and
 3-compartment models)</p></li>
@@ -236,7 +245,7 @@ peripheral to central compartment (3-compartment model)</p></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer></div>

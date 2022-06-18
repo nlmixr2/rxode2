@@ -175,37 +175,55 @@
 <dd><p>This is the first argument supplied to the event table.
 This is named to allow <code>et</code> to be used in a pipe-line
 with arbitrary objects.</p></dd>
+
+
 <dt>...</dt>
 <dd><p>Times or event tables.  They can also be one of the named arguments below.</p></dd>
+
+
 <dt>envir</dt>
 <dd><p>the <code><a href="https://rdrr.io/r/base/environment.html" class="external-link">environment</a></code> in which <code>expr</code> is to
     be evaluated.  May also be <code>NULL</code>, a list, a data frame,
     a pairlist or an integer as specified to <code><a href="https://rdrr.io/r/base/sys.parent.html" class="external-link">sys.call</a></code>.</p></dd>
+
+
 <dt>time</dt>
 <dd><p>Time is the time of the dose or the sampling times.
 This can also be unspecified and is determined by the object
 type (list or numeric/integer).</p></dd>
+
+
 <dt>amt</dt>
 <dd><p>Amount of the dose. If specified, this assumes a dosing
 record, instead of a sampling record.</p></dd>
+
+
 <dt>evid</dt>
 <dd><p>Event ID; This can be:</p><table class="table table"><tr><td>Numeric Value</td><td>Description</td></tr><tr><td>0</td><td>An observation. This can also be specified as <code>evid=obs</code></td></tr><tr><td>1</td><td>A dose observation.  This can also be specified as <code>evid=dose</code></td></tr><tr><td>2</td><td>A non-dose event. This can also be specified as <code>evid=other</code></td></tr><tr><td>3</td><td>A reset event.  This can also be specified as <code>evid=reset</code>.</td></tr><tr><td>4</td><td>Dose and reset event.  This can also be specified as <code>evid=doseReset</code> or <code>evid=resetDose</code></td></tr></table><p>Note a reset event resets all the compartment values to zero and turns off all infusions.</p></dd>
+
+
 <dt>cmt</dt>
 <dd><p>Compartment name or number.  If a number, this is an
 integer starting at 1.  Negative compartments turn off a
 compartment. If the compartment is a name, the compartment name
 is changed to the correct state/compartment number before
 running the simulation.  For a compartment named "-cmt" the
-compartment is turned off.</p><div class="sourceCode"><pre><code>Can also specify `cmt` as `dosing.to`,
-`dose.to`, `doseTo`, `dosingTo`, and
-`state`.
-</code></pre></div></dd>
+compartment is turned off.</p>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1"></a>Can also specify <span class="st">`</span><span class="dt">cmt</span><span class="st">`</span> as <span class="st">`</span><span class="dt">dosing.to</span><span class="st">`</span>,</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="st">`</span><span class="dt">dose.to</span><span class="st">`</span>, <span class="st">`</span><span class="dt">doseTo</span><span class="st">`</span>, <span class="st">`</span><span class="dt">dosingTo</span><span class="st">`</span>, and</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="st">`</span><span class="dt">state</span><span class="st">`</span>.</span></code></pre><p></p></div></dd>
+
+
 <dt>ii</dt>
 <dd><p>When specifying a dose, this is the inter-dose interval
 for <code>ss</code>, <code>addl</code> and <code>until</code> options (described below).</p></dd>
+
+
 <dt>addl</dt>
 <dd><p>The number of additional doses at a inter-dose
 interval after one dose.</p></dd>
+
+
 <dt>ss</dt>
 <dd><p>Steady state flag;  It can be one of:</p><table class="table table"><tr><td>Value</td><td>Description</td></tr><tr><td>0</td><td>This dose is not a steady state dose</td></tr><tr><td>1</td><td>This dose is a steady state dose with the between/inter-dose interval of <code>ii</code></td></tr><tr><td>2</td><td>Superposition steady state</td></tr></table><p>When <code>ss=2</code> the steady state dose that uses the super-position
 principle to allow more complex steady states, like 10 mg in the
@@ -214,6 +232,8 @@ instead of every 12 hours.  Since it uses the super positioning
 principle, it only makes sense when you know the kinetics are
 linear.</p>
 <p>All other values of <code>SS</code> are currently invalid.</p></dd>
+
+
 <dt>rate</dt>
 <dd><p>When positive, this is the rate of infusion.  Otherwise:</p><table class="table table"><tr><td>Value</td><td>Description</td></tr><tr><td>0</td><td>No infusion is on this record</td></tr><tr><td>-1</td><td>Modeled rate (in rxode2:<code>rate(cmt) =</code>); Can be <code>et(rate=model)</code>.</td></tr><tr><td>-2</td><td>Modeled duration (in rxode2: <code>dur(cmt) =</code>); Can be<code>et(dur=model)</code> or <code>et(rate=dur)</code>.</td></tr></table><p>When a modeled bioavailability is applied to positive rates
 (<code>rate</code> &gt; 0), the duration of infusion is changed. This is
@@ -222,40 +242,59 @@ modeled bioavailability can affect is duration.</p>
 <p>If instead you want the modeled bioavailability to increase the
 rate of infusion instead of the duration of infusion, specify the
 <code>dur</code> instead or model the duration with <code>rate=2</code>.</p></dd>
+
+
 <dt>dur</dt>
 <dd><p>Duration of infusion.  When <code>amt</code> and <code>dur</code>
 are specified the rate is calculated from the two data items.
 When <code>dur</code> is specified instead of <code>rate</code>, the
 bioavailability changes will increase rate instead of
 duration.</p></dd>
+
+
 <dt>until</dt>
 <dd><p>This is the time until the dosing should end.  It can
 be an easier way to figure out how many additional doses are
 needed over your sampling period.</p></dd>
+
+
 <dt>id</dt>
 <dd><p>A integer vector of IDs to add or remove from the event
 table.  If the event table is identical for each ID, then you
 may expand it to include all the IDs in this vector.  All the
 negative IDs in this vector will be removed.</p></dd>
+
+
 <dt>amountUnits</dt>
 <dd><p>The units for the dosing records (<code>amt</code>)</p></dd>
+
+
 <dt>timeUnits</dt>
 <dd><p>The units for the time records (<code>time</code>)</p></dd>
+
+
 <dt>addSampling</dt>
 <dd><p>This is a boolean indicating if a sampling time
 should be added at the same time as a dosing time.  By default
 this is <code>FALSE</code>.</p></dd>
+
+
 <dt>by</dt>
 <dd><p>When there are no observations in the event table, this
 is the amount to increment for the observations between <code>from</code>
 and <code>to</code>.</p></dd>
+
+
 <dt>length.out</dt>
 <dd><p>The number of observations to create if there
 isn't any observations in the event table. By default this is 200.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A new event table</p>
+    
+
+<p>A new event table</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -375,7 +414,7 @@ Pharmacometrics \&amp; Systems Pharmacology, 5(1), 3-10. ISSN 2163-8306,
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer></div>

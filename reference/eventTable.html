@@ -148,6 +148,8 @@ adding and querying dosing and observation records</p>
 unspecified units.  It could also be a solved rxode2 object.  In
 that case, eventTable(obj) returns the eventTable that was used
 to solve the rxode2 object.</p></dd>
+
+
 <dt>time.units</dt>
 <dd><p>string denoting the time units, e.g.,
 “hours”, “days”. Default to <code>"hours"</code>.</p>
@@ -159,10 +161,13 @@ list of functions to add and extract event records.</p>
 inputs to the system and sampling time events that represent
 observations of the system with ‘amount.units’ and
 ‘time.units’, respectively.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A modified data.frame with the following accessible functions:</p><ul><li><p><code>get.EventTable()</code> returns the current event table</p></li>
+    
+
+<p>A modified data.frame with the following accessible functions:</p><ul><li><p><code>get.EventTable()</code> returns the current event table</p></li>
 <li><p><code><a href="add.dosing.html">add.dosing()</a></code>  adds dosing records to the event table.</p></li>
 <li><p><code>get.dosing()</code> returns a data.frame of dosing records.</p></li>
 <li><p><code>clear.dosing()</code> clears or deletes all dosing from event table</p></li>
@@ -252,7 +257,7 @@ This is done by <code>qd$expand(400)</code> for a 400 subject data expansion</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer></div>

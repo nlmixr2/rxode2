@@ -170,25 +170,37 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>params</dt>
 <dd><p>Named Vector of rxode2 model parameters</p></dd>
+
+
 <dt>omega</dt>
 <dd><p>Estimate of Covariance matrix. When omega is a list,
 assume it is a block matrix and convert it to a full matrix for
 simulations.  When <code>omega</code> is <code>NA</code> and you are using it with a
 <code>rxode2</code> ui model, the between subject variability described by
 the <code>omega</code> matrix are set to zero.</p></dd>
+
+
 <dt>omegaDf</dt>
 <dd><p>The degrees of freedom of a t-distribution for
 simulation.  By default this is <code>NULL</code> which is
 equivalent to <code>Inf</code> degrees, or to simulate from a normal
 distribution instead of a t-distribution.</p></dd>
+
+
 <dt>omegaLower</dt>
 <dd><p>Lower bounds for simulated ETAs (by default -Inf)</p></dd>
+
+
 <dt>omegaUpper</dt>
 <dd><p>Upper bounds for simulated ETAs (by default Inf)</p></dd>
+
+
 <dt>omegaIsChol</dt>
 <dd><p>Indicates if the <code>omega</code> supplied is a
 Cholesky decomposed matrix instead of the traditional
 symmetric matrix.</p></dd>
+
+
 <dt>omegaSeparation</dt>
 <dd><p>Omega separation strategy</p>
 <p>Tells the type of separation strategy when
@@ -206,6 +218,8 @@ size is greater or equal to 10</p></li>
 matrix is less than 10 and <code>"separation"</code> when greater
 than equal to 10.</p></li>
 </ul></dd>
+
+
 <dt>omegaXform</dt>
 <dd><p>When taking <code>omega</code> values from the <code>thetaMat</code>
 simulations (using the separation strategy for covariance
@@ -229,29 +243,45 @@ with a diagonal matrix.</p></li>
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix.
 This only works with a diagonal matrix.</p></li>
 </ul></dd>
+
+
 <dt>nSub</dt>
 <dd><p>Number between subject variabilities (<code>ETAs</code>) simulated for every
 realization of the parameters.</p></dd>
+
+
 <dt>thetaMat</dt>
 <dd><p>Named theta matrix.</p></dd>
+
+
 <dt>thetaLower</dt>
 <dd><p>Lower bounds for simulated population parameter
 variability (by default <code>-Inf</code>)</p></dd>
+
+
 <dt>thetaUpper</dt>
 <dd><p>Upper bounds for simulated population unexplained
 variability (by default <code>Inf</code>)</p></dd>
+
+
 <dt>thetaDf</dt>
 <dd><p>The degrees of freedom of a t-distribution for
 simulation.  By default this is <code>NULL</code> which is
 equivalent to <code>Inf</code> degrees, or to simulate from a normal
 distribution instead of a <code>t</code>-distribution.</p></dd>
+
+
 <dt>thetaIsChol</dt>
 <dd><p>Indicates if the <code>theta</code> supplied is a
 Cholesky decomposed matrix instead of the traditional
 symmetric matrix.</p></dd>
+
+
 <dt>nStud</dt>
 <dd><p>Number virtual studies to characterize uncertainty in estimated
 parameters.</p></dd>
+
+
 <dt>sigma</dt>
 <dd><p>Named sigma covariance or Cholesky decomposition of a
 covariance matrix.  The names of the columns indicate
@@ -259,16 +289,26 @@ parameters that are simulated.  These are simulated for every
 observation in the solved system. When <code>sigma</code> is <code>NA</code> and you are using it with a
 <code>rxode2</code> ui model, the unexplained variability described by
 the <code>sigma</code> matrix are set to zero.</p></dd>
+
+
 <dt>sigmaLower</dt>
 <dd><p>Lower bounds for simulated unexplained variability (by default -Inf)</p></dd>
+
+
 <dt>sigmaUpper</dt>
 <dd><p>Upper bounds for simulated unexplained variability (by default Inf)</p></dd>
+
+
 <dt>sigmaDf</dt>
 <dd><p>Degrees of freedom of the sigma t-distribution.  By
 default it is equivalent to <code>Inf</code>, or a normal distribution.</p></dd>
+
+
 <dt>sigmaIsChol</dt>
 <dd><p>Boolean indicating if the sigma is in the
 Cholesky decomposition instead of a symmetric covariance</p></dd>
+
+
 <dt>sigmaSeparation</dt>
 <dd><p>separation strategy for sigma;</p>
 <p>Tells the type of separation strategy when
@@ -286,6 +326,8 @@ size is greater or equal to 10</p></li>
 matrix is less than 10 and <code>"separation"</code> when greater
 than equal to 10.</p></li>
 </ul></dd>
+
+
 <dt>sigmaXform</dt>
 <dd><p>When taking <code>sigma</code> values from the <code>thetaMat</code>
 simulations (using the separation strategy for covariance
@@ -309,30 +351,45 @@ with a diagonal matrix.</p></li>
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix.
 This only works with a diagonal matrix.</p></li>
 </ul></dd>
+
+
 <dt>nCoresRV</dt>
 <dd><p>Number of cores used for the simulation of the
 sigma variables.  By default this is 1. To reproduce the results
 you need to run on the same platform with the same number of
 cores. This is the reason this is set to be one, regardless of
 what the number of cores are used in threaded ODE solving.</p></dd>
+
+
 <dt>nObs</dt>
 <dd><p>Number of observations to simulate (with <code>sigma</code> matrix)</p></dd>
+
+
 <dt>dfSub</dt>
 <dd><p>Degrees of freedom to sample the between subject variability matrix from the
 inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.</p></dd>
+
+
 <dt>dfObs</dt>
 <dd><p>Degrees of freedom to sample the unexplained variability matrix from the
 inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.</p></dd>
+
+
 <dt>simSubjects</dt>
 <dd><p>boolean indicated rxode2 should simulate subjects in studies (<code>TRUE</code>,
 default) or studies (<code>FALSE</code>)</p></dd>
+
+
 <dt>simVariability</dt>
 <dd><p>determines if the variability is simulated.
 When <code>NA</code> (default) this is determined by the solver.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>a data frame with the simulated subjects</p>
+    
+
+<p>a data frame with the simulated subjects</p>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
@@ -348,7 +405,7 @@ When <code>NA</code> (default) this is determined by the solver.</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer></div>

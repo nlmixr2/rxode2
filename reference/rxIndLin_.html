@@ -137,35 +137,60 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>cSub</dt>
 <dd><p>= Current subject number</p></dd>
+
+
 <dt>op</dt>
 <dd><ul><li><p>rxode2 solving options</p></li>
 </ul></dd>
+
+
 <dt>tp</dt>
 <dd><ul><li><p>Prior time point/time zeor</p></li>
 </ul></dd>
+
+
 <dt>yp</dt>
 <dd><ul><li><p>Prior state;  vector size = neq; Final state is updated here</p></li>
 </ul></dd>
+
+
 <dt>tf</dt>
 <dd><ul><li><p>Final Time</p></li>
 </ul></dd>
+
+
 <dt>InfusionRate</dt>
 <dd><p>= Rates of each comparment;  vector size = neq</p></dd>
+
+
 <dt>on</dt>
 <dd><p>Indicator for if the compartment is "on"</p></dd>
+
+
 <dt>cache</dt>
 <dd><p>0 = no Cache
 When doIndLin == 0, cache &gt; 0 = nInf-1</p></dd>
+
+
 <dt>ME</dt>
 <dd><p>the rxode2 matrix exponential function</p></dd>
+
+
 <dt>IndF</dt>
 <dd><p>The rxode2 Inductive Linearization function F</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Returns a status for solving
-1 = Successful solve
--1 = Maximum number of iterations reached when doing
+    
+
+<p>Returns a status for solving</p>
+
+
+<p>1 = Successful solve</p>
+
+
+<p>-1 = Maximum number of iterations reached when doing
 inductive linearization</p>
     </div>
 
@@ -178,7 +203,7 @@ inductive linearization</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer></div>

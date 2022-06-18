@@ -155,36 +155,52 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>rx</dt>
 <dd><p>rxode2 object</p></dd>
+
+
 <dt>inits</dt>
 <dd><p>a vector of initial values of the state variables
 (e.g., amounts in each compartment), and the order in this
 vector must be the same as the state variables (e.g., PK/PD
 compartments);</p></dd>
+
+
 <dt>events</dt>
 <dd><p>an <code>eventTable</code> object describing the input
 (e.g., doses) to the dynamic system and observation sampling
 time points (see <code><a href="eventTable.html">eventTable()</a></code>);</p></dd>
+
+
 <dt>params</dt>
 <dd><p>a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
 parameter identifiers used in the ODE specification;</p></dd>
+
+
 <dt>iCov</dt>
 <dd><p>A data frame of individual non-time varying covariates
 to combine with the <code>events</code> dataset by merge.</p></dd>
+
+
 <dt>keep</dt>
 <dd><p>Columns to keep from either the input dataset or the
 <code>iCov</code> dataset.  With the <code>iCov</code> dataset, the column
 is kept once per line.  For the input dataset, if any records
 are added to the data LOCF (Last Observation Carried forward)
 imputation is performed.</p></dd>
+
+
 <dt>thetaMat</dt>
 <dd><p>Named theta matrix.</p></dd>
+
+
 <dt>omega</dt>
 <dd><p>Estimate of Covariance matrix. When omega is a list,
 assume it is a block matrix and convert it to a full matrix for
 simulations.  When <code>omega</code> is <code>NA</code> and you are using it with a
 <code>rxode2</code> ui model, the between subject variability described by
 the <code>omega</code> matrix are set to zero.</p></dd>
+
+
 <dt>sigma</dt>
 <dd><p>Named sigma covariance or Cholesky decomposition of a
 covariance matrix.  The names of the columns indicate
@@ -192,22 +208,33 @@ parameters that are simulated.  These are simulated for every
 observation in the solved system. When <code>sigma</code> is <code>NA</code> and you are using it with a
 <code>rxode2</code> ui model, the unexplained variability described by
 the <code>sigma</code> matrix are set to zero.</p></dd>
+
+
 <dt>dfObs</dt>
 <dd><p>Degrees of freedom to sample the unexplained variability matrix from the
 inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.</p></dd>
+
+
 <dt>dfSub</dt>
 <dd><p>Degrees of freedom to sample the between subject variability matrix from the
 inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.</p></dd>
+
+
 <dt>nSub</dt>
 <dd><p>Number between subject variabilities (<code>ETAs</code>) simulated for every
 realization of the parameters.</p></dd>
+
+
 <dt>nStud</dt>
 <dd><p>Number virtual studies to characterize uncertainty in estimated
 parameters.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>None, clears rxode2 pipeline</p>
+    
+
+<p>None, clears rxode2 pipeline</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -219,7 +246,7 @@ parameters.</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
 </div>
 
     </footer></div>
