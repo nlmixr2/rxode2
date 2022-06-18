@@ -124,7 +124,6 @@ reference:
   - .rxLinCmtGen
   - .rxWithOptions
   - .rxWithWd
-  - .setWarnIdSort
   - invWR1d
   - rLKJ1
   - rxAllowUnload
