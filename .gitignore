@@ -10,6 +10,7 @@ doc
 inst/doc
 /vignettes/roxde2-intro.md
 /inst/Install-windows.md
+/tests/testthat/_snaps
 /.Rhistory
 /R/.Rhistory
 /src/.Rhistory
