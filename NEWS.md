@@ -1,3 +1,7 @@
+# rxode2 2.0.8
+
+- Allow models in the `nlmixr2` form without an `ini({})` block
+
 # rxode2 2.0.7
 
 - Removed accidental `^S` from news as requested by CRAN.
