@@ -276,6 +276,10 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
+llikNormInternal <- function(x, mu, sigma) {
+    .Call(`_rxode2_llikNormInternal`, x, mu, sigma)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

@@ -1,6 +1,13 @@
 #ifndef __LLIK_H__
 #define __LLIK_H__
 
-double llikNorm(double x, double mu, double sigma);
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif // __LLIK_H__

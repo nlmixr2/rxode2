@@ -16,11 +16,11 @@ PKG_CFLAGS  =  -D_isrxode2_
 PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_NO_CXX11_STATIC_ASSERT -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -DBOOST_NO_AUTO_PTR -D_REENTRANT -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" -@ISYSTEM@"$(ARMA)"
 
 
-SOURCES_C = llik.c tran.c print_node.c call_dvode.c handle_evid.c strncmp.c checkmate_stub.c genModelVars.c codegen.c getOption.c sbuf.c parseLinCmt.c lincmt.c utilc.c dop853.c omegaChol.c init.c cfode.c common.c corfailure.c correction.c daxpy.c ddot.c dgefa.c dgesl.c dscal.c fnorm.c idamax.c intdy.c lsoda.c methodswitch.c orderswitch.c prja.c scaleh.c solsy.c stoda.c vmnorm.c strdup_printf.c rprintf.c box.c matexp_HM98.c 
-SOURCES_CPP = par_solve.cpp rxode2_df.cpp etTran.cpp rxData.cpp RcppExports.cpp rxvandercorput.cpp seed.cpp rxthreefry.cpp cbindThetaOmega.cpp cvPost.cpp checkmate.cpp utilcpp.cpp qs.cpp lincmtB.cpp  forder.cpp et.cpp boost.cpp fast_factor.cpp expandGrid.cpp WinDrive.cpp rxInv.cpp rxStack.cpp rxOptRep.cpp expm.cpp 
+SOURCES_C = tran.c print_node.c call_dvode.c handle_evid.c strncmp.c checkmate_stub.c genModelVars.c codegen.c getOption.c sbuf.c parseLinCmt.c lincmt.c utilc.c dop853.c omegaChol.c init.c cfode.c common.c corfailure.c correction.c daxpy.c ddot.c dgefa.c dgesl.c dscal.c fnorm.c idamax.c intdy.c lsoda.c methodswitch.c orderswitch.c prja.c scaleh.c solsy.c stoda.c vmnorm.c strdup_printf.c rprintf.c box.c matexp_HM98.c 
+SOURCES_CPP = llik.cpp par_solve.cpp rxode2_df.cpp etTran.cpp rxData.cpp RcppExports.cpp rxvandercorput.cpp seed.cpp rxthreefry.cpp cbindThetaOmega.cpp cvPost.cpp checkmate.cpp utilcpp.cpp qs.cpp lincmtB.cpp  forder.cpp et.cpp boost.cpp fast_factor.cpp expandGrid.cpp WinDrive.cpp rxInv.cpp rxStack.cpp rxOptRep.cpp expm.cpp 
 SOURCES_FORTAN = dlsoda.f opkda2.f matexp.f dsphiv.f dgpadm.f
 
-OBJECTS =  $(SOURCES_C:.c=.o) $(SOURCES_FORTAN:.f=.o) $(SOURCES_CPP:.cpp=.o)
+OBJECTS = $(SOURCES_CPP:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_FORTAN:.f=.o) 
 
 .PHONY: all 
 all: $(SHLIB)
