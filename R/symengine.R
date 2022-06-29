@@ -156,7 +156,10 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "is.nan" = 1,
   "is.na" = 1,
   "is.finite" = 1,
-  "is.infinite" = 1
+  "is.infinite" = 1,
+  "llikNorm"=3,
+  "llikNormDmean"=3,
+  "llikNormDsd"=3
 )
 
 .rxOnly <- c(
