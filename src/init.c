@@ -11,6 +11,7 @@
 #define __DOINIT__
 #include "tran.h"
 #include "rxthreefry.h"
+#include "llik.h"
 #include "cbindThetaOmega.h"
 #include "seed.h"
 #include "getTime.h"
@@ -552,6 +553,11 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
   R_RegisterCCallable("rxode2", "rxGetId", (DL_FUNC) &rxGetId);
   R_RegisterCCallable("rxode2", "getTime", (DL_FUNC) &getTime);
+
+  // log likelihoods used in calculations
+  R_RegisterCCallable("rxode2", "rxLlikNorm", (DL_FUNC) &rxLlikNorm);
+  R_RegisterCCallable("rxode2", "rxLlikNormDmean", (DL_FUNC) &rxLlikNormDmean);
+  R_RegisterCCallable("rxode2", "rxLlikNormDsd", (DL_FUNC) &rxLlikNormDsd);
   
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},

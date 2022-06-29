@@ -81,6 +81,9 @@
 #define rxweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
 #define riweibull1(id, x) riweibull(&_solveData->subjects[_cSub], id, x, 1.0)
 #define rweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
+#define llikNormal(x, mu, sd) _llikNormal(&_solveData->subjects[_cSub]->llikSave, mu, sd)
+#define llikNormalDmean(x, mu, sd) _llikNormalDmean(&_solveData->subjects[_cSub]->llikSave, mu, sd)
+#define llikNormalDsd(x, mu, sd) _llikNormalDsd(&_solveData->subjects[_cSub]->llikSave, mu, sd)
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -184,5 +187,7 @@ typedef rx_solve *(*_getRxSolve_t)();
 
 typedef int (*rxode2i_rxbinom) (rx_solving_options_ind* ind, int n, double prob);
 typedef int (*rxode2i2_ribinom) (rx_solving_options_ind* ind, int id, int n, double prob);
+
+typedef double (*rxode2_llikNormFun) (double *in, double x, double mean, double sd);
 
 #endif // __rxode2_model_shared_H__

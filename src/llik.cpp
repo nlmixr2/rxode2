@@ -41,7 +41,7 @@ stanLl llik_normal(Eigen::VectorXd y, Eigen::VectorXd params) {
   return ret;
 }
 
-extern "C" void llikNormFull(double* ret, double x, double mu, double sigma) {
+static inline void llikNormFull(double* ret, double x, double mu, double sigma) {
   if (ret[0] == x &&
       ret[1] == mu &&
       ret[2] == sigma) {
@@ -78,4 +78,19 @@ Rcpp::DataFrame llikNormInternal(Rcpp::NumericVector x, Rcpp::NumericVector mu, 
   return Rcpp::DataFrame::create(_["fx"]=fx,
                                  _["dMean"]=dMu,
                                  _["dSd"]=dSigma);
+}
+
+extern "C" double rxLlikNorm(double* ret, double x, double mu, double sigma) {
+  llikNormFull(ret, x, mu, sigma);
+  return ret[3];
+}
+
+extern "C" double rxLlikNormDmean(double* ret, double x, double mu, double sigma) {
+  llikNormFull(ret, x, mu, sigma);
+  return ret[4];
+}
+
+extern "C" double rxLlikNormDsd(double* ret, double x, double mu, double sigma) {
+  llikNormFull(ret, x, mu, sigma);
+  return ret[5];
 }

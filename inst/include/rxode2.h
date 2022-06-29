@@ -241,6 +241,7 @@ typedef struct {
   int isIni;
   int _update_par_ptr_in;
   int badIni;
+  double llikSave[10];
 } rx_solving_options_ind;
 
 typedef struct {

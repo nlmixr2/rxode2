@@ -24,3 +24,4 @@ llikNorm <- function(x, mean = 0, sd = 1, full=FALSE) {
   if (full) .ret <- cbind(.df, .ret)
   .ret
 }
+

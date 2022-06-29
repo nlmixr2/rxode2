@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+  double rxLlikNorm(double* ret, double x, double mu, double sigma);
+  double rxLlikNormDmean(double* ret, double x, double mu, double sigma);
+  double rxLlikNormDsd(double* ret, double x, double mu, double sigma);
 
 #if defined(__cplusplus)
 }
