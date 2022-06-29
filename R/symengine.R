@@ -387,6 +387,19 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$llikNorm <- list(
+  function(x, mean, sd) {
+    stop("derivatives llikNorm(x, mean, sd) with respect to x are not supported",
+         call.=FALSE)
+  },
+  function(x, mean, sd){
+    paste0("llikNormDmean(",paste(c(x, mean, sd), collapse=", "), ")")
+  },
+  function(x, mean, sd){
+    paste0("llikNormDsd(",paste(c(x, mean, sd), collapse=", "), ")")
+  }
+)
+
 .rxD$abs0 <- list(function(x) {
   return(paste0("dabs(", x, ")"))
 })
