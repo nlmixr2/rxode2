@@ -84,6 +84,8 @@
 #define llikNorm(x, mu, sd) _llikNorm((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
 #define llikNormDmean(x, mu, sd) _llikNormDmean((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
 #define llikNormDsd(x, mu, sd) _llikNormDsd((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
+#define llikPois(x, l) _llikPois((&_solveData->subjects[_cSub])->llikSave, x, l)
+#define llikPoisDlambda(x, l) _llikPoisDlambda((&_solveData->subjects[_cSub])->llikSave, x, l)
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -189,5 +191,6 @@ typedef int (*rxode2i_rxbinom) (rx_solving_options_ind* ind, int n, double prob)
 typedef int (*rxode2i2_ribinom) (rx_solving_options_ind* ind, int id, int n, double prob);
 
 typedef double (*rxode2_llikNormFun) (double *in, double x, double mean, double sd);
+typedef double (*rxode2_llikPoisFun) (double *in, double x, double lambda);
 
 #endif // __rxode2_model_shared_H__

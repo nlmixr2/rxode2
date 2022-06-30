@@ -103,6 +103,7 @@ SEXP _rxode2_nestingInfo_(SEXP omega, SEXP data);
 SEXP _rxode2_isNullZero(SEXP in);
 
 SEXP _rxode2_llikNormInternal(SEXP xSEXP, SEXP muSEXP, SEXP sigmaSEXP);
+SEXP _rxode2_llikPoisInternal(SEXP xSEXP, SEXP lambdaSEXP);
 
 SEXP rxode2_get_mv();
 SEXP _rxode2_rxGetSeed();
@@ -462,6 +463,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_llikNormInternal", (DL_FUNC) &_rxode2_llikNormInternal, 3},
+    {"_rxode2_llikPoisInternal", (DL_FUNC) &_rxode2_llikPoisInternal, 2},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
@@ -558,6 +560,10 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxLlikNorm", (DL_FUNC) &rxLlikNorm);
   R_RegisterCCallable("rxode2", "rxLlikNormDmean", (DL_FUNC) &rxLlikNormDmean);
   R_RegisterCCallable("rxode2", "rxLlikNormDsd", (DL_FUNC) &rxLlikNormDsd);
+
+  R_RegisterCCallable("rxode2", "rxLlikPois", (DL_FUNC) &rxLlikPois);
+  R_RegisterCCallable("rxode2", "rxLlikPoisDlambda", (DL_FUNC) &rxLlikPoisDlambda);
+
   
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},

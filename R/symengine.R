@@ -157,6 +157,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "is.na" = 1,
   "is.finite" = 1,
   "is.infinite" = 1,
+  "llikPois"=2,
+  "llikPoisDlambda"=2,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -399,6 +401,14 @@ rxRmFun <- function(name) {
     paste0("llikNormDsd(",paste(c(x, mean, sd), collapse=", "), ")")
   }
 )
+
+.rxD$llikPois <- list(
+  NULL,
+  function(x, lambda){
+    paste0("llikPoisDlambda(",paste(c(x, lambda), collapse=", "), ")")
+  }
+)
+
 
 .rxD$abs0 <- list(function(x) {
   return(paste0("dabs(", x, ")"))

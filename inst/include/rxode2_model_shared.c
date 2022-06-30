@@ -70,6 +70,9 @@ rxode2_llikNormFun _llikNorm;
 rxode2_llikNormFun _llikNormDmean;
 rxode2_llikNormFun _llikNormDsd;
 
+rxode2_llikPoisFun _llikPois;
+rxode2_llikPoisFun _llikPoisDlambda;
+
 rxode2_compareFactorVal_fn _compareFactorVal;
 
 double _prod(double *input, double *p, int type, int n, ...){
@@ -249,9 +252,13 @@ void _assignFuns0() {
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
+  
   _llikNorm=(rxode2_llikNormFun) R_GetCCallable("rxode2","rxLlikNorm");
   _llikNormDmean=(rxode2_llikNormFun) R_GetCCallable("rxode2","rxLlikNormDmean");
   _llikNormDsd=(rxode2_llikNormFun) R_GetCCallable("rxode2","rxLlikNormDsd");
+  
+  _llikPois        = (rxode2_llikPoisFun) R_GetCCallable("rxode2","rxLlikPois");
+  _llikPoisDlambda = (rxode2_llikPoisFun) R_GetCCallable("rxode2","rxLlikPoisDlambda");
   
   _solveData = _getRxSolve_();
 }

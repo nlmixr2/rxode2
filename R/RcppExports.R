@@ -280,6 +280,10 @@ llikNormInternal <- function(x, mu, sigma) {
     .Call(`_rxode2_llikNormInternal`, x, mu, sigma)
 }
 
+llikPoisInternal <- function(x, lambda) {
+    .Call(`_rxode2_llikPoisInternal`, x, lambda)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

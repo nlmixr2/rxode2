@@ -9,6 +9,9 @@ extern "C" {
   double rxLlikNormDmean(double* ret, double x, double mu, double sigma);
   double rxLlikNormDsd(double* ret, double x, double mu, double sigma);
 
+  double rxLlikPois(double* ret, double x, double lambda);
+  double rxLlikPoisDlambda(double* ret, double x, double lambda);
+
 #if defined(__cplusplus)
 }
 #endif

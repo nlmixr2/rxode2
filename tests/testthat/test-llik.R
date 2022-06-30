@@ -6,7 +6,6 @@ test_that("log-liklihood tests for normal (including derivatives)", {
   expect_error(rxode2("tmp=llikNormDmean(x, mu, sigma)"), NA)
 
   # Make sure they translate correctly:
-
   expect_equal(rxToSE("llikNorm(x, mu, sigma)"), "llikNorm(x,mu,sigma)")
   expect_equal(rxToSE("llikNormDsd(x, mu, sigma)"), "llikNormDsd(x,mu,sigma)")
   expect_equal(rxToSE("llikNormDmean(x, mu, sigma)"), "llikNormDmean(x,mu,sigma)")
@@ -36,10 +35,48 @@ test_that("log-liklihood tests for normal (including derivatives)", {
   fromR <- llikNorm(et$time, et$mu, et$sigma)
 
   expect_equal(fromR$fx, fromOde$fx)
-  expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dMean, fromOde$dMean)
   expect_equal(fromR$dSd, fromOde$dSd)
 
   expect_equal(fromR$fx, dnorm(fromOde$time, log=TRUE))
+
+})
+
+
+test_that("log-liklihood tests for pois (including derivatives)", {
+
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikPois(x, lambda)"), NA)
+  expect_error(rxode2("tmp=llikPoisDlambda(x, lambda)"), NA)
+
+  # Make sure they translate correctly:
+  expect_equal(rxToSE("llikPois(x, lambda)"), "llikPois(x,lambda)")
+  expect_equal(rxToSE("llikPoisDlambda(x, lambda)"), "llikPoisDlambda(x,lambda)")
+  expect_equal(rxFromSE("llikPois(x, lambda)"), "llikPois(x,lambda)")
+  expect_equal(rxFromSE("llikPoisDlambda(x, lambda)"), "llikPoisDlambda(x,lambda)")
+
+  # Check the derivatives
+
+  # this is forward difference with no correction
+  #rxFromSE("Derivative(llikNorm(x,mu,sigma),x)")
+
+  expect_equal(rxFromSE("Derivative(llikPois(x,lambda),lambda)"), "llikPoisDlambda(x, lambda)")
+
+  et <- et(0:10)
+  et$lambda <- 0.5
+
+  model <- rxode2({
+    fx <- llikPois(time, lambda)
+    dLambda <- llikPoisDlambda(time, lambda)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikPois(et$time, et$lambda)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dLambda, fromOde$dLambda)
+
+  expect_equal(fromR$fx, dpois(fromOde$time, lambda=0.5, log=TRUE))
 
 })
