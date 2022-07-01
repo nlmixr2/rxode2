@@ -12,6 +12,9 @@ extern "C" {
   double rxLlikPois(double* ret, double x, double lambda);
   double rxLlikPoisDlambda(double* ret, double x, double lambda);
 
+  double rxLlikBinom(double* ret, double x, double size, double prob);
+  double rxLlikBinomDprob(double* ret, double x, double size, double prob);
+
 #if defined(__cplusplus)
 }
 #endif
