@@ -80,3 +80,42 @@ test_that("log-liklihood tests for pois (including derivatives)", {
   expect_equal(fromR$fx, dpois(fromOde$time, lambda=0.5, log=TRUE))
 
 })
+
+
+test_that("log-liklihood tests for binom (including derivatives)", {
+
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikBinom(x, size, prob)"), NA)
+  expect_error(rxode2("tmp=llikBinomDprob(x, size, prob)"), NA)
+
+  # Make sure they translate correctly:
+  expect_equal(rxToSE("llikBinom(x, size, prob)"), "llikBinom(x,size,prob)")
+  expect_equal(rxToSE("llikBinomDprob(x, size, prob)"), "llikBinomDprob(x,size,prob)")
+  expect_equal(rxFromSE("llikBinom(x, size, prob)"), "llikBinom(x,size,prob)")
+  expect_equal(rxFromSE("llikPoisDlambda(x, lambda)"), "llikPoisDlambda(x,lambda)")
+
+  # Check the derivatives
+
+  # this is forward difference with no correction
+  expect_equal(rxFromSE("Derivative(llikBinom(x,size,prob),size)"),"0")
+  expect_equal(rxFromSE("Derivative(llikBinom(x,size, prob),prob)"), "llikBinomDprob(x, size, prob)")
+
+  et <- et(0:10)
+  et$size <- 100
+  et$prob <- 0.5
+
+  model <- rxode2({
+    fx <- llikBinom(time, size, prob)
+    dProb <- llikBinomDprob(time, size, prob)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikBinom(et$time, et$size, et$prob, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dLambda, fromOde$dLambda)
+
+  expect_equal(fromR$fx, dbinom(fromOde$time, size=100, prob=0.5, log=TRUE))
+
+})
