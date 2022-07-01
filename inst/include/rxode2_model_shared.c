@@ -73,6 +73,10 @@ rxode2_llikNormFun _llikNormDsd;
 rxode2_llikPoisFun _llikPois;
 rxode2_llikPoisFun _llikPoisDlambda;
 
+rxode2_llikBinomFun _llikBinom;
+rxode2_llikBinomFun _llikBinomDprob;
+
+
 rxode2_compareFactorVal_fn _compareFactorVal;
 
 double _prod(double *input, double *p, int type, int n, ...){
@@ -259,6 +263,9 @@ void _assignFuns0() {
   
   _llikPois        = (rxode2_llikPoisFun) R_GetCCallable("rxode2","rxLlikPois");
   _llikPoisDlambda = (rxode2_llikPoisFun) R_GetCCallable("rxode2","rxLlikPoisDlambda");
+
+  _llikBinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinom");
+  _llikBinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinomDprob");
   
   _solveData = _getRxSolve_();
 }
