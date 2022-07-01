@@ -90,3 +90,33 @@ llikPois <- function(x, lambda, full=FALSE) {
   .ret
 }
 
+#' Calculate the log liklihood aof the binomial function (and its derivatives)
+#'
+#' 
+#' @param x  Number of successes
+#' @param size Size of trial
+#' @param prob probability of success
+#' @inheritParams llikNorm
+#' @return data frame with `fx` for the pdf value of with
+#'   `dProb` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#' 
+#' llikBinom(46:54, 100, 0.5)
+#'
+#' llikBinom(46:54, 100, 0.5, TRUE)
+#' 
+llikBinom <- function(x, size, prob, full=FALSE) {
+  checkmate::assertIntegerish(x, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertIntegerish(size, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertNumeric(prob, min.len=0, lower=0, upper=1, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, size=size, prob=prob), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, size, prob", call.=FALSE)
+  }
+  .ret <- llikBinomInternal(.df$x, .df$size, .df$prob)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
