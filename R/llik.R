@@ -57,7 +57,7 @@ llikNorm <- function(x, mean = 0, sd = 1, full=FALSE) {
 #' In an `rxode2()` model, you can use `llikPois()` but you have to
 #' use all arguments.  You can also get the derivitaves with
 #' `llikPoisDlambda()`
-
+#'
 #' @return data frame with `fx` for the pdf value of with
 #'   `dLambda` that has the derivatives with respect to the parameters at
 #'   the observation time-point
@@ -96,7 +96,13 @@ llikPois <- function(x, lambda, full=FALSE) {
 #' @param x  Number of successes
 #' @param size Size of trial
 #' @param prob probability of success
+#' 
 #' @inheritParams llikNorm
+#'
+#' @details
+#' In an `rxode2()` model, you can use `llikBinom()` but you have to
+#' use all arguments.  You can also get the derivative of `prob` with
+#' `llikBinomDprob()`
 #' @return data frame with `fx` for the pdf value of with
 #'   `dProb` that has the derivatives with respect to the parameters at
 #'   the observation time-point
@@ -107,7 +113,17 @@ llikPois <- function(x, lambda, full=FALSE) {
 #' llikBinom(46:54, 100, 0.5)
 #'
 #' llikBinom(46:54, 100, 0.5, TRUE)
-#' 
+#'
+#' et <- et(46:54)
+#' et$size <- 100
+#' et$prob <-0.5
+#'
+#' model <- rxode2({
+#'   fx <- llikBinom(time, size, prob)
+#'   dProb <- llikBinomDprob(time, size, prob)
+#' })
+#'
+#' rxSolve(model, et)
 llikBinom <- function(x, size, prob, full=FALSE) {
   checkmate::assertIntegerish(x, min.len=0, lower=0, any.missing=FALSE)
   checkmate::assertIntegerish(size, min.len=0, lower=0, any.missing=FALSE)

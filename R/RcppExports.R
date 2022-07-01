@@ -288,6 +288,10 @@ llikBinomInternal <- function(x, size, prob) {
     .Call(`_rxode2_llikBinomInternal`, x, size, prob)
 }
 
+llikBetaInternal <- function(x, shape1, shape2) {
+    .Call(`_rxode2_llikBetaInternal`, x, shape1, shape2)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

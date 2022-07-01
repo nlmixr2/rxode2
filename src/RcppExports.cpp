@@ -564,6 +564,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// llikBetaInternal
+Rcpp::DataFrame llikBetaInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape1, Rcpp::NumericVector shape2);
+RcppExport SEXP _rxode2_llikBetaInternal(SEXP xSEXP, SEXP shape1SEXP, SEXP shape2SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape1(shape1SEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape2(shape2SEXP);
+    rcpp_result_gen = Rcpp::wrap(llikBetaInternal(x, shape1, shape2));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxQs
 Rcpp::CharacterVector rxQs(SEXP const x);
 RcppExport SEXP _rxode2_rxQs(SEXP xSEXP) {

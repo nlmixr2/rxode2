@@ -15,6 +15,11 @@ extern "C" {
   double rxLlikBinom(double* ret, double x, double size, double prob);
   double rxLlikBinomDprob(double* ret, double x, double size, double prob);
 
+  double rxLlikBeta(double* ret, double x, double shape1, double shape2);
+  double rxLlikBetaDshape1(double* ret, double x, double shape1, double shape2);
+  double rxLlikBetaDshape2(double* ret, double x, double shape1, double shape2);
+
+
 #if defined(__cplusplus)
 }
 #endif

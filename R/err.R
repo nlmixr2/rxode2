@@ -6,8 +6,8 @@
   "binom"=1:2,
   "dbern" = 1,
   "bern" = 1,
-  "dbeta" = 2:3,
-  "beta" = 2:3,
+  "dbeta" = 2, # non-central isn't supported by stan so drop support
+  "beta" = 2,
   "dt" = 1:2,
   "t" = 1:2,
   ##

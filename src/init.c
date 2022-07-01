@@ -105,6 +105,7 @@ SEXP _rxode2_isNullZero(SEXP in);
 SEXP _rxode2_llikNormInternal(SEXP xSEXP, SEXP muSEXP, SEXP sigmaSEXP);
 SEXP _rxode2_llikPoisInternal(SEXP xSEXP, SEXP lambdaSEXP);
 SEXP _rxode2_llikBinomInternal(SEXP xSEXP, SEXP sizeSEXP, SEXP probSEXP);
+SEXP _rxode2_llikBetaInternal(SEXP xSEXP, SEXP shape1SEXP, SEXP shape2SEXP);
 
 SEXP rxode2_get_mv();
 SEXP _rxode2_rxGetSeed();
@@ -466,6 +467,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_llikNormInternal", (DL_FUNC) &_rxode2_llikNormInternal, 3},
     {"_rxode2_llikPoisInternal", (DL_FUNC) &_rxode2_llikPoisInternal, 2},
     {"_rxode2_llikBinomInternal",(DL_FUNC) &_rxode2_llikBinomInternal, 3},
+    {"_rxode2_llikBetaInternal",(DL_FUNC) &_rxode2_llikBetaInternal, 3},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
@@ -568,6 +570,10 @@ void R_init_rxode2(DllInfo *info){
 
   R_RegisterCCallable("rxode2", "rxLlikBinom", (DL_FUNC) &rxLlikBinom);
   R_RegisterCCallable("rxode2", "rxLlikBinomDprob", (DL_FUNC) &rxLlikBinomDprob);
+
+  R_RegisterCCallable("rxode2", "rxLlikBeta", (DL_FUNC) &rxLlikBeta);
+  R_RegisterCCallable("rxode2", "rxLlikBetaDshape1", (DL_FUNC) &rxLlikBetaDshape1);
+  R_RegisterCCallable("rxode2", "rxLlikBetaDshape2", (DL_FUNC) &rxLlikBetaDshape2);
 
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},
