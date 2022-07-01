@@ -284,6 +284,10 @@ llikPoisInternal <- function(x, lambda) {
     .Call(`_rxode2_llikPoisInternal`, x, lambda)
 }
 
+llikBinomInternal <- function(x, size, prob) {
+    .Call(`_rxode2_llikBinomInternal`, x, size, prob)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }
