@@ -159,6 +159,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "is.infinite" = 1,
   "llikPois"=2,
   "llikPoisDlambda"=2,
+  "llikBinom"=3,
+  "llikBinomDprob"=3,
+  
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -403,9 +406,23 @@ rxRmFun <- function(name) {
 )
 
 .rxD$llikPois <- list(
-  NULL,
+  function(x, lambda){
+    "0"
+  },
   function(x, lambda){
     paste0("llikPoisDlambda(",paste(c(x, lambda), collapse=", "), ")")
+  }
+)
+
+.rxD$llikBinom <- list(
+  function(x, size, prob){
+    "0"
+  },
+  function(x, size, prob){
+    "0"
+  },
+  function(x, size, prob){
+    paste0("llikBinomDprob(",paste(c(x, size, prob), collapse=", "), ")")
   }
 )
 
