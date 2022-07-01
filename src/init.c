@@ -465,7 +465,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_llikNormInternal", (DL_FUNC) &_rxode2_llikNormInternal, 3},
     {"_rxode2_llikPoisInternal", (DL_FUNC) &_rxode2_llikPoisInternal, 2},
-    {"_rxode2_llikBinomInternal",(DL_FUNC) &_rxode2_llikPoisInternal, 3},
+    {"_rxode2_llikBinomInternal",(DL_FUNC) &_rxode2_llikBinomInternal, 3},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.

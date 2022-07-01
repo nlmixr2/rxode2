@@ -244,12 +244,12 @@ Rcpp::DataFrame llikBinomInternal(Rcpp::NumericVector x, Rcpp::NumericVector siz
 
 extern "C" double rxLlikBinom(double* ret, double x, double size, double prob) {
   llikBinomFull(ret, x, size, prob);
-  return ret[3];
+  return ret[4];
 }
 
 extern "C" double rxLlikBinomDprob(double* ret, double x, double size, double prob) {
   llikBinomFull(ret, x, size, prob);
-  return ret[4];
+  return ret[5];
 }
 
 
