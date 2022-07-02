@@ -76,6 +76,11 @@ rxode2_llikPoisFun _llikPoisDlambda;
 rxode2_llikBinomFun _llikBinom;
 rxode2_llikBinomFun _llikBinomDprob;
 
+rxode2_llikBetaFun _llikBeta;
+rxode2_llikBetaFun _llikBetaDshape1;
+rxode2_llikBetaFun _llikBetaDshape2;
+
+
 
 rxode2_compareFactorVal_fn _compareFactorVal;
 
@@ -266,6 +271,10 @@ void _assignFuns0() {
 
   _llikBinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinom");
   _llikBinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinomDprob");
+
+  _llikBeta = (rxode2_llikBetaFun)   R_GetCCallable("rxode2", "rxLlikBeta");
+  _llikBetaDshape1 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape1");
+  _llikBetaDshape2 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape2");
   
   _solveData = _getRxSolve_();
 }

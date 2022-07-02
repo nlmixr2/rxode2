@@ -292,7 +292,7 @@ static inline void llikBetaFull(double* ret, double x, double shape1, double sha
   }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
-  y(0) = (int)(x);
+  y(0) = x;
   params(0) = shape1;
   params(1) = shape2;
   stanLl ll = llik_beta(y, params);
@@ -338,10 +338,6 @@ extern "C" double rxLlikBetaDshape2(double* ret, double x, double shape1, double
   llikBetaFull(ret, x, shape1, shape2);
   return ret[6];
 }
-
-
-
-
 
 #undef isNorm
 #undef isPois

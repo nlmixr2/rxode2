@@ -161,7 +161,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikPoisDlambda"=2,
   "llikBinom"=3,
   "llikBinomDprob"=3,
-  
+  "llikBeta"=3,
+  "llikBetaDshape1"=3,
+  "llikBetaDshape2"=3,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -423,6 +425,16 @@ rxRmFun <- function(name) {
   },
   function(x, size, prob){
     paste0("llikBinomDprob(",paste(c(x, size, prob), collapse=", "), ")")
+  }
+)
+
+.rxD$llikBeta <- list(
+  NULL,
+  function(x, shape1, shape2){
+    paste0("llikBetaDshape1(",paste(c(x, shape1, shape2), collapse=", "), ")")
+  },
+  function(x, shape1, shape2){
+    paste0("llikBetaDshape2(",paste(c(x, shape1, shape2), collapse=", "), ")")
   }
 )
 

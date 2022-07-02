@@ -88,6 +88,10 @@
 #define llikPoisDlambda(x, l) _llikPoisDlambda((&_solveData->subjects[_cSub])->llikSave, x, l)
 #define llikBinom(x, size, prob) _llikBinom((&_solveData->subjects[_cSub])->llikSave, x, size, prob)
 #define llikBinomDprob(x, size, prob) _llikBinomDprob((&_solveData->subjects[_cSub])->llikSave, x, size, prob)
+
+#define llikBeta(x, shape1, shape2) _llikBeta((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
+#define llikBetaDshape1(x, shape1, shape2) _llikBetaDshape1((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
+#define llikBetaDshape2(x, shape1, shape2) _llikBetaDshape2((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -195,6 +199,6 @@ typedef int (*rxode2i2_ribinom) (rx_solving_options_ind* ind, int id, int n, dou
 typedef double (*rxode2_llikNormFun) (double *in, double x, double mean, double sd);
 typedef double (*rxode2_llikPoisFun) (double *in, double x, double lambda);
 typedef double (*rxode2_llikBinomFun) (double *in, double x, double size, double prob);
-
+typedef double (*rxode2_llikBetaFun) (double *in, double x, double shape1, double shape2);
 
 #endif // __rxode2_model_shared_H__

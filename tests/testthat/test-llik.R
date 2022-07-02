@@ -119,3 +119,47 @@ test_that("log-liklihood tests for binom (including derivatives)", {
   expect_equal(fromR$fx, dbinom(fromOde$time, size=100, prob=0.5, log=TRUE))
 
 })
+
+
+test_that("log-liklihood tests for beta (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikBeta(x, shape1, shape2)"), NA)
+  expect_error(rxode2("tmp=llikBetaDshape1(x, shape1, shape2)"), NA)
+  expect_error(rxode2("tmp=llikBetaDshape2(x, shape1, shape2)"), NA)
+
+  # Make sure they translate correctly:
+  expect_equal(rxToSE("llikBeta(x, shape1, shape2)"), "llikBeta(x,shape1,shape2)")
+  expect_equal(rxToSE("llikBetaDshape1(x, shape1, shape2)"), "llikBetaDshape1(x,shape1,shape2)")
+  expect_equal(rxToSE("llikBetaDshape2(x, shape1, shape2)"), "llikBetaDshape2(x,shape1,shape2)")
+  expect_equal(rxFromSE("llikBeta(x, shape1, shape2)"), "llikBeta(x,shape1,shape2)")
+  expect_equal(rxFromSE("llikBetaDshape1(x, shape1, shape2)"), "llikBetaDshape1(x,shape1,shape2)")
+  expect_equal(rxFromSE("llikBetaDshape2(x, shape1, shape2)"), "llikBetaDshape2(x,shape1,shape2)")
+
+  # Check the derivatives
+  # this is forward difference with no correction
+  expect_equal(rxFromSE("Derivative(llikBeta(x,shape1,shape2),shape1)"),"llikBetaDshape1(x, shape1, shape2)")
+  expect_equal(rxFromSE("Derivative(llikBeta(x,shape1, shape2),shape2)"), "llikBetaDshape2(x, shape1, shape2)")
+
+  et <- et(seq(1e-4, 1-1e-4, length.out=21))
+  et$shape1 <- 0.5
+  et$shape2 <- 1.5
+
+  model <- rxode2({
+    fx <- llikBeta(time, shape1, shape2)
+    dShape1 <- llikBetaDshape1(time, shape1, shape2)
+    dShape2 <- llikBetaDshape2(time, shape1, shape2)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikBeta(et$time, et$shape1, et$shape2, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dShape1, fromOde$dShape1)
+  expect_equal(fromR$dShape2, fromOde$dShape2)
+
+  expect_equal(fromR$fx, dbeta(fromOde$time, shape1=0.5, shape2=1.5, log=TRUE))
+
+
+})

@@ -41,7 +41,7 @@ et$prob <-0.5
 
 model <- rxode2({
   fx <- llikBinom(time, size, prob)
-  dLambda <- llikBinomDprob(time, size, prob)
+  dProb <- llikBinomDprob(time, size, prob)
 })
 
 rxSolve(model, et)

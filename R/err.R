@@ -129,7 +129,6 @@
   "geom"=c(0, 1),
   "beta" = c(0, Inf),
   "beta2"=c(0, Inf),
-  "beta3"=c(0, Inf),
   "t"=c(0, Inf),
   "t2"=c(0, Inf)
 )

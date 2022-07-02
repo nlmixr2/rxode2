@@ -136,3 +136,50 @@ llikBinom <- function(x, size, prob, full=FALSE) {
   if (full) .ret <- cbind(.df, .ret)
   .ret
 }
+
+#' Calculate the log liklihood aof the binomial function (and its derivatives)
+#'
+#' @inheritParams stats::dbeta
+#' 
+#' @inheritParams llikNorm
+#'
+#' @details
+#' In an `rxode2()` model, you can use `llikBeta()` but you have to
+#' use all arguments.  You can also get the derivative of `shape1` and `shape2` with
+#' `llikBetaDshape1()` and `llikBetaDshape2()`.
+#' @return data frame with `fx` for the pdf value of with
+#'   `dShape1` and `dShape2` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#'
+#' x <- seq(1e-4, 1 - 1e-4, length.out = 21)
+#' 
+#' llikBeta(x, 0.5, 0.5)
+#'
+#' llikBeta(x, 1, 3, TRUE)
+#' 
+#' et <- et(seq(1e-4, 1-1e-4, length.out=21))
+#' et$shape1 <- 0.5
+#' et$shape2 <- 1.5
+#'
+#' model <- rxode2({
+#'   fx <- llikBeta(time, shape1, shape2)
+#'   dShape1 <- llikBetaDshape1(time, shape1, shape2)
+#'   dShape2 <- llikBetaDshape2(time, shape1, shape2)
+#' })
+#'
+#' rxSolve(model, et)
+llikBeta <- function(x, shape1, shape2, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, lower=0, upper=1, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(shape1, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(shape2, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, shape1=shape1, shape2=shape2), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, shape1, shape2", call.=FALSE)
+  }
+  .ret <- llikBetaInternal(.df$x, .df$shape1, .df$shape2)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
