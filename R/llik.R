@@ -147,7 +147,7 @@ llikBinom <- function(x, size, prob, full=FALSE) {
 #' In an `rxode2()` model, you can use `llikBeta()` but you have to
 #' use all arguments.  You can also get the derivative of `shape1` and `shape2` with
 #' `llikBetaDshape1()` and `llikBetaDshape2()`.
-#' @return data frame with `fx` for the pdf value of with
+#' @return data frame with `fx` for the log pdf value of with
 #'   `dShape1` and `dShape2` that has the derivatives with respect to the parameters at
 #'   the observation time-point
 #' @author Matthew L. Fidler
@@ -182,4 +182,38 @@ llikBeta <- function(x, shape1, shape2, full=FALSE) {
   .ret <- llikBetaInternal(.df$x, .df$shape1, .df$shape2)
   if (full) .ret <- cbind(.df, .ret)
   .ret
+}
+
+#' log likelihood of T and it's derivatives (from stan) 
+#'
+#' @param x  Observation
+#' @inheritParams llikNorm
+#' @inheritParams dnorm
+#' @inheritParams dt
+#' @return data frame with `fx` for the log pdf value of with `dDf`
+#'   `dMean` and `dSd` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#'
+#' x <- seq(-3, 3, length.out = 21)
+#'
+#' llikT(x, 7, 0, 1)
+#'
+#' llikT(x, 15, 0, 1, full=TRUE)
+#' 
+llikT <-function(x, df, mean=0, sd=1, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(df, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(mean, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(sd, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, df=df, mean=mean, sd=sd), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, df, mean, sd", call.=FALSE)
+  }
+  .ret <- llikTInternal(.df$x, .df$df, .df$mean, .df$sd)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+  
 }

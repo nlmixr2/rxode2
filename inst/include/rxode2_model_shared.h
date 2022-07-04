@@ -81,6 +81,7 @@
 #define rxweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
 #define riweibull1(id, x) riweibull(&_solveData->subjects[_cSub], id, x, 1.0)
 #define rweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
+
 #define llikNorm(x, mu, sd) _llikNorm((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
 #define llikNormDmean(x, mu, sd) _llikNormDmean((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
 #define llikNormDsd(x, mu, sd) _llikNormDsd((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
@@ -88,10 +89,15 @@
 #define llikPoisDlambda(x, l) _llikPoisDlambda((&_solveData->subjects[_cSub])->llikSave, x, l)
 #define llikBinom(x, size, prob) _llikBinom((&_solveData->subjects[_cSub])->llikSave, x, size, prob)
 #define llikBinomDprob(x, size, prob) _llikBinomDprob((&_solveData->subjects[_cSub])->llikSave, x, size, prob)
-
 #define llikBeta(x, shape1, shape2) _llikBeta((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
 #define llikBetaDshape1(x, shape1, shape2) _llikBetaDshape1((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
 #define llikBetaDshape2(x, shape1, shape2) _llikBetaDshape2((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
+
+#define llikT(x, nu, mean, sd) _llikT((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikTDdf(x, nu, mean, sd) _llikTDdf((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikTDsd(x, nu, mean, sd) _llikTDsd((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikTDmean(x, nu, mean, sd) _llikTDmean((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -200,5 +206,6 @@ typedef double (*rxode2_llikNormFun) (double *in, double x, double mean, double 
 typedef double (*rxode2_llikPoisFun) (double *in, double x, double lambda);
 typedef double (*rxode2_llikBinomFun) (double *in, double x, double size, double prob);
 typedef double (*rxode2_llikBetaFun) (double *in, double x, double shape1, double shape2);
+typedef double (*rxode2_llikTFun) (double *in, double x, double df, double mean, double sd);
 
 #endif // __rxode2_model_shared_H__

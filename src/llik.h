@@ -19,6 +19,11 @@ extern "C" {
   double rxLlikBetaDshape1(double* ret, double x, double shape1, double shape2);
   double rxLlikBetaDshape2(double* ret, double x, double shape1, double shape2);
 
+  double rxLlikT(double* ret, double x, double df, double mean, double sd);
+  double rxLlikTDdf(double* ret, double x, double df, double mean, double sd);
+  double rxLlikTDmean(double* ret, double x, double df, double mean, double sd);
+  double rxLlikTDsd(double* ret, double x, double df, double mean, double sd);
+
 
 #if defined(__cplusplus)
 }

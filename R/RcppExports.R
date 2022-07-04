@@ -292,6 +292,10 @@ llikBetaInternal <- function(x, shape1, shape2) {
     .Call(`_rxode2_llikBetaInternal`, x, shape1, shape2)
 }
 
+llikTInternal <- function(x, df, mean, sd) {
+    .Call(`_rxode2_llikTInternal`, x, df, mean, sd)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

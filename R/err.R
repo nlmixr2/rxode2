@@ -8,8 +8,8 @@
   "bern" = 1,
   "dbeta" = 2, # non-central isn't supported by stan so drop support
   "beta" = 2,
-  "dt" = 1:2,
-  "t" = 1:2,
+  "dt" = 1, # non-central isn't supported by stan, so drop
+  "t" = 1,
   ##
   ## "dnbinom"=2:3,  ## dnbinom is in R; FIXME: how does ot compare to dneg_binomial
   ## "dneg_binomial", ## not in base R (but in glnmm2)

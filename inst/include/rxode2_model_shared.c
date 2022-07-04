@@ -80,7 +80,10 @@ rxode2_llikBetaFun _llikBeta;
 rxode2_llikBetaFun _llikBetaDshape1;
 rxode2_llikBetaFun _llikBetaDshape2;
 
-
+rxode2_llikTFun _llikT;
+rxode2_llikTFun _llikTDdf;
+rxode2_llikTFun _llikTDmean;
+rxode2_llikTFun _llikTDsd;
 
 rxode2_compareFactorVal_fn _compareFactorVal;
 
@@ -275,6 +278,11 @@ void _assignFuns0() {
   _llikBeta = (rxode2_llikBetaFun)   R_GetCCallable("rxode2", "rxLlikBeta");
   _llikBetaDshape1 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape1");
   _llikBetaDshape2 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape2");
+
+  _llikT = (rxode2_llikTFun)   R_GetCCallable("rxode2", "rxLlikT");
+  _llikTDdf = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDdf");
+  _llikTDmean = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDmean");
+  _llikTDsd = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDsd");
   
   _solveData = _getRxSolve_();
 }

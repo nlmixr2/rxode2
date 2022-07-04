@@ -137,7 +137,6 @@ test_that("log-liklihood tests for beta (including derivatives)", {
   expect_equal(rxFromSE("llikBetaDshape2(x, shape1, shape2)"), "llikBetaDshape2(x,shape1,shape2)")
 
   # Check the derivatives
-  # this is forward difference with no correction
   expect_equal(rxFromSE("Derivative(llikBeta(x,shape1,shape2),shape1)"),"llikBetaDshape1(x, shape1, shape2)")
   expect_equal(rxFromSE("Derivative(llikBeta(x,shape1, shape2),shape2)"), "llikBetaDshape2(x, shape1, shape2)")
 
@@ -162,4 +161,62 @@ test_that("log-liklihood tests for beta (including derivatives)", {
   expect_equal(fromR$fx, dbeta(fromOde$time, shape1=0.5, shape2=1.5, log=TRUE))
 
 
+})
+
+
+test_that("log-liklihood tests for T (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikT(x, nu, mean, sd)"), NA)
+  expect_error(rxode2("tmp=llikTDdf(x, nu, mean, sd)"), NA)
+  expect_error(rxode2("tmp=llikTDmean(x, nu, mean, sd)"), NA)
+  expect_error(rxode2("tmp=llikTDsd(x, nu, mean, sd)"), NA)
+
+  # Make sure they translate correctly:
+  expect_equal(rxToSE("llikT(x, nu, mean, sd)"), "llikT(x,nu,mean,sd)")
+  expect_equal(rxFromSE("llikT(x, nu, mean, sd)"), "llikT(x,nu,mean,sd)")
+  
+  expect_equal(rxToSE("llikTDdf(x, nu, mean, sd)"), "llikTDdf(x,nu,mean,sd)")
+  expect_equal(rxFromSE("llikTDdf(x, nu, mean, sd)"), "llikTDdf(x,nu,mean,sd)")
+  
+  expect_equal(rxToSE("llikTDmean(x, nu, mean, sd)"), "llikTDmean(x,nu,mean,sd)")
+  expect_equal(rxFromSE("llikTDmean(x, nu, mean, sd)"), "llikTDmean(x,nu,mean,sd)")
+
+  expect_equal(rxToSE("llikTDsd(x, nu, mean, sd)"), "llikTDsd(x,nu,mean,sd)")
+  expect_equal(rxFromSE("llikTDsd(x, nu, mean, sd)"), "llikTDsd(x,nu,mean,sd)")
+
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikT(x,nu, mean, sd),nu)"),"llikTDdf(x, nu, mean, sd)")
+  
+  expect_equal(rxFromSE("Derivative(llikT(x, nu, mean, sd), mean)"),
+               "llikTDmean(x, nu, mean, sd)")
+
+  expect_equal(rxFromSE("Derivative(llikT(x, nu, mean, sd), sd)"),
+               "llikTDsd(x, nu, mean, sd)")
+
+  # Check rxode2 internals with R exported
+  et <- et(-3, 3, length.out=10)
+  et$nu <- 7
+  et$mean <- 0
+  et$sd <- 1
+
+  model <- rxode2({
+    fx <- llikT(time, nu, mean, sd)
+    dDf <- llikTDdf(time, nu, mean, sd)
+    dMean <- llikTDmean(time, nu, mean, sd)
+    dSd   <- llikTDsd(time, nu, mean, sd)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikT(et$time, et$nu, et$mean, et$sd, full=TRUE)
+
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dDf, fromOde$dDf)
+  expect_equal(fromR$dMean, fromOde$dMean)
+  expect_equal(fromR$dSd, fromOde$dSd)
+    
+  expect_equal(fromR$fx, dt(fromOde$time, df=7, log=TRUE))
+  
 })

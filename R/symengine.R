@@ -164,7 +164,10 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikBeta"=3,
   "llikBetaDshape1"=3,
   "llikBetaDshape2"=3,
-  "llikNorm"=3,
+  "llikT"=4,
+  "llikTDdf"=4,
+  "llikTDmean"=4,
+  "llikTDsd"=4,
   "llikNormDmean"=3,
   "llikNormDsd"=3
 )
@@ -435,6 +438,19 @@ rxRmFun <- function(name) {
   },
   function(x, shape1, shape2){
     paste0("llikBetaDshape2(",paste(c(x, shape1, shape2), collapse=", "), ")")
+  }
+)
+
+.rxD$llikT <- list(
+  NULL,
+  function(x, df, mean, sd){
+    paste0("llikTDdf(",paste(c(x, df, mean, sd), collapse=", "), ")")
+  },
+  function(x, df, mean, sd){
+    paste0("llikTDmean(",paste(c(x, df, mean, sd), collapse=", "), ")")
+  },
+  function(x, df, mean, sd){
+    paste0("llikTDsd(",paste(c(x, df, mean, sd), collapse=", "), ")")
   }
 )
 
