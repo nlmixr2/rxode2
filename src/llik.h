@@ -24,6 +24,8 @@ extern "C" {
   double rxLlikTDmean(double* ret, double x, double df, double mean, double sd);
   double rxLlikTDsd(double* ret, double x, double df, double mean, double sd);
 
+  double rxLlikChisq(double* ret, double x, double df);
+  double rxLlikChisqDdf(double* ret, double x, double df);
 
 #if defined(__cplusplus)
 }
