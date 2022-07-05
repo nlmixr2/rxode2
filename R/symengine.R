@@ -168,6 +168,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikTDdf"=4,
   "llikTDmean"=4,
   "llikTDsd"=4,
+  "llikChisq"=2,
+  "llikChisqDdf"=2,
+  "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
 )
@@ -451,6 +454,13 @@ rxRmFun <- function(name) {
   },
   function(x, df, mean, sd){
     paste0("llikTDsd(",paste(c(x, df, mean, sd), collapse=", "), ")")
+  }
+)
+
+.rxD$llikChisq <- list(
+  NULL,
+  function(x, nu) {
+    paste0("llikChisqDdf(",paste(c(x, nu), collapse=", "), ")")
   }
 )
 

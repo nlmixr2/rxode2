@@ -188,12 +188,16 @@ llikBeta <- function(x, shape1, shape2, full=FALSE) {
 #'
 #' @param x  Observation
 #' @inheritParams llikNorm
-#' @inheritParams dnorm
-#' @inheritParams dt
+#' @inheritParams stats::dnorm
+#' @inheritParams stats::dt
 #' @return data frame with `fx` for the log pdf value of with `dDf`
 #'   `dMean` and `dSd` that has the derivatives with respect to the parameters at
 #'   the observation time-point
 #' @author Matthew L. Fidler
+#' @details
+#' In an `rxode2()` model, you can use `llikT()` but you have to
+#' use all arguments.  You can also get the derivative of `df`, `mean` and `sd` with
+#' `llikTDdf()`, `llikTDmean()` and `llikTDsd()`.
 #' @export 
 #' @examples
 #'
@@ -202,7 +206,21 @@ llikBeta <- function(x, shape1, shape2, full=FALSE) {
 #' llikT(x, 7, 0, 1)
 #'
 #' llikT(x, 15, 0, 1, full=TRUE)
-#' 
+#'
+#'  et <- et(-3, 3, length.out=10)
+#'  et$nu <- 7
+#'  et$mean <- 0
+#'  et$sd <- 1
+#'
+#'  model <- rxode2({
+#'    fx <- llikT(time, nu, mean, sd)
+#'    dDf <- llikTDdf(time, nu, mean, sd)
+#'    dMean <- llikTDmean(time, nu, mean, sd)
+#'    dSd   <- llikTDsd(time, nu, mean, sd)
+#'  })
+#'
+#'  rxSolve(model, et)
+#'
 llikT <-function(x, df, mean=0, sd=1, full=FALSE) {
   checkmate::assertNumeric(x, min.len=0, any.missing=FALSE, finite=TRUE)
   checkmate::assertNumeric(df, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
@@ -215,5 +233,44 @@ llikT <-function(x, df, mean=0, sd=1, full=FALSE) {
   .ret <- llikTInternal(.df$x, .df$df, .df$mean, .df$sd)
   if (full) .ret <- cbind(.df, .ret)
   .ret
-  
 }
+
+#' log likelihood and derivaties for chi_squared distribution
+#' 
+#' @inheritParams stats::dchisq
+#' @return data frame with `fx` for the log pdf value of with `dDf`
+#'   that has the derivatives with respect to the `df` parameter
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @details
+#' In an `rxode2()` model, you can use `llikChisq()` but you have to
+#' use the x and df arguments.  You can also get the derivative of `df` with
+#' `llikChisqDdf()`.
+#' @examples
+#' 
+#' llikChisq(1, df = 1:3, full=TRUE)
+#' 
+#' llikChisq(1, df = 6:9)
+#' 
+#' et <- et(1:3)
+#' et$x <- 1
+#'
+#' model <- rxode2({
+#'    fx <- llikChisq(x, time)
+#'    dDf <- llikChisqDdf(x, time)
+#' })
+#'
+#' rxSolve(model, et)
+llikChisq <-function(x, df, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(df, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, df=df), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, df, mean, sd", call.=FALSE)
+  }
+  .ret <- llikChisqInternal(.df$x, .df$df)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
+

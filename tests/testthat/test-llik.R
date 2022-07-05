@@ -211,12 +211,48 @@ test_that("log-liklihood tests for T (including derivatives)", {
 
   fromR <- llikT(et$time, et$nu, et$mean, et$sd, full=TRUE)
 
-
   expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dDf, fromOde$dDf)
   expect_equal(fromR$dMean, fromOde$dMean)
   expect_equal(fromR$dSd, fromOde$dSd)
     
   expect_equal(fromR$fx, dt(fromOde$time, df=7, log=TRUE))
+  
+})
+
+
+test_that("log-liklihood tests for chi-squared (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikChisq(x, nu)"), NA)
+  expect_error(rxode2("tmp=llikChisqDdf(x, nu)"), NA)
+
+  # Make sure they translate correctly:
+  expect_equal(rxToSE("llikChisq(x, nu)"), "llikChisq(x,nu)")
+  expect_equal(rxFromSE("llikChisq(x, nu)"), "llikChisq(x,nu)")
+  
+  expect_equal(rxToSE("llikChisqDdf(x, nu)"), "llikChisqDdf(x,nu)")
+  expect_equal(rxFromSE("llikChisqDdf(x, nu)"), "llikChisqDdf(x,nu)")
+  
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikChisq(x,nu),nu)"),"llikChisqDdf(x, nu)")
+
+  # Check rxode2 internals with R exported
+  et <- et(1:3)
+  et$x <- 1
+
+  model <- rxode2({
+    fx <- llikChisq(x, time)
+    dDf <- llikChisqDdf(x, time)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikChisq(et$x,et$time, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dDf, fromOde$dDf)
+    
+  expect_equal(fromR$fx, dchisq(1, fromOde$time, log=TRUE))
   
 })

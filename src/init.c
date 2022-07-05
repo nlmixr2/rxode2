@@ -107,6 +107,7 @@ SEXP _rxode2_llikPoisInternal(SEXP xSEXP, SEXP lambdaSEXP);
 SEXP _rxode2_llikBinomInternal(SEXP xSEXP, SEXP sizeSEXP, SEXP probSEXP);
 SEXP _rxode2_llikBetaInternal(SEXP xSEXP, SEXP shape1SEXP, SEXP shape2SEXP);
 SEXP _rxode2_llikTInternal(SEXP xSEXP, SEXP df1SEXP, SEXP meanSEXP, SEXP sdSEXP);
+SEXP _rxode2_llikChisqInternal(SEXP xSEXP, SEXP dfSEXP);
 
 SEXP rxode2_get_mv();
 SEXP _rxode2_rxGetSeed();
@@ -470,6 +471,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_llikBinomInternal",(DL_FUNC) &_rxode2_llikBinomInternal, 3},
     {"_rxode2_llikBetaInternal", (DL_FUNC) &_rxode2_llikBetaInternal, 3},
     {"_rxode2_llikTInternal", (DL_FUNC) &_rxode2_llikTInternal, 4},
+    {"_rxode2_llikChisqInternal", (DL_FUNC) &_rxode2_llikChisqInternal, 2},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
@@ -566,22 +568,20 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxLlikNorm", (DL_FUNC) &rxLlikNorm);
   R_RegisterCCallable("rxode2", "rxLlikNormDmean", (DL_FUNC) &rxLlikNormDmean);
   R_RegisterCCallable("rxode2", "rxLlikNormDsd", (DL_FUNC) &rxLlikNormDsd);
-
   R_RegisterCCallable("rxode2", "rxLlikPois", (DL_FUNC) &rxLlikPois);
   R_RegisterCCallable("rxode2", "rxLlikPoisDlambda", (DL_FUNC) &rxLlikPoisDlambda);
-
   R_RegisterCCallable("rxode2", "rxLlikBinom", (DL_FUNC) &rxLlikBinom);
   R_RegisterCCallable("rxode2", "rxLlikBinomDprob", (DL_FUNC) &rxLlikBinomDprob);
-
   R_RegisterCCallable("rxode2", "rxLlikBeta", (DL_FUNC) &rxLlikBeta);
   R_RegisterCCallable("rxode2", "rxLlikBetaDshape1", (DL_FUNC) &rxLlikBetaDshape1);
   R_RegisterCCallable("rxode2", "rxLlikBetaDshape2", (DL_FUNC) &rxLlikBetaDshape2);
-
-
   R_RegisterCCallable("rxode2", "rxLlikT", (DL_FUNC) &rxLlikT);
   R_RegisterCCallable("rxode2", "rxLlikTDdf", (DL_FUNC) &rxLlikTDdf);
   R_RegisterCCallable("rxode2", "rxLlikTDmean", (DL_FUNC) &rxLlikTDmean);
   R_RegisterCCallable("rxode2", "rxLlikTDsd", (DL_FUNC) &rxLlikTDsd);
+
+  R_RegisterCCallable("rxode2", "rxLlikChisq", (DL_FUNC) &rxLlikChisq);
+  R_RegisterCCallable("rxode2", "rxLlikChisqDdf", (DL_FUNC) &rxLlikChisqDdf);
 
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},

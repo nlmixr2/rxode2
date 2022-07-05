@@ -15,7 +15,7 @@ llikBeta(x, shape1, shape2, full = FALSE)
 fx and derivatives}
 }
 \value{
-data frame with \code{fx} for the pdf value of with
+data frame with \code{fx} for the log pdf value of with
 \code{dShape1} and \code{dShape2} that has the derivatives with respect to the parameters at
 the observation time-point
 }

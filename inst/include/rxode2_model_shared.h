@@ -92,11 +92,12 @@
 #define llikBeta(x, shape1, shape2) _llikBeta((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
 #define llikBetaDshape1(x, shape1, shape2) _llikBetaDshape1((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
 #define llikBetaDshape2(x, shape1, shape2) _llikBetaDshape2((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
-
 #define llikT(x, nu, mean, sd) _llikT((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
 #define llikTDdf(x, nu, mean, sd) _llikTDdf((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
 #define llikTDsd(x, nu, mean, sd) _llikTDsd((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
 #define llikTDmean(x, nu, mean, sd) _llikTDmean((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikChisq(x, nu) _llikChisq((&_solveData->subjects[_cSub])->llikSave, x, nu)
+#define llikChisqDdf(x, nu) _llikChisqDdf((&_solveData->subjects[_cSub])->llikSave, x, nu)
 
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
@@ -207,5 +208,7 @@ typedef double (*rxode2_llikPoisFun) (double *in, double x, double lambda);
 typedef double (*rxode2_llikBinomFun) (double *in, double x, double size, double prob);
 typedef double (*rxode2_llikBetaFun) (double *in, double x, double shape1, double shape2);
 typedef double (*rxode2_llikTFun) (double *in, double x, double df, double mean, double sd);
+
+typedef double (*rxode2_llikChisqFun) (double *in, double x, double df);
 
 #endif // __rxode2_model_shared_H__

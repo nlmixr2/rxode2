@@ -85,6 +85,9 @@ rxode2_llikTFun _llikTDdf;
 rxode2_llikTFun _llikTDmean;
 rxode2_llikTFun _llikTDsd;
 
+rxode2_llikChisqFun _llikChisq;
+rxode2_llikChisqFun _llikChisqDdf;
+
 rxode2_compareFactorVal_fn _compareFactorVal;
 
 double _prod(double *input, double *p, int type, int n, ...){
@@ -283,7 +286,9 @@ void _assignFuns0() {
   _llikTDdf = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDdf");
   _llikTDmean = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDmean");
   _llikTDsd = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDsd");
-  
+  _llikChisq    = (rxode2_llikChisqFun) R_GetCCallable("rxode2", "rxLlikChisq");
+  _llikChisqDdf = (rxode2_llikChisqFun) R_GetCCallable("rxode2", "rxLlikChisqDdf");
+
   _solveData = _getRxSolve_();
 }
 
