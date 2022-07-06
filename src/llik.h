@@ -27,6 +27,11 @@ extern "C" {
   double rxLlikChisq(double* ret, double x, double df);
   double rxLlikChisqDdf(double* ret, double x, double df);
 
+  double rxLlikExp(double* ret, double x, double rate);
+
+  double rxLlikExpDrate(double* ret, double x, double rate);
+
+
 #if defined(__cplusplus)
 }
 #endif

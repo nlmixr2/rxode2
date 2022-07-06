@@ -99,6 +99,10 @@
 #define llikChisq(x, nu) _llikChisq((&_solveData->subjects[_cSub])->llikSave, x, nu)
 #define llikChisqDdf(x, nu) _llikChisqDdf((&_solveData->subjects[_cSub])->llikSave, x, nu)
 
+#define llikExp(x, rate) _llikExp((&_solveData->subjects[_cSub])->llikSave, x, rate)
+#define llikExpDrate(x, rate) _llikExpDrate((&_solveData->subjects[_cSub])->llikSave, x, rate)
+
+
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -210,5 +214,6 @@ typedef double (*rxode2_llikBetaFun) (double *in, double x, double shape1, doubl
 typedef double (*rxode2_llikTFun) (double *in, double x, double df, double mean, double sd);
 
 typedef double (*rxode2_llikChisqFun) (double *in, double x, double df);
+typedef double (*rxode2_llikExpFun) (double *in, double x, double rate);
 
 #endif // __rxode2_model_shared_H__

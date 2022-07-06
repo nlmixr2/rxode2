@@ -256,3 +256,40 @@ test_that("log-liklihood tests for chi-squared (including derivatives)", {
   expect_equal(fromR$fx, dchisq(1, fromOde$time, log=TRUE))
   
 })
+
+test_that("log-liklihood tests for exponential (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikExp(x, nu)"), NA)
+  expect_error(rxode2("tmp=llikExpDrate(x, nu)"), NA)
+
+  # Make sure they translate correctly:
+  expect_equal(rxToSE("llikExp(x, nu)"), "llikExp(x,nu)")
+  expect_equal(rxFromSE("llikExp(x, nu)"), "llikExp(x,nu)")
+  
+  expect_equal(rxToSE("llikExpDrate(x, nu)"), "llikExpDrate(x,nu)")
+  expect_equal(rxFromSE("llikExpDrate(x, nu)"), "llikExpDrate(x,nu)")
+  
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikExp(x,nu),nu)"),"llikExpDrate(x, nu)")
+
+  # Check rxode2 internals with R exported
+  et <- et(1:3)
+  et$x <- 1
+
+  model <- rxode2({
+    fx <- llikExp(x, time)
+    dRate <- llikExpDrate(x, time)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikExp(et$x,et$time, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dRate, fromOde$dRate)
+    
+  expect_equal(fromR$fx, dexp(1, fromOde$time, log=TRUE))
+  
+})
+

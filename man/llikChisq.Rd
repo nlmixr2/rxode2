@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikChisq}
 \alias{llikChisq}
-\title{log likelihood and derivaties for chi_squared distribution}
+\title{log likelihood and derivatives for chi-squared distribution}
 \usage{
 llikChisq(x, df, full = FALSE)
 }
@@ -15,7 +15,7 @@ that has the derivatives with respect to the \code{df} parameter
 the observation time-point
 }
 \description{
-log likelihood and derivaties for chi_squared distribution
+log likelihood and derivatives for chi-squared distribution
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikChisq()} but you have to

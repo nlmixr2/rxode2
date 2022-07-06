@@ -170,6 +170,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikTDsd"=4,
   "llikChisq"=2,
   "llikChisqDdf"=2,
+  "llikExp"=2,
+  "llikExpDrate"=2,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -461,6 +463,13 @@ rxRmFun <- function(name) {
   NULL,
   function(x, nu) {
     paste0("llikChisqDdf(",paste(c(x, nu), collapse=", "), ")")
+  }
+)
+
+.rxD$llikExp <- list(
+  NULL,
+  function(x, rate) {
+    paste0("llikExpDrate(",paste(c(x, rate), collapse=", "), ")")
   }
 )
 

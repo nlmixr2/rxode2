@@ -235,7 +235,7 @@ llikT <-function(x, df, mean=0, sd=1, full=FALSE) {
   .ret
 }
 
-#' log likelihood and derivaties for chi_squared distribution
+#' log likelihood and derivatives for chi-squared distribution
 #' 
 #' @inheritParams stats::dchisq
 #' @return data frame with `fx` for the log pdf value of with `dDf`
@@ -267,10 +267,54 @@ llikChisq <-function(x, df, full=FALSE) {
   checkmate::assertNumeric(df, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
   .df <- try(data.frame(x=x, df=df), silent=TRUE)
   if (inherits(.df, "try-error")) {
-    stop("incompatible dimensions for x, df, mean, sd", call.=FALSE)
+    stop("incompatible dimensions for x, df", call.=FALSE)
   }
   .ret <- llikChisqInternal(.df$x, .df$df)
   if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
+
+#' log likelihood and derivaties for exponential distribution
+#' 
+#' @inheritParams stats::dexp
+#' @return data frame with `fx` for the log pdf value of with `dRate`
+#'   that has the derivatives with respect to the `rate` parameter
+#'   the observation time-point
+#' 
+#' @author Matthew L. Fidler
+#' 
+#' @export
+#' 
+#' @details
+#' In an `rxode2()` model, you can use `llikExp()` but you have to
+#' use the x and rate arguments.  You can also get the derivative of `rate` with
+#' `llikExpDrate()`.
+#' 
+#' @examples
+#'
+#' llikExp(1, 1:3)
+#'
+#' llikExp(1, 1:3, full=TRUE)
+#'
+#' et <- et(1:3)
+#' et$x <- 1
+#'
+#' model <- rxode2({
+#'   fx <- llikExp(x, time)
+#'   dRate <- llikExpDrate(x, time)
+#' })
+#'
+#' rxSolve(model, et)
+#' 
+llikExp <-function(x, rate, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(rate, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .rate <- try(data.frame(x=x, rate=rate), silent=TRUE)
+  if (inherits(.rate, "try-error")) {
+    stop("incompatible dimensions for x, rate", call.=FALSE)
+  }
+  .ret <- llikExpInternal(.rate$x, .rate$rate)
+  if (full) .ret <- cbind(.rate, .ret)
   .ret
 }
 

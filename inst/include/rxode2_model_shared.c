@@ -88,6 +88,10 @@ rxode2_llikTFun _llikTDsd;
 rxode2_llikChisqFun _llikChisq;
 rxode2_llikChisqFun _llikChisqDdf;
 
+rxode2_llikExpFun _llikExp;
+rxode2_llikExpFun _llikExpDrate;
+
+
 rxode2_compareFactorVal_fn _compareFactorVal;
 
 double _prod(double *input, double *p, int type, int n, ...){
@@ -288,6 +292,10 @@ void _assignFuns0() {
   _llikTDsd = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDsd");
   _llikChisq    = (rxode2_llikChisqFun) R_GetCCallable("rxode2", "rxLlikChisq");
   _llikChisqDdf = (rxode2_llikChisqFun) R_GetCCallable("rxode2", "rxLlikChisqDdf");
+
+  _llikExp    = (rxode2_llikExpFun) R_GetCCallable("rxode2", "rxLlikExp");
+  _llikExpDrate = (rxode2_llikExpFun) R_GetCCallable("rxode2", "rxLlikExpDrate");
+
 
   _solveData = _getRxSolve_();
 }

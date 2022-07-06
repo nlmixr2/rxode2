@@ -300,6 +300,10 @@ llikChisqInternal <- function(x, df) {
     .Call(`_rxode2_llikChisqInternal`, x, df)
 }
 
+llikExpInternal <- function(x, rate) {
+    .Call(`_rxode2_llikExpInternal`, x, rate)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }
