@@ -418,3 +418,47 @@ test_that("log-liklihood tests for unif (including derivatives)", {
   expect_equal(fromR$fx, dunif(et$time,-2, 2, log=TRUE))
 
 })
+
+
+test_that("log-liklihood tests for weibull (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikWeibull(x, shape, scale)"), NA)
+  expect_error(rxode2("tmp=llikWeibullDshape(x, shape, scale)"), NA)
+  expect_error(rxode2("tmp=llikWeibullDscale(x, shape, scale)"), NA)
+
+  expect_equal(rxToSE("llikWeibull(x, shape, scale)"), "llikWeibull(x,shape,scale)")
+  expect_equal(rxFromSE("llikWeibull(x, shape, scale)"), "llikWeibull(x,shape,scale)")
+
+  expect_equal(rxToSE("llikWeibullDshape(x, shape, scale)"), "llikWeibullDshape(x,shape,scale)")
+  expect_equal(rxFromSE("llikWeibullDshape(x, shape, scale)"), "llikWeibullDshape(x,shape,scale)")
+
+  expect_equal(rxToSE("llikWeibullDscale(x, shape, scale)"), "llikWeibullDscale(x,shape,scale)")
+  expect_equal(rxFromSE("llikWeibullDscale(x, shape, scale)"), "llikWeibullDscale(x,shape,scale)")
+  
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikWeibull(x,shape, scale),shape)"),"llikWeibullDshape(x, shape, scale)")
+  expect_equal(rxFromSE("Derivative(llikWeibull(x,shape, scale),scale)"),"llikWeibullDscale(x, shape, scale)")
+  
+  # Check rxode2 internals with R exported
+  et  <- et(seq(0.01,4, length.out=10))
+  et$shape <- 1
+  et$scale <- 10
+  
+  model <- rxode2({
+    fx <- llikWeibull(time, shape, scale)
+    dShape<- llikWeibullDshape(time, shape, scale)
+    dScale <- llikWeibullDscale(time, shape, scale)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikWeibull(et$time, 1, 10, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dShape, fromOde$dShape)
+  expect_equal(fromR$dScale, fromOde$dScale)
+    
+  expect_equal(fromR$fx, dweibull(et$time, 1, 10, log=TRUE))
+
+})

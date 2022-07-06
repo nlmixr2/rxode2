@@ -316,6 +316,10 @@ llikUnifInternal <- function(x, alpha, beta) {
     .Call(`_rxode2_llikUnifInternal`, x, alpha, beta)
 }
 
+llikWeibullInternal <- function(x, shape, scale) {
+    .Call(`_rxode2_llikWeibullInternal`, x, shape, scale)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

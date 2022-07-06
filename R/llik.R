@@ -408,7 +408,6 @@ llikGeom <-function(x, prob, full=FALSE) {
   .ret
 }
 
-
 #' log likelihood and derivaties for Unif distribution
 #' 
 #' @inheritParams stats::dunif
@@ -451,6 +450,54 @@ llikUnif <-function(x, alpha, beta, full=FALSE) {
     stop("incompatible dimensions for x, alpha, beta", call.=FALSE)
   }
   .ret <- llikUnifInternal(.rate$x, .rate$alpha, .rate$beta)
+  if (full) .ret <- cbind(.rate, .ret)
+  .ret
+}
+
+
+#' log likelihood and derivaties for Weibull distribution
+#' 
+#' @inheritParams stats::dweibull
+#' @return data frame with `fx` for the log pdf value of with `dProb`
+#'   that has the derivatives with respect to the `prob` parameters at 
+#'   the observation time-point
+#' 
+#' @author Matthew L. Fidler
+#' 
+#' @export
+#' 
+#' @details
+#' 
+#' In an `rxode2()` model, you can use `llikWeibull()` but you have to
+#' use the x and rate arguments.  You can also get the derivative of `shape` or `scale` with
+#' `llikWeibullDshape()` and `llikWeibullDscale()`.
+#' 
+#' @examples
+#'
+#' llikWeibull(1, 1, 10)
+#'
+#' et  <- et(seq(0.001, 1, length.out=10))
+#' et$shape <- 1
+#' et$scale <- 10
+#'  
+#' model <- rxode2({
+#'   fx <- llikWeibull(time, shape, scale)
+#'   dShape<- llikWeibullDshape(time, shape, scale)
+#'   dScale <- llikWeibullDscale(time, shape, scale)
+#' })
+#' 
+#'
+#' rxSolve(model, et)
+#' 
+llikWeibull <-function(x, shape, scale, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(shape, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(scale, min.len=0, lower=0,any.missing=FALSE, finite=TRUE)
+  .rate <- try(data.frame(x=x, shape=shape, scale=scale), silent=TRUE)
+  if (inherits(.rate, "try-error")) {
+    stop("incompatible dimensions for x, shape, scale", call.=FALSE)
+  }
+  .ret <- llikWeibullInternal(.rate$x, .rate$shape, .rate$scale)
   if (full) .ret <- cbind(.rate, .ret)
   .ret
 }

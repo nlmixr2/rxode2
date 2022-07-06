@@ -180,6 +180,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikUnif"=3,
   "llikUnifDalpha"=3,
   "llikUnifDbeta"=3,
+  "llikWeibull"=3,
+  "llikWeibullDshape"=3,
+  "llikWeibullDscale"=3,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -507,6 +510,17 @@ rxRmFun <- function(name) {
     paste0("llikUnifDbeta(",paste(c(x, alpha, beta), collapse=", "), ")")
   }
 )
+
+.rxD$llikWeibull <- list(
+  NULL,
+  function(x, shape, scale) {
+    paste0("llikWeibullDshape(",paste(c(x, shape, scale), collapse=", "), ")")
+  },
+  function(x, shape, scale) {
+    paste0("llikWeibullDscale(",paste(c(x, shape, scale), collapse=", "), ")")
+  }
+)
+
 
 .rxD$abs0 <- list(function(x) {
   return(paste0("dabs(", x, ")"))

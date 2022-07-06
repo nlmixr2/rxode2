@@ -112,6 +112,7 @@ SEXP _rxode2_llikExpInternal(SEXP xSEXP, SEXP rateSEXP);
 SEXP _rxode2_llikFInternal(SEXP xSEXP, SEXP df1SEXP, SEXP df2SEXP);
 SEXP _rxode2_llikGeomInternal(SEXP xSEXP, SEXP pSEXP);
 SEXP _rxode2_llikUnifInternal(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP);
+SEXP _rxode2_llikWeibullInternal(SEXP xSEXP, SEXP shapeSEXP, SEXP sizeSEXP);
 
 SEXP rxode2_get_mv();
 SEXP _rxode2_rxGetSeed();
@@ -480,6 +481,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_llikFInternal", (DL_FUNC) &_rxode2_llikFInternal, 3},
     {"_rxode2_llikGeomInternal", (DL_FUNC) &_rxode2_llikGeomInternal, 2},
     {"_rxode2_llikUnifInternal", (DL_FUNC) &_rxode2_llikUnifInternal, 3},
+    {"_rxode2_llikWeibullInternal", (DL_FUNC) &_rxode2_llikWeibullInternal, 3},
     {NULL, NULL, 0} 
   };
   // C callable to assign environments.
@@ -594,14 +596,15 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxLlikF", (DL_FUNC) &rxLlikF);
   R_RegisterCCallable("rxode2", "rxLlikFDdf1", (DL_FUNC) &rxLlikFDdf1);
   R_RegisterCCallable("rxode2", "rxLlikFDdf2", (DL_FUNC) &rxLlikFDdf2);
-
   R_RegisterCCallable("rxode2", "rxLlikGeom", (DL_FUNC) &rxLlikGeom);
   R_RegisterCCallable("rxode2", "rxLlikGeomDp", (DL_FUNC) &rxLlikGeomDp);
-
   R_RegisterCCallable("rxode2", "rxLlikUnif", (DL_FUNC) &rxLlikUnif);
   R_RegisterCCallable("rxode2", "rxLlikUnifDalpha", (DL_FUNC) &rxLlikUnifDalpha);
   R_RegisterCCallable("rxode2", "rxLlikUnifDbeta", (DL_FUNC) &rxLlikUnifDbeta);
 
+  R_RegisterCCallable("rxode2", "rxLlikWeibull", (DL_FUNC) &rxLlikWeibull);
+  R_RegisterCCallable("rxode2", "rxLlikWeibullDshape", (DL_FUNC) &rxLlikWeibullDshape);
+  R_RegisterCCallable("rxode2", "rxLlikWeibullDscale", (DL_FUNC) &rxLlikWeibullDscale);
 
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},

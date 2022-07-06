@@ -653,6 +653,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// llikWeibullInternal
+Rcpp::DataFrame llikWeibullInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape, Rcpp::NumericVector scale);
+RcppExport SEXP _rxode2_llikWeibullInternal(SEXP xSEXP, SEXP shapeSEXP, SEXP scaleSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape(shapeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type scale(scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikWeibullInternal(x, shape, scale));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxQs
 Rcpp::CharacterVector rxQs(SEXP const x);
 RcppExport SEXP _rxode2_rxQs(SEXP xSEXP) {

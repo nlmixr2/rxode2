@@ -102,6 +102,11 @@ rxode2_llikUnifFun _llikUnif;
 rxode2_llikUnifFun _llikUnifDalpha;
 rxode2_llikUnifFun _llikUnifDbeta;
 
+rxode2_llikWeibullFun _llikWeibull;
+rxode2_llikWeibullFun _llikWeibullDshape;
+rxode2_llikWeibullFun _llikWeibullDscale;
+
+
 rxode2_compareFactorVal_fn _compareFactorVal;
 
 double _prod(double *input, double *p, int type, int n, ...){
@@ -316,6 +321,11 @@ void _assignFuns0() {
   _llikUnif        = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnif");
   _llikUnifDalpha  = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnifDalpha");
   _llikUnifDbeta   = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnifDbeta");
+
+  _llikWeibull        = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibull");
+  _llikWeibullDshape  = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibullDshape");
+  _llikWeibullDscale   = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibullDscale");
+
 
   _solveData = _getRxSolve_();
 }

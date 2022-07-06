@@ -40,6 +40,10 @@ extern "C" {
   double rxLlikUnif(double* ret, double x, double alpha, double beta);
   double rxLlikUnifDalpha(double* ret, double x, double alpha, double beta);
   double rxLlikUnifDbeta(double* ret, double x, double alpha, double beta);
+
+  double rxLlikWeibull(double* ret, double x, double shape, double scale);
+  double rxLlikWeibullDshape(double* ret, double x, double shape, double scale);
+  double rxLlikWeibullDscale(double* ret, double x, double shape, double scale);
   
 #if defined(__cplusplus)
 }
