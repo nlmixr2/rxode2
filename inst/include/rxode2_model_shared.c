@@ -95,6 +95,8 @@ rxode2_llikFFun _llikF;
 rxode2_llikFFun _llikFDdf1;
 rxode2_llikFFun _llikFDdf2;
 
+rxode2_llikGeomFun _llikGeom;
+rxode2_llikGeomFun _llikGeomDp;
 
 rxode2_compareFactorVal_fn _compareFactorVal;
 
@@ -303,6 +305,10 @@ void _assignFuns0() {
   _llikF    = (rxode2_llikFFun) R_GetCCallable("rxode2", "rxLlikF");
   _llikFDdf1 = (rxode2_llikFFun) R_GetCCallable("rxode2", "rxLlikFDdf1");
   _llikFDdf2 = (rxode2_llikFFun) R_GetCCallable("rxode2", "rxLlikFDdf2");
+
+  _llikGeom    = (rxode2_llikGeomFun) R_GetCCallable("rxode2", "rxLlikGeom");
+  _llikGeomDp  = (rxode2_llikGeomFun) R_GetCCallable("rxode2", "rxLlikGeomDp");
+
 
   _solveData = _getRxSolve_();
 }

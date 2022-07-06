@@ -34,6 +34,8 @@ extern "C" {
   double rxLlikFDdf1(double* ret, double x, double df1, double df2);
   double rxLlikFDdf2(double* ret, double x, double df1, double df2);
 
+  double rxLlikGeom(double* ret, double x, double p);
+  double rxLlikGeomDp(double* ret, double x, double p);
 
 #if defined(__cplusplus)
 }

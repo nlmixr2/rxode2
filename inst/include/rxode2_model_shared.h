@@ -100,10 +100,13 @@
 #define llikChisqDdf(x, nu) _llikChisqDdf((&_solveData->subjects[_cSub])->llikSave, x, nu)
 #define llikExp(x, rate) _llikExp((&_solveData->subjects[_cSub])->llikSave, x, rate)
 #define llikExpDrate(x, rate) _llikExpDrate((&_solveData->subjects[_cSub])->llikSave, x, rate)
-
 #define llikF(x, df1, df2) _llikF((&_solveData->subjects[_cSub])->llikSave, x, df1, df2)
 #define llikFDdf1(x, df1, df2) _llikFDdf1((&_solveData->subjects[_cSub])->llikSave, x, df1, df2)
 #define llikFDdf2(x, df1, df2) _llikFDdf2((&_solveData->subjects[_cSub])->llikSave, x, df1, df2)
+
+#define llikGeom(x, p) _llikGeom((&_solveData->subjects[_cSub])->llikSave, x, p)
+#define llikGeomDprob(x, p) _llikGeomDp((&_solveData->subjects[_cSub])->llikSave, x, p)
+
 
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
@@ -218,5 +221,6 @@ typedef double (*rxode2_llikTFun) (double *in, double x, double df, double mean,
 typedef double (*rxode2_llikChisqFun) (double *in, double x, double df);
 typedef double (*rxode2_llikExpFun) (double *in, double x, double rate);
 typedef double (*rxode2_llikFFun) (double *in, double x, double df1, double df2);
+typedef double (*rxode2_llikGeomFun) (double *in, double x, double p);
 
 #endif // __rxode2_model_shared_H__

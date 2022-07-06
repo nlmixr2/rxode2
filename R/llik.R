@@ -364,3 +364,46 @@ llikF <-function(x, df1, df2, full=FALSE) {
   if (full) .ret <- cbind(.rate, .ret)
   .ret
 }
+
+#' log likelihood and derivaties for Geom distribution
+#' 
+#' @inheritParams stats::dgeom
+#' @return data frame with `fx` for the log pdf value of with `dProb`
+#'   that has the derivatives with respect to the `prob` parameters at 
+#'   the observation time-point
+#' 
+#' @author Matthew L. Fidler
+#' 
+#' @export
+#' 
+#' @details
+#' In an `rxode2()` model, you can use `llikGeom()` but you have to
+#' use the x and rate arguments.  You can also get the derivative of `prob` with
+#' `llikGeomDprob()`.
+#' 
+#' @examples
+#'
+#' x <- seq(0.001, 5, length.out = 100)
+#'
+#' llikGeom((1:9)/10, 0.2)
+#'
+#' et  <- et((1:9)/10)
+#' et$prob <- 0.2
+#'  
+#' model <- rxode2({
+#'   fx <- llikGeom(time, prob)
+#'   dProb <- llikGeomDprob(time, prob)
+#' })
+#'
+#' rxSolve(model, et)
+llikGeom <-function(x, prob, full=FALSE) {
+  checkmate::assertIntegerish(x, lower=0, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(prob, min.len=0, lower=0, upper=1,any.missing=FALSE, finite=TRUE)
+  .rate <- try(data.frame(x=x, prob=prob), silent=TRUE)
+  if (inherits(.rate, "try-error")) {
+    stop("incompatible dimensions for x, prob", call.=FALSE)
+  }
+  .ret <- llikGeomInternal(.rate$x, .rate$prob)
+  if (full) .ret <- cbind(.rate, .ret)
+  .ret
+}

@@ -338,3 +338,39 @@ test_that("log-liklihood tests for f (including derivatives)", {
   expect_equal(fromR$fx, df(et$time, 1, 5, log=TRUE))
 
 })
+
+
+test_that("log-liklihood tests for geom (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikGeom(x, p)"), NA)
+  expect_error(rxode2("tmp=llikGeomDp(x, p)"), NA)
+
+  expect_equal(rxToSE("llikGeom(x, p)"), "llikGeom(x,p)")
+  expect_equal(rxFromSE("llikGeom(x, p)"), "llikGeom(x,p)")
+
+  expect_equal(rxToSE("llikGeomDprob(x, p)"), "llikGeomDprob(x,p)")
+  expect_equal(rxFromSE("llikGeomDprob(x, p)"), "llikGeomDprob(x,p)")
+
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikGeom(x,p),p)"),"llikGeomDprob(x, p)")
+  
+  # Check rxode2 internals with R exported
+  et  <- et(1:10)
+  et$prob <- 0.2
+  
+  model <- rxode2({
+    fx <- llikGeom(time, prob)
+    dProb <- llikGeomDprob(time, prob)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikGeom(et$time, et$prob, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dProb, fromOde$dProb)
+    
+  expect_equal(fromR$fx, dgeom(et$time, 0.2, log=TRUE))
+
+})

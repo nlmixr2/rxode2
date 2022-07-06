@@ -308,6 +308,10 @@ llikFInternal <- function(x, df1, df2) {
     .Call(`_rxode2_llikFInternal`, x, df1, df2)
 }
 
+llikGeomInternal <- function(x, p) {
+    .Call(`_rxode2_llikGeomInternal`, x, p)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

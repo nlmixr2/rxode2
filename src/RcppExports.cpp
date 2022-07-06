@@ -628,6 +628,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// llikGeomInternal
+Rcpp::DataFrame llikGeomInternal(Rcpp::NumericVector x, Rcpp::NumericVector p);
+RcppExport SEXP _rxode2_llikGeomInternal(SEXP xSEXP, SEXP pSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type p(pSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikGeomInternal(x, p));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxQs
 Rcpp::CharacterVector rxQs(SEXP const x);
 RcppExport SEXP _rxode2_rxQs(SEXP xSEXP) {
