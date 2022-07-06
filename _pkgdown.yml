@@ -98,6 +98,19 @@ reference:
     - probit
     - rxRmvn
     - erf
+- title: log likelihood functions supporting generalized likelihoods for focei methods
+  contents:
+    - llikNorm
+    - llikPois
+    - llikBinom
+    - llikBeta
+    - llikT
+    - llikChisq
+    - llikExp
+    - llikF
+    - llikGeom
+    - llikUnif
+    - llikWeibull
 - title: Parallel processing support commands
   contents:
   -  getRxThreads
