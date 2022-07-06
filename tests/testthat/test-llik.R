@@ -374,3 +374,47 @@ test_that("log-liklihood tests for geom (including derivatives)", {
   expect_equal(fromR$fx, dgeom(et$time, 0.2, log=TRUE))
 
 })
+
+
+test_that("log-liklihood tests for unif (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikUnif(x, alpha, beta)"), NA)
+  expect_error(rxode2("tmp=llikUnifDalpha(x, alpha, beta)"), NA)
+  expect_error(rxode2("tmp=llikUnifDbeta(x, alpha, beta)"), NA)
+
+  expect_equal(rxToSE("llikUnif(x, alpha, beta)"), "llikUnif(x,alpha,beta)")
+  expect_equal(rxFromSE("llikUnif(x, alpha, beta)"), "llikUnif(x,alpha,beta)")
+
+  expect_equal(rxToSE("llikUnifDalpha(x, alpha, beta)"), "llikUnifDalpha(x,alpha,beta)")
+  expect_equal(rxFromSE("llikUnifDalpha(x, alpha, beta)"), "llikUnifDalpha(x,alpha,beta)")
+
+  expect_equal(rxToSE("llikUnifDbeta(x, alpha, beta)"), "llikUnifDbeta(x,alpha,beta)")
+  expect_equal(rxFromSE("llikUnifDbeta(x, alpha, beta)"), "llikUnifDbeta(x,alpha,beta)")
+  
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikUnif(x,alpha, beta),alpha)"),"llikUnifDalpha(x, alpha, beta)")
+  expect_equal(rxFromSE("Derivative(llikUnif(x,alpha, beta),beta)"),"llikUnifDbeta(x, alpha, beta)")
+  
+  # Check rxode2 internals with R exported
+  et  <- et(seq(-4,4, length.out=10))
+  et$alpha <- -2
+  et$beta <- 2
+  
+  model <- rxode2({
+    fx <- llikUnif(time, alpha, beta)
+    dAlpha<- llikUnifDalpha(time, alpha, beta)
+    dBeta <- llikUnifDbeta(time, alpha, beta)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikUnif(et$time, -2, 2, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dAlpha, fromOde$dAlpha)
+  expect_equal(fromR$dBeta, fromOde$dBeta)
+    
+  expect_equal(fromR$fx, dunif(et$time,-2, 2, log=TRUE))
+
+})

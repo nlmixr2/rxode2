@@ -312,6 +312,10 @@ llikGeomInternal <- function(x, p) {
     .Call(`_rxode2_llikGeomInternal`, x, p)
 }
 
+llikUnifInternal <- function(x, alpha, beta) {
+    .Call(`_rxode2_llikUnifInternal`, x, alpha, beta)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

@@ -37,6 +37,10 @@ extern "C" {
   double rxLlikGeom(double* ret, double x, double p);
   double rxLlikGeomDp(double* ret, double x, double p);
 
+  double rxLlikUnif(double* ret, double x, double alpha, double beta);
+  double rxLlikUnifDalpha(double* ret, double x, double alpha, double beta);
+  double rxLlikUnifDbeta(double* ret, double x, double alpha, double beta);
+  
 #if defined(__cplusplus)
 }
 #endif

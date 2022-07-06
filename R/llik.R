@@ -407,3 +407,50 @@ llikGeom <-function(x, prob, full=FALSE) {
   if (full) .ret <- cbind(.rate, .ret)
   .ret
 }
+
+
+#' log likelihood and derivaties for Unif distribution
+#' 
+#' @inheritParams stats::dunif
+#' @return data frame with `fx` for the log pdf value of with `dProb`
+#'   that has the derivatives with respect to the `prob` parameters at 
+#'   the observation time-point
+#' 
+#' @author Matthew L. Fidler
+#' 
+#' @export
+#' 
+#' @details
+#' 
+#' In an `rxode2()` model, you can use `llikUnif()` but you have to
+#' use the x and rate arguments.  You can also get the derivative of `alpha` or `beta` with
+#' `llikUnifDalpha()` and `llikUnifDbeta()`.
+#' 
+#' @examples
+#'
+#' llikUnif(1, -2, 2)
+#'
+#' et  <- et(seq(1,1, length.out=4))
+#' et$alpha <- -2
+#' et$beta <- 2
+#'  
+#' model <- rxode2({
+#'   fx <- llikUnif(time, alpha, beta)
+#'   dAlpha<- llikUnifDalpha(time, alpha, beta)
+#'   dBeta <- llikUnifDbeta(time, alpha, beta)
+#' })
+#' 
+#'
+#' rxSolve(model, et)
+llikUnif <-function(x, alpha, beta, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(alpha, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(beta, min.len=0, any.missing=FALSE, finite=TRUE)
+  .rate <- try(data.frame(x=x, alpha=alpha, beta=beta), silent=TRUE)
+  if (inherits(.rate, "try-error")) {
+    stop("incompatible dimensions for x, alpha, beta", call.=FALSE)
+  }
+  .ret <- llikUnifInternal(.rate$x, .rate$alpha, .rate$beta)
+  if (full) .ret <- cbind(.rate, .ret)
+  .ret
+}

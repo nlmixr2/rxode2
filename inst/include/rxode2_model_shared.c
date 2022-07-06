@@ -98,6 +98,10 @@ rxode2_llikFFun _llikFDdf2;
 rxode2_llikGeomFun _llikGeom;
 rxode2_llikGeomFun _llikGeomDp;
 
+rxode2_llikUnifFun _llikUnif;
+rxode2_llikUnifFun _llikUnifDalpha;
+rxode2_llikUnifFun _llikUnifDbeta;
+
 rxode2_compareFactorVal_fn _compareFactorVal;
 
 double _prod(double *input, double *p, int type, int n, ...){
@@ -309,6 +313,9 @@ void _assignFuns0() {
   _llikGeom    = (rxode2_llikGeomFun) R_GetCCallable("rxode2", "rxLlikGeom");
   _llikGeomDp  = (rxode2_llikGeomFun) R_GetCCallable("rxode2", "rxLlikGeomDp");
 
+  _llikUnif        = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnif");
+  _llikUnifDalpha  = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnifDalpha");
+  _llikUnifDbeta   = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnifDbeta");
 
   _solveData = _getRxSolve_();
 }

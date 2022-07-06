@@ -262,7 +262,7 @@ rxPreferredDistributionName <- function(dist) {
   "dexp", #7
   "f", #8
   "geom", #9
-  "hyper", #10
+  "hyper", #10; hyper will not be supported since all the inputs are integers
   "unif", #11
   "weibull", #12
   "cauchy", #13

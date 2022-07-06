@@ -177,6 +177,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikFDdf2"=3,
   "llikGeom"=2,
   "llikGeomDprob"=2,
+  "llikUnif"=3,
+  "llikUnifDalpha"=3,
+  "llikUnifDbeta"=3,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -492,6 +495,16 @@ rxRmFun <- function(name) {
   NULL,
   function(x, p) {
     paste0("llikGeomDprob(",paste(c(x, p), collapse=", "), ")")
+  }
+)
+
+.rxD$llikUnif <- list(
+  NULL,
+  function(x, alpha, beta) {
+    paste0("llikUnifDalpha(",paste(c(x, alpha, beta), collapse=", "), ")")
+  },
+  function(x, alpha, beta) {
+    paste0("llikUnifDbeta(",paste(c(x, alpha, beta), collapse=", "), ")")
   }
 )
 
