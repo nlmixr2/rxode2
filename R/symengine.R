@@ -183,6 +183,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikWeibull"=3,
   "llikWeibullDshape"=3,
   "llikWeibullDscale"=3,
+  "llikGamma"=3,
+  "llikGammaDshape"=3,
+  "llikGammaDrate"=3,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -521,6 +524,15 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$llikGamma <- list(
+  NULL,
+  function(x, shape, rate) {
+    paste0("llikGammaDshape(",paste(c(x, shape, rate), collapse=", "), ")")
+  },
+  function(x, shape, rate) {
+    paste0("llikGammaDrate(",paste(c(x, shape, rate), collapse=", "), ")")
+  }
+)
 
 .rxD$abs0 <- list(function(x) {
   return(paste0("dabs(", x, ")"))

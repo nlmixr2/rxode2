@@ -106,6 +106,11 @@ rxode2_llikWeibullFun _llikWeibull;
 rxode2_llikWeibullFun _llikWeibullDshape;
 rxode2_llikWeibullFun _llikWeibullDscale;
 
+rxode2_llikGammaFun _llikGamma;
+rxode2_llikGammaFun _llikGammaDshape;
+rxode2_llikGammaFun _llikGammaDrate;
+
+
 
 rxode2_compareFactorVal_fn _compareFactorVal;
 
@@ -326,6 +331,9 @@ void _assignFuns0() {
   _llikWeibullDshape  = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibullDshape");
   _llikWeibullDscale   = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibullDscale");
 
+  _llikGamma        = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGamma");
+  _llikGammaDshape  = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDshape");
+  _llikGammaDrate   = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDrate");
 
   _solveData = _getRxSolve_();
 }

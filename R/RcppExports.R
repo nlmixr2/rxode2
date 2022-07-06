@@ -320,6 +320,10 @@ llikWeibullInternal <- function(x, shape, scale) {
     .Call(`_rxode2_llikWeibullInternal`, x, shape, scale)
 }
 
+llikGammaInternal <- function(x, shape, rate) {
+    .Call(`_rxode2_llikGammaInternal`, x, shape, rate)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

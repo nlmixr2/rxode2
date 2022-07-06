@@ -666,6 +666,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// llikGammaInternal
+Rcpp::DataFrame llikGammaInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape, Rcpp::NumericVector rate);
+RcppExport SEXP _rxode2_llikGammaInternal(SEXP xSEXP, SEXP shapeSEXP, SEXP rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape(shapeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type rate(rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikGammaInternal(x, shape, rate));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxQs
 Rcpp::CharacterVector rxQs(SEXP const x);
 RcppExport SEXP _rxode2_rxQs(SEXP xSEXP) {

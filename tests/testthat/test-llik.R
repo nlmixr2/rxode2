@@ -462,3 +462,47 @@ test_that("log-liklihood tests for weibull (including derivatives)", {
   expect_equal(fromR$fx, dweibull(et$time, 1, 10, log=TRUE))
 
 })
+
+
+test_that("log-liklihood tests for gamma (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikGamma(x, shape, rate)"), NA)
+  expect_error(rxode2("tmp=llikGammaDshape(x, shape, rate)"), NA)
+  expect_error(rxode2("tmp=llikGammaDrate(x, shape, rate)"), NA)
+
+  expect_equal(rxToSE("llikGamma(x, shape, rate)"), "llikGamma(x,shape,rate)")
+  expect_equal(rxFromSE("llikGamma(x, shape, rate)"), "llikGamma(x,shape,rate)")
+
+  expect_equal(rxToSE("llikGammaDshape(x, shape, rate)"), "llikGammaDshape(x,shape,rate)")
+  expect_equal(rxFromSE("llikGammaDshape(x, shape, rate)"), "llikGammaDshape(x,shape,rate)")
+
+  expect_equal(rxToSE("llikGammaDrate(x, shape, rate)"), "llikGammaDrate(x,shape,rate)")
+  expect_equal(rxFromSE("llikGammaDrate(x, shape, rate)"), "llikGammaDrate(x,shape,rate)")
+  
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikGamma(x,shape, rate),shape)"),"llikGammaDshape(x, shape, rate)")
+  expect_equal(rxFromSE("Derivative(llikGamma(x,shape, rate),rate)"),"llikGammaDrate(x, shape, rate)")
+  
+  # Check rxode2 internals with R exported
+  et  <- et(seq(0.01,4, length.out=10))
+  et$shape <- 1
+  et$rate <- 10
+  
+  model <- rxode2({
+    fx <- llikGamma(time, shape, rate)
+    dShape<- llikGammaDshape(time, shape, rate)
+    dRate <- llikGammaDrate(time, shape, rate)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikGamma(et$time, 1, 10, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dShape, fromOde$dShape)
+  expect_equal(fromR$dRate, fromOde$dRate)
+    
+  expect_equal(fromR$fx, dgamma(et$time, 1, rate=10, log=TRUE))
+
+})

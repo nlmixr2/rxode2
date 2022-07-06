@@ -315,8 +315,6 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #'
 #' @template birthdayProblem
 #'
-#' Note in the `rxgamma` uses `rate` exclusively instead of `scale`
-#'
 #' @return gamma random deviates
 #'
 #' @examples

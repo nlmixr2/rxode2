@@ -108,10 +108,12 @@
 #define llikUnif(x, alpha, beta) _llikUnif((&_solveData->subjects[_cSub])->llikSave, x, alpha, beta)
 #define llikUnifDalpha(x, alpha, beta) _llikUnifDalpha((&_solveData->subjects[_cSub])->llikSave, x, alpha, beta)
 #define llikUnifDbeta(x, alpha, beta) _llikUnifDbeta((&_solveData->subjects[_cSub])->llikSave, x, alpha, beta)
-#define llikWeibull(x, shape, scale) _llikWeibull((&_solveData->subjects[_cSub])->llikSave, x, shape, scale)
-#define llikWeibullDshape(x, shape, scale) _llikWeibullDshape((&_solveData->subjects[_cSub])->llikSave, x, shape, scale)
-#define llikWeibullDscale(x, shape, scale) _llikWeibullDscale((&_solveData->subjects[_cSub])->llikSave, x, shape, scale)
-
+#define llikWeibull(x, shape, rate) _llikWeibull((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikWeibullDshape(x, shape, rate) _llikWeibullDshape((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikWeibullDrate(x, shape, rate) _llikWeibullDrate((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikGamma(x, shape, rate) _llikGamma((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikGammaDshape(x, shape, rate) _llikGammaDshape((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikGammaDrate(x, shape, rate) _llikGammaDrate((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -228,5 +230,6 @@ typedef double (*rxode2_llikFFun) (double *in, double x, double df1, double df2)
 typedef double (*rxode2_llikGeomFun) (double *in, double x, double p);
 typedef double (*rxode2_llikUnifFun) (double *in, double x, double alpha, double beta);
 typedef double (*rxode2_llikWeibullFun) (double *in, double x, double shape, double scale);
+typedef double (*rxode2_llikGammaFun) (double *in, double x, double shape, double rate);
 
 #endif // __rxode2_model_shared_H__

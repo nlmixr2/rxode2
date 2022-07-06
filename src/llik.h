@@ -44,6 +44,11 @@ extern "C" {
   double rxLlikWeibull(double* ret, double x, double shape, double scale);
   double rxLlikWeibullDshape(double* ret, double x, double shape, double scale);
   double rxLlikWeibullDscale(double* ret, double x, double shape, double scale);
+
+  double rxLlikGamma(double* ret, double x, double shape, double rate);
+  double rxLlikGammaDshape(double* ret, double x, double shape, double rate);
+  double rxLlikGammaDrate(double* ret, double x, double shape, double rate);
+
   
 #if defined(__cplusplus)
 }
