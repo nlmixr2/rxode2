@@ -111,6 +111,7 @@ reference:
     - llikGeom
     - llikUnif
     - llikWeibull
+    - llikGamma
 - title: Parallel processing support commands
   contents:
   -  getRxThreads
