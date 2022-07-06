@@ -28,8 +28,11 @@ extern "C" {
   double rxLlikChisqDdf(double* ret, double x, double df);
 
   double rxLlikExp(double* ret, double x, double rate);
-
   double rxLlikExpDrate(double* ret, double x, double rate);
+
+  double rxLlikF(double* ret, double x,  double df1, double df2);
+  double rxLlikFDdf1(double* ret, double x, double df1, double df2);
+  double rxLlikFDdf2(double* ret, double x, double df1, double df2);
 
 
 #if defined(__cplusplus)

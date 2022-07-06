@@ -258,7 +258,6 @@ test_that("log-liklihood tests for chi-squared (including derivatives)", {
 })
 
 test_that("log-liklihood tests for exponential (including derivatives)", {
-  
   # Make sure they compile:
   expect_error(rxode2("tmp=llikExp(x, nu)"), NA)
   expect_error(rxode2("tmp=llikExpDrate(x, nu)"), NA)
@@ -290,6 +289,52 @@ test_that("log-liklihood tests for exponential (including derivatives)", {
   expect_equal(fromR$dRate, fromOde$dRate)
     
   expect_equal(fromR$fx, dexp(1, fromOde$time, log=TRUE))
-  
 })
 
+
+test_that("log-liklihood tests for f (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikF(x, df1, df2)"), NA)
+  expect_error(rxode2("tmp=llikFDdf1(x, df1, df2)"), NA)
+  expect_error(rxode2("tmp=llikFDdf2(x, df1, df2)"), NA)
+
+  expect_equal(rxToSE("llikF(x, df1, df2)"), "llikF(x,df1,df2)")
+  expect_equal(rxFromSE("llikF(x, df1, df2)"), "llikF(x,df1,df2)")
+
+  expect_equal(rxToSE("llikFDdf1(x, df1, df2)"), "llikFDdf1(x,df1,df2)")
+  expect_equal(rxFromSE("llikFDdf1(x, df1, df2)"), "llikFDdf1(x,df1,df2)")
+
+  expect_equal(rxToSE("llikFDdf2(x, df1, df2)"), "llikFDdf2(x,df1,df2)")
+  expect_equal(rxFromSE("llikFDdf2(x, df1, df2)"), "llikFDdf2(x,df1,df2)")
+  
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikF(x,df1,df2),df1)"),"llikFDdf1(x, df1, df2)")
+  expect_equal(rxFromSE("Derivative(llikF(x,df1,df2),df2)"),"llikFDdf2(x, df1, df2)")
+  
+  # Check rxode2 internals with R exported
+
+  x <- seq(0.001, 5, length.out = 100)
+
+
+  et <- et(x)
+  et$df1 <- 1
+  et$df2 <- 5
+
+  model <- rxode2({
+    fx <- llikF(time, df1, df2)
+    dDf1 <- llikFDdf1(time, df1, df2)
+    dDf2 <- llikFDdf2(time, df1, df2)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikF(et$time,et$df1, et$df2, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dDf1, fromOde$dDf1)
+  expect_equal(fromR$dDf2, fromOde$dDf2)
+    
+  expect_equal(fromR$fx, df(et$time, 1, 5, log=TRUE))
+
+})

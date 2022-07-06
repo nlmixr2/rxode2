@@ -318,3 +318,49 @@ llikExp <-function(x, rate, full=FALSE) {
   .ret
 }
 
+#' log likelihood and derivaties for F distribution
+#' 
+#' @inheritParams stats::df
+#' @return data frame with `fx` for the log pdf value of with `dDf1` and `dDf2`
+#'   that has the derivatives with respect to the `df1`/`df2` parameters at 
+#'   the observation time-point
+#' 
+#' @author Matthew L. Fidler
+#' 
+#' @export
+#' 
+#' @details
+#' In an `rxode2()` model, you can use `llikF()` but you have to
+#' use the x and rate arguments.  You can also get the derivative of `df1` and `df2` with
+#' `llikFDdf1()` and `llikFDdf2()`.
+#' 
+#' @examples
+#'
+#' x <- seq(0.001, 5, length.out = 100)
+#'
+#' llikF(x^2, 1, 5)
+#'
+#' model <- rxode2({
+#'  fx <- llikF(time, df1, df2)
+#'  dMean <- llikFDdf1(time, df1, df2)
+#'  dSd <- llikFDdf2(time, df1, df2)
+#' })
+#' 
+#' et <- et(x)
+#' et$df1 <- 1
+#' et$df2 <- 5
+#' 
+#' rxSolve(model, et)
+#' 
+llikF <-function(x, df1, df2, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(df1, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(df2, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .rate <- try(data.frame(x=x, df1=df1, df2=df2), silent=TRUE)
+  if (inherits(.rate, "try-error")) {
+    stop("incompatible dimensions for x, df1, df2", call.=FALSE)
+  }
+  .ret <- llikFInternal(.rate$x, .rate$df1, .rate$df2)
+  if (full) .ret <- cbind(.rate, .ret)
+  .ret
+}
