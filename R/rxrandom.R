@@ -310,6 +310,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 
 #' Simulate gamma variable from threefry generator
 #'
+#' @param shape The shape of the gamma random variable
 #' @inheritParams stats::rgamma
 #' @inheritParams rxnormV
 #'

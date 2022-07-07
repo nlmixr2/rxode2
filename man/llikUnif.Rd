@@ -6,6 +6,16 @@
 \usage{
 llikUnif(x, alpha, beta, full = FALSE)
 }
+\arguments{
+\item{x}{variable distributed by a uniform distribution}
+
+\item{alpha}{is the lower limit of the uniform distribution}
+
+\item{beta}{is the upper limit of the distribution}
+
+\item{full}{Add the data frame showing x, mean, sd as well as the
+fx and derivatives}
+}
 \value{
 data frame with \code{fx} for the log pdf value of with \code{dProb}
 that has the derivatives with respect to the \code{prob} parameters at

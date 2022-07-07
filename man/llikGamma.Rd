@@ -7,7 +7,14 @@
 llikGamma(x, shape, rate, full = FALSE)
 }
 \arguments{
-\item{rate}{an alternative way to specify the scale.}
+\item{x}{variable that is distributed by gamma distribution}
+
+\item{shape}{this is the distirbution's shape parameter. Must be positive.}
+
+\item{rate}{this is the distribution's rate parameters.  Must be positive.}
+
+\item{full}{Add the data frame showing x, mean, sd as well as the
+fx and derivatives}
 }
 \value{
 data frame with \code{fx} for the log pdf value of with \code{dProb}

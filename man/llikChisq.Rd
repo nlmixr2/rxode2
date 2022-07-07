@@ -7,7 +7,12 @@
 llikChisq(x, df, full = FALSE)
 }
 \arguments{
+\item{x}{variable that is distributed by chi-squared distribution}
+
 \item{df}{degrees of freedom (non-negative, but can be non-integer).}
+
+\item{full}{Add the data frame showing x, mean, sd as well as the
+fx and derivatives}
 }
 \value{
 data frame with \code{fx} for the log pdf value of with \code{dDf}

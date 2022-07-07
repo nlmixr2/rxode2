@@ -7,7 +7,12 @@
 llikWeibull(x, shape, scale, full = FALSE)
 }
 \arguments{
+\item{x}{variable distributed by a Weibull distribution}
+
 \item{shape, scale}{shape and scale parameters, the latter defaulting to 1.}
+
+\item{full}{Add the data frame showing x, mean, sd as well as the
+fx and derivatives}
 }
 \value{
 data frame with \code{fx} for the log pdf value of with \code{dProb}

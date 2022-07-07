@@ -7,6 +7,8 @@
 rxgamma(shape, rate = 1, n = 1L, ncores = 1L)
 }
 \arguments{
+\item{shape}{The shape of the gamma random variable}
+
 \item{rate}{an alternative way to specify the scale.}
 
 \item{n}{number of observations. If \code{length(n) > 1}, the length

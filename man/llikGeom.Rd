@@ -7,7 +7,12 @@
 llikGeom(x, prob, full = FALSE)
 }
 \arguments{
+\item{x}{variable distributed by a geom distribution}
+
 \item{prob}{probability of success in each trial. \code{0 < prob <= 1}.}
+
+\item{full}{Add the data frame showing x, mean, sd as well as the
+fx and derivatives}
 }
 \value{
 data frame with \code{fx} for the log pdf value of with \code{dProb}

@@ -236,7 +236,9 @@ llikT <-function(x, df, mean=0, sd=1, full=FALSE) {
 }
 
 #' log likelihood and derivatives for chi-squared distribution
-#' 
+#'
+#' @param x variable that is distributed by chi-squared distribution
+#' @inheritParams llikNorm
 #' @inheritParams stats::dchisq
 #' @return data frame with `fx` for the log pdf value of with `dDf`
 #'   that has the derivatives with respect to the `df` parameter
@@ -276,6 +278,8 @@ llikChisq <-function(x, df, full=FALSE) {
 
 #' log likelihood and derivaties for exponential distribution
 #' 
+#' @param x variable that is distributed by exponential distribution
+#' @inheritParams llikNorm
 #' @inheritParams stats::dexp
 #' @return data frame with `fx` for the log pdf value of with `dRate`
 #'   that has the derivatives with respect to the `rate` parameter
@@ -319,7 +323,9 @@ llikExp <-function(x, rate, full=FALSE) {
 }
 
 #' log likelihood and derivaties for F distribution
-#' 
+#'
+#' @param x variable that is distributed by f distribution
+#' @inheritParams llikNorm
 #' @inheritParams stats::df
 #' @return data frame with `fx` for the log pdf value of with `dDf1` and `dDf2`
 #'   that has the derivatives with respect to the `df1`/`df2` parameters at 
@@ -366,7 +372,10 @@ llikF <-function(x, df1, df2, full=FALSE) {
 }
 
 #' log likelihood and derivaties for Geom distribution
+#'
+#' @param x variable distributed by a geom distribution
 #' 
+#' @inheritParams llikNorm
 #' @inheritParams stats::dgeom
 #' @return data frame with `fx` for the log pdf value of with `dProb`
 #'   that has the derivatives with respect to the `prob` parameters at 
@@ -409,7 +418,11 @@ llikGeom <-function(x, prob, full=FALSE) {
 }
 
 #' log likelihood and derivaties for Unif distribution
-#' 
+#'
+#' @param x variable distributed by a uniform distribution
+#' @param alpha is the lower limit of the uniform distribution
+#' @param beta is the upper limit of the distribution
+#' @inheritParams llikNorm
 #' @inheritParams stats::dunif
 #' @return data frame with `fx` for the log pdf value of with `dProb`
 #'   that has the derivatives with respect to the `prob` parameters at 
@@ -457,6 +470,9 @@ llikUnif <-function(x, alpha, beta, full=FALSE) {
 
 #' log likelihood and derivaties for Weibull distribution
 #' 
+#' @param x variable distributed by a Weibull distribution
+#' 
+#' @inheritParams llikNorm
 #' @inheritParams stats::dweibull
 #' @return data frame with `fx` for the log pdf value of with `dProb`
 #'   that has the derivatives with respect to the `prob` parameters at 
@@ -504,7 +520,11 @@ llikWeibull <-function(x, shape, scale, full=FALSE) {
 
 
 #' log likelihood and derivaties for Gamma distribution
-#' 
+#'
+#' @param x variable that is distributed by gamma distribution
+#' @param shape this is the distirbution's shape parameter. Must be positive.
+#' @param rate this is the distribution's rate parameters.  Must be positive.
+#' @inheritParams llikNorm
 #' @inheritParams stats::dgamma
 #' @return data frame with `fx` for the log pdf value of with `dProb`
 #'   that has the derivatives with respect to the `prob` parameters at 

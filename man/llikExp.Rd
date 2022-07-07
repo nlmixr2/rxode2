@@ -7,7 +7,12 @@
 llikExp(x, rate, full = FALSE)
 }
 \arguments{
+\item{x}{variable that is distributed by exponential distribution}
+
 \item{rate}{vector of rates.}
+
+\item{full}{Add the data frame showing x, mean, sd as well as the
+fx and derivatives}
 }
 \value{
 data frame with \code{fx} for the log pdf value of with \code{dRate}

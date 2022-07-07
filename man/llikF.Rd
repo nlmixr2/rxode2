@@ -7,7 +7,12 @@
 llikF(x, df1, df2, full = FALSE)
 }
 \arguments{
+\item{x}{variable that is distributed by f distribution}
+
 \item{df1, df2}{degrees of freedom.  \code{Inf} is allowed.}
+
+\item{full}{Add the data frame showing x, mean, sd as well as the
+fx and derivatives}
 }
 \value{
 data frame with \code{fx} for the log pdf value of with \code{dDf1} and \code{dDf2}
