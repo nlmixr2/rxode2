@@ -29,11 +29,9 @@ use the x and rate arguments.  You can also get the derivative of \code{prob} wi
 }
 \examples{
 
-x <- seq(0.001, 5, length.out = 100)
+llikGeom(1:10, 0.2)
 
-llikGeom((1:9)/10, 0.2)
-
-et  <- et((1:9)/10)
+et  <- et(1:10)
 et$prob <- 0.2
  
 model <- rxode2({

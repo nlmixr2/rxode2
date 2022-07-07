@@ -45,6 +45,7 @@ model <- rxode2({
 
 
 rxSolve(model, et)
+
 }
 \author{
 Matthew L. Fidler

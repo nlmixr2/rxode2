@@ -392,11 +392,9 @@ llikF <-function(x, df1, df2, full=FALSE) {
 #' 
 #' @examples
 #'
-#' x <- seq(0.001, 5, length.out = 100)
+#' llikGeom(1:10, 0.2)
 #'
-#' llikGeom((1:9)/10, 0.2)
-#'
-#' et  <- et((1:9)/10)
+#' et  <- et(1:10)
 #' et$prob <- 0.2
 #'  
 #' model <- rxode2({
@@ -454,6 +452,7 @@ llikGeom <-function(x, prob, full=FALSE) {
 #' 
 #'
 #' rxSolve(model, et)
+#' 
 llikUnif <-function(x, alpha, beta, full=FALSE) {
   checkmate::assertNumeric(x, min.len=0, any.missing=FALSE, finite=TRUE)
   checkmate::assertNumeric(alpha, min.len=0, any.missing=FALSE, finite=TRUE)
