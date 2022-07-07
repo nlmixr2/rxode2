@@ -9,7 +9,7 @@ llikGamma(x, shape, rate, full = FALSE)
 \arguments{
 \item{x}{variable that is distributed by gamma distribution}
 
-\item{shape}{this is the distirbution's shape parameter. Must be positive.}
+\item{shape}{this is the distribution's shape parameter. Must be positive.}
 
 \item{rate}{this is the distribution's rate parameters.  Must be positive.}
 

@@ -466,7 +466,6 @@ llikUnif <-function(x, alpha, beta, full=FALSE) {
   .ret
 }
 
-
 #' log likelihood and derivaties for Weibull distribution
 #' 
 #' @param x variable distributed by a Weibull distribution
@@ -521,10 +520,13 @@ llikWeibull <-function(x, shape, scale, full=FALSE) {
 #' log likelihood and derivaties for Gamma distribution
 #'
 #' @param x variable that is distributed by gamma distribution
-#' @param shape this is the distirbution's shape parameter. Must be positive.
+#' @param shape this is the distribution's shape parameter. Must be positive.
 #' @param rate this is the distribution's rate parameters.  Must be positive.
+#' 
 #' @inheritParams llikNorm
+#' 
 #' @inheritParams stats::dgamma
+#' 
 #' @return data frame with `fx` for the log pdf value of with `dProb`
 #'   that has the derivatives with respect to the `prob` parameters at 
 #'   the observation time-point
