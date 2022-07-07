@@ -1263,6 +1263,7 @@ NumericVector rxSetupScale(const RObject &obj,
 
 typedef struct {
   int *gon;
+	double *gLlikSave;
   double *gIndSim;
   double *gsolve;
   double *gInfusionRate;
@@ -1327,6 +1328,10 @@ typedef struct {
 
 
 rx_globals _globals;
+
+extern "C" double *getLlikSave() {
+	return _globals.gLlikSave + omp_get_thread_num()*9;	
+}
 
 extern "C" void setZeroMatrix(int which) {
   switch(which){
@@ -4910,7 +4915,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
-                                      5*op->neq + 8*n3a, sizeof(double));// [n0]
+                                      5*op->neq + 8*n3a
+																			op->cores*9, sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4944,6 +4950,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gTfirstS  = _globals.gTlastS + n3a; // [n3a]
 		_globals.gCurDoseS = _globals.gTfirstS + n3a; // [n3a]
     _globals.gIndSim   = _globals.gCurDoseS + n3a;// [n7]
+		_globals.gLlikSave = _globals.gIndSim + n7; // [cores*9]
     std::fill_n(rx->ypNA, op->neq + 2*n3a, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);

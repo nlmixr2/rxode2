@@ -11,6 +11,8 @@ extern "C" {
 
 void sortRadix(rx_solving_options_ind *ind);
 
+double *getLlikSave();
+
 static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
                              t_update_inis u_inis) {
   ind->ixds = ind->idx = ind->_update_par_ptr_in = 0; // reset dosing
@@ -48,7 +50,8 @@ static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind
       if (op->badSolve) return 0;
     }
   }
-	for (int i=10; i--;) {
+	ind->llikSave = getLlikSave();
+	for (int i=9; i--;) {
 		ind->llikSave[i] = 0.0;
 	}
   ind->ixds=ind->idx=0;

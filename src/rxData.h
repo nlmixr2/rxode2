@@ -4,8 +4,8 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
   double get_fkeep(int col, int id, rx_solving_options_ind *ind);
+  double *getLlikSave();
   SEXP get_fkeepn();
   void cliAlert(const char *format, ...);
   void setZeroMatrix(int which);

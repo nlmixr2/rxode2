@@ -505,4 +505,19 @@ test_that("log-liklihood tests for gamma (including derivatives)", {
     
   expect_equal(fromR$fx, dgamma(et$time, 1, rate=10, log=TRUE))
 
+
+  et  <- et(seq(0.01,4, length.out=10)) %>%
+    et(id=1:200)
+  et$shape <- 1
+  et$rate <- 10
+
+  model <- rxode2({
+    fx <- llikGamma(time, shape, rate)
+    dShape<- llikGammaDshape(time, shape, rate)
+    dRate <- llikGammaDrate(time, shape, rate)
+  })
+
+  fromOde <- rxSolve(model, et, cores=2)
+
+
 })
