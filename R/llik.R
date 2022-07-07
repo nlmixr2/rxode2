@@ -397,7 +397,7 @@ llikF <-function(x, df1, df2, full=FALSE) {
 #'
 #' rxSolve(model, et)
 llikGeom <-function(x, prob, full=FALSE) {
-  checkmate::assertIntegerish(x, lower=0, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertIntegerish(x, lower=0, min.len=0, any.missing=FALSE)
   checkmate::assertNumeric(prob, min.len=0, lower=0, upper=1,any.missing=FALSE, finite=TRUE)
   .rate <- try(data.frame(x=x, prob=prob), silent=TRUE)
   if (inherits(.rate, "try-error")) {

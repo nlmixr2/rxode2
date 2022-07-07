@@ -344,7 +344,7 @@ test_that("log-liklihood tests for geom (including derivatives)", {
   
   # Make sure they compile:
   expect_error(rxode2("tmp=llikGeom(x, p)"), NA)
-  expect_error(rxode2("tmp=llikGeomDp(x, p)"), NA)
+  expect_error(rxode2("tmp=llikGeomDprob(x, p)"), NA)
 
   expect_equal(rxToSE("llikGeom(x, p)"), "llikGeom(x,p)")
   expect_equal(rxFromSE("llikGeom(x, p)"), "llikGeom(x,p)")
