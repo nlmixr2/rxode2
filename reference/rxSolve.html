@@ -143,203 +143,203 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxSolve</span><span class="op">(</span>
-  <span class="va">object</span>,
-  params <span class="op">=</span> <span class="cn">NULL</span>,
-  events <span class="op">=</span> <span class="cn">NULL</span>,
-  inits <span class="op">=</span> <span class="cn">NULL</span>,
-  scale <span class="op">=</span> <span class="cn">NULL</span>,
-  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span><span class="op">)</span>,
-  sigdig <span class="op">=</span> <span class="cn">NULL</span>,
-  atol <span class="op">=</span> <span class="fl">1e-08</span>,
-  rtol <span class="op">=</span> <span class="fl">1e-06</span>,
-  maxsteps <span class="op">=</span> <span class="fl">70000L</span>,
-  hmin <span class="op">=</span> <span class="fl">0</span>,
-  hmax <span class="op">=</span> <span class="cn">NA_real_</span>,
-  hmaxSd <span class="op">=</span> <span class="fl">0</span>,
-  hini <span class="op">=</span> <span class="fl">0</span>,
-  maxordn <span class="op">=</span> <span class="fl">12L</span>,
-  maxords <span class="op">=</span> <span class="fl">5L</span>,
-  <span class="va">...</span>,
-  <span class="va">cores</span>,
-  covsInterpolation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"locf"</span>, <span class="st">"linear"</span>, <span class="st">"nocb"</span>, <span class="st">"midpoint"</span><span class="op">)</span>,
-  addCov <span class="op">=</span> <span class="cn">TRUE</span>,
-  sigma <span class="op">=</span> <span class="cn">NULL</span>,
-  sigmaDf <span class="op">=</span> <span class="cn">NULL</span>,
-  sigmaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,
-  sigmaUpper <span class="op">=</span> <span class="cn">Inf</span>,
-  nCoresRV <span class="op">=</span> <span class="fl">1L</span>,
-  sigmaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,
-  sigmaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span><span class="op">)</span>,
-  sigmaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"identity"</span>, <span class="st">"variance"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,
-    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,
-  nDisplayProgress <span class="op">=</span> <span class="fl">10000L</span>,
-  amountUnits <span class="op">=</span> <span class="cn">NA_character_</span>,
-  timeUnits <span class="op">=</span> <span class="st">"hours"</span>,
-  theta <span class="op">=</span> <span class="cn">NULL</span>,
-  thetaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,
-  thetaUpper <span class="op">=</span> <span class="cn">Inf</span>,
-  eta <span class="op">=</span> <span class="cn">NULL</span>,
-  addDosing <span class="op">=</span> <span class="cn">FALSE</span>,
-  stateTrim <span class="op">=</span> <span class="cn">Inf</span>,
-  updateObject <span class="op">=</span> <span class="cn">FALSE</span>,
-  omega <span class="op">=</span> <span class="cn">NULL</span>,
-  omegaDf <span class="op">=</span> <span class="cn">NULL</span>,
-  omegaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,
-  omegaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span><span class="op">)</span>,
-  omegaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variance"</span>, <span class="st">"identity"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,
-    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,
-  omegaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,
-  omegaUpper <span class="op">=</span> <span class="cn">Inf</span>,
-  nSub <span class="op">=</span> <span class="fl">1L</span>,
-  thetaMat <span class="op">=</span> <span class="cn">NULL</span>,
-  thetaDf <span class="op">=</span> <span class="cn">NULL</span>,
-  thetaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,
-  nStud <span class="op">=</span> <span class="fl">1L</span>,
-  dfSub <span class="op">=</span> <span class="fl">0</span>,
-  dfObs <span class="op">=</span> <span class="fl">0</span>,
-  returnType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rxSolve"</span>, <span class="st">"matrix"</span>, <span class="st">"data.frame"</span>, <span class="st">"data.frame.TBS"</span>, <span class="st">"data.table"</span>,
-    <span class="st">"tbl"</span>, <span class="st">"tibble"</span><span class="op">)</span>,
-  seed <span class="op">=</span> <span class="cn">NULL</span>,
-  nsim <span class="op">=</span> <span class="cn">NULL</span>,
-  minSS <span class="op">=</span> <span class="fl">10L</span>,
-  maxSS <span class="op">=</span> <span class="fl">1000L</span>,
-  infSSstep <span class="op">=</span> <span class="fl">12</span>,
-  strictSS <span class="op">=</span> <span class="cn">TRUE</span>,
-  istateReset <span class="op">=</span> <span class="cn">TRUE</span>,
-  subsetNonmem <span class="op">=</span> <span class="cn">TRUE</span>,
-  maxAtolRtolFactor <span class="op">=</span> <span class="fl">0.1</span>,
-  from <span class="op">=</span> <span class="cn">NULL</span>,
-  to <span class="op">=</span> <span class="cn">NULL</span>,
-  by <span class="op">=</span> <span class="cn">NULL</span>,
-  length.out <span class="op">=</span> <span class="cn">NULL</span>,
-  iCov <span class="op">=</span> <span class="cn">NULL</span>,
-  keep <span class="op">=</span> <span class="cn">NULL</span>,
-  indLinPhiTol <span class="op">=</span> <span class="fl">1e-07</span>,
-  indLinPhiM <span class="op">=</span> <span class="fl">0L</span>,
-  indLinMatExpType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"expokit"</span>, <span class="st">"Al-Mohy"</span>, <span class="st">"arma"</span><span class="op">)</span>,
-  indLinMatExpOrder <span class="op">=</span> <span class="fl">6L</span>,
-  drop <span class="op">=</span> <span class="cn">NULL</span>,
-  idFactor <span class="op">=</span> <span class="cn">TRUE</span>,
-  mxhnil <span class="op">=</span> <span class="fl">0</span>,
-  hmxi <span class="op">=</span> <span class="fl">0</span>,
-  warnIdSort <span class="op">=</span> <span class="cn">TRUE</span>,
-  warnDrop <span class="op">=</span> <span class="cn">TRUE</span>,
-  ssAtol <span class="op">=</span> <span class="fl">1e-08</span>,
-  ssRtol <span class="op">=</span> <span class="fl">1e-06</span>,
-  safeZero <span class="op">=</span> <span class="cn">TRUE</span>,
-  sumType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pairwise"</span>, <span class="st">"fsum"</span>, <span class="st">"kahan"</span>, <span class="st">"neumaier"</span>, <span class="st">"c"</span><span class="op">)</span>,
-  prodType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"long double"</span>, <span class="st">"double"</span>, <span class="st">"logify"</span><span class="op">)</span>,
-  sensType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"advan"</span>, <span class="st">"autodiff"</span>, <span class="st">"forward"</span>, <span class="st">"central"</span><span class="op">)</span>,
-  linDiff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tlag <span class="op">=</span> <span class="fl">1.5e-05</span>, f <span class="op">=</span> <span class="fl">1.5e-05</span>, rate <span class="op">=</span> <span class="fl">1.5e-05</span>, dur <span class="op">=</span> <span class="fl">1.5e-05</span>, tlag2 <span class="op">=</span>
-    <span class="fl">1.5e-05</span>, f2 <span class="op">=</span> <span class="fl">1.5e-05</span>, rate2 <span class="op">=</span> <span class="fl">1.5e-05</span>, dur2 <span class="op">=</span> <span class="fl">1.5e-05</span><span class="op">)</span>,
-  linDiffCentral <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tlag <span class="op">=</span> <span class="cn">TRUE</span>, f <span class="op">=</span> <span class="cn">TRUE</span>, rate <span class="op">=</span> <span class="cn">TRUE</span>, dur <span class="op">=</span> <span class="cn">TRUE</span>, tlag2 <span class="op">=</span> <span class="cn">TRUE</span>, f2 <span class="op">=</span>
-    <span class="cn">TRUE</span>, rate2 <span class="op">=</span> <span class="cn">TRUE</span>, dur2 <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,
-  resample <span class="op">=</span> <span class="cn">NULL</span>,
-  resampleID <span class="op">=</span> <span class="cn">TRUE</span>,
-  maxwhile <span class="op">=</span> <span class="fl">1e+05</span>,
-  atolSens <span class="op">=</span> <span class="fl">1e-08</span>,
-  rtolSens <span class="op">=</span> <span class="fl">1e-06</span>,
-  ssAtolSens <span class="op">=</span> <span class="fl">1e-08</span>,
-  ssRtolSens <span class="op">=</span> <span class="fl">1e-06</span>,
-  simVariability <span class="op">=</span> <span class="cn">NA</span>
-<span class="op">)</span>
-
-<span class="co"># S3 method for `function`</span>
-<span class="fu">rxSolve</span><span class="op">(</span>
-  <span class="va">object</span>,
-  params <span class="op">=</span> <span class="cn">NULL</span>,
-  events <span class="op">=</span> <span class="cn">NULL</span>,
-  inits <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  theta <span class="op">=</span> <span class="cn">NULL</span>,
-  eta <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span>
-
-<span class="co"># S3 method for rxUi</span>
-<span class="fu">rxSolve</span><span class="op">(</span>
-  <span class="va">object</span>,
-  params <span class="op">=</span> <span class="cn">NULL</span>,
-  events <span class="op">=</span> <span class="cn">NULL</span>,
-  inits <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  theta <span class="op">=</span> <span class="cn">NULL</span>,
-  eta <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span>
-
-<span class="co"># S3 method for nlmixr2FitData</span>
-<span class="fu">rxSolve</span><span class="op">(</span>
-  <span class="va">object</span>,
-  params <span class="op">=</span> <span class="cn">NULL</span>,
-  events <span class="op">=</span> <span class="cn">NULL</span>,
-  inits <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  theta <span class="op">=</span> <span class="cn">NULL</span>,
-  eta <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span>
-
-<span class="co"># S3 method for nlmixr2FitCore</span>
-<span class="fu">rxSolve</span><span class="op">(</span>
-  <span class="va">object</span>,
-  params <span class="op">=</span> <span class="cn">NULL</span>,
-  events <span class="op">=</span> <span class="cn">NULL</span>,
-  inits <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  theta <span class="op">=</span> <span class="cn">NULL</span>,
-  eta <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span>
-
-<span class="co"># S3 method for default</span>
-<span class="fu">rxSolve</span><span class="op">(</span>
-  <span class="va">object</span>,
-  params <span class="op">=</span> <span class="cn">NULL</span>,
-  events <span class="op">=</span> <span class="cn">NULL</span>,
-  inits <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  theta <span class="op">=</span> <span class="cn">NULL</span>,
-  eta <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span>
-
-<span class="co"># S3 method for rxSolve</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxode2</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxSolve</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxEt</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxParams</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxode2</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">object</span>, nsim <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxSolve</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">object</span>, nsim <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxParams</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">object</span>, nsim <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxSolve</span>
-<span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxUi</span>
-<span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxode2</span>
-<span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxParams</span>
-<span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="co"># S3 method for rxEt</span>
-<span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="fu">rxControl</span><span class="op">(</span><span class="va">...</span>, params <span class="op">=</span> <span class="cn">NULL</span>, events <span class="op">=</span> <span class="cn">NULL</span>, inits <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxSolve</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scale <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span><span class="op">)</span>,</span>
+<span>  sigdig <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  atol <span class="op">=</span> <span class="fl">1e-08</span>,</span>
+<span>  rtol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  maxsteps <span class="op">=</span> <span class="fl">70000L</span>,</span>
+<span>  hmin <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  hmax <span class="op">=</span> <span class="cn">NA_real_</span>,</span>
+<span>  hmaxSd <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  hini <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  maxordn <span class="op">=</span> <span class="fl">12L</span>,</span>
+<span>  maxords <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  <span class="va">cores</span>,</span>
+<span>  covsInterpolation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"locf"</span>, <span class="st">"linear"</span>, <span class="st">"nocb"</span>, <span class="st">"midpoint"</span><span class="op">)</span>,</span>
+<span>  addCov <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sigmaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sigmaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
+<span>  sigmaUpper <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  nCoresRV <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  sigmaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  sigmaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span><span class="op">)</span>,</span>
+<span>  sigmaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"identity"</span>, <span class="st">"variance"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,</span>
+<span>    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,</span>
+<span>  nDisplayProgress <span class="op">=</span> <span class="fl">10000L</span>,</span>
+<span>  amountUnits <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  timeUnits <span class="op">=</span> <span class="st">"hours"</span>,</span>
+<span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  thetaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
+<span>  thetaUpper <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  eta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  addDosing <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  stateTrim <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  updateObject <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  omega <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  omegaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  omegaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  omegaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span><span class="op">)</span>,</span>
+<span>  omegaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variance"</span>, <span class="st">"identity"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,</span>
+<span>    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,</span>
+<span>  omegaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
+<span>  omegaUpper <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  nSub <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  thetaMat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  thetaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  thetaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  nStud <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  dfSub <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  dfObs <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  returnType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rxSolve"</span>, <span class="st">"matrix"</span>, <span class="st">"data.frame"</span>, <span class="st">"data.frame.TBS"</span>, <span class="st">"data.table"</span>,</span>
+<span>    <span class="st">"tbl"</span>, <span class="st">"tibble"</span><span class="op">)</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nsim <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  minSS <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  maxSS <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  infSSstep <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  strictSS <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  istateReset <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  subsetNonmem <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  maxAtolRtolFactor <span class="op">=</span> <span class="fl">0.1</span>,</span>
+<span>  from <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  to <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  length.out <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  iCov <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  keep <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  indLinPhiTol <span class="op">=</span> <span class="fl">1e-07</span>,</span>
+<span>  indLinPhiM <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  indLinMatExpType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"expokit"</span>, <span class="st">"Al-Mohy"</span>, <span class="st">"arma"</span><span class="op">)</span>,</span>
+<span>  indLinMatExpOrder <span class="op">=</span> <span class="fl">6L</span>,</span>
+<span>  drop <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  idFactor <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  mxhnil <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  hmxi <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  warnIdSort <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  warnDrop <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  ssAtol <span class="op">=</span> <span class="fl">1e-08</span>,</span>
+<span>  ssRtol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  safeZero <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  sumType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pairwise"</span>, <span class="st">"fsum"</span>, <span class="st">"kahan"</span>, <span class="st">"neumaier"</span>, <span class="st">"c"</span><span class="op">)</span>,</span>
+<span>  prodType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"long double"</span>, <span class="st">"double"</span>, <span class="st">"logify"</span><span class="op">)</span>,</span>
+<span>  sensType <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"advan"</span>, <span class="st">"autodiff"</span>, <span class="st">"forward"</span>, <span class="st">"central"</span><span class="op">)</span>,</span>
+<span>  linDiff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tlag <span class="op">=</span> <span class="fl">1.5e-05</span>, f <span class="op">=</span> <span class="fl">1.5e-05</span>, rate <span class="op">=</span> <span class="fl">1.5e-05</span>, dur <span class="op">=</span> <span class="fl">1.5e-05</span>, tlag2 <span class="op">=</span></span>
+<span>    <span class="fl">1.5e-05</span>, f2 <span class="op">=</span> <span class="fl">1.5e-05</span>, rate2 <span class="op">=</span> <span class="fl">1.5e-05</span>, dur2 <span class="op">=</span> <span class="fl">1.5e-05</span><span class="op">)</span>,</span>
+<span>  linDiffCentral <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tlag <span class="op">=</span> <span class="cn">TRUE</span>, f <span class="op">=</span> <span class="cn">TRUE</span>, rate <span class="op">=</span> <span class="cn">TRUE</span>, dur <span class="op">=</span> <span class="cn">TRUE</span>, tlag2 <span class="op">=</span> <span class="cn">TRUE</span>, f2 <span class="op">=</span></span>
+<span>    <span class="cn">TRUE</span>, rate2 <span class="op">=</span> <span class="cn">TRUE</span>, dur2 <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>  resample <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resampleID <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  maxwhile <span class="op">=</span> <span class="fl">1e+05</span>,</span>
+<span>  atolSens <span class="op">=</span> <span class="fl">1e-08</span>,</span>
+<span>  rtolSens <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  ssAtolSens <span class="op">=</span> <span class="fl">1e-08</span>,</span>
+<span>  ssRtolSens <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  simVariability <span class="op">=</span> <span class="cn">NA</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for `function`</span></span>
+<span><span class="fu">rxSolve</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eta <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxUi</span></span>
+<span><span class="fu">rxSolve</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eta <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for nlmixr2FitData</span></span>
+<span><span class="fu">rxSolve</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eta <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for nlmixr2FitCore</span></span>
+<span><span class="fu">rxSolve</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eta <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for default</span></span>
+<span><span class="fu">rxSolve</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inits <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  theta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eta <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxSolve</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxode2</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxSolve</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxEt</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxParams</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxode2</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">object</span>, nsim <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxSolve</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">object</span>, nsim <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxParams</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">object</span>, nsim <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxSolve</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxUi</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxode2</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxParams</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for rxEt</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">rxControl</span><span class="op">(</span><span class="va">...</span>, params <span class="op">=</span> <span class="cn">NULL</span>, events <span class="op">=</span> <span class="cn">NULL</span>, inits <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -1116,7 +1116,7 @@ Springer-Verlag (1993).</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer></div>

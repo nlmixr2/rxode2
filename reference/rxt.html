@@ -149,7 +149,7 @@ engine <code>threefry</code> and then run the code.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxt</span><span class="op">(</span><span class="va">df</span>, n <span class="op">=</span> <span class="fl">1L</span>, ncores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxt</span><span class="op">(</span><span class="va">df</span>, n <span class="op">=</span> <span class="fl">1L</span>, ncores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -193,32 +193,32 @@ reproduce your results.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co">## Use threefry engine</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxt you have to explicitly state n</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxt you have to explicitly state n</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  1.3815600  2.1144545  0.7674457  1.2045156  2.4454188  0.7090675</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  2.5337710  1.0025561  1.3351363 -0.7573579</span>
-<span class="r-in"><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span>
+<span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.4895865 -0.2723197 -1.1079268 -0.4140703  0.3864693 -0.7866412</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -0.1142135  0.4915856  3.3550457 -0.5753229</span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu">rxt</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span> <span class="co">## The first argument is the df parameter</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span> <span class="co">## The first argument is the df parameter</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] -0.6801902</span>
-<span class="r-in"></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co">## This example uses `rxt` directly in the model</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span class="r-in">  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">rxt</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## This example uses `rxt` directly in the model</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">rxt</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">et</span><span class="op">)</span></span>
-<span class="r-in"><span class="co"># }</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">et</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -230,7 +230,7 @@ reproduce your results.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer></div>

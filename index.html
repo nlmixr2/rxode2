@@ -208,24 +208,24 @@
 </h2>
 <p>You can install the released version of rxode2 from <a href="https://CRAN.R-project.org" class="external-link">CRAN</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"rxode2"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"rxode2"</span><span class="op">)</span></span></code></pre></div>
 <p>You can install the development version of rxode2 with</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/remote-reexports.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"nlmixr2/rxode2"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"nlmixr2/rxode2"</span><span class="op">)</span></span></code></pre></div>
 <p>To build models with rxode2, you need a working c compiler. To use parallel threaded solving in rxode2, this c compiler needs to support open-mp.</p>
 <p>You can check to see if R has working c compiler you can check with:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co">## install.packages("pkgbuild")</span>
-<span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pkgbuild/man/has_build_tools.html" class="external-link">has_build_tools</a></span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co">## install.packages("pkgbuild")</span></span>
+<span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pkgbuild/man/has_build_tools.html" class="external-link">has_build_tools</a></span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>If you do not have the toolchain, you can set it up as described by the platform information below:</p>
 <div class="section level3">
 <h3 id="windows">Windows<a class="anchor" aria-label="anchor" href="#windows"></a>
 </h3>
 <p>In windows you may simply use installr to install rtools:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"installr"</span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://talgalili.github.io/installr/" class="external-link">installr</a></span><span class="op">)</span>
-<span class="fu">install.rtools</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"installr"</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://talgalili.github.io/installr/" class="external-link">installr</a></span><span class="op">)</span></span>
+<span><span class="fu">install.rtools</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Alternatively you can <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">download</a> and install rtools directly.</p>
 </div>
 <div class="section level3">
@@ -234,14 +234,14 @@
 <p>To get the most speed you need OpenMP enabled and compile rxode2 with that compiler. There are various options and the most up to date discussion about this is likely the <a href="https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac" class="external-link">data.table installation faq for MacOS</a>. The last thing to keep in mind is that <code>rxode2</code> uses the code very similar to the original <code>lsoda</code> which requires the <code>gfortran</code> compiler to be setup as well as the <code>OpenMP</code> compilers.</p>
 <p>If you are going to be using <code>rxode2</code> and <code>nlmixr</code> together and have an older mac computer, I would suggest trying the following:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/symengine/symengine.R" class="external-link">symengine</a></span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/symengine/symengine.R" class="external-link">symengine</a></span><span class="op">)</span></span></code></pre></div>
 <p>If this crashes your R session then the binary does not work with your Mac machine. To be able to run nlmixr, you will need to compile this package manually. I will proceed assuming you have <code>homebrew</code> installed on your system.</p>
 <p>On your system terminal you will need to install the dependencies to compile <code>symengine</code>:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1"></a><span class="ex">brew</span> install cmake gmp mpfr libmpc</span></code></pre></div>
 <p>After installing the dependencies, you need to reinstall <code>symengine</code>:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"symengine"</span>, type<span class="op">=</span><span class="st">"source"</span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/symengine/symengine.R" class="external-link">symengine</a></span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"symengine"</span>, type<span class="op">=</span><span class="st">"source"</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/symengine/symengine.R" class="external-link">symengine</a></span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="linux">Linux<a class="anchor" aria-label="anchor" href="#linux"></a>
@@ -255,8 +255,8 @@
 <p>Since the development version of rxode2 uses StanHeaders, you will need to make sure your compiler is setup to support C++14, as described in the <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started#configuration-of-the-c-toolchain" class="external-link">rstan setup page</a>. For R 4.0, I do not believe this requires modifying the windows toolchain any longer (so it is much easier to setup).</p>
 <p>Once the C++ toolchain is setup appropriately, you can install the development version from <a href="https://github.com/nlmixr2/rxode2" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># install.packages("devtools")</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/remote-reexports.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"nlmixr2/rxode2"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"nlmixr2/rxode2"</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level1">
@@ -265,78 +265,78 @@
 <p>The model equations can be specified through a text string, a model file or an R expression. Both differential and algebraic equations are permitted. Differential equations are specified by <code>d/dt(var_name) =</code>. Each equation can be separated by a semicolon.</p>
 <p>To load <code>rxode2</code> package and compile the model:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>
-<span class="co">#&gt; detected new version of rxode2, cleaning cache</span>
-<span class="co">#&gt; rxode2 2.0.6 using 4 threads (see ?getRxThreads)</span>
-
-<span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-  <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;
-  <span class="va">C3</span> <span class="op">&lt;-</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;
-<span class="op">}</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; → creating rxode2 include directory</span>
-<span class="co">#&gt; → getting R compile options</span>
-<span class="co">#&gt; → precompiling headers</span>
-<span class="co">#&gt; ✔ done</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; detected new version of rxode2, cleaning cache</span></span>
+<span><span class="co">#&gt; rxode2 2.0.6 using 4 threads (see ?getRxThreads)</span></span>
+<span></span>
+<span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;</span>
+<span>  <span class="va">C3</span> <span class="op">&lt;-</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;</span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; → creating rxode2 include directory</span></span>
+<span><span class="co">#&gt; → getting R compile options</span></span>
+<span><span class="co">#&gt; → precompiling headers</span></span>
+<span><span class="co">#&gt; ✔ done</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="specify-ode-parameters-and-initial-conditions">Specify ODE parameters and initial conditions<a class="anchor" aria-label="anchor" href="#specify-ode-parameters-and-initial-conditions"></a>
 </h2>
 <p>Model parameters can be defined as named vectors. Names of parameters in the vector must be a superset of parameters in the ODE model, and the order of parameters within the vector is not important.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">theta</span> <span class="op">&lt;-</span> 
-   <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">2.94E-01</span>, CL<span class="op">=</span><span class="fl">1.86E+01</span>, V2<span class="op">=</span><span class="fl">4.02E+01</span>, <span class="co"># central </span>
-     Q<span class="op">=</span><span class="fl">1.05E+01</span>,  V3<span class="op">=</span><span class="fl">2.97E+02</span>,              <span class="co"># peripheral</span>
-     Kin<span class="op">=</span><span class="fl">1</span>, Kout<span class="op">=</span><span class="fl">1</span>, EC50<span class="op">=</span><span class="fl">200</span><span class="op">)</span>               <span class="co"># effects</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">theta</span> <span class="op">&lt;-</span> </span>
+<span>   <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">2.94E-01</span>, CL<span class="op">=</span><span class="fl">1.86E+01</span>, V2<span class="op">=</span><span class="fl">4.02E+01</span>, <span class="co"># central </span></span>
+<span>     Q<span class="op">=</span><span class="fl">1.05E+01</span>,  V3<span class="op">=</span><span class="fl">2.97E+02</span>,              <span class="co"># peripheral</span></span>
+<span>     Kin<span class="op">=</span><span class="fl">1</span>, Kout<span class="op">=</span><span class="fl">1</span>, EC50<span class="op">=</span><span class="fl">200</span><span class="op">)</span>               <span class="co"># effects</span></span></code></pre></div>
 <p>Initial conditions (ICs) can be defined through a vector as well. If the elements are not specified, the initial condition for the compartment is assumed to be zero.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eff<span class="op">=</span><span class="fl">1</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eff<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <p>If you want to specify the initial conditions in the model you can add:</p>
-<pre><code><span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">1</span></code></pre>
+<pre><code><span><span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">1</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="specify-dosing-and-sampling-in-rxode2">Specify Dosing and sampling in rxode2<a class="anchor" aria-label="anchor" href="#specify-dosing-and-sampling-in-rxode2"></a>
 </h2>
 <p><code>rxode2</code> provides a simple and very flexible way to specify dosing and sampling through functions that generate an event table. First, an empty event table is generated through the “eventTable()” function:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/eventTable.html">eventTable</a></span><span class="op">(</span>amount.units<span class="op">=</span><span class="st">'mg'</span>, time.units<span class="op">=</span><span class="st">'hours'</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/eventTable.html">eventTable</a></span><span class="op">(</span>amount.units<span class="op">=</span><span class="st">'mg'</span>, time.units<span class="op">=</span><span class="st">'hours'</span><span class="op">)</span></span></code></pre></div>
 <p>Next, use the <code><a href="reference/add.dosing.html">add.dosing()</a></code> and <code><a href="reference/add.sampling.html">add.sampling()</a></code> functions of the <code>EventTable</code> object to specify the dosing (amounts, frequency and/or times, etc.) and observation times at which to sample the state of the system. These functions can be called multiple times to specify more complex dosing or sampling regiments. Here, these functions are used to specify 10mg BID dosing for 5 days, followed by 20mg QD dosing for 5 days:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose<span class="op">=</span><span class="fl">10000</span>, nbr.doses<span class="op">=</span><span class="fl">10</span>, dosing.interval<span class="op">=</span><span class="fl">12</span><span class="op">)</span>
-<span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose<span class="op">=</span><span class="fl">20000</span>, nbr.doses<span class="op">=</span><span class="fl">5</span>, start.time<span class="op">=</span><span class="fl">120</span>,
-              dosing.interval<span class="op">=</span><span class="fl">24</span><span class="op">)</span>
-<span class="va">ev</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose<span class="op">=</span><span class="fl">10000</span>, nbr.doses<span class="op">=</span><span class="fl">10</span>, dosing.interval<span class="op">=</span><span class="fl">12</span><span class="op">)</span></span>
+<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose<span class="op">=</span><span class="fl">20000</span>, nbr.doses<span class="op">=</span><span class="fl">5</span>, start.time<span class="op">=</span><span class="fl">120</span>,</span>
+<span>              dosing.interval<span class="op">=</span><span class="fl">24</span><span class="op">)</span></span>
+<span><span class="va">ev</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span></span></code></pre></div>
 <p>If you wish you can also do this with the <code>mattigr</code> pipe operator <code>%&gt;%</code></p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/eventTable.html">eventTable</a></span><span class="op">(</span>amount.units<span class="op">=</span><span class="st">"mg"</span>, time.units<span class="op">=</span><span class="st">"hours"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">10000</span>, nbr.doses<span class="op">=</span><span class="fl">10</span>, dosing.interval<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">20000</span>, nbr.doses<span class="op">=</span><span class="fl">5</span>, start.time<span class="op">=</span><span class="fl">120</span>,
-             dosing.interval<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="reference/add.sampling.html">add.sampling</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/eventTable.html">eventTable</a></span><span class="op">(</span>amount.units<span class="op">=</span><span class="st">"mg"</span>, time.units<span class="op">=</span><span class="st">"hours"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">10000</span>, nbr.doses<span class="op">=</span><span class="fl">10</span>, dosing.interval<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">20000</span>, nbr.doses<span class="op">=</span><span class="fl">5</span>, start.time<span class="op">=</span><span class="fl">120</span>,</span>
+<span>             dosing.interval<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/add.sampling.html">add.sampling</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span></span></code></pre></div>
 <p>The functions <code>get.dosing()</code> and <code>get.sampling()</code> can be used to retrieve information from the event table.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ev</span><span class="op">$</span><span class="fu">get.dosing</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
-<span class="co">#&gt;   id low time high       cmt   amt rate ii addl evid ss dur</span>
-<span class="co">#&gt; 1  1  NA    0   NA (default) 10000    0 12    9    1  0   0</span>
-<span class="co">#&gt; 2  1  NA  120   NA (default) 20000    0 24    4    1  0   0</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ev</span><span class="op">$</span><span class="fu">get.dosing</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   id low time high       cmt   amt rate ii addl evid ss dur</span></span>
+<span><span class="co">#&gt; 1  1  NA    0   NA (default) 10000    0 12    9    1  0   0</span></span>
+<span><span class="co">#&gt; 2  1  NA  120   NA (default) 20000    0 24    4    1  0   0</span></span></code></pre></div>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ev</span><span class="op">$</span><span class="fu">get.sampling</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
-<span class="co">#&gt;   id low time high   cmt amt rate ii addl evid ss dur</span>
-<span class="co">#&gt; 1  1  NA    0   NA (obs)  NA   NA NA   NA    0 NA  NA</span>
-<span class="co">#&gt; 2  1  NA    1   NA (obs)  NA   NA NA   NA    0 NA  NA</span>
-<span class="co">#&gt; 3  1  NA    2   NA (obs)  NA   NA NA   NA    0 NA  NA</span>
-<span class="co">#&gt; 4  1  NA    3   NA (obs)  NA   NA NA   NA    0 NA  NA</span>
-<span class="co">#&gt; 5  1  NA    4   NA (obs)  NA   NA NA   NA    0 NA  NA</span>
-<span class="co">#&gt; 6  1  NA    5   NA (obs)  NA   NA NA   NA    0 NA  NA</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ev</span><span class="op">$</span><span class="fu">get.sampling</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   id low time high   cmt amt rate ii addl evid ss dur</span></span>
+<span><span class="co">#&gt; 1  1  NA    0   NA (obs)  NA   NA NA   NA    0 NA  NA</span></span>
+<span><span class="co">#&gt; 2  1  NA    1   NA (obs)  NA   NA NA   NA    0 NA  NA</span></span>
+<span><span class="co">#&gt; 3  1  NA    2   NA (obs)  NA   NA NA   NA    0 NA  NA</span></span>
+<span><span class="co">#&gt; 4  1  NA    3   NA (obs)  NA   NA NA   NA    0 NA  NA</span></span>
+<span><span class="co">#&gt; 5  1  NA    4   NA (obs)  NA   NA NA   NA    0 NA  NA</span></span>
+<span><span class="co">#&gt; 6  1  NA    5   NA (obs)  NA   NA NA   NA    0 NA  NA</span></span></code></pre></div>
 <p>You may notice that these are similar to NONMEM event tables; If you are more familiar with NONMEM data and events you could use them directly with the event table function <code>et</code></p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ev</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span>amountUnits<span class="op">=</span><span class="st">"mg"</span>, timeUnits<span class="op">=</span><span class="st">"hours"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, addl<span class="op">=</span><span class="fl">9</span>,ii<span class="op">=</span><span class="fl">12</span>,cmt<span class="op">=</span><span class="st">"depot"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">120</span>, amt<span class="op">=</span><span class="fl">2000</span>, addl<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">14</span>, cmt<span class="op">=</span><span class="st">"depot"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span> <span class="co"># Add sampling </span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">ev</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span>amountUnits<span class="op">=</span><span class="st">"mg"</span>, timeUnits<span class="op">=</span><span class="st">"hours"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, addl<span class="op">=</span><span class="fl">9</span>,ii<span class="op">=</span><span class="fl">12</span>,cmt<span class="op">=</span><span class="st">"depot"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">120</span>, amt<span class="op">=</span><span class="fl">2000</span>, addl<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">14</span>, cmt<span class="op">=</span><span class="st">"depot"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span> <span class="co"># Add sampling </span></span></code></pre></div>
 <p>You can see from the above code, you can dose to the compartment named in the rxode2 model. This slight deviation from NONMEM can reduce the need for compartment renumbering.</p>
 <p>These events can also be combined and expanded (to multi-subject events and complex regimens) with <code>rbind</code>, <code>c</code>, <code>seq</code>, and <code>rep</code>. For more information about creating complex dosing regimens using rxode2 see the <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html">rxode2 events vignette</a>.</p>
 </div>
@@ -345,8 +345,8 @@
 </h2>
 <p>The ODE can now be solved by calling the model object’s <code>run</code> or <code>solve</code> function. Simulation results for all variables in the model are stored in the output matrix x.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span><span class="op">$</span><span class="fu">solve</span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>;
-<span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span><span class="op">$</span><span class="fu">solve</span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>;</span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <thead><tr class="header">
 <th align="right">time</th>
@@ -416,34 +416,34 @@
 </table>
 <p>You can also solve this and create a rxode2 data frame:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>;
-<span class="va">x</span>
-<span class="co">#&gt; ── Solved rxode2 object ──</span>
-<span class="co">#&gt; ── Parameters (x$params): ──</span>
-<span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
-<span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; ── Initial Conditions (x$inits): ──</span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     1 </span>
-<span class="co">#&gt; ── First part of data (object): ──</span>
-<span class="co">#&gt; # A tibble: 241 × 7</span>
-<span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
-<span class="co">#&gt;    [h] &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span>
-<span class="co">#&gt; 1    0   0   0     10000     0     0   1   </span>
-<span class="co">#&gt; 2    1  44.4 0.920  7453. 1784.  273.  1.08</span>
-<span class="co">#&gt; 3    2  54.9 2.67   5554. 2206.  794.  1.18</span>
-<span class="co">#&gt; 4    3  51.9 4.46   4140. 2087. 1324.  1.23</span>
-<span class="co">#&gt; 5    4  44.5 5.98   3085. 1789. 1776.  1.23</span>
-<span class="co">#&gt; 6    5  36.5 7.18   2299. 1467. 2132.  1.21</span>
-<span class="co">#&gt; # … with 235 more rows</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>;</span>
+<span><span class="va">x</span></span>
+<span><span class="co">#&gt; ── Solved rxode2 object ──</span></span>
+<span><span class="co">#&gt; ── Parameters (x$params): ──</span></span>
+<span><span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span></span>
+<span><span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span></span>
+<span><span class="co">#&gt; ── Initial Conditions (x$inits): ──</span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     1 </span></span>
+<span><span class="co">#&gt; ── First part of data (object): ──</span></span>
+<span><span class="co">#&gt; # A tibble: 241 × 7</span></span>
+<span><span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;    [h] &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1    0   0   0     10000     0     0   1   </span></span>
+<span><span class="co">#&gt; 2    1  44.4 0.920  7453. 1784.  273.  1.08</span></span>
+<span><span class="co">#&gt; 3    2  54.9 2.67   5554. 2206.  794.  1.18</span></span>
+<span><span class="co">#&gt; 4    3  51.9 4.46   4140. 2087. 1324.  1.23</span></span>
+<span><span class="co">#&gt; 5    4  44.5 5.98   3085. 1789. 1776.  1.23</span></span>
+<span><span class="co">#&gt; 6    5  36.5 7.18   2299. 1467. 2132.  1.21</span></span>
+<span><span class="co">#&gt; # … with 235 more rows</span></span></code></pre></div>
 <p>This returns a modified data frame. You can see the compartment values in the plot below:</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>,<span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ylab</a></span><span class="op">(</span><span class="st">"Central Concentration"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>,<span class="va">C2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ylab</a></span><span class="op">(</span><span class="st">"Central Concentration"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/README-intro-central-1.png" title="plot of chunk intro-central" alt="plot of chunk intro-central" width="100%"></p>
 <p>Or,</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>,<span class="va">eff</span><span class="op">)</span>  <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ylab</a></span><span class="op">(</span><span class="st">"Effect"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>,<span class="va">eff</span><span class="op">)</span>  <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ylab</a></span><span class="op">(</span><span class="st">"Effect"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/README-intro-effect-1.png" title="plot of chunk intro-effect" alt="plot of chunk intro-effect" width="100%"></p>
 <p>Note that the labels are automatically labeled with the units from the initial event table. rxode2 extracts <code>units</code> to label the plot (if they are present).</p>
 </div>
@@ -558,7 +558,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer>

@@ -157,7 +157,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Compiled rxode2 models in Packages</h1>
                         <h4 data-toc-skip class="author">Matthew Fidler</h4>
             
-            <h4 data-toc-skip class="date">2022-06-20</h4>
+            <h4 data-toc-skip class="date">2022-07-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-rxUse.Rmd" class="external-link"><code>vignettes/rxode2-rxUse.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-rxUse.Rmd</code></div>
@@ -169,20 +169,20 @@
 <h2 id="using-pre-compiled-models-in-your-packages">Using Pre-compiled models in your packages<a class="anchor" aria-label="anchor" href="#using-pre-compiled-models-in-your-packages"></a>
 </h2>
 <p>If you have a package and would like to include pre-compiled rxode2 models in your package it is easy to create the package. You simple make the package with the <code><a href="../reference/rxPkg.html">rxPkg()</a></code> command.</p>
-<pre><code><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>;
-<span class="co">## Now Create a model</span>
-<span class="va">idr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;
-    <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span><span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">=</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;
-<span class="op">}</span><span class="op">)</span>
-
-<span class="co">## You can specify as many models as you want to add</span>
-
-<span class="fu"><a href="../reference/rxPkg.html">rxPkg</a></span><span class="op">(</span><span class="va">idr</span>, package<span class="op">=</span><span class="st">"myPackage"</span><span class="op">)</span>; <span class="co">## Add the idr model to your package</span></code></pre>
+<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>;</span>
+<span><span class="co">## Now Create a model</span></span>
+<span><span class="va">idr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;</span>
+<span>    <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span><span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">=</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;</span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## You can specify as many models as you want to add</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/rxPkg.html">rxPkg</a></span><span class="op">(</span><span class="va">idr</span>, package<span class="op">=</span><span class="st">"myPackage"</span><span class="op">)</span>; <span class="co">## Add the idr model to your package</span></span></code></pre>
 <p>This will:</p>
 <ul>
 <li><p>Add the model to your package; You can use the package data as <code>idr</code> once the package loads</p></li>
@@ -192,116 +192,116 @@
 <li><p>You can write your own R code in your package that interacts with the rxode2 object so you can distribute shiny apps and similar things in the package context.</p></li>
 </ul>
 <p>Once this is present you can add more models to your package by <code><a href="../reference/rxUse.html">rxUse()</a></code>. Simply compile the rxode2 model in your package then add the model with <code><a href="../reference/rxUse.html">rxUse()</a></code></p>
-<pre><code><span class="fu"><a href="../reference/rxUse.html">rxUse</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></code></pre>
+<pre><code><span><span class="fu"><a href="../reference/rxUse.html">rxUse</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span></code></pre>
 <p>Now both <code>model</code> and <code>idr</code> are in the model library. This will also create <code>model-doc.R</code> in your R directory so you can document this model.</p>
 <p>You can then use <code>devtools</code> methods to install/test your model</p>
-<pre><code><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Load all the functions in the package</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Create package documentation</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Install package</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">check</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Check the package</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/build.html" class="external-link">build</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># build the package so you can submit it to places like CRAN</span></code></pre>
+<pre><code><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Load all the functions in the package</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Create package documentation</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Install package</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">check</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Check the package</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/build.html" class="external-link">build</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># build the package so you can submit it to places like CRAN</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="using-models-in-a-already-present-package">Using Models in a already present package<a class="anchor" aria-label="anchor" href="#using-models-in-a-already-present-package"></a>
 </h2>
 <p>To illustrate, lets start with a blank package</p>
-<pre><code><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://usethis.r-lib.org" class="external-link">usethis</a></span><span class="op">)</span>
-<span class="va">pkgPath</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="../reference/rxTempDir.html">rxTempDir</a></span><span class="op">(</span><span class="op">)</span>,<span class="st">"MyRxModel"</span><span class="op">)</span>
-<span class="fu"><a href="https://usethis.r-lib.org/reference/create_package.html" class="external-link">create_package</a></span><span class="op">(</span><span class="va">pkgPath</span><span class="op">)</span>;
-<span class="fu"><a href="https://usethis.r-lib.org/reference/licenses.html" class="external-link">use_gpl3_license</a></span><span class="op">(</span><span class="st">"Matt"</span><span class="op">)</span>
-<span class="fu"><a href="https://usethis.r-lib.org/reference/use_package.html" class="external-link">use_package</a></span><span class="op">(</span><span class="st">"rxode2"</span>, <span class="st">"LinkingTo"</span><span class="op">)</span>
-<span class="fu"><a href="https://usethis.r-lib.org/reference/use_package.html" class="external-link">use_package</a></span><span class="op">(</span><span class="st">"rxode2"</span>, <span class="st">"Depends"</span><span class="op">)</span> <span class="co">##  library(rxode2) on load; Can use imports instead.</span>
-<span class="fu"><a href="https://usethis.r-lib.org/reference/use_roxygen_md.html" class="external-link">use_roxygen_md</a></span><span class="op">(</span><span class="op">)</span>
-<span class="co">##use_readme_md()</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>;
-<span class="co">## Now Create a model</span>
-<span class="va">idr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;
-    <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span><span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">=</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;
-<span class="op">}</span><span class="op">)</span>;
-
-<span class="fu"><a href="../reference/rxUse.html">rxUse</a></span><span class="op">(</span><span class="va">idr</span><span class="op">)</span>; <span class="co">## Add the idr model to your package</span>
-<span class="fu"><a href="../reference/rxUse.html">rxUse</a></span><span class="op">(</span><span class="op">)</span>; <span class="co"># Update the compiled rxode2 sources for all of your packages</span></code></pre>
+<pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://usethis.r-lib.org" class="external-link">usethis</a></span><span class="op">)</span></span>
+<span><span class="va">pkgPath</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="../reference/rxTempDir.html">rxTempDir</a></span><span class="op">(</span><span class="op">)</span>,<span class="st">"MyRxModel"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://usethis.r-lib.org/reference/create_package.html" class="external-link">create_package</a></span><span class="op">(</span><span class="va">pkgPath</span><span class="op">)</span>;</span>
+<span><span class="fu"><a href="https://usethis.r-lib.org/reference/licenses.html" class="external-link">use_gpl3_license</a></span><span class="op">(</span><span class="st">"Matt"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://usethis.r-lib.org/reference/use_package.html" class="external-link">use_package</a></span><span class="op">(</span><span class="st">"rxode2"</span>, <span class="st">"LinkingTo"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://usethis.r-lib.org/reference/use_package.html" class="external-link">use_package</a></span><span class="op">(</span><span class="st">"rxode2"</span>, <span class="st">"Depends"</span><span class="op">)</span> <span class="co">##  library(rxode2) on load; Can use imports instead.</span></span>
+<span><span class="fu"><a href="https://usethis.r-lib.org/reference/use_roxygen_md.html" class="external-link">use_roxygen_md</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">##use_readme_md()</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>;</span>
+<span><span class="co">## Now Create a model</span></span>
+<span><span class="va">idr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;</span>
+<span>    <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span><span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">=</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;</span>
+<span><span class="op">}</span><span class="op">)</span>;</span>
+<span></span>
+<span><span class="fu"><a href="../reference/rxUse.html">rxUse</a></span><span class="op">(</span><span class="va">idr</span><span class="op">)</span>; <span class="co">## Add the idr model to your package</span></span>
+<span><span class="fu"><a href="../reference/rxUse.html">rxUse</a></span><span class="op">(</span><span class="op">)</span>; <span class="co"># Update the compiled rxode2 sources for all of your packages</span></span></code></pre>
 <p>The <code><a href="../reference/rxUse.html">rxUse()</a></code> will: - Create <code>rxode2</code> sources and move them into the package’s <code>src/</code> directory. If there is only R source in the package, it will also finish off the directory with an <code>library-init.c</code> which registers all the rxode2 models in the package for use in R. - Create stub R documentation for each of the models your are including in your package. You will be able to see the R documentation when loading your package by the standard <code>?</code> interface.</p>
 <p>You will still need to: - Export at least one function. If you do not have a function that you wish to export, you can add a re-export of <code>rxode2</code> using roxygen as follows:</p>
-<pre><code><span class="co">##' @importFrom rxode2 rxode2</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxode2.html">rxode2</a></span></code></pre>
+<pre><code><span><span class="co">##' @importFrom rxode2 rxode2</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxode2.html">rxode2</a></span></span></code></pre>
 <p>If you want to use <code>Suggests</code> instead of <code>Depends</code> in your package, you way want to export all of rxode2’s normal routines</p>
-<pre><code><span class="co">##' @importFrom rxode2 rxode2</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxode2.html">rxode2</a></span>
-
-<span class="co">##' @importFrom rxode2 et</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/et.html">et</a></span>
-
-<span class="co">##' @importFrom rxode2 etRep</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/etRep.html">etRep</a></span>
-
-<span class="co">##' @importFrom rxode2 etSeq</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/etSeq.html">etSeq</a></span>
-
-<span class="co">##' @importFrom rxode2 as.et</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/as.et.html">as.et</a></span>
-
-<span class="co">##' @importFrom rxode2 eventTable</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/eventTable.html">eventTable</a></span>
-
-<span class="co">##' @importFrom rxode2 add.dosing</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/add.dosing.html">add.dosing</a></span>
-
-<span class="co">##' @importFrom rxode2 add.sampling</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/add.sampling.html">add.sampling</a></span>
-
-<span class="co">##' @importFrom rxode2 rxSolve</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxSolve.html">rxSolve</a></span>
-
-<span class="co">##' @importFrom rxode2 rxControl</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxSolve.html">rxControl</a></span>
-
-<span class="co">##' @importFrom rxode2 rxClean</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxClean.html">rxClean</a></span>
-
-<span class="co">##' @importFrom rxode2 rxUse</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxUse.html">rxUse</a></span>
-
-<span class="co">##' @importFrom rxode2 rxShiny</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxShiny.html">rxShiny</a></span>
-
-<span class="co">##' @importFrom rxode2 genShinyApp.template</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/genShinyApp.template.html">genShinyApp.template</a></span>
-
-<span class="co">##' @importFrom rxode2 cvPost</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/cvPost.html">cvPost</a></span>
-
-<span class="co"># This is actually from `magrittr` but allows less imports</span>
-<span class="co">##' @importFrom rxode2 %&gt;%</span>
-<span class="co">##' @export</span>
-<span class="fu">rxode2</span><span class="fu">::</span><span class="va">`%&gt;%`</span></code></pre>
+<pre><code><span><span class="co">##' @importFrom rxode2 rxode2</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxode2.html">rxode2</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 et</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/et.html">et</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 etRep</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/etRep.html">etRep</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 etSeq</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/etSeq.html">etSeq</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 as.et</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/as.et.html">as.et</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 eventTable</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/eventTable.html">eventTable</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 add.dosing</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/add.dosing.html">add.dosing</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 add.sampling</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/add.sampling.html">add.sampling</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 rxSolve</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxSolve.html">rxSolve</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 rxControl</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxSolve.html">rxControl</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 rxClean</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxClean.html">rxClean</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 rxUse</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxUse.html">rxUse</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 rxShiny</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/rxShiny.html">rxShiny</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 genShinyApp.template</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/genShinyApp.template.html">genShinyApp.template</a></span></span>
+<span></span>
+<span><span class="co">##' @importFrom rxode2 cvPost</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va"><a href="../reference/cvPost.html">cvPost</a></span></span>
+<span></span>
+<span><span class="co"># This is actually from `magrittr` but allows less imports</span></span>
+<span><span class="co">##' @importFrom rxode2 %&gt;%</span></span>
+<span><span class="co">##' @export</span></span>
+<span><span class="fu">rxode2</span><span class="fu">::</span><span class="va">`%&gt;%`</span></span></code></pre>
 <ul>
 <li>You also need to instruct R to load the model library models included in the model’s dll. This is done by:</li>
 </ul>
-<pre><code><span class="co"># In this case `rxModels` is the package name</span>
-<span class="co">##' @useDynLib rxModels, .registration=TRUE</span></code></pre>
+<pre><code><span><span class="co"># In this case `rxModels` is the package name</span></span>
+<span><span class="co">##' @useDynLib rxModels, .registration=TRUE</span></span></code></pre>
 <p>If this is a R package with rxode2 models and you do not intend to add any other compiled sources (recommended), you can add the following configure scripts</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1"></a><span class="co">#!/bin/sh</span></span>
 <span id="cb8-2"><a href="#cb8-2"></a><span class="co"># This should be used for both configure and configure.win</span></span>
@@ -313,14 +313,14 @@
 <span id="cb9-2"><a href="#cb9-2"></a><span class="co">## It is saved to configure.ac</span></span></code></pre></div>
 <p>If you want to integrate with other sources in your <code>Rcpp</code> or <code>C</code>/<code>Fortan</code> based packages, you need to include <code>rxModels-compiled.h</code> and: - Add the define macro <code>compiledModelCall</code> to the list of registered <code>.Call</code> functions. - Register C interface to allow model solving by <code>R_init0_rxModels_rxode2_models()</code> (again <code>rxModels</code> would be replaced by your package name).</p>
 <p>Once this is complete, you can compile/document by the standard methods:</p>
-<pre><code><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="op">)</span></code></pre>
+<pre><code><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="op">)</span></span></code></pre>
 <p>If you load the package with a new version of rxode2, the models will be recompiled when they are used.</p>
 <p>However, if you want the models recompiled for the most recent version of rxode2, you simply need to call <code><a href="../reference/rxUse.html">rxUse()</a></code> again in the project directory followed by the standard methods for install/create a package.</p>
-<pre><code><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="op">)</span></code></pre>
+<pre><code><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">document</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="op">)</span></span></code></pre>
 <p><strong>Note</strong> you do not have to include the <code>rxode2</code> code required to generate the model to regenerate the rxode2 c-code in the <code>src</code> directory. As with all rxode2 objects, a <code>summary</code> will show one way to recreate the same model.</p>
 <p>An example of compiled models package can be found in the <a href="https://github.com/nlmixr2/rxModels" class="external-link">rxModels</a> repository.</p>
 </div>
@@ -337,7 +337,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer>

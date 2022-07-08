@@ -157,7 +157,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Speeding up rxode2</h1>
                         <h4 data-toc-skip class="author">Matthew Fidler</h4>
             
-            <h4 data-toc-skip class="date">2022-06-20</h4>
+            <h4 data-toc-skip class="date">2022-07-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-speed.Rmd" class="external-link"><code>vignettes/rxode2-speed.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-speed.Rmd</code></div>
@@ -171,63 +171,63 @@
 <p><code>rxode2</code> originally developed as an ODE solver that allowed an ODE solve for a single subject. This flexibility is still supported.</p>
 <p>The original code from the <code>rxode2</code> tutorial is below:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R">
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>
-<span class="co">#&gt; rxode2 2.0.8 using 1 threads (see ?getRxThreads)</span>
-<span class="co">#&gt;   no cache: create with `rxCreateCache()`</span>
-
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/joshuaulrich/microbenchmark/" class="external-link">microbenchmark</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>
-
-<span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;
-    <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span> <span class="op">=</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span> <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;
-    <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">1</span>
-<span class="op">}</span><span class="op">)</span>
-
-<span class="co">## Create an event table</span>
-
-<span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, addl<span class="op">=</span><span class="fl">9</span>,ii<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">120</span>, amt<span class="op">=</span><span class="fl">20000</span>, addl<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span> <span class="co">## Add Sampling</span>
-
-<span class="va">nsub</span> <span class="op">&lt;-</span> <span class="fl">100</span> <span class="co"># 100 sub-problems</span>
-<span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.09</span>,<span class="fl">0.08</span>,<span class="fl">0.08</span>,<span class="fl">0.25</span><span class="op">)</span>,<span class="fl">2</span>,<span class="fl">2</span><span class="op">)</span> <span class="co"># IIV covariance matrix</span>
-<span class="va">mv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxRmvn.html">rxRmvn</a></span><span class="op">(</span>n<span class="op">=</span><span class="va">nsub</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">2</span><span class="op">)</span>, <span class="va">sigma</span><span class="op">)</span> <span class="co"># Sample from covariance matrix</span>
-<span class="va">CL</span> <span class="op">&lt;-</span> <span class="fl">7</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">mv</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span><span class="op">)</span>
-<span class="va">V2</span> <span class="op">&lt;-</span> <span class="fl">40</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">mv</span><span class="op">[</span>,<span class="fl">2</span><span class="op">]</span><span class="op">)</span>
-<span class="va">params.all</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">0.3</span>, CL<span class="op">=</span><span class="va">CL</span>, V2<span class="op">=</span><span class="va">V2</span>, Q<span class="op">=</span><span class="fl">10</span>, V3<span class="op">=</span><span class="fl">300</span>,
-                    Kin<span class="op">=</span><span class="fl">0.2</span>, Kout<span class="op">=</span><span class="fl">0.2</span>, EC50<span class="op">=</span><span class="fl">8</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; rxode2 2.0.8 using 1 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/joshuaulrich/microbenchmark/" class="external-link">microbenchmark</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;</span>
+<span>    <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span> <span class="op">=</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span> <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;</span>
+<span>    <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## Create an event table</span></span>
+<span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, addl<span class="op">=</span><span class="fl">9</span>,ii<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">120</span>, amt<span class="op">=</span><span class="fl">20000</span>, addl<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span> <span class="co">## Add Sampling</span></span>
+<span></span>
+<span><span class="va">nsub</span> <span class="op">&lt;-</span> <span class="fl">100</span> <span class="co"># 100 sub-problems</span></span>
+<span><span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.09</span>,<span class="fl">0.08</span>,<span class="fl">0.08</span>,<span class="fl">0.25</span><span class="op">)</span>,<span class="fl">2</span>,<span class="fl">2</span><span class="op">)</span> <span class="co"># IIV covariance matrix</span></span>
+<span><span class="va">mv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxRmvn.html">rxRmvn</a></span><span class="op">(</span>n<span class="op">=</span><span class="va">nsub</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">2</span><span class="op">)</span>, <span class="va">sigma</span><span class="op">)</span> <span class="co"># Sample from covariance matrix</span></span>
+<span><span class="va">CL</span> <span class="op">&lt;-</span> <span class="fl">7</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">mv</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">V2</span> <span class="op">&lt;-</span> <span class="fl">40</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">mv</span><span class="op">[</span>,<span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">params.all</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">0.3</span>, CL<span class="op">=</span><span class="va">CL</span>, V2<span class="op">=</span><span class="va">V2</span>, Q<span class="op">=</span><span class="fl">10</span>, V3<span class="op">=</span><span class="fl">300</span>,</span>
+<span>                    Kin<span class="op">=</span><span class="fl">0.2</span>, Kout<span class="op">=</span><span class="fl">0.2</span>, EC50<span class="op">=</span><span class="fl">8</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="for-loop">For Loop<a class="anchor" aria-label="anchor" href="#for-loop"></a>
 </h3>
 <p>The slowest way to code this is to use a <code>for</code> loop. In this example we will enclose it in a function to compare timing.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">runFor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span>
-    <span class="va">res</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>
-    <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">nsub</span><span class="op">)</span> <span class="op">{</span>
-        <span class="va">params</span> <span class="op">&lt;-</span> <span class="va">params.all</span><span class="op">[</span><span class="va">i</span>,<span class="op">]</span>
-        <span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span><span class="op">$</span><span class="fu">solve</span><span class="op">(</span><span class="va">params</span>, <span class="va">ev</span><span class="op">)</span>
-        <span class="co">##Store results for effect compartment</span>
-        <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">res</span>, <span class="va">x</span><span class="op">[</span>, <span class="st">"eff"</span><span class="op">]</span><span class="op">)</span>
-    <span class="op">}</span>
-    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span>
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">runFor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="va">res</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
+<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">nsub</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="va">params</span> <span class="op">&lt;-</span> <span class="va">params.all</span><span class="op">[</span><span class="va">i</span>,<span class="op">]</span></span>
+<span>        <span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span><span class="op">$</span><span class="fu">solve</span><span class="op">(</span><span class="va">params</span>, <span class="va">ev</span><span class="op">)</span></span>
+<span>        <span class="co">##Store results for effect compartment</span></span>
+<span>        <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">res</span>, <span class="va">x</span><span class="op">[</span>, <span class="st">"eff"</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="running-with-apply">Running with apply<a class="anchor" aria-label="anchor" href="#running-with-apply"></a>
 </h3>
 <p>In general for R, the <code>apply</code> types of functions perform better than a <code>for</code> loop, so the tutorial also suggests this speed enhancement</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">runSapply</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span>
-    <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">params.all</span>, <span class="fl">1</span>, <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span>
-        <span class="va">mod1</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span><span class="op">)</span><span class="op">[</span>, <span class="st">"eff"</span><span class="op">]</span><span class="op">)</span>
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">runSapply</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">params.all</span>, <span class="fl">1</span>, <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
+<span>        <span class="va">mod1</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span><span class="op">)</span><span class="op">[</span>, <span class="st">"eff"</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-using-a-single-threaded-solve">Run using a single-threaded solve<a class="anchor" aria-label="anchor" href="#run-using-a-single-threaded-solve"></a>
@@ -235,59 +235,59 @@
 <p>You can also have rxode2 solve all the subject simultaneously without collecting the results in R, using a single threaded solve.</p>
 <p>The data output is slightly different here, but still gives the same information:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">runSingleThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span>
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">runSingleThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-a-2-threaded-solve">Run a 2 threaded solve<a class="anchor" aria-label="anchor" href="#run-a-2-threaded-solve"></a>
 </h3>
 <p>rxode2 supports multi-threaded solves, so another option is to have <code>2</code> threads (called <code>cores</code> in the solve options, you can see the options in <code><a href="../reference/rxSolve.html">rxControl()</a></code> or <code><a href="../reference/rxSolve.html">rxSolve()</a></code>).</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">run2Thread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">2</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span>
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">run2Thread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">2</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="compare-the-times-between-all-the-methods">Compare the times between all the methods<a class="anchor" aria-label="anchor" href="#compare-the-times-between-all-the-methods"></a>
 </h3>
 <p>Now the moment of truth, the timings:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">runFor</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSapply</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSingleThread</span><span class="op">(</span><span class="op">)</span>,<span class="fu">run2Thread</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span>
-<span class="co">#&gt; Unit: milliseconds</span>
-<span class="co">#&gt;               expr      min       lq      mean    median        uq      max</span>
-<span class="co">#&gt;           runFor() 383.9905 395.4615 404.18768 401.68950 405.57030 512.9908</span>
-<span class="co">#&gt;        runSapply() 382.2639 393.8987 399.55121 399.03675 403.98985 516.6305</span>
-<span class="co">#&gt;  runSingleThread()  33.9164  34.1395  34.76872  34.31915  34.55135  41.8997</span>
-<span class="co">#&gt;       run2Thread()  20.5265  21.0770  22.93222  21.61785  22.25545 134.0898</span>
-<span class="co">#&gt;  neval</span>
-<span class="co">#&gt;    100</span>
-<span class="co">#&gt;    100</span>
-<span class="co">#&gt;    100</span>
-<span class="co">#&gt;    100</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">runFor</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSapply</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSingleThread</span><span class="op">(</span><span class="op">)</span>,<span class="fu">run2Thread</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Unit: milliseconds</span></span>
+<span><span class="co">#&gt;               expr      min        lq      mean   median        uq      max</span></span>
+<span><span class="co">#&gt;           runFor() 372.6676 383.38310 394.26044 389.8946 398.30195 504.1808</span></span>
+<span><span class="co">#&gt;        runSapply() 372.2282 383.64600 391.74463 388.7814 396.19585 503.6888</span></span>
+<span><span class="co">#&gt;  runSingleThread()  33.3430  33.68745  34.12471  33.9041  34.28665  38.7143</span></span>
+<span><span class="co">#&gt;       run2Thread()  19.7338  20.10785  20.52422  20.3429  20.65480  24.8423</span></span>
+<span><span class="co">#&gt;  neval</span></span>
+<span><span class="co">#&gt;    100</span></span>
+<span><span class="co">#&gt;    100</span></span>
+<span><span class="co">#&gt;    100</span></span>
+<span><span class="co">#&gt;    100</span></span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span>
-<span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-9-1.png" width="700"></p>
 <p>It is clear that the <strong>largest</strong> jump in performance when using the <code>solve</code> method and providing <em>all</em> the parameters to rxode2 to solve without looping over each subject with either a <code>for</code> or a <code>sapply</code>. The number of cores/threads applied to the solve also plays a role in the solving.</p>
 <p>We can explore the number of threads further with the following code:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">runThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">{</span>
-    <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="va">n</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span>
-<span class="op">}</span>
-
-<span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse</a></span><span class="op">(</span>text<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"microbenchmark(%s)"</span>,
-                                     <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"runThread("</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span> <span class="op">*</span> <span class="fu"><a href="../reference/getRxThreads.html">rxCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,<span class="st">")"</span><span class="op">)</span>,
-                                           collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span>
-<span class="co">#&gt; Unit: milliseconds</span>
-<span class="co">#&gt;          expr     min      lq     mean   median       uq     max neval</span>
-<span class="co">#&gt;  runThread(1) 33.8983 34.0942 34.62749 34.22360 34.42145 39.6531   100</span>
-<span class="co">#&gt;  runThread(2) 20.4177 20.6672 21.34518 21.12595 21.74415 26.5793   100</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">runThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="va">n</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse</a></span><span class="op">(</span>text<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"microbenchmark(%s)"</span>,</span>
+<span>                                     <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"runThread("</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span> <span class="op">*</span> <span class="fu"><a href="../reference/getRxThreads.html">rxCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,<span class="st">")"</span><span class="op">)</span>,</span>
+<span>                                           collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Unit: milliseconds</span></span>
+<span><span class="co">#&gt;          expr     min       lq     mean  median       uq     max neval</span></span>
+<span><span class="co">#&gt;  runThread(1) 33.4738 33.93435 34.23420 34.0764 34.24445 38.2532   100</span></span>
+<span><span class="co">#&gt;  runThread(2) 19.8240 20.30280 20.74016 20.5664 20.73010 27.2943   100</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span>
-<span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-11-1.png" width="700"></p>
 <p>There can be a suite spot in speed vs number or cores. The system type (mac, linux, windows and/or processor), complexity of the ODE solving and the number of subjects may affect this arbitrary number of threads. 4 threads is a good number to use without any prior knowledge because most systems these days have at least 4 threads (or 2 processors with 4 threads).</p>
 </div>
@@ -297,120 +297,120 @@
 </h2>
 <p>Before some of the parallel solving was implemented, the fastest way to run <code>rxode2</code> was with <code>lapply</code>. This is how Rik Schoemaker created the data-set for <code>nlmixr</code> comparisons, but reduced to run faster automatic building of the pkgdown website.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span>
-<span class="co">#Define the rxode2 model</span>
-  <span class="va">ode1</span> <span class="op">&lt;-</span> <span class="st">"
-  d/dt(abs)    = -KA*abs;
-  d/dt(centr)  =  KA*abs-(CL/V)*centr;
-  C2=centr/V;
-  "</span>
-  
-<span class="co">#Create the rxode2 simulation object</span>
-<span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode1</span><span class="op">)</span>
-
-<span class="co">#Population parameter values on log-scale</span>
-  <span class="va">paramsl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>CL <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>,
-               V <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">70</span><span class="op">)</span>,
-               KA <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>
-<span class="co">#make 10,000 subjects to sample from:</span>
-  <span class="va">nsubg</span> <span class="op">&lt;-</span> <span class="fl">300</span> <span class="co"># subjects per dose</span>
-  <span class="va">doses</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">60</span>, <span class="fl">120</span><span class="op">)</span>
-  <span class="va">nsub</span> <span class="op">&lt;-</span> <span class="va">nsubg</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">doses</span><span class="op">)</span>
-<span class="co">#IIV of 30% for each parameter</span>
-  <span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.09</span>, <span class="fl">0.09</span>, <span class="fl">0.09</span><span class="op">)</span><span class="op">)</span><span class="co"># IIV covariance matrix</span>
-  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fl">0.2</span>
-<span class="co">#Sample from the multivariate normal</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">98176247</span><span class="op">)</span>
-  <span class="fu"><a href="../reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">98176247</span><span class="op">)</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.stats.ox.ac.uk/pub/MASS4/" class="external-link">MASS</a></span><span class="op">)</span>
-  <span class="va">mv</span> <span class="op">&lt;-</span>
-    <span class="fu"><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html" class="external-link">mvrnorm</a></span><span class="op">(</span><span class="va">nsub</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">omega</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>, <span class="va">omega</span><span class="op">)</span> <span class="co"># Sample from covariance matrix</span>
-<span class="co">#Combine population parameters with IIV</span>
-  <span class="va">params.all</span> <span class="op">&lt;-</span>
-    <span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/data.table.html" class="external-link">data.table</a></span><span class="op">(</span>
-      <span class="st">"ID"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nsub</span><span class="op">)</span>,
-      <span class="st">"CL"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">paramsl</span><span class="op">[</span><span class="st">'CL'</span><span class="op">]</span> <span class="op">+</span> <span class="va">mv</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span><span class="op">)</span>,
-      <span class="st">"V"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">paramsl</span><span class="op">[</span><span class="st">'V'</span><span class="op">]</span> <span class="op">+</span> <span class="va">mv</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span>,
-      <span class="st">"KA"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">paramsl</span><span class="op">[</span><span class="st">'KA'</span><span class="op">]</span> <span class="op">+</span> <span class="va">mv</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span><span class="op">)</span>
-    <span class="op">)</span>
-<span class="co">#set the doses (looping through the 4 doses)</span>
-<span class="va">params.all</span><span class="op">[</span>, <span class="va">AMT</span> <span class="op">:=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">doses</span>,<span class="va">nsubg</span><span class="op">)</span><span class="op">]</span>
-
-<span class="va">Startlapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>
-  
-<span class="co">#Run the simulations using lapply for speed</span>
-  <span class="va">s</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nsub</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span>
-<span class="co">#selects the parameters associated with the subject to be simulated</span>
-    <span class="va">params</span> <span class="op">&lt;-</span> <span class="va">params.all</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>
-<span class="co">#creates an eventTable with 7 doses every 24 hours</span>
-    <span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>
-    <span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>
-      dose <span class="op">=</span> <span class="va">params</span><span class="op">$</span><span class="va">AMT</span>,
-      nbr.doses <span class="op">=</span> <span class="fl">1</span>,
-      dosing.to <span class="op">=</span> <span class="fl">1</span>,
-      rate <span class="op">=</span> <span class="cn">NULL</span>,
-      start.time <span class="op">=</span> <span class="fl">0</span>
-    <span class="op">)</span>
-<span class="co">#generates 4 random samples in a 24 hour period</span>
-    <span class="va">ev</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">600</span>, <span class="fl">0</span>, <span class="fl">1440</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">/</span> <span class="fl">60</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
-<span class="co">#runs the rxode2 simulation</span>
-    <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/as.data.table.html" class="external-link">as.data.table</a></span><span class="op">(</span><span class="va">mod1</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span><span class="va">params</span>, <span class="va">ev</span><span class="op">)</span><span class="op">)</span>
-<span class="co">#merges the parameters and ID number to the simulation output</span>
-    <span class="va">x</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">params</span><span class="op">)</span> <span class="op">:=</span> <span class="va">params</span><span class="op">]</span>
-  <span class="op">}</span><span class="op">)</span>
-  
-<span class="co">#runs the entire sequence of 100 subjects and binds the results to the object res</span>
-  <span class="va">res</span> <span class="op">=</span> <span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/as.data.table.html" class="external-link">as.data.table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"rbind"</span>, <span class="va">s</span><span class="op">)</span><span class="op">)</span>
-  
-<span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>
-  
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span>
-<span class="co">#&gt; Time difference of 8.865639 secs</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span></span>
+<span><span class="co">#Define the rxode2 model</span></span>
+<span>  <span class="va">ode1</span> <span class="op">&lt;-</span> <span class="st">"</span></span>
+<span><span class="st">  d/dt(abs)    = -KA*abs;</span></span>
+<span><span class="st">  d/dt(centr)  =  KA*abs-(CL/V)*centr;</span></span>
+<span><span class="st">  C2=centr/V;</span></span>
+<span><span class="st">  "</span></span>
+<span>  </span>
+<span><span class="co">#Create the rxode2 simulation object</span></span>
+<span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">#Population parameter values on log-scale</span></span>
+<span>  <span class="va">paramsl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>CL <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>,</span>
+<span>               V <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">70</span><span class="op">)</span>,</span>
+<span>               KA <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#make 10,000 subjects to sample from:</span></span>
+<span>  <span class="va">nsubg</span> <span class="op">&lt;-</span> <span class="fl">300</span> <span class="co"># subjects per dose</span></span>
+<span>  <span class="va">doses</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">60</span>, <span class="fl">120</span><span class="op">)</span></span>
+<span>  <span class="va">nsub</span> <span class="op">&lt;-</span> <span class="va">nsubg</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">doses</span><span class="op">)</span></span>
+<span><span class="co">#IIV of 30% for each parameter</span></span>
+<span>  <span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.09</span>, <span class="fl">0.09</span>, <span class="fl">0.09</span><span class="op">)</span><span class="op">)</span><span class="co"># IIV covariance matrix</span></span>
+<span>  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fl">0.2</span></span>
+<span><span class="co">#Sample from the multivariate normal</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">98176247</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">98176247</span><span class="op">)</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.stats.ox.ac.uk/pub/MASS4/" class="external-link">MASS</a></span><span class="op">)</span></span>
+<span>  <span class="va">mv</span> <span class="op">&lt;-</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html" class="external-link">mvrnorm</a></span><span class="op">(</span><span class="va">nsub</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">omega</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>, <span class="va">omega</span><span class="op">)</span> <span class="co"># Sample from covariance matrix</span></span>
+<span><span class="co">#Combine population parameters with IIV</span></span>
+<span>  <span class="va">params.all</span> <span class="op">&lt;-</span></span>
+<span>    <span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/data.table.html" class="external-link">data.table</a></span><span class="op">(</span></span>
+<span>      <span class="st">"ID"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nsub</span><span class="op">)</span>,</span>
+<span>      <span class="st">"CL"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">paramsl</span><span class="op">[</span><span class="st">'CL'</span><span class="op">]</span> <span class="op">+</span> <span class="va">mv</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>      <span class="st">"V"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">paramsl</span><span class="op">[</span><span class="st">'V'</span><span class="op">]</span> <span class="op">+</span> <span class="va">mv</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>      <span class="st">"KA"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">paramsl</span><span class="op">[</span><span class="st">'KA'</span><span class="op">]</span> <span class="op">+</span> <span class="va">mv</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span><span class="co">#set the doses (looping through the 4 doses)</span></span>
+<span><span class="va">params.all</span><span class="op">[</span>, <span class="va">AMT</span> <span class="op">:=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">doses</span>,<span class="va">nsubg</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="va">Startlapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  </span>
+<span><span class="co">#Run the simulations using lapply for speed</span></span>
+<span>  <span class="va">s</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nsub</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="co">#selects the parameters associated with the subject to be simulated</span></span>
+<span>    <span class="va">params</span> <span class="op">&lt;-</span> <span class="va">params.all</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
+<span><span class="co">#creates an eventTable with 7 doses every 24 hours</span></span>
+<span>    <span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span></span>
+<span>      dose <span class="op">=</span> <span class="va">params</span><span class="op">$</span><span class="va">AMT</span>,</span>
+<span>      nbr.doses <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>      dosing.to <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>      rate <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>      start.time <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="op">)</span></span>
+<span><span class="co">#generates 4 random samples in a 24 hour period</span></span>
+<span>    <span class="va">ev</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">600</span>, <span class="fl">0</span>, <span class="fl">1440</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">/</span> <span class="fl">60</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#runs the rxode2 simulation</span></span>
+<span>    <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/as.data.table.html" class="external-link">as.data.table</a></span><span class="op">(</span><span class="va">mod1</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span><span class="va">params</span>, <span class="va">ev</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#merges the parameters and ID number to the simulation output</span></span>
+<span>    <span class="va">x</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">params</span><span class="op">)</span> <span class="op">:=</span> <span class="va">params</span><span class="op">]</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  </span>
+<span><span class="co">#runs the entire sequence of 100 subjects and binds the results to the object res</span></span>
+<span>  <span class="va">res</span> <span class="op">=</span> <span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/as.data.table.html" class="external-link">as.data.table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"rbind"</span>, <span class="va">s</span><span class="op">)</span><span class="op">)</span></span>
+<span>  </span>
+<span><span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  </span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Time difference of 9.247698 secs</span></span></code></pre></div>
 <p>By applying some of the new parallel solving concepts you can simply run the same simulation both with less code and faster:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="va">CL</span> <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>
-    <span class="va">V</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">70</span><span class="op">)</span>
-    <span class="va">KA</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>
-    <span class="va">CL</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">CL</span> <span class="op">+</span> <span class="va">eta.CL</span><span class="op">)</span>
-    <span class="va">V</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">V</span> <span class="op">+</span> <span class="va">eta.V</span><span class="op">)</span>
-    <span class="va">KA</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">KA</span> <span class="op">+</span> <span class="va">eta.KA</span><span class="op">)</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">abs</span><span class="op">)</span>    <span class="op">=</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">abs</span>;
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span>  <span class="op">=</span>  <span class="va">KA</span><span class="op">*</span><span class="va">abs</span><span class="op">-</span><span class="op">(</span><span class="va">CL</span><span class="op">/</span><span class="va">V</span><span class="op">)</span><span class="op">*</span><span class="va">centr</span>;
-    <span class="va">C2</span><span class="op">=</span><span class="va">centr</span><span class="op">/</span><span class="va">V</span>;
-<span class="op">}</span><span class="op">)</span>
-
-<span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.CL</span> <span class="op">~</span> <span class="fl">0.09</span>,
-               <span class="va">eta.V</span> <span class="op">~</span> <span class="fl">0.09</span>,
-               <span class="va">eta.KA</span> <span class="op">~</span> <span class="fl">0.09</span><span class="op">)</span>
-
-<span class="va">doses</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">60</span>, <span class="fl">120</span><span class="op">)</span>
-
-
-<span class="va">startParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>
-<span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"rbind"</span>,
-        <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">doses</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">{</span>
-            <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="va">doses</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add single dose</span>
-                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add 0 observation</span>
-                <span class="co">## Generate 4 samples in 24 hour period</span>
-                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span><span class="op">)</span><span class="op">}</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>id<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">nsubg</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">i</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">*</span> <span class="va">nsubg</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-                <span class="co">## Convert to data frame to skip sorting the data</span>
-                <span class="co">## When binding the data together</span>
-                <span class="va">as.data.frame</span> 
-        <span class="op">}</span><span class="op">)</span><span class="op">)</span>
-<span class="co">## To better compare, use the same output, that is data.table</span>
-<span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span>
-<span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span>
-<span class="co">#&gt; Time difference of 0.1483819 secs</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">CL</span> <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span></span>
+<span>    <span class="va">V</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">70</span><span class="op">)</span></span>
+<span>    <span class="va">KA</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">CL</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">CL</span> <span class="op">+</span> <span class="va">eta.CL</span><span class="op">)</span></span>
+<span>    <span class="va">V</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">V</span> <span class="op">+</span> <span class="va">eta.V</span><span class="op">)</span></span>
+<span>    <span class="va">KA</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">KA</span> <span class="op">+</span> <span class="va">eta.KA</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">abs</span><span class="op">)</span>    <span class="op">=</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">abs</span>;</span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span>  <span class="op">=</span>  <span class="va">KA</span><span class="op">*</span><span class="va">abs</span><span class="op">-</span><span class="op">(</span><span class="va">CL</span><span class="op">/</span><span class="va">V</span><span class="op">)</span><span class="op">*</span><span class="va">centr</span>;</span>
+<span>    <span class="va">C2</span><span class="op">=</span><span class="va">centr</span><span class="op">/</span><span class="va">V</span>;</span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.CL</span> <span class="op">~</span> <span class="fl">0.09</span>,</span>
+<span>               <span class="va">eta.V</span> <span class="op">~</span> <span class="fl">0.09</span>,</span>
+<span>               <span class="va">eta.KA</span> <span class="op">~</span> <span class="fl">0.09</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">doses</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">60</span>, <span class="fl">120</span><span class="op">)</span></span>
+<span></span>
+<span></span>
+<span><span class="va">startParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"rbind"</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">doses</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">{</span></span>
+<span>            <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="va">doses</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add single dose</span></span>
+<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add 0 observation</span></span>
+<span>                <span class="co">## Generate 4 samples in 24 hour period</span></span>
+<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span><span class="op">)</span><span class="op">}</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>id<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">nsubg</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">i</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">*</span> <span class="va">nsubg</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>                <span class="co">## Convert to data frame to skip sorting the data</span></span>
+<span>                <span class="co">## When binding the data together</span></span>
+<span>                <span class="va">as.data.frame</span> </span>
+<span>        <span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">## To better compare, use the same output, that is data.table</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span></span>
+<span><span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Time difference of 0.1522338 secs</span></span></code></pre></div>
 <p>You can see a striking time difference between the two methods; A few things to keep in mind:</p>
 <ul>
 <li><p><code>rxode2</code> use the thread-safe sitmo <code>threefry</code> routines for simulation of <code>eta</code> values. Therefore the results are expected to be different (also the random samples are taken in a different order which would be different)</p></li>
 <li><p>This prior simulation was run in R 3.5, which has a different random number generator so the results in this simulation will be different from the actual nlmixr comparison when using the slower simulation.</p></li>
-<li><p>This speed comparison used <code>data.table</code>. <code>rxode2</code> uses <code>data.table</code> internally (when available) try to speed up sorting, so this would be different than installations where <code>data.table</code> is not installed. You can force rxode2 to use <code><a href="https://Rdatatable.gitlab.io/data.table/reference/setorder.html" class="external-link">order()</a></code> when sorting by using <code>forderForceBase(TRUE)</code>. In this case there is little difference between the two, though in other examples <code>data.table</code>’s presence leads to a speed increase (and less likely it could lead to a slowdown).</p></li>
+<li><p>This speed comparison used <code>data.table</code>. <code>rxode2</code> uses <code>data.table</code> internally (when available) try to speed up sorting, so this would be different than installations where <code>data.table</code> is not installed. You can force rxode2 to use <code><a href="https://rdrr.io/r/base/order.html" class="external-link">order()</a></code> when sorting by using <code>forderForceBase(TRUE)</code>. In this case there is little difference between the two, though in other examples <code>data.table</code>’s presence leads to a speed increase (and less likely it could lead to a slowdown).</p></li>
 </ul>
 <div class="section level3">
 <h3 id="want-more-ways-to-run-multi-subject-simulations">Want more ways to run multi-subject simulations<a class="anchor" aria-label="anchor" href="#want-more-ways-to-run-multi-subject-simulations"></a>
@@ -422,50 +422,51 @@
 </h3>
 <p>The session information:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span>
-<span class="co">#&gt; R version 4.2.0 (2022-04-22)</span>
-<span class="co">#&gt; Platform: x86_64-pc-linux-gnu (64-bit)</span>
-<span class="co">#&gt; Running under: Ubuntu 20.04.4 LTS</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Matrix products: default</span>
-<span class="co">#&gt; BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.9.0</span>
-<span class="co">#&gt; LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.9.0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; locale:</span>
-<span class="co">#&gt;  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       </span>
-<span class="co">#&gt;  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   </span>
-<span class="co">#&gt;  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          </span>
-<span class="co">#&gt; [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; attached base packages:</span>
-<span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; other attached packages:</span>
-<span class="co">#&gt; [1] MASS_7.3-56          data.table_1.14.2    ggplot2_3.3.6       </span>
-<span class="co">#&gt; [4] microbenchmark_1.4.9 rxode2_2.0.8        </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; loaded via a namespace (and not attached):</span>
-<span class="co">#&gt;  [1] tidyselect_1.1.2    xfun_0.31           bslib_0.3.1        </span>
-<span class="co">#&gt;  [4] purrr_0.3.4         colorspace_2.0-3    vctrs_0.4.1        </span>
-<span class="co">#&gt;  [7] generics_0.1.2      htmltools_0.5.2     yaml_2.3.5         </span>
-<span class="co">#&gt; [10] utf8_1.2.2          rlang_1.0.2         pkgdown_2.0.4.9000 </span>
-<span class="co">#&gt; [13] jquerylib_0.1.4     pillar_1.7.0        withr_2.5.0        </span>
-<span class="co">#&gt; [16] glue_1.6.2          lifecycle_1.0.1     stringr_1.4.0      </span>
-<span class="co">#&gt; [19] munsell_0.5.0       gtable_0.3.0        ragg_1.2.2         </span>
-<span class="co">#&gt; [22] stringfish_0.15.7   memoise_2.0.1       evaluate_0.15      </span>
-<span class="co">#&gt; [25] RApiSerialize_0.1.0 knitr_1.39          fastmap_1.1.0      </span>
-<span class="co">#&gt; [28] sys_3.4             fansi_1.0.3         highr_0.9          </span>
-<span class="co">#&gt; [31] Rcpp_1.0.8.3        scales_1.2.0        backports_1.4.1    </span>
-<span class="co">#&gt; [34] checkmate_2.1.0     cachem_1.0.6        desc_1.4.1         </span>
-<span class="co">#&gt; [37] RcppParallel_5.1.5  jsonlite_1.8.0      farver_2.1.0       </span>
-<span class="co">#&gt; [40] systemfonts_1.0.4   fs_1.5.2            textshaping_0.3.6  </span>
-<span class="co">#&gt; [43] digest_0.6.29       stringi_1.7.6       lotri_0.4.2        </span>
-<span class="co">#&gt; [46] dplyr_1.0.9         qs_0.25.3           grid_4.2.0         </span>
-<span class="co">#&gt; [49] rprojroot_2.0.3     cli_3.3.0           tools_4.2.0        </span>
-<span class="co">#&gt; [52] dparser_1.3.1-5     magrittr_2.0.3      sass_0.4.1         </span>
-<span class="co">#&gt; [55] tibble_3.1.7        PreciseSums_0.5     crayon_1.5.1       </span>
-<span class="co">#&gt; [58] pkgconfig_2.0.3     ellipsis_0.3.2      rmarkdown_2.14     </span>
-<span class="co">#&gt; [61] R6_2.5.1            units_0.8-0         compiler_4.2.0</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; R version 4.2.1 (2022-06-23)</span></span>
+<span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu (64-bit)</span></span>
+<span><span class="co">#&gt; Running under: Ubuntu 20.04.4 LTS</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Matrix products: default</span></span>
+<span><span class="co">#&gt; BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.9.0</span></span>
+<span><span class="co">#&gt; LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.9.0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; locale:</span></span>
+<span><span class="co">#&gt;  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       </span></span>
+<span><span class="co">#&gt;  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   </span></span>
+<span><span class="co">#&gt;  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          </span></span>
+<span><span class="co">#&gt; [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; attached base packages:</span></span>
+<span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; other attached packages:</span></span>
+<span><span class="co">#&gt; [1] MASS_7.3-57          data.table_1.14.2    ggplot2_3.3.6       </span></span>
+<span><span class="co">#&gt; [4] microbenchmark_1.4.9 rxode2_2.0.8        </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
+<span><span class="co">#&gt;  [1] tidyselect_1.1.2    xfun_0.31           bslib_0.3.1        </span></span>
+<span><span class="co">#&gt;  [4] purrr_0.3.4         colorspace_2.0-3    vctrs_0.4.1        </span></span>
+<span><span class="co">#&gt;  [7] generics_0.1.3      htmltools_0.5.2     yaml_2.3.5         </span></span>
+<span><span class="co">#&gt; [10] utf8_1.2.2          rlang_1.0.3         pkgdown_2.0.5.9000 </span></span>
+<span><span class="co">#&gt; [13] jquerylib_0.1.4     pillar_1.7.0        withr_2.5.0        </span></span>
+<span><span class="co">#&gt; [16] glue_1.6.2          lifecycle_1.0.1     stringr_1.4.0      </span></span>
+<span><span class="co">#&gt; [19] munsell_0.5.0       gtable_0.3.0        ragg_1.2.2         </span></span>
+<span><span class="co">#&gt; [22] stringfish_0.15.7   memoise_2.0.1       evaluate_0.15      </span></span>
+<span><span class="co">#&gt; [25] labeling_0.4.2      RApiSerialize_0.1.0 knitr_1.39         </span></span>
+<span><span class="co">#&gt; [28] fastmap_1.1.0       sys_3.4             fansi_1.0.3        </span></span>
+<span><span class="co">#&gt; [31] highr_0.9           Rcpp_1.0.8.3        scales_1.2.0       </span></span>
+<span><span class="co">#&gt; [34] backports_1.4.1     checkmate_2.1.0     cachem_1.0.6       </span></span>
+<span><span class="co">#&gt; [37] desc_1.4.1          RcppParallel_5.1.5  jsonlite_1.8.0     </span></span>
+<span><span class="co">#&gt; [40] farver_2.1.1        systemfonts_1.0.4   fs_1.5.2           </span></span>
+<span><span class="co">#&gt; [43] textshaping_0.3.6   digest_0.6.29       stringi_1.7.6      </span></span>
+<span><span class="co">#&gt; [46] lotri_0.4.2         dplyr_1.0.9         qs_0.25.3          </span></span>
+<span><span class="co">#&gt; [49] grid_4.2.1          rprojroot_2.0.3     cli_3.3.0          </span></span>
+<span><span class="co">#&gt; [52] tools_4.2.1         dparser_1.3.1-5     magrittr_2.0.3     </span></span>
+<span><span class="co">#&gt; [55] sass_0.4.1          tibble_3.1.7        PreciseSums_0.5    </span></span>
+<span><span class="co">#&gt; [58] crayon_1.5.1        pkgconfig_2.0.3     ellipsis_0.3.2     </span></span>
+<span><span class="co">#&gt; [61] rmarkdown_2.14      R6_2.5.1            units_0.8-0        </span></span>
+<span><span class="co">#&gt; [64] compiler_4.2.1</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -481,7 +482,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer>

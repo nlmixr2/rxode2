@@ -134,36 +134,36 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxSimThetaOmega</span><span class="op">(</span>
-  params <span class="op">=</span> <span class="cn">NULL</span>,
-  omega <span class="op">=</span> <span class="cn">NULL</span>,
-  omegaDf <span class="op">=</span> <span class="cn">NULL</span>,
-  omegaLower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_NegInf</span><span class="op">)</span><span class="op">)</span>,
-  omegaUpper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_PosInf</span><span class="op">)</span><span class="op">)</span>,
-  omegaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,
-  omegaSeparation <span class="op">=</span> <span class="st">"auto"</span>,
-  omegaXform <span class="op">=</span> <span class="fl">1L</span>,
-  nSub <span class="op">=</span> <span class="fl">1L</span>,
-  thetaMat <span class="op">=</span> <span class="cn">NULL</span>,
-  thetaLower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_NegInf</span><span class="op">)</span><span class="op">)</span>,
-  thetaUpper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_PosInf</span><span class="op">)</span><span class="op">)</span>,
-  thetaDf <span class="op">=</span> <span class="cn">NULL</span>,
-  thetaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,
-  nStud <span class="op">=</span> <span class="fl">1L</span>,
-  sigma <span class="op">=</span> <span class="cn">NULL</span>,
-  sigmaLower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_NegInf</span><span class="op">)</span><span class="op">)</span>,
-  sigmaUpper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_PosInf</span><span class="op">)</span><span class="op">)</span>,
-  sigmaDf <span class="op">=</span> <span class="cn">NULL</span>,
-  sigmaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,
-  sigmaSeparation <span class="op">=</span> <span class="st">"auto"</span>,
-  sigmaXform <span class="op">=</span> <span class="fl">1L</span>,
-  nCoresRV <span class="op">=</span> <span class="fl">1L</span>,
-  nObs <span class="op">=</span> <span class="fl">1L</span>,
-  dfSub <span class="op">=</span> <span class="fl">0</span>,
-  dfObs <span class="op">=</span> <span class="fl">0</span>,
-  simSubjects <span class="op">=</span> <span class="cn">TRUE</span>,
-  simVariability <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">NA_LOGICAL</span><span class="op">)</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxSimThetaOmega</span><span class="op">(</span></span>
+<span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  omega <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  omegaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  omegaLower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_NegInf</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  omegaUpper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_PosInf</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  omegaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  omegaSeparation <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  omegaXform <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  nSub <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  thetaMat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  thetaLower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_NegInf</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  thetaUpper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_PosInf</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  thetaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  thetaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  nStud <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sigmaLower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_NegInf</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  sigmaUpper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">R_PosInf</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  sigmaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sigmaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  sigmaSeparation <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  sigmaXform <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  nCoresRV <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  nObs <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  dfSub <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  dfObs <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  simSubjects <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  simVariability <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">NA_LOGICAL</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -405,7 +405,7 @@ When <code>NA</code> (default) this is determined by the solver.</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer></div>

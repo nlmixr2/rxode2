@@ -149,7 +149,7 @@ engine <code>threefry</code> and then run the code.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxgamma</span><span class="op">(</span><span class="va">shape</span>, rate <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="va">scale</span>, scale <span class="op">=</span> <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">1L</span>, ncores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxgamma</span><span class="op">(</span><span class="va">shape</span>, rate <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="va">scale</span>, scale <span class="op">=</span> <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">1L</span>, ncores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -197,33 +197,33 @@ reproduce your results.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co">## Use threefry engine</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxgamma you have to explicitly state n</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxgamma you have to explicitly state n</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.02337373 0.28381772 1.06157456 0.11260668 2.92015219 1.24071165</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 0.41154624 0.10091271 0.16499084 0.01961013</span>
-<span class="r-in"><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span>
+<span class="r-in"><span><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  3.464266  4.449752  5.208462  5.011427  4.800199  8.066279  3.676844</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  4.897339  4.642245 12.948280</span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.1547762</span>
-<span class="r-in"></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co">## This example uses `rxbeta` directly in the model</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span class="r-in">  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">rxgamma</span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## This example uses `rxbeta` directly in the model</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">rxgamma</span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">et</span><span class="op">)</span></span>
-<span class="r-in"><span class="co"># }</span></span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">et</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -235,7 +235,7 @@ reproduce your results.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer></div>

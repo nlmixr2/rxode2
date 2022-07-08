@@ -137,56 +137,56 @@ into fast C code</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxode2</span><span class="op">(</span>
-  <span class="va">model</span>,
-  modName <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">wd</span><span class="op">)</span>,
-  wd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,
-  filename <span class="op">=</span> <span class="cn">NULL</span>,
-  extraC <span class="op">=</span> <span class="cn">NULL</span>,
-  debug <span class="op">=</span> <span class="cn">FALSE</span>,
-  calcJac <span class="op">=</span> <span class="cn">NULL</span>,
-  calcSens <span class="op">=</span> <span class="cn">NULL</span>,
-  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,
-  package <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,
-  indLin <span class="op">=</span> <span class="cn">FALSE</span>,
-  verbose <span class="op">=</span> <span class="cn">FALSE</span>
-<span class="op">)</span>
-
-<span class="fu">RxODE</span><span class="op">(</span>
-  <span class="va">model</span>,
-  modName <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">wd</span><span class="op">)</span>,
-  wd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,
-  filename <span class="op">=</span> <span class="cn">NULL</span>,
-  extraC <span class="op">=</span> <span class="cn">NULL</span>,
-  debug <span class="op">=</span> <span class="cn">FALSE</span>,
-  calcJac <span class="op">=</span> <span class="cn">NULL</span>,
-  calcSens <span class="op">=</span> <span class="cn">NULL</span>,
-  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,
-  package <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,
-  indLin <span class="op">=</span> <span class="cn">FALSE</span>,
-  verbose <span class="op">=</span> <span class="cn">FALSE</span>
-<span class="op">)</span>
-
-<span class="fu">rxode</span><span class="op">(</span>
-  <span class="va">model</span>,
-  modName <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">wd</span><span class="op">)</span>,
-  wd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,
-  filename <span class="op">=</span> <span class="cn">NULL</span>,
-  extraC <span class="op">=</span> <span class="cn">NULL</span>,
-  debug <span class="op">=</span> <span class="cn">FALSE</span>,
-  calcJac <span class="op">=</span> <span class="cn">NULL</span>,
-  calcSens <span class="op">=</span> <span class="cn">NULL</span>,
-  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,
-  package <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>,
-  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,
-  indLin <span class="op">=</span> <span class="cn">FALSE</span>,
-  verbose <span class="op">=</span> <span class="cn">FALSE</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxode2</span><span class="op">(</span></span>
+<span>  <span class="va">model</span>,</span>
+<span>  modName <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">wd</span><span class="op">)</span>,</span>
+<span>  wd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  filename <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  extraC <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  calcJac <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,</span>
+<span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">RxODE</span><span class="op">(</span></span>
+<span>  <span class="va">model</span>,</span>
+<span>  modName <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">wd</span><span class="op">)</span>,</span>
+<span>  wd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  filename <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  extraC <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  calcJac <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,</span>
+<span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">rxode</span><span class="op">(</span></span>
+<span>  <span class="va">model</span>,</span>
+<span>  modName <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">wd</span><span class="op">)</span>,</span>
+<span>  wd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  filename <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  extraC <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  calcJac <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calcSens <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  collapseModel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  package <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,</span>
+<span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -516,60 +516,60 @@ Springer-Verlag (1993).</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"><span class="co"># Step 1 - Create a model specification</span></span>
-<span class="r-in"><span class="va">ode</span> <span class="op">&lt;-</span> <span class="st">"</span>
-<span class="r-in">   # A 4-compartment model, 3 PK and a PD (effect) compartment</span>
-<span class="r-in">   # (notice state variable names 'depot', 'centr', 'peri', 'eff')</span>
-<span class="r-in"></span>
-<span class="r-in">   C2 = centr/V2;</span>
-<span class="r-in">   C3 = peri/V3;</span>
-<span class="r-in">   d/dt(depot) =-KA*depot;</span>
-<span class="r-in">   d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;</span>
-<span class="r-in">   d/dt(peri)  =                    Q*C2 - Q*C3;</span>
-<span class="r-in">   d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;</span>
-<span class="r-in">"</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu">rxode</span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Step 1 - Create a model specification</span></span></span>
+<span class="r-in"><span><span class="va">ode</span> <span class="op">&lt;-</span> <span class="st">"</span></span></span>
+<span class="r-in"><span><span class="st">   # A 4-compartment model, 3 PK and a PD (effect) compartment</span></span></span>
+<span class="r-in"><span><span class="st">   # (notice state variable names 'depot', 'centr', 'peri', 'eff')</span></span></span>
+<span class="r-in"><span><span class="st"></span></span></span>
+<span class="r-in"><span><span class="st">   C2 = centr/V2;</span></span></span>
+<span class="r-in"><span><span class="st">   C3 = peri/V3;</span></span></span>
+<span class="r-in"><span><span class="st">   d/dt(depot) =-KA*depot;</span></span></span>
+<span class="r-in"><span><span class="st">   d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;</span></span></span>
+<span class="r-in"><span><span class="st">   d/dt(peri)  =                    Q*C2 - Q*C3;</span></span></span>
+<span class="r-in"><span><span class="st">   d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;</span></span></span>
+<span class="r-in"><span><span class="st">"</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu">rxode</span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_8153caf794ec28a62bb43b07a1ccf5d2</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_4ddca2c2827f0182af131d16ef5fc192</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: V2, V3, KA, CL, Q, Kin, Kout, EC50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$lhs</span>: C2, C3</span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># Step 2 - Create the model input as an EventTable,</span></span>
-<span class="r-in"><span class="co"># including dosing and observation (sampling) events</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># QD (once daily) dosing for 5 days.</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">qd</span> <span class="op">&lt;-</span> <span class="fu"><a href="eventTable.html">eventTable</a></span><span class="op">(</span>amount.units <span class="op">=</span> <span class="st">"ug"</span>, time.units <span class="op">=</span> <span class="st">"hours"</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">qd</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose <span class="op">=</span> <span class="fl">10000</span>, nbr.doses <span class="op">=</span> <span class="fl">5</span>, dosing.interval <span class="op">=</span> <span class="fl">24</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># Sample the system hourly during the first day, every 8 hours</span></span>
-<span class="r-in"><span class="co"># then after</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">qd</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">24</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">qd</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span>from <span class="op">=</span> <span class="fl">24</span> <span class="op">+</span> <span class="fl">8</span>, to <span class="op">=</span> <span class="fl">5</span> <span class="op">*</span> <span class="fl">24</span>, by <span class="op">=</span> <span class="fl">8</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># Step 3 - set starting parameter estimates and initial</span></span>
-<span class="r-in"><span class="co"># values of the state</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">theta</span> <span class="op">&lt;-</span></span>
-<span class="r-in">  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span class="r-in">    KA <span class="op">=</span> <span class="fl">.291</span>, CL <span class="op">=</span> <span class="fl">18.6</span>,</span>
-<span class="r-in">    V2 <span class="op">=</span> <span class="fl">40.2</span>, Q <span class="op">=</span> <span class="fl">10.5</span>, V3 <span class="op">=</span> <span class="fl">297.0</span>,</span>
-<span class="r-in">    Kin <span class="op">=</span> <span class="fl">1.0</span>, Kout <span class="op">=</span> <span class="fl">1.0</span>, EC50 <span class="op">=</span> <span class="fl">200.0</span></span>
-<span class="r-in">  <span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># init state variable</span></span>
-<span class="r-in"><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span class="r-in"><span class="co"># Step 4 - Fit the model to the data</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">qd.cp</span> <span class="op">&lt;-</span> <span class="va">m1</span><span class="op">$</span><span class="fu">solve</span><span class="op">(</span><span class="va">theta</span>, events <span class="op">=</span> <span class="va">qd</span>, <span class="va">inits</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Step 2 - Create the model input as an EventTable,</span></span></span>
+<span class="r-in"><span><span class="co"># including dosing and observation (sampling) events</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># QD (once daily) dosing for 5 days.</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">qd</span> <span class="op">&lt;-</span> <span class="fu"><a href="eventTable.html">eventTable</a></span><span class="op">(</span>amount.units <span class="op">=</span> <span class="st">"ug"</span>, time.units <span class="op">=</span> <span class="st">"hours"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">qd</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span>dose <span class="op">=</span> <span class="fl">10000</span>, nbr.doses <span class="op">=</span> <span class="fl">5</span>, dosing.interval <span class="op">=</span> <span class="fl">24</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Sample the system hourly during the first day, every 8 hours</span></span></span>
+<span class="r-in"><span><span class="co"># then after</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">qd</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">24</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">qd</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span>from <span class="op">=</span> <span class="fl">24</span> <span class="op">+</span> <span class="fl">8</span>, to <span class="op">=</span> <span class="fl">5</span> <span class="op">*</span> <span class="fl">24</span>, by <span class="op">=</span> <span class="fl">8</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Step 3 - set starting parameter estimates and initial</span></span></span>
+<span class="r-in"><span><span class="co"># values of the state</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">theta</span> <span class="op">&lt;-</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    KA <span class="op">=</span> <span class="fl">.291</span>, CL <span class="op">=</span> <span class="fl">18.6</span>,</span></span>
+<span class="r-in"><span>    V2 <span class="op">=</span> <span class="fl">40.2</span>, Q <span class="op">=</span> <span class="fl">10.5</span>, V3 <span class="op">=</span> <span class="fl">297.0</span>,</span></span>
+<span class="r-in"><span>    Kin <span class="op">=</span> <span class="fl">1.0</span>, Kout <span class="op">=</span> <span class="fl">1.0</span>, EC50 <span class="op">=</span> <span class="fl">200.0</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># init state variable</span></span></span>
+<span class="r-in"><span><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Step 4 - Fit the model to the data</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">qd.cp</span> <span class="op">&lt;-</span> <span class="va">m1</span><span class="op">$</span><span class="fu">solve</span><span class="op">(</span><span class="va">theta</span>, events <span class="op">=</span> <span class="va">qd</span>, <span class="va">inits</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Assumed order of inputs: depot, centr, peri, eff</span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      time       C2        C3     depot    centr      peri      eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1,]    0  0.00000 0.0000000 10000.000    0.000    0.0000 1.000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [2,]    1 43.99334 0.9113641  7475.157 1768.532  270.6751 1.083968</span>
@@ -577,13 +577,13 @@ Springer-Verlag (1993).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [4,]    3 51.65163 4.4243597  4176.966 2076.396 1314.0348 1.227523</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [5,]    4 44.37513 5.9432612  3122.347 1783.880 1765.1486 1.233503</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [6,]    5 36.46382 7.1389804  2334.004 1465.845 2120.2772 1.214084</span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># This returns a matrix.  Note that you can also</span></span>
-<span class="r-in"><span class="co"># solve using name initial values. For example:</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eff <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">qd.cp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">theta</span>, events <span class="op">=</span> <span class="va">qd</span>, <span class="va">inits</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># This returns a matrix.  Note that you can also</span></span></span>
+<span class="r-in"><span><span class="co"># solve using name initial values. For example:</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eff <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">qd.cp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">theta</span>, events <span class="op">=</span> <span class="va">qd</span>, <span class="va">inits</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── Solved rxode2 object ──</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
@@ -602,48 +602,48 @@ Springer-Verlag (1993).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>    4  44.4 5.94   <span style="text-decoration: underline;">3</span>122. <span style="text-decoration: underline;">1</span>784. <span style="text-decoration: underline;">1</span>765.  1.23</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>    5  36.5 7.14   <span style="text-decoration: underline;">2</span>334. <span style="text-decoration: underline;">1</span>466. <span style="text-decoration: underline;">2</span>120.  1.21</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># … with 31 more rows</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="rxode2-1.png" alt="" width="700" height="433"></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># You can also directly simulate from a nlmixr model</span></span>
-<span class="r-in"> <span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in">   <span class="fu"><a href="ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
-<span class="r-in">     <span class="va">KA</span> <span class="op">&lt;-</span> <span class="fl">.291</span></span>
-<span class="r-in">     <span class="va">CL</span> <span class="op">&lt;-</span> <span class="fl">18.6</span></span>
-<span class="r-in">     <span class="va">V2</span> <span class="op">&lt;-</span> <span class="fl">40.2</span></span>
-<span class="r-in">     <span class="va">Q</span> <span class="op">&lt;-</span> <span class="fl">10.5</span></span>
-<span class="r-in">     <span class="va">V3</span> <span class="op">&lt;-</span> <span class="fl">297.0</span></span>
-<span class="r-in">     <span class="va">Kin</span> <span class="op">&lt;-</span> <span class="fl">1.0</span></span>
-<span class="r-in">     <span class="va">Kout</span> <span class="op">&lt;-</span> <span class="fl">1.0</span></span>
-<span class="r-in">     <span class="va">EC50</span> <span class="op">&lt;-</span> <span class="fl">200.0</span></span>
-<span class="r-in">   <span class="op">}</span><span class="op">)</span></span>
-<span class="r-in">   <span class="fu"><a href="model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
-<span class="r-in">     <span class="co"># A 4-compartment model, 3 PK and a PD (effect) compartment</span></span>
-<span class="r-in">     <span class="co"># (notice state variable names 'depot', 'centr', 'peri', 'eff')</span></span>
-<span class="r-in">     <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
-<span class="r-in">     <span class="va">C3</span> <span class="op">&lt;-</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span></span>
-<span class="r-in">     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span></span>
-<span class="r-in">     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span>
-<span class="r-in">     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">&lt;-</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span>
-<span class="r-in">     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span></span>
-<span class="r-in">     <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span class="r-in">   <span class="op">}</span><span class="op">)</span></span>
-<span class="r-in"> <span class="op">}</span></span>
-<span class="r-in"></span>
-<span class="r-in"> <span class="va">u</span> <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"> <span class="co"># this pre-compiles and displays the simulation model</span></span>
-<span class="r-in"> <span class="va">u</span><span class="op">$</span><span class="va">simulationModel</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># You can also directly simulate from a nlmixr model</span></span></span>
+<span class="r-in"><span> <span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>   <span class="fu"><a href="ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span></span>
+<span class="r-in"><span>     <span class="va">KA</span> <span class="op">&lt;-</span> <span class="fl">.291</span></span></span>
+<span class="r-in"><span>     <span class="va">CL</span> <span class="op">&lt;-</span> <span class="fl">18.6</span></span></span>
+<span class="r-in"><span>     <span class="va">V2</span> <span class="op">&lt;-</span> <span class="fl">40.2</span></span></span>
+<span class="r-in"><span>     <span class="va">Q</span> <span class="op">&lt;-</span> <span class="fl">10.5</span></span></span>
+<span class="r-in"><span>     <span class="va">V3</span> <span class="op">&lt;-</span> <span class="fl">297.0</span></span></span>
+<span class="r-in"><span>     <span class="va">Kin</span> <span class="op">&lt;-</span> <span class="fl">1.0</span></span></span>
+<span class="r-in"><span>     <span class="va">Kout</span> <span class="op">&lt;-</span> <span class="fl">1.0</span></span></span>
+<span class="r-in"><span>     <span class="va">EC50</span> <span class="op">&lt;-</span> <span class="fl">200.0</span></span></span>
+<span class="r-in"><span>   <span class="op">}</span><span class="op">)</span></span></span>
+<span class="r-in"><span>   <span class="fu"><a href="model.html">model</a></span><span class="op">(</span><span class="op">{</span></span></span>
+<span class="r-in"><span>     <span class="co"># A 4-compartment model, 3 PK and a PD (effect) compartment</span></span></span>
+<span class="r-in"><span>     <span class="co"># (notice state variable names 'depot', 'centr', 'peri', 'eff')</span></span></span>
+<span class="r-in"><span>     <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span></span>
+<span class="r-in"><span>     <span class="va">C3</span> <span class="op">&lt;-</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span></span></span>
+<span class="r-in"><span>     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span></span></span>
+<span class="r-in"><span>     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span></span>
+<span class="r-in"><span>     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">&lt;-</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span></span>
+<span class="r-in"><span>     <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span></span></span>
+<span class="r-in"><span>     <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span></span>
+<span class="r-in"><span>   <span class="op">}</span><span class="op">)</span></span></span>
+<span class="r-in"><span> <span class="op">}</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span> <span class="va">u</span> <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span> <span class="co"># this pre-compiles and displays the simulation model</span></span></span>
+<span class="r-in"><span> <span class="va">u</span><span class="op">$</span><span class="va">simulationModel</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_d54c51d306dfa73da89ed053bb5964f0</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_e56bd03e647308c73f86c769f166ca37</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: KA, CL, V2, Q, V3, Kin, Kout, EC50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$lhs</span>: C2, C3</span>
-<span class="r-in"></span>
-<span class="r-in"> <span class="va">qd.cp</span> <span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">u</span>, <span class="va">qd</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"> <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span> <span class="va">qd.cp</span> <span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">u</span>, <span class="va">qd</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span> <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── Solved rxode2 object ──</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      KA      CL      V2       Q      V3     Kin    Kout    EC50 </span>
@@ -662,9 +662,9 @@ Springer-Verlag (1993).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>    4  44.4 5.94   <span style="text-decoration: underline;">3</span>122. <span style="text-decoration: underline;">1</span>784. <span style="text-decoration: underline;">1</span>765.  1.23</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>    5  36.5 7.14   <span style="text-decoration: underline;">2</span>334. <span style="text-decoration: underline;">1</span>466. <span style="text-decoration: underline;">2</span>120.  1.21</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># … with 31 more rows</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># }</span></span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -676,7 +676,7 @@ Springer-Verlag (1993).</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer></div>

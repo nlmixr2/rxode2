@@ -156,7 +156,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Transit Compartment Models</h1>
             
-            <h4 data-toc-skip class="date">2022-06-20</h4>
+            <h4 data-toc-skip class="date">2022-07-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-transit-compartments.Rmd" class="external-link"><code>vignettes/rxode2-transit-compartments.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-transit-compartments.Rmd</code></div>
@@ -167,58 +167,58 @@
 <p>Savic 2008 first introduced the idea of transit compartments being a mechanistic explanation of a a lag-time type phenomena. rxode2 has special handling of these models:</p>
 <p>You can specify this in a similar manner as the original paper:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## rxode2 2.0.8 using 1 threads (see ?getRxThreads)</span>
-<span class="co">##   no cache: create with `rxCreateCache()`</span></code></pre>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## rxode2 2.0.8 using 1 threads (see ?getRxThreads)</span></span>
+<span><span class="co">##   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="co">## Table 3 from Savic 2007</span>
-    <span class="va">cl</span> <span class="op">=</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span>
-    <span class="va">vc</span> <span class="op">=</span> <span class="fl">45.1</span> <span class="co"># L</span>
-    <span class="va">ka</span> <span class="op">=</span> <span class="fl">0.38</span> <span class="co"># 1/hr</span>
-    <span class="va">mtt</span> <span class="op">=</span> <span class="fl">0.37</span> <span class="co"># hr</span>
-    <span class="va">bio</span><span class="op">=</span><span class="fl">1</span>
-    <span class="va">n</span> <span class="op">=</span> <span class="fl">20.1</span>
-    <span class="va">k</span> <span class="op">=</span> <span class="va">cl</span><span class="op">/</span><span class="va">vc</span>
-    <span class="va">ktr</span> <span class="op">=</span> <span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">/</span><span class="va">mtt</span>
-    <span class="co">## note that lgammafn is the same as lgamma in R.</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">bio</span><span class="op">*</span><span class="fu">podo</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">)</span><span class="op">+</span><span class="va">n</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">-</span>
-                        <span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">-</span><span class="fu">lgammafn</span><span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span>
-<span class="op">}</span><span class="op">)</span>
-
-<span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>
-<span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>
-<span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span>
-
-<span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span>
-
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="co">## Table 3 from Savic 2007</span></span>
+<span>    <span class="va">cl</span> <span class="op">=</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span></span>
+<span>    <span class="va">vc</span> <span class="op">=</span> <span class="fl">45.1</span> <span class="co"># L</span></span>
+<span>    <span class="va">ka</span> <span class="op">=</span> <span class="fl">0.38</span> <span class="co"># 1/hr</span></span>
+<span>    <span class="va">mtt</span> <span class="op">=</span> <span class="fl">0.37</span> <span class="co"># hr</span></span>
+<span>    <span class="va">bio</span><span class="op">=</span><span class="fl">1</span></span>
+<span>    <span class="va">n</span> <span class="op">=</span> <span class="fl">20.1</span></span>
+<span>    <span class="va">k</span> <span class="op">=</span> <span class="va">cl</span><span class="op">/</span><span class="va">vc</span></span>
+<span>    <span class="va">ktr</span> <span class="op">=</span> <span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">/</span><span class="va">mtt</span></span>
+<span>    <span class="co">## note that lgammafn is the same as lgamma in R.</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">bio</span><span class="op">*</span><span class="fu">podo</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">)</span><span class="op">+</span><span class="va">n</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">-</span></span>
+<span>                        <span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">-</span><span class="fu">lgammafn</span><span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-transit-compartments_files/figure-html/unnamed-chunk-3-1.png" width="100%"></p>
 <p>Another option is to specify the transit compartment function <code>transit</code> syntax. This specifies the parameters <code>transit(number of transit compartments, mean transit time, bioavailability)</code>. The bioavailability term is optional.</p>
 <p>The same model can be specified by:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="co">## Table 3 from Savic 2007</span>
-    <span class="va">cl</span> <span class="op">=</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span>
-    <span class="va">vc</span> <span class="op">=</span> <span class="fl">45.1</span> <span class="co"># L</span>
-    <span class="va">ka</span> <span class="op">=</span> <span class="fl">0.38</span> <span class="co"># 1/hr</span>
-    <span class="va">mtt</span> <span class="op">=</span> <span class="fl">0.37</span> <span class="co"># hr</span>
-    <span class="va">bio</span><span class="op">=</span><span class="fl">1</span>
-    <span class="va">n</span> <span class="op">=</span> <span class="fl">20.1</span>
-    <span class="va">k</span> <span class="op">=</span> <span class="va">cl</span><span class="op">/</span><span class="va">vc</span>
-    <span class="va">ktr</span> <span class="op">=</span> <span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">/</span><span class="va">mtt</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu">transit</span><span class="op">(</span><span class="va">n</span>,<span class="va">mtt</span>,<span class="va">bio</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span>
-<span class="op">}</span><span class="op">)</span>
-
-<span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;
-<span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>;
-<span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span>;
-
-<span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span>
-
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="co">## Table 3 from Savic 2007</span></span>
+<span>    <span class="va">cl</span> <span class="op">=</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span></span>
+<span>    <span class="va">vc</span> <span class="op">=</span> <span class="fl">45.1</span> <span class="co"># L</span></span>
+<span>    <span class="va">ka</span> <span class="op">=</span> <span class="fl">0.38</span> <span class="co"># 1/hr</span></span>
+<span>    <span class="va">mtt</span> <span class="op">=</span> <span class="fl">0.37</span> <span class="co"># hr</span></span>
+<span>    <span class="va">bio</span><span class="op">=</span><span class="fl">1</span></span>
+<span>    <span class="va">n</span> <span class="op">=</span> <span class="fl">20.1</span></span>
+<span>    <span class="va">k</span> <span class="op">=</span> <span class="va">cl</span><span class="op">/</span><span class="va">vc</span></span>
+<span>    <span class="va">ktr</span> <span class="op">=</span> <span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">/</span><span class="va">mtt</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu">transit</span><span class="op">(</span><span class="va">n</span>,<span class="va">mtt</span>,<span class="va">bio</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
+<span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>;</span>
+<span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span>;</span>
+<span></span>
+<span><span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-transit-compartments_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
 <p>A couple of things to keep in mind when using this approach:</p>
 <ul>
@@ -237,7 +237,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer>

@@ -156,7 +156,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Data Frames</h1>
             
-            <h4 data-toc-skip class="date">2022-06-20</h4>
+            <h4 data-toc-skip class="date">2022-07-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-data-frame.Rmd" class="external-link"><code>vignettes/rxode2-data-frame.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-data-frame.Rmd</code></div>
@@ -172,102 +172,102 @@
 </h3>
 <p><code>rxode2</code> supports returning a solved object that is a modified data-frame. This is done by the <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>, <code><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve()</a></code>, or <code><a href="../reference/rxSolve.html">rxSolve()</a></code> methods.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R">
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/r-quantities/units/" class="external-link">units</a></span><span class="op">)</span>
-
-<span class="co">## Setup example model</span>
-<span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-  <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;
-  <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span><span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">=</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;
-  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;
-<span class="op">}</span><span class="op">)</span>
-
-<span class="co">## Seup parameters and initial conditions</span>
-
-<span class="va">theta</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">2.94E-01</span>, CL<span class="op">=</span><span class="fl">1.86E+01</span>, V2<span class="op">=</span><span class="fl">4.02E+01</span>, <span class="co"># central </span>
-    Q<span class="op">=</span><span class="fl">1.05E+01</span>,  V3<span class="op">=</span><span class="fl">2.97E+02</span>,              <span class="co"># peripheral</span>
-    Kin<span class="op">=</span><span class="fl">1</span>, Kout<span class="op">=</span><span class="fl">1</span>, EC50<span class="op">=</span><span class="fl">200</span><span class="op">)</span>               <span class="co"># effects</span>
-
-<span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eff<span class="op">=</span><span class="fl">1</span><span class="op">)</span>
-
-<span class="co">## Setup dosing event information</span>
-<span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span>amount.units<span class="op">=</span><span class="st">"mg"</span>, time.units<span class="op">=</span><span class="st">"hours"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="../reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">10000</span>, nbr.doses<span class="op">=</span><span class="fl">10</span>, dosing.interval<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="../reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">20000</span>, nbr.doses<span class="op">=</span><span class="fl">5</span>, start.time<span class="op">=</span><span class="fl">120</span>,
-             dosing.interval<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-  <span class="fu"><a href="../reference/add.sampling.html">add.sampling</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span>;
-
-
-<span class="co">## Now solve</span>
-<span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">mod1</span>,<span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
-<span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     1 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span>
-<span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
-<span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></code></pre></div>
+<code class="sourceCode R"><span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/r-quantities/units/" class="external-link">units</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## Setup example model</span></span>
+<span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;</span>
+<span>  <span class="va">C3</span> <span class="op">=</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span><span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">=</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;</span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## Seup parameters and initial conditions</span></span>
+<span></span>
+<span><span class="va">theta</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">2.94E-01</span>, CL<span class="op">=</span><span class="fl">1.86E+01</span>, V2<span class="op">=</span><span class="fl">4.02E+01</span>, <span class="co"># central </span></span>
+<span>    Q<span class="op">=</span><span class="fl">1.05E+01</span>,  V3<span class="op">=</span><span class="fl">2.97E+02</span>,              <span class="co"># peripheral</span></span>
+<span>    Kin<span class="op">=</span><span class="fl">1</span>, Kout<span class="op">=</span><span class="fl">1</span>, EC50<span class="op">=</span><span class="fl">200</span><span class="op">)</span>               <span class="co"># effects</span></span>
+<span></span>
+<span><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eff<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## Setup dosing event information</span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span>amount.units<span class="op">=</span><span class="st">"mg"</span>, time.units<span class="op">=</span><span class="st">"hours"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="../reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">10000</span>, nbr.doses<span class="op">=</span><span class="fl">10</span>, dosing.interval<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="../reference/add.dosing.html">add.dosing</a></span><span class="op">(</span>dose<span class="op">=</span><span class="fl">20000</span>, nbr.doses<span class="op">=</span><span class="fl">5</span>, start.time<span class="op">=</span><span class="fl">120</span>,</span>
+<span>             dosing.interval<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="../reference/add.sampling.html">add.sampling</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span>;</span>
+<span></span>
+<span></span>
+<span><span class="co">## Now solve</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">mod1</span>,<span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span></span>
+<span><span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     1 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span></span>
+<span><span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></span></code></pre></div>
 <p>or</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>,<span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
-<span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     1 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span>
-<span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
-<span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>,<span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span></span>
+<span><span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     1 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span></span>
+<span><span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></span></code></pre></div>
 <p>Or with <code>mattigr</code></p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
-<span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     1 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span>
-<span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
-<span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span>, <span class="va">inits</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span></span>
+<span><span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     1 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span></span>
+<span><span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="rxode2-solved-object-properties">rxode2 solved object properties<a class="anchor" aria-label="anchor" href="#rxode2-solved-object-properties"></a>
@@ -278,21 +278,21 @@
 </h3>
 <p>The solved object acts as a <code>data.frame</code> or <code>tbl</code> that can be filtered by <code>dpylr</code>. For example you could filter it easily.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span>
-<span class="co">## You can  drop units for comparisons and filtering</span>
-<span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>,<span class="va">ev</span>,<span class="va">inits</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-    <span class="va">drop_units</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">&lt;=</span> <span class="fl">3</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="va">as.tbl</span>
-<span class="co">## or keep them and compare with the proper units.</span>
-<span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>,<span class="va">ev</span>,<span class="va">inits</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">&lt;=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">3</span>, <span class="va">hr</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="va">as.tbl</span>
-<span class="va">x</span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 x 7</span></span>
-<span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
-<span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="co">## You can  drop units for comparisons and filtering</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>,<span class="va">ev</span>,<span class="va">inits</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="va">drop_units</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">&lt;=</span> <span class="fl">3</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="va">as.tbl</span></span>
+<span><span class="co">## or keep them and compare with the proper units.</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>,<span class="va">ev</span>,<span class="va">inits</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">&lt;=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">3</span>, <span class="va">hr</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="va">as.tbl</span></span>
+<span><span class="va">x</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 x 7</span></span></span>
+<span><span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -301,56 +301,56 @@
 <p>However it isn’t just a simple data object. You can use the solved object to update parameters on the fly, or even change the sampling time.</p>
 <p>First we need to recreate the original solved system:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>,<span class="va">ev</span>,<span class="va">inits</span><span class="op">)</span>;
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
-<span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     1 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span>
-<span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
-<span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">mod1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>,<span class="va">ev</span>,<span class="va">inits</span><span class="op">)</span>;</span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span></span>
+<span><span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     1 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span></span>
+<span><span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   1   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.08</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.18</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.21</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></span></code></pre></div>
 <div class="section level3">
 <h3 id="modifying-initial-conditions">Modifying initial conditions<a class="anchor" aria-label="anchor" href="#modifying-initial-conditions"></a>
 </h3>
 <p>To examine or change initial conditions, you can use the syntax <code>cmt.0</code>, <code>cmt0</code>, or <code>cmt_0</code>. In the case of the <code>eff</code> compartment defined by the model, this is:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span><span class="op">$</span><span class="va">eff0</span>
-<span class="co">#&gt; [1] 1</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">$</span><span class="va">eff0</span></span>
+<span><span class="co">#&gt; [1] 1</span></span></code></pre></div>
 <p>which shows the initial condition of the effect compartment. If you wished to change this initial condition to 2, this can be done easily by:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span><span class="op">$</span><span class="va">eff0</span> <span class="op">&lt;-</span> <span class="fl">2</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
-<span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     2 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span>
-<span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span>
-<span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   2   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.50</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.37</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.31</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.27</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.23</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span>
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">$</span><span class="va">eff0</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span></span>
+<span><span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     2 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 241 x 7</span></span></span>
+<span><span class="co">#&gt;   time    C2    C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>    0   0   0     <span style="text-decoration: underline;">10</span>000     0     0   2   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>    1  44.4 0.920  <span style="text-decoration: underline;">7</span>453. <span style="text-decoration: underline;">1</span>784.  273.  1.50</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>    2  54.9 2.67   <span style="text-decoration: underline;">5</span>554. <span style="text-decoration: underline;">2</span>206.  794.  1.37</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>    3  51.9 4.46   <span style="text-decoration: underline;">4</span>140. <span style="text-decoration: underline;">2</span>087. <span style="text-decoration: underline;">1</span>324.  1.31</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>    4  44.5 5.98   <span style="text-decoration: underline;">3</span>085. <span style="text-decoration: underline;">1</span>789. <span style="text-decoration: underline;">1</span>776.  1.27</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>    5  36.5 7.18   <span style="text-decoration: underline;">2</span>299. <span style="text-decoration: underline;">1</span>467. <span style="text-decoration: underline;">2</span>132.  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 235 more rows</span></span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-data-frame_files/figure-html/unnamed-chunk-9-1.png" width="100%"></p>
 </div>
 <div class="section level3">
@@ -359,27 +359,27 @@
 <p>Notice that the initial effect is now <code>2</code>.</p>
 <p>You can also change the sampling times easily by this method by changing <code>t</code> or <code>time</code>. For example:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span><span class="op">$</span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5</span>,length.out<span class="op">=</span><span class="fl">20</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span>
-<span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     2 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 20 x 7</span></span>
-<span class="co">#&gt;    time    C2     C3  depot centr  peri   eff</span>
-<span class="co">#&gt;     <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 0       0   0      <span style="text-decoration: underline;">10</span>000     0    0    2   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 0.263  16.8 0.081<span style="text-decoration: underline;">7</span>  <span style="text-decoration: underline;">9</span>255.  677.  24.3  1.79</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 0.526  29.5 0.299   <span style="text-decoration: underline;">8</span>566. <span style="text-decoration: underline;">1</span>187.  88.7  1.65</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.789  38.9 0.615   <span style="text-decoration: underline;">7</span>929. <span style="text-decoration: underline;">1</span>562. 183.   1.55</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.05   45.5 1.00    <span style="text-decoration: underline;">7</span>338. <span style="text-decoration: underline;">1</span>830. 298.   1.49</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1.32   50.1 1.44    <span style="text-decoration: underline;">6</span>792. <span style="text-decoration: underline;">2</span>013. 427.   1.44</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 14 more rows</span></span>
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">$</span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5</span>,length.out<span class="op">=</span><span class="fl">20</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt;      V2      V3      KA      CL       Q     Kin    Kout    EC50 </span></span>
+<span><span class="co">#&gt;  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     2 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 20 x 7</span></span></span>
+<span><span class="co">#&gt;    time    C2     C3  depot centr  peri   eff</span></span>
+<span><span class="co">#&gt;     <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 0       0   0      <span style="text-decoration: underline;">10</span>000     0    0    2   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 0.263  16.8 0.081<span style="text-decoration: underline;">7</span>  <span style="text-decoration: underline;">9</span>255.  677.  24.3  1.79</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 0.526  29.5 0.299   <span style="text-decoration: underline;">8</span>566. <span style="text-decoration: underline;">1</span>187.  88.7  1.65</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.789  38.9 0.615   <span style="text-decoration: underline;">7</span>929. <span style="text-decoration: underline;">1</span>562. 183.   1.55</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.05   45.5 1.00    <span style="text-decoration: underline;">7</span>338. <span style="text-decoration: underline;">1</span>830. 298.   1.49</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1.32   50.1 1.44    <span style="text-decoration: underline;">6</span>792. <span style="text-decoration: underline;">2</span>013. 427.   1.44</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 14 more rows</span></span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-data-frame_files/figure-html/unnamed-chunk-10-1.png" width="100%"></p>
 </div>
 <div class="section level3">
@@ -387,31 +387,31 @@
 </h3>
 <p>You can also access or change parameters by the <code>$</code> operator. For example, accessing <code>KA</code> can be done by:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span><span class="op">$</span><span class="va">KA</span>
-<span class="co">#&gt; [1] 0.294</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">$</span><span class="va">KA</span></span>
+<span><span class="co">#&gt; [1] 0.294</span></span></code></pre></div>
 <p>And you may change it by assigning it to a new value.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span><span class="op">$</span><span class="va">KA</span> <span class="op">&lt;-</span> <span class="fl">1</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt;    V2    V3    KA    CL     Q   Kin  Kout  EC50 </span>
-<span class="co">#&gt;  40.2 297.0   1.0  18.6  10.5   1.0   1.0 200.0 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span>
-<span class="co">#&gt; depot centr  peri   eff </span>
-<span class="co">#&gt;     0     0     0     2 </span>
-<span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 20 x 7</span></span>
-<span class="co">#&gt;    time    C2    C3  depot centr   peri   eff</span>
-<span class="co">#&gt;     <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 0       0   0     <span style="text-decoration: underline;">10</span>000     0     0    2   </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 0.263  52.2 0.261  <span style="text-decoration: underline;">7</span>686. <span style="text-decoration: underline;">2</span>098.   77.6  1.82</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 0.526  83.3 0.900  <span style="text-decoration: underline;">5</span>908. <span style="text-decoration: underline;">3</span>348.  267.   1.74</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.789  99.8 1.75   <span style="text-decoration: underline;">4</span>541. <span style="text-decoration: underline;">4</span>010.  519.   1.69</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.05  106.  2.69   <span style="text-decoration: underline;">3</span>490. <span style="text-decoration: underline;">4</span>273.  800.   1.67</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1.32  106.  3.66   <span style="text-decoration: underline;">2</span>683. <span style="text-decoration: underline;">4</span>272. <span style="text-decoration: underline;">1</span>086.   1.64</span>
-<span class="co">#&gt; <span style="color: #949494;"># ... with 14 more rows</span></span>
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">x</span><span class="op">$</span><span class="va">KA</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt;    V2    V3    KA    CL     Q   Kin  Kout  EC50 </span></span>
+<span><span class="co">#&gt;  40.2 297.0   1.0  18.6  10.5   1.0   1.0 200.0 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): --</span></span></span>
+<span><span class="co">#&gt; depot centr  peri   eff </span></span>
+<span><span class="co">#&gt;     0     0     0     2 </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 20 x 7</span></span></span>
+<span><span class="co">#&gt;    time    C2    C3  depot centr   peri   eff</span></span>
+<span><span class="co">#&gt;     <span style="color: #949494;">[h]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 0       0   0     <span style="text-decoration: underline;">10</span>000     0     0    2   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 0.263  52.2 0.261  <span style="text-decoration: underline;">7</span>686. <span style="text-decoration: underline;">2</span>098.   77.6  1.82</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 0.526  83.3 0.900  <span style="text-decoration: underline;">5</span>908. <span style="text-decoration: underline;">3</span>348.  267.   1.74</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.789  99.8 1.75   <span style="text-decoration: underline;">4</span>541. <span style="text-decoration: underline;">4</span>010.  519.   1.69</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.05  106.  2.69   <span style="text-decoration: underline;">3</span>490. <span style="text-decoration: underline;">4</span>273.  800.   1.67</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1.32  106.  3.66   <span style="text-decoration: underline;">2</span>683. <span style="text-decoration: underline;">4</span>272. <span style="text-decoration: underline;">1</span>086.   1.64</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 14 more rows</span></span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-data-frame_files/figure-html/unnamed-chunk-12-1.png" width="100%"></p>
 <p>You can access/change all the parameters, initialization(s) or events with the <code>$params</code>, <code>$inits</code>, <code>$events</code> accessor syntax, similar to what is used above.</p>
 <p>This syntax makes it easy to update and explore the effect of various parameters on the solved object.</p>
@@ -430,7 +430,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer>

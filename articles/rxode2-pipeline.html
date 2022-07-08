@@ -156,7 +156,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 in a pipeline</h1>
             
-            <h4 data-toc-skip class="date">2022-06-20</h4>
+            <h4 data-toc-skip class="date">2022-07-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-pipeline.Rmd" class="external-link"><code>vignettes/rxode2-pipeline.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-pipeline.Rmd</code></div>
@@ -170,54 +170,54 @@
 <p>In this example we will show how to use rxode2 in a simple pipeline.</p>
 <p>We can start with a model that can be used for the different simulation workflows that rxode2 can handle:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span>
-<span class="co">#&gt; rxode2 2.0.8 using 1 threads (see ?getRxThreads)</span>
-<span class="co">#&gt;   no cache: create with `rxCreateCache()`</span>
-
-<span class="va">Ribba2012</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="va">k</span> <span class="op">=</span> <span class="fl">100</span>
-
-    <span class="va">tkde</span> <span class="op">=</span> <span class="fl">0.24</span>
-    <span class="va">eta.tkde</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">kde</span> <span class="op">~</span> <span class="va">tkde</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.tkde</span><span class="op">)</span>
-
-    <span class="va">tkpq</span> <span class="op">=</span> <span class="fl">0.0295</span>
-    <span class="va">eta.kpq</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">kpq</span> <span class="op">~</span> <span class="va">tkpq</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.kpq</span><span class="op">)</span>
-
-    <span class="va">tkqpp</span> <span class="op">=</span> <span class="fl">0.0031</span>
-    <span class="va">eta.kqpp</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">kqpp</span> <span class="op">~</span> <span class="va">tkqpp</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.kqpp</span><span class="op">)</span>
-
-    <span class="va">tlambdap</span> <span class="op">=</span> <span class="fl">0.121</span>
-    <span class="va">eta.lambdap</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">lambdap</span> <span class="op">~</span> <span class="va">tlambdap</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.lambdap</span><span class="op">)</span>
-
-    <span class="va">tgamma</span> <span class="op">=</span> <span class="fl">0.729</span>
-    <span class="va">eta.gamma</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">gamma</span> <span class="op">~</span> <span class="va">tgamma</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.gamma</span><span class="op">)</span>
-
-    <span class="va">tdeltaqp</span> <span class="op">=</span> <span class="fl">0.00867</span>
-    <span class="va">eta.deltaqp</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">deltaqp</span> <span class="op">~</span> <span class="va">tdeltaqp</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.deltaqp</span><span class="op">)</span>
-
-    <span class="va">prop.err</span> <span class="op">&lt;-</span> <span class="fl">0</span>
-    <span class="va">pstar</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">pt</span><span class="op">+</span><span class="va">q</span><span class="op">+</span><span class="va">qp</span><span class="op">)</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="va">prop.err</span><span class="op">)</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span> <span class="op">=</span> <span class="op">-</span><span class="va">kde</span> <span class="op">*</span> <span class="va">c</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">pt</span><span class="op">)</span> <span class="op">=</span> <span class="va">lambdap</span> <span class="op">*</span> <span class="va">pt</span> <span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">pstar</span><span class="op">/</span><span class="va">k</span><span class="op">)</span> <span class="op">+</span> <span class="va">kqpp</span><span class="op">*</span><span class="va">qp</span> <span class="op">-</span>
-        <span class="va">kpq</span><span class="op">*</span><span class="va">pt</span> <span class="op">-</span> <span class="va">gamma</span><span class="op">*</span><span class="va">c</span><span class="op">*</span><span class="va">kde</span><span class="op">*</span><span class="va">pt</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">q</span><span class="op">)</span> <span class="op">=</span> <span class="va">kpq</span><span class="op">*</span><span class="va">pt</span> <span class="op">-</span><span class="va">gamma</span><span class="op">*</span><span class="va">c</span><span class="op">*</span><span class="va">kde</span><span class="op">*</span><span class="va">q</span>
-    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">qp</span><span class="op">)</span> <span class="op">=</span> <span class="va">gamma</span><span class="op">*</span><span class="va">c</span><span class="op">*</span><span class="va">kde</span><span class="op">*</span><span class="va">q</span> <span class="op">-</span> <span class="va">kqpp</span><span class="op">*</span><span class="va">qp</span> <span class="op">-</span> <span class="va">deltaqp</span><span class="op">*</span><span class="va">qp</span>
-    <span class="co">## initial conditions</span>
-    <span class="va">tpt0</span> <span class="op">=</span> <span class="fl">7.13</span>
-    <span class="va">eta.pt0</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">pt0</span> <span class="op">~</span> <span class="va">tpt0</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.pt0</span><span class="op">)</span>
-    <span class="va">tq0</span> <span class="op">=</span> <span class="fl">41.2</span>
-    <span class="va">eta.q0</span> <span class="op">=</span> <span class="fl">0</span>
-    <span class="va">q0</span> <span class="op">~</span> <span class="va">tq0</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.q0</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">pt</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="va">pt0</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/quit.html" class="external-link">q</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="va">q0</span>
-<span class="op">}</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; rxode2 2.0.8 using 1 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
+<span></span>
+<span><span class="va">Ribba2012</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">k</span> <span class="op">=</span> <span class="fl">100</span></span>
+<span></span>
+<span>    <span class="va">tkde</span> <span class="op">=</span> <span class="fl">0.24</span></span>
+<span>    <span class="va">eta.tkde</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">kde</span> <span class="op">~</span> <span class="va">tkde</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.tkde</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">tkpq</span> <span class="op">=</span> <span class="fl">0.0295</span></span>
+<span>    <span class="va">eta.kpq</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">kpq</span> <span class="op">~</span> <span class="va">tkpq</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.kpq</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">tkqpp</span> <span class="op">=</span> <span class="fl">0.0031</span></span>
+<span>    <span class="va">eta.kqpp</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">kqpp</span> <span class="op">~</span> <span class="va">tkqpp</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.kqpp</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">tlambdap</span> <span class="op">=</span> <span class="fl">0.121</span></span>
+<span>    <span class="va">eta.lambdap</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">lambdap</span> <span class="op">~</span> <span class="va">tlambdap</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.lambdap</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">tgamma</span> <span class="op">=</span> <span class="fl">0.729</span></span>
+<span>    <span class="va">eta.gamma</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">gamma</span> <span class="op">~</span> <span class="va">tgamma</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.gamma</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">tdeltaqp</span> <span class="op">=</span> <span class="fl">0.00867</span></span>
+<span>    <span class="va">eta.deltaqp</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">deltaqp</span> <span class="op">~</span> <span class="va">tdeltaqp</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.deltaqp</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">prop.err</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="va">pstar</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">pt</span><span class="op">+</span><span class="va">q</span><span class="op">+</span><span class="va">qp</span><span class="op">)</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="va">prop.err</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span> <span class="op">=</span> <span class="op">-</span><span class="va">kde</span> <span class="op">*</span> <span class="va">c</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">pt</span><span class="op">)</span> <span class="op">=</span> <span class="va">lambdap</span> <span class="op">*</span> <span class="va">pt</span> <span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">pstar</span><span class="op">/</span><span class="va">k</span><span class="op">)</span> <span class="op">+</span> <span class="va">kqpp</span><span class="op">*</span><span class="va">qp</span> <span class="op">-</span></span>
+<span>        <span class="va">kpq</span><span class="op">*</span><span class="va">pt</span> <span class="op">-</span> <span class="va">gamma</span><span class="op">*</span><span class="va">c</span><span class="op">*</span><span class="va">kde</span><span class="op">*</span><span class="va">pt</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">q</span><span class="op">)</span> <span class="op">=</span> <span class="va">kpq</span><span class="op">*</span><span class="va">pt</span> <span class="op">-</span><span class="va">gamma</span><span class="op">*</span><span class="va">c</span><span class="op">*</span><span class="va">kde</span><span class="op">*</span><span class="va">q</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">qp</span><span class="op">)</span> <span class="op">=</span> <span class="va">gamma</span><span class="op">*</span><span class="va">c</span><span class="op">*</span><span class="va">kde</span><span class="op">*</span><span class="va">q</span> <span class="op">-</span> <span class="va">kqpp</span><span class="op">*</span><span class="va">qp</span> <span class="op">-</span> <span class="va">deltaqp</span><span class="op">*</span><span class="va">qp</span></span>
+<span>    <span class="co">## initial conditions</span></span>
+<span>    <span class="va">tpt0</span> <span class="op">=</span> <span class="fl">7.13</span></span>
+<span>    <span class="va">eta.pt0</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">pt0</span> <span class="op">~</span> <span class="va">tpt0</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.pt0</span><span class="op">)</span></span>
+<span>    <span class="va">tq0</span> <span class="op">=</span> <span class="fl">41.2</span></span>
+<span>    <span class="va">eta.q0</span> <span class="op">=</span> <span class="fl">0</span></span>
+<span>    <span class="va">q0</span> <span class="op">~</span> <span class="va">tq0</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.q0</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">pt</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="va">pt0</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/quit.html" class="external-link">q</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="va">q0</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>This is a tumor growth model described in Ribba 2012. In this case, we compiled the model into an R object <code>Ribba2012</code>, though in an rxode2 simulation pipeline, you do not <em>have</em> to assign the compiled model to any object, though I think it makes sense.</p>
 </div>
 <div class="section level2">
@@ -243,12 +243,12 @@
 </li>
 </ul>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span>
-    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
 </div>
 <div class="section level2">
@@ -259,49 +259,49 @@
 </h3>
 <p>The next sort of simulation that may be useful is simulating multiple patients with the same treatments. In this case, we will use the <code>omega</code> matrix specified by the paper:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co">## Add CVs from paper for individual simulation</span>
-<span class="co">## Uses exact formula:</span>
-
-<span class="va">lognCv</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="op">(</span><span class="va">x</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">}</span>
-
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/nlmixr2/lotri" class="external-link">lotri</a></span><span class="op">)</span>
-<span class="co">## Now create omega matrix</span>
-<span class="co">## I'm using lotri to quickly specify names/diagonals</span>
-<span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.pt0</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">94</span><span class="op">)</span>,
-               <span class="va">eta.q0</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">54</span><span class="op">)</span>,
-               <span class="va">eta.lambdap</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">72</span><span class="op">)</span>,
-               <span class="va">eta.kqp</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">76</span><span class="op">)</span>,
-               <span class="va">eta.qpp</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">97</span><span class="op">)</span>,
-               <span class="va">eta.deltaqp</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">115</span><span class="op">)</span>,
-               <span class="va">eta.kde</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">70</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">omega</span>
-<span class="co">#&gt;               eta.pt0    eta.q0 eta.lambdap   eta.kqp   eta.qpp eta.deltaqp</span>
-<span class="co">#&gt; eta.pt0     0.6331848 0.0000000   0.0000000 0.0000000 0.0000000   0.0000000</span>
-<span class="co">#&gt; eta.q0      0.0000000 0.2558818   0.0000000 0.0000000 0.0000000   0.0000000</span>
-<span class="co">#&gt; eta.lambdap 0.0000000 0.0000000   0.4176571 0.0000000 0.0000000   0.0000000</span>
-<span class="co">#&gt; eta.kqp     0.0000000 0.0000000   0.0000000 0.4559047 0.0000000   0.0000000</span>
-<span class="co">#&gt; eta.qpp     0.0000000 0.0000000   0.0000000 0.0000000 0.6631518   0.0000000</span>
-<span class="co">#&gt; eta.deltaqp 0.0000000 0.0000000   0.0000000 0.0000000 0.0000000   0.8426442</span>
-<span class="co">#&gt; eta.kde     0.0000000 0.0000000   0.0000000 0.0000000 0.0000000   0.0000000</span>
-<span class="co">#&gt;               eta.kde</span>
-<span class="co">#&gt; eta.pt0     0.0000000</span>
-<span class="co">#&gt; eta.q0      0.0000000</span>
-<span class="co">#&gt; eta.lambdap 0.0000000</span>
-<span class="co">#&gt; eta.kqp     0.0000000</span>
-<span class="co">#&gt; eta.qpp     0.0000000</span>
-<span class="co">#&gt; eta.deltaqp 0.0000000</span>
-<span class="co">#&gt; eta.kde     0.3987761</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co">## Add CVs from paper for individual simulation</span></span>
+<span><span class="co">## Uses exact formula:</span></span>
+<span></span>
+<span><span class="va">lognCv</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="op">(</span><span class="va">x</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">}</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/nlmixr2/lotri" class="external-link">lotri</a></span><span class="op">)</span></span>
+<span><span class="co">## Now create omega matrix</span></span>
+<span><span class="co">## I'm using lotri to quickly specify names/diagonals</span></span>
+<span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.pt0</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">94</span><span class="op">)</span>,</span>
+<span>               <span class="va">eta.q0</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">54</span><span class="op">)</span>,</span>
+<span>               <span class="va">eta.lambdap</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">72</span><span class="op">)</span>,</span>
+<span>               <span class="va">eta.kqp</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">76</span><span class="op">)</span>,</span>
+<span>               <span class="va">eta.qpp</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">97</span><span class="op">)</span>,</span>
+<span>               <span class="va">eta.deltaqp</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">115</span><span class="op">)</span>,</span>
+<span>               <span class="va">eta.kde</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">70</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">omega</span></span>
+<span><span class="co">#&gt;               eta.pt0    eta.q0 eta.lambdap   eta.kqp   eta.qpp eta.deltaqp</span></span>
+<span><span class="co">#&gt; eta.pt0     0.6331848 0.0000000   0.0000000 0.0000000 0.0000000   0.0000000</span></span>
+<span><span class="co">#&gt; eta.q0      0.0000000 0.2558818   0.0000000 0.0000000 0.0000000   0.0000000</span></span>
+<span><span class="co">#&gt; eta.lambdap 0.0000000 0.0000000   0.4176571 0.0000000 0.0000000   0.0000000</span></span>
+<span><span class="co">#&gt; eta.kqp     0.0000000 0.0000000   0.0000000 0.4559047 0.0000000   0.0000000</span></span>
+<span><span class="co">#&gt; eta.qpp     0.0000000 0.0000000   0.0000000 0.0000000 0.6631518   0.0000000</span></span>
+<span><span class="co">#&gt; eta.deltaqp 0.0000000 0.0000000   0.0000000 0.0000000 0.0000000   0.8426442</span></span>
+<span><span class="co">#&gt; eta.kde     0.0000000 0.0000000   0.0000000 0.0000000 0.0000000   0.0000000</span></span>
+<span><span class="co">#&gt;               eta.kde</span></span>
+<span><span class="co">#&gt; eta.pt0     0.0000000</span></span>
+<span><span class="co">#&gt; eta.q0      0.0000000</span></span>
+<span><span class="co">#&gt; eta.lambdap 0.0000000</span></span>
+<span><span class="co">#&gt; eta.kqp     0.0000000</span></span>
+<span><span class="co">#&gt; eta.qpp     0.0000000</span></span>
+<span><span class="co">#&gt; eta.deltaqp 0.0000000</span></span>
+<span><span class="co">#&gt; eta.kde     0.3987761</span></span></code></pre></div>
 <p>With this information, it is easy to simulate 3 subjects from the model-based parameters:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1089</span><span class="op">)</span>
-<span class="fu"><a href="../reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">1089</span><span class="op">)</span>
-<span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span>
-    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1089</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">1089</span><span class="op">)</span></span>
+<span><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-6-1.png" width="700"></p>
 <p>Note there are two different things that were added to this simulation: - <code>nSub</code> to specify how many subjects are in the model - <code>omega</code> to specify the between subject variability.</p>
 </div>
@@ -310,12 +310,12 @@
 </h3>
 <p>You can even add unexplained variability quite easily:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span>
-    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span>     <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-7-1.png" width="700"></p>
 <p>In this case we only added the <code>sigma</code> matrix to have unexplained variability on the <code>pstar</code> or total tumor tissue.</p>
 <p>You can even simulate with uncertainty in the <code>theta</code> <code>omega</code> and <code>sigma</code> values if you wish.</p>
@@ -325,67 +325,67 @@
 </h3>
 <p>If we assume these parameters came from <code>95</code> subjects with <code>8</code> observations apiece, the degrees of freedom for the omega matrix would be <code>95</code>, and the degrees of freedom of the <code>sigma</code> matrix would be <code>95*8=760</code> because <code>95</code> items informed the <code>omega</code> matrix, and <code>760</code> items informed the <code>sigma</code> matrix.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, nStud<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,
-            dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span>
-    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, nStud<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,</span>
+<span>            dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
 <p>Often in simulations we have a full covariance matrix for the fixed effect parameters. In this case, we do not have the matrix, but it could be specified by <code>thetaMat</code>.</p>
 <p>While we do not have a full covariance matrix, we can have information about the diagonal elements of the covariance matrix from the model paper. These can be converted as follows:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">rseVar</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">est</span>, <span class="va">rse</span><span class="op">)</span><span class="op">{</span>
-    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">est</span><span class="op">*</span><span class="va">rse</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span>
-<span class="op">}</span>
-
-<span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">tpt0</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">7.13</span>,<span class="fl">25</span><span class="op">)</span>,
-                  <span class="va">tq0</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">41.2</span>,<span class="fl">7</span><span class="op">)</span>,
-                  <span class="va">tlambdap</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.121</span>, <span class="fl">16</span><span class="op">)</span>,
-                  <span class="va">tkqpp</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.0031</span>, <span class="fl">35</span><span class="op">)</span>,
-                  <span class="va">tdeltaqp</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.00867</span>, <span class="fl">21</span><span class="op">)</span>,
-                  <span class="va">tgamma</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.729</span>, <span class="fl">37</span><span class="op">)</span>,
-                  <span class="va">tkde</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.24</span>, <span class="fl">33</span><span class="op">)</span>
-                  <span class="op">)</span>;
-
-<span class="va">thetaMat</span>
-<span class="co">#&gt;            tpt0   tq0 tlambdap    tkqpp  tdeltaqp  tgamma   tkde</span>
-<span class="co">#&gt; tpt0     1.7825 0.000  0.00000 0.000000 0.0000000 0.00000 0.0000</span>
-<span class="co">#&gt; tq0      0.0000 2.884  0.00000 0.000000 0.0000000 0.00000 0.0000</span>
-<span class="co">#&gt; tlambdap 0.0000 0.000  0.01936 0.000000 0.0000000 0.00000 0.0000</span>
-<span class="co">#&gt; tkqpp    0.0000 0.000  0.00000 0.001085 0.0000000 0.00000 0.0000</span>
-<span class="co">#&gt; tdeltaqp 0.0000 0.000  0.00000 0.000000 0.0018207 0.00000 0.0000</span>
-<span class="co">#&gt; tgamma   0.0000 0.000  0.00000 0.000000 0.0000000 0.26973 0.0000</span>
-<span class="co">#&gt; tkde     0.0000 0.000  0.00000 0.000000 0.0000000 0.00000 0.0792</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">rseVar</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">est</span>, <span class="va">rse</span><span class="op">)</span><span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">est</span><span class="op">*</span><span class="va">rse</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">tpt0</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">7.13</span>,<span class="fl">25</span><span class="op">)</span>,</span>
+<span>                  <span class="va">tq0</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">41.2</span>,<span class="fl">7</span><span class="op">)</span>,</span>
+<span>                  <span class="va">tlambdap</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.121</span>, <span class="fl">16</span><span class="op">)</span>,</span>
+<span>                  <span class="va">tkqpp</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.0031</span>, <span class="fl">35</span><span class="op">)</span>,</span>
+<span>                  <span class="va">tdeltaqp</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.00867</span>, <span class="fl">21</span><span class="op">)</span>,</span>
+<span>                  <span class="va">tgamma</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.729</span>, <span class="fl">37</span><span class="op">)</span>,</span>
+<span>                  <span class="va">tkde</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.24</span>, <span class="fl">33</span><span class="op">)</span></span>
+<span>                  <span class="op">)</span>;</span>
+<span></span>
+<span><span class="va">thetaMat</span></span>
+<span><span class="co">#&gt;            tpt0   tq0 tlambdap    tkqpp  tdeltaqp  tgamma   tkde</span></span>
+<span><span class="co">#&gt; tpt0     1.7825 0.000  0.00000 0.000000 0.0000000 0.00000 0.0000</span></span>
+<span><span class="co">#&gt; tq0      0.0000 2.884  0.00000 0.000000 0.0000000 0.00000 0.0000</span></span>
+<span><span class="co">#&gt; tlambdap 0.0000 0.000  0.01936 0.000000 0.0000000 0.00000 0.0000</span></span>
+<span><span class="co">#&gt; tkqpp    0.0000 0.000  0.00000 0.001085 0.0000000 0.00000 0.0000</span></span>
+<span><span class="co">#&gt; tdeltaqp 0.0000 0.000  0.00000 0.000000 0.0018207 0.00000 0.0000</span></span>
+<span><span class="co">#&gt; tgamma   0.0000 0.000  0.00000 0.000000 0.0000000 0.26973 0.0000</span></span>
+<span><span class="co">#&gt; tkde     0.0000 0.000  0.00000 0.000000 0.0000000 0.00000 0.0792</span></span></code></pre></div>
 <p>Now we have a <code>thetaMat</code> to represent the uncertainty in the <code>theta</code> matrix, as well as the other pieces in the simulation. Typically you can put this information into your simulation with the <code>thetaMat</code> matrix.</p>
 <p>With such large variability in <code>theta</code> it is easy to sample a negative rate constant, which does not make sense. For example:</p>
-<pre><code><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-<span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-<span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-<span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-<span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">2</span>, nStud<span class="op">=</span><span class="fl">2</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,
-thetaMat<span class="op">=</span><span class="va">thetaMat</span>, 
-dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span>
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span>
-
-<span class="co">#&gt; unhandled error message: EE:[lsoda] 70000 steps taken before reaching tout</span>
-<span class="co">#&gt; @(lsoda.c:750</span>
-<span class="co">#&gt; Warning message:</span>
-<span class="co">#&gt; In rxSolve_(object, .ctl, .nms, .xtra, params, events, inits, setupOnly = .setupOnly) :</span>
-<span class="co">#&gt;  Some ID(s) could not solve the ODEs correctly; These values are replaced with NA.</span></code></pre>
+<pre><code><span><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span><span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span><span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span><span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">2</span>, nStud<span class="op">=</span><span class="fl">2</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,</span>
+<span>thetaMat<span class="op">=</span><span class="va">thetaMat</span>, </span>
+<span>dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span>
+<span></span>
+<span><span class="co">#&gt; unhandled error message: EE:[lsoda] 70000 steps taken before reaching tout</span></span>
+<span><span class="co">#&gt; @(lsoda.c:750</span></span>
+<span><span class="co">#&gt; Warning message:</span></span>
+<span><span class="co">#&gt; In rxSolve_(object, .ctl, .nms, .xtra, params, events, inits, setupOnly = .setupOnly) :</span></span>
+<span><span class="co">#&gt;  Some ID(s) could not solve the ODEs correctly; These values are replaced with NA.</span></span></code></pre>
 <p>To correct these problems you simply need to use a truncated multivariate normal and specify the reasonable ranges for the parameters. For <code>theta</code> this is specified by <code>thetaLower</code> and <code>thetaUpper</code>. Similar parameters are there for the other matrices: <code>omegaLower</code>, <code>omegaUpper</code>, <code>sigmaLower</code> and <code>sigmaUpper</code>. These may be named vectors, one numeric value, or a numeric vector matching the number of parameters specified in the <code>thetaMat</code> matrix.</p>
 <p>In this case the simulation simply has to be modified to have <code>thetaLower=0</code> to make sure all rates are positive:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">2</span>, nStud<span class="op">=</span><span class="fl">2</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,
-            thetaMat<span class="op">=</span><span class="va">thetaMat</span>,
-            thetaLower<span class="op">=</span><span class="fl">0</span>, <span class="co"># Make sure the rates are reasonable</span>
-            dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span>
-    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">2</span>, nStud<span class="op">=</span><span class="fl">2</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,</span>
+<span>            thetaMat<span class="op">=</span><span class="va">thetaMat</span>,</span>
+<span>            thetaLower<span class="op">=</span><span class="fl">0</span>, <span class="co"># Make sure the rates are reasonable</span></span>
+<span>            dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
 </div>
 </div>
@@ -394,85 +394,85 @@ dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op"
 </h2>
 <p>While it is easy to use <code>dplyr</code> and <code>data.table</code> to perform your own summary of simulations, <code>rxode2</code> also provides this ability by the <code>confint</code> function.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co">## This takes a little more time; Most of the time is the summary</span>
-<span class="co">## time.</span>
-
-<span class="va">sim0</span> <span class="op">&lt;-</span> <span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">10</span>, nStud<span class="op">=</span><span class="fl">10</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,
-            thetaMat<span class="op">=</span><span class="va">thetaMat</span>,
-            thetaLower<span class="op">=</span><span class="fl">0</span>, <span class="co"># Make sure the rates are reasonable</span>
-            dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span>
-    <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pt"</span>,<span class="st">"q"</span>,<span class="st">"qp"</span>,<span class="st">"pstar"</span><span class="op">)</span>,level<span class="op">=</span><span class="fl">0.90</span><span class="op">)</span>; <span class="co"># Create Simulation intervals</span>
-<span class="co">#&gt; summarizing data...done</span>
-
-<span class="va">sim0</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Plot the simulation intervals</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co">## This takes a little more time; Most of the time is the summary</span></span>
+<span><span class="co">## time.</span></span>
+<span></span>
+<span><span class="va">sim0</span> <span class="op">&lt;-</span> <span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">10</span>, nStud<span class="op">=</span><span class="fl">10</span>, omega<span class="op">=</span><span class="va">omega</span>, sigma<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.err</span> <span class="op">~</span> <span class="fl">0.05</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>,</span>
+<span>            thetaMat<span class="op">=</span><span class="va">thetaMat</span>,</span>
+<span>            thetaLower<span class="op">=</span><span class="fl">0</span>, <span class="co"># Make sure the rates are reasonable</span></span>
+<span>            dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pt"</span>,<span class="st">"q"</span>,<span class="st">"qp"</span>,<span class="st">"pstar"</span><span class="op">)</span>,level<span class="op">=</span><span class="fl">0.90</span><span class="op">)</span>; <span class="co"># Create Simulation intervals</span></span>
+<span><span class="co">#&gt; summarizing data...done</span></span>
+<span></span>
+<span><span class="va">sim0</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># Plot the simulation intervals</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-11-1.png" width="700"></p>
 <div class="section level3">
 <h3 id="simulating-from-a-data-frame-of-parameters">Simulating from a data-frame of parameters<a class="anchor" aria-label="anchor" href="#simulating-from-a-data-frame-of-parameters"></a>
 </h3>
 <p>While the simulation from matrices can be very useful and a fast way to simulate information, sometimes you may want to simulate more complex scenarios. For instance, there may be some reason to believe that <code>tkde</code> needs to be above <code>tlambdap</code>, therefore these need to be simulated more carefully. You can generate the data frame in whatever way you want. The internal method of simulating the new parameters is exported too.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Attaching package: 'dplyr'</span>
-<span class="co">#&gt; The following objects are masked from 'package:stats':</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;     filter, lag</span>
-<span class="co">#&gt; The following objects are masked from 'package:base':</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;     intersect, setdiff, setequal, union</span>
-<span class="va">pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxInits.html">rxInits</a></span><span class="op">(</span><span class="va">Ribba2012</span><span class="op">)</span>;
-<span class="va">pars</span> <span class="op">&lt;-</span> <span class="va">pars</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">regexpr</a></span><span class="op">(</span><span class="st">"(prop|eta)"</span>,<span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">pars</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="op">-</span><span class="fl">1</span><span class="op">]</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">pars</span><span class="op">)</span>
-<span class="co">#&gt;        k     tkde     tkpq    tkqpp tlambdap   tgamma tdeltaqp     tpt0 </span>
-<span class="co">#&gt; 1.00e+02 2.40e-01 2.95e-02 3.10e-03 1.21e-01 7.29e-01 8.67e-03 7.13e+00 </span>
-<span class="co">#&gt;      tq0 </span>
-<span class="co">#&gt; 4.12e+01</span>
-<span class="co">## This is the exported method for simulation of Theta/Omega internally in rxode2</span>
-<span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSimThetaOmega.html">rxSimThetaOmega</a></span><span class="op">(</span>params<span class="op">=</span><span class="va">pars</span>, omega<span class="op">=</span><span class="va">omega</span>,dfSub<span class="op">=</span><span class="fl">760</span>,
-                      thetaMat<span class="op">=</span><span class="va">thetaMat</span>, thetaLower<span class="op">=</span><span class="fl">0</span>, nSub<span class="op">=</span><span class="fl">60</span>,nStud<span class="op">=</span><span class="fl">60</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
-    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">tkde</span> <span class="op">&gt;</span> <span class="va">tlambdap</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/tbl_df.html" class="external-link">as.tbl</a></span><span class="op">(</span><span class="op">)</span>
-<span class="co">#&gt; Warning: `as.tbl()` was deprecated in dplyr 1.0.0.</span>
-<span class="co">#&gt; Please use `tibble::as_tibble()` instead.</span>
-<span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span>
-<span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.</span></span>
-<span class="co">## You could also simulate more and bind them together to a data frame.</span>
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span>
-<span class="co">#&gt; <span style="color: #949494;"># A tibble: 2,100 × 16</span></span>
-<span class="co">#&gt;        k  tkde   tkpq tkqpp tlambdap tgamma tdeltaqp  tpt0   tq0 eta.pt0 eta.q0</span>
-<span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  2.31   0.199 </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  1.35   0.051<span style="text-decoration: underline;">4</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.404</span>  1.08  </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.177</span>  0.031<span style="text-decoration: underline;">1</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.771</span>  0.945 </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  0.883  0.050<span style="text-decoration: underline;">7</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.368</span>  0.932 </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  1.43   0.223 </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  0.062<span style="text-decoration: underline;">7</span> 0.154 </span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">10</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  0.242  0.143 </span>
-<span class="co">#&gt; <span style="color: #949494;"># … with 2,090 more rows, and 5 more variables: eta.lambdap &lt;dbl&gt;,</span></span>
-<span class="co">#&gt; <span style="color: #949494;">#   eta.kqp &lt;dbl&gt;, eta.qpp &lt;dbl&gt;, eta.deltaqp &lt;dbl&gt;, eta.kde &lt;dbl&gt;</span></span>
-<span class="co">## Quick check to make sure that all the parameters are OK.</span>
-<span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">tkde</span><span class="op">&gt;</span><span class="va">df</span><span class="op">$</span><span class="va">tlambdap</span><span class="op">)</span>
-<span class="co">#&gt; [1] TRUE</span>
-<span class="va">sim1</span> <span class="op">&lt;-</span> <span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span>
-    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span>
-    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span>
-<span class="co">## Note this information looses information about which ID is in a</span>
-<span class="co">## "study", so it summarizes the confidence intervals by dividing the</span>
-<span class="co">## subjects into sqrt(#subjects) subjects and then summarizes the</span>
-<span class="co">## confidence intervals</span>
-<span class="va">sim2</span> <span class="op">&lt;-</span> <span class="va">sim1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pt"</span>,<span class="st">"q"</span>,<span class="st">"qp"</span>,<span class="st">"pstar"</span><span class="op">)</span>,level<span class="op">=</span><span class="fl">0.90</span><span class="op">)</span>; <span class="co"># Create Simulation intervals</span>
-<span class="co">#&gt; <span style="color: #BBBB00;">!</span> in order to put confidence bands around the intervals, you need at least 2500 simulations</span>
-<span class="co">#&gt; summarizing data...done</span>
-<span class="fu"><a href="https://rdrr.io/r/base/save.html" class="external-link">save</a></span><span class="op">(</span><span class="va">sim2</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span>package <span class="op">=</span> <span class="st">"rxode2"</span><span class="op">)</span>, <span class="st">"pipeline-sim2.rds"</span><span class="op">)</span>, version <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
-<span class="va">sim2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     filter, lag</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
+<span><span class="va">pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxInits.html">rxInits</a></span><span class="op">(</span><span class="va">Ribba2012</span><span class="op">)</span>;</span>
+<span><span class="va">pars</span> <span class="op">&lt;-</span> <span class="va">pars</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">regexpr</a></span><span class="op">(</span><span class="st">"(prop|eta)"</span>,<span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">pars</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="op">-</span><span class="fl">1</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">pars</span><span class="op">)</span></span>
+<span><span class="co">#&gt;        k     tkde     tkpq    tkqpp tlambdap   tgamma tdeltaqp     tpt0 </span></span>
+<span><span class="co">#&gt; 1.00e+02 2.40e-01 2.95e-02 3.10e-03 1.21e-01 7.29e-01 8.67e-03 7.13e+00 </span></span>
+<span><span class="co">#&gt;      tq0 </span></span>
+<span><span class="co">#&gt; 4.12e+01</span></span>
+<span><span class="co">## This is the exported method for simulation of Theta/Omega internally in rxode2</span></span>
+<span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSimThetaOmega.html">rxSimThetaOmega</a></span><span class="op">(</span>params<span class="op">=</span><span class="va">pars</span>, omega<span class="op">=</span><span class="va">omega</span>,dfSub<span class="op">=</span><span class="fl">760</span>,</span>
+<span>                      thetaMat<span class="op">=</span><span class="va">thetaMat</span>, thetaLower<span class="op">=</span><span class="fl">0</span>, nSub<span class="op">=</span><span class="fl">60</span>,nStud<span class="op">=</span><span class="fl">60</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">tkde</span> <span class="op">&gt;</span> <span class="va">tlambdap</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/tbl_df.html" class="external-link">as.tbl</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: `as.tbl()` was deprecated in dplyr 1.0.0.</span></span>
+<span><span class="co">#&gt; Please use `tibble::as_tibble()` instead.</span></span>
+<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
+<span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.</span></span></span>
+<span><span class="co">## You could also simulate more and bind them together to a data frame.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2,100 × 16</span></span></span>
+<span><span class="co">#&gt;        k  tkde   tkpq tkqpp tlambdap tgamma tdeltaqp  tpt0   tq0 eta.pt0 eta.q0</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  2.31   0.199 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  1.35   0.051<span style="text-decoration: underline;">4</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.404</span>  1.08  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.177</span>  0.031<span style="text-decoration: underline;">1</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.771</span>  0.945 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  0.883  0.050<span style="text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6 -<span style="color: #BB0000;">0.368</span>  0.932 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  1.43   0.223 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  0.062<span style="text-decoration: underline;">7</span> 0.154 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>   100  1.60 0.029<span style="text-decoration: underline;">5</span>  1.25    0.149   1.30    0.414  7.60  42.6  0.242  0.143 </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># … with 2,090 more rows, and 5 more variables: eta.lambdap &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   eta.kqp &lt;dbl&gt;, eta.qpp &lt;dbl&gt;, eta.deltaqp &lt;dbl&gt;, eta.kde &lt;dbl&gt;</span></span></span>
+<span><span class="co">## Quick check to make sure that all the parameters are OK.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">tkde</span><span class="op">&gt;</span><span class="va">df</span><span class="op">$</span><span class="va">tlambdap</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span><span class="va">sim1</span> <span class="op">&lt;-</span> <span class="va">Ribba2012</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Use rxode2</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time.units<span class="op">=</span><span class="st">"months"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Pipe to a new event table</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">1</span>, time<span class="op">=</span><span class="fl">50</span>, until<span class="op">=</span><span class="fl">58</span>, ii<span class="op">=</span><span class="fl">1.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add dosing every 1.5 months</span></span>
+<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, by<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add some sampling times (not required)</span></span>
+<span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
+<span><span class="co">## Note this information looses information about which ID is in a</span></span>
+<span><span class="co">## "study", so it summarizes the confidence intervals by dividing the</span></span>
+<span><span class="co">## subjects into sqrt(#subjects) subjects and then summarizes the</span></span>
+<span><span class="co">## confidence intervals</span></span>
+<span><span class="va">sim2</span> <span class="op">&lt;-</span> <span class="va">sim1</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pt"</span>,<span class="st">"q"</span>,<span class="st">"qp"</span>,<span class="st">"pstar"</span><span class="op">)</span>,level<span class="op">=</span><span class="fl">0.90</span><span class="op">)</span>; <span class="co"># Create Simulation intervals</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> in order to put confidence bands around the intervals, you need at least 2500 simulations</span></span>
+<span><span class="co">#&gt; summarizing data...done</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/save.html" class="external-link">save</a></span><span class="op">(</span><span class="va">sim2</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span>package <span class="op">=</span> <span class="st">"rxode2"</span><span class="op">)</span>, <span class="st">"pipeline-sim2.rds"</span><span class="op">)</span>, version <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">sim2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
 </div>
 </div>
@@ -489,7 +489,7 @@ dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op"
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer>

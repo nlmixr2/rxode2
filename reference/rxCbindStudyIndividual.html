@@ -134,7 +134,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rxCbindStudyIndividual</span><span class="op">(</span><span class="va">studyParameters</span>, <span class="va">individualParameters</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxCbindStudyIndividual</span><span class="op">(</span><span class="va">studyParameters</span>, <span class="va">individualParameters</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -162,36 +162,36 @@ a matrix or a data frame</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"></span>
-<span class="r-in"><span class="co"># Function for coverting coefficient of covariance into a variance</span></span>
-<span class="r-in"><span class="va">lognCv</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="op">(</span><span class="va">x</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">}</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">nSub</span>  <span class="op">&lt;-</span>  <span class="fl">100</span></span>
-<span class="r-in"><span class="va">nStud</span>  <span class="op">&lt;-</span>  <span class="fl">10</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co">#define theta</span></span>
-<span class="r-in"><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lka<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span>, <span class="co"># log ka</span></span>
-<span class="r-in">          lCl<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>, <span class="co"># log Cl</span></span>
-<span class="r-in">          lV<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">300</span><span class="op">)</span> <span class="co"># log V</span></span>
-<span class="r-in">          <span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co">#define theta Matrix</span></span>
-<span class="r-in"><span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">lCl</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,</span>
-<span class="r-in">                 <span class="va">lV</span>  <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,</span>
-<span class="r-in">                 <span class="va">lka</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">nev</span> <span class="op">&lt;-</span> <span class="va">nSub</span><span class="op">*</span><span class="va">nStud</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">ev1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>COV1<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nev</span>,<span class="fl">50</span>,<span class="fl">30</span><span class="op">)</span>,COV2<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nev</span>,<span class="fl">75</span>,<span class="fl">10</span><span class="op">)</span>,</span>
-<span class="r-in">                  COV3<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.0</span>,<span class="fl">2.0</span><span class="op">)</span>,<span class="va">nev</span>,replace<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">tmat</span> <span class="op">&lt;-</span><span class="fu"><a href="rxRmvn.html">rxRmvn</a></span><span class="op">(</span><span class="va">nStud</span>, <span class="va">theta</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="va">thetaMat</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span>, <span class="va">thetaMat</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu">rxCbindStudyIndividual</span><span class="op">(</span><span class="va">tmat</span>, <span class="va">ev1</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Function for coverting coefficient of covariance into a variance</span></span></span>
+<span class="r-in"><span><span class="va">lognCv</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="op">(</span><span class="va">x</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">}</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">nSub</span>  <span class="op">&lt;-</span>  <span class="fl">100</span></span></span>
+<span class="r-in"><span><span class="va">nStud</span>  <span class="op">&lt;-</span>  <span class="fl">10</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">#define theta</span></span></span>
+<span class="r-in"><span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lka<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span>, <span class="co"># log ka</span></span></span>
+<span class="r-in"><span>          lCl<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>, <span class="co"># log Cl</span></span></span>
+<span class="r-in"><span>          lV<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">300</span><span class="op">)</span> <span class="co"># log V</span></span></span>
+<span class="r-in"><span>          <span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">#define theta Matrix</span></span></span>
+<span class="r-in"><span><span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">lCl</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                 <span class="va">lV</span>  <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                 <span class="va">lka</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">nev</span> <span class="op">&lt;-</span> <span class="va">nSub</span><span class="op">*</span><span class="va">nStud</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">ev1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>COV1<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nev</span>,<span class="fl">50</span>,<span class="fl">30</span><span class="op">)</span>,COV2<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nev</span>,<span class="fl">75</span>,<span class="fl">10</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                  COV3<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.0</span>,<span class="fl">2.0</span><span class="op">)</span>,<span class="va">nev</span>,replace<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">tmat</span> <span class="op">&lt;-</span><span class="fu"><a href="rxRmvn.html">rxRmvn</a></span><span class="op">(</span><span class="va">nStud</span>, <span class="va">theta</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="va">thetaMat</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">]</span>, <span class="va">thetaMat</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">rxCbindStudyIndividual</span><span class="op">(</span><span class="va">tmat</span>, <span class="va">ev1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           lCl       lV        lka        COV1      COV2 COV3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1    1.607304 5.719771 -0.6839015  50.4392162  70.66196    1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2    1.607304 5.719771 -0.6839015  76.1986612  51.54621    1</span>
@@ -1193,7 +1193,7 @@ a matrix or a data frame</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 998  1.632279 5.740407 -0.7066287  84.5713440  79.66582    2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 999  1.632279 5.740407 -0.7066287  27.4957126  98.71902    1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1000 1.632279 5.740407 -0.7066287  45.5107794  75.38610    1</span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -1205,7 +1205,7 @@ a matrix or a data frame</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.9000.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.9000.</p>
 </div>
 
     </footer></div>
