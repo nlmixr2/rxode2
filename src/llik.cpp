@@ -1,13 +1,13 @@
-#define STRICT_R_HEADER
-#include <stan/math/prim/mat/fun/Eigen.hpp> // must come before #include <RcppEigen.h>
+//#undef NDEBUG
+#define USE_FC_LEN_T
+#define STRICT_R_HEADERS
+#include <stan/math.hpp>
+#include <Rcpp.h>
 #include <RcppEigen.h>
+#include "../inst/include/rxode2.h"
 #include "llik.h"
 // [[Rcpp::depends(RcppEigen)]]
 using namespace Rcpp;
-
-#include <vector>
-#include <stan/math/rev/core.hpp>
-#include <stan/math.hpp>
 
 #define isNorm 8.0
 #define isPois 1.0
