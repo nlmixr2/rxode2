@@ -1,7 +1,9 @@
 //#undef NDEBUG
+#define NDEBUG // just in case
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <stan/math.hpp>
+#define NDEBUG // just in case
 #include <Rcpp.h>
 #include <RcppEigen.h>
 #include "../inst/include/rxode2.h"
