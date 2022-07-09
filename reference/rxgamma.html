@@ -149,14 +149,13 @@ engine <code>threefry</code> and then run the code.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxgamma</span><span class="op">(</span><span class="va">shape</span>, rate <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="va">scale</span>, scale <span class="op">=</span> <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">1L</span>, ncores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rxgamma</span><span class="op">(</span><span class="va">shape</span>, rate <span class="op">=</span> <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">1L</span>, ncores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
-    <dl><dt>shape, scale</dt>
-<dd><p>shape and scale parameters.  Must be positive,
-    <code>scale</code> strictly.</p></dd>
+    <dl><dt>shape</dt>
+<dd><p>The shape of the gamma random variable</p></dd>
 
 
 <dt>rate</dt>
@@ -190,9 +189,8 @@ birthday problem will increase.</p>
 <code>rxode2</code> environment once (therefore one seed or series of seeds
 for the whole simulation), pre-generate all random variables
 used for the simulation, or seed the rxode2 engine with <code><a href="rxSetSeed.html">rxSetSeed()</a></code></p>
-<p>Also care should be made that the computer you will be running on
-can run the same number of cores as you are running so they can
-reproduce your results.</p>
+<p>Internally each ID is seeded with a unique number so that the
+results do not depend on the number of cores used.</p>
     </div>
 
     <div class="section level2">

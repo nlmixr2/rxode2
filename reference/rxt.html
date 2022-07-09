@@ -186,9 +186,8 @@ birthday problem will increase.</p>
 <code>rxode2</code> environment once (therefore one seed or series of seeds
 for the whole simulation), pre-generate all random variables
 used for the simulation, or seed the rxode2 engine with <code><a href="rxSetSeed.html">rxSetSeed()</a></code></p>
-<p>Also care should be made that the computer you will be running on
-can run the same number of cores as you are running so they can
-reproduce your results.</p>
+<p>Internally each ID is seeded with a unique number so that the
+results do not depend on the number of cores used.</p>
     </div>
 
     <div class="section level2">

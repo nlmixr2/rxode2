@@ -129,7 +129,12 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.8" id="rxode2-208">rxode2 2.0.8<a class="anchor" aria-label="anchor" href="#rxode2-208"></a></h2>
-<ul><li>Allow models in the <code>nlmixr2</code> form without an <code>ini({})</code> block</li></ul></div>
+<p>** Breaking changes</p>
+<ul><li>
+<code>rxgamma</code> now only allows a <code>rate</code> input. This aligns with the internal <code>rxode2</code> version of <code>rxgamma</code> and clarifies how this will be used. It is also aligned with the <code>llikGamma</code> function used for generalized likelihood estimation.</li></ul><p>** New features</p>
+<ul><li><p>Allow models in the <code>nlmixr2</code> form without an <code>ini({})</code> block</p></li>
+<li><p>Families of log-likelihood were added to <code>rxode2</code> so that mixed likelihood nonlinear mixed effects models may be specified and run in the future.</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.7" id="rxode2-207">rxode2 2.0.7<a class="anchor" aria-label="anchor" href="#rxode2-207"></a></h2><p class="text-muted">CRAN release: 2022-05-17</p>
 <ul><li><p>Removed accidental <code>^S</code> from news as requested by CRAN.</p></li>

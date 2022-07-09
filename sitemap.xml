@@ -247,6 +247,42 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/is.rxSolve.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikBeta.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikBinom.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikChisq.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikExp.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikF.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikGamma.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikGeom.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikNorm.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikPois.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikT.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikUnif.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikWeibull.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/logit.html</loc>
   </url>
   <url>
