@@ -6,10 +6,10 @@
   "binom"=1:2,
   "dbern" = 1,
   "bern" = 1,
-  "dbeta" = 2:3,
-  "beta" = 2:3,
-  "dt" = 1:2,
-  "t" = 1:2,
+  "dbeta" = 2, # non-central isn't supported by stan so drop support
+  "beta" = 2,
+  "dt" = 1, # non-central isn't supported by stan, so drop
+  "t" = 1,
   ##
   ## "dnbinom"=2:3,  ## dnbinom is in R; FIXME: how does ot compare to dneg_binomial
   ## "dneg_binomial", ## not in base R (but in glnmm2)
@@ -39,8 +39,8 @@
   "combined2"=0,
   "comb1"=0,
   "comb2"=0,
-  "dchisq"=1:2,
-  "chisq"=1:2,
+  "dchisq"=1,
+  "chisq"=1,
   "dexp"=0:1,
   "df"=2:3,
   "f"=2:3,
@@ -129,7 +129,6 @@
   "geom"=c(0, 1),
   "beta" = c(0, Inf),
   "beta2"=c(0, Inf),
-  "beta3"=c(0, Inf),
   "t"=c(0, Inf),
   "t2"=c(0, Inf)
 )
@@ -263,7 +262,7 @@ rxPreferredDistributionName <- function(dist) {
   "dexp", #7
   "f", #8
   "geom", #9
-  "hyper", #10
+  "hyper", #10; hyper will not be supported since all the inputs are integers
   "unif", #11
   "weibull", #12
   "cauchy", #13

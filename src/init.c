@@ -11,6 +11,7 @@
 #define __DOINIT__
 #include "tran.h"
 #include "rxthreefry.h"
+#include "llik.h"
 #include "cbindThetaOmega.h"
 #include "seed.h"
 #include "getTime.h"
@@ -100,6 +101,19 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_);
 SEXP _rxode2_nestingInfo_(SEXP omega, SEXP data);
 
 SEXP _rxode2_isNullZero(SEXP in);
+
+SEXP _rxode2_llikNormInternal(SEXP xSEXP, SEXP muSEXP, SEXP sigmaSEXP);
+SEXP _rxode2_llikPoisInternal(SEXP xSEXP, SEXP lambdaSEXP);
+SEXP _rxode2_llikBinomInternal(SEXP xSEXP, SEXP sizeSEXP, SEXP probSEXP);
+SEXP _rxode2_llikBetaInternal(SEXP xSEXP, SEXP shape1SEXP, SEXP shape2SEXP);
+SEXP _rxode2_llikTInternal(SEXP xSEXP, SEXP df1SEXP, SEXP meanSEXP, SEXP sdSEXP);
+SEXP _rxode2_llikChisqInternal(SEXP xSEXP, SEXP dfSEXP);
+SEXP _rxode2_llikExpInternal(SEXP xSEXP, SEXP rateSEXP);
+SEXP _rxode2_llikFInternal(SEXP xSEXP, SEXP df1SEXP, SEXP df2SEXP);
+SEXP _rxode2_llikGeomInternal(SEXP xSEXP, SEXP pSEXP);
+SEXP _rxode2_llikUnifInternal(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP);
+SEXP _rxode2_llikWeibullInternal(SEXP xSEXP, SEXP shapeSEXP, SEXP sizeSEXP);
+SEXP _rxode2_llikGammaInternal(SEXP xSEXP, SEXP shapeSEXP, SEXP rateSEXP);
 
 SEXP rxode2_get_mv();
 SEXP _rxode2_rxGetSeed();
@@ -458,7 +472,19 @@ void R_init_rxode2(DllInfo *info){
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
-    {NULL, NULL, 0}
+    {"_rxode2_llikNormInternal", (DL_FUNC) &_rxode2_llikNormInternal, 3},
+    {"_rxode2_llikPoisInternal", (DL_FUNC) &_rxode2_llikPoisInternal, 2},
+    {"_rxode2_llikBinomInternal",(DL_FUNC) &_rxode2_llikBinomInternal, 3},
+    {"_rxode2_llikBetaInternal", (DL_FUNC) &_rxode2_llikBetaInternal, 3},
+    {"_rxode2_llikTInternal", (DL_FUNC) &_rxode2_llikTInternal, 4},
+    {"_rxode2_llikChisqInternal", (DL_FUNC) &_rxode2_llikChisqInternal, 2},
+    {"_rxode2_llikExpInternal", (DL_FUNC) &_rxode2_llikExpInternal, 2},
+    {"_rxode2_llikFInternal", (DL_FUNC) &_rxode2_llikFInternal, 3},
+    {"_rxode2_llikGeomInternal", (DL_FUNC) &_rxode2_llikGeomInternal, 2},
+    {"_rxode2_llikUnifInternal", (DL_FUNC) &_rxode2_llikUnifInternal, 3},
+    {"_rxode2_llikWeibullInternal", (DL_FUNC) &_rxode2_llikWeibullInternal, 3},
+    {"_rxode2_llikGammaInternal", (DL_FUNC) &_rxode2_llikGammaInternal, 3},
+    {NULL, NULL, 0} 
   };
   // C callable to assign environments.
   R_RegisterCCallable("rxode2","_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr);
@@ -549,7 +575,41 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
   R_RegisterCCallable("rxode2", "rxGetId", (DL_FUNC) &rxGetId);
   R_RegisterCCallable("rxode2", "getTime", (DL_FUNC) &getTime);
-  
+
+  // log likelihoods used in calculations
+  R_RegisterCCallable("rxode2", "rxLlikNorm", (DL_FUNC) &rxLlikNorm);
+  R_RegisterCCallable("rxode2", "rxLlikNormDmean", (DL_FUNC) &rxLlikNormDmean);
+  R_RegisterCCallable("rxode2", "rxLlikNormDsd", (DL_FUNC) &rxLlikNormDsd);
+  R_RegisterCCallable("rxode2", "rxLlikPois", (DL_FUNC) &rxLlikPois);
+  R_RegisterCCallable("rxode2", "rxLlikPoisDlambda", (DL_FUNC) &rxLlikPoisDlambda);
+  R_RegisterCCallable("rxode2", "rxLlikBinom", (DL_FUNC) &rxLlikBinom);
+  R_RegisterCCallable("rxode2", "rxLlikBinomDprob", (DL_FUNC) &rxLlikBinomDprob);
+  R_RegisterCCallable("rxode2", "rxLlikBeta", (DL_FUNC) &rxLlikBeta);
+  R_RegisterCCallable("rxode2", "rxLlikBetaDshape1", (DL_FUNC) &rxLlikBetaDshape1);
+  R_RegisterCCallable("rxode2", "rxLlikBetaDshape2", (DL_FUNC) &rxLlikBetaDshape2);
+  R_RegisterCCallable("rxode2", "rxLlikT", (DL_FUNC) &rxLlikT);
+  R_RegisterCCallable("rxode2", "rxLlikTDdf", (DL_FUNC) &rxLlikTDdf);
+  R_RegisterCCallable("rxode2", "rxLlikTDmean", (DL_FUNC) &rxLlikTDmean);
+  R_RegisterCCallable("rxode2", "rxLlikTDsd", (DL_FUNC) &rxLlikTDsd);
+  R_RegisterCCallable("rxode2", "rxLlikChisq", (DL_FUNC) &rxLlikChisq);
+  R_RegisterCCallable("rxode2", "rxLlikChisqDdf", (DL_FUNC) &rxLlikChisqDdf);
+  R_RegisterCCallable("rxode2", "rxLlikExp", (DL_FUNC) &rxLlikExp);
+  R_RegisterCCallable("rxode2", "rxLlikExpDrate", (DL_FUNC) &rxLlikExpDrate);
+  R_RegisterCCallable("rxode2", "rxLlikF", (DL_FUNC) &rxLlikF);
+  R_RegisterCCallable("rxode2", "rxLlikFDdf1", (DL_FUNC) &rxLlikFDdf1);
+  R_RegisterCCallable("rxode2", "rxLlikFDdf2", (DL_FUNC) &rxLlikFDdf2);
+  R_RegisterCCallable("rxode2", "rxLlikGeom", (DL_FUNC) &rxLlikGeom);
+  R_RegisterCCallable("rxode2", "rxLlikGeomDp", (DL_FUNC) &rxLlikGeomDp);
+  R_RegisterCCallable("rxode2", "rxLlikUnif", (DL_FUNC) &rxLlikUnif);
+  R_RegisterCCallable("rxode2", "rxLlikUnifDalpha", (DL_FUNC) &rxLlikUnifDalpha);
+  R_RegisterCCallable("rxode2", "rxLlikUnifDbeta", (DL_FUNC) &rxLlikUnifDbeta);
+  R_RegisterCCallable("rxode2", "rxLlikWeibull", (DL_FUNC) &rxLlikWeibull);
+  R_RegisterCCallable("rxode2", "rxLlikWeibullDshape", (DL_FUNC) &rxLlikWeibullDshape);
+  R_RegisterCCallable("rxode2", "rxLlikWeibullDscale", (DL_FUNC) &rxLlikWeibullDscale);
+  R_RegisterCCallable("rxode2", "rxLlikGamma", (DL_FUNC) &rxLlikGamma);
+  R_RegisterCCallable("rxode2", "rxLlikGammaDshape", (DL_FUNC) &rxLlikGammaDshape);
+  R_RegisterCCallable("rxode2", "rxLlikGammaDrate", (DL_FUNC) &rxLlikGammaDrate);
+
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},
     {"rxode2_prod",              (DL_FUNC) &rxode2_prod, 2, rxode2_Sum_t},

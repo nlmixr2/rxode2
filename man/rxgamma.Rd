@@ -4,11 +4,10 @@
 \alias{rxgamma}
 \title{Simulate gamma variable from threefry generator}
 \usage{
-rxgamma(shape, rate = 1/scale, scale = 1, n = 1L, ncores = 1L)
+rxgamma(shape, rate = 1, n = 1L, ncores = 1L)
 }
 \arguments{
-\item{shape, scale}{shape and scale parameters.  Must be positive,
-    \code{scale} strictly.}
+\item{shape}{The shape of the gamma random variable}
 
 \item{rate}{an alternative way to specify the scale.}
 
@@ -42,9 +41,8 @@ The key to avoid this problem is to either run all simulations in the
 for the whole simulation), pre-generate all random variables
 used for the simulation, or seed the rxode2 engine with \code{rxSetSeed()}
 
-Also care should be made that the computer you will be running on
-can run the same number of cores as you are running so they can
-reproduce your results.
+Internally each ID is seeded with a unique number so that the
+results do not depend on the number of cores used.
 }
 \examples{
 \donttest{

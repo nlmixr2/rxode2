@@ -66,6 +66,52 @@ rxode2i2_fn rit_;
 rxode2i2_fn2 riunif;
 rxode2i2_fn2 riweibull;
 
+rxode2_llikNormFun _llikNorm;
+rxode2_llikNormFun _llikNormDmean;
+rxode2_llikNormFun _llikNormDsd;
+
+rxode2_llikPoisFun _llikPois;
+rxode2_llikPoisFun _llikPoisDlambda;
+
+rxode2_llikBinomFun _llikBinom;
+rxode2_llikBinomFun _llikBinomDprob;
+
+rxode2_llikBetaFun _llikBeta;
+rxode2_llikBetaFun _llikBetaDshape1;
+rxode2_llikBetaFun _llikBetaDshape2;
+
+rxode2_llikTFun _llikT;
+rxode2_llikTFun _llikTDdf;
+rxode2_llikTFun _llikTDmean;
+rxode2_llikTFun _llikTDsd;
+
+rxode2_llikChisqFun _llikChisq;
+rxode2_llikChisqFun _llikChisqDdf;
+
+rxode2_llikExpFun _llikExp;
+rxode2_llikExpFun _llikExpDrate;
+
+rxode2_llikFFun _llikF;
+rxode2_llikFFun _llikFDdf1;
+rxode2_llikFFun _llikFDdf2;
+
+rxode2_llikGeomFun _llikGeom;
+rxode2_llikGeomFun _llikGeomDp;
+
+rxode2_llikUnifFun _llikUnif;
+rxode2_llikUnifFun _llikUnifDalpha;
+rxode2_llikUnifFun _llikUnifDbeta;
+
+rxode2_llikWeibullFun _llikWeibull;
+rxode2_llikWeibullFun _llikWeibullDshape;
+rxode2_llikWeibullFun _llikWeibullDscale;
+
+rxode2_llikGammaFun _llikGamma;
+rxode2_llikGammaFun _llikGammaDshape;
+rxode2_llikGammaFun _llikGammaDrate;
+
+
+
 rxode2_compareFactorVal_fn _compareFactorVal;
 
 double _prod(double *input, double *p, int type, int n, ...){
@@ -245,6 +291,50 @@ void _assignFuns0() {
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
+  
+  _llikNorm=(rxode2_llikNormFun) R_GetCCallable("rxode2","rxLlikNorm");
+  _llikNormDmean=(rxode2_llikNormFun) R_GetCCallable("rxode2","rxLlikNormDmean");
+  _llikNormDsd=(rxode2_llikNormFun) R_GetCCallable("rxode2","rxLlikNormDsd");
+  
+  _llikPois        = (rxode2_llikPoisFun) R_GetCCallable("rxode2","rxLlikPois");
+  _llikPoisDlambda = (rxode2_llikPoisFun) R_GetCCallable("rxode2","rxLlikPoisDlambda");
+
+  _llikBinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinom");
+  _llikBinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinomDprob");
+
+  _llikBeta = (rxode2_llikBetaFun)   R_GetCCallable("rxode2", "rxLlikBeta");
+  _llikBetaDshape1 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape1");
+  _llikBetaDshape2 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape2");
+
+  _llikT = (rxode2_llikTFun)   R_GetCCallable("rxode2", "rxLlikT");
+  _llikTDdf = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDdf");
+  _llikTDmean = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDmean");
+  _llikTDsd = (rxode2_llikTFun) R_GetCCallable("rxode2", "rxLlikTDsd");
+  _llikChisq    = (rxode2_llikChisqFun) R_GetCCallable("rxode2", "rxLlikChisq");
+  _llikChisqDdf = (rxode2_llikChisqFun) R_GetCCallable("rxode2", "rxLlikChisqDdf");
+
+  _llikExp    = (rxode2_llikExpFun) R_GetCCallable("rxode2", "rxLlikExp");
+  _llikExpDrate = (rxode2_llikExpFun) R_GetCCallable("rxode2", "rxLlikExpDrate");
+
+  _llikF    = (rxode2_llikFFun) R_GetCCallable("rxode2", "rxLlikF");
+  _llikFDdf1 = (rxode2_llikFFun) R_GetCCallable("rxode2", "rxLlikFDdf1");
+  _llikFDdf2 = (rxode2_llikFFun) R_GetCCallable("rxode2", "rxLlikFDdf2");
+
+  _llikGeom    = (rxode2_llikGeomFun) R_GetCCallable("rxode2", "rxLlikGeom");
+  _llikGeomDp  = (rxode2_llikGeomFun) R_GetCCallable("rxode2", "rxLlikGeomDp");
+
+  _llikUnif        = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnif");
+  _llikUnifDalpha  = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnifDalpha");
+  _llikUnifDbeta   = (rxode2_llikUnifFun) R_GetCCallable("rxode2", "rxLlikUnifDbeta");
+
+  _llikWeibull        = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibull");
+  _llikWeibullDshape  = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibullDshape");
+  _llikWeibullDscale   = (rxode2_llikWeibullFun) R_GetCCallable("rxode2", "rxLlikWeibullDscale");
+
+  _llikGamma        = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGamma");
+  _llikGammaDshape  = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDshape");
+  _llikGammaDrate   = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDrate");
+
   _solveData = _getRxSolve_();
 }
 

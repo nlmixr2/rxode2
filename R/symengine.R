@@ -156,7 +156,39 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "is.nan" = 1,
   "is.na" = 1,
   "is.finite" = 1,
-  "is.infinite" = 1
+  "is.infinite" = 1,
+  "llikPois"=2,
+  "llikPoisDlambda"=2,
+  "llikBinom"=3,
+  "llikBinomDprob"=3,
+  "llikBeta"=3,
+  "llikBetaDshape1"=3,
+  "llikBetaDshape2"=3,
+  "llikT"=4,
+  "llikTDdf"=4,
+  "llikTDmean"=4,
+  "llikTDsd"=4,
+  "llikChisq"=2,
+  "llikChisqDdf"=2,
+  "llikExp"=2,
+  "llikExpDrate"=2,
+  "llikF"=3,
+  "llikFDdf1"=3,
+  "llikFDdf2"=3,
+  "llikGeom"=2,
+  "llikGeomDprob"=2,
+  "llikUnif"=3,
+  "llikUnifDalpha"=3,
+  "llikUnifDbeta"=3,
+  "llikWeibull"=3,
+  "llikWeibullDshape"=3,
+  "llikWeibullDscale"=3,
+  "llikGamma"=3,
+  "llikGammaDshape"=3,
+  "llikGammaDrate"=3,
+  "llikNorm"=3,
+  "llikNormDmean"=3,
+  "llikNormDsd"=3
 )
 
 .rxOnly <- c(
@@ -384,6 +416,121 @@ rxRmFun <- function(name) {
   function(x) {
     ## http://specialfunctionswiki.org/index.php/Derivative_of_inverse_error_function
     return(paste0("sqrt(pi)/2*exp((erfinv(", x, "))^2)"))
+  }
+)
+
+.rxD$llikNorm <- list(
+  NULL,
+  function(x, mean, sd){
+    paste0("llikNormDmean(",paste(c(x, mean, sd), collapse=", "), ")")
+  },
+  function(x, mean, sd){
+    paste0("llikNormDsd(",paste(c(x, mean, sd), collapse=", "), ")")
+  }
+)
+
+.rxD$llikPois <- list(
+  function(x, lambda){
+    "0"
+  },
+  function(x, lambda){
+    paste0("llikPoisDlambda(",paste(c(x, lambda), collapse=", "), ")")
+  }
+)
+
+.rxD$llikBinom <- list(
+  function(x, size, prob){
+    "0"
+  },
+  function(x, size, prob){
+    "0"
+  },
+  function(x, size, prob){
+    paste0("llikBinomDprob(",paste(c(x, size, prob), collapse=", "), ")")
+  }
+)
+
+.rxD$llikBeta <- list(
+  NULL,
+  function(x, shape1, shape2){
+    paste0("llikBetaDshape1(",paste(c(x, shape1, shape2), collapse=", "), ")")
+  },
+  function(x, shape1, shape2){
+    paste0("llikBetaDshape2(",paste(c(x, shape1, shape2), collapse=", "), ")")
+  }
+)
+
+.rxD$llikT <- list(
+  NULL,
+  function(x, df, mean, sd){
+    paste0("llikTDdf(",paste(c(x, df, mean, sd), collapse=", "), ")")
+  },
+  function(x, df, mean, sd){
+    paste0("llikTDmean(",paste(c(x, df, mean, sd), collapse=", "), ")")
+  },
+  function(x, df, mean, sd){
+    paste0("llikTDsd(",paste(c(x, df, mean, sd), collapse=", "), ")")
+  }
+)
+
+.rxD$llikChisq <- list(
+  NULL,
+  function(x, nu) {
+    paste0("llikChisqDdf(",paste(c(x, nu), collapse=", "), ")")
+  }
+)
+
+.rxD$llikExp <- list(
+  NULL,
+  function(x, rate) {
+    paste0("llikExpDrate(",paste(c(x, rate), collapse=", "), ")")
+  }
+)
+
+.rxD$llikF <- list(
+  NULL,
+  function(x, df1, df2) {
+    paste0("llikFDdf1(",paste(c(x, df1, df2), collapse=", "), ")")
+  },
+  function(x, df1, df2) {
+    paste0("llikFDdf2(",paste(c(x, df1, df2), collapse=", "), ")")
+  }
+)
+
+.rxD$llikGeom <- list(
+  NULL,
+  function(x, p) {
+    paste0("llikGeomDprob(",paste(c(x, p), collapse=", "), ")")
+  }
+)
+
+.rxD$llikUnif <- list(
+  NULL,
+  function(x, alpha, beta) {
+    paste0("llikUnifDalpha(",paste(c(x, alpha, beta), collapse=", "), ")")
+  },
+  function(x, alpha, beta) {
+    paste0("llikUnifDbeta(",paste(c(x, alpha, beta), collapse=", "), ")")
+  }
+)
+
+.rxD$llikWeibull <- list(
+  NULL,
+  function(x, shape, scale) {
+    paste0("llikWeibullDshape(",paste(c(x, shape, scale), collapse=", "), ")")
+  },
+  function(x, shape, scale) {
+    paste0("llikWeibullDscale(",paste(c(x, shape, scale), collapse=", "), ")")
+  }
+)
+
+.rxD$llikGamma <- list(
+  NULL,
+  function(x, shape, rate) {
+    paste0("llikGammaDshape(",paste(c(x, shape, rate), collapse=", "), ")")
+  },
+  function(x, shape, rate) {
+    paste0("llikGammaDrate(",paste(c(x, shape, rate), collapse=", "), ")")
   }
 )
 

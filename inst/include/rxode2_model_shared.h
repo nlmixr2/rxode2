@@ -81,6 +81,39 @@
 #define rxweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
 #define riweibull1(id, x) riweibull(&_solveData->subjects[_cSub], id, x, 1.0)
 #define rweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
+
+#define llikNorm(x, mu, sd) _llikNorm((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
+#define llikNormDmean(x, mu, sd) _llikNormDmean((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
+#define llikNormDsd(x, mu, sd) _llikNormDsd((&_solveData->subjects[_cSub])->llikSave, x, mu, sd)
+#define llikPois(x, l) _llikPois((&_solveData->subjects[_cSub])->llikSave, x, l)
+#define llikPoisDlambda(x, l) _llikPoisDlambda((&_solveData->subjects[_cSub])->llikSave, x, l)
+#define llikBinom(x, size, prob) _llikBinom((&_solveData->subjects[_cSub])->llikSave, x, size, prob)
+#define llikBinomDprob(x, size, prob) _llikBinomDprob((&_solveData->subjects[_cSub])->llikSave, x, size, prob)
+#define llikBeta(x, shape1, shape2) _llikBeta((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
+#define llikBetaDshape1(x, shape1, shape2) _llikBetaDshape1((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
+#define llikBetaDshape2(x, shape1, shape2) _llikBetaDshape2((&_solveData->subjects[_cSub])->llikSave, x, shape1, shape2)
+#define llikT(x, nu, mean, sd) _llikT((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikTDdf(x, nu, mean, sd) _llikTDdf((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikTDsd(x, nu, mean, sd) _llikTDsd((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikTDmean(x, nu, mean, sd) _llikTDmean((&_solveData->subjects[_cSub])->llikSave, x, nu, mean, sd)
+#define llikChisq(x, nu) _llikChisq((&_solveData->subjects[_cSub])->llikSave, x, nu)
+#define llikChisqDdf(x, nu) _llikChisqDdf((&_solveData->subjects[_cSub])->llikSave, x, nu)
+#define llikExp(x, rate) _llikExp((&_solveData->subjects[_cSub])->llikSave, x, rate)
+#define llikExpDrate(x, rate) _llikExpDrate((&_solveData->subjects[_cSub])->llikSave, x, rate)
+#define llikF(x, df1, df2) _llikF((&_solveData->subjects[_cSub])->llikSave, x, df1, df2)
+#define llikFDdf1(x, df1, df2) _llikFDdf1((&_solveData->subjects[_cSub])->llikSave, x, df1, df2)
+#define llikFDdf2(x, df1, df2) _llikFDdf2((&_solveData->subjects[_cSub])->llikSave, x, df1, df2)
+#define llikGeom(x, p) _llikGeom((&_solveData->subjects[_cSub])->llikSave, x, p)
+#define llikGeomDprob(x, p) _llikGeomDp((&_solveData->subjects[_cSub])->llikSave, x, p)
+#define llikUnif(x, alpha, beta) _llikUnif((&_solveData->subjects[_cSub])->llikSave, x, alpha, beta)
+#define llikUnifDalpha(x, alpha, beta) _llikUnifDalpha((&_solveData->subjects[_cSub])->llikSave, x, alpha, beta)
+#define llikUnifDbeta(x, alpha, beta) _llikUnifDbeta((&_solveData->subjects[_cSub])->llikSave, x, alpha, beta)
+#define llikWeibull(x, shape, scale) _llikWeibull((&_solveData->subjects[_cSub])->llikSave, x, shape, scale)
+#define llikWeibullDshape(x, shape, scale) _llikWeibullDshape((&_solveData->subjects[_cSub])->llikSave, x, shape, scale)
+#define llikWeibullDscale(x, shape, scale) _llikWeibullDscale((&_solveData->subjects[_cSub])->llikSave, x, shape, scale)
+#define llikGamma(x, shape, rate) _llikGamma((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikGammaDshape(x, shape, rate) _llikGammaDshape((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikGammaDrate(x, shape, rate) _llikGammaDrate((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -184,5 +217,19 @@ typedef rx_solve *(*_getRxSolve_t)();
 
 typedef int (*rxode2i_rxbinom) (rx_solving_options_ind* ind, int n, double prob);
 typedef int (*rxode2i2_ribinom) (rx_solving_options_ind* ind, int id, int n, double prob);
+
+typedef double (*rxode2_llikNormFun) (double *in, double x, double mean, double sd);
+typedef double (*rxode2_llikPoisFun) (double *in, double x, double lambda);
+typedef double (*rxode2_llikBinomFun) (double *in, double x, double size, double prob);
+typedef double (*rxode2_llikBetaFun) (double *in, double x, double shape1, double shape2);
+typedef double (*rxode2_llikTFun) (double *in, double x, double df, double mean, double sd);
+
+typedef double (*rxode2_llikChisqFun) (double *in, double x, double df);
+typedef double (*rxode2_llikExpFun) (double *in, double x, double rate);
+typedef double (*rxode2_llikFFun) (double *in, double x, double df1, double df2);
+typedef double (*rxode2_llikGeomFun) (double *in, double x, double p);
+typedef double (*rxode2_llikUnifFun) (double *in, double x, double alpha, double beta);
+typedef double (*rxode2_llikWeibullFun) (double *in, double x, double shape, double scale);
+typedef double (*rxode2_llikGammaFun) (double *in, double x, double shape, double rate);
 
 #endif // __rxode2_model_shared_H__

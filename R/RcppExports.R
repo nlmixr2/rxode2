@@ -276,6 +276,54 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
+llikNormInternal <- function(x, mu, sigma) {
+    .Call(`_rxode2_llikNormInternal`, x, mu, sigma)
+}
+
+llikPoisInternal <- function(x, lambda) {
+    .Call(`_rxode2_llikPoisInternal`, x, lambda)
+}
+
+llikBinomInternal <- function(x, size, prob) {
+    .Call(`_rxode2_llikBinomInternal`, x, size, prob)
+}
+
+llikBetaInternal <- function(x, shape1, shape2) {
+    .Call(`_rxode2_llikBetaInternal`, x, shape1, shape2)
+}
+
+llikTInternal <- function(x, df, mean, sd) {
+    .Call(`_rxode2_llikTInternal`, x, df, mean, sd)
+}
+
+llikChisqInternal <- function(x, df) {
+    .Call(`_rxode2_llikChisqInternal`, x, df)
+}
+
+llikExpInternal <- function(x, rate) {
+    .Call(`_rxode2_llikExpInternal`, x, rate)
+}
+
+llikFInternal <- function(x, df1, df2) {
+    .Call(`_rxode2_llikFInternal`, x, df1, df2)
+}
+
+llikGeomInternal <- function(x, p) {
+    .Call(`_rxode2_llikGeomInternal`, x, p)
+}
+
+llikUnifInternal <- function(x, alpha, beta) {
+    .Call(`_rxode2_llikUnifInternal`, x, alpha, beta)
+}
+
+llikWeibullInternal <- function(x, shape, scale) {
+    .Call(`_rxode2_llikWeibullInternal`, x, shape, scale)
+}
+
+llikGammaInternal <- function(x, shape, rate) {
+    .Call(`_rxode2_llikGammaInternal`, x, shape, rate)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

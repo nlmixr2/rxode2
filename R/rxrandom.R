@@ -310,6 +310,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 
 #' Simulate gamma variable from threefry generator
 #'
+#' @param shape The shape of the gamma random variable
 #' @inheritParams stats::rgamma
 #' @inheritParams rxnormV
 #'
@@ -340,18 +341,11 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
-rxgamma <- function(shape, rate = 1 / scale, scale = 1, n = 1L, ncores = 1L) {
+rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape, len = 1, lower = 0)
   if (shape == 0) stop("'shape' cannot be 0", call. = FALSE)
   checkmate::assertNumeric(rate, len = 1, lower = 0)
-  if (rate == 0 || scale == 0) stop("'rate'/'scale' cannot be 0", call. = FALSE)
-  if (!missing(rate) && !missing(scale)) {
-    if (abs(rate * scale - 1) < 1e-15) {
-      warning("specify 'rate' or 'scale' but not both", call. = FALSE)
-    } else {
-      stop("specify 'rate' or 'scale' but not both", call. = FALSE)
-    }
-  }
+  if (rate == 0) stop("'rate' cannot be 0", call. = FALSE)
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)

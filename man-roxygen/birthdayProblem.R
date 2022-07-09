@@ -19,7 +19,6 @@
 ##' for the whole simulation), pre-generate all random variables
 ##' used for the simulation, or seed the rxode2 engine with `rxSetSeed()`
 ##'
-##' Also care should be made that the computer you will be running on
-##' can run the same number of cores as you are running so they can
-##' reproduce your results.
+##' Internally each ID is seeded with a unique number so that the
+##' results do not depend on the number of cores used.
 ##'

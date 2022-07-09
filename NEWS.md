@@ -1,6 +1,19 @@
 # rxode2 2.0.8
 
+** Breaking changes
+
+- `rxgamma` now only allows a `rate` input.  This aligns with the
+  internal `rxode2` version of `rxgamma` and clarifies how this will
+  be used. It is also aligned with the `llikGamma` function used for
+  generalized likelihood estimation.
+
+** New features
+
 - Allow models in the `nlmixr2` form without an `ini({})` block
+
+- Families of log-likelihood were added to `rxode2` so that mixed
+  likelihood nonlinear mixed effects models may be specified and run
+  in the future.
 
 # rxode2 2.0.7
 

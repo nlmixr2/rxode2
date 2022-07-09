@@ -205,7 +205,7 @@ rxTest({
       model({
         n <- exp(tn + eta.n)
         p <- expit(prob)
-        err ~ dbinom(n, p)
+        err ~ dbinom(n, p) | tmp
       })
     }
 

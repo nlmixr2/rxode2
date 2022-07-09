@@ -13,6 +13,7 @@
 #include "strncmp.h"
 #include "handle_evid.h"
 #include "getTime.h"
+
 extern "C" {
 #include "dop853.h"
 #include "common.h"
@@ -626,7 +627,6 @@ extern "C" void sortRadix(rx_solving_options_ind *ind){
   rx_solving_options *op = &op_global;
   uint8_t **key = rx->keys[core];
   // Reset times for infusion
-  int wh, cmt, wh100, whI, wh0;
   int doSort = 1;
   double *time = new double[ind->n_all_times];
   uint64_t *all = new uint64_t[ind->n_all_times];
@@ -1274,7 +1274,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   int nx;
   rx_solving_options_ind *ind;
   double *inits;
-  int *evid;
   double *x;
   int *BadDose;
   double *InfusionRate;
@@ -1295,7 +1294,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     return;
   }
   nx = ind->n_all_times;
-  evid = ind->evid;
   BadDose = ind->BadDose;
   InfusionRate = ind->InfusionRate;
   x = ind->all_times;
@@ -1777,7 +1775,6 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       "problem is probably stiff (interrupted)"
     };
   rx_solving_options_ind *ind;
-  int *evid;
   double *x;
   int *BadDose;
   double *InfusionRate;
@@ -1789,7 +1786,6 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   nx = ind->n_all_times;
   inits = op->inits;
-  evid = ind->evid;
   BadDose = ind->BadDose;
   InfusionRate = ind->InfusionRate;
   x = ind->all_times;

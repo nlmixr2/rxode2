@@ -370,7 +370,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   clock_t _lastT0 = clock();
 #endif
   Environment rx = rxode2env();
-  bool combineDvidB = false, rateModeled=false, durModeled = false;
+  bool combineDvidB = false;
   Environment b=Rcpp::Environment::base_namespace();
   if (!combineDvid.isNull()){
     combineDvidB = (as<LogicalVector>(combineDvid))[1];
@@ -379,7 +379,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     combineDvidB = as<bool>(getOption("rxode2.combine.dvid", true));
   }
   List mv = rxModelVars_(obj);
-  int needSort = mv[RxMv_needSort];
   IntegerVector curDvid = clone(as<IntegerVector>(mv[RxMv_dvid]));
   CharacterVector trans = mv[RxMv_trans];
   if (rxIs(inData,"rxEtTran")){
@@ -980,7 +979,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         // if (!(needSort & needSortRate)) {
         //   warning(_("data specified modeled rate (=-1) but no rate() in the model (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         // }
-        rateModeled = true;
+				//rateModeled = true;
       } else if (rate == -2.0){
         // duration is modeled
         if (flg == 40){
@@ -990,7 +989,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         //   warning(_("data specified modeled duration (=-2) but no dur() in the model (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         // }
         rateI = 8;
-        durModeled = true;
+        //durModeled = true;
       } else if (rate > 0){
         // Rate is fixed
         if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4){
@@ -2061,19 +2060,18 @@ List rxEtTransAsDataFrame_(List inData1) {
 	NumericVector time = as<NumericVector>(inData[1]);
 	IntegerVector evid = as<IntegerVector>(inData[2]);
 	int lastId = NA_INTEGER;
-	double lastTime = time[0];
 	double curShift = 0.0;
 	for (int j = 0; j < (int)evid.size(); ++j) {
 		if (lastId != id[j]) {
 			lastId = id[j];
 			curShift = 0.0;
-			lastTime = time[j];
+			//lastTime = time[j];
 		}
 		if (evid[j] == 3) {
 			curShift -= maxShift;
 		}
 		time[j] += curShift;
-		lastTime = time[j];
+		//lastTime = time[j];
     }
 	}
 	cls = CharacterVector::create("data.frame");	
