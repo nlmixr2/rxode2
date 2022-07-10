@@ -36,6 +36,7 @@ using namespace arma;
 
 #include "cbindThetaOmega.h"
 #include "handle_evid.h"
+#include "rxThreadData.h"
 
 extern "C" uint64_t dtwiddle(const void *p, int i);
 extern "C" void calcNradix(int *nbyte, int *nradix, int *spare, uint64_t *maxD, uint64_t *minD);
@@ -1324,9 +1325,13 @@ typedef struct {
   int *gindLin = NULL;
 } rx_globals;
 
-
-
 rx_globals _globals;
+
+extern "C" double *getAlagThread() {
+  rx_solve* rx = getRxSolve_();
+  rx_solving_options* op = rx->op;
+  return _globals.gAlag + (op->neq + op->extraCmt)*omp_get_thread_num();
+}
 
 extern "C" void setZeroMatrix(int which) {
   switch(which){
@@ -3659,7 +3664,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 					ind->tlastS = &_globals.gTlastS[(op->neq + op->extraCmt)*cid];
 					ind->tfirstS = &_globals.gTfirstS[(op->neq + op->extraCmt)*cid];
 					ind->curDoseS = &_globals.gCurDoseS[(op->neq + op->extraCmt)*cid];
-					ind->alag = &_globals.gAlag[(op->neq + op->extraCmt)*cid];
+					//ind->alag = &_globals.gAlag[(op->neq + op->extraCmt)*cid];
 					ind->cF = &_globals.gF[(op->neq + op->extraCmt)*cid];
 					ind->cRate = &_globals.gRate[(op->neq + op->extraCmt)*cid];
 					ind->cDur = &_globals.gDur[(op->neq + op->extraCmt)*cid];
@@ -4888,6 +4893,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n2  = rx->nMtime*rx->nsub*rx->nsim;
     int n3  = op->neq*rxSolveDat->nSize;
     int n3a = (op->neq + op->extraCmt)*rxSolveDat->nSize;
+    int n3a_c = (op->neq + op->extraCmt)*op->cores;
 #ifdef rxSolveT
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4910,7 +4916,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
-                                      5*op->neq + 8*n3a, sizeof(double));// [n0]
+                                      5*op->neq + 7*n3a + 1*n3a_c,
+                                      sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4921,8 +4928,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     _globals.gmtime = _globals.gsolve + n0+ nLin; // [n2]
     _globals.gInfusionRate = _globals.gmtime + n2; //[n3a]
-    _globals.gAlag  = _globals.gInfusionRate + n3a; // [n3a]
-    _globals.gF  = _globals.gAlag + n3a; // [n3a]
+    _globals.gAlag  = _globals.gInfusionRate + n3a; // [n3a_c]
+    _globals.gF  = _globals.gAlag + n3a_c; // [n3a]
     _globals.gRate  = _globals.gF + n3a; // [n3a]
     _globals.gDur  = _globals.gRate + n3a; // [n3a]
     _globals.ginits = _globals.gDur + n3a; // [n4]

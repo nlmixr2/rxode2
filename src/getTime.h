@@ -1,6 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 #ifndef __GETTIME_H__
 #define __GETTIME_H__
+#include "rxThreadData.h"
 
 #if defined(__cplusplus)
 
@@ -14,6 +15,7 @@ extern t_calc_mtime calc_mtime;
 
 
 static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double time){
+	ind->alag = getAlagThread();
   double ret = LAG(id, cmt, time);
   if (ISNA(ret)) {
     rx_solving_options *op = &op_global;
