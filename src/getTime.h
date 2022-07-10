@@ -26,6 +26,7 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
 }
 
 static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, double dose, double t){
+	ind->cRate = getRateThread();
   double ret = RATE(id, cmt, dose, t);
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;
@@ -36,6 +37,7 @@ static inline double getRate(rx_solving_options_ind *ind, int id, int cmt, doubl
 }
 
 static inline double getDur(rx_solving_options_ind *ind, int id, int cmt, double dose, double t){
+	ind->cDur = getDurThread();
   double ret = DUR(id, cmt, dose, t);
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;

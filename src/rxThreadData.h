@@ -6,6 +6,9 @@ extern "C" {
 #endif
 
   double *getAlagThread();
+  double *getFThread();
+  double *getRateThread();
+  double *getDurThread();
 
 #if defined(__cplusplus)
 }

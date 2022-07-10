@@ -1327,11 +1327,28 @@ typedef struct {
 
 rx_globals _globals;
 
-extern "C" double *getAlagThread() {
+double *getAlagFamilyPointerFromThreadId(double *ptr) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  return _globals.gAlag + (op->neq + op->extraCmt)*omp_get_thread_num();
+  return ptr + (op->neq + op->extraCmt)*omp_get_thread_num();
 }
+
+extern "C" double *getAlagThread() {
+  return getAlagFamilyPointerFromThreadId(_globals.gAlag);
+}
+
+extern "C" double *getFThread() {
+  return getAlagFamilyPointerFromThreadId(_globals.gF);
+}
+
+extern "C" double *getRateThread() {
+  return getAlagFamilyPointerFromThreadId(_globals.gRate);
+}
+
+extern "C" double *getDurThread() {
+  return getAlagFamilyPointerFromThreadId(_globals.gDur);
+}
+
 
 extern "C" void setZeroMatrix(int which) {
   switch(which){
@@ -3664,10 +3681,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 					ind->tlastS = &_globals.gTlastS[(op->neq + op->extraCmt)*cid];
 					ind->tfirstS = &_globals.gTfirstS[(op->neq + op->extraCmt)*cid];
 					ind->curDoseS = &_globals.gCurDoseS[(op->neq + op->extraCmt)*cid];
-					//ind->alag = &_globals.gAlag[(op->neq + op->extraCmt)*cid];
-					ind->cF = &_globals.gF[(op->neq + op->extraCmt)*cid];
-					ind->cRate = &_globals.gRate[(op->neq + op->extraCmt)*cid];
-					ind->cDur = &_globals.gDur[(op->neq + op->extraCmt)*cid];
 					ind->BadDose = &_globals.gBadDose[op->neq*cid];
 					// Hmax defined above.
 					ind->sim = simNum+1;
@@ -4916,7 +4929,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
-                                      5*op->neq + 7*n3a + 1*n3a_c,
+                                      5*op->neq + 4*n3a + 4*n3a_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4929,10 +4942,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gmtime = _globals.gsolve + n0+ nLin; // [n2]
     _globals.gInfusionRate = _globals.gmtime + n2; //[n3a]
     _globals.gAlag  = _globals.gInfusionRate + n3a; // [n3a_c]
-    _globals.gF  = _globals.gAlag + n3a_c; // [n3a]
-    _globals.gRate  = _globals.gF + n3a; // [n3a]
-    _globals.gDur  = _globals.gRate + n3a; // [n3a]
-    _globals.ginits = _globals.gDur + n3a; // [n4]
+    _globals.gF  = _globals.gAlag + n3a_c; // [n3a_c]
+    _globals.gRate  = _globals.gF + n3a_c; // [n3a_c]
+    _globals.gDur  = _globals.gRate + n3a_c; // [n3a_c]
+    _globals.ginits = _globals.gDur + n3a_c; // [n4]
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
     op->inits = &_globals.ginits[0];
     _globals.glhs = _globals.ginits + n4; // [n5]

@@ -3,6 +3,7 @@
 #define __HANDLE_EVID_H___
 
 #include "../inst/include/rxode2.h"
+#include "rxThreadData.h"
 
 #if defined(__cplusplus)
 #define FLOOR(x) std::floor(x)
@@ -231,6 +232,7 @@ extern t_F AMT;
 
 
 static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y) {
+	ind->cF = getFThread();
   double ret = AMT(id, cmt, dose, t, y);
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;
