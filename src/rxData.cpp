@@ -1392,6 +1392,8 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
 		ind->curDoseS = NULL;
 		ind->on = NULL;
 	}
+	ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
+
 }
 
 
@@ -3724,7 +3726,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 					ind->BadDose = &_globals.gBadDose[op->neq*cid];
 					// Hmax defined above.
 					ind->sim = simNum+1;
-					ind->lhs = &_globals.glhs[cid*op->nlhs];
 					ind->rc = &_globals.grc[cid];
 					ind->slvr_counter = &_globals.slvr_counter[cid];
 					ind->dadt_counter = &_globals.dadt_counter[cid];
@@ -4961,7 +4962,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif // rxSolveT
 
     int n4 = rxSolveDat->initsC.size();
-    int n5 = lhs.size()*rxSolveDat->nSize;
+    int n5_c = lhs.size()*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);
@@ -4969,7 +4970,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int nIndSim = rx->nIndSim;
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
+    _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5_c+n6+ n7 +
                                       5*op->neq + 8*n3a_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -4989,10 +4990,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.ginits = _globals.gDur + n3a_c; // [n4]
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
     op->inits = &_globals.ginits[0];
-    _globals.glhs = _globals.ginits + n4; // [n5]
+    _globals.glhs = _globals.ginits + n4; // [n5_c]
     // initially NA_REAL
     //std::fill_n(_globals.glhs,n5, NA_REAL); // TOO slow
-    _globals.gscale = _globals.glhs + n5; //[n6]
+    _globals.gscale = _globals.glhs + n5_c; //[n6]
     std::copy(scaleC.begin(),scaleC.end(),&_globals.gscale[0]);
     op->scale = &_globals.gscale[0];
     _globals.gatol2=_globals.gscale   + n6; //[op->neq]
