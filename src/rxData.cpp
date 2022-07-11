@@ -1379,6 +1379,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
 		ind->tlastS = getTlastSThread();
 		ind->tfirstS = getTfirstSThread();
 		ind->curDoseS = getCurDoseSThread();
+		ind->on = _globals.gon + ncmt*omp_get_thread_num();
 	} else {
 		ind->alag = NULL;
 		ind->cRate =NULL;
@@ -1389,6 +1390,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
 		ind->tlastS = NULL;
 		ind->tfirstS = NULL;
 		ind->curDoseS = NULL;
+		ind->on = NULL;
 	}
 }
 
@@ -4944,7 +4946,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     int n2  = rx->nMtime*rx->nsub*rx->nsim;
     int n3  = op->neq*rxSolveDat->nSize;
-    int n3a = (op->neq + op->extraCmt)*rxSolveDat->nSize;
     int n3a_c = (op->neq + op->extraCmt)*op->cores;
 		//REprintf("n3a_c: %d, cores: %d\n", op->cores);
 #ifdef rxSolveT
@@ -5027,13 +5028,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gon != NULL) free(_globals.gon);
-    _globals.gon = (int*)calloc(n1+n3 + 4*rxSolveDat->nSize + 2*rx->nall*rx->nsim, sizeof(int)); // [n1]
+    _globals.gon = (int*)calloc(n3a_c +n3 + 4*rxSolveDat->nSize + 2*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
 #ifdef rxSolveT
-    RSprintf("Time12e (int alloc %d): %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
+    RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    std::fill_n(&_globals.gon[0], n1, 1);
-    _globals.gBadDose = _globals.gon+n1; // [n3]
+    //std::fill_n(&_globals.gon[0], n, 1);
+    _globals.gBadDose = _globals.gon + n3a_c; // [n3]
     _globals.grc = _globals.gBadDose + n3; //[nSize]
     _globals.slvr_counter = _globals.grc + rxSolveDat->nSize; //[nSize]
     _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
