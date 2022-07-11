@@ -5023,7 +5023,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->ssRtol = _globals.gssRtol;
     // Not needed since we use Calloc.
     // std::fill_n(&_globals.gsolve[0], rx->nall*state.size()*rx->nsim, 0.0);
-    int n1 = rx->nsub*rx->nsim*(state.size() + op->extraCmt);
 #ifdef rxSolveT
     RSprintf("Time12d (fill in!): %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
