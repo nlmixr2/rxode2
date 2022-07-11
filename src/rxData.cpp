@@ -3709,7 +3709,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       curEvent=0;
       curIdx=0;
       int curCov=0;
-      int curOn=0;
       int curSimIni=0;
       rx_solving_options_ind indS;
       int linCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmt];
@@ -3763,8 +3762,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 					ind->ix = &_globals.gix[curIdx];
 					std::iota(ind->ix,ind->ix+ind->n_all_times,0);
 					curEvent += eLen;
-					ind->on=&_globals.gon[curOn];
-					curOn +=op->neq+op->extraCmt;
 					curIdx += ind->n_all_times;
 					if (rx->sample) {
 						ind->cov_sample = &_globals.gSampleCov[curCov];
@@ -4945,7 +4942,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->nlinR = 1+linKa;
       nLin = rx->nall*nLin*rx->nsim;// Number of linear compartments * number of solved points
     }
-    int n2  = rx->nMtime*rx->nsub*rx->nsim;
+    int n2  = rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
     int n3  = op->neq*rxSolveDat->nSize;
     int n3a_c = (op->neq + op->extraCmt)*op->cores;
 		//REprintf("n3a_c: %d, cores: %d\n", op->cores);
@@ -4953,9 +4950,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-
+		
     rxSolveDat->initsC = rxInits(object, inits, state, 0.0);
-
+		
 #ifdef rxSolveT
     RSprintf("Time12b: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -5035,7 +5032,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif // rxSolveT
     //std::fill_n(&_globals.gon[0], n, 1);
     _globals.gBadDose = _globals.gon + n3a_c; // [n3]
-    _globals.grc = _globals.gBadDose + n3; //[nSize]
+    _globals.grc = _globals.gBadDose + n3; //[nSize]; needs to match the whole dataset
     _globals.slvr_counter = _globals.grc + rxSolveDat->nSize; //[nSize]
     _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
     _globals.jac_counter = _globals.dadt_counter + rxSolveDat->nSize; // [nSize]
