@@ -5,11 +5,12 @@
 extern "C" {
 #endif
 
+  void setIndPointersByThread(rx_solving_options_ind *ind);
   double *getAlagThread();
   double *getFThread();
   double *getRateThread();
   double *getDurThread();
-
+  double *getInfusionRateThread();
 #if defined(__cplusplus)
 }
 #endif

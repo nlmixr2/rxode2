@@ -299,9 +299,6 @@ extern "C" {
 
   double getTime(int idx, rx_solving_options_ind *ind);
 
-#define calcMtime(solveid, mtime) calc_mtime(solveid,mtime);
-
-
 #if defined(__cplusplus)
 }
 #endif

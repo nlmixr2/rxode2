@@ -14,6 +14,7 @@ void sortRadix(rx_solving_options_ind *ind);
 
 static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
                              t_update_inis u_inis) {
+	setIndPointersByThread(ind);
 	for (int i=9; i--;) {
 		ind->llikSave[i] = 0.0;
 	}
@@ -22,13 +23,13 @@ static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind
   ind->cacheME=0;
   ind->curShift=0.0;
   // neq[0] = op->neq
-  for (int j = (op->neq + op->extraCmt); j--;) {
-    ind->InfusionRate[j] = 0;
-    ind->on[j] = 1;
-    ind->tlastS[j] = NA_REAL;
-    ind->tfirstS[j] = NA_REAL;
-    ind->curDoseS[j] = NA_REAL;
-  }
+	for (int j = (op->neq + op->extraCmt); j--;) {
+		ind->InfusionRate[j] = 0;
+		ind->on[j] = 1;
+		ind->tlastS[j] = NA_REAL;
+		ind->tfirstS[j] = NA_REAL;
+		ind->curDoseS[j] = NA_REAL;
+	}
   ind->inLhs = inLhs;
   if (rx->nMtime) calc_mtime(solveid, ind->mtime);
   for (int j = op->nlhs; j--;) ind->lhs[j] = NA_REAL;
