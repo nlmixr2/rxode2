@@ -1353,20 +1353,42 @@ static inline double *getInfusionRateThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gInfusionRate);
 }
 
+static inline double *getTlastSThread() {
+  return getAlagFamilyPointerFromThreadId(_globals.gTlastS);
+}
+
+static inline double *getTfirstSThread() {
+  return getAlagFamilyPointerFromThreadId(_globals.gTfirstS);
+}
+
+static inline double *getCurDoseSThread() {
+  return getAlagFamilyPointerFromThreadId(_globals.gCurDoseS);
+}
+
 extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
 	rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
 	int ncmt = (op->neq + op->extraCmt);
-  ind->alag = getAlagThread();
-  ind->cRate = getRateThread();
-  ind->cDur = getDurThread();
-  ind->cF = getFThread();
 	if (ncmt) {
+		ind->alag = getAlagThread();
+		ind->cRate = getRateThread();
+		ind->cDur = getDurThread();
+		ind->cF = getFThread();
 		ind->InfusionRate = getInfusionRateThread();
 		ind->linCmtRate = ind->InfusionRate + op->neq;
+		ind->tlastS = getTlastSThread();
+		ind->tfirstS = getTfirstSThread();
+		ind->curDoseS = getCurDoseSThread();
 	} else {
+		ind->alag = NULL;
+		ind->cRate =NULL;
+		ind->cDur = NULL;
+		ind->cF   =  NULL;
 		ind->InfusionRate = NULL;
 		ind->linCmtRate = NULL;
+		ind->tlastS = NULL;
+		ind->tfirstS = NULL;
+		ind->curDoseS = NULL;
 	}
 }
 
@@ -3697,9 +3719,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 					ind->par_ptr = &_globals.gpars[cid*rxSolveDat->npars];
 					ind->mtime   = &_globals.gmtime[rx->nMtime*cid];
 					if (rx->nMtime > 0) ind->mtime[0]=-1;
-					ind->tlastS = &_globals.gTlastS[(op->neq + op->extraCmt)*cid];
-					ind->tfirstS = &_globals.gTfirstS[(op->neq + op->extraCmt)*cid];
-					ind->curDoseS = &_globals.gCurDoseS[(op->neq + op->extraCmt)*cid];
 					ind->BadDose = &_globals.gBadDose[op->neq*cid];
 					// Hmax defined above.
 					ind->sim = simNum+1;
@@ -4950,7 +4969,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5+n6+ n7 +
-                                      5*op->neq + 3*n3a + 5*n3a_c,
+                                      5*op->neq + 8*n3a_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4981,11 +5000,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gssAtol=_globals.gssRtol + op->neq; //[op->neq]
     // All NA_REAL fill are below;  one statement to initialize them all
     rx->ypNA = _globals.gssAtol + op->neq; // [op->neq]
-    _globals.gTlastS = rx->ypNA + op->neq; // [n3a]
-    _globals.gTfirstS  = _globals.gTlastS + n3a; // [n3a]
-		_globals.gCurDoseS = _globals.gTfirstS + n3a; // [n3a]
-    _globals.gIndSim   = _globals.gCurDoseS + n3a;// [n7]
-    std::fill_n(rx->ypNA, op->neq + 2*n3a, NA_REAL);
+    _globals.gTlastS = rx->ypNA + op->neq; // [n3a_c]
+    _globals.gTfirstS  = _globals.gTlastS + n3a_c; // [n3a]
+		_globals.gCurDoseS = _globals.gTfirstS + n3a_c; // [n3a]
+    _globals.gIndSim   = _globals.gCurDoseS + n3a_c;// [n7]
+    std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);
     std::fill_n(&_globals.grtol2[0],op->neq, rtolNV[0]);
