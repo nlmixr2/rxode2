@@ -1327,13 +1327,13 @@ typedef struct {
 
 rx_globals _globals;
 
-double *getAlagFamilyPointerFromThreadId(double *ptr) {
+static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   return ptr + (op->neq + op->extraCmt)*omp_get_thread_num();
 }
 
-extern "C" double *getAlagThread() {
+static inline double *getAlagThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gAlag);
 }
 
@@ -1341,15 +1341,15 @@ extern "C" double *getFThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gF);
 }
 
-extern "C" double *getRateThread() {
+static inline double *getRateThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gRate);
 }
 
-extern "C" double *getDurThread() {
+static inline double *getDurThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gDur);
 }
 
-extern "C" double *getInfusionRateThread() {
+static inline double *getInfusionRateThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gInfusionRate);
 }
 
