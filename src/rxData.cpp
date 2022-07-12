@@ -1263,6 +1263,7 @@ NumericVector rxSetupScale(const RObject &obj,
 }
 
 typedef struct {
+  double *gLlikSave;
   double *gSolveLast2;
   double *gSolveLast;
   double *gSolveSave;
@@ -1401,6 +1402,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
   }
+  ind->llikSave = _globals.gLlikSave + 9*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
 }
 
@@ -4962,6 +4964,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     int n4 = rxSolveDat->initsC.size();
     int n5_c = lhs.size()*op->cores;
+    int nllik_c = 9*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);
@@ -4970,7 +4973,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+3*nsave+n2+ n4+n5_c+n6+ n7 +
-                                      5*op->neq + 8*n3a_c,
+                                      5*op->neq + 8*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4980,7 +4983,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFree();
       stop(_("could not allocate enough memory for solving"));
     }
-    _globals.gSolveSave  = _globals.gsolve + n0+ nLin; //[nsave]
+    _globals.gLlikSave = _globals.gsolve + n0+ nLin; // [nllik_c]
+    _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
     _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
     _globals.gmtime      = _globals.gSolveLast2 + nsave; // [n2]
