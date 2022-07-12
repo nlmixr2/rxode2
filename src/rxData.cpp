@@ -1393,9 +1393,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
 		ind->on = NULL;
 	}
 	ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
-
 }
-
 
 extern "C" void setZeroMatrix(int which) {
   switch(which){
