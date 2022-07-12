@@ -1,6 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 #ifndef __GETTIME_H__
 #define __GETTIME_H__
+#include "rxThreadData.h"
 
 #if defined(__cplusplus)
 
@@ -294,9 +295,6 @@ extern "C" {
 #endif
 
   double getTime(int idx, rx_solving_options_ind *ind);
-
-#define calcMtime(solveid, mtime) calc_mtime(solveid,mtime);
-
 
 #if defined(__cplusplus)
 }

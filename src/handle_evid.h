@@ -3,6 +3,7 @@
 #define __HANDLE_EVID_H___
 
 #include "../inst/include/rxode2.h"
+#include "rxThreadData.h"
 
 #if defined(__cplusplus)
 #define FLOOR(x) std::floor(x)
