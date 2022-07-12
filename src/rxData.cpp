@@ -1,4 +1,4 @@
-// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
 #define USE_FC_LEN_T
 // [[Rcpp::interfaces(r, cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -1263,6 +1263,7 @@ NumericVector rxSetupScale(const RObject &obj,
 }
 
 typedef struct {
+  double *gSolveSave;
   int *gon;
   double *gIndSim;
   double *gsolve;
@@ -1380,6 +1381,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
 		ind->tfirstS = getTfirstSThread();
 		ind->curDoseS = getCurDoseSThread();
 		ind->on = _globals.gon + ncmt*omp_get_thread_num();
+    ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
 	} else {
 		ind->alag = NULL;
 		ind->cRate =NULL;
@@ -1391,6 +1393,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
 		ind->tfirstS = NULL;
 		ind->curDoseS = NULL;
 		ind->on = NULL;
+    ind->solveSave = NULL;
 	}
 	ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
 }
@@ -3755,8 +3758,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 					curSolve += op->neq;
 					ind->solveLast2 = &_globals.gsolve[curSolve];
 					curSolve += op->neq;
-					ind->solveSave = &_globals.gsolve[curSolve];
-					curSolve += op->neq;
 					ind->ix = &_globals.gix[curIdx];
 					std::iota(ind->ix,ind->ix+ind->n_all_times,0);
 					curEvent += eLen;
@@ -3822,7 +3823,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
 // Most of this is a direct C call, but some items are done in C++
 List rxSolve_df(const RObject &obj,
 								const List &rxControl,
-								const Nullable<CharacterVector> &specParams,
+                const Nullable<CharacterVector> &specParams,
 								const Nullable<List> &extraArgs,
 								const RObject &params,
 								const RObject &events,
@@ -4934,7 +4935,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->nlin = linNcmt+linKa;
     }
     op->nlinR = 0;
-    int n0 = (rx->nall+3*rx->nsub)*(state.size())*rx->nsim;
+    int n0 = (rx->nall+2*rx->nsub)*(state.size())*rx->nsim;
+    int nsave = op->neq*op->cores;
     int nLin = op->nlin;
     if (nLin != 0) {
       op->nlinR = 1+linKa;
@@ -4965,7 +4967,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int nIndSim = rx->nIndSim;
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(n0+nLin+n2+ n4+n5_c+n6+ n7 +
+    _globals.gsolve = (double*)calloc(n0+nLin+nsave+n2+ n4+n5_c+n6+ n7 +
                                       5*op->neq + 8*n3a_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -4976,7 +4978,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFree();
       stop(_("could not allocate enough memory for solving"));
     }
-    _globals.gmtime = _globals.gsolve + n0+ nLin; // [n2]
+    _globals.gSolveSave =  _globals.gsolve + n0+ nLin; //[nsave]
+    _globals.gmtime = _globals.gSolveSave + nsave; // [n2]
     _globals.gInfusionRate = _globals.gmtime + n2; //[n3a_c]
     _globals.gAlag  = _globals.gInfusionRate + n3a_c; // [n3a_c]
     _globals.gF  = _globals.gAlag + n3a_c; // [n3a_c]
