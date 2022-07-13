@@ -328,6 +328,7 @@
   .ret
 }
 
+
 #' Calculate the focei base information.
 #'
 #' @param env Environment for the parsed model
@@ -338,9 +339,27 @@
 .handleSingleErrTypeFoceiBase <- function(env, i) {
   .pred1 <- env$predDf[i, ]
   if (.pred1$distribution %in% c("norm", "t")) {
-    .handleSingleErrTypeNormOrTFoceiBase(env, .pred1)
+     .handleSingleErrTypeNormOrTFoceiBase(env, .pred1)    
   } else {
     # This is for the non-normal cases
   }
 }
 
+  
+
+.foceEstLLFun <- list(
+  "t"="llikT",
+  "pois"="llikPois",
+  "binom"="llikBinom",
+  "beta"="llikBeta",
+  "chisq"="llikChisq",
+  "dexp"="llikExp",
+  "f"="llikF",
+  "geom"="llikGeom",
+#  "hyper"="rhyper",
+  "unif"="llikUnif",
+  "weibull"="llikWeibull",
+  "cauchy"="rcauchy",
+  "dgamma"="llikGamma",
+  "ordinal"="rordinal"
+)
