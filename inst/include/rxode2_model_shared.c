@@ -110,6 +110,9 @@ rxode2_llikGammaFun _llikGamma;
 rxode2_llikGammaFun _llikGammaDshape;
 rxode2_llikGammaFun _llikGammaDrate;
 
+rxode2_llikCauchyFun _llikCauchy;
+rxode2_llikCauchyFun _llikCauchyDlocation;
+rxode2_llikCauchyFun _llikCauchyDscale;
 
 
 rxode2_compareFactorVal_fn _compareFactorVal;
@@ -334,6 +337,11 @@ void _assignFuns0() {
   _llikGamma        = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGamma");
   _llikGammaDshape  = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDshape");
   _llikGammaDrate   = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDrate");
+
+  _llikCauchy        = (rxode2_llikCauchyFun) R_GetCCallable("rxode2", "rxLlikCauchy");
+  _llikCauchyDlocation  = (rxode2_llikCauchyFun) R_GetCCallable("rxode2", "rxLlikCauchyDlocation");
+  _llikCauchyDscale   = (rxode2_llikCauchyFun) R_GetCCallable("rxode2", "rxLlikCauchyDscale");
+
 
   _solveData = _getRxSolve_();
 }

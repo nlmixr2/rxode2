@@ -114,6 +114,9 @@
 #define llikGamma(x, shape, rate) _llikGamma((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
 #define llikGammaDshape(x, shape, rate) _llikGammaDshape((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
 #define llikGammaDrate(x, shape, rate) _llikGammaDrate((&_solveData->subjects[_cSub])->llikSave, x, shape, rate)
+#define llikCauchy(x, location, scale) _llikCauchy((&_solveData->subjects[_cSub])->llikSave, x, location, scale)
+#define llikCauchyDlocation(x, location, scale) _llikCauchyDlocation((&_solveData->subjects[_cSub])->llikSave, x, location, scale)
+#define llikCauchyDscale(x, location, scale) _llikCauchyDscale((&_solveData->subjects[_cSub])->llikSave, x, location, scale)
 #define _pnorm1(x) pnorm(x, 0.0, 1.0, 1, 0)
 #define _pnorm2(x, mu) pnorm(x, mu, 1.0, 1, 0)
 #define _pnorm3(x, mu, sd) pnorm(x, mu, sd, 1, 0)
@@ -231,5 +234,6 @@ typedef double (*rxode2_llikGeomFun) (double *in, double x, double p);
 typedef double (*rxode2_llikUnifFun) (double *in, double x, double alpha, double beta);
 typedef double (*rxode2_llikWeibullFun) (double *in, double x, double shape, double scale);
 typedef double (*rxode2_llikGammaFun) (double *in, double x, double shape, double rate);
+typedef double (*rxode2_llikCauchyFun) (double *in, double x, double location, double scale);
 
 #endif // __rxode2_model_shared_H__

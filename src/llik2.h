@@ -27,6 +27,7 @@ using namespace Rcpp;
 #define isUnif 10.0
 #define isWeibull 11.0
 #define isGamma 12.0
+#define isCauchy 13.0
 
 typedef struct stanLl {
   Eigen::VectorXd fx;
