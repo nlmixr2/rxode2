@@ -366,6 +366,7 @@ static inline double _powerDi(double x, double lambda, int yj, double low, doubl
     return (high-low)/(1+exp(-x))+low; // expit
   case 3:
     return exp(x);
+  case 100:
   case 2: 
     return x;
   case 0:
@@ -448,6 +449,7 @@ static inline double _powerD(double x, double lambda, int yj, double low, double
   case 3: // logNorm
     if (x <= _eps) x0= _eps;
     return log(x0);
+  case 100:
   case 2: // norm
     return x;
   case 0: // boxCoxNorm
@@ -491,6 +493,7 @@ static inline double _powerDD(double x, double lambda, int yj, double low, doubl
   case 3:
     if (x <= _eps) return x0 = _eps;
     return 1/x0;
+  case 100:
   case 2:
     return 1.0;
   case 0:
@@ -538,6 +541,7 @@ static inline double _powerDDD(double x, double lambda, int yj,double low, doubl
   case 3:
     if (x <= _eps) x0 = _eps;
     return -1/(x0*x0);
+  case 100:
   case 2: 
     return 0;
   case 0:
@@ -583,6 +587,7 @@ static inline double _powerL(double x, double lambda, int yj, double low, double
   case 3: 
     if (x <= _eps) x0 = _eps;
     return -log(x0);
+  case 100:
   case 2:
     return 0;
   case 0:
@@ -627,6 +632,7 @@ static inline double _powerDL(double x, double lambda, int yj, double low, doubl
   case 3:
     if (x <= _eps) x0 = _eps;
     return log(x0);
+  case 100:
   case 2:
     // For normal transform no dependence of lambda
     return 0;
