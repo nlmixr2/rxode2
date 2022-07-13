@@ -78,12 +78,12 @@ extern "C" double rxLlikCauchy(double* ret, double x, double location, double sc
   return ret[4];
 }
 
-extern "C" double rxLlikTDlocation(double* ret, double x, double location, double scale) {
+extern "C" double rxLlikCauchyDlocation(double* ret, double x, double location, double scale) {
   llikCauchyFull(ret, x, location, scale);
   return ret[5];
 }
 
-extern "C" double rxLlikTDscale(double* ret, double x, double location, double scale) {
+extern "C" double rxLlikCauchyDscale(double* ret, double x, double location, double scale) {
   llikCauchyFull(ret, x, location, scale);
   return ret[6];
 }

@@ -485,7 +485,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_llikUnifInternal", (DL_FUNC) &_rxode2_llikUnifInternal, 3},
     {"_rxode2_llikWeibullInternal", (DL_FUNC) &_rxode2_llikWeibullInternal, 3},
     {"_rxode2_llikGammaInternal", (DL_FUNC) &_rxode2_llikGammaInternal, 3},
-    {"_rxode2_llikCauchyInternal", (DL_FUNC) &_rxode2_llikCauchyInternal, 2},
+    {"_rxode2_llikCauchyInternal", (DL_FUNC) &_rxode2_llikCauchyInternal, 3},
     {NULL, NULL, 0} 
   };
   // C callable to assign environments.

@@ -186,6 +186,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikGamma"=3,
   "llikGammaDshape"=3,
   "llikGammaDrate"=3,
+  "llikCauchy"=3,
+  "llikCauchyDlocation"=3,
+  "llikCauchyDscale"=3,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -533,6 +536,17 @@ rxRmFun <- function(name) {
     paste0("llikGammaDrate(",paste(c(x, shape, rate), collapse=", "), ")")
   }
 )
+
+.rxD$llikCauchy <- list(
+  NULL,
+  function(x, location, scale) {
+    paste0("llikCauchyDlocation(",paste(c(x, location, scale), collapse=", "), ")")
+  },
+  function(x, location, scale) {
+    paste0("llikCauchyDscale(",paste(c(x, location, scale), collapse=", "), ")")
+  }
+)
+
 
 .rxD$abs0 <- list(function(x) {
   return(paste0("dabs(", x, ")"))

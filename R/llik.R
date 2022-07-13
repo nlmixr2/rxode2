@@ -570,3 +570,52 @@ llikGamma <-function(x, shape, rate, full=FALSE) {
   if (full) .ret <- cbind(.rate, .ret)
   .ret
 }
+
+
+#' log likelihood of Cauchy distribution and it's derivatives (from stan) 
+#'
+#' @param x  Observation
+#' @inheritParams llikNorm
+#' @inheritParams stats::dnorm
+#' @inheritParams stats::dcauchy
+#' @return data frame with `fx` for the log pdf value of with 
+#'   `dLocation` and `dScale` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @details
+#' In an `rxode2()` model, you can use `llikCauchy()` but you have to
+#' use all arguments.  You can also get the derivative of `location` and `scale` with
+#' `llikCauchyDlocation()` and `llikCauchyDscale()`.
+#' @export 
+#' @examples
+#'
+#' x <- seq(-3, 3, length.out = 21)
+#'
+#' llikCauchy(x, 0, 1)
+#'
+#' llikCauchy(x, 3, 1, full=TRUE)
+#'
+#'  et <- et(-3, 3, length.out=10)
+#'  et$location <- 0
+#'  et$scale <- 1
+#'
+#'  model <- rxode2({
+#'    fx <- llikCauchy(time, location, scale)
+#'    dLocation <- llikCauchyDlocation(time, location, scale)
+#'    dScale <- llikCauchyDscale(time, location, scale)
+#'  })
+#'
+#'  rxSolve(model, et)
+#'
+llikCauchy <-function(x, location=0, scale=1, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(location, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(scale, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, location=location, scale=scale), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, location, scale", call.=FALSE)
+  }
+  .ret <- llikCauchyInternal(.df$x, .df$location, .df$scale)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}

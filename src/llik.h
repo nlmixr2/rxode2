@@ -50,8 +50,8 @@ extern "C" {
   double rxLlikGammaDrate(double* ret, double x, double shape, double rate);
 
   double rxLlikCauchy(double* ret, double x, double location, double scale);
-  double rxLlikTDlocation(double* ret, double x, double location, double scale);
-  double rxLlikTDscale(double* ret, double x, double location, double scale);
+  double rxLlikCauchyDlocation(double* ret, double x, double location, double scale);
+  double rxLlikCauchyDscale(double* ret, double x, double location, double scale);
 
   
 #if defined(__cplusplus)
