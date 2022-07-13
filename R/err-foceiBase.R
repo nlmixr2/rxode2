@@ -85,6 +85,25 @@
   }
 }
 
+#' Get the Observation transformation
+#'
+#' @param env Environment for the parsed model
+#' @param pred1 The `data.frame` of the current error
+#' @param yj The transformation number for the current error
+#' @return The transformation expression
+#' @author Matthew Fidler
+#' @keywords internal
+#' @export
+.rxGetPredictionDVTransform <- function(env, pred1, yj) {
+  if (yj == 2) {
+    return(quote(DV))
+  } else if (yj == 3) {
+    return(quote(log(DV)))
+  } else {
+    return(quote(rxTBS(DV, rx_lambda_, rx_yj_, rx_low_, rx_hi_)))
+  }
+}
+
 #' Get the additive transformation
 #'
 #' @param env Environment for the parsed model
@@ -315,16 +334,44 @@
 #' - `rx_r_` The transformed variance
 #' @author Matthew Fidler
 #' @export
-.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1) {
-  .ret <- vector("list", 7)
+.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, type="norm") {
+  .ret <- vector("list", ifelse(type=="norm",7, 9))
   .yj <- as.double(pred1$transform) - 1
   .ret[[1]] <- bquote(rx_yj_ ~ .(.yj))
   .ret[[2]] <- bquote(rx_lambda_~.(.rxGetLambdaFromPred1AndIni(env, pred1)))
   .ret[[3]] <- bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1)))
   .ret[[4]] <- bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1)))
   .ret[[5]] <- bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1)))
-  .ret[[6]] <- bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, .yj)))
-  .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
+  if (type == "norm") {
+    .ret[[6]] <- bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, .yj)))
+    .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
+  } else {
+    .ret[[6]] <- bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, .yj)))
+    .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
+    if (type == "t") {
+      .iniDf <- env$iniDf
+      .cnd <- pred1$cond
+      .w <- which(.iniDf$err == "t" & .iniDf$condition == .cnd)
+      if (length(.w) == 1) {
+        .nu <- str2lang(paste(.iniDf$name[.w]))
+      } else {
+        if (is.na(pred1$d)) {
+          stop("t distribution needs a proper degrees of freedom specified",
+               call. = FALSE)
+        }
+        .nu <- str2lang(pred1$d)
+      }
+      .ret[[8]] <- bquote(rx_pred_ ~ -2 * llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                .(.nu), rx_pred_, rx_r_))
+    } else if (type == "cauchy") {
+      .ret[[8]] <- bquote(rx_pred_ ~ -2 * llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                     rx_pred_, rx_r_))
+    } else if (type =="dnorm") {
+      .ret[[8]] <- bquote(rx_pred_ ~ -2 * llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                   rx_pred_, rx_r_))
+    }
+    .ret[[9]] <- bquote(rx_r_ ~ 0)
+  }
   .ret
 }
 
@@ -338,14 +385,20 @@
 #' @noRd
 .handleSingleErrTypeFoceiBase <- function(env, i) {
   .pred1 <- env$predDf[i, ]
-  if (.pred1$distribution %in% c("norm", "t")) {
-     .handleSingleErrTypeNormOrTFoceiBase(env, .pred1)    
+  if (.pred1$distribution %in% c("norm", "t", "cauchy", "dnorm")) {
+     .handleSingleErrTypeNormOrTFoceiBase(env, .pred1)
   } else {
+    .ret <- vector("list", 6)
+    .ret[[1]] <- bquote(rx_yj_ ~ 100)
+    .ret[[2]] <- bquote(rx_lambda_ ~ 1)
+    .ret[[3]] <- bquote(rx_low_ ~ 0)
+    .ret[[4]] <- bquote(rx_hi_ ~ 0)
+    .ret[[5]] <- bquote(rx_r_ ~ 0)
     # This is for the non-normal cases
+    .ret[[6]] <- bquote(rx_pred_ ~ -2 * .(.getQuotedDistributionAndLlikArgs(env, pred1)))
+    .ret
   }
 }
-
-  
 
 .foceEstLLFun <- list(
   "t"="llikT",
@@ -359,7 +412,33 @@
 #  "hyper"="rhyper",
   "unif"="llikUnif",
   "weibull"="llikWeibull",
-  "cauchy"="rcauchy",
+  "cauchy"="llikCauchy",
   "dgamma"="llikGamma",
   "ordinal"="rordinal"
 )
+
+.getQuotedDistributionAndLlikArgs <- function(env, pred1) {
+  .dist <- as.character(pred1$distribution)
+  if (.dist == "-2LL") {
+    return(env$lstExpr[[pred1$line]][[3]])
+  }
+  .nargs <- max(.errDist[[.dist]])
+  .cnd <- pred1$cond
+  .argName <- .namedArgumentsToPredDf[[.dist]]
+  .args <- vapply(seq(1:.nargs), function(.i) {
+    .curDist <- .argName[.i]
+    if (!is.na(pred1[[.curDist]])) {
+      return(pred1[[.curDist]])
+    } else {
+      .curDist <- paste0(.dist, ifelse(.i == 1, "", .i))
+      .w <- which(env$iniDf$err == .curDist & env$iniDf$condition == .cnd)
+      if (length(.w) == 1) {
+        return(env$iniDf$name[.w])
+      } else {
+        return("")
+      }
+    }
+  }, character(1))
+
+  as.call(lapply(c(.foceEstLLFun[[.dist]], "DV", .args[.args != ""]), str2lang))
+}
