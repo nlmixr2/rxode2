@@ -49,7 +49,7 @@ rxGetDistributionSimulationLines <- function(line) {
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond
   .argName <- .namedArgumentsToPredDf[[.dist]]
-  .args <- vapply(seq(1:.nargs), function(.i){
+  .args <- vapply(seq(1:.nargs), function(.i) {
     .curDist <- .argName[.i]
     if (!is.na(pred1[[.curDist]])) {
       return(pred1[[.curDist]])
@@ -78,7 +78,7 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   #.ret[[1]] <- bquote(.(.err) <- 0)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -89,7 +89,18 @@ rxGetDistributionSimulationLines.t <- function(line) {
   .ret <- vector("list", 2)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
+}
+
+#' @rdname rxGetDistributionSimulationLines
+#' @export
+rxGetDistributionSimulationLines.cauchy <- function(line) {
+  env <- line[[1]]
+  pred1 <- line[[2]]
+  .ret <- vector("list", 2)
+  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -102,7 +113,7 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .ret <- vector("list", 2)
   .ret[[1]] <- quote(ipredSim <- NA)
   .ret[[2]] <- bquote(sim <- .(.c))
-  .ret
+  c(.handleSingleErrTypeNormOrTFoceiBase(.env, .pred1, rxPredLlik=FALSE), .ret)
 }
 
 
@@ -113,7 +124,7 @@ rxGetDistributionSimulationLines.default <- function(line) {
   pred1 <- line[[2]]
   .ret <- vector("list", 1)
   .ret[[1]] <- bquote(sim <- .(.getQuotedDistributionAndSimulationArgs(line)))
-  .ret
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -441,7 +452,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     }
 
   }
-  for(.i in seq_along(.cmtLines)) {
+  for (.i in seq_along(.cmtLines)) {
     .ret[[.k]] <- .cmtLines[[.i]]
     .k <- .k + 1
   }

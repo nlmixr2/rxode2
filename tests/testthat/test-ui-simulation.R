@@ -19,7 +19,6 @@ rxTest({
       })
     }
 
-
     tmp <- rxode2(f)
 
     expect_error(tmp$simulationModel, NA)
@@ -140,7 +139,7 @@ rxTest({
         ke <- cl / v            # elimination rate constant
         d/dt(A1) = - ke * A1    # model differential equation
         cp = A1 / v             # concentration in plasma
-        cp ~ add(add.err) + boxCox(lambda) + dt(nu)# define error model
+        cp ~ prop(add.err) + boxCox(lambda) + dt(nu)# define error model
       })
     }
 
@@ -192,7 +191,6 @@ rxTest({
     })
 
   })
-
 
   test_that("binom simulations", {
 

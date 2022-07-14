@@ -327,10 +327,34 @@ static inline double erfinv(double x)  __attribute__((unused));
 static inline double erfinv(double x) {
   return Rf_qnorm5((1 + x)/2.0, 0, 1, 1, 0)*M_SQRT1_2;
 }
+#define rxDistributionNorm     1
+#define rxDistributionPois     2
+#define rxDistributionBinom    3
+#define rxDistributionBeta     4
+#define rxDistributionT        5
+#define rxDistributionChisq    6
+#define rxDistributionDexp     7
+#define rxDistributionF        8
+#define rxDistributionGeom     9
+#define rxDistributionHyper   10
+#define rxDistributionUnif    11
+#define rxDistributionWeibull 12
+#define rxDistributionCauchy  13
+#define rxDistributionGamma   14
+#define rxDistributionOrdinal 15
+#define rxDistributionN2ll    16
+
+static inline void _splitYj(int *yj, int *dist,  int *trans) {
+  *dist  = *yj/10;
+  *trans = *yj - *dist*10;
+  *dist  = *dist + 1;
+}
 // Inverse 
-static inline double _powerDi(double x, double lambda, int yj, double low, double high)  __attribute__((unused));
-static inline double _powerDi(double x, double lambda, int yj, double low, double high){
+static inline double _powerDi(double x, double lambda, int yj0, double low, double high)  __attribute__((unused));
+static inline double _powerDi(double x, double lambda, int yj0, double low, double high){
   double x0=x, ret, l2, yjd;
+  int yj, dist;
+  _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7: // inverse-Yeo Johnson followed by pnorm
     if (lambda == 1.0) {
@@ -366,7 +390,6 @@ static inline double _powerDi(double x, double lambda, int yj, double low, doubl
     return (high-low)/(1+exp(-x))+low; // expit
   case 3:
     return exp(x);
-  case 100:
   case 2: 
     return x;
   case 0:
@@ -401,10 +424,12 @@ static inline double _powerDi(double x, double lambda, int yj, double low, doubl
   return NA_REAL;
 }
 
-static inline double _powerD(double x, double lambda, int yj, double low, double high)  __attribute__((unused));
-static inline double _powerD(double x, double lambda, int yj, double low, double high) {
+static inline double _powerD(double x, double lambda, int yj0, double low, double high)  __attribute__((unused));
+static inline double _powerD(double x, double lambda, int yj0, double low, double high) {
   double x0=x, l2, p;
-  switch (yj){
+  int yj, dist;
+  _splitYj(&yj0, &dist,  &yj);
+  switch (yj) {
   case 7:
     p = (x-low)/(high-low);
     if (p >= 1) return R_NaN;
@@ -449,7 +474,6 @@ static inline double _powerD(double x, double lambda, int yj, double low, double
   case 3: // logNorm
     if (x <= _eps) x0= _eps;
     return log(x0);
-  case 100:
   case 2: // norm
     return x;
   case 0: // boxCoxNorm
@@ -471,9 +495,11 @@ static inline double _powerD(double x, double lambda, int yj, double low, double
   return NA_REAL;
 }
 
-static inline double _powerDD(double x, double lambda, int yj, double low, double high)  __attribute__((unused));
-static inline double _powerDD(double x, double lambda, int yj, double low, double high){
+static inline double _powerDD(double x, double lambda, int yj0, double low, double high)  __attribute__((unused));
+static inline double _powerDD(double x, double lambda, int yj0, double low, double high){
   double x0 = x, xl, hl,eri;
+  int yj, dist;
+  _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7:
     // Subs(Derivative(yeoJohnson(_xi_1), _xi_1), (_xi_1), (logit(x)))*Derivative(logit(x), x)
@@ -493,7 +519,6 @@ static inline double _powerDD(double x, double lambda, int yj, double low, doubl
   case 3:
     if (x <= _eps) return x0 = _eps;
     return 1/x0;
-  case 100:
   case 2:
     return 1.0;
   case 0:
@@ -515,9 +540,11 @@ static inline double _powerDD(double x, double lambda, int yj, double low, doubl
   return NA_REAL;
 }
 
-static inline double _powerDDD(double x, double lambda, int yj,double low, double high) __attribute__((unused));
-static inline double _powerDDD(double x, double lambda, int yj,double low, double high){
+static inline double _powerDDD(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerDDD(double x, double lambda, int yj0, double low, double high){
   double x0 = x, hl, hl2, xl,  t1, dL, eri;
+  int yj, dist;
+  _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7:
     dL = _powerDD(x, lambda, 6, low, high);
@@ -541,7 +568,6 @@ static inline double _powerDDD(double x, double lambda, int yj,double low, doubl
   case 3:
     if (x <= _eps) x0 = _eps;
     return -1/(x0*x0);
-  case 100:
   case 2: 
     return 0;
   case 0:
@@ -563,9 +589,11 @@ static inline double _powerDDD(double x, double lambda, int yj,double low, doubl
   return NA_REAL;
 }
 
-static inline double _powerL(double x, double lambda, int yj, double low, double high) __attribute__((unused));
-static inline double _powerL(double x, double lambda, int yj, double low, double high){
+static inline double _powerL(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerL(double x, double lambda, int yj0, double low, double high){
   double x0 = x, hl, xl, hl2, eri;
+  int yj, dist;
+  _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7:
     return log(_powerDD(_powerD(x, lambda, 6, low, high), lambda, 1, low, high))+log(_powerDD(x, lambda, 6, low, high));
@@ -587,7 +615,6 @@ static inline double _powerL(double x, double lambda, int yj, double low, double
   case 3: 
     if (x <= _eps) x0 = _eps;
     return -log(x0);
-  case 100:
   case 2:
     return 0;
   case 0:
@@ -617,10 +644,12 @@ static inline double _powerL(double x, double lambda, int yj, double low, double
 }
 
 // extra liklihood
-static inline double _powerDL(double x, double lambda, int yj, double low, double hi) __attribute__((unused));
-static inline double _powerDL(double x, double lambda, int yj, double low, double hi){
+static inline double _powerDL(double x, double lambda, int yj0, double low, double hi) __attribute__((unused));
+static inline double _powerDL(double x, double lambda, int yj0, double low, double hi) {
   // d(logLik/dlambda)
   double x0 = x;
+  int yj, dist;
+  _splitYj(&yj0, &dist,  &yj);
   switch (yj){
   case 6:
     return 0; // does not depend on lambda
@@ -632,7 +661,6 @@ static inline double _powerDL(double x, double lambda, int yj, double low, doubl
   case 3:
     if (x <= _eps) x0 = _eps;
     return log(x0);
-  case 100:
   case 2:
     // For normal transform no dependence of lambda
     return 0;
