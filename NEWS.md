@@ -7,6 +7,11 @@
   be used. It is also aligned with the `llikGamma` function used for
   generalized likelihood estimation.
 
+- ui `cauchy` simulations now follow the ui for `normal` and `t`
+  distributions, which means you can combine with transformations.
+  This is because the `cauchy` is a `t` distribution with one degree
+  of freedom.
+
 ** New features
 
 - Allow models in the `nlmixr2` form without an `ini({})` block
@@ -14,6 +19,8 @@
 - Families of log-likelihood were added to `rxode2` so that mixed
   likelihood nonlinear mixed effects models may be specified and run
   in the future.
+
+- The memory footprint of a `rxode2` solving has been reduced
 
 # rxode2 2.0.7
 

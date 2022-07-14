@@ -28,7 +28,6 @@ rxTest({
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-
       s <- rxSolve(tmp, ev,
                    returnType="tibble", addCov=TRUE)
 
