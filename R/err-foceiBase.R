@@ -386,7 +386,7 @@
 .handleSingleErrTypeFoceiBase <- function(env, i) {
   .pred1 <- env$predDf[i, ]
   if (.pred1$distribution %in% c("norm", "t", "cauchy", "dnorm")) {
-     .handleSingleErrTypeNormOrTFoceiBase(env, .pred1)
+     .handleSingleErrTypeNormOrTFoceiBase(env, .pred1, type=.pred1$distribution)
   } else {
     .ret <- vector("list", 6)
     .ret[[1]] <- bquote(rx_yj_ ~ 100)
