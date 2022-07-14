@@ -12,9 +12,7 @@ rxTest({
         kel <- tkel
         d/dt(kpd) <- -kel * kpd
         p1 <- expit(tp0 + eta.p)
-
         kpd ~ add(add.sd)
-
         cac ~ c(p1)
       })
     }
@@ -53,7 +51,6 @@ rxTest({
         kel <- tkel
         d/dt(kpd) <- -kel * kpd
         p1 <- expit(tp0 + eta.p)
-
         kpd ~ add(add.sd)
         p2 <- -2 * log(p1)
         n2ll(lik) ~ p2
@@ -121,7 +118,7 @@ rxTest({
 
   test_that("t simulations", {
 
-    f <- function() {
+     f <- function() {
       ini({
         tcl <- log(0.008) # typical value of clearance
         tv <-  log(0.6)   # typical value of volume
@@ -430,20 +427,28 @@ rxTest({
 
   test_that("rcauchy simulations", {
 
+
     f <- function() {
       ini({
-        ta <- 0.5
-        eta.a ~ 0.01
-        tb <- 0.5
-        eta.b ~ 0.01
+        tcl <- log(0.008) # typical value of clearance
+        tv <-  log(0.6)   # typical value of volume
+        ## var(eta.cl)
+        eta.cl + eta.v ~ c(1,
+                           0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
+        # interindividual variability on clearance and volume
+        add.err <- 10   # residual variability
+        lambda <- 0.5
       })
       model({
-        a <- exp(ta + eta.a)
-        b <- exp(tb + eta.b)
-        err ~ dcauchy(a, b)
+        cl <- exp(tcl + eta.cl) # individual value of clearance
+        v <- exp(tv + eta.v)    # individual value of volume
+        ke <- cl / v            # elimination rate constant
+        d/dt(A1) = - ke * A1    # model differential equation
+        cp = A1 / v             # concentration in plasma
+        cp ~ prop(add.err) + boxCox(lambda) + dcauchy()# define error model
       })
     }
-
+    
     tmp <- rxode2(f)
 
     expect_error(tmp$simulationModel, NA)

@@ -4,6 +4,7 @@
 \alias{rxGetDistributionSimulationLines}
 \alias{rxGetDistributionSimulationLines.norm}
 \alias{rxGetDistributionSimulationLines.t}
+\alias{rxGetDistributionSimulationLines.cauchy}
 \alias{rxGetDistributionSimulationLines.ordinal}
 \alias{rxGetDistributionSimulationLines.default}
 \alias{rxGetDistributionSimulationLines.rxUi}
@@ -14,6 +15,8 @@ rxGetDistributionSimulationLines(line)
 \method{rxGetDistributionSimulationLines}{norm}(line)
 
 \method{rxGetDistributionSimulationLines}{t}(line)
+
+\method{rxGetDistributionSimulationLines}{cauchy}(line)
 
 \method{rxGetDistributionSimulationLines}{ordinal}(line)
 

@@ -52,7 +52,7 @@
   "unif"=0:2,
   "dweibull"=1:2,
   "weibull"=1:2,
-  "cauchy"= 0:2,
+  "cauchy"= 0,
   "dcauchy"= 0:2,
   "dgamma"=1:2
 )
@@ -66,7 +66,7 @@
 )
 
 .errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF", "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
-                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t")
+                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t", "cauchy")
 
 .errIdenticalDists <- list(
   "add"=c("norm", "dnorm"),
@@ -775,7 +775,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   } else if (env$isAnAdditiveExpression) {
     .currErr <- rxPreferredDistributionName(deparse1(expression[[1]]))
     if (.currErr %in% .errAddDists) {
-      if (.currErr == "t") env$distribution <- "t"
+      if (.currErr == "t") {
+        if (env$distribution == "cauchy") {
+          stop("you cannot combine 't' and 'cauchy' distributions")
+        }
+        env$distribution <- "t"
+      } else if (.currErr == "cauchy") {
+        if (env$distribution == "t") {
+          stop("you cannot combine 't' and 'cauchy' distributions")
+        }
+        env$distribution <- "cauchy"
+      }
       .errHandleSingleDistributionTerm(.currErr, expression, env)
     } else if (.currErr %in% names(.errDist)) {
       assign("err", c(env$err,
@@ -1206,16 +1216,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   if (uiEnv) return(.env)
   ifelse(.lin, "rxLinCmt" == .env$predDf$var, .pre == .env$predDf$var)
 }
-#'  Is Normal or t distribution model specification?
+#'  Is Normal, Cauchy or t distribution model specification?
 #'
 #' @param expr Expression
-#' @return TRUE if this is a normal/t model, FALSE otherwise
+#' 
+#' @return TRUE if this is a normal/t/cauchy model, FALSE otherwise
 #' @author Matthew L. Fidler
 #' @noRd
 .isNormOrTErrorExpression <- function(expr) {
   .env <- .isErrorExpression(expr, TRUE)
   if (inherits(.env, "logical")) return(FALSE)
-  any(.env$predDf$distribution == c("norm", "t"))
+  any(.env$predDf$distribution == c("norm", "t", "cauchy"))
 }
 #' Throw an error if the error expression  is invalid
 #'
