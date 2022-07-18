@@ -3,6 +3,7 @@
 \name{rxGetDistributionSimulationLines}
 \alias{rxGetDistributionSimulationLines}
 \alias{rxGetDistributionSimulationLines.norm}
+\alias{rxGetDistributionSimulationLines.dnorm}
 \alias{rxGetDistributionSimulationLines.t}
 \alias{rxGetDistributionSimulationLines.cauchy}
 \alias{rxGetDistributionSimulationLines.ordinal}
@@ -13,6 +14,8 @@
 rxGetDistributionSimulationLines(line)
 
 \method{rxGetDistributionSimulationLines}{norm}(line)
+
+\method{rxGetDistributionSimulationLines}{dnorm}(line)
 
 \method{rxGetDistributionSimulationLines}{t}(line)
 

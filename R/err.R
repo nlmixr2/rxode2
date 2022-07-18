@@ -17,8 +17,8 @@
   ## Available as external package http://ugrad.stat.ubc.ca/R/library/rmutil/html/BetaBinom.html
   ## "dbetabinomial", ## not in base R (but in glnmm2)
   "add" = 1,
-  "norm" = 1,
-  "dnorm" = 1,
+  "norm" = 0,
+  "dnorm" = 0,
   "prop" = 1,
   "propT" = 1,
   "propF" = 2,
@@ -57,7 +57,7 @@
   "dgamma"=1:2
 )
 
-.errDistsPositive <- c("add", "norm", "dnorm", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
+.errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
 
 
 .errUnsupportedDists <- c(
@@ -66,11 +66,11 @@
 )
 
 .errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF", "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
-                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t", "cauchy")
+                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t", "cauchy", "norm")
 
 .errIdenticalDists <- list(
-  "add"=c("norm", "dnorm"),
   "lnorm"=c("logn", "dlogn", "dlnorm"),
+  "dnorm"="norm",
   "boxCox"="tbs",
   "yeoJohnson"="tbsYj",
   "pois"="dpois",
@@ -177,13 +177,13 @@
 #'
 #' @examples
 #'
-#' rxPreferredDistributionName("dnorm")
+#' rxPreferredDistributionName("dt")
 #'
 #' rxPreferredDistributionName("add")
 #'
 #' # can be vectorized
 #'
-#' rxPreferredDistributionName(c("add","dnorm"))
+#' rxPreferredDistributionName(c("add","dt"))
 #'
 #' @export
 rxPreferredDistributionName <- function(dist) {
@@ -268,7 +268,8 @@ rxPreferredDistributionName <- function(dist) {
   "cauchy", #13
   "dgamma", #14
   "ordinal", # 15
-  "-2LL" #16
+  "-2LL", #16
+  "dnorm"
 )
 
 #' Demote the error type
@@ -779,12 +780,26 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         if (env$distribution == "cauchy") {
           stop("you cannot combine 't' and 'cauchy' distributions")
         }
+        if (env$distribution == "dnorm") {
+          stop("you cannot combine 't' and 'dnorm' distributions")
+        }
         env$distribution <- "t"
       } else if (.currErr == "cauchy") {
         if (env$distribution == "t") {
           stop("you cannot combine 't' and 'cauchy' distributions")
         }
+        if (env$distribution == "dnorm") {
+          stop("you cannot combine 'dnorm' and 'cauchy' distributions")
+        }
         env$distribution <- "cauchy"
+      } else if (.currErr == "dnorm") {
+        if (env$distribution == "t") {
+          stop("you cannot combine 't' and 'dnorm' distributions")
+        }
+        if (env$distribution == "cauchy") {
+          stop("you cannot combine 'cauchy' and 'dnorm' distributions")
+        }
+        env$distribution <- "dnorm"
       }
       .errHandleSingleDistributionTerm(.currErr, expression, env)
     } else if (.currErr %in% names(.errDist)) {

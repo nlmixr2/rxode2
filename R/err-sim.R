@@ -83,6 +83,10 @@ rxGetDistributionSimulationLines.norm <- function(line) {
 
 #' @rdname rxGetDistributionSimulationLines
 #' @export
+rxGetDistributionSimulationLines.dnorm <- rxGetDistributionSimulationLines.norm
+
+#' @rdname rxGetDistributionSimulationLines
+#' @export
 rxGetDistributionSimulationLines.t <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
@@ -175,7 +179,7 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .exact <- x[[2]]
   .predDf <- get("predDf", .x)
   .sigmaNames <- vapply(seq_along(.predDf$var), function(i) {
-    if (.predDf$distribution[i] == "norm") {
+    if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
       paste0("err.", .predDf$var[i])
     } else {
       ""

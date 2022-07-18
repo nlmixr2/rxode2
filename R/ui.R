@@ -338,21 +338,3 @@ print.rxUi <-function(x, ...) {
   print(as.call(x$funPrint))
   return(invisible(x))
 }
-
-#' With a temporary variable assigned in the UI
-#'
-#' @param var Variable name
-#' @param value Varaible value
-#' @param ui rxode2 ui to temporarily assign
-#' @param code Code to run
-#' @return Value of `code`
-#' @author Matthew L. Fidler
-#' @export 
-rxWithUiTemporaryVar <- function(var, value, ui, code) {
-  assign(var, val, envir=ui)
-  on.exit({
-    if (exists(var, envir=ui)) {
-      rm(var, envir=ui)
-    }})
-  force(code)
-}

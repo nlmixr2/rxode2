@@ -368,7 +368,7 @@
         } else if (type == "cauchy") {
           .ret[[8]] <- bquote(rx_pred_ ~ -2 * llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
                                                          rx_pred_, rx_r_))
-        } else if (type =="dnorm") {
+        } else if (type == "dnorm") {
           .ret[[8]] <- bquote(rx_pred_ ~ -2 * llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
                                                        rx_pred_, rx_r_))
         }
