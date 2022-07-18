@@ -12,13 +12,18 @@
   This is because the `cauchy` is a `t` distribution with one degree
   of freedom.
 
+- ui `dnorm()` and `norm()` are no longer equivalent to `add()`.  Now
+  it allows you to use the loglik `llikNorm()` instead of the standard
+  `nlmixr2` style focei likelihood.  This is done by adding `dnorm()`
+  at the end of the line.  It also means `dnorm()` now doesn't take
+  any arguments.
+
 ** New features
 
 - Allow models in the `nlmixr2` form without an `ini({})` block
 
 - Families of log-likelihood were added to `rxode2` so that mixed
-  likelihood nonlinear mixed effects models may be specified and run
-  in the future.
+  likelihood nonlinear mixed effects models may be specified and run.
 
 - The memory footprint of a `rxode2` solving has been reduced
 
