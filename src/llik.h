@@ -53,7 +53,6 @@ extern "C" {
   double rxLlikCauchyDlocation(double* ret, double x, double location, double scale);
   double rxLlikCauchyDscale(double* ret, double x, double location, double scale);
 
-  
 #if defined(__cplusplus)
 }
 #endif

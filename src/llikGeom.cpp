@@ -35,6 +35,14 @@ static inline void llikGeomFull(double* ret, double x, double p) {
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)) {
+    ret[0] = isGeom;
+    ret[1] = x;
+    ret[2] = p;
+    ret[3] = NA_REAL;
+    ret[4] = NA_REAL;
+    return;
+  }
   Eigen::VectorXi y(1);
   Eigen::VectorXd params(1);
   y(0) = (int)(x);

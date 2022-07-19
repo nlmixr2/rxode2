@@ -38,6 +38,16 @@ static inline void llikCauchyFull(double* ret, double x, double location, double
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)) {
+    ret[0] = isCauchy;
+    ret[1] = x;
+    ret[2] = location;
+    ret[3] = scale;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;

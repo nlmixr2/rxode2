@@ -38,6 +38,16 @@ static inline void llikGammaFull(double* ret, double x, double shape, double rat
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)) {
+    ret[0] = isGamma;
+    ret[1] = x;
+    ret[2] = shape;
+    ret[3] = rate;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;

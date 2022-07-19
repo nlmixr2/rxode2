@@ -39,6 +39,16 @@ static inline void llikFFull(double* ret, double x, double df1, double df2) {
     // Assume this is the same
     return;
   }
+  if (R_finite(x)) {
+    ret[0] = isF;
+    ret[1] = x;
+    ret[2] = df1;
+    ret[3] = df2;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;
