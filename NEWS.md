@@ -27,6 +27,11 @@
 
 - The memory footprint of a `rxode2` solving has been reduced
 
+** Bug fix
+
+- `rxode2`'s symengine would convert `sqrt(2)` to `M_SQRT_2` when it
+  should be `M_SQRT2`.  This has been fixed; it was most noticeable in nlmixr2
+
 # rxode2 2.0.7
 
 - Removed accidental `^S` from news as requested by CRAN.
