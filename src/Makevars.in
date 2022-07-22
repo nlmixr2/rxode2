@@ -17,7 +17,7 @@ PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DB
 
 
 SOURCES_C = tran.c print_node.c call_dvode.c handle_evid.c strncmp.c checkmate_stub.c genModelVars.c codegen.c getOption.c sbuf.c parseLinCmt.c lincmt.c utilc.c dop853.c omegaChol.c init.c cfode.c common.c corfailure.c correction.c daxpy.c ddot.c dgefa.c dgesl.c dscal.c fnorm.c idamax.c intdy.c lsoda.c methodswitch.c orderswitch.c prja.c scaleh.c solsy.c stoda.c vmnorm.c strdup_printf.c rprintf.c box.c matexp_HM98.c 
-SOURCES_CPP = rxData.cpp llikBeta.cpp llikBinom.cpp llikChisq.cpp llikExp.cpp llikF.cpp llikGamma.cpp llikGeom.cpp llikNorm.cpp llikPois.cpp llikT.cpp llikUnif.cpp llikWeibull.cpp par_solve.cpp rxode2_df.cpp etTran.cpp RcppExports.cpp rxvandercorput.cpp seed.cpp rxthreefry.cpp cbindThetaOmega.cpp cvPost.cpp checkmate.cpp utilcpp.cpp qs.cpp lincmtB.cpp  forder.cpp et.cpp boost.cpp fast_factor.cpp expandGrid.cpp WinDrive.cpp rxInv.cpp rxStack.cpp rxOptRep.cpp expm.cpp 
+SOURCES_CPP = llikCauchy.cpp  rxData.cpp llikBeta.cpp llikBinom.cpp llikChisq.cpp llikExp.cpp llikF.cpp llikGamma.cpp llikGeom.cpp llikNorm.cpp llikPois.cpp llikT.cpp llikUnif.cpp llikWeibull.cpp par_solve.cpp rxode2_df.cpp etTran.cpp RcppExports.cpp rxvandercorput.cpp seed.cpp rxthreefry.cpp cbindThetaOmega.cpp cvPost.cpp checkmate.cpp utilcpp.cpp qs.cpp lincmtB.cpp  forder.cpp et.cpp boost.cpp fast_factor.cpp expandGrid.cpp WinDrive.cpp rxInv.cpp rxStack.cpp rxOptRep.cpp expm.cpp 
 SOURCES_FORTAN = dlsoda.f opkda2.f matexp.f dsphiv.f dgpadm.f
 
 OBJECTS = $(SOURCES_CPP:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_FORTAN:.f=.o) 

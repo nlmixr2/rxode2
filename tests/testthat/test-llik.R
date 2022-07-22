@@ -506,8 +506,8 @@ test_that("log-liklihood tests for gamma (including derivatives)", {
   expect_equal(fromR$fx, dgamma(et$time, 1, rate=10, log=TRUE))
 
 
-  et  <- et(seq(0.01,4, length.out=10)) %>%
-    et(id=1:200)
+  et  <- et(seq(0.01, 4, length.out = 10)) %>%
+    et(id = 1:200)
   et$shape <- 1
   et$rate <- 10
 
@@ -518,6 +518,62 @@ test_that("log-liklihood tests for gamma (including derivatives)", {
   })
 
   fromOde <- rxSolve(model, et, cores=2)
+})
 
+
+test_that("log-liklihood tests for cauchy (including derivatives)", {
+  
+  # Make sure they compile:
+  expect_error(rxode2("tmp=llikCauchy(x, location, scale)"), NA)
+  expect_error(rxode2("tmp=llikCauchyDlocation(x, location, scale)"), NA)
+  expect_error(rxode2("tmp=llikCauchyDscale(x, location, scale)"), NA)
+
+  expect_equal(rxToSE("llikCauchy(x, location, scale)"), "llikCauchy(x,location,scale)")
+  expect_equal(rxFromSE("llikCauchy(x, location, scale)"), "llikCauchy(x,location,scale)")
+
+  expect_equal(rxToSE("llikCauchyDlocation(x, location, scale)"), "llikCauchyDlocation(x,location,scale)")
+  expect_equal(rxFromSE("llikCauchyDlocation(x, location, scale)"), "llikCauchyDlocation(x,location,scale)")
+
+  expect_equal(rxToSE("llikCauchyDscale(x, location, scale)"), "llikCauchyDscale(x,location,scale)")
+  expect_equal(rxFromSE("llikCauchyDscale(x, location, scale)"), "llikCauchyDscale(x,location,scale)")
+  
+  # Check the derivatives
+  expect_equal(rxFromSE("Derivative(llikCauchy(x,location, scale),location)"),"llikCauchyDlocation(x, location, scale)")
+  expect_equal(rxFromSE("Derivative(llikCauchy(x,location, scale),scale)"),"llikCauchyDscale(x, location, scale)")
+  
+  # Check rxode2 internals with R exported
+  et  <- et(seq(0.01,4, length.out=10))
+  et$location <- 1
+  et$scale <- 10
+  
+  model <- rxode2({
+    fx <- llikCauchy(time, location, scale)
+    dLocation<- llikCauchyDlocation(time, location, scale)
+    dScale <- llikCauchyDscale(time, location, scale)
+  })
+
+  fromOde <- rxSolve(model, et)
+
+  fromR <- llikCauchy(et$time, 1, 10, full=TRUE)
+
+  expect_equal(fromR$fx, fromOde$fx)
+  expect_equal(fromR$dLocation, fromOde$dLocation)
+  expect_equal(fromR$dScale, fromOde$dScale)
+    
+  expect_equal(fromR$fx, dcauchy(et$time, location=1, scale=10, log=TRUE))
+
+
+  et  <- et(seq(0.01,4, length.out=10)) %>%
+    et(id=1:200)
+  et$location <- 1
+  et$scale <- 10
+
+  model <- rxode2({
+    fx <- llikCauchy(time, location, scale)
+    dLocation<- llikCauchyDlocation(time, location, scale)
+    dScale <- llikCauchyDscale(time, location, scale)
+  })
+
+  fromOde <- rxSolve(model, et, cores=2)
 
 })

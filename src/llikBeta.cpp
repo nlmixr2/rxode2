@@ -35,6 +35,16 @@ static inline void llikBetaFull(double* ret, double x, double shape1, double sha
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)) {
+    ret[0] = isBeta;
+    ret[1] = x;
+    ret[2] = shape1;
+    ret[3] = shape2;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;

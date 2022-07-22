@@ -1330,6 +1330,8 @@ typedef struct {
   int *gindLin = NULL;
 } rx_globals;
 
+#define rxLlikSaveSize 9
+
 rx_globals _globals;
 
 static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
@@ -1403,7 +1405,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
   }
-  ind->llikSave = _globals.gLlikSave + 9*omp_get_thread_num();
+  ind->llikSave = _globals.gLlikSave + rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
 }
 
@@ -4965,7 +4967,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     int n4 = rxSolveDat->initsC.size();
     int n5_c = lhs.size()*op->cores;
-    int nllik_c = 9*op->cores;
+    int nllik_c = rxLlikSaveSize*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);

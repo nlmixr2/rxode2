@@ -38,6 +38,16 @@ static inline void llikUnifFull(double* ret, double x, double alpha, double beta
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)) {
+    ret[0] = isUnif;
+    ret[1] = x;
+    ret[2] = alpha;
+    ret[3] = beta;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;

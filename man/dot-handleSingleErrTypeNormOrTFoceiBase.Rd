@@ -4,23 +4,25 @@
 \alias{.handleSingleErrTypeNormOrTFoceiBase}
 \title{Handle the single error for normal or t distributions}
 \usage{
-.handleSingleErrTypeNormOrTFoceiBase(env, pred1)
+.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik = TRUE)
 }
 \arguments{
 \item{env}{Environment for the parsed model}
 
 \item{pred1}{The \code{data.frame} of the current error}
+
+\item{rxPredLlik}{A boolean indicating if the log likelihood should
+be calculated for non-normal distributions.  By default \code{TRUE}.}
 }
 \value{
-A list of the lines added.  The lines will contain
+A list of the lines added.  The lines will contain -
+\code{rx_yj_} which is an integer that corresponds to the
+transformation type.  - \code{rx_lambda_} is the transformation lambda
 \itemize{
-\item \code{rx_yj_} which is an integer that corresponds to the transformation type.
-\item \code{rx_lambda_} is the transformation lambda
-\item \code{rx_low_} The lower boundary of the transformation
-\item \code{rx_hi_} The upper boundary of the transformation
-\item \code{rx_pred_f_} The prediction function
-\item \code{rx_pred_} The transformed prediction function
-\item \code{rx_r_} The transformed variance
+\item \code{rx_low_} The lower boundary of the transformation - \code{rx_hi_}
+The upper boundary of the transformation - \code{rx_pred_f_} The
+prediction function - \code{rx_pred_} The transformed prediction
+function - \code{rx_r_} The transformed variance
 }
 }
 \description{

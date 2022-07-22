@@ -36,6 +36,15 @@ static inline void llikBinomFull(double* ret, double x, double size, double prob
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)) {
+    ret[0] = isBinom;
+    ret[1] = x;
+    ret[2] = size;
+    ret[3] = prob;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    return;
+  }
   Eigen::VectorXi y(1);
   Eigen::VectorXi N(1);
   Eigen::VectorXd params(1);

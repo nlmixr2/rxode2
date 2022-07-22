@@ -40,6 +40,16 @@ static inline void llikWeibullFull(double* ret, double x, double shape, double s
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)) {
+    ret[0] = isWeibull;
+    ret[1] = x;
+    ret[2] = shape;
+    ret[3] = scale;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;    
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;

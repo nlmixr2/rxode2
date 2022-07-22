@@ -18,13 +18,13 @@ This is determined by the internal preferred condition name list
 }
 \examples{
 
-rxPreferredDistributionName("dnorm")
+rxPreferredDistributionName("dt")
 
 rxPreferredDistributionName("add")
 
 # can be vectorized
 
-rxPreferredDistributionName(c("add","dnorm"))
+rxPreferredDistributionName(c("add","dt"))
 
 }
 \author{

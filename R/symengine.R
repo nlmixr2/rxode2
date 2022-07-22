@@ -186,6 +186,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikGamma"=3,
   "llikGammaDshape"=3,
   "llikGammaDrate"=3,
+  "llikCauchy"=3,
+  "llikCauchyDlocation"=3,
+  "llikCauchyDscale"=3,
   "llikNorm"=3,
   "llikNormDmean"=3,
   "llikNormDsd"=3
@@ -356,16 +359,13 @@ rxRmFun <- function(name) {
   "M_SQRT_PI" = "sqrt(pi)",
   "M_2_SQRTPI" = "2/sqrt(pi)",
   "M_1_SQRT_2PI" = "1/sqrt(2*pi)",
-  "M_SQRT_2" = "sqrt(2)",
+  "M_SQRT2" = "sqrt(2)",
   "M_SQRT_3" = "sqrt(3)",
   "M_SQRT_32" = "sqrt(32)",
   "M_SQRT_2dPI" = "sqrt(2/pi)",
   "M_LN_SQRT_PI" = "log(sqrt(pi))",
   "M_LN_SQRT_2PI" = "log(sqrt(2*pi))",
   "M_LN_SQRT_PId2" = "log(sqrt(pi/2))",
-  "M_SQRT2" = "sqrt(2)",
-  "M_SQRT3" = "sqrt(3)",
-  "M_SQRT32" = "sqrt(32)",
   "M_LOG10_2" = "log(2)/log(10)",
   "M_LOG2E" = "1/log(2)",
   "M_LOG10E" = "1/log(10)",
@@ -533,6 +533,17 @@ rxRmFun <- function(name) {
     paste0("llikGammaDrate(",paste(c(x, shape, rate), collapse=", "), ")")
   }
 )
+
+.rxD$llikCauchy <- list(
+  NULL,
+  function(x, location, scale) {
+    paste0("llikCauchyDlocation(",paste(c(x, location, scale), collapse=", "), ")")
+  },
+  function(x, location, scale) {
+    paste0("llikCauchyDscale(",paste(c(x, location, scale), collapse=", "), ")")
+  }
+)
+
 
 .rxD$abs0 <- list(function(x) {
   return(paste0("dabs(", x, ")"))
@@ -2326,7 +2337,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
             return("M_SQRT_3")
           }
           if (.ret == "sqrt(2)") {
-            return("M_SQRT_2")
+            return("M_SQRT2")
           }
           if (.ret == "sqrt(32)") {
             return("M_SQRT_32")

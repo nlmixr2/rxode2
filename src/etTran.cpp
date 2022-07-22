@@ -482,23 +482,29 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     for (j = pars.size(); j--;){
       // Check lower case
       if (tmpS == as<std::string>(pars[j])){
-        // Covariate found.
-        covCol.push_back(i);
-        covParPos.push_back(j);
+        // Covariate found; dv not considered covariate
+				if (tmpS != "dv") {
+					covCol.push_back(i);
+					covParPos.push_back(j);					
+				}
         break;
       }
       if (tmpS0 == as<std::string>(pars[j])){
         // Covariate found.
-        covCol.push_back(i);
-        covParPos.push_back(j);
-        break;
+				if (tmpS0 != "Dv" && tmpS0 != "dV") {
+					covCol.push_back(i);
+					covParPos.push_back(j);
+					break;
+				}
       }
       // Check upper case.
       std::transform(tmpS.begin(), tmpS.end(), tmpS.begin(), ::toupper);
       if (tmpS == as<std::string>(pars[j])){
         // Covariate found.
-        covCol.push_back(i);
-        covParPos.push_back(j);
+				if (tmpS != "DV") {
+					covCol.push_back(i);
+					covParPos.push_back(j);
+				}
         break;
       }
     }
