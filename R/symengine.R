@@ -2337,7 +2337,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
             return("M_SQRT_3")
           }
           if (.ret == "sqrt(2)") {
-            return("M_SQRT_2")
+            return("M_SQRT2")
           }
           if (.ret == "sqrt(32)") {
             return("M_SQRT_32")
