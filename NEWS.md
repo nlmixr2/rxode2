@@ -27,10 +27,15 @@
 
 - The memory footprint of a `rxode2` solving has been reduced
 
-** Bug fix
+** Bug fixes
 
 - `rxode2`'s symengine would convert `sqrt(2)` to `M_SQRT_2` when it
-  should be `M_SQRT2`.  This has been fixed; it was most noticeable in nlmixr2
+  should be `M_SQRT2`.  This has been fixed; it was most noticeable in
+  nlmixr2 log-likelihood estimation methods
+  
+- `rxode2` treats `DV` as a non-covariate with `etTran` (last time it
+  would duplicate if it is in the model).  This is most noticable in
+  the nlmixr2 log-likelihood estimation methods.
 
 # rxode2 2.0.7
 
