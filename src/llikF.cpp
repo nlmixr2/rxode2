@@ -39,7 +39,7 @@ static inline void llikFFull(double* ret, double x, double df1, double df2) {
     // Assume this is the same
     return;
   }
-  if (R_finite(x)) {
+  if (!R_finite(x)) {
     ret[0] = isF;
     ret[1] = x;
     ret[2] = df1;
