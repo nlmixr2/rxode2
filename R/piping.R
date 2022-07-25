@@ -84,7 +84,6 @@
         }
         .unlistedBrackets <- as.list(as.expression(.cur2)[[-1]])[-1]
       } else {
-        print(.cur)
         stop("vectors and list need to named numeric expression", call.=FALSE)
       }
     }

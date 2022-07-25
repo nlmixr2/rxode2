@@ -95,7 +95,6 @@ test_that("error when adding algebraic expressions to known distributional abbre
 })
 
 test_that("The distribution names will transform to the preferred distributions", {
-  expect_equal(rxPreferredDistributionName("dnorm"), "add")
   expect_equal(rxPreferredDistributionName("add"), "add")
   expect_equal(rxPreferredDistributionName("logitNorm"), "logitNorm")
 })
