@@ -157,8 +157,8 @@ rxTest({
     expect_equal(rxToSE("M_SQRT_3"), "sqrt(3)")
     expect_equal(rxFromSE("sqrt(3)"), "M_SQRT_3")
 
-    expect_equal(rxToSE("M_SQRT_2"), "sqrt(2)")
-    expect_equal(rxFromSE("sqrt(2)"), "M_SQRT_2")
+    expect_equal(rxToSE("M_SQRT2"), "sqrt(2)")
+    expect_equal(rxFromSE("sqrt(2)"), "M_SQRT2")
 
     expect_equal(rxToSE("M_SQRT_32"), "sqrt(32)")
     expect_equal(rxFromSE("sqrt(32)"), "M_SQRT_32")
