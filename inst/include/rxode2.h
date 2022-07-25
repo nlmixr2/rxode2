@@ -34,7 +34,7 @@
 
 #endif // _isrxode2_
 
-
+#define rxNEG_LOG_SQRT_TWO_PI
 
 #if defined(__cplusplus)
 extern "C" {

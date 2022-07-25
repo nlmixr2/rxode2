@@ -43,7 +43,7 @@ rxGetDistributionSimulationLines <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .dist <- as.character(pred1$distribution)
-  if (.dist == "-2LL") {
+  if (.dist == "LL") {
     return(env$lstExpr[[pred1$line]][[3]])
   }
   .nargs <- max(.errDist[[.dist]])

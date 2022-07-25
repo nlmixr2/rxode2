@@ -81,7 +81,6 @@ test_that("log-liklihood tests for pois (including derivatives)", {
 
 })
 
-
 test_that("log-liklihood tests for binom (including derivatives)", {
 
   # Make sure they compile:

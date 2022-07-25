@@ -409,8 +409,8 @@
 
 .getQuotedDistributionAndLlikArgs <- function(env, pred1) {
   .dist <- as.character(pred1$distribution)
-  if (.dist == "-2LL") {
-    return(str2lang(paste0("-0.5*(",deparse1(env$lstExpr[[pred1$line]][[3]]),")")))
+  if (.dist == "LL") {
+    return(env$lstExpr[[pred1$line]][[3]])
   }
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond

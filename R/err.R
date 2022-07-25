@@ -268,7 +268,7 @@ rxPreferredDistributionName <- function(dist) {
   "cauchy", #13
   "dgamma", #14
   "ordinal", # 15
-  "-2LL", #16
+  "LL", #16
   "dnorm"
 )
 
@@ -858,7 +858,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   expression
 }
 
-#' Handle -2LL equivalent for n2ll or `linCmt()` statements for lhs
+#' Handle LL equivalent for ll or `linCmt()` statements for lhs
 #'
 #' @param expression Left handed side of the equation
 #'
@@ -871,9 +871,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' The takes the expression
 #'
-#' n2ll(var) ~  log(...)
+#' ll(var) ~  log(...)
 #'
-#' And strips the `n2ll` and sets the flag `env$n2ll` to `TRUE`
+#' And strips the `ll` and sets the flag `env$ll` to `TRUE`
 #'
 #' Otherwise it leaves the `expression` alone and returns the value
 #'
@@ -886,17 +886,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' @author Matthew Fidler
 #' @noRd
-.errHandleN2llOrLinCmt <- function(expression, env) {
+.errHandleLlOrLinCmt <- function(expression, env) {
   if (is.call(expression)) {
-    if (identical(expression[[1]], quote(`n2ll`)) &&
+    if (identical(expression[[1]], quote(`ll`)) &&
           length(expression) == 2L) {
-      env$n2ll <- TRUE
+      env$ll <- TRUE
       return(expression[[2]])
     } else if (identical(expression[[1]], quote(`linCmt`))) {
       env$linCmt <- TRUE
       return(quote(`rxLinCmt`))
     } else {
-      stop("the left handed side of the error expression (function: '", as.character(expression[[1]]), "') can only be functions with 'linCmt' or 'n2ll'",
+      stop("the left handed side of the error expression (function: '", as.character(expression[[1]]), "') can only be functions with 'linCmt' or 'll'",
            call.=FALSE)
     }
   }
@@ -912,10 +912,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @author Matthew Fidler
 #' @noRd
 .errHandleTilde <- function(expression, env) {
-  env$n2ll <- FALSE
+  env$ll <- FALSE
   env$estNotAllowed <- TRUE
   env$linCmt <- FALSE
-  .left <- .errHandleN2llOrLinCmt(expression[[2]], env)
+  .left <- .errHandleLlOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
   env$a <- env$b <- env$c <- env$d <- env$e <- env$f <- env$lambda <- NA_character_
   env$curCondition <- env$curVar <- deparse1(.left)
@@ -937,8 +937,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     assign("errGlobal", c(env$errGlobal, "cannot mix error expression with algebraic expressions"),
            envir=env)
   } else if (env$hasNonErrorTerm) {
-    if (env$n2ll) {
-      env$distribution <- "-2LL"
+    if (env$ll) {
+      env$distribution <- "LL"
       env$predDf <- rbind(env$predDf,
                           data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
                                      trLow=env$trLimit[1], trHi=env$trLimit[2],
@@ -960,7 +960,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 
     }
   } else if (!env$hasNonErrorTerm) {
-    if (env$n2ll) {
+    if (env$ll) {
       assign("errGlobal", c(env$errGlobal, "a -2 log-likelihood expression cannot use abbreviated error codes like add() + prop() "),
              envir=env)
     } else {
@@ -1015,7 +1015,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
     if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
-      if (!(.predDf[.i, "distribution"] %in% c("-2LL", "ordinal"))) {
+      if (!(.predDf[.i, "distribution"] %in% c("LL", "ordinal"))) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
         if (length(.w) == 0L) {
@@ -1179,7 +1179,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "errTypeInfo", "err", "hasNonErrorTerm", "isAnAdditiveExpression",
                          "lastDistAssign", "line", "needsToBeAnErrorExpression", "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
-                         "curCmt", "errGlobal", "linCmt", "n2ll", "distribution"),
+                         "curCmt", "errGlobal", "linCmt", "ll", "distribution"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
@@ -1191,7 +1191,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 
 #' Determine if expression is a rxode2 error expression
 #'
-#' Currently only handles simple error expressions, not n2ll(var) ~ ...
+#' Currently only handles simple error expressions, not ll(var) ~ ...
 #'
 #' @param expr Expression to test
 #' @param uiEnv Return the uiEnv for the single expression
@@ -1252,9 +1252,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 .throwIfInvalidTilde <- function(expr) {
   .env <- .isErrorExpression(expr, TRUE)
   .env$isAnAdditiveExpression <- FALSE
-  .env$n2ll <- FALSE
+  .env$ll <- FALSE
   .env$linCmt <- FALSE
-  .left <- .errHandleN2llOrLinCmt(expr[[2]], .env)
+  .left <- .errHandleLlOrLinCmt(expr[[2]], .env)
   .env$trLimit <- c(-Inf, Inf)
   .env$a <- .env$b <- .env$c <- .env$d <- .env$e <- .env$f <- .env$lambda <- NA_character_
   .env$curCondition <- .env$curVar <- deparse1(.left)

@@ -52,7 +52,7 @@ rxTest({
         p1 <- expit(tp0 + eta.p)
         kpd ~ add(add.sd)
         p2 <- -2 * log(p1)
-        n2ll(lik) ~ p2
+        ll(lik) ~ p2
       })
     }
 

@@ -1551,7 +1551,7 @@ test_that("test different distributions", {
     d/dt(effect) = kin*PD -kout*effect
     ##
     cp = center / v
-    n2ll(cp) ~ log(prop.err) + log(cp)
+    ll(cp) ~ log(prop.err) + log(cp)
     effect ~ add(pdadd.err) | pca
   }), lmat2) -> mod
 
