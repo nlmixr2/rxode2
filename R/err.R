@@ -1131,6 +1131,20 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       if (!is.null(.env$predDf)) {
         if (any(.env$predDf$linCmt)) {
           .env$mv0 <- rxModelVars(paste(c(.env$lstChr[-.env$predDf$line], "rxLinCmt ~ linCmt()"), collapse="\n"))
+        } else if (any(.env$predDf$distribution == "LL")) {
+          .lines <- .env$predDf$line
+          .w <- .env$predDf$line[which(.env$predDf$distribution == "LL")]
+          .lstExpr <- .env$lstExpr
+          .lstChr <- vapply(seq_along(.lstExpr),
+                            function(i) {
+                              .cur <- .lstExpr[[i]]
+                              if (i %in% .w) {
+                                paste0("rxLL ~ ", deparse1(.cur[[3]]))
+                              } else {
+                                deparse1(.cur)
+                              }
+                            }, character(1), USE.NAMES=FALSE)
+          .env$mv0 <-rxModelVars(paste(.lstChr, collapse="\n"))
         } else {
           .env$mv0 <- rxModelVars(paste(.env$lstChr[-.env$predDf$line], collapse="\n"))
         }
@@ -1177,7 +1191,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       # Cleanup the environment
       .rm <- intersect(c("curCondition", "curDvid", "curVar", "df",
                          "errTypeInfo", "err", "hasNonErrorTerm", "isAnAdditiveExpression",
-                         "lastDistAssign", "line", "needsToBeAnErrorExpression", "needToDemoteAdditiveExpression",
+                         "lastDistAssign", "line", "needsToBeAnErrorExpression",
+                         "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
                          "curCmt", "errGlobal", "linCmt", "ll", "distribution"),
                        ls(envir=.env, all.names=TRUE))
