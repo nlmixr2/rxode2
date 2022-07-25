@@ -41,8 +41,8 @@ static inline void llikGammaFull(double* ret, double x, double shape, double rat
   if (!R_finite(x)) {
     ret[0] = isGamma;
     ret[1] = x;
-    ret[2] = shape;
-    ret[3] = rate;
+    ret[2] = _smallIsNotZero(shape);
+    ret[3] = _smallIsNotZero(rate);
     ret[4] = NA_REAL;
     ret[5] = NA_REAL;
     ret[6] = NA_REAL;

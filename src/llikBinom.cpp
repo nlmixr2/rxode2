@@ -55,7 +55,7 @@ static inline void llikBinomFull(double* ret, double x, double size, double prob
   ret[0] = isBinom;
   ret[1] = x;
   ret[2] = size;
-  ret[3] = prob;
+  ret[3] = _parIsProb(prob);
   ret[4] = ll.fx(0);
   ret[5] = ll.J(0, 0);
   return;

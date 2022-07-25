@@ -38,7 +38,7 @@ static inline void llikGeomFull(double* ret, double x, double p) {
   if (!R_finite(x)) {
     ret[0] = isGeom;
     ret[1] = x;
-    ret[2] = p;
+    ret[2] = _parIsProb(p);
     ret[3] = NA_REAL;
     ret[4] = NA_REAL;
     return;

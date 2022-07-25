@@ -52,9 +52,9 @@ static inline void llikTFull(double* ret, double x, double df, double mean, doub
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(3);
   y(0) = x;
-  params(0) = df;
+  params(0) = _smallIsNotZero(df);
   params(1) = mean;
-  params(2) = sd;
+  params(2) = _smallIsOne(sd);
   stanLl ll = llik_t(y, params);
   ret[0] = isT;
   ret[1] = x;

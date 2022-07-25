@@ -43,8 +43,8 @@ static inline void llikWeibullFull(double* ret, double x, double shape, double s
   if (!R_finite(x)) {
     ret[0] = isWeibull;
     ret[1] = x;
-    ret[2] = shape;
-    ret[3] = scale;
+    ret[2] = _smallIsNotZero(shape);
+    ret[3] = _smallIsNotZero(scale);
     ret[4] = NA_REAL;
     ret[5] = NA_REAL;
     ret[6] = NA_REAL;

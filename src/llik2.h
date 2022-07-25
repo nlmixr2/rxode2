@@ -33,3 +33,7 @@ typedef struct stanLl {
   Eigen::VectorXd fx;
   Eigen::Matrix<double, -1, -1> J;
 } stanLl;
+
+#define _smallIsOne(x) ((x) < 1e-10 ? 1 : (x))
+#define _smallIsNotZero(x) ((x) < 1e-10 ? 1e-10: (x))
+#define _parIsProb(x) ((x) < 1e-10 ? 1e-10: ((x) > 0.999999999999999 ? 0.999999999999999 :(x)))

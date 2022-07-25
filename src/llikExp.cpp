@@ -44,7 +44,7 @@ static inline void llikExpFull(double* ret, double x, double rate) {
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(1);
   y(0) = x;
-  params(0) = rate;
+  params(0) = _smallIsNotZero(rate);
   stanLl ll = llik_exp(y, params);
   ret[0] = isExp;
   ret[1] = x;

@@ -52,7 +52,7 @@ static inline void llikCauchyFull(double* ret, double x, double location, double
   Eigen::VectorXd params(2);
   y(0) = x;
   params(0) = location;
-  params(1) = scale;
+  params(1) = _smallIsOne(scale);
   stanLl ll = llik_cauchy(y, params);
   ret[0] = isCauchy;
   ret[1] = x;

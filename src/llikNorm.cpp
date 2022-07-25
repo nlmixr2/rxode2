@@ -49,7 +49,7 @@ static inline void llikNormFull(double* ret, double x, double mu, double sigma) 
   Eigen::VectorXd params(2);
   y(0) = x;
   params(0) = mu;
-  params(1) = sigma;
+  params(1) = _smallIsOne(sigma);
   stanLl ll = llik_normal(y, params);
   ret[0] = isNorm;
   ret[1] = x;
