@@ -2,6 +2,7 @@
 //#undef NDEBUG
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+
 #include <RcppArmadillo.h>
 #include <algorithm>
 #include "../inst/include/rxode2.h"
@@ -471,7 +472,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     else if (tmpS == "cens") censCol=i;
     else if (tmpS == "limit") limitCol=i;
     else if (tmpS == "method") methodCol=i;
-		else {
+		if (tmpS != "dv") {
 			for (j = pars.size(); j--;){
 				// Check lower case
 				if (tmpS == as<std::string>(pars[j])){
