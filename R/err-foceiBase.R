@@ -364,13 +364,13 @@
             .nu <- str2lang(pred1$d)
           }
           .ret[[8]] <- bquote(rx_pred_ ~ llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                               .(.nu), rx_pred_, rx_r_))
+                                               .(.nu), rx_pred_, sqrt(rx_r_)))
         } else if (type == "cauchy") {
           .ret[[8]] <- bquote(rx_pred_ ~ llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                    rx_pred_, rx_r_))
+                                                    rx_pred_, sqrt(rx_r_)))
         } else if (type == "dnorm") {
           .ret[[8]] <- bquote(rx_pred_ ~ llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                  rx_pred_, rx_r_))
+                                                  rx_pred_, sqrt(rx_r_)))
         }
       }
     }
