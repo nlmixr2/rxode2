@@ -22,6 +22,8 @@
 
 - Allow models in the `nlmixr2` form without an `ini({})` block
 
+- Allow model piping of an omega matrix by `f %>% ini(omegaMatrix)`
+
 - Families of log-likelihood were added to `rxode2` so that mixed
   likelihood nonlinear mixed effects models may be specified and run.
 
