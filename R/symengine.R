@@ -507,6 +507,20 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$llikXBinom <- list(
+  NULL,
+  function(i, x, size, prob) {
+    "0"
+  },
+  function(i, x, size, prob) {
+    "0"
+  },
+  function(i, x, size, prob) {
+    paste0("llikXBinomDprob(",paste(c(i, x, size, prob), collapse=", "), ")")
+  }
+)
+
+
 .rxD$llikXBeta <- list(
   NULL,
   NULL,
@@ -570,11 +584,10 @@ rxRmFun <- function(name) {
 .rxD$llikXExp <- list(
   NULL,
   NULL,
-  function(x, rate) {
+  function(i, x, rate) {
     paste0("llikXExpDrate(",paste(c(i, x, rate), collapse=", "), ")")
   }
 )
-
 
 .rxD$llikF <- list(
   NULL,
