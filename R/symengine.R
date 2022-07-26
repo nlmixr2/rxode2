@@ -532,6 +532,16 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$llikBeta <- list(
+  NULL,
+  function(x, shape1, shape2) {
+    paste0("llikBetaDshape1(",paste(c(x, shape1, shape2), collapse=", "), ")")
+  },
+  function(x, shape1, shape2) {
+    paste0("llikBetaDshape2(",paste(c(x, shape1, shape2), collapse=", "), ")")
+  }
+)
+
 .rxD$llikT <- list(
   NULL,
   function(x, df, mean, sd) {
@@ -664,7 +674,7 @@ rxRmFun <- function(name) {
   function(i, x, shape, scale) {
     paste0("llikXWeibullDshape(",paste(c(i, x, shape, scale), collapse=", "), ")")
   },
-  function(x, shape, scale) {
+  function(i, x, shape, scale) {
     paste0("llikXWeibullDscale(",paste(c(i, x, shape, scale), collapse=", "), ")")
   }
 )
@@ -697,6 +707,17 @@ rxRmFun <- function(name) {
   },
   function(x, location, scale) {
     paste0("llikCauchyDscale(",paste(c(x, location, scale), collapse=", "), ")")
+  }
+)
+
+.rxD$llikXCauchy <- list(
+  NULL,
+  NULL,
+  function(i, x, location, scale) {
+    paste0("llikXCauchyDlocation(",paste(c(i, x, location, scale), collapse=", "), ")")
+  },
+  function(i, x, location, scale) {
+    paste0("llikXCauchyDscale(",paste(c(i, x, location, scale), collapse=", "), ")")
   }
 )
 

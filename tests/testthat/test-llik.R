@@ -448,7 +448,7 @@ test_that("log-liklihood tests for exponential (including derivatives)", {
   
   # Check the derivatives
   expect_equal(rxFromSE("Derivative(llikExp(x,nu),nu)"),"llikExpDrate(x, nu)")
-  expect_equal(rxFromSE("Derivative(llikXExp(i,x,nu),nu)"),"llikExpDrate(i, x, nu)")
+  expect_equal(rxFromSE("Derivative(llikXExp(i,x,nu),nu)"),"llikXExpDrate(i, x, nu)")
 
   # Check rxode2 internals with R exported
   et <- et(1:3)
@@ -560,14 +560,26 @@ test_that("log-liklihood tests for geom (including derivatives)", {
   expect_error(rxode2("tmp=llikGeom(x, p)"), NA)
   expect_error(rxode2("tmp=llikGeomDprob(x, p)"), NA)
 
+  expect_error(rxode2("tmp=llikXGeom(1, x, p)"), NA)
+  expect_error(rxode2("tmp=llikXGeomDprob(1, x, p)"), NA)
+
   expect_equal(rxToSE("llikGeom(x, p)"), "llikGeom(x,p)")
   expect_equal(rxFromSE("llikGeom(x, p)"), "llikGeom(x,p)")
 
   expect_equal(rxToSE("llikGeomDprob(x, p)"), "llikGeomDprob(x,p)")
   expect_equal(rxFromSE("llikGeomDprob(x, p)"), "llikGeomDprob(x,p)")
 
+  #
+  expect_equal(rxToSE("llikGeom(x, p)"), "llikGeom(x,p)")
+  expect_equal(rxFromSE("llikGeom(x, p)"), "llikGeom(x,p)")
+
+  expect_equal(rxToSE("llikXGeomDprob(i, x, p)"), "llikXGeomDprob(i,x,p)")
+  expect_equal(rxFromSE("llikXGeomDprob(i, x, p)"), "llikXGeomDprob(i,x,p)")
+
+
   # Check the derivatives
   expect_equal(rxFromSE("Derivative(llikGeom(x,p),p)"),"llikGeomDprob(x, p)")
+  expect_equal(rxFromSE("Derivative(llikXGeom(i,x,p),p)"),"llikXGeomDprob(i, x, p)")
   
   # Check rxode2 internals with R exported
   et  <- et(1:10)
@@ -578,15 +590,23 @@ test_that("log-liklihood tests for geom (including derivatives)", {
     dProb <- llikGeomDprob(time, prob)
   })
 
+  modelX <- rxode2({
+    fx <- llikXGeom(1, time, prob)
+    dProb <- llikXGeomDprob(1, time, prob)
+  })
+
   fromOde <- rxSolve(model, et)
+  fromOdeX <- rxSolve(modelX, et)
 
   fromR <- llikGeom(et$time, et$prob, full=TRUE)
 
   expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dProb, fromOde$dProb)
-    
-  expect_equal(fromR$fx, dgeom(et$time, 0.2, log=TRUE))
 
+  expect_equal(fromR$fx, fromOdeX$fx)
+  expect_equal(fromR$dProb, fromOdeX$dProb)
+
+  expect_equal(fromR$fx, dgeom(et$time, 0.2, log=TRUE))
 })
 
 
@@ -597,6 +617,10 @@ test_that("log-liklihood tests for unif (including derivatives)", {
   expect_error(rxode2("tmp=llikUnifDalpha(x, alpha, beta)"), NA)
   expect_error(rxode2("tmp=llikUnifDbeta(x, alpha, beta)"), NA)
 
+  expect_error(rxode2("tmp=llikXUnif(i, x, alpha, beta)"), NA)
+  expect_error(rxode2("tmp=llikXUnifDalpha(i, x, alpha, beta)"), NA)
+  expect_error(rxode2("tmp=llikXUnifDbeta(i, x, alpha, beta)"), NA)
+
   expect_equal(rxToSE("llikUnif(x, alpha, beta)"), "llikUnif(x,alpha,beta)")
   expect_equal(rxFromSE("llikUnif(x, alpha, beta)"), "llikUnif(x,alpha,beta)")
 
@@ -605,10 +629,25 @@ test_that("log-liklihood tests for unif (including derivatives)", {
 
   expect_equal(rxToSE("llikUnifDbeta(x, alpha, beta)"), "llikUnifDbeta(x,alpha,beta)")
   expect_equal(rxFromSE("llikUnifDbeta(x, alpha, beta)"), "llikUnifDbeta(x,alpha,beta)")
+
+  #
+  expect_equal(rxToSE("llikXUnif(x,i, alpha, beta)"), "llikXUnif(x,i,alpha,beta)")
+  expect_equal(rxFromSE("llikXUnif(x,i, alpha, beta)"), "llikXUnif(x,i,alpha,beta)")
+
+  expect_equal(rxToSE("llikXUnifDalpha(x,i, alpha, beta)"), "llikXUnifDalpha(x,i,alpha,beta)")
+  expect_equal(rxFromSE("llikXUnifDalpha(x,i, alpha, beta)"), "llikXUnifDalpha(x,i,alpha,beta)")
+
+  expect_equal(rxToSE("llikXUnifDbeta(x,i, alpha, beta)"), "llikXUnifDbeta(x,i,alpha,beta)")
+  expect_equal(rxFromSE("llikXUnifDbeta(x,i, alpha, beta)"), "llikXUnifDbeta(x,i,alpha,beta)")
   
   # Check the derivatives
   expect_equal(rxFromSE("Derivative(llikUnif(x,alpha, beta),alpha)"),"llikUnifDalpha(x, alpha, beta)")
   expect_equal(rxFromSE("Derivative(llikUnif(x,alpha, beta),beta)"),"llikUnifDbeta(x, alpha, beta)")
+
+  expect_equal(rxFromSE("Derivative(llikXUnif(i,x,alpha, beta),alpha)"),
+               "llikXUnifDalpha(i, x, alpha, beta)")
+  expect_equal(rxFromSE("Derivative(llikXUnif(i,x,alpha, beta),beta)"),
+               "llikXUnifDbeta(i, x, alpha, beta)")
   
   # Check rxode2 internals with R exported
   et  <- et(seq(-4,4, length.out=10))
@@ -621,13 +660,24 @@ test_that("log-liklihood tests for unif (including derivatives)", {
     dBeta <- llikUnifDbeta(time, alpha, beta)
   })
 
+  modelX <- rxode2({
+    fx <- llikXUnif(1, time, alpha, beta)
+    dAlpha<- llikXUnifDalpha(1, time, alpha, beta)
+    dBeta <- llikXUnifDbeta(1, time, alpha, beta)
+  })
+
   fromOde <- rxSolve(model, et)
+  fromOdeX <- rxSolve(modelX, et)
 
   fromR <- llikUnif(et$time, -2, 2, full=TRUE)
 
   expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dAlpha, fromOde$dAlpha)
   expect_equal(fromR$dBeta, fromOde$dBeta)
+
+  expect_equal(fromR$fx, fromOdeX$fx)
+  expect_equal(fromR$dAlpha, fromOdeX$dAlpha)
+  expect_equal(fromR$dBeta, fromOdeX$dBeta)
     
   expect_equal(fromR$fx, dunif(et$time,-2, 2, log=TRUE))
 
@@ -641,6 +691,10 @@ test_that("log-liklihood tests for weibull (including derivatives)", {
   expect_error(rxode2("tmp=llikWeibullDshape(x, shape, scale)"), NA)
   expect_error(rxode2("tmp=llikWeibullDscale(x, shape, scale)"), NA)
 
+  expect_error(rxode2("tmp=llikXWeibull(1, x, shape, scale)"), NA)
+  expect_error(rxode2("tmp=llikXWeibullDshape(1, x, shape, scale)"), NA)
+  expect_error(rxode2("tmp=llikXWeibullDscale(1, x, shape, scale)"), NA)
+
   expect_equal(rxToSE("llikWeibull(x, shape, scale)"), "llikWeibull(x,shape,scale)")
   expect_equal(rxFromSE("llikWeibull(x, shape, scale)"), "llikWeibull(x,shape,scale)")
 
@@ -649,10 +703,27 @@ test_that("log-liklihood tests for weibull (including derivatives)", {
 
   expect_equal(rxToSE("llikWeibullDscale(x, shape, scale)"), "llikWeibullDscale(x,shape,scale)")
   expect_equal(rxFromSE("llikWeibullDscale(x, shape, scale)"), "llikWeibullDscale(x,shape,scale)")
+
+  #
+  expect_equal(rxToSE("llikXWeibull(i,x, shape, scale)"), "llikXWeibull(i,x,shape,scale)")
+  expect_equal(rxFromSE("llikXWeibull(i,x, shape, scale)"), "llikXWeibull(i,x,shape,scale)")
+
+  expect_equal(rxToSE("llikXWeibullDshape(i,x, shape, scale)"), "llikXWeibullDshape(i,x,shape,scale)")
+  expect_equal(rxFromSE("llikXWeibullDshape(i,x, shape, scale)"), "llikXWeibullDshape(i,x,shape,scale)")
+
+  expect_equal(rxToSE("llikXWeibullDscale(i,x, shape, scale)"), "llikXWeibullDscale(i,x,shape,scale)")
+  expect_equal(rxFromSE("llikXWeibullDscale(i,x, shape, scale)"), "llikXWeibullDscale(i,x,shape,scale)")
   
   # Check the derivatives
   expect_equal(rxFromSE("Derivative(llikWeibull(x,shape, scale),shape)"),"llikWeibullDshape(x, shape, scale)")
   expect_equal(rxFromSE("Derivative(llikWeibull(x,shape, scale),scale)"),"llikWeibullDscale(x, shape, scale)")
+
+  expect_equal(rxFromSE("Derivative(llikXWeibull(i, x, shape, scale),shape)"),
+               "llikXWeibullDshape(i, x, shape, scale)")
+  
+  expect_equal(rxFromSE("Derivative(llikXWeibull(i, x, shape, scale),scale)"),
+               "llikXWeibullDscale(i, x, shape, scale)")
+
   
   # Check rxode2 internals with R exported
   et  <- et(seq(0.01,4, length.out=10))
@@ -665,13 +736,24 @@ test_that("log-liklihood tests for weibull (including derivatives)", {
     dScale <- llikWeibullDscale(time, shape, scale)
   })
 
+  modelX <- rxode2({
+    fx <- llikXWeibull(1, time, shape, scale)
+    dShape<- llikXWeibullDshape(1, time, shape, scale)
+    dScale <- llikXWeibullDscale(1, time, shape, scale)
+  })
+
   fromOde <- rxSolve(model, et)
+  fromOdeX <- rxSolve(modelX, et)
 
   fromR <- llikWeibull(et$time, 1, 10, full=TRUE)
 
   expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dShape, fromOde$dShape)
   expect_equal(fromR$dScale, fromOde$dScale)
+
+  expect_equal(fromR$fx, fromOdeX$fx)
+  expect_equal(fromR$dShape, fromOdeX$dShape)
+  expect_equal(fromR$dScale, fromOdeX$dScale)
     
   expect_equal(fromR$fx, dweibull(et$time, 1, 10, log=TRUE))
 
@@ -685,6 +767,11 @@ test_that("log-liklihood tests for gamma (including derivatives)", {
   expect_error(rxode2("tmp=llikGammaDshape(x, shape, rate)"), NA)
   expect_error(rxode2("tmp=llikGammaDrate(x, shape, rate)"), NA)
 
+  expect_error(rxode2("tmp=llikXGamma(1, x, shape, rate)"), NA)
+  expect_error(rxode2("tmp=llikXGammaDshape(1, x, shape, rate)"), NA)
+  expect_error(rxode2("tmp=llikXGammaDrate(1, x, shape, rate)"), NA)
+
+
   expect_equal(rxToSE("llikGamma(x, shape, rate)"), "llikGamma(x,shape,rate)")
   expect_equal(rxFromSE("llikGamma(x, shape, rate)"), "llikGamma(x,shape,rate)")
 
@@ -693,10 +780,26 @@ test_that("log-liklihood tests for gamma (including derivatives)", {
 
   expect_equal(rxToSE("llikGammaDrate(x, shape, rate)"), "llikGammaDrate(x,shape,rate)")
   expect_equal(rxFromSE("llikGammaDrate(x, shape, rate)"), "llikGammaDrate(x,shape,rate)")
+
+  #
+  expect_equal(rxToSE("llikXGamma(x,i, shape, rate)"), "llikXGamma(x,i,shape,rate)")
+  expect_equal(rxFromSE("llikXGamma(x,i, shape, rate)"), "llikXGamma(x,i,shape,rate)")
+
+  expect_equal(rxToSE("llikXGammaDshape(x,i, shape, rate)"), "llikXGammaDshape(x,i,shape,rate)")
+  expect_equal(rxFromSE("llikXGammaDshape(x,i, shape, rate)"), "llikXGammaDshape(x,i,shape,rate)")
+
+  expect_equal(rxToSE("llikXGammaDrate(x,i, shape, rate)"), "llikXGammaDrate(x,i,shape,rate)")
+  expect_equal(rxFromSE("llikXGammaDrate(x,i, shape, rate)"), "llikXGammaDrate(x,i,shape,rate)")
   
   # Check the derivatives
   expect_equal(rxFromSE("Derivative(llikGamma(x,shape, rate),shape)"),"llikGammaDshape(x, shape, rate)")
   expect_equal(rxFromSE("Derivative(llikGamma(x,shape, rate),rate)"),"llikGammaDrate(x, shape, rate)")
+
+  expect_equal(rxFromSE("Derivative(llikXGamma(i, x, shape, rate),shape)"),
+               "llikXGammaDshape(i, x, shape, rate)")
+  expect_equal(rxFromSE("Derivative(llikXGamma(i, x, shape, rate),rate)"),
+               "llikXGammaDrate(i, x, shape, rate)")
+
   
   # Check rxode2 internals with R exported
   et  <- et(seq(0.01,4, length.out=10))
@@ -709,16 +812,26 @@ test_that("log-liklihood tests for gamma (including derivatives)", {
     dRate <- llikGammaDrate(time, shape, rate)
   })
 
+  modelX <- rxode2({
+    fx <- llikXGamma(1, time, shape, rate)
+    dShape<- llikXGammaDshape(1, time, shape, rate)
+    dRate <- llikXGammaDrate(1, time, shape, rate)
+  })
+
   fromOde <- rxSolve(model, et)
+  fromOdeX <- rxSolve(modelX, et)
 
   fromR <- llikGamma(et$time, 1, 10, full=TRUE)
 
   expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dShape, fromOde$dShape)
   expect_equal(fromR$dRate, fromOde$dRate)
-    
-  expect_equal(fromR$fx, dgamma(et$time, 1, rate=10, log=TRUE))
 
+  expect_equal(fromR$fx, fromOdeX$fx)
+  expect_equal(fromR$dShape, fromOdeX$dShape)
+  expect_equal(fromR$dRate, fromOdeX$dRate)
+  
+  expect_equal(fromR$fx, dgamma(et$time, 1, rate=10, log=TRUE))
 
   et  <- et(seq(0.01, 4, length.out = 10)) %>%
     et(id = 1:200)
@@ -731,7 +844,14 @@ test_that("log-liklihood tests for gamma (including derivatives)", {
     dRate <- llikGammaDrate(time, shape, rate)
   })
 
-  fromOde <- rxSolve(model, et, cores=2)
+  modelX <- rxode2({
+    fx <- llikXGamma(1, time, shape, rate)
+    dShape<- llikXGammaDshape(1, time, shape, rate)
+    dRate <- llikXGammaDrate(1, time, shape, rate)
+  })
+
+  expect_error(rxSolve(modelX, et, cores=2), NA)
+  
 })
 
 
@@ -742,6 +862,11 @@ test_that("log-liklihood tests for cauchy (including derivatives)", {
   expect_error(rxode2("tmp=llikCauchyDlocation(x, location, scale)"), NA)
   expect_error(rxode2("tmp=llikCauchyDscale(x, location, scale)"), NA)
 
+  expect_error(rxode2("tmp=llikXCauchy(1, x, location, scale)"), NA)
+  expect_error(rxode2("tmp=llikXCauchyDlocation(1, x, location, scale)"), NA)
+  expect_error(rxode2("tmp=llikXCauchyDscale(1, x, location, scale)"), NA)
+
+
   expect_equal(rxToSE("llikCauchy(x, location, scale)"), "llikCauchy(x,location,scale)")
   expect_equal(rxFromSE("llikCauchy(x, location, scale)"), "llikCauchy(x,location,scale)")
 
@@ -750,10 +875,27 @@ test_that("log-liklihood tests for cauchy (including derivatives)", {
 
   expect_equal(rxToSE("llikCauchyDscale(x, location, scale)"), "llikCauchyDscale(x,location,scale)")
   expect_equal(rxFromSE("llikCauchyDscale(x, location, scale)"), "llikCauchyDscale(x,location,scale)")
+
+  #
+  expect_equal(rxToSE("llikXCauchy(i,x, location, scale)"), "llikXCauchy(i,x,location,scale)")
+  expect_equal(rxFromSE("llikXCauchy(i,x, location, scale)"), "llikXCauchy(i,x,location,scale)")
+
+  expect_equal(rxToSE("llikXCauchyDlocation(i,x, location, scale)"), "llikXCauchyDlocation(i,x,location,scale)")
+  expect_equal(rxFromSE("llikXCauchyDlocation(i,x, location, scale)"), "llikXCauchyDlocation(i,x,location,scale)")
+
+  expect_equal(rxToSE("llikXCauchyDscale(i,x, location, scale)"), "llikXCauchyDscale(i,x,location,scale)")
+  expect_equal(rxFromSE("llikXCauchyDscale(i,x, location, scale)"), "llikXCauchyDscale(i,x,location,scale)")
+  
   
   # Check the derivatives
   expect_equal(rxFromSE("Derivative(llikCauchy(x,location, scale),location)"),"llikCauchyDlocation(x, location, scale)")
   expect_equal(rxFromSE("Derivative(llikCauchy(x,location, scale),scale)"),"llikCauchyDscale(x, location, scale)")
+
+  #
+  expect_equal(rxFromSE("Derivative(llikXCauchy(i, x, location, scale),location)"),
+               "llikXCauchyDlocation(i, x, location, scale)")
+  expect_equal(rxFromSE("Derivative(llikXCauchy(i, x, location, scale),scale)"),
+               "llikXCauchyDscale(i, x, location, scale)")
   
   # Check rxode2 internals with R exported
   et  <- et(seq(0.01,4, length.out=10))
@@ -766,13 +908,24 @@ test_that("log-liklihood tests for cauchy (including derivatives)", {
     dScale <- llikCauchyDscale(time, location, scale)
   })
 
-  fromOde <- rxSolve(model, et)
+  modelX <- rxode2({
+    fx <- llikXCauchy(1, time, location, scale)
+    dLocation<- llikXCauchyDlocation(1, time, location, scale)
+    dScale <- llikXCauchyDscale(1, time, location, scale)
+  })
+
+  fromOde  <- rxSolve(model, et)
+  fromOdeX <- rxSolve(modelX, et)
 
   fromR <- llikCauchy(et$time, 1, 10, full=TRUE)
 
   expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dLocation, fromOde$dLocation)
   expect_equal(fromR$dScale, fromOde$dScale)
+
+  expect_equal(fromR$fx, fromOdeX$fx)
+  expect_equal(fromR$dLocation, fromOdeX$dLocation)
+  expect_equal(fromR$dScale, fromOdeX$dScale)
     
   expect_equal(fromR$fx, dcauchy(et$time, location=1, scale=10, log=TRUE))
 
@@ -788,6 +941,13 @@ test_that("log-liklihood tests for cauchy (including derivatives)", {
     dScale <- llikCauchyDscale(time, location, scale)
   })
 
-  fromOde <- rxSolve(model, et, cores=2)
+  modelX <- rxode2({
+    fx <- llikXCauchy(1, time, location, scale)
+    dLocation<- llikXCauchyDlocation(1, time, location, scale)
+    dScale <- llikXCauchyDscale(1, time, location, scale)
+  })
+
+  expect_error(rxSolve(model, et, cores=2), NA)
+  expect_error(rxSolve(modelX, et, cores=2), NA)
 
 })
