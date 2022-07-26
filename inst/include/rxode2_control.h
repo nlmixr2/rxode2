@@ -120,6 +120,7 @@
 #define RxMvFlag_nIndSim 8
 #define RxMvFlag_simflg 9
 #define RxMvFlag_thread 10
+#define RxMvFlag_nLlik 11
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1

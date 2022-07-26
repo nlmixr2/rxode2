@@ -1330,7 +1330,6 @@ typedef struct {
   int *gindLin = NULL;
 } rx_globals;
 
-#define rxLlikSaveSize 9
 
 rx_globals _globals;
 

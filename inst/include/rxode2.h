@@ -2,6 +2,8 @@
 #define STRICT_R_HEADERS
 #ifndef __rxode2_H__
 #define __rxode2_H__
+#define rxLlikSaveSize 9
+
 
 #include <R.h>
 #include <Rinternals.h>

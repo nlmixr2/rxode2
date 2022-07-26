@@ -217,12 +217,24 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
     handleFunctionIsInfinite(tf);
 }
 
+static inline void handleLlFunctions(transFunctions *tf) {
+  if (!strncmp("llikX", tf->v, 5)) {
+    D_ParseNode *xpn = d_get_child(tf->pn,2);
+    char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    tb.nLlik = max2(tb.nLlik, toInt(v2)+1);
+  } else if (!strncmp("llik", tf->v, 4)) {
+    tb.nLlik = max2(tb.nLlik, 1);
+  }
+}
+
 static inline void handleBadFunctions(transFunctions *tf) {
   // Split out to handle anticipated automatic conversion of R
   // functions to C
   int foundFun = 0;
   for (int j = length(_goodFuns); j--;){
     if (!strcmp(CHAR(STRING_ELT(_goodFuns, j)),tf->v)){
+      // Save log-likelihood information
+      handleLlFunctions(tf);
       foundFun = 1;
       j=0;
       break;

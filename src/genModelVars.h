@@ -25,7 +25,7 @@
 #include "ode.h"
 
 static inline SEXP calcSLinCmt() {
-  SEXP sLinCmt = PROTECT(allocVector(INTSXP,11));
+  SEXP sLinCmt = PROTECT(allocVector(INTSXP,12));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -36,8 +36,9 @@ static inline SEXP calcSLinCmt() {
   INTEGER(sLinCmt)[8] = tb.nInd;
   INTEGER(sLinCmt)[9] = tb.simflg;
   INTEGER(sLinCmt)[10]= tb.thread;
+  INTEGER(sLinCmt)[11]= tb.nLlik;
 
-  SEXP sLinCmtN = PROTECT(allocVector(STRSXP, 11));
+  SEXP sLinCmtN = PROTECT(allocVector(STRSXP, 12));
   SET_STRING_ELT(sLinCmtN, 0, mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, mkChar("linB"));
@@ -49,6 +50,7 @@ static inline SEXP calcSLinCmt() {
   SET_STRING_ELT(sLinCmtN, 8, mkChar("nIndSim"));
   SET_STRING_ELT(sLinCmtN, 9, mkChar("simflg"));
   SET_STRING_ELT(sLinCmtN, 10, mkChar("thread"));
+  SET_STRING_ELT(sLinCmtN, 11, mkChar("nLlik"));
   setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   UNPROTECT(2);
   return(sLinCmt);
