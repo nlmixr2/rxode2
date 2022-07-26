@@ -60,10 +60,7 @@
 .errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
 
 
-.errUnsupportedDists <- c(
-  ## for testing...
-  "nlmixrDist"
-)
+.errUnsupportedDists <- "nlmixrDist"
 
 .errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF", "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
                   "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t", "cauchy", "norm")
@@ -933,7 +930,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   } else if (env$needToDemoteAdditiveExpression) {
     env$errTypeInfo <- rxDemoteAddErr(env$errTypeInfo)
   }
-  if (env$hasNonErrorTerm & env$needsToBeAnErrorExpression) {
+  if (env$hasNonErrorTerm && env$needsToBeAnErrorExpression) {
     assign("errGlobal", c(env$errGlobal, "cannot mix error expression with algebraic expressions"),
            envir=env)
   } else if (env$hasNonErrorTerm) {
