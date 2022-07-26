@@ -338,7 +338,7 @@
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, rxPredLlik=TRUE) {
   type <- pred1$distribution
   if (type %in% c("norm", "t", "cauchy", "dnorm")) {
-    .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 8, 7)))
+    .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
     .yj <- as.double(pred1$transform) - 1
     .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10*(as.integer(pred1$distribution)-1)))
     .ret[[2]] <- bquote(rx_lambda_~.(.rxGetLambdaFromPred1AndIni(env, pred1)))
@@ -346,10 +346,11 @@
     .ret[[4]] <- bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1)))
     .ret[[5]] <- bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1)))
     .ret[[6]] <- bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, .yj)))
-    .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
     if (type == "norm") {
+      .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
     } else {
       if (rxPredLlik) {
+        .ret[[7]] <- bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
         if (type == "t") {
           .iniDf <- env$iniDf
           .cnd <- pred1$cond
@@ -364,26 +365,29 @@
             .nu <- str2lang(pred1$d)
           }
           .ret[[8]] <- bquote(rx_pred_ ~ llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                               .(.nu), rx_pred_, sqrt(rx_r_)))
+                                               .(.nu), rx_pred_, rx_rll_))
         } else if (type == "cauchy") {
           .ret[[8]] <- bquote(rx_pred_ ~ llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                    rx_pred_, sqrt(rx_r_)))
+                                                    rx_pred_, rx_rll_))
         } else if (type == "dnorm") {
           .ret[[8]] <- bquote(rx_pred_ ~ llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                  rx_pred_, sqrt(rx_r_)))
+                                                  rx_pred_, rx_rll_))
         }
+        .ret[[9]] <- quote(rx_r_ ~ 0)
+      } else {
+        .ret[[7]] <- bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)))
       }
     }
     .ret
   } else {
     .yj <- 2
-    .ret <- vector("list", ifelse(rxPredLlik, 6, 5))
+    .ret <- vector("list", 6)
     .yj <- as.double(pred1$transform) - 1
     .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10 * (as.integer(pred1$distribution) - 1)))
     .ret[[2]] <- bquote(rx_lambda_ ~ 1)
     .ret[[3]] <- bquote(rx_low_ ~ 0)
     .ret[[4]] <- bquote(rx_hi_ ~ 1)
-    .ret[[5]] <- bquote(rx_r_ ~ 1)
+    .ret[[5]] <- bquote(rx_r_ ~ 0)
     # This is for the non-normal cases
     .ret[[6]] <- bquote(rx_pred_ ~ .(.getQuotedDistributionAndLlikArgs(env, pred1)))
     .ret
