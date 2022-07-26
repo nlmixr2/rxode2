@@ -35,10 +35,10 @@ static inline void llikGeomFull(double* ret, double x, double p) {
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(p)) {
     ret[0] = isGeom;
     ret[1] = x;
-    ret[2] = _parIsProb(p);
+    ret[2] = p;
     ret[3] = NA_REAL;
     ret[4] = NA_REAL;
     return;
@@ -50,7 +50,7 @@ static inline void llikGeomFull(double* ret, double x, double p) {
   stanLl ll = llik_geom(y, params);
   ret[0] = isGeom;
   ret[1] = x;
-  ret[2] = p;
+  ret[2] = _parIsProb(p);
   ret[3] = ll.fx(0);
   ret[4] = ll.J(0, 0);
   return;

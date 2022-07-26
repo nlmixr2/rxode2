@@ -35,7 +35,7 @@ static inline void llikNormFull(double* ret, double x, double mu, double sigma) 
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(mu) || !R_finite(sigma)) {
     ret[0] = isNorm;
     ret[1] = x;
     ret[2] = mu;

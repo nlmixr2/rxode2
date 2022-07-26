@@ -36,7 +36,7 @@ static inline void llikBinomFull(double* ret, double x, double size, double prob
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(size) || !R_finite(prob)) {
     ret[0] = isBinom;
     ret[1] = x;
     ret[2] = size;

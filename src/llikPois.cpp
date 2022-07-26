@@ -35,7 +35,7 @@ static inline void llikPoisFull(double* ret, double x, double lambda) {
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(lambda)) {
     ret[0] = isPois;
     ret[1] = x;
     ret[2] = lambda;

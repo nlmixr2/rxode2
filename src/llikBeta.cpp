@@ -35,7 +35,7 @@ static inline void llikBetaFull(double* ret, double x, double shape1, double sha
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(shape1) || !R_finite(shape2)) {
     ret[0] = isBeta;
     ret[1] = x;
     ret[2] = shape1;

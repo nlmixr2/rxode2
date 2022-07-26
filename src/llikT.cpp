@@ -37,7 +37,8 @@ static inline void llikTFull(double* ret, double x, double df, double mean, doub
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x)    || !R_finite(df) ||
+      !R_finite(mean) || !R_finite(sd)) {
     ret[0] = isT;
     ret[1] = x;
     ret[2] = df;

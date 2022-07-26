@@ -33,7 +33,7 @@ static inline void llikExpFull(double* ret, double x, double rate) {
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(rate)) {
     ret[0] = isExp;
     ret[1] = x;
     ret[2] = rate;

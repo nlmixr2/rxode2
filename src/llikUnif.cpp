@@ -38,7 +38,7 @@ static inline void llikUnifFull(double* ret, double x, double alpha, double beta
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(alpha) || !R_finite(beta)) {
     ret[0] = isUnif;
     ret[1] = x;
     ret[2] = alpha;

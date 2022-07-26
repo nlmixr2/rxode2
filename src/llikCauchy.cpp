@@ -38,7 +38,7 @@ static inline void llikCauchyFull(double* ret, double x, double location, double
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(location) || !R_finite(scale)) {
     ret[0] = isCauchy;
     ret[1] = x;
     ret[2] = location;

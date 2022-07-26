@@ -34,7 +34,7 @@ static inline void llikChisqFull(double* ret, double x, double df) {
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(df)) {
     ret[0] = isChisq;
     ret[1] = x;
     ret[2] = df;

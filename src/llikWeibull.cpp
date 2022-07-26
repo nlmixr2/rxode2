@@ -40,11 +40,11 @@ static inline void llikWeibullFull(double* ret, double x, double shape, double s
     // Assume this is the same
     return;
   }
-  if (!R_finite(x)) {
+  if (!R_finite(x) || !R_finite(shape) || !R_finite(scale)) {
     ret[0] = isWeibull;
     ret[1] = x;
-    ret[2] = _smallIsNotZero(shape);
-    ret[3] = _smallIsNotZero(scale);
+    ret[2] = shape;
+    ret[3] = scale;
     ret[4] = NA_REAL;
     ret[5] = NA_REAL;
     ret[6] = NA_REAL;
@@ -53,8 +53,8 @@ static inline void llikWeibullFull(double* ret, double x, double shape, double s
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;
-  params(0) = shape;
-  params(1) = scale;
+  params(0) = _smallIsNotZero(shape);
+  params(1) = _smallIsNotZero(scale);
   stanLl ll = llik_weibull(y, params);
   ret[0] = isWeibull;
   ret[1] = x;
