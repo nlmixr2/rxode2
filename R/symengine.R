@@ -1694,8 +1694,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEChoose(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`lchoose`))) {
     return(.rxToSELchoose(x, envir = envir, progress = progress, isEnv=isEnv))
-  } else if ((identical(x[[1]], quote(`pnorm`))) |
-               (identical(x[[1]], quote(`normcdf`))) |
+  } else if ((identical(x[[1]], quote(`pnorm`))) ||
+               (identical(x[[1]], quote(`normcdf`))) ||
                (identical(x[[1]], quote(`phi`)))) {
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
@@ -2986,7 +2986,7 @@ rxErrEnvF$logitNorm <- function(est, low = "0", hi = "1") {
   }
   if (!is.null(rxErrEnv.lambda)) {
     if (rxErrEnv.yj != "1") {
-      if (rxErrEnv.yj != "4" & rxErrEnv.yj != "5") {
+      if (rxErrEnv.yj != "4" && rxErrEnv.yj != "5") {
         stop("'logitNorm' cannot be used with other data transformations", call. = FALSE)
       }
     }
@@ -3047,7 +3047,7 @@ rxErrEnvF$probitNorm <- function(est, low = "0", hi = "1") {
   }
   if (!is.null(rxErrEnv.lambda)) {
     if (rxErrEnv.yj != "1") {
-      if (rxErrEnv.yj != "6" & rxErrEnv.yj != "7") {
+      if (rxErrEnv.yj != "6" &&rxErrEnv.yj != "7") {
         print(rxErrEnv.yj)
         stop("'probitNorm' cannot be used with other data transformations", call. = FALSE)
       }
@@ -3108,7 +3108,7 @@ rxErrEnvF$tbs <- function(lambda) {
     stop("'boxCox' can only be in an error function", call. = FALSE)
   }
   if (!is.null(rxErrEnv.lambda)) {
-    if (rxErrEnv.yj != "0" & rxErrEnv.lambda != "0" & rxErrEnv.lambda != "1") {
+    if (rxErrEnv.yj != "0" && rxErrEnv.lambda != "0" && rxErrEnv.lambda != "1") {
       stop("'boxCox' cannot be used with other data transformations", call. = FALSE)
     }
   }
@@ -3134,7 +3134,7 @@ rxErrEnvF$tbsYj <- function(lambda) {
     stop("'yeoJohnson' can only be in an error function", call. = FALSE)
   }
   if (!is.null(rxErrEnv.lambda)) {
-    if ((rxErrEnv.yj != "1" & rxErrEnv.yj != "4" & rxErrEnv.yj != "6")) {
+    if ((rxErrEnv.yj != "1" && rxErrEnv.yj != "4" && rxErrEnv.yj != "6")) {
       stop("'yeoJohnson' cannot be used with other data transformations", call. = FALSE)
     }
   }
@@ -3217,11 +3217,11 @@ rxErrEnvF$`return` <- function(est) {
     } else {
       .yj <- rxErrEnv.yj
     }
-    if (.yj == "0" & .lambda == "1") {
+    if (.yj == "0" && .lambda == "1") {
       .yj <- "2"
       .lambda <- "1"
     }
-    if (.yj == "0" & .lambda == "0") {
+    if (.yj == "0" && .lambda == "0") {
       .yj <- "3"
       .lambda <- "0"
     }
