@@ -151,6 +151,7 @@ typedef struct {
   double hRate2;
   bool cDur2;
   double hDur2;
+  int nLlik;
 } rx_solving_options;
 
 

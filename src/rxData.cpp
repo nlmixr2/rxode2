@@ -1404,7 +1404,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
   }
-  ind->llikSave = _globals.gLlikSave + rxLlikSaveSize*omp_get_thread_num();
+  ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
 }
 
@@ -3723,6 +3723,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       int curSimIni=0;
       rx_solving_options_ind indS;
       int linCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmt];
+      op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
       int nIndSim = rx->nIndSim;
       for (unsigned int simNum = rx->nsim; simNum--;){
         for (unsigned int id = rx->nsub; id--;){
@@ -4966,7 +4967,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     int n4 = rxSolveDat->initsC.size();
     int n5_c = lhs.size()*op->cores;
-    int nllik_c = rxLlikSaveSize*op->cores;
+    int nllik_c = rxLlikSaveSize*op->cores*op->nLlik;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);
