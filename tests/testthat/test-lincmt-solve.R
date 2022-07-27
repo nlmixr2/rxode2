@@ -1,4 +1,57 @@
 rxTest({
+
+  test_that("mixed ode/linCmt() zero observation issue(s)", {
+
+    rxWithSeed(1, {
+
+      pk <- c(cl=0.2,v2=3.5,q=.4,v3=3.5,ka=.2,f=.7)
+      nn <- 100
+      rands <- matrix(runif(4*nn),nn)
+      pdpars <- dplyr::tibble(ec50=(300/28*pk["f"]/pk["cl"])*(0.1+0.9*rands[,1]),emax=-0.9+10.9*rands[,2],
+                              gamma=1+3*rands[,3],ke0=log(2)/(5+45*rands[,4])) 
+      rxmod1 <- RxODE({
+        Cp       <- linCmt(ka,cl,v2,v3,q)
+        d/dt(Ce) <- (Cp-Ce)*ke0
+        eff      <- 1*(1+emax*Ce**gamma/(ec50**gamma+Ce**gamma))
+      })
+      
+      et1 <- et() %>%
+        et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) %>% ## sampling  
+        add.dosing(dose=300*pk["f"],dosing.to=1,nbr.dose=13,dosing.interval=28,start.time=0)  ## dosing
+        
+        
+        ### Note 1: bug occurs when including several sets of parameters
+        res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1) 
+
+        expect_length(res1 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time),0)
+        
+        ### Note 2: Bug also occurs when simulating one set of parameters at a time
+        res2 <- purrr::map_dfr(1:nn,~rxSolve(rxmod1,unlist(c(pk,as.data.frame(pdpars[.,]))),et1))
+        expect_length(res2 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time),
+                      0)
+        
+        #####################################
+        ### Workaround: do not use linCmt()##
+        #####################################
+        rxmod2 <- RxODE({
+          Cp           <- centr/v2
+          d/dt(abs)    <- -ka*abs
+          d/dt(centr)  <- ka*abs-(cl+q)*Cp+q*periph/v3
+          d/dt(periph) <- q*(Cp-periph/v3)
+          d/dt(Ce)     <- (Cp-Ce)*ke0
+          eff          <- 1*(1+emax*Ce**gamma/(ec50**gamma+Ce**gamma))
+        })
+        
+        res1b <- rxSolve(rxmod2,cbind(as.list(pk),pdpars),et1)
+        
+        expect_length(res1b %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time), 0) ## EXPECTED: 0 rows, OBSERVED: 0 rows
+
+    })
+  })
+  
+})
+
+rxTest({
   tol <- 5e-5 ## Current difference for all equations
   types <- 1:4
 

@@ -70,7 +70,8 @@ Suggests:
     rsconnect,
     devtools,
     patchwork,
-    nlmixr2data
+    nlmixr2data,
+    purr
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
