@@ -1,6 +1,6 @@
 pandoc: 2.7.3
-pkgdown: 2.0.5.9000
-pkgdown_sha: b4096aa376773d7dee98a267fd0b5a025975a3dc
+pkgdown: 2.0.6.9000
+pkgdown_sha: 956f076f661eb2de9413f64ea24a580cf444466d
 articles:
   rxode2-cmt: rxode2-cmt.html
   rxode2-covariates: rxode2-covariates.html
@@ -25,7 +25,7 @@ articles:
   rxode2-transit-compartments: rxode2-transit-compartments.html
   rxode2-tutorials: rxode2-tutorials.html
   rxode2-wt: rxode2-wt.html
-last_built: 2022-07-12T16:20Z
+last_built: 2022-07-27T23:03Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles
