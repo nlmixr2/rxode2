@@ -5,7 +5,7 @@
     return(NULL)
   }
   .predLine <- .predDf[line, ]
-  .ret <- list(x, .predLine)
+  .ret <- list(x, .predLine, line)
   class(.ret) <- c(paste(.predLine$distribution), "rxGetDistributionSimulationLines")
   .ret
 }
@@ -73,12 +73,13 @@ rxGetDistributionSimulationLines <- function(line) {
 rxGetDistributionSimulationLines.norm <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .err <- str2lang(paste0("err.", pred1$var))
   .ret <- vector("list", 2)
   #.ret[[1]] <- bquote(.(.err) <- 0)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -90,10 +91,11 @@ rxGetDistributionSimulationLines.dnorm <- rxGetDistributionSimulationLines.norm
 rxGetDistributionSimulationLines.t <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .ret <- vector("list", 2)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -101,10 +103,11 @@ rxGetDistributionSimulationLines.t <- function(line) {
 rxGetDistributionSimulationLines.cauchy <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .ret <- vector("list", 2)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -112,12 +115,13 @@ rxGetDistributionSimulationLines.cauchy <- function(line) {
 rxGetDistributionSimulationLines.ordinal <- function(line) {
   .env <- line[[1]]
   .pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
   .c[[1]] <- quote(`rxord`)
   .ret <- vector("list", 2)
   .ret[[1]] <- quote(ipredSim <- NA)
   .ret[[2]] <- bquote(sim <- .(.c))
-  c(.handleSingleErrTypeNormOrTFoceiBase(.env, .pred1, rxPredLlik=FALSE), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(.env, .pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
 
@@ -126,16 +130,17 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
 rxGetDistributionSimulationLines.default <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .ret <- vector("list", 1)
   .ret[[1]] <- bquote(sim <- .(.getQuotedDistributionAndSimulationArgs(line)))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, rxPredLlik=FALSE), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
 #' @export
 rxGetDistributionSimulationLines.rxUi <- function(line) {
   .predDf <- get("predDf", line)
-  lapply(seq_along(.predDf$cond), function(c){
+  lapply(seq_along(.predDf$cond), function(c) {
     .mod <- .createSimLineObject(line, c)
     rxGetDistributionSimulationLines(.mod)
   })
@@ -399,7 +404,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .lenLines <- length(.predDf$line)
     .if <- useIf
   } else {
-    .lenLines <- sum(vapply(seq_along(errLines), function(i){
+    .lenLines <- sum(vapply(seq_along(errLines), function(i) {
       length(errLines[[i]])
     }, integer(1)))
   }

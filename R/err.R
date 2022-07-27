@@ -1126,24 +1126,32 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         stop(paste(.env$errGlobal, collapse="\n"), call.=FALSE)
       }
       if (!is.null(.env$predDf)) {
-        if (any(.env$predDf$linCmt)) {
-          .env$mv0 <- rxModelVars(paste(c(.env$lstChr[-.env$predDf$line], "rxLinCmt ~ linCmt()"), collapse="\n"))
-        } else if (any(.env$predDf$distribution == "LL")) {
-          .lines <- .env$predDf$line
-          .w <- .env$predDf$line[which(.env$predDf$distribution == "LL")]
+        .lstChr <- .env$lstChr
+        .lines <- .env$predDf$line
+        .w <- which(.env$predDf$distribution == "LL")
+        if (length(.w) > 0) {
           .lstExpr <- .env$lstExpr
+          .w2 <- .env$predDf$line[.w]
           .lstChr <- vapply(seq_along(.lstExpr),
                             function(i) {
                               .cur <- .lstExpr[[i]]
-                              if (i %in% .w) {
+                              if (i %in% .w2) {
                                 paste0("rxLL ~ ", deparse1(.cur[[3]]))
                               } else {
                                 deparse1(.cur)
                               }
                             }, character(1), USE.NAMES=FALSE)
-          .env$mv0 <-rxModelVars(paste(.lstChr, collapse="\n"))
+          .lines <- .lines[-.w]
+          if (length(.lines) > 0) {
+            .lstChr <- .lstChr[-.lines]
+          }
         } else {
-          .env$mv0 <- rxModelVars(paste(.env$lstChr[-.env$predDf$line], collapse="\n"))
+          .lstChr <- .lstChr[-.lines]
+        }
+        if (any(.env$predDf$linCmt)) {
+          .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
+        } else {
+          .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
         }
       } else {
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))

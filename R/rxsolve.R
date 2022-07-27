@@ -729,7 +729,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     rtolSens = 1.0e-6,
                     ssAtolSens=1.0e-8,
                     ssRtolSens=1.0e-6,
-                    simVariability=NA) {
+                    simVariability=NA,
+                    nLlikAlloc=NULL) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -981,6 +982,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(maxwhile, lower=20, len=1)
+    if (!is.null(nLlikAlloc)) {
+      checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
+    }
     maxwhile <- as.integer(maxwhile)
     .ret <- list(
       scale = scale, #
@@ -1068,7 +1072,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       rtolSens = rtolSens,
       ssAtolSens=ssAtolSens,
       ssRtolSens=ssRtolSens,
-      simVariability=simVariability
+      simVariability=simVariability,
+      nLlikAlloc=nLlikAlloc
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -1396,8 +1401,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   .ctl$keepF <- .keepF
   rxSolveFree()
-
-
 
   if (!is.null(theta) | !is.null(eta)) {
     .theta <- theta

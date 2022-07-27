@@ -3723,7 +3723,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       int curSimIni=0;
       rx_solving_options_ind indS;
       int linCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmt];
-      op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
       int nIndSim = rx->nIndSim;
       for (unsigned int simNum = rx->nsim; simNum--;){
         for (unsigned int id = rx->nsub; id--;){
@@ -4408,6 +4407,7 @@ static inline void iniRx(rx_solve* rx) {
   op->hDur2 = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
+  op->nLlik = 0;
 }
 
 // [[Rcpp::export]]
@@ -4683,6 +4683,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     CharacterVector state = rxSolveDat->mv[RxMv_state];
     CharacterVector lhs = rxSolveDat->mv[RxMv_lhs];
     op->neq = state.size();
+    op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
+    if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
+      op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
+    }
     op->badSolve = 0;
     op->naTime = 0;
     op->abort = 0;
@@ -4967,7 +4971,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     int n4 = rxSolveDat->initsC.size();
     int n5_c = lhs.size()*op->cores;
-    int nllik_c = rxLlikSaveSize*op->cores*op->nLlik;
+    int nllik_c = rxLlikSaveSize*op->nLlik*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);

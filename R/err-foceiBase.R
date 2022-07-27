@@ -323,19 +323,34 @@
 #' Handle the single error for normal or t distributions
 #'
 #' @param env Environment for the parsed model
+#' 
 #' @param pred1 The `data.frame` of the current error
+#'
+#' @param errNum The number of the error specification in the nlmixr2 model
+#' 
 #' @param rxPredLlik A boolean indicating if the log likelihood should
 #'   be calculated for non-normal distributions.  By default `TRUE`.
-#' @return A list of the lines added.  The lines will contain -
-#'   `rx_yj_` which is an integer that corresponds to the
-#'   transformation type.  - `rx_lambda_` is the transformation lambda
-#'   - `rx_low_` The lower boundary of the transformation - `rx_hi_`
-#'   The upper boundary of the transformation - `rx_pred_f_` The
-#'   prediction function - `rx_pred_` The transformed prediction
-#'   function - `rx_r_` The transformed variance
+#' 
+#' @return A list of the lines added.  The lines will contain
+#'
+#' - `rx_yj_` which is an integer that corresponds to the
+#'   transformation type.
+#'
+#' - `rx_lambda_` is the transformation lambda
+#'
+#' - `rx_low_` The lower boundary of the transformation
+#'
+#' - `rx_hi_` The upper boundary of the transformation
+#'
+#' - `rx_pred_f_` The prediction function
+#'
+#' - `rx_pred_` The transformed prediction function
+#'
+#' - `rx_r_` The transformed variance
+#' 
 #' @author Matthew Fidler
 #' @export
-.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, rxPredLlik=TRUE) {
+.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
   type <- pred1$distribution
   if (type %in% c("norm", "t", "cauchy", "dnorm")) {
     .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
@@ -364,14 +379,32 @@
             }
             .nu <- str2lang(pred1$d)
           }
-          .ret[[8]] <- bquote(rx_pred_ ~ llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                               .(.nu), rx_pred_, rx_rll_))
+          if (errNum == 1) {
+            .ret[[8]] <- bquote(rx_pred_ ~ llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                 .(.nu), rx_pred_, rx_rll_))
+          } else {
+            .ret[[8]] <- bquote(rx_pred_ ~ llikXT(.(errNum - 1),
+                                                  .(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                 .(.nu), rx_pred_, rx_rll_))
+          }
         } else if (type == "cauchy") {
-          .ret[[8]] <- bquote(rx_pred_ ~ llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                    rx_pred_, rx_rll_))
+          if (errNum == 1) {
+            .ret[[8]] <- bquote(rx_pred_ ~ llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                      rx_pred_, rx_rll_))
+          } else {
+            .ret[[8]] <- bquote(rx_pred_ ~ llikXCauchy(.(errNum - 1),
+                                                       .(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                       rx_pred_, rx_rll_))
+          }
         } else if (type == "dnorm") {
-          .ret[[8]] <- bquote(rx_pred_ ~ llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                  rx_pred_, rx_rll_))
+          if (errNum == 1) {
+            .ret[[8]] <- bquote(rx_pred_ ~ llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                    rx_pred_, rx_rll_))
+          } else {
+            .ret[[8]] <- bquote(rx_pred_ ~ llikXNorm(.(errNum - 1),
+                                                     .(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                                                    rx_pred_, rx_rll_))
+          }
         }
         .ret[[9]] <- quote(rx_r_ ~ 0)
       } else {
@@ -389,7 +422,7 @@
     .ret[[4]] <- bquote(rx_hi_ ~ 1)
     .ret[[5]] <- bquote(rx_r_ ~ 0)
     # This is for the non-normal cases
-    .ret[[6]] <- bquote(rx_pred_ ~ .(.getQuotedDistributionAndLlikArgs(env, pred1)))
+    .ret[[6]] <- bquote(rx_pred_ ~ .(.getQuotedDistributionAndLlikArgs(env, pred1, errNum)))
     .ret
   }
 }
@@ -411,7 +444,7 @@
   "ordinal"="rordinal"
 )
 
-.getQuotedDistributionAndLlikArgs <- function(env, pred1) {
+.getQuotedDistributionAndLlikArgs <- function(env, pred1, errNum=1L) {
   .dist <- as.character(pred1$distribution)
   if (.dist == "LL") {
     return(env$lstExpr[[pred1$line]][[3]])
@@ -433,6 +466,12 @@
       }
     }
   }, character(1))
-
-  as.call(lapply(c(.foceEstLLFun[[.dist]], "DV", .args[.args != ""]), str2lang))
+  .d1 <- .foceEstLLFun[[.dist]]
+  if (errNum != 1) {
+    .d1 <- sub("^llik", "llikX", .d1)
+    .args <- c(.d1, paste0(errNum - 1), "DV", .args[.args != ""])
+  } else {
+    .args <- c(.d1, "DV", .args[.args != ""])
+  }
+  as.call(lapply(.args, str2lang))
 }

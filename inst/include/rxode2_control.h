@@ -88,6 +88,7 @@
 #define Rxc_ssAtolSens 84
 #define Rxc_ssRtolSens 85
 #define Rxc_simVariability 86
+#define Rxc_nLlikAlloc 87
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
