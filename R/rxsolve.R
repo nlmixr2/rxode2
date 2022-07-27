@@ -749,8 +749,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         stop("'transitAbs' is no longer supported, use 'evid=7' instead",
              call.=FALSE)
       }
-      stop("unused argument: ", paste
-      (paste0("'", .bad, "'", sep=""), collapse=", "),
+      stop("unused argument: ",
+           paste(paste0("'", .bad, "'", sep=""), collapse=", "),
            call.=FALSE)
     }
     if (checkmate::testIntegerish(sigmaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
@@ -870,7 +870,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (is.null(scale)) {
     } else if (is.list(scale)) {
       checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
-      lapply(names(scale), function(n){
+      lapply(names(scale), function(n) {
         checkmate::assertNumeric(scale[[n]], lower=0, finite=TRUE, any.missing=FALSE, len=1, .var.name=n)
       })
     } else {
@@ -1180,10 +1180,14 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
   if (exists("control", envir=.env)) {
     .oldControl <- get("control", envir=.env)
     assign("control", .rxControl, envir=.env)
-    on.exit({assign("control", .oldControl, envir=.env)})
+    on.exit({
+      assign("control", .oldControl, envir=.env)
+    })
   } else {
     assign("control", .rxControl, envir=.env)
-    on.exit({rm(list="control", envir=.env)})
+    on.exit({
+      rm(list="control", envir=.env)
+    })
   }
   .rxControl <- object$rxControlWithVar
   .lst[[2]] <- .rxControl
@@ -1402,7 +1406,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .ctl$keepF <- .keepF
   rxSolveFree()
 
-  if (!is.null(theta) | !is.null(eta)) {
+  if (!is.null(theta) || !is.null(eta)) {
     .theta <- theta
     .eta <- eta
     if (!is.null(.theta)) {
