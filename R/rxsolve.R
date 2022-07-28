@@ -622,6 +622,13 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'   cores. This is the reason this is set to be one, regardless of
 #'   what the number of cores are used in threaded ODE solving.
 #'
+#'
+#' @param nLlikAlloc The number of log likelihood endpoints that are
+#'   used in the model.  This allows independent lliklihood per
+#'   endpoint in focei for nlmixr2.  It likely shouldn't be set,
+#'   though it won't hurt anything if you do (just may take up more
+#'   memory for larger allocations).
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
