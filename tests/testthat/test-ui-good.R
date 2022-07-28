@@ -202,7 +202,7 @@ test_that("only specifying residual error", {
     })
   }
 
-  expect_error(one.cmt(), Nna)
+  expect_error(one.cmt(), NA)
 
 })
 
