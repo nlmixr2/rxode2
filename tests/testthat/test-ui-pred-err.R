@@ -625,7 +625,7 @@ rxTest({
         V <- tV + eta.V
         KA <- KA + eta.KA
         CL <- CL + eta.CL
-        linCmt() ~ norm()
+        linCmt() ~ df()
       })
     }
 

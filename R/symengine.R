@@ -186,9 +186,48 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikGamma"=3,
   "llikGammaDshape"=3,
   "llikGammaDrate"=3,
+  "llikCauchy"=3,
+  "llikCauchyDlocation"=3,
+  "llikCauchyDscale"=3,
   "llikNorm"=3,
   "llikNormDmean"=3,
-  "llikNormDsd"=3
+  "llikNormDsd"=3,
+  # Now the llikX variety for saving comp. time
+  "llikXPois"=3,
+  "llikXPoisDlambda"=3,
+  "llikXBinom"=4,
+  "llikXBinomDprob"=4,
+  "llikXBeta"=4,
+  "llikXBetaDshape1"=4,
+  "llikXBetaDshape2"=4,
+  "llikXT"=5,
+  "llikXTDdf"=5,
+  "llikXTDmean"=5,
+  "llikXTDsd"=5,
+  "llikXChisq"=3,
+  "llikXChisqDdf"=3,
+  "llikXExp"=3,
+  "llikXExpDrate"=3,
+  "llikXF"=4,
+  "llikXFDdf1"=4,
+  "llikXFDdf2"=4,
+  "llikXGeom"=3,
+  "llikXGeomDprob"=3,
+  "llikXUnif"=4,
+  "llikXUnifDalpha"=4,
+  "llikXUnifDbeta"=4,
+  "llikXWeibull"=4,
+  "llikXWeibullDshape"=4,
+  "llikXWeibullDscale"=4,
+  "llikXGamma"=4,
+  "llikXGammaDshape"=4,
+  "llikXGammaDrate"=4,
+  "llikXCauchy"=4,
+  "llikXCauchyDlocation"=4,
+  "llikXCauchyDscale"=4,
+  "llikXNorm"=4,
+  "llikXNormDmean"=4,
+  "llikXNormDsd"=4
 )
 
 .rxOnly <- c(
@@ -356,16 +395,13 @@ rxRmFun <- function(name) {
   "M_SQRT_PI" = "sqrt(pi)",
   "M_2_SQRTPI" = "2/sqrt(pi)",
   "M_1_SQRT_2PI" = "1/sqrt(2*pi)",
-  "M_SQRT_2" = "sqrt(2)",
+  "M_SQRT2" = "sqrt(2)",
   "M_SQRT_3" = "sqrt(3)",
   "M_SQRT_32" = "sqrt(32)",
   "M_SQRT_2dPI" = "sqrt(2/pi)",
   "M_LN_SQRT_PI" = "log(sqrt(pi))",
   "M_LN_SQRT_2PI" = "log(sqrt(2*pi))",
   "M_LN_SQRT_PId2" = "log(sqrt(pi/2))",
-  "M_SQRT2" = "sqrt(2)",
-  "M_SQRT3" = "sqrt(3)",
-  "M_SQRT32" = "sqrt(32)",
   "M_LOG10_2" = "log(2)/log(10)",
   "M_LOG2E" = "1/log(2)",
   "M_LOG10E" = "1/log(10)",
@@ -421,55 +457,115 @@ rxRmFun <- function(name) {
 
 .rxD$llikNorm <- list(
   NULL,
-  function(x, mean, sd){
+  function(x, mean, sd) {
     paste0("llikNormDmean(",paste(c(x, mean, sd), collapse=", "), ")")
   },
-  function(x, mean, sd){
+  function(x, mean, sd) {
     paste0("llikNormDsd(",paste(c(x, mean, sd), collapse=", "), ")")
   }
 )
 
+.rxD$llikXNorm <- list(
+  NULL,
+  NULL,
+  function(i, x, mean, sd) {
+    paste0("llikXNormDmean(",paste(c(i, x, mean, sd), collapse=", "), ")")
+  },
+  function(i, x, mean, sd) {
+    paste0("llikXNormDsd(",paste(c(i, x, mean, sd), collapse=", "), ")")
+  }
+)
+
 .rxD$llikPois <- list(
-  function(x, lambda){
+  function(x, lambda) {
     "0"
   },
-  function(x, lambda){
+  function(x, lambda) {
     paste0("llikPoisDlambda(",paste(c(x, lambda), collapse=", "), ")")
   }
 )
 
+.rxD$llikXPois <- list(
+  NULL,
+  function(i, x, lambda) {
+    "0"
+  },
+  function(i, x, lambda) {
+    paste0("llikXPoisDlambda(",paste(c(i, x, lambda), collapse=", "), ")")
+  }
+)
+
 .rxD$llikBinom <- list(
-  function(x, size, prob){
+  function(x, size, prob) {
     "0"
   },
-  function(x, size, prob){
+  function(x, size, prob) {
     "0"
   },
-  function(x, size, prob){
+  function(x, size, prob) {
     paste0("llikBinomDprob(",paste(c(x, size, prob), collapse=", "), ")")
+  }
+)
+
+.rxD$llikXBinom <- list(
+  NULL,
+  function(i, x, size, prob) {
+    "0"
+  },
+  function(i, x, size, prob) {
+    "0"
+  },
+  function(i, x, size, prob) {
+    paste0("llikXBinomDprob(",paste(c(i, x, size, prob), collapse=", "), ")")
+  }
+)
+
+
+.rxD$llikXBeta <- list(
+  NULL,
+  NULL,
+  function(i, x, shape1, shape2) {
+    paste0("llikXBetaDshape1(",paste(c(i, x, shape1, shape2), collapse=", "), ")")
+  },
+  function(i, x, shape1, shape2) {
+    paste0("llikXBetaDshape2(",paste(c(i, x, shape1, shape2), collapse=", "), ")")
   }
 )
 
 .rxD$llikBeta <- list(
   NULL,
-  function(x, shape1, shape2){
+  function(x, shape1, shape2) {
     paste0("llikBetaDshape1(",paste(c(x, shape1, shape2), collapse=", "), ")")
   },
-  function(x, shape1, shape2){
+  function(x, shape1, shape2) {
     paste0("llikBetaDshape2(",paste(c(x, shape1, shape2), collapse=", "), ")")
   }
 )
 
 .rxD$llikT <- list(
   NULL,
-  function(x, df, mean, sd){
+  function(x, df, mean, sd) {
     paste0("llikTDdf(",paste(c(x, df, mean, sd), collapse=", "), ")")
   },
-  function(x, df, mean, sd){
+  function(x, df, mean, sd) {
     paste0("llikTDmean(",paste(c(x, df, mean, sd), collapse=", "), ")")
   },
-  function(x, df, mean, sd){
+  function(x, df, mean, sd) {
     paste0("llikTDsd(",paste(c(x, df, mean, sd), collapse=", "), ")")
+  }
+)
+
+.rxD$llikXT <- list(
+  NULL,
+  NULL,
+  function(i, x, df, mean, sd) {
+    paste0("llikXTDdf(",paste(c(i, x, df, mean, sd), collapse=", "), ")")
+  },
+  function(i, x, df, mean, sd) {
+    paste0("llikXTDmean(",paste(c(i, x, df, mean, sd), collapse=", "), ")")
+  },
+  function(i, x, df, mean, sd) {
+    paste0("llikXTDsd(",paste(c(i, x, df, mean, sd), collapse=", "), ")")
   }
 )
 
@@ -480,10 +576,26 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$llikXChisq <- list(
+  NULL,
+  NULL,
+  function(i, x, nu) {
+    paste0("llikXChisqDdf(",paste(c(i, x, nu), collapse=", "), ")")
+  }
+)
+
 .rxD$llikExp <- list(
   NULL,
   function(x, rate) {
     paste0("llikExpDrate(",paste(c(x, rate), collapse=", "), ")")
+  }
+)
+
+.rxD$llikXExp <- list(
+  NULL,
+  NULL,
+  function(i, x, rate) {
+    paste0("llikXExpDrate(",paste(c(i, x, rate), collapse=", "), ")")
   }
 )
 
@@ -497,12 +609,33 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$llikXF <- list(
+  NULL,
+  NULL,
+  function(i, x, df1, df2) {
+    paste0("llikXFDdf1(",paste(c(i, x, df1, df2), collapse=", "), ")")
+  },
+  function(i, x, df1, df2) {
+    paste0("llikXFDdf2(",paste(c(i, x, df1, df2), collapse=", "), ")")
+  }
+)
+
+
 .rxD$llikGeom <- list(
   NULL,
   function(x, p) {
     paste0("llikGeomDprob(",paste(c(x, p), collapse=", "), ")")
   }
 )
+
+.rxD$llikXGeom <- list(
+  NULL,
+  NULL,
+  function(i, x, p) {
+    paste0("llikXGeomDprob(",paste(c(i, x, p), collapse=", "), ")")
+  }
+)
+
 
 .rxD$llikUnif <- list(
   NULL,
@@ -511,6 +644,17 @@ rxRmFun <- function(name) {
   },
   function(x, alpha, beta) {
     paste0("llikUnifDbeta(",paste(c(x, alpha, beta), collapse=", "), ")")
+  }
+)
+
+.rxD$llikXUnif <- list(
+  NULL,
+  NULL,
+  function(i, x, alpha, beta) {
+    paste0("llikXUnifDalpha(",paste(c(i, x, alpha, beta), collapse=", "), ")")
+  },
+  function(i, x, alpha, beta) {
+    paste0("llikXUnifDbeta(",paste(c(i, x, alpha, beta), collapse=", "), ")")
   }
 )
 
@@ -524,6 +668,17 @@ rxRmFun <- function(name) {
   }
 )
 
+.rxD$llikXWeibull <- list(
+  NULL,
+  NULL,
+  function(i, x, shape, scale) {
+    paste0("llikXWeibullDshape(",paste(c(i, x, shape, scale), collapse=", "), ")")
+  },
+  function(i, x, shape, scale) {
+    paste0("llikXWeibullDscale(",paste(c(i, x, shape, scale), collapse=", "), ")")
+  }
+)
+
 .rxD$llikGamma <- list(
   NULL,
   function(x, shape, rate) {
@@ -533,6 +688,51 @@ rxRmFun <- function(name) {
     paste0("llikGammaDrate(",paste(c(x, shape, rate), collapse=", "), ")")
   }
 )
+
+.rxD$llikXGamma <- list(
+  NULL,
+  NULL,
+  function(i, x, shape, rate) {
+    paste0("llikXGammaDshape(",paste(c(i, x, shape, rate), collapse=", "), ")")
+  },
+  function(i, x, shape, rate) {
+    paste0("llikXGammaDrate(",paste(c(i, x, shape, rate), collapse=", "), ")")
+  }
+)
+
+.rxD$llikCauchy <- list(
+  NULL,
+  function(x, location, scale) {
+    paste0("llikCauchyDlocation(",paste(c(x, location, scale), collapse=", "), ")")
+  },
+  function(x, location, scale) {
+    paste0("llikCauchyDscale(",paste(c(x, location, scale), collapse=", "), ")")
+  }
+)
+
+.rxD$llikXCauchy <- list(
+  NULL,
+  NULL,
+  function(i, x, location, scale) {
+    paste0("llikXCauchyDlocation(",paste(c(i, x, location, scale), collapse=", "), ")")
+  },
+  function(i, x, location, scale) {
+    paste0("llikXCauchyDscale(",paste(c(i, x, location, scale), collapse=", "), ")")
+  }
+)
+
+.rxD$llikXGamma <- list(
+  NULL,
+  NULL,
+  function(i, x, shape, rate) {
+    paste0("llikXGammaDshape(",paste(c(i, x, shape, rate), collapse=", "), ")")
+  },
+  function(i, x, shape, rate) {
+    paste0("llikXGammaDrate(",paste(c(i, x, shape, rate), collapse=", "), ")")
+  }
+)
+
+
 
 .rxD$abs0 <- list(function(x) {
   return(paste0("dabs(", x, ")"))
@@ -1494,8 +1694,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEChoose(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`lchoose`))) {
     return(.rxToSELchoose(x, envir = envir, progress = progress, isEnv=isEnv))
-  } else if ((identical(x[[1]], quote(`pnorm`))) |
-               (identical(x[[1]], quote(`normcdf`))) |
+  } else if ((identical(x[[1]], quote(`pnorm`))) ||
+               (identical(x[[1]], quote(`normcdf`))) ||
                (identical(x[[1]], quote(`phi`)))) {
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
@@ -2326,7 +2526,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
             return("M_SQRT_3")
           }
           if (.ret == "sqrt(2)") {
-            return("M_SQRT_2")
+            return("M_SQRT2")
           }
           if (.ret == "sqrt(32)") {
             return("M_SQRT_32")
@@ -2786,7 +2986,7 @@ rxErrEnvF$logitNorm <- function(est, low = "0", hi = "1") {
   }
   if (!is.null(rxErrEnv.lambda)) {
     if (rxErrEnv.yj != "1") {
-      if (rxErrEnv.yj != "4" & rxErrEnv.yj != "5") {
+      if (rxErrEnv.yj != "4" && rxErrEnv.yj != "5") {
         stop("'logitNorm' cannot be used with other data transformations", call. = FALSE)
       }
     }
@@ -2847,7 +3047,7 @@ rxErrEnvF$probitNorm <- function(est, low = "0", hi = "1") {
   }
   if (!is.null(rxErrEnv.lambda)) {
     if (rxErrEnv.yj != "1") {
-      if (rxErrEnv.yj != "6" & rxErrEnv.yj != "7") {
+      if (rxErrEnv.yj != "6" &&rxErrEnv.yj != "7") {
         print(rxErrEnv.yj)
         stop("'probitNorm' cannot be used with other data transformations", call. = FALSE)
       }
@@ -2908,7 +3108,7 @@ rxErrEnvF$tbs <- function(lambda) {
     stop("'boxCox' can only be in an error function", call. = FALSE)
   }
   if (!is.null(rxErrEnv.lambda)) {
-    if (rxErrEnv.yj != "0" & rxErrEnv.lambda != "0" & rxErrEnv.lambda != "1") {
+    if (rxErrEnv.yj != "0" && rxErrEnv.lambda != "0" && rxErrEnv.lambda != "1") {
       stop("'boxCox' cannot be used with other data transformations", call. = FALSE)
     }
   }
@@ -2934,7 +3134,7 @@ rxErrEnvF$tbsYj <- function(lambda) {
     stop("'yeoJohnson' can only be in an error function", call. = FALSE)
   }
   if (!is.null(rxErrEnv.lambda)) {
-    if ((rxErrEnv.yj != "1" & rxErrEnv.yj != "4" & rxErrEnv.yj != "6")) {
+    if ((rxErrEnv.yj != "1" && rxErrEnv.yj != "4" && rxErrEnv.yj != "6")) {
       stop("'yeoJohnson' cannot be used with other data transformations", call. = FALSE)
     }
   }
@@ -3017,11 +3217,11 @@ rxErrEnvF$`return` <- function(est) {
     } else {
       .yj <- rxErrEnv.yj
     }
-    if (.yj == "0" & .lambda == "1") {
+    if (.yj == "0" && .lambda == "1") {
       .yj <- "2"
       .lambda <- "1"
     }
-    if (.yj == "0" & .lambda == "0") {
+    if (.yj == "0" && .lambda == "0") {
       .yj <- "3"
       .lambda <- "0"
     }

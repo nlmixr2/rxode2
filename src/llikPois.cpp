@@ -35,10 +35,18 @@ static inline void llikPoisFull(double* ret, double x, double lambda) {
     // Assume this is the same
     return;
   }
+  if (!R_finite(x) || !R_finite(lambda)) {
+    ret[0] = isPois;
+    ret[1] = x;
+    ret[2] = lambda;
+    ret[3] = NA_REAL;
+    ret[4] = NA_REAL;
+    return;
+  }
   Eigen::VectorXi y(1);
   Eigen::VectorXd params(1);
   y(0) = (int)(x);
-  params(0) = lambda;
+  params(0) = _smallIsNotZero(lambda);
   stanLl ll = llik_poisson(y, params);
   ret[0] = isPois;
   ret[1] = x;

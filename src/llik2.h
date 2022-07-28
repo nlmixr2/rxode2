@@ -27,8 +27,13 @@ using namespace Rcpp;
 #define isUnif 10.0
 #define isWeibull 11.0
 #define isGamma 12.0
+#define isCauchy 13.0
 
 typedef struct stanLl {
   Eigen::VectorXd fx;
   Eigen::Matrix<double, -1, -1> J;
 } stanLl;
+
+#define _smallIsOne(x) ((x) < 1e-10 ? 1 : (x))
+#define _smallIsNotZero(x) ((x) < 1e-10 ? 1e-10: (x))
+#define _parIsProb(x) ((x) < 1e-10 ? 1e-10: ((x) > 0.999999999999999 ? 0.999999999999999 :(x)))

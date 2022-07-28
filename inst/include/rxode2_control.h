@@ -88,6 +88,7 @@
 #define Rxc_ssAtolSens 84
 #define Rxc_ssRtolSens 85
 #define Rxc_simVariability 86
+#define Rxc_nLlikAlloc 87
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
@@ -120,6 +121,7 @@
 #define RxMvFlag_nIndSim 8
 #define RxMvFlag_simflg 9
 #define RxMvFlag_thread 10
+#define RxMvFlag_nLlik 11
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1

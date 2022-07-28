@@ -35,6 +35,27 @@ expect_err2 <- function(x, extra=FALSE) {
 
 .rx <- loadNamespace("rxode2")
 
+test_that("log-likelihood variables are captured", {
+  
+  expect_error(.rx$.errProcessExpression(quote({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v <- exp(tv)
+    cp <- linCmt()
+    ll(err) ~ -log(add.sd) - 0.5*log(2*pi) - 0.5*((DV-cp)/add.sd)^2
+  }), lotri({
+    ## You may label each parameter with a comment
+    tka <- 0.45 # Ka
+    tcl <- log(c(0, 2.7, 100)) # Log Cl
+    ## This works with interactive models
+    ## You may also label the preceding line with label("label text")
+    tv <- 3.45; label("log V")
+    ## the label("Label name") works with all models
+    add.sd <- 0.7
+  })), NA)
+  
+})
+
 test_that("When checking for distributions, don't consider if the parameter is defined", {
   expect_true(.rx$.isErrorExpression(ipre ~ add(f2) + propF(prop.sd, f2)))
 })
@@ -95,7 +116,6 @@ test_that("error when adding algebraic expressions to known distributional abbre
 })
 
 test_that("The distribution names will transform to the preferred distributions", {
-  expect_equal(rxPreferredDistributionName("dnorm"), "add")
   expect_equal(rxPreferredDistributionName("add"), "add")
   expect_equal(rxPreferredDistributionName("logitNorm"), "logitNorm")
 })
@@ -1552,7 +1572,7 @@ test_that("test different distributions", {
     d/dt(effect) = kin*PD -kout*effect
     ##
     cp = center / v
-    n2ll(cp) ~ log(prop.err) + log(cp)
+    ll(cp) ~ log(prop.err) + log(cp)
     effect ~ add(pdadd.err) | pca
   }), lmat2) -> mod
 

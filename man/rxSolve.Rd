@@ -122,7 +122,8 @@ rxSolve(
   rtolSens = 1e-06,
   ssAtolSens = 1e-08,
   ssRtolSens = 1e-06,
-  simVariability = NA
+  simVariability = NA,
+  nLlikAlloc = NULL
 )
 
 \method{rxSolve}{`function`}(
@@ -737,6 +738,12 @@ calculating if steady state has been achieved for sensitivity compartments.}
 
 \item{simVariability}{determines if the variability is simulated.
 When \code{NA} (default) this is determined by the solver.}
+
+\item{nLlikAlloc}{The number of log likelihood endpoints that are
+used in the model.  This allows independent lliklihood per
+endpoint in focei for nlmixr2.  It likely shouldn't be set,
+though it won't hurt anything if you do (just may take up more
+memory for larger allocations).}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

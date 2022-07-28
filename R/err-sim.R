@@ -5,7 +5,7 @@
     return(NULL)
   }
   .predLine <- .predDf[line, ]
-  .ret <- list(x, .predLine)
+  .ret <- list(x, .predLine, line)
   class(.ret) <- c(paste(.predLine$distribution), "rxGetDistributionSimulationLines")
   .ret
 }
@@ -43,13 +43,13 @@ rxGetDistributionSimulationLines <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .dist <- as.character(pred1$distribution)
-  if (.dist == "-2LL") {
+  if (.dist == "LL") {
     return(env$lstExpr[[pred1$line]][[3]])
   }
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond
   .argName <- .namedArgumentsToPredDf[[.dist]]
-  .args <- vapply(seq(1:.nargs), function(.i){
+  .args <- vapply(seq(1:.nargs), function(.i) {
     .curDist <- .argName[.i]
     if (!is.na(pred1[[.curDist]])) {
       return(pred1[[.curDist]])
@@ -73,23 +73,41 @@ rxGetDistributionSimulationLines <- function(line) {
 rxGetDistributionSimulationLines.norm <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .err <- str2lang(paste0("err.", pred1$var))
   .ret <- vector("list", 2)
   #.ret[[1]] <- bquote(.(.err) <- 0)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
+
+#' @rdname rxGetDistributionSimulationLines
+#' @export
+rxGetDistributionSimulationLines.dnorm <- rxGetDistributionSimulationLines.norm
 
 #' @rdname rxGetDistributionSimulationLines
 #' @export
 rxGetDistributionSimulationLines.t <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .ret <- vector("list", 2)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
+}
+
+#' @rdname rxGetDistributionSimulationLines
+#' @export
+rxGetDistributionSimulationLines.cauchy <- function(line) {
+  env <- line[[1]]
+  pred1 <- line[[2]]
+  .errNum <- line[[3]]
+  .ret <- vector("list", 2)
+  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -97,6 +115,7 @@ rxGetDistributionSimulationLines.t <- function(line) {
 rxGetDistributionSimulationLines.ordinal <- function(line) {
   .env <- line[[1]]
   .pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
   .c[[1]] <- quote(`rxord`)
   .ret <- vector("list", 2)
@@ -105,22 +124,22 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .ret
 }
 
-
 #' @rdname rxGetDistributionSimulationLines
 #' @export
 rxGetDistributionSimulationLines.default <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
+  .errNum <- line[[3]]
   .ret <- vector("list", 1)
   .ret[[1]] <- bquote(sim <- .(.getQuotedDistributionAndSimulationArgs(line)))
-  .ret
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
 #' @export
 rxGetDistributionSimulationLines.rxUi <- function(line) {
   .predDf <- get("predDf", line)
-  lapply(seq_along(.predDf$cond), function(c){
+  lapply(seq_along(.predDf$cond), function(c) {
     .mod <- .createSimLineObject(line, c)
     rxGetDistributionSimulationLines(.mod)
   })
@@ -164,7 +183,7 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .exact <- x[[2]]
   .predDf <- get("predDf", .x)
   .sigmaNames <- vapply(seq_along(.predDf$var), function(i) {
-    if (.predDf$distribution[i] == "norm") {
+    if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
       paste0("err.", .predDf$var[i])
     } else {
       ""
@@ -384,7 +403,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .lenLines <- length(.predDf$line)
     .if <- useIf
   } else {
-    .lenLines <- sum(vapply(seq_along(errLines), function(i){
+    .lenLines <- sum(vapply(seq_along(errLines), function(i) {
       length(errLines[[i]])
     }, integer(1)))
   }
@@ -441,7 +460,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     }
 
   }
-  for(.i in seq_along(.cmtLines)) {
+  for (.i in seq_along(.cmtLines)) {
     .ret[[.k]] <- .cmtLines[[.i]]
     .k <- .k + 1
   }

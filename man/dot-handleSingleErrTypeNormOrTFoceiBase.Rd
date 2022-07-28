@@ -4,17 +4,28 @@
 \alias{.handleSingleErrTypeNormOrTFoceiBase}
 \title{Handle the single error for normal or t distributions}
 \usage{
-.handleSingleErrTypeNormOrTFoceiBase(env, pred1)
+.handleSingleErrTypeNormOrTFoceiBase(
+  env,
+  pred1,
+  errNum = 1L,
+  rxPredLlik = TRUE
+)
 }
 \arguments{
 \item{env}{Environment for the parsed model}
 
 \item{pred1}{The \code{data.frame} of the current error}
+
+\item{errNum}{The number of the error specification in the nlmixr2 model}
+
+\item{rxPredLlik}{A boolean indicating if the log likelihood should
+be calculated for non-normal distributions.  By default \code{TRUE}.}
 }
 \value{
 A list of the lines added.  The lines will contain
 \itemize{
-\item \code{rx_yj_} which is an integer that corresponds to the transformation type.
+\item \code{rx_yj_} which is an integer that corresponds to the
+transformation type.
 \item \code{rx_lambda_} is the transformation lambda
 \item \code{rx_low_} The lower boundary of the transformation
 \item \code{rx_hi_} The upper boundary of the transformation
