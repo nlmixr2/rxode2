@@ -71,7 +71,6 @@ rxTest({
                            returnType="tibble", addCov=TRUE), NA)
     })
 
-
   })
 
 
@@ -466,7 +465,6 @@ rxTest({
 
 
   test_that("rcauchy simulations", {
-
 
     f <- function() {
       ini({

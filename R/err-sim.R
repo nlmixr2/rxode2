@@ -121,9 +121,8 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .ret <- vector("list", 2)
   .ret[[1]] <- quote(ipredSim <- NA)
   .ret[[2]] <- bquote(sim <- .(.c))
-  c(.handleSingleErrTypeNormOrTFoceiBase(.env, .pred1, .errNum, rxPredLlik=FALSE), .ret)
+  .ret
 }
-
 
 #' @rdname rxGetDistributionSimulationLines
 #' @export
