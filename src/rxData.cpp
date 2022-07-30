@@ -4318,6 +4318,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->cens = 0;
   rx->limit = 0;
   rx->safeZero = 1;
+  rx->useStdPow = 0;
   rx->sumType = 1; // pairwise
   rx->prodType = 1; // long double
   rx->sensType = 4; // advan
@@ -4595,6 +4596,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->add_cov = (int)(addCov);
     rx->istateReset = asInt(rxControl[Rxc_istateReset], "istateReset");
     rx->safeZero = asInt(rxControl[Rxc_safeZero], "safeZero");
+    rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     op->stiff = method;
     rxSolveDat->throttle = false;
     if (method != 2 || rx->needSort != 0){

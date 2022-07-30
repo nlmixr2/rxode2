@@ -123,7 +123,8 @@ rxSolve(
   ssAtolSens = 1e-08,
   ssRtolSens = 1e-06,
   simVariability = NA,
-  nLlikAlloc = NULL
+  nLlikAlloc = NULL,
+  useStdPow = FALSE
 )
 
 \method{rxSolve}{`function`}(
@@ -744,6 +745,9 @@ used in the model.  This allows independent lliklihood per
 endpoint in focei for nlmixr2.  It likely shouldn't be set,
 though it won't hurt anything if you do (just may take up more
 memory for larger allocations).}
+
+\item{useStdPow}{This uses C's \code{pow} for exponentiation instead of
+R's \code{R_pow} or \code{R_pow_di}.  By default this is \code{FALSE}}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in
