@@ -622,12 +622,14 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'   cores. This is the reason this is set to be one, regardless of
 #'   what the number of cores are used in threaded ODE solving.
 #'
-#'
 #' @param nLlikAlloc The number of log likelihood endpoints that are
 #'   used in the model.  This allows independent lliklihood per
 #'   endpoint in focei for nlmixr2.  It likely shouldn't be set,
 #'   though it won't hurt anything if you do (just may take up more
 #'   memory for larger allocations).
+#'
+#' @param useStdPow This uses C's `pow` for exponentiation instead of
+#'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -737,7 +739,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtolSens=1.0e-8,
                     ssRtolSens=1.0e-6,
                     simVariability=NA,
-                    nLlikAlloc=NULL) {
+                    nLlikAlloc=NULL,
+                    useStdPow=FALSE) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -992,6 +995,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (!is.null(nLlikAlloc)) {
       checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
     }
+    if (checkmate::testLogical(useStdPow)) {
+      checkmate::assertLogical(useStdPow, len=1, any.missing=FALSE)
+    } else {
+      checkmate::assertIntegerish(useStdPow, lower=0, upper=1, len=1, any.missing=FALSE)
+    }
+    useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .ret <- list(
       scale = scale, #
@@ -1080,7 +1089,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ssAtolSens=ssAtolSens,
       ssRtolSens=ssRtolSens,
       simVariability=simVariability,
-      nLlikAlloc=nLlikAlloc
+      nLlikAlloc=nLlikAlloc,
+      useStdPow=useStdPow
     )
     class(.ret) <- "rxControl"
     return(.ret)

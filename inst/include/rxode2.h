@@ -302,6 +302,7 @@ typedef struct {
   int *svar;
   int *ovar;
   int hasEvid2;
+  int useStdPow;
 } rx_solve;
   
 typedef void (*t_set_solve)(rx_solve *);
