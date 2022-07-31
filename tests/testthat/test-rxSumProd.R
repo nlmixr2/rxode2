@@ -5,4 +5,5 @@ test_that("sumProd test", {
 
   rxSumProdModel(f)
   
+  
 })
