@@ -534,6 +534,7 @@ rxSumProdProd <- FALSE
 
 
 sumProdEnv[["^"]] <- binaryOp("^")
+
 sumProdEnv[["**"]] <- binaryOp("^")
 
 sumProdEnv[["*"]] <- function(a, b) {
@@ -626,7 +627,7 @@ sumProdEnv[[">="]] <- function(a, b) {
 }
 
 sumProdEnv[["("]] <- function(a) {
-  return(sprintf("%s", a))
+  return(sprintf("(%s)", a))
 }
 
 sumProdEnv[["["]] <- function(name, val) {
