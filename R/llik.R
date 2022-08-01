@@ -90,7 +90,7 @@ llikPois <- function(x, lambda, full=FALSE) {
   .ret
 }
 
-#' Calculate the log liklihood aof the binomial function (and its derivatives)
+#' Calculate the log liklihood of the binomial function (and its derivatives)
 #'
 #' 
 #' @param x  Number of successes
@@ -133,6 +133,98 @@ llikBinom <- function(x, size, prob, full=FALSE) {
     stop("incompatible dimensions for x, size, prob", call.=FALSE)
   }
   .ret <- llikBinomInternal(.df$x, .df$size, .df$prob)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
+
+#' Calculate the log liklihood of the negative binomial function (and its derivatives)
+#' 
+#' @param x  Number of successes
+#' @param size Size of trial
+#' @param prob probability of success
+#' 
+#' @inheritParams llikNorm
+#'
+#' @details
+#' In an `rxode2()` model, you can use `llikNbinom()` but you have to
+#' use all arguments.  You can also get the derivative of `prob` with
+#' `llikNbinomDprob()`
+#' @return data frame with `fx` for the pdf value of with
+#'   `dProb` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#' 
+#' llikNbinom(46:54, 100, 0.5)
+#'
+#' llikNbinom(46:54, 100, 0.5, TRUE)
+#'
+#' et <- et(46:54)
+#' et$size <- 100
+#' et$prob <-0.5
+#'
+#' model <- rxode2({
+#'   fx <- llikNbinom(time, size, prob)
+#'   dProb <- llikNbinomDprob(time, size, prob)
+#' })
+#'
+#' rxSolve(model, et)
+llikNbinom <- function(x, size, prob, full=FALSE) {
+  checkmate::assertIntegerish(x, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertIntegerish(size, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertNumeric(prob, min.len=0, lower=0, upper=1, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, size=size, prob=prob), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, size, prob", call.=FALSE)
+  }
+  .ret <- llikNbinomInternal(.df$x, .df$size, .df$prob)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
+
+#' Calculate the log liklihood of the negative binomial function (and its derivatives)
+#' 
+#' @param x  Number of successes
+#' @param size Size of trial
+#' @param mu mu parameter for negative binomial
+#' 
+#' @inheritParams llikNorm
+#'
+#' @details
+#' In an `rxode2()` model, you can use `llikNbinom2()` but you have to
+#' use all arguments.  You can also get the derivative of `mu` with
+#' `llikNbinom2Dmu()`
+#' @return data frame with `fx` for the pdf value of with
+#'   `dProb` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#' 
+#' llikNbinom2(46:54, 100, 40)
+#'
+#' llikNbinom2(46:54, 100, 40, TRUE)
+#'
+#' et <- et(46:54)
+#' et$size <- 100
+#' et$mu <- 40
+#'
+#' model <- rxode2({
+#'   fx <- llikNbinom2(time, size, mu)
+#'   dProb <- llikNbinom2Dmu(time, size, mu)
+#' })
+#'
+#' rxSolve(model, et)
+llikNbinom2 <- function(x, size, mu, full=FALSE) {
+  checkmate::assertIntegerish(x, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertIntegerish(size, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertNumeric(mu, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, size=size, mu=mu), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, size, mu", call.=FALSE)
+  }
+  .ret <- llikNbinom2Internal(.df$x, .df$size, .df$mu)
   if (full) .ret <- cbind(.df, .ret)
   .ret
 }

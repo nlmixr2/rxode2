@@ -69,6 +69,12 @@ rx <- rxode2({
 et <- et(1, id = 1:100)
 
 s <- rxSolve(rx, et)
-}
 
+rx <- rxode2({
+  a <- rxnbinom2(10, 40)
+})
+
+ s <- rxSolve(rx, et)
+
+}
 }
