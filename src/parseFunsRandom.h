@@ -352,7 +352,7 @@ static inline int handleFunctionRnbinom2(transFunctions *tf) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2){
       updateSyntaxCol();
-      trans_syntax_error_report_fn(_("'rinbinom2'/'rnbinom2'/'rxnbinom2' takes 2 arguments 'rxbinom(size, mu)'"));
+      trans_syntax_error_report_fn(_("'rinbinom2'/'rnbinom2'/'rxnbinom2' takes 2 arguments 'rxnbinom2(size, mu)'"));
     } else {
       if (tf->isInd){
         sAppend(&sb,   "(double)rinbinom2(&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
@@ -361,6 +361,32 @@ static inline int handleFunctionRnbinom2(transFunctions *tf) {
       } else {
         aAppendN("(double)rxnbinom2(&_solveData->subjects[_cSub], (int)", 53);
         sAppendN(&sbt, "rxnbinom2(", 10);
+      }
+    }
+    tf->i[0]     = 1;// Parse next arguments
+    tf->depth[0] =1;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleFunctionRnbinom(transFunctions *tf) {
+  if (!strcmp("rnbinom", tf->v) ||
+      !strcmp("rxnbinom", tf->v) ||
+      (tf->isInd = !strcmp("rinbinom", tf->v))) {
+    if (tb.thread != 0) tb.thread = 2;
+    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+    if (ii != 2){
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("'rinbinom'/'rnbinom'/'rxnbinom' takes 2 arguments 'rxnbinom(size, prob)'"));
+    } else {
+      if (tf->isInd){
+        sAppend(&sb,   "(double)rinbinom(&_solveData->subjects[_cSub], %d, (int)" , tb.nInd);
+        sAppend(&sbDt, "(double)rinbinom(&_solveData->subjects[_cSub], %d, (int)", tb.nInd++);
+        sAppendN(&sbt, "rinbinom(", 9);
+      } else {
+        aAppendN("(double)rxnbinom(&_solveData->subjects[_cSub], (int)", 52);
+        sAppendN(&sbt, "rxnbinom(", 9);
       }
     }
     tf->i[0]     = 1;// Parse next arguments

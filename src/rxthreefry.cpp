@@ -865,6 +865,45 @@ IntegerVector rxnbinom2_(int size, double mu, int n, int ncores){
   return ret;
 }
 
+extern "C" int rxnbinom(rx_solving_options_ind* ind, int size, double prob) {
+  std::negative_binomial_distribution<int> d(size, prob);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
+extern "C" int rinbinom(rx_solving_options_ind* ind, int id, int size, double prob){
+  if (ind->isIni == 1) {
+    std::negative_binomial_distribution<int> d(size, prob);
+    ind->simIni[id] = (double) d(_eng[rx_get_thread(op_global.cores)]);
+  }
+  return (int)ind->simIni[id];
+}
+
+//[[Rcpp::export]]
+IntegerVector rxnbinom_(int size, double prob, int n, int ncores){
+  IntegerVector ret(n);
+  int n2 = ret.size();
+  std::binomial_distribution<int> d(size, prob);
+  int *retD = ret.begin();
+
+#ifdef _OPENMP
+#pragma omp parallel num_threads(ncores) if(ncores > 1)
+  {
+#endif
+
+#ifdef _OPENMP
+#pragma omp for schedule(static)
+#endif
+    for (int thread = 0; thread < ncores; thread++) {
+      for (int i = thread; i < n2; i += ncores){
+        retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+      }
+    }
+#ifdef _OPENMP
+  }
+#endif
+  return ret;
+}
+
 
 extern "C" int rxbinom(rx_solving_options_ind* ind, int n, double prob){
   if (!ind->inLhs) return 0;

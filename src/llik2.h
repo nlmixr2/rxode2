@@ -29,6 +29,7 @@ using namespace Rcpp;
 #define isGamma 12.0
 #define isCauchy 13.0
 #define isNbinom2 14.0
+#define isNbinom 15.0
 
 typedef struct stanLl {
   Eigen::VectorXd fx;

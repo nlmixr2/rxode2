@@ -106,6 +106,7 @@ SEXP _rxode2_llikNormInternal(SEXP xSEXP, SEXP muSEXP, SEXP sigmaSEXP);
 SEXP _rxode2_llikPoisInternal(SEXP xSEXP, SEXP lambdaSEXP);
 SEXP _rxode2_llikBinomInternal(SEXP xSEXP, SEXP sizeSEXP, SEXP probSEXP);
 SEXP _rxode2_llikNbinom2Internal(SEXP xSEXP, SEXP sizeSEXP, SEXP muSEXP);
+SEXP _rxode2_llikNbinomInternal(SEXP xSEXP, SEXP sizeSEXP, SEXP probSEXP);
 SEXP _rxode2_llikBetaInternal(SEXP xSEXP, SEXP shape1SEXP, SEXP shape2SEXP);
 SEXP _rxode2_llikTInternal(SEXP xSEXP, SEXP df1SEXP, SEXP meanSEXP, SEXP sdSEXP);
 SEXP _rxode2_llikChisqInternal(SEXP xSEXP, SEXP dfSEXP);
@@ -213,6 +214,7 @@ SEXP _rxode2_rxchisq_(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxcauchy_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxbinom_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxnbinom2_(SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxnbinom_(SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_rxRmvn0(SEXP, SEXP, SEXP, SEXP, SEXP,
 		    SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -432,6 +434,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxcauchy_", (DL_FUNC) &_rxode2_rxcauchy_, 4},
     {"_rxode2_rxbinom_", (DL_FUNC) &_rxode2_rxbinom_, 4},
     {"_rxode2_rxnbinom2_", (DL_FUNC) &_rxode2_rxnbinom2_, 4},
+    {"_rxode2_rxnbinom_", (DL_FUNC) &_rxode2_rxnbinom2_, 4},
     {"_rxode2_rxSolveDollarNames", (DL_FUNC) _rxode2_rxSolveDollarNames, 1},
     {"_rxode2_etDollarNames", (DL_FUNC) _rxode2_etDollarNames, 1},
     {"_rxode2_rxExpandNesting", (DL_FUNC) _rxode2_rxExpandNesting, 3},
@@ -479,6 +482,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_llikNormInternal", (DL_FUNC) &_rxode2_llikNormInternal, 3},
     {"_rxode2_llikPoisInternal", (DL_FUNC) &_rxode2_llikPoisInternal, 2},
     {"_rxode2_llikBinomInternal",(DL_FUNC) &_rxode2_llikBinomInternal, 3},
+    {"_rxode2_llikNbinom2Internal",(DL_FUNC) &_rxode2_llikNbinom2Internal, 3},
+    {"_rxode2_llikNbinomInternal",(DL_FUNC) &_rxode2_llikNbinomInternal, 3},
     {"_rxode2_llikBetaInternal", (DL_FUNC) &_rxode2_llikBetaInternal, 3},
     {"_rxode2_llikTInternal", (DL_FUNC) &_rxode2_llikTInternal, 4},
     {"_rxode2_llikChisqInternal", (DL_FUNC) &_rxode2_llikChisqInternal, 2},
@@ -507,6 +512,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxbeta", (DL_FUNC) &rxbeta);
   R_RegisterCCallable("rxode2", "rxbinom", (DL_FUNC) &rxbinom);
   R_RegisterCCallable("rxode2", "rxnbinom2", (DL_FUNC) &rxnbinom2);
+  R_RegisterCCallable("rxode2", "rxnbinom", (DL_FUNC) &rxnbinom);
   R_RegisterCCallable("rxode2", "rxcauchy", (DL_FUNC) &rxcauchy);
   R_RegisterCCallable("rxode2", "rxchisq", (DL_FUNC) &rxchisq);
   R_RegisterCCallable("rxode2", "rxexp", (DL_FUNC) &rxexp);
@@ -522,6 +528,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
   R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);
   R_RegisterCCallable("rxode2", "rinbinom2", (DL_FUNC) &rinbinom2);
+  R_RegisterCCallable("rxode2", "rinbinom", (DL_FUNC) &rinbinom);
   R_RegisterCCallable("rxode2", "ricauchy", (DL_FUNC) &ricauchy);
   R_RegisterCCallable("rxode2", "richisq", (DL_FUNC) &richisq);
   R_RegisterCCallable("rxode2", "riexp", (DL_FUNC) &riexp);
@@ -593,6 +600,9 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxLlikBinomDprob", (DL_FUNC) &rxLlikBinomDprob);
   R_RegisterCCallable("rxode2", "rxLlikNbinom2", (DL_FUNC) &rxLlikNbinom2);
   R_RegisterCCallable("rxode2", "rxLlikNbinom2Dmu", (DL_FUNC) &rxLlikNbinom2Dmu);
+  R_RegisterCCallable("rxode2", "rxLlikNbinom", (DL_FUNC) &rxLlikNbinom);
+  R_RegisterCCallable("rxode2", "rxLlikNbinomDsize", (DL_FUNC) &rxLlikNbinomDsize);
+
   R_RegisterCCallable("rxode2", "rxLlikBeta", (DL_FUNC) &rxLlikBeta);
   R_RegisterCCallable("rxode2", "rxLlikBetaDshape1", (DL_FUNC) &rxLlikBetaDshape1);
   R_RegisterCCallable("rxode2", "rxLlikBetaDshape2", (DL_FUNC) &rxLlikBetaDshape2);
