@@ -1179,6 +1179,27 @@ namespace rxode2 {
         return Rcpp::as<RObject >(rcpp_result_gen);
     }
 
+    inline IntegerVector rxnbinom2_(int size, double mu, int n, int ncores) {
+        typedef SEXP(*Ptr_rxnbinom2_)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rxnbinom2_ p_rxnbinom2_ = NULL;
+        if (p_rxnbinom2_ == NULL) {
+            validateSignature("IntegerVector(*rxnbinom2_)(int,double,int,int)");
+            p_rxnbinom2_ = (Ptr_rxnbinom2_)R_GetCCallable("rxode2", "_rxode2_rxnbinom2_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxnbinom2_(Shield<SEXP>(Rcpp::wrap(size)), Shield<SEXP>(Rcpp::wrap(mu)), Shield<SEXP>(Rcpp::wrap(n)), Shield<SEXP>(Rcpp::wrap(ncores)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<IntegerVector >(rcpp_result_gen);
+    }
+
     inline IntegerVector rxbinom_(int n0, double prob, int n, int ncores) {
         typedef SEXP(*Ptr_rxbinom_)(SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxbinom_ p_rxbinom_ = NULL;

@@ -833,6 +833,10 @@ rxSeedEng <- function(ncores = 1L) {
     .Call(`_rxode2_rxSeedEng`, ncores)
 }
 
+rxnbinom2_ <- function(size, mu, n, ncores) {
+    .Call(`_rxode2_rxnbinom2_`, size, mu, n, ncores)
+}
+
 rxbinom_ <- function(n0, prob, n, ncores) {
     .Call(`_rxode2_rxbinom_`, n0, prob, n, ncores)
 }

@@ -2487,6 +2487,43 @@ RcppExport SEXP _rxode2_rxSeedEng(SEXP ncoresSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxnbinom2_
+IntegerVector rxnbinom2_(int size, double mu, int n, int ncores);
+static SEXP _rxode2_rxnbinom2__try(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxnbinom2_(size, mu, n, ncores));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxnbinom2_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxnbinom2__try(sizeSEXP, muSEXP, nSEXP, ncoresSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxbinom_
 IntegerVector rxbinom_(int n0, double prob, int n, int ncores);
 static SEXP _rxode2_rxbinom__try(SEXP n0SEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
@@ -3337,6 +3374,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("NumericVector(*rxNleq)(arma::vec,arma::vec,arma::mat)");
         signatures.insert("arma::mat(*rxMvrandn_)(NumericMatrix,arma::rowvec,arma::mat,arma::vec,arma::vec,int,double,double,double,int)");
         signatures.insert("RObject(*rxSeedEng)(int)");
+        signatures.insert("IntegerVector(*rxnbinom2_)(int,double,int,int)");
         signatures.insert("IntegerVector(*rxbinom_)(int,double,int,int)");
         signatures.insert("NumericVector(*rxcauchy_)(double,double,int,int)");
         signatures.insert("NumericVector(*rxchisq_)(double,int,int)");
@@ -3419,6 +3457,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxNleq", (DL_FUNC)_rxode2_rxNleq_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxMvrandn_", (DL_FUNC)_rxode2_rxMvrandn__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxSeedEng", (DL_FUNC)_rxode2_rxSeedEng_try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxnbinom2_", (DL_FUNC)_rxode2_rxnbinom2__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxbinom_", (DL_FUNC)_rxode2_rxbinom__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxcauchy_", (DL_FUNC)_rxode2_rxcauchy__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxchisq_", (DL_FUNC)_rxode2_rxchisq__try);
