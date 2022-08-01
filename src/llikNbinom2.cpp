@@ -23,6 +23,7 @@ struct nbinom2_llik {
 struct nbinom_llik {
   const Eigen::VectorXi y_;
   const Eigen::VectorXi N_;
+  
   nbinom_llik(const Eigen::VectorXi& y, Eigen::VectorXi& N) : y_(y), N_(N) { }
 
   template <typename T>
@@ -147,7 +148,7 @@ Rcpp::DataFrame llikNbinomInternal(Rcpp::NumericVector x, Rcpp::NumericVector si
   NumericVector dProb(x.size());
   double cur[6];
   for (int j = x.size(); j--;) {
-    llikNbinom2Full(cur, x[j], size[j], prob[j]);
+    llikNbinomFull(cur, x[j], size[j], prob[j]);
     fx[j]      = cur[4];
     dProb[j]     = cur[5];
   }
