@@ -601,7 +601,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxLlikNbinom2", (DL_FUNC) &rxLlikNbinom2);
   R_RegisterCCallable("rxode2", "rxLlikNbinom2Dmu", (DL_FUNC) &rxLlikNbinom2Dmu);
   R_RegisterCCallable("rxode2", "rxLlikNbinom", (DL_FUNC) &rxLlikNbinom);
-  R_RegisterCCallable("rxode2", "rxLlikNbinomDsize", (DL_FUNC) &rxLlikNbinomDsize);
+  R_RegisterCCallable("rxode2", "rxLlikNbinomDprob", (DL_FUNC) &rxLlikNbinomDprob);
 
   R_RegisterCCallable("rxode2", "rxLlikBeta", (DL_FUNC) &rxLlikBeta);
   R_RegisterCCallable("rxode2", "rxLlikBetaDshape1", (DL_FUNC) &rxLlikBetaDshape1);

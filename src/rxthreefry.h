@@ -7,6 +7,7 @@ extern "C" {
 
   int rxbinom(rx_solving_options_ind* ind, int n, double prob);
   int rxnbinom2(rx_solving_options_ind* ind, int size, double mu);
+  int rxnbinom(rx_solving_options_ind* ind, int size, double mu);
   double rxcauchy(rx_solving_options_ind* ind, double location, double scale);
   double rxchisq(rx_solving_options_ind* ind, double df);
   double rxexp(rx_solving_options_ind* ind, double rate);
@@ -20,9 +21,9 @@ extern "C" {
   double rxgamma(rx_solving_options_ind* ind, double shape, double rate);
   double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2);
   double rxnormV(rx_solving_options_ind* ind, double mean, double sd);
-
   int ribinom(rx_solving_options_ind* ind, int id, int n, double prob);
   int rinbinom2(rx_solving_options_ind* ind, int id, int size, double mu);
+  int rinbinom(rx_solving_options_ind* ind, int id, int size, double mu);
   double ricauchy(rx_solving_options_ind* ind, int id, double location, double scale);
   double richisq(rx_solving_options_ind* ind, int id, double df);
   double riexp(rx_solving_options_ind* ind, int id, double rate);
