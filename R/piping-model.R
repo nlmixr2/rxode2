@@ -60,12 +60,12 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modifyModelLines(modelLines, rxui, modifyIni, envir)
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
-    lapply(.v$rm, function(x){
+    lapply(.v$rm, function(x) {
       .removeVariableFromIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
     })
   }
   if (length(.v$new) > 0) {
-    lapply(.v$new, function(x){
+    lapply(.v$new, function(x) {
       .isErr <- x %in% .v$err
       if (auto || .isErr) {
         .addVariableToIniDf(x, rxui, promote=ifelse(.isErr, NA, FALSE))
