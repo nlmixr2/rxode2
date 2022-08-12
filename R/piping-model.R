@@ -60,12 +60,12 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modifyModelLines(modelLines, rxui, modifyIni, envir)
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
-    lapply(.v$rm, function(x){
+    lapply(.v$rm, function(x) {
       .removeVariableFromIniDf(x, rxui, promote=ifelse(x %in% .v$err, NA, FALSE))
     })
   }
   if (length(.v$new) > 0) {
-    lapply(.v$new, function(x){
+    lapply(.v$new, function(x) {
       .isErr <- x %in% .v$err
       if (auto || .isErr) {
         .addVariableToIniDf(x, rxui, promote=ifelse(.isErr, NA, FALSE))
@@ -351,7 +351,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     .types <- list(quote(`f`), quote(`F`), quote(`alag`),
                    quote(`lag`), quote(`dur`), quote(`rate`), NULL)
     .types <- lapply(seq_along(.types),
-                     function(i){
+                     function(i) {
                        .cur <- .types[[i]]
                        if (is.null(.cur)) {
                          as.call(list(.state, 0))
@@ -385,7 +385,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 .modifyModelLines <- function(lines, rxui, modifyIni=FALSE, envir) {
   .err <- NULL
   .env <- environment()
-  lapply(lines, function(line){
+  lapply(lines, function(line) {
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
       .iniHandleFixOrUnfix(line, rxui, envir=envir)
     } else {
@@ -494,7 +494,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 rxUiGet.errParams <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  unlist(lapply(.x$lstExpr[.x$predDf$line], function(x){
+  unlist(lapply(.x$lstExpr[.x$predDf$line], function(x) {
     .getVariablesFromExpression(x[[3]])
   }))
 }

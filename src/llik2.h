@@ -28,12 +28,14 @@ using namespace Rcpp;
 #define isWeibull 11.0
 #define isGamma 12.0
 #define isCauchy 13.0
+#define isNbinomMu 14.0
+#define isNbinom 15.0
 
 typedef struct stanLl {
   Eigen::VectorXd fx;
   Eigen::Matrix<double, -1, -1> J;
 } stanLl;
 
-#define _smallIsOne(x) ((x) < 1e-10 ? 1 : (x))
-#define _smallIsNotZero(x) ((x) < 1e-10 ? 1e-10: (x))
-#define _parIsProb(x) ((x) < 1e-10 ? 1e-10: ((x) > 0.999999999999999 ? 0.999999999999999 :(x)))
+#define _smallIsOne(x) ((x) < sqrt(DBL_EPSILON) ? 1 : (x))
+#define _smallIsNotZero(x) (fabs(x) < sqrt(DBL_EPSILON) ? sqrt(DBL_EPSILON) : (x))
+#define _parIsProb(x) ((x) < sqrt(DBL_EPSILON) ? sqrt(DBL_EPSILON): ((x) > 0.999999999999999 ? 0.999999999999999 :(x)))

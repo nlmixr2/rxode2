@@ -308,6 +308,14 @@ llikGeomInternal <- function(x, p) {
     .Call(`_rxode2_llikGeomInternal`, x, p)
 }
 
+llikNbinomInternal <- function(x, size, prob) {
+    .Call(`_rxode2_llikNbinomInternal`, x, size, prob)
+}
+
+llikNbinomMuInternal <- function(x, size, mu) {
+    .Call(`_rxode2_llikNbinomMuInternal`, x, size, mu)
+}
+
 llikNormInternal <- function(x, mu, sigma) {
     .Call(`_rxode2_llikNormInternal`, x, mu, sigma)
 }
@@ -831,6 +839,14 @@ rxMvrandn_ <- function(A_, mu, sigma, lower, upper, ncores = 1L, a = 0.4, tol = 
 
 rxSeedEng <- function(ncores = 1L) {
     .Call(`_rxode2_rxSeedEng`, ncores)
+}
+
+rxnbinomMu_ <- function(size, mu, n, ncores) {
+    .Call(`_rxode2_rxnbinomMu_`, size, mu, n, ncores)
+}
+
+rxnbinom_ <- function(size, prob, n, ncores) {
+    .Call(`_rxode2_rxnbinom_`, size, prob, n, ncores)
 }
 
 rxbinom_ <- function(n0, prob, n, ncores) {

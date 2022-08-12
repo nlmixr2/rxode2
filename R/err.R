@@ -54,7 +54,11 @@
   "weibull"=1:2,
   "cauchy"= 0,
   "dcauchy"= 0:2,
-  "dgamma"=1:2
+  "dgamma"=1:2,
+  "nbinom"=2,
+  "dnbinom"=2,
+  "nbinomMu"=2,
+  "dnbinomMu"=2
 )
 
 .errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
@@ -82,8 +86,9 @@
   "geom"="dgeom", #9
   "unif"="dunif", #10
   "weibull"="dweibull", #11
-  "cauchy"="dcauchy" #12
-)
+  "cauchy"="dcauchy", #12
+  "nbinom"="dnbinom",
+  "nbinomMu"="dnbinomMu")
 
 .errDistArgRanges <- list(
   "add"=c(0, Inf),
@@ -102,6 +107,10 @@
   "pois"=c(0, Inf),
   "binom"=c(0, Inf),
   "binom2"=c(0, 1),
+  "nbinom"=c(0, Inf),
+  "nbinom2"=c(0, 1),
+  "nbinomMu"=c(0, Inf),
+  "nbinomMu2"=c(0, Inf),
   "bern"=c(0, 1),
   "logitNorm"=c(0, Inf),
   "probitNorm"=c(0, Inf),
@@ -250,23 +259,25 @@ rxPreferredDistributionName <- function(dist) {
 )
 
 .rxDistributionType <- c(
-  "norm", #1
-  "pois", #2
-  "binom", #3
-  "beta", #4
-  "t", #5
-  "chisq", #6
-  "dexp", #7
-  "f", #8
-  "geom", #9
-  "hyper", #10; hyper will not be supported since all the inputs are integers
-  "unif", #11
-  "weibull", #12
-  "cauchy", #13
-  "dgamma", #14
+  "norm",    #  1
+  "pois",    #  2
+  "binom",   #  3
+  "beta",    #  4
+  "t",       #  5
+  "chisq",   #  6
+  "dexp",    #  7
+  "f",       #  8
+  "geom",    #  9
+  "hyper",   # 10; hyper will not be supported since all the inputs are integers
+  "unif",    # 11
+  "weibull", # 12
+  "cauchy",  # 13
+  "dgamma",  # 14
   "ordinal", # 15
-  "LL", #16
-  "dnorm"
+  "LL",      # 16
+  "dnorm",   # 17
+  "nbinom",  # 18 size, prob
+  "nbinomMu"  # 19 size, mu
 )
 
 #' Demote the error type
@@ -625,7 +636,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   unif=c("a", "b"), #11
   weibull=c("a", "b"), #12
   cauchy=c("a", "b"),
-  dgamma=c("a", "b")
+  dgamma=c("a", "b"),
+  nbinom=c("a", "b"),
+  nbinomMu=c("a", "b")
 )
 
 .allowEstimatedParameters <- "ordinal"

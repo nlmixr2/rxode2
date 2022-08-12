@@ -431,6 +431,8 @@
   "t"="llikT",
   "pois"="llikPois",
   "binom"="llikBinom",
+  "nbinom"="llikNbinom",
+  "nbinomMu"="llikNbinomMu",
   "beta"="llikBeta",
   "chisq"="llikChisq",
   "dexp"="llikExp",
