@@ -311,10 +311,7 @@ test_that("log-liklihood tests for nbinom2 (including derivatives)", {
   expect_equal(fromR$dMu, fromOde$dMu)
 
   expect_equal(fromR$fx, dnbinom(fromOde$time, size=100, mu=40, log=TRUE))
-
 })
-
-
 
 test_that("log-liklihood tests for beta (including derivatives)", {
   
