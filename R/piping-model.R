@@ -351,7 +351,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     .types <- list(quote(`f`), quote(`F`), quote(`alag`),
                    quote(`lag`), quote(`dur`), quote(`rate`), NULL)
     .types <- lapply(seq_along(.types),
-                     function(i){
+                     function(i) {
                        .cur <- .types[[i]]
                        if (is.null(.cur)) {
                          as.call(list(.state, 0))
@@ -385,7 +385,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 .modifyModelLines <- function(lines, rxui, modifyIni=FALSE, envir) {
   .err <- NULL
   .env <- environment()
-  lapply(lines, function(line){
+  lapply(lines, function(line) {
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
       .iniHandleFixOrUnfix(line, rxui, envir=envir)
     } else {
@@ -494,7 +494,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
 rxUiGet.errParams <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  unlist(lapply(.x$lstExpr[.x$predDf$line], function(x){
+  unlist(lapply(.x$lstExpr[.x$predDf$line], function(x) {
     .getVariablesFromExpression(x[[3]])
   }))
 }
