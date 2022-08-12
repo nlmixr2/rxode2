@@ -19,6 +19,11 @@ rxnbinomMu(size, mu, n = 1L, ncores = 1L)
 \item{n}{number of observations.  If \code{length(n) > 1}, the length
     is taken to be the number required.}
 
+\item{ncores}{Number of cores for the simulation
+
+\code{rxnorm} simulates using the threefry sitmo generator; \code{rxnormV}
+uses the vandercorput generator}
+
 \item{mu}{alternative parametrization via mean: see \sQuote{Details}.}
 }
 \value{

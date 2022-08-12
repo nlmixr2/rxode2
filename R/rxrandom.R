@@ -604,6 +604,7 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #' Simulate Binomial variable from threefry generator
 #'
 #' @inheritParams stats::rnbinom
+#' @inheritParams rxbinom
 #'
 #' @template birthdayProblem
 #'
