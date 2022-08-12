@@ -823,13 +823,13 @@ RObject rxSeedEng(int ncores = 1){
   return R_NilValue;
 }
 
-extern "C" int rxnbinom2(rx_solving_options_ind* ind, int size, double mu) {
+extern "C" int rxnbinomMu(rx_solving_options_ind* ind, int size, double mu) {
   double p = ((double)size)/(((double)size) + mu);
   std::negative_binomial_distribution<int> d(size, p);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
-extern "C" int rinbinom2(rx_solving_options_ind* ind, int id, int size, double mu){
+extern "C" int rinbinomMu(rx_solving_options_ind* ind, int id, int size, double mu){
   if (ind->isIni == 1) {
     double p = ((double)size)/(((double)size) + mu);
     std::negative_binomial_distribution<int> d(size, p);
@@ -839,7 +839,7 @@ extern "C" int rinbinom2(rx_solving_options_ind* ind, int id, int size, double m
 }
 
 //[[Rcpp::export]]
-IntegerVector rxnbinom2_(int size, double mu, int n, int ncores){
+IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
   IntegerVector ret(n);
   int n2 = ret.size();
   double p = ((double)size)/(((double)size) + mu);

@@ -192,9 +192,9 @@ llikNbinom <- function(x, size, prob, full=FALSE) {
 #' @inheritParams llikNorm
 #'
 #' @details
-#' In an `rxode2()` model, you can use `llikNbinom2()` but you have to
+#' In an `rxode2()` model, you can use `llikNbinomMu()` but you have to
 #' use all arguments.  You can also get the derivative of `mu` with
-#' `llikNbinom2Dmu()`
+#' `llikNbinomMuDmu()`
 #' @return data frame with `fx` for the pdf value of with
 #'   `dProb` that has the derivatives with respect to the parameters at
 #'   the observation time-point
@@ -202,21 +202,21 @@ llikNbinom <- function(x, size, prob, full=FALSE) {
 #' @export 
 #' @examples
 #' 
-#' llikNbinom2(46:54, 100, 40)
+#' llikNbinomMu(46:54, 100, 40)
 #'
-#' llikNbinom2(46:54, 100, 40, TRUE)
+#' llikNbinomMu(46:54, 100, 40, TRUE)
 #'
 #' et <- et(46:54)
 #' et$size <- 100
 #' et$mu <- 40
 #'
 #' model <- rxode2({
-#'   fx <- llikNbinom2(time, size, mu)
-#'   dProb <- llikNbinom2Dmu(time, size, mu)
+#'   fx <- llikNbinomMu(time, size, mu)
+#'   dProb <- llikNbinomMuDmu(time, size, mu)
 #' })
 #'
 #' rxSolve(model, et)
-llikNbinom2 <- function(x, size, mu, full=FALSE) {
+llikNbinomMu <- function(x, size, mu, full=FALSE) {
   checkmate::assertIntegerish(x, min.len=0, lower=0, any.missing=FALSE)
   checkmate::assertIntegerish(size, min.len=0, lower=0, any.missing=FALSE)
   checkmate::assertNumeric(mu, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
@@ -224,7 +224,7 @@ llikNbinom2 <- function(x, size, mu, full=FALSE) {
   if (inherits(.df, "try-error")) {
     stop("incompatible dimensions for x, size, mu", call.=FALSE)
   }
-  .ret <- llikNbinom2Internal(.df$x, .df$size, .df$mu)
+  .ret <- llikNbinomMuInternal(.df$x, .df$size, .df$mu)
   if (full) .ret <- cbind(.df, .ret)
   .ret
 }

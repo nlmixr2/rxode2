@@ -40,7 +40,7 @@ rxode2i_fn2 rxnorm;
 rxode2i_fn2 rxnormV;
 rxode2i_rxbinom rxbinom;
 rxode2i_rxbinom rxnbinom;
-rxode2i_rxbinom rxnbinom2;
+rxode2i_rxbinom rxnbinomMu;
 rxode2i_fn2 rxcauchy;
 rxode2i_fn rxchisq;
 rxode2i_fn rxexp;
@@ -57,7 +57,7 @@ rxode2i2_fn2 rinorm;
 rxode2i2_fn2 rinormV;
 rxode2i2_ribinom ribinom;
 rxode2i2_ribinom rinbinom;
-rxode2i2_ribinom rinbinom2;
+rxode2i2_ribinom rinbinomMu;
 rxode2i2_fn2 ricauchy;
 rxode2i2_fn richisq;
 rxode2i2_fn riexp;
@@ -83,8 +83,8 @@ rxode2_llikBinomFun _llikBinomDprob;
 rxode2_llikBinomFun _llikNbinom;
 rxode2_llikBinomFun _llikNbinomDprob;
 
-rxode2_llikBinomFun _llikNbinom2;
-rxode2_llikBinomFun _llikNbinom2Dmu;
+rxode2_llikBinomFun _llikNbinomMu;
+rxode2_llikBinomFun _llikNbinomMuDmu;
 
 rxode2_llikBetaFun _llikBeta;
 rxode2_llikBetaFun _llikBetaDshape1;
@@ -261,7 +261,7 @@ void _assignFuns0() {
   rxnormV = (rxode2i_fn2)R_GetCCallable("rxode2", "rxnormV");
   rxbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxbinom");
   rxnbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxnbinom");
-  rxnbinom2 = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxnbinom2");
+  rxnbinomMu = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxnbinomMu");
   rxcauchy = (rxode2i_fn2)R_GetCCallable("rxode2","rxcauchy") ;
   rxchisq = (rxode2i_fn)R_GetCCallable("rxode2","rxchisq") ;
   rxexp = (rxode2i_fn)R_GetCCallable("rxode2","rxexp");
@@ -278,7 +278,7 @@ void _assignFuns0() {
   rinormV = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinormV");
   ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom");
   rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom");
-  rinbinom2 = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom2");
+  rinbinomMu = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinomMu");
   ricauchy = (rxode2i2_fn2)R_GetCCallable("rxode2","ricauchy") ;
   richisq = (rxode2i2_fn)R_GetCCallable("rxode2","richisq") ;
   riexp = (rxode2i2_fn)R_GetCCallable("rxode2","riexp");
@@ -322,8 +322,8 @@ void _assignFuns0() {
   _llikNbinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinom");
   _llikNbinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinomDprob");
   
-  _llikNbinom2 = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinom2");
-  _llikNbinom2Dmu = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinom2Dmu");
+  _llikNbinomMu = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinomMu");
+  _llikNbinomMuDmu = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinomMuDmu");
 
   _llikBeta = (rxode2_llikBetaFun)   R_GetCCallable("rxode2", "rxLlikBeta");
   _llikBetaDshape1 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape1");

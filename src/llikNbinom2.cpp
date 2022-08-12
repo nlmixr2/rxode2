@@ -4,10 +4,10 @@
 // Negative Binomial 2
 // R , sigma=scale
 
-struct nbinom2_llik {
+struct nbinomMu_llik {
   const Eigen::VectorXi y_;
   const Eigen::VectorXi N_;
-  nbinom2_llik(const Eigen::VectorXi& y, Eigen::VectorXi& N) : y_(y), N_(N) { }
+  nbinomMu_llik(const Eigen::VectorXi& y, Eigen::VectorXi& N) : y_(y), N_(N) { }
 
   template <typename T>
   Eigen::Matrix<T, -1, 1> operator()(const Eigen::Matrix<T, -1, 1>& theta) const {
@@ -20,8 +20,8 @@ struct nbinom2_llik {
   }
 };
 
-stanLl llik_nbinom2(Eigen::VectorXi& y, Eigen::VectorXi& N, Eigen::VectorXd& params) {
-  nbinom2_llik f(y, N);
+stanLl llik_nbinomMu(Eigen::VectorXi& y, Eigen::VectorXi& N, Eigen::VectorXd& params) {
+  nbinomMu_llik f(y, N);
   Eigen::VectorXd fx;
   Eigen::Matrix<double, -1, -1> J;
   stan::math::jacobian(f, params, fx, J);
@@ -32,8 +32,8 @@ stanLl llik_nbinom2(Eigen::VectorXi& y, Eigen::VectorXi& N, Eigen::VectorXd& par
 }
 
 
-static inline void llikNbinom2Full(double* ret, double x, double size, double mu) {
-  if (ret[0] == isNbinom2 &&
+static inline void llikNbinomMuFull(double* ret, double x, double size, double mu) {
+  if (ret[0] == isNbinomMu &&
       ret[1] == x &&
       ret[2] == size &&
       ret[3] == mu) {
@@ -41,7 +41,7 @@ static inline void llikNbinom2Full(double* ret, double x, double size, double mu
     return;
   }
   if (!R_finite(x) || !R_finite(size) || !R_finite(mu)) {
-    ret[0] = isNbinom2;
+    ret[0] = isNbinomMu;
     ret[1] = x;
     ret[2] = size;
     ret[3] = mu;
@@ -55,8 +55,8 @@ static inline void llikNbinom2Full(double* ret, double x, double size, double mu
   y(0) = (int)(x);
   N(0) = (int)(size);
   params(0) = mu;
-  stanLl ll = llik_nbinom2(y, N, params);
-  ret[0] = isNbinom2;
+  stanLl ll = llik_nbinomMu(y, N, params);
+  ret[0] = isNbinomMu;
   ret[1] = x;
   ret[2] = size;
   ret[3] = mu;
@@ -66,12 +66,12 @@ static inline void llikNbinom2Full(double* ret, double x, double size, double mu
 }
 
 //[[Rcpp::export]]
-Rcpp::DataFrame llikNbinom2Internal(Rcpp::NumericVector x, Rcpp::NumericVector size, Rcpp::NumericVector mu) {
+Rcpp::DataFrame llikNbinomMuInternal(Rcpp::NumericVector x, Rcpp::NumericVector size, Rcpp::NumericVector mu) {
   NumericVector fx(x.size());
   NumericVector dMu(x.size());
   double cur[6];
   for (int j = x.size(); j--;) {
-    llikNbinom2Full(cur, x[j], size[j], mu[j]);
+    llikNbinomMuFull(cur, x[j], size[j], mu[j]);
     fx[j]      = cur[4];
     dMu[j]     = cur[5];
   }
@@ -79,12 +79,12 @@ Rcpp::DataFrame llikNbinom2Internal(Rcpp::NumericVector x, Rcpp::NumericVector s
                                  _["dMu"]=dMu);
 }
 
-extern "C" double rxLlikNbinom2(double* ret, double x, double size, double mu) {
-  llikNbinom2Full(ret, x, size, mu);
+extern "C" double rxLlikNbinomMu(double* ret, double x, double size, double mu) {
+  llikNbinomMuFull(ret, x, size, mu);
   return ret[4];
 }
 
-extern "C" double rxLlikNbinom2Dmu(double* ret, double x, double size, double mu) {
-  llikNbinom2Full(ret, x, size, mu);
+extern "C" double rxLlikNbinomMuDmu(double* ret, double x, double size, double mu) {
+  llikNbinomMuFull(ret, x, size, mu);
   return ret[5];
 }

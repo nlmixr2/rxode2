@@ -624,8 +624,72 @@ rxTest({
       expect_true(all(.rx3$params$eta.cl == 0))
       expect_true(all(.rx3$params$eta.v == 0))
 
-
     })
 
   })
+
+  test_that("negative binomial simulation", {
+
+    f <- function() {
+      ini({
+        tn <- 0.5
+        eta.n ~ 0.01
+        prob <- logit(0.45)
+      })
+      model({
+        n <- exp(tn + eta.n)
+        p <- expit(prob)
+        err ~ dnbinom(n, p) 
+      })
+    }
+
+    tmp <- rxode2(f)
+    expect_error(tmp$simulationModel, NA)
+    expect_true(regexpr("rxnbinom[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
+
+
+    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+      et(id=1:20) %>%
+      dplyr::as_tibble()
+
+    rxWithPreserveSeed({
+      expect_error(rxSolve(tmp, ev,
+                           returnType="tibble", addCov=TRUE), NA)
+    })
+    
+  })
+
+  test_that("negative binomial simulation", {
+
+    f <- function() {
+      ini({
+        tn <- 0.5
+        eta.n ~ 0.01
+        prob <- logit(0.45)
+      })
+      model({
+        n <- exp(tn + eta.n)
+        p <- expit(prob)
+        err ~ dnbinomMu(n, p) 
+      })
+    }
+
+    tmp <- rxode2(f)
+    
+    expect_error(tmp$simulationModel, NA)
+    expect_true(regexpr("rxnbinomMu[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
+
+
+    ev <- et(seq(0.1, 24 * 8, by=12)) %>%
+      et(id=1:20) %>%
+      dplyr::as_tibble()
+
+    rxWithPreserveSeed({
+      expect_error(rxSolve(tmp, ev,
+                           returnType="tibble", addCov=TRUE), NA)
+    })
+    
+  })
+
+
 })

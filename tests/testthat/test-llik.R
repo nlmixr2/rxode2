@@ -257,52 +257,52 @@ test_that("log-liklihood tests for nbinom (including derivatives)", {
 })
 
 
-test_that("log-liklihood tests for nbinom2 (including derivatives)", {
+test_that("log-liklihood tests for NbinomMu (including derivatives)", {
 
   # Make sure they compile:
-  expect_error(rxode2("tmp=llikNbinom2(x, size, mu)"), NA)
-  expect_error(rxode2("tmp=llikNbinom2Dmu(x, size, mu)"), NA)
+  expect_error(rxode2("tmp=llikNbinomMu(x, size, mu)"), NA)
+  expect_error(rxode2("tmp=llikNbinomMuDmu(x, size, mu)"), NA)
 
-  expect_error(rxode2("tmp=llikXNbinom2(1, x, size, mu)"), NA)
-  expect_error(rxode2("tmp=llikXNbinom2Dmu(1, x, size, mu)"), NA)
+  expect_error(rxode2("tmp=llikXNbinomMu(1, x, size, mu)"), NA)
+  expect_error(rxode2("tmp=llikXNbinomMuDmu(1, x, size, mu)"), NA)
 
 
   # Make sure they translate correctly:
-  expect_equal(rxToSE("llikNbinom2(x, size, mu)"), "llikNbinom2(x,size,mu)")
-  expect_equal(rxToSE("llikNbinom2Dmu(x, size, mu)"), "llikNbinom2Dmu(x,size,mu)")
-  expect_equal(rxFromSE("llikNbinom2(x, size, mu)"), "llikNbinom2(x,size,mu)")
+  expect_equal(rxToSE("llikNbinomMu(x, size, mu)"), "llikNbinomMu(x,size,mu)")
+  expect_equal(rxToSE("llikNbinomMuDmu(x, size, mu)"), "llikNbinomMuDmu(x,size,mu)")
+  expect_equal(rxFromSE("llikNbinomMu(x, size, mu)"), "llikNbinomMu(x,size,mu)")
 
-  expect_equal(rxToSE("llikXNbinom2(i,x, size, mu)"), "llikXNbinom2(i,x,size,mu)")
-  expect_equal(rxToSE("llikXNbinom2Dmu(i,x, size, mu)"), "llikXNbinom2Dmu(i,x,size,mu)")
-  expect_equal(rxFromSE("llikXNbinom2(i,x, size, mu)"), "llikXNbinom2(i,x,size,mu)")
+  expect_equal(rxToSE("llikXNbinomMu(i,x, size, mu)"), "llikXNbinomMu(i,x,size,mu)")
+  expect_equal(rxToSE("llikXNbinomMuDmu(i,x, size, mu)"), "llikXNbinomMuDmu(i,x,size,mu)")
+  expect_equal(rxFromSE("llikXNbinomMu(i,x, size, mu)"), "llikXNbinomMu(i,x,size,mu)")
 
   # Check the derivatives
 
   # this is forward difference with no correction
-  expect_equal(rxFromSE("Derivative(llikNbinom2(x,size,mu),size)"),"0")
-  expect_equal(rxFromSE("Derivative(llikNbinom2(x,size, mu),mu)"), "llikNbinom2Dmu(x, size, mu)")
+  expect_equal(rxFromSE("Derivative(llikNbinomMu(x,size,mu),size)"),"0")
+  expect_equal(rxFromSE("Derivative(llikNbinomMu(x,size, mu),mu)"), "llikNbinomMuDmu(x, size, mu)")
 
-  expect_equal(rxFromSE("Derivative(llikXNbinom2(i,x,size,mu),size)"),"0")
-  expect_equal(rxFromSE("Derivative(llikXNbinom2(i,x,size, mu),mu)"), "llikXNbinom2Dmu(i, x, size, mu)")
+  expect_equal(rxFromSE("Derivative(llikXNbinomMu(i,x,size,mu),size)"),"0")
+  expect_equal(rxFromSE("Derivative(llikXNbinomMu(i,x,size, mu),mu)"), "llikXNbinomMuDmu(i, x, size, mu)")
 
   et <- et(0:10)
   et$size <- 100
   et$mu <- 40
 
   model <- rxode2({
-    fx <- llikNbinom2(time, size, mu)
-    dMu <- llikNbinom2Dmu(time, size, mu)
+    fx <- llikNbinomMu(time, size, mu)
+    dMu <- llikNbinomMuDmu(time, size, mu)
   })
 
   modelX <- rxode2({
-    fx <- llikXNbinom2(1, time, size, mu)
-    dMu <- llikXNbinom2Dmu(1, time, size, mu)
+    fx <- llikXNbinomMu(1, time, size, mu)
+    dMu <- llikXNbinomMuDmu(1, time, size, mu)
   })
 
   fromOde <- rxSolve(model, et)
   fromOdeX <- rxSolve(modelX, et)
 
-  fromR <- llikNbinom2(et$time, et$size, et$mu, full=TRUE)
+  fromR <- llikNbinomMu(et$time, et$size, et$mu, full=TRUE)
 
   expect_equal(fromR$fx, fromOde$fx)
   expect_equal(fromR$dMu, fromOde$dMu)

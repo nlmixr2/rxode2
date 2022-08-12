@@ -28,7 +28,7 @@ using namespace Rcpp;
 #define isWeibull 11.0
 #define isGamma 12.0
 #define isCauchy 13.0
-#define isNbinom2 14.0
+#define isNbinomMu 14.0
 #define isNbinom 15.0
 
 typedef struct stanLl {

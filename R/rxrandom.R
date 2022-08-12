@@ -621,7 +621,7 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #' rxnbinom(4, 0.7)
 #'
 #' # use mu parameter
-#' rxnbinom2(40, 40, n=10)
+#' rxnbinomMu(40, 40, n=10)
 #'
 #' ## This example uses `rxbinom` directly in the model
 #'
@@ -634,7 +634,7 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #' s <- rxSolve(rx, et)
 #'
 #' rx <- rxode2({
-#'   a <- rxnbinom2(10, 40)
+#'   a <- rxnbinomMu(10, 40)
 #' })
 #'
 #'  s <- rxSolve(rx, et)
@@ -652,13 +652,13 @@ rxnbinom <- function(size, prob, n = 1L, ncores = 1L) {
 
 ##' @rdname rxnbinom
 ##' @export
-rxnbinom2 <- function(size, mu, n = 1L, ncores = 1L) {
+rxnbinomMu <- function(size, mu, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(mu, len = 1, lower = 0)
   checkmate::assertCount(size)
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_rxode2_rxnbinom2_`, size, mu, n, ncores)
+  .Call(`_rxode2_rxnbinomMu_`, size, mu, n, ncores)
 }
 
 

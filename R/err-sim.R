@@ -36,7 +36,9 @@ rxGetDistributionSimulationLines <- function(line) {
   "weibull"="rweibull",
   "cauchy"="rcauchy",
   "dgamma"="rgamma",
-  "ordinal"="rordinal"
+  "ordinal"="rordinal",
+  "nbinom"="rnbinom",
+  "nbinomMu"="rnbinomMu"
 )
 
 .getQuotedDistributionAndSimulationArgs <- function(line) {
@@ -63,7 +65,6 @@ rxGetDistributionSimulationLines <- function(line) {
       }
     }
   }, character(1))
-
 
   as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), str2lang))
 }

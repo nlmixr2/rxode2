@@ -163,8 +163,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikBinomDprob"=3,
   "llikNbinom"=3,
   "llikNbinomDprob"=3,
-  "llikNbinom2"=3,
-  "llikNbinom2Dmu"=3,
+  "llikNbinomMu"=3,
+  "llikNbinomMuDmu"=3,
   "llikBeta"=3,
   "llikBetaDshape1"=3,
   "llikBetaDshape2"=3,
@@ -201,8 +201,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "llikXPoisDlambda"=3,
   "llikXBinom"=4,
   "llikXBinomDprob"=4,
-  "llikXNbinom2"=4,
-  "llikXNbinom2Dmu"=4,
+  "llikXNbinomMu"=4,
+  "llikXNbinomMuDmu"=4,
   "llikXNbinom"=4,
   "llikXNbinomDprob"=4,
   "llikXBeta"=4,
@@ -554,7 +554,7 @@ rxRmFun <- function(name) {
   }
 )
 
-.rxD$llikNbinom2 <- list(
+.rxD$llikNbinomMu <- list(
   function(x, size, mu) {
     "0"
   },
@@ -562,11 +562,11 @@ rxRmFun <- function(name) {
     "0"
   },
   function(x, size, mu) {
-    paste0("llikNbinom2Dmu(",paste(c(x, size, mu), collapse=", "), ")")
+    paste0("llikNbinomMuDmu(",paste(c(x, size, mu), collapse=", "), ")")
   }
 )
 
-.rxD$llikXNbinom2 <- list(
+.rxD$llikXNbinomMu <- list(
   NULL,
   function(i, x, size, mu) {
     "0"
@@ -575,7 +575,7 @@ rxRmFun <- function(name) {
     "0"
   },
   function(i, x, size, mu) {
-    paste0("llikXNbinom2Dmu(",paste(c(i, x, size, mu), collapse=", "), ")")
+    paste0("llikXNbinomMuDmu(",paste(c(i, x, size, mu), collapse=", "), ")")
   }
 )
 

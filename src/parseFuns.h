@@ -212,7 +212,7 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
     handleFunctionRgeom(tf) ||
     handleFunctionRbinom(tf) ||
     handleFunctionRnbinom(tf) ||
-    handleFunctionRnbinom2(tf) ||
+    handleFunctionRnbinomMu(tf) ||
     handleFunctionIsNan(tf) ||
     handleFunctionIsNa(tf) ||
     handleFunctionIsFinite(tf) ||

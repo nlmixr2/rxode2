@@ -1179,17 +1179,17 @@ namespace rxode2 {
         return Rcpp::as<RObject >(rcpp_result_gen);
     }
 
-    inline IntegerVector rxnbinom2_(int size, double mu, int n, int ncores) {
-        typedef SEXP(*Ptr_rxnbinom2_)(SEXP,SEXP,SEXP,SEXP);
-        static Ptr_rxnbinom2_ p_rxnbinom2_ = NULL;
-        if (p_rxnbinom2_ == NULL) {
-            validateSignature("IntegerVector(*rxnbinom2_)(int,double,int,int)");
-            p_rxnbinom2_ = (Ptr_rxnbinom2_)R_GetCCallable("rxode2", "_rxode2_rxnbinom2_");
+    inline IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores) {
+        typedef SEXP(*Ptr_rxnbinomMu_)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rxnbinomMu_ p_rxnbinomMu_ = NULL;
+        if (p_rxnbinomMu_ == NULL) {
+            validateSignature("IntegerVector(*rxnbinomMu_)(int,double,int,int)");
+            p_rxnbinomMu_ = (Ptr_rxnbinomMu_)R_GetCCallable("rxode2", "_rxode2_rxnbinomMu_");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_rxnbinom2_(Shield<SEXP>(Rcpp::wrap(size)), Shield<SEXP>(Rcpp::wrap(mu)), Shield<SEXP>(Rcpp::wrap(n)), Shield<SEXP>(Rcpp::wrap(ncores)));
+            rcpp_result_gen = p_rxnbinomMu_(Shield<SEXP>(Rcpp::wrap(size)), Shield<SEXP>(Rcpp::wrap(mu)), Shield<SEXP>(Rcpp::wrap(n)), Shield<SEXP>(Rcpp::wrap(ncores)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

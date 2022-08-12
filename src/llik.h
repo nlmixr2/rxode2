@@ -15,8 +15,8 @@ extern "C" {
   double rxLlikBinom(double* ret, double x, double size, double prob);
   double rxLlikBinomDprob(double* ret, double x, double size, double prob);
 
-  double rxLlikNbinom2(double* ret, double x, double size, double mu);
-  double rxLlikNbinom2Dmu(double* ret, double x, double size, double mu);
+  double rxLlikNbinomMu(double* ret, double x, double size, double mu);
+  double rxLlikNbinomMuDmu(double* ret, double x, double size, double mu);
 
   double rxLlikNbinom(double* ret, double x, double size, double prob);
   double rxLlikNbinomDprob(double* ret, double x, double size, double prob);

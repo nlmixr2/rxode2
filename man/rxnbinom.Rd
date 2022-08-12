@@ -2,12 +2,12 @@
 % Please edit documentation in R/rxrandom.R
 \name{rxnbinom}
 \alias{rxnbinom}
-\alias{rxnbinom2}
+\alias{rxnbinomMu}
 \title{Simulate Binomial variable from threefry generator}
 \usage{
 rxnbinom(size, prob, n = 1L, ncores = 1L)
 
-rxnbinom2(size, mu, n = 1L, ncores = 1L)
+rxnbinomMu(size, mu, n = 1L, ncores = 1L)
 }
 \arguments{
 \item{size}{target for number of successful trials, or dispersion
@@ -58,7 +58,7 @@ rxnbinom(3, 0.5, n = 10, ncores = 2) # You can parallelize the simulation using 
 rxnbinom(4, 0.7)
 
 # use mu parameter
-rxnbinom2(40, 40, n=10)
+rxnbinomMu(40, 40, n=10)
 
 ## This example uses `rxbinom` directly in the model
 
@@ -71,7 +71,7 @@ et <- et(1, id = 1:100)
 s <- rxSolve(rx, et)
 
 rx <- rxode2({
-  a <- rxnbinom2(10, 40)
+  a <- rxnbinomMu(10, 40)
 })
 
  s <- rxSolve(rx, et)
