@@ -173,16 +173,18 @@ double _rxord(int _cSub, unsigned int n,  ...) {
   double ret = 0.0;
   double p = 0.0;
   double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
+  int found = 0;
   for (unsigned int i = 0; i < n; i++) {
     p += va_arg(valist, double);
-    if (ret < 1e-6) {
+    if (!found) {
       if (u < p) {
         ret = (double)(i+1);
+        found = 1;
       }
     }
   }
   if (p >= 1) ret = NA_REAL;
-  else if (ret < 1e-6) ret = (double)(n+1);
+  else if (!found) ret =(double)(n+1);
   va_end(valist);
   return ret;
 }
