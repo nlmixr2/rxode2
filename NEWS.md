@@ -7,13 +7,37 @@
   be used. It is also aligned with the `llikGamma` function used for
   generalized likelihood estimation.
 
+- ui `cauchy` simulations now follow the ui for `normal` and `t`
+  distributions, which means you can combine with transformations.
+  This is because the `cauchy` is a `t` distribution with one degree
+  of freedom.
+
+- ui `dnorm()` and `norm()` are no longer equivalent to `add()`.  Now
+  it allows you to use the loglik `llikNorm()` instead of the standard
+  `nlmixr2` style focei likelihood.  This is done by adding `dnorm()`
+  at the end of the line.  It also means `dnorm()` now doesn't take
+  any arguments.
+
 ** New features
 
 - Allow models in the `nlmixr2` form without an `ini({})` block
 
+- Allow model piping of an omega matrix by `f %>% ini(omegaMatrix)`
+
 - Families of log-likelihood were added to `rxode2` so that mixed
-  likelihood nonlinear mixed effects models may be specified and run
-  in the future.
+  likelihood nonlinear mixed effects models may be specified and run.
+
+- The memory footprint of a `rxode2` solving has been reduced
+
+** Bug fixes
+
+- `rxode2`'s symengine would convert `sqrt(2)` to `M_SQRT_2` when it
+  should be `M_SQRT2`.  This has been fixed; it was most noticeable in
+  nlmixr2 log-likelihood estimation methods
+  
+- `rxode2` treats `DV` as a non-covariate with `etTran` (last time it
+  would duplicate if it is in the model).  This is most noticable in
+  the nlmixr2 log-likelihood estimation methods.
 
 # rxode2 2.0.7
 

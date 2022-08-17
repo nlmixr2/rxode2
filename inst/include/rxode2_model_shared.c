@@ -39,6 +39,8 @@ rxode2_fn2 gammaqInva;
 rxode2i_fn2 rxnorm;
 rxode2i_fn2 rxnormV;
 rxode2i_rxbinom rxbinom;
+rxode2i_rxbinom rxnbinom;
+rxode2i_rxbinom rxnbinomMu;
 rxode2i_fn2 rxcauchy;
 rxode2i_fn rxchisq;
 rxode2i_fn rxexp;
@@ -54,6 +56,8 @@ rxode2i_fn2 rxweibull;
 rxode2i2_fn2 rinorm;
 rxode2i2_fn2 rinormV;
 rxode2i2_ribinom ribinom;
+rxode2i2_ribinom rinbinom;
+rxode2i2_ribinom rinbinomMu;
 rxode2i2_fn2 ricauchy;
 rxode2i2_fn richisq;
 rxode2i2_fn riexp;
@@ -75,6 +79,12 @@ rxode2_llikPoisFun _llikPoisDlambda;
 
 rxode2_llikBinomFun _llikBinom;
 rxode2_llikBinomFun _llikBinomDprob;
+
+rxode2_llikBinomFun _llikNbinom;
+rxode2_llikBinomFun _llikNbinomDprob;
+
+rxode2_llikBinomFun _llikNbinomMu;
+rxode2_llikBinomFun _llikNbinomMuDmu;
 
 rxode2_llikBetaFun _llikBeta;
 rxode2_llikBetaFun _llikBetaDshape1;
@@ -110,6 +120,9 @@ rxode2_llikGammaFun _llikGamma;
 rxode2_llikGammaFun _llikGammaDshape;
 rxode2_llikGammaFun _llikGammaDrate;
 
+rxode2_llikCauchyFun _llikCauchy;
+rxode2_llikCauchyFun _llikCauchyDlocation;
+rxode2_llikCauchyFun _llikCauchyDscale;
 
 
 rxode2_compareFactorVal_fn _compareFactorVal;
@@ -160,16 +173,18 @@ double _rxord(int _cSub, unsigned int n,  ...) {
   double ret = 0.0;
   double p = 0.0;
   double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
+  int found = 0;
   for (unsigned int i = 0; i < n; i++) {
     p += va_arg(valist, double);
-    if (ret < 1e-6) {
+    if (!found) {
       if (u < p) {
         ret = (double)(i+1);
+        found = 1;
       }
     }
   }
   if (p >= 1) ret = NA_REAL;
-  else if (ret < 1e-6) ret = (double)(n+1);
+  else if (!found) ret =(double)(n+1);
   va_end(valist);
   return ret;
 }
@@ -246,7 +261,9 @@ void _assignFuns0() {
     
   rxnorm = (rxode2i_fn2)R_GetCCallable("rxode2", "rxnorm");
   rxnormV = (rxode2i_fn2)R_GetCCallable("rxode2", "rxnormV");
-  rxbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxbinom") ;
+  rxbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxbinom");
+  rxnbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxnbinom");
+  rxnbinomMu = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxnbinomMu");
   rxcauchy = (rxode2i_fn2)R_GetCCallable("rxode2","rxcauchy") ;
   rxchisq = (rxode2i_fn)R_GetCCallable("rxode2","rxchisq") ;
   rxexp = (rxode2i_fn)R_GetCCallable("rxode2","rxexp");
@@ -261,7 +278,9 @@ void _assignFuns0() {
 
   rinorm = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinorm");
   rinormV = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinormV");
-  ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom") ;
+  ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom");
+  rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom");
+  rinbinomMu = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinomMu");
   ricauchy = (rxode2i2_fn2)R_GetCCallable("rxode2","ricauchy") ;
   richisq = (rxode2i2_fn)R_GetCCallable("rxode2","richisq") ;
   riexp = (rxode2i2_fn)R_GetCCallable("rxode2","riexp");
@@ -302,6 +321,12 @@ void _assignFuns0() {
   _llikBinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinom");
   _llikBinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikBinomDprob");
 
+  _llikNbinom = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinom");
+  _llikNbinomDprob = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinomDprob");
+  
+  _llikNbinomMu = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinomMu");
+  _llikNbinomMuDmu = (rxode2_llikBinomFun) R_GetCCallable("rxode2", "rxLlikNbinomMuDmu");
+
   _llikBeta = (rxode2_llikBetaFun)   R_GetCCallable("rxode2", "rxLlikBeta");
   _llikBetaDshape1 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape1");
   _llikBetaDshape2 = (rxode2_llikBetaFun) R_GetCCallable("rxode2", "rxLlikBetaDshape2");
@@ -334,6 +359,11 @@ void _assignFuns0() {
   _llikGamma        = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGamma");
   _llikGammaDshape  = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDshape");
   _llikGammaDrate   = (rxode2_llikGammaFun) R_GetCCallable("rxode2", "rxLlikGammaDrate");
+
+  _llikCauchy        = (rxode2_llikCauchyFun) R_GetCCallable("rxode2", "rxLlikCauchy");
+  _llikCauchyDlocation  = (rxode2_llikCauchyFun) R_GetCCallable("rxode2", "rxLlikCauchyDlocation");
+  _llikCauchyDscale   = (rxode2_llikCauchyFun) R_GetCCallable("rxode2", "rxLlikCauchyDscale");
+
 
   _solveData = _getRxSolve_();
 }

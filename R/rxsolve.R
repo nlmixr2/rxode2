@@ -622,6 +622,15 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'   cores. This is the reason this is set to be one, regardless of
 #'   what the number of cores are used in threaded ODE solving.
 #'
+#' @param nLlikAlloc The number of log likelihood endpoints that are
+#'   used in the model.  This allows independent lliklihood per
+#'   endpoint in focei for nlmixr2.  It likely shouldn't be set,
+#'   though it won't hurt anything if you do (just may take up more
+#'   memory for larger allocations).
+#'
+#' @param useStdPow This uses C's `pow` for exponentiation instead of
+#'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -729,7 +738,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     rtolSens = 1.0e-6,
                     ssAtolSens=1.0e-8,
                     ssRtolSens=1.0e-6,
-                    simVariability=NA) {
+                    simVariability=NA,
+                    nLlikAlloc=NULL,
+                    useStdPow=FALSE) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -748,8 +759,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         stop("'transitAbs' is no longer supported, use 'evid=7' instead",
              call.=FALSE)
       }
-      stop("unused argument: ", paste
-      (paste0("'", .bad, "'", sep=""), collapse=", "),
+      stop("unused argument: ",
+           paste(paste0("'", .bad, "'", sep=""), collapse=", "),
            call.=FALSE)
     }
     if (checkmate::testIntegerish(sigmaXform, len=1L, lower=1L, upper=6L, any.missing=FALSE)) {
@@ -869,7 +880,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (is.null(scale)) {
     } else if (is.list(scale)) {
       checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
-      lapply(names(scale), function(n){
+      lapply(names(scale), function(n) {
         checkmate::assertNumeric(scale[[n]], lower=0, finite=TRUE, any.missing=FALSE, len=1, .var.name=n)
       })
     } else {
@@ -981,6 +992,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     checkmate::assertLogical(resampleID, null.ok=FALSE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(maxwhile, lower=20, len=1)
+    if (!is.null(nLlikAlloc)) {
+      checkmate::assertIntegerish(nLlikAlloc, lower=1, len=1, any.missing=FALSE)
+    }
+    if (checkmate::testLogical(useStdPow)) {
+      checkmate::assertLogical(useStdPow, len=1, any.missing=FALSE)
+    } else {
+      checkmate::assertIntegerish(useStdPow, lower=0, upper=1, len=1, any.missing=FALSE)
+    }
+    useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .ret <- list(
       scale = scale, #
@@ -1068,7 +1088,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       rtolSens = rtolSens,
       ssAtolSens=ssAtolSens,
       ssRtolSens=ssRtolSens,
-      simVariability=simVariability
+      simVariability=simVariability,
+      nLlikAlloc=nLlikAlloc,
+      useStdPow=useStdPow
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -1175,10 +1197,14 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
   if (exists("control", envir=.env)) {
     .oldControl <- get("control", envir=.env)
     assign("control", .rxControl, envir=.env)
-    on.exit({assign("control", .oldControl, envir=.env)})
+    on.exit({
+      assign("control", .oldControl, envir=.env)
+    })
   } else {
     assign("control", .rxControl, envir=.env)
-    on.exit({rm(list="control", envir=.env)})
+    on.exit({
+      rm(list="control", envir=.env)
+    })
   }
   .rxControl <- object$rxControlWithVar
   .lst[[2]] <- .rxControl
@@ -1397,9 +1423,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .ctl$keepF <- .keepF
   rxSolveFree()
 
-
-
-  if (!is.null(theta) | !is.null(eta)) {
+  if (!is.null(theta) || !is.null(eta)) {
     .theta <- theta
     .eta <- eta
     if (!is.null(.theta)) {

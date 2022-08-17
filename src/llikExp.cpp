@@ -33,10 +33,18 @@ static inline void llikExpFull(double* ret, double x, double rate) {
     // Assume this is the same
     return;
   }
+  if (!R_finite(x) || !R_finite(rate)) {
+    ret[0] = isExp;
+    ret[1] = x;
+    ret[2] = rate;
+    ret[3] = NA_REAL;
+    ret[4] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(1);
   y(0) = x;
-  params(0) = rate;
+  params(0) = _smallIsNotZero(rate);
   stanLl ll = llik_exp(y, params);
   ret[0] = isExp;
   ret[1] = x;

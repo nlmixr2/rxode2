@@ -534,6 +534,7 @@ rxSumProdProd <- FALSE
 
 
 sumProdEnv[["^"]] <- binaryOp("^")
+
 sumProdEnv[["**"]] <- binaryOp("^")
 
 sumProdEnv[["*"]] <- function(a, b) {
@@ -582,7 +583,7 @@ sumProdEnv[["-"]] <- function(a, b) {
     if (!missing(b)) {
       b <- .dslStripParen(b)
       sprintf(
-        "sum(%s, -%s)",
+        "sum(%s, -(%s))",
         sub(
           rex::rex(start, "sum(", capture(anything), ")", end),
           "\\1", a
@@ -601,8 +602,32 @@ sumProdEnv[["-"]] <- function(a, b) {
   }
 }
 
+sumProdEnv[["=="]] <- function(a, b) {
+  return(sprintf("(%s == %s)", a, b))
+}
+
+sumProdEnv[["!="]] <- function(a, b) {
+  return(sprintf("(%s != %s)", a, b))
+}
+
+sumProdEnv[[">"]] <- function(a, b) {
+  return(sprintf("(%s > %s)", a, b))
+}
+
+sumProdEnv[["<"]] <- function(a, b) {
+  return(sprintf("(%s < %s)", a, b))
+}
+
+sumProdEnv[["<="]] <- function(a, b) {
+  return(sprintf("(%s <= %s)", a, b))
+}
+
+sumProdEnv[[">="]] <- function(a, b) {
+  return(sprintf("(%s >= %s)", a, b))
+}
+
 sumProdEnv[["("]] <- function(a) {
-  return(sprintf("%s", a))
+  return(sprintf("(%s)", a))
 }
 
 sumProdEnv[["["]] <- function(name, val) {
@@ -652,23 +677,33 @@ rxSumProdModel <- function(model, expand = FALSE, sum = TRUE, prod = TRUE) {
   rxReq("symengine")
   assignInMyNamespace("rxSumProdSum", sum)
   assignInMyNamespace("rxSumProdProd", prod)
-  lines <- strsplit(rxNorm(model), "\n")[[1]]
-  for (i in seq_along(lines)) {
-    if (regexpr("[=~]", lines[i]) != -1) {
-      type <- sub(".*([=~]).*", "\\1", lines[i])
-      l0 <- strsplit(lines[i], "[=~]")[[1]]
-      l2 <- substr(l0[2], 1, nchar(l0[2]) - 1)
+  on.exit({
+    assignInMyNamespace("rxSumProdSum", FALSE)
+    assignInMyNamespace("rxSumProdProd", FALSE)
+  })
+  .lines <- str2lang(paste0("{",rxNorm(model), "}"))
+  .ret <- character(length(.lines) - 1)
+  for (i in seq_along(.lines)[-1]) {
+    .cur <- .lines[[i]]
+    if (identical(.cur[[1]], quote(`=`)) ||
+          identical(.cur[[1]], quote(`~`))) {
       if (expand) {
-        l2 <- rxToSE(l2)
-        l2 <- symengine::S(l2)
-        l2 <- rxFromSE(l2)
+        .l2 <- deparse1(.cur[[3]])
+        .l2 <- rxToSE(.l2)
+        .l2 <- symengine::S(.l2)
+        .l2 <- rxFromSE(.l2)
+        .l2 <- str2lang(.l2)
+      } else {
+        .l2 <- .cur[[3]]
       }
-      l0[2] <- eval(parse(text = sprintf("rxSumProd(quote(%s))", l2)))
-      lines[i] <- paste0(paste0(l0[1], type, l0[2]))
+      .l3 <- eval(bquote(rxSumProd(quote(.(.l2)))))
+      if (inherits(.l3, "character")) {
+        .cur[[3]] <- str2lang(.l3)
+      }
     }
+    .ret[i-1] <- deparse1(.cur)
   }
-  mod <- paste(lines, collapse = "\n")
-  return(mod)
+  paste(.ret, collapse = "\n")
 }
 
 rm(f)

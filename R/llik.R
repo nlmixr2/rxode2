@@ -90,7 +90,7 @@ llikPois <- function(x, lambda, full=FALSE) {
   .ret
 }
 
-#' Calculate the log liklihood aof the binomial function (and its derivatives)
+#' Calculate the log liklihood of the binomial function (and its derivatives)
 #'
 #' 
 #' @param x  Number of successes
@@ -133,6 +133,98 @@ llikBinom <- function(x, size, prob, full=FALSE) {
     stop("incompatible dimensions for x, size, prob", call.=FALSE)
   }
   .ret <- llikBinomInternal(.df$x, .df$size, .df$prob)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
+
+#' Calculate the log liklihood of the negative binomial function (and its derivatives)
+#' 
+#' @param x  Number of successes
+#' @param size Size of trial
+#' @param prob probability of success
+#' 
+#' @inheritParams llikNorm
+#'
+#' @details
+#' In an `rxode2()` model, you can use `llikNbinom()` but you have to
+#' use all arguments.  You can also get the derivative of `prob` with
+#' `llikNbinomDprob()`
+#' @return data frame with `fx` for the pdf value of with
+#'   `dProb` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#' 
+#' llikNbinom(46:54, 100, 0.5)
+#'
+#' llikNbinom(46:54, 100, 0.5, TRUE)
+#'
+#' et <- et(46:54)
+#' et$size <- 100
+#' et$prob <-0.5
+#'
+#' model <- rxode2({
+#'   fx <- llikNbinom(time, size, prob)
+#'   dProb <- llikNbinomDprob(time, size, prob)
+#' })
+#'
+#' rxSolve(model, et)
+llikNbinom <- function(x, size, prob, full=FALSE) {
+  checkmate::assertIntegerish(x, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertIntegerish(size, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertNumeric(prob, min.len=0, lower=0, upper=1, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, size=size, prob=prob), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, size, prob", call.=FALSE)
+  }
+  .ret <- llikNbinomInternal(.df$x, .df$size, .df$prob)
+  if (full) .ret <- cbind(.df, .ret)
+  .ret
+}
+
+#' Calculate the log liklihood of the negative binomial function (and its derivatives)
+#' 
+#' @param x  Number of successes
+#' @param size Size of trial
+#' @param mu mu parameter for negative binomial
+#' 
+#' @inheritParams llikNorm
+#'
+#' @details
+#' In an `rxode2()` model, you can use `llikNbinomMu()` but you have to
+#' use all arguments.  You can also get the derivative of `mu` with
+#' `llikNbinomMuDmu()`
+#' @return data frame with `fx` for the pdf value of with
+#'   `dProb` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#' 
+#' llikNbinomMu(46:54, 100, 40)
+#'
+#' llikNbinomMu(46:54, 100, 40, TRUE)
+#'
+#' et <- et(46:54)
+#' et$size <- 100
+#' et$mu <- 40
+#'
+#' model <- rxode2({
+#'   fx <- llikNbinomMu(time, size, mu)
+#'   dProb <- llikNbinomMuDmu(time, size, mu)
+#' })
+#'
+#' rxSolve(model, et)
+llikNbinomMu <- function(x, size, mu, full=FALSE) {
+  checkmate::assertIntegerish(x, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertIntegerish(size, min.len=0, lower=0, any.missing=FALSE)
+  checkmate::assertNumeric(mu, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, size=size, mu=mu), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, size, mu", call.=FALSE)
+  }
+  .ret <- llikNbinomMuInternal(.df$x, .df$size, .df$mu)
   if (full) .ret <- cbind(.df, .ret)
   .ret
 }
@@ -568,5 +660,54 @@ llikGamma <-function(x, shape, rate, full=FALSE) {
   }
   .ret <- llikGammaInternal(.rate$x, .rate$shape, .rate$rate)
   if (full) .ret <- cbind(.rate, .ret)
+  .ret
+}
+
+
+#' log likelihood of Cauchy distribution and it's derivatives (from stan) 
+#'
+#' @param x  Observation
+#' @inheritParams llikNorm
+#' @inheritParams stats::dnorm
+#' @inheritParams stats::dcauchy
+#' @return data frame with `fx` for the log pdf value of with 
+#'   `dLocation` and `dScale` that has the derivatives with respect to the parameters at
+#'   the observation time-point
+#' @author Matthew L. Fidler
+#' @details
+#' In an `rxode2()` model, you can use `llikCauchy()` but you have to
+#' use all arguments.  You can also get the derivative of `location` and `scale` with
+#' `llikCauchyDlocation()` and `llikCauchyDscale()`.
+#' @export 
+#' @examples
+#'
+#' x <- seq(-3, 3, length.out = 21)
+#'
+#' llikCauchy(x, 0, 1)
+#'
+#' llikCauchy(x, 3, 1, full=TRUE)
+#'
+#'  et <- et(-3, 3, length.out=10)
+#'  et$location <- 0
+#'  et$scale <- 1
+#'
+#'  model <- rxode2({
+#'    fx <- llikCauchy(time, location, scale)
+#'    dLocation <- llikCauchyDlocation(time, location, scale)
+#'    dScale <- llikCauchyDscale(time, location, scale)
+#'  })
+#'
+#'  rxSolve(model, et)
+#'
+llikCauchy <-function(x, location=0, scale=1, full=FALSE) {
+  checkmate::assertNumeric(x, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(location, min.len=0, any.missing=FALSE, finite=TRUE)
+  checkmate::assertNumeric(scale, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
+  .df <- try(data.frame(x=x, location=location, scale=scale), silent=TRUE)
+  if (inherits(.df, "try-error")) {
+    stop("incompatible dimensions for x, location, scale", call.=FALSE)
+  }
+  .ret <- llikCauchyInternal(.df$x, .df$location, .df$scale)
+  if (full) .ret <- cbind(.df, .ret)
   .ret
 }

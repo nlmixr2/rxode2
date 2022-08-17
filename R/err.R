@@ -17,8 +17,8 @@
   ## Available as external package http://ugrad.stat.ubc.ca/R/library/rmutil/html/BetaBinom.html
   ## "dbetabinomial", ## not in base R (but in glnmm2)
   "add" = 1,
-  "norm" = 1,
-  "dnorm" = 1,
+  "norm" = 0,
+  "dnorm" = 0,
   "prop" = 1,
   "propT" = 1,
   "propF" = 2,
@@ -52,25 +52,26 @@
   "unif"=0:2,
   "dweibull"=1:2,
   "weibull"=1:2,
-  "cauchy"= 0:2,
+  "cauchy"= 0,
   "dcauchy"= 0:2,
-  "dgamma"=1:2
+  "dgamma"=1:2,
+  "nbinom"=2,
+  "dnbinom"=2,
+  "nbinomMu"=2,
+  "dnbinomMu"=2
 )
 
-.errDistsPositive <- c("add", "norm", "dnorm", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
+.errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
 
 
-.errUnsupportedDists <- c(
-  ## for testing...
-  "nlmixrDist"
-)
+.errUnsupportedDists <- "nlmixrDist"
 
 .errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF", "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
-                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t")
+                  "yeoJohnson", "logitNorm", "probitNorm", "combined1", "combined2", "comb1", "comb2", "t", "cauchy", "norm")
 
 .errIdenticalDists <- list(
-  "add"=c("norm", "dnorm"),
   "lnorm"=c("logn", "dlogn", "dlnorm"),
+  "dnorm"="norm",
   "boxCox"="tbs",
   "yeoJohnson"="tbsYj",
   "pois"="dpois",
@@ -85,8 +86,9 @@
   "geom"="dgeom", #9
   "unif"="dunif", #10
   "weibull"="dweibull", #11
-  "cauchy"="dcauchy" #12
-)
+  "cauchy"="dcauchy", #12
+  "nbinom"="dnbinom",
+  "nbinomMu"="dnbinomMu")
 
 .errDistArgRanges <- list(
   "add"=c(0, Inf),
@@ -105,6 +107,10 @@
   "pois"=c(0, Inf),
   "binom"=c(0, Inf),
   "binom2"=c(0, 1),
+  "nbinom"=c(0, Inf),
+  "nbinom2"=c(0, 1),
+  "nbinomMu"=c(0, Inf),
+  "nbinomMu2"=c(0, Inf),
   "bern"=c(0, 1),
   "logitNorm"=c(0, Inf),
   "probitNorm"=c(0, Inf),
@@ -177,13 +183,13 @@
 #'
 #' @examples
 #'
-#' rxPreferredDistributionName("dnorm")
+#' rxPreferredDistributionName("dt")
 #'
 #' rxPreferredDistributionName("add")
 #'
 #' # can be vectorized
 #'
-#' rxPreferredDistributionName(c("add","dnorm"))
+#' rxPreferredDistributionName(c("add","dt"))
 #'
 #' @export
 rxPreferredDistributionName <- function(dist) {
@@ -253,22 +259,25 @@ rxPreferredDistributionName <- function(dist) {
 )
 
 .rxDistributionType <- c(
-  "norm", #1
-  "pois", #2
-  "binom", #3
-  "beta", #4
-  "t", #5
-  "chisq", #6
-  "dexp", #7
-  "f", #8
-  "geom", #9
-  "hyper", #10; hyper will not be supported since all the inputs are integers
-  "unif", #11
-  "weibull", #12
-  "cauchy", #13
-  "dgamma", #14
+  "norm",    #  1
+  "pois",    #  2
+  "binom",   #  3
+  "beta",    #  4
+  "t",       #  5
+  "chisq",   #  6
+  "dexp",    #  7
+  "f",       #  8
+  "geom",    #  9
+  "hyper",   # 10; hyper will not be supported since all the inputs are integers
+  "unif",    # 11
+  "weibull", # 12
+  "cauchy",  # 13
+  "dgamma",  # 14
   "ordinal", # 15
-  "-2LL" #16
+  "LL",      # 16
+  "dnorm",   # 17
+  "nbinom",  # 18 size, prob
+  "nbinomMu"  # 19 size, mu
 )
 
 #' Demote the error type
@@ -627,7 +636,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   unif=c("a", "b"), #11
   weibull=c("a", "b"), #12
   cauchy=c("a", "b"),
-  dgamma=c("a", "b")
+  dgamma=c("a", "b"),
+  nbinom=c("a", "b"),
+  nbinomMu=c("a", "b")
 )
 
 .allowEstimatedParameters <- "ordinal"
@@ -775,7 +786,31 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   } else if (env$isAnAdditiveExpression) {
     .currErr <- rxPreferredDistributionName(deparse1(expression[[1]]))
     if (.currErr %in% .errAddDists) {
-      if (.currErr == "t") env$distribution <- "t"
+      if (.currErr == "t") {
+        if (env$distribution == "cauchy") {
+          stop("you cannot combine 't' and 'cauchy' distributions")
+        }
+        if (env$distribution == "dnorm") {
+          stop("you cannot combine 't' and 'dnorm' distributions")
+        }
+        env$distribution <- "t"
+      } else if (.currErr == "cauchy") {
+        if (env$distribution == "t") {
+          stop("you cannot combine 't' and 'cauchy' distributions")
+        }
+        if (env$distribution == "dnorm") {
+          stop("you cannot combine 'dnorm' and 'cauchy' distributions")
+        }
+        env$distribution <- "cauchy"
+      } else if (.currErr == "dnorm") {
+        if (env$distribution == "t") {
+          stop("you cannot combine 't' and 'dnorm' distributions")
+        }
+        if (env$distribution == "cauchy") {
+          stop("you cannot combine 'cauchy' and 'dnorm' distributions")
+        }
+        env$distribution <- "dnorm"
+      }
       .errHandleSingleDistributionTerm(.currErr, expression, env)
     } else if (.currErr %in% names(.errDist)) {
       assign("err", c(env$err,
@@ -833,7 +868,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   expression
 }
 
-#' Handle -2LL equivalent for n2ll or `linCmt()` statements for lhs
+#' Handle LL equivalent for ll or `linCmt()` statements for lhs
 #'
 #' @param expression Left handed side of the equation
 #'
@@ -846,9 +881,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' The takes the expression
 #'
-#' n2ll(var) ~  log(...)
+#' ll(var) ~  log(...)
 #'
-#' And strips the `n2ll` and sets the flag `env$n2ll` to `TRUE`
+#' And strips the `ll` and sets the flag `env$ll` to `TRUE`
 #'
 #' Otherwise it leaves the `expression` alone and returns the value
 #'
@@ -861,17 +896,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' @author Matthew Fidler
 #' @noRd
-.errHandleN2llOrLinCmt <- function(expression, env) {
+.errHandleLlOrLinCmt <- function(expression, env) {
   if (is.call(expression)) {
-    if (identical(expression[[1]], quote(`n2ll`)) &&
+    if (identical(expression[[1]], quote(`ll`)) &&
           length(expression) == 2L) {
-      env$n2ll <- TRUE
+      env$ll <- TRUE
       return(expression[[2]])
     } else if (identical(expression[[1]], quote(`linCmt`))) {
       env$linCmt <- TRUE
       return(quote(`rxLinCmt`))
     } else {
-      stop("the left handed side of the error expression (function: '", as.character(expression[[1]]), "') can only be functions with 'linCmt' or 'n2ll'",
+      stop("the left handed side of the error expression (function: '", as.character(expression[[1]]), "') can only be functions with 'linCmt' or 'll'",
            call.=FALSE)
     }
   }
@@ -887,10 +922,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @author Matthew Fidler
 #' @noRd
 .errHandleTilde <- function(expression, env) {
-  env$n2ll <- FALSE
+  env$ll <- FALSE
   env$estNotAllowed <- TRUE
   env$linCmt <- FALSE
-  .left <- .errHandleN2llOrLinCmt(expression[[2]], env)
+  .left <- .errHandleLlOrLinCmt(expression[[2]], env)
   env$trLimit <- c(-Inf, Inf)
   env$a <- env$b <- env$c <- env$d <- env$e <- env$f <- env$lambda <- NA_character_
   env$curCondition <- env$curVar <- deparse1(.left)
@@ -908,12 +943,12 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   } else if (env$needToDemoteAdditiveExpression) {
     env$errTypeInfo <- rxDemoteAddErr(env$errTypeInfo)
   }
-  if (env$hasNonErrorTerm & env$needsToBeAnErrorExpression) {
+  if (env$hasNonErrorTerm && env$needsToBeAnErrorExpression) {
     assign("errGlobal", c(env$errGlobal, "cannot mix error expression with algebraic expressions"),
            envir=env)
   } else if (env$hasNonErrorTerm) {
-    if (env$n2ll) {
-      env$distribution <- "-2LL"
+    if (env$ll) {
+      env$distribution <- "LL"
       env$predDf <- rbind(env$predDf,
                           data.frame(cond=env$curCondition, var=env$curVar, dvid=env$curDvid,
                                      trLow=env$trLimit[1], trHi=env$trLimit[2],
@@ -935,7 +970,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 
     }
   } else if (!env$hasNonErrorTerm) {
-    if (env$n2ll) {
+    if (env$ll) {
       assign("errGlobal", c(env$errGlobal, "a -2 log-likelihood expression cannot use abbreviated error codes like add() + prop() "),
              envir=env)
     } else {
@@ -990,7 +1025,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
     if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
-      if (!(.predDf[.i, "distribution"] %in% c("-2LL", "ordinal"))) {
+      if (!(.predDf[.i, "distribution"] %in% c("LL", "ordinal"))) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
         if (length(.w) == 0L) {
@@ -1104,10 +1139,32 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         stop(paste(.env$errGlobal, collapse="\n"), call.=FALSE)
       }
       if (!is.null(.env$predDf)) {
-        if (any(.env$predDf$linCmt)) {
-          .env$mv0 <- rxModelVars(paste(c(.env$lstChr[-.env$predDf$line], "rxLinCmt ~ linCmt()"), collapse="\n"))
+        .lstChr <- .env$lstChr
+        .lines <- .env$predDf$line
+        .w <- which(.env$predDf$distribution == "LL")
+        if (length(.w) > 0) {
+          .lstExpr <- .env$lstExpr
+          .w2 <- .env$predDf$line[.w]
+          .lstChr <- vapply(seq_along(.lstExpr),
+                            function(i) {
+                              .cur <- .lstExpr[[i]]
+                              if (i %in% .w2) {
+                                paste0("rxLL ~ ", deparse1(.cur[[3]]))
+                              } else {
+                                deparse1(.cur)
+                              }
+                            }, character(1), USE.NAMES=FALSE)
+          .lines <- .lines[-.w]
+          if (length(.lines) > 0) {
+            .lstChr <- .lstChr[-.lines]
+          }
         } else {
-          .env$mv0 <- rxModelVars(paste(.env$lstChr[-.env$predDf$line], collapse="\n"))
+          .lstChr <- .lstChr[-.lines]
+        }
+        if (any(.env$predDf$linCmt)) {
+          .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
+        } else {
+          .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
         }
       } else {
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
@@ -1152,9 +1209,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       # Cleanup the environment
       .rm <- intersect(c("curCondition", "curDvid", "curVar", "df",
                          "errTypeInfo", "err", "hasNonErrorTerm", "isAnAdditiveExpression",
-                         "lastDistAssign", "line", "needsToBeAnErrorExpression", "needToDemoteAdditiveExpression",
+                         "lastDistAssign", "line", "needsToBeAnErrorExpression",
+                         "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
-                         "curCmt", "errGlobal", "linCmt", "n2ll", "distribution"),
+                         "curCmt", "errGlobal", "linCmt", "ll", "distribution"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
@@ -1166,7 +1224,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 
 #' Determine if expression is a rxode2 error expression
 #'
-#' Currently only handles simple error expressions, not n2ll(var) ~ ...
+#' Currently only handles simple error expressions, not ll(var) ~ ...
 #'
 #' @param expr Expression to test
 #' @param uiEnv Return the uiEnv for the single expression
@@ -1206,16 +1264,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   if (uiEnv) return(.env)
   ifelse(.lin, "rxLinCmt" == .env$predDf$var, .pre == .env$predDf$var)
 }
-#'  Is Normal or t distribution model specification?
+#'  Is Normal, Cauchy or t distribution model specification?
 #'
 #' @param expr Expression
-#' @return TRUE if this is a normal/t model, FALSE otherwise
+#' 
+#' @return TRUE if this is a normal/t/cauchy model, FALSE otherwise
 #' @author Matthew L. Fidler
 #' @noRd
 .isNormOrTErrorExpression <- function(expr) {
   .env <- .isErrorExpression(expr, TRUE)
   if (inherits(.env, "logical")) return(FALSE)
-  any(.env$predDf$distribution == c("norm", "t"))
+  any(.env$predDf$distribution == c("norm", "t", "cauchy"))
 }
 #' Throw an error if the error expression  is invalid
 #'
@@ -1226,9 +1285,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 .throwIfInvalidTilde <- function(expr) {
   .env <- .isErrorExpression(expr, TRUE)
   .env$isAnAdditiveExpression <- FALSE
-  .env$n2ll <- FALSE
+  .env$ll <- FALSE
   .env$linCmt <- FALSE
-  .left <- .errHandleN2llOrLinCmt(expr[[2]], .env)
+  .left <- .errHandleLlOrLinCmt(expr[[2]], .env)
   .env$trLimit <- c(-Inf, Inf)
   .env$a <- .env$b <- .env$c <- .env$d <- .env$e <- .env$f <- .env$lambda <- NA_character_
   .env$curCondition <- .env$curVar <- deparse1(.left)

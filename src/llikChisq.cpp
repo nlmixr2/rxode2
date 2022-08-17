@@ -34,6 +34,14 @@ static inline void llikChisqFull(double* ret, double x, double df) {
     // Assume this is the same
     return;
   }
+  if (!R_finite(x) || !R_finite(df)) {
+    ret[0] = isChisq;
+    ret[1] = x;
+    ret[2] = df;
+    ret[3] = NA_REAL;
+    ret[4] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(1);
   y(0) = x;

@@ -35,11 +35,21 @@ static inline void llikNormFull(double* ret, double x, double mu, double sigma) 
     // Assume this is the same
     return;
   }
+  if (!R_finite(x) || !R_finite(mu) || !R_finite(sigma)) {
+    ret[0] = isNorm;
+    ret[1] = x;
+    ret[2] = mu;
+    ret[3] = sigma;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;
   params(0) = mu;
-  params(1) = sigma;
+  params(1) = _smallIsOne(sigma);
   stanLl ll = llik_normal(y, params);
   ret[0] = isNorm;
   ret[1] = x;
@@ -82,9 +92,6 @@ extern "C" double rxLlikNormDsd(double* ret, double x, double mu, double sigma) 
   llikNormFull(ret, x, mu, sigma);
   return ret[6];
 }
-
-
-
 
 #undef isNorm
 #undef isPois

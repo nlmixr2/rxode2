@@ -35,6 +35,16 @@ static inline void llikBetaFull(double* ret, double x, double shape1, double sha
     // Assume this is the same
     return;
   }
+  if (!R_finite(x) || !R_finite(shape1) || !R_finite(shape2)) {
+    ret[0] = isBeta;
+    ret[1] = x;
+    ret[2] = shape1;
+    ret[3] = shape2;
+    ret[4] = NA_REAL;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(2);
   y(0) = x;
@@ -43,8 +53,8 @@ static inline void llikBetaFull(double* ret, double x, double shape1, double sha
   stanLl ll = llik_beta(y, params);
   ret[0] = isBeta;
   ret[1] = x;
-  ret[2] = shape1;
-  ret[3] = shape2;
+  ret[2] = _smallIsNotZero(shape1);
+  ret[3] = _smallIsNotZero(shape2);
   ret[4] = ll.fx(0);
   ret[5] = ll.J(0, 0);
   ret[6] = ll.J(0, 1);

@@ -37,12 +37,25 @@ static inline void llikTFull(double* ret, double x, double df, double mean, doub
     // Assume this is the same
     return;
   }
+  if (!R_finite(x)    || !R_finite(df) ||
+      !R_finite(mean) || !R_finite(sd)) {
+    ret[0] = isT;
+    ret[1] = x;
+    ret[2] = df;
+    ret[3] = mean;
+    ret[4] = sd;
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+    ret[7] = NA_REAL;
+    ret[8] = NA_REAL;
+    return;
+  }
   Eigen::VectorXd y(1);
   Eigen::VectorXd params(3);
   y(0) = x;
-  params(0) = df;
+  params(0) = _smallIsNotZero(df);
   params(1) = mean;
-  params(2) = sd;
+  params(2) = _smallIsOne(sd);
   stanLl ll = llik_t(y, params);
   ret[0] = isT;
   ret[1] = x;

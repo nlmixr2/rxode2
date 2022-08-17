@@ -601,6 +601,69 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
   .Call(`_rxode2_rxbinom_`, size, prob, n, ncores)
 }
 
+#' Simulate Binomial variable from threefry generator
+#'
+#' @inheritParams stats::rnbinom
+#' @inheritParams rxbinom
+#'
+#' @template birthdayProblem
+#'
+#' @return negative binomial random deviates. Note that `rxbinom2`
+#'   uses the `mu` parameterzation an dhe `rxbinom` uses the `prob`
+#'   parameterziation (`mu=size/(prob+size)`)
+#'
+#' @examples
+#' \donttest{
+#' ## Use threefry engine
+#'
+#' rxnbinom(10, 0.9, n = 10) # with rxbinom you have to explicitly state n
+#' rxnbinom(3, 0.5, n = 10, ncores = 2) # You can parallelize the simulation using openMP
+#'
+#' rxnbinom(4, 0.7)
+#'
+#' # use mu parameter
+#' rxnbinomMu(40, 40, n=10)
+#'
+#' ## This example uses `rxbinom` directly in the model
+#'
+#' rx <- rxode2({
+#'   a <- rxnbinom(10, 0.5)
+#' })
+#'
+#' et <- et(1, id = 1:100)
+#'
+#' s <- rxSolve(rx, et)
+#'
+#' rx <- rxode2({
+#'   a <- rxnbinomMu(10, 40)
+#' })
+#'
+#'  s <- rxSolve(rx, et)
+#'
+#' }
+#' @export
+rxnbinom <- function(size, prob, n = 1L, ncores = 1L) {
+  checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
+  checkmate::assertCount(size)
+  checkmate::assertCount(n)
+  checkmate::assertCount(ncores)
+  rxSeedEng(ncores)
+  .Call(`_rxode2_rxnbinom_`, size, prob, n, ncores)
+}
+
+##' @rdname rxnbinom
+##' @export
+rxnbinomMu <- function(size, mu, n = 1L, ncores = 1L) {
+  checkmate::assertNumeric(mu, len = 1, lower = 0)
+  checkmate::assertCount(size)
+  checkmate::assertCount(n)
+  checkmate::assertCount(ncores)
+  rxSeedEng(ncores)
+  .Call(`_rxode2_rxnbinomMu_`, size, mu, n, ncores)
+}
+
+
+
 
 #' Simulate a from a Poisson process
 #'
@@ -667,7 +730,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
   checkmate::assertNumeric(lambda, len = 1, any.missing = FALSE, lower = .Machine$double.eps)
   checkmate::assertIntegerish(n, len = 1, any.missing = FALSE, lower = 1L)
   checkmate::assertLogical(randomOrder, len = 1, any.missing = FALSE)
-  if (gamma != 1.0 & is.infinite(tmax)) {
+  if (gamma != 1.0 && is.infinite(tmax)) {
     stop("when 'gamma' is not 1, 'tmax' cannot be infinite")
   }
   .Call(`_rxode2_rpp_`, n, lambda, gamma, prob, t0, tmax, randomOrder, PACKAGE = "rxode2")

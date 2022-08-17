@@ -1330,6 +1330,7 @@ typedef struct {
   int *gindLin = NULL;
 } rx_globals;
 
+
 rx_globals _globals;
 
 static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
@@ -1403,7 +1404,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
   }
-  ind->llikSave = _globals.gLlikSave + 9*omp_get_thread_num();
+  ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
 }
 
@@ -4317,6 +4318,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->cens = 0;
   rx->limit = 0;
   rx->safeZero = 1;
+  rx->useStdPow = 0;
   rx->sumType = 1; // pairwise
   rx->prodType = 1; // long double
   rx->sensType = 4; // advan
@@ -4406,6 +4408,7 @@ static inline void iniRx(rx_solve* rx) {
   op->hDur2 = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
+  op->nLlik = 0;
 }
 
 // [[Rcpp::export]]
@@ -4593,6 +4596,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->add_cov = (int)(addCov);
     rx->istateReset = asInt(rxControl[Rxc_istateReset], "istateReset");
     rx->safeZero = asInt(rxControl[Rxc_safeZero], "safeZero");
+    rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     op->stiff = method;
     rxSolveDat->throttle = false;
     if (method != 2 || rx->needSort != 0){
@@ -4681,6 +4685,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     CharacterVector state = rxSolveDat->mv[RxMv_state];
     CharacterVector lhs = rxSolveDat->mv[RxMv_lhs];
     op->neq = state.size();
+    op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
+    if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
+      op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
+    }
     op->badSolve = 0;
     op->naTime = 0;
     op->abort = 0;
@@ -4965,7 +4973,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     int n4 = rxSolveDat->initsC.size();
     int n5_c = lhs.size()*op->cores;
-    int nllik_c = 9*op->cores;
+    int nllik_c = rxLlikSaveSize*op->nLlik*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);

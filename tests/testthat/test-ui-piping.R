@@ -757,6 +757,15 @@ rxTest({
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, TRUE)
     testEst(f %>% ini(eta.cl+eta.v~fix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, TRUE)
 
+    # Test adding matrix directly
+
+    .omega <- lotri::lotri(eta.cl+eta.v~c(0.3, 0.02, 0.1))
+    
+    testEst(f %>% ini(.omega), "eta.cl", -Inf, 0.3, Inf, FALSE)
+    testEst(f %>% ini(.omega), "eta.v", -Inf, 0.1, Inf, FALSE)
+    testEst(f %>% ini(.omega), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)
+
+
     expect_warning(expect_warning(
       testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
       regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"

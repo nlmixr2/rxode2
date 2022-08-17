@@ -1179,6 +1179,48 @@ namespace rxode2 {
         return Rcpp::as<RObject >(rcpp_result_gen);
     }
 
+    inline IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores) {
+        typedef SEXP(*Ptr_rxnbinomMu_)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rxnbinomMu_ p_rxnbinomMu_ = NULL;
+        if (p_rxnbinomMu_ == NULL) {
+            validateSignature("IntegerVector(*rxnbinomMu_)(int,double,int,int)");
+            p_rxnbinomMu_ = (Ptr_rxnbinomMu_)R_GetCCallable("rxode2", "_rxode2_rxnbinomMu_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxnbinomMu_(Shield<SEXP>(Rcpp::wrap(size)), Shield<SEXP>(Rcpp::wrap(mu)), Shield<SEXP>(Rcpp::wrap(n)), Shield<SEXP>(Rcpp::wrap(ncores)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<IntegerVector >(rcpp_result_gen);
+    }
+
+    inline IntegerVector rxnbinom_(int size, double prob, int n, int ncores) {
+        typedef SEXP(*Ptr_rxnbinom_)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rxnbinom_ p_rxnbinom_ = NULL;
+        if (p_rxnbinom_ == NULL) {
+            validateSignature("IntegerVector(*rxnbinom_)(int,double,int,int)");
+            p_rxnbinom_ = (Ptr_rxnbinom_)R_GetCCallable("rxode2", "_rxode2_rxnbinom_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxnbinom_(Shield<SEXP>(Rcpp::wrap(size)), Shield<SEXP>(Rcpp::wrap(prob)), Shield<SEXP>(Rcpp::wrap(n)), Shield<SEXP>(Rcpp::wrap(ncores)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<IntegerVector >(rcpp_result_gen);
+    }
+
     inline IntegerVector rxbinom_(int n0, double prob, int n, int ncores) {
         typedef SEXP(*Ptr_rxbinom_)(SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxbinom_ p_rxbinom_ = NULL;

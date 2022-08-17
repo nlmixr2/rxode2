@@ -52,7 +52,7 @@
       }
     }
     if (is.null(.unlistedBrackets)) {
-      if (is.null(.cur)){
+      if (is.null(.cur)) {
         ## evalute to vector and then put it in place
         .cur <- eval(.bracketExpression, envir=envir)
       }
@@ -62,14 +62,14 @@
         if (is.null(names(.cur))) {
           stop("cannot figure out what to do with the unnamed vector", call.=FALSE)
         }
-        .unlistedBrackets <- lapply(names(.cur), function(.n){
+        .unlistedBrackets <- lapply(names(.cur), function(.n) {
           bquote(.(str2lang(.n)) <- .(setNames(.cur[.n], NULL)))
         })
-      } else if (inherits(.cur, "list")){
+      } else if (inherits(.cur, "list")) {
         if (is.null(names(.cur))) {
           stop("cannot figure out what to do with the unnamed list", call.=FALSE)
         }
-        .unlistedBrackets <- lapply(names(.cur), function(.n){
+        .unlistedBrackets <- lapply(names(.cur), function(.n) {
           .v <- .cur[[.n]]
           if (inherits(.v, "numeric")) {
             bquote(.(str2lang(.n)) <- .(setNames(.cur[[.n]], NULL)))
@@ -77,6 +77,12 @@
             stop("one of the list items supplied to piping is non-numeric", call.=FALSE)
           }
         })
+      } else if (inherits(.cur, "matrix")) {
+        .cur2 <- .cur
+        if (!inherits(.cur, "lotriFix")) {
+          class(.cur2) <- c("lotriFix", class(.cur))
+        }
+        .unlistedBrackets <- as.list(as.expression(.cur2)[[-1]])[-1]
       } else {
         stop("vectors and list need to named numeric expression", call.=FALSE)
       }

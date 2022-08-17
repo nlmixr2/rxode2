@@ -526,28 +526,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// llikNormInternal
-Rcpp::DataFrame llikNormInternal(Rcpp::NumericVector x, Rcpp::NumericVector mu, Rcpp::NumericVector sigma);
-RcppExport SEXP _rxode2_llikNormInternal(SEXP xSEXP, SEXP muSEXP, SEXP sigmaSEXP) {
+// llikBetaInternal
+Rcpp::DataFrame llikBetaInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape1, Rcpp::NumericVector shape2);
+RcppExport SEXP _rxode2_llikBetaInternal(SEXP xSEXP, SEXP shape1SEXP, SEXP shape2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type sigma(sigmaSEXP);
-    rcpp_result_gen = Rcpp::wrap(llikNormInternal(x, mu, sigma));
-    return rcpp_result_gen;
-END_RCPP
-}
-// llikPoisInternal
-Rcpp::DataFrame llikPoisInternal(Rcpp::NumericVector x, Rcpp::NumericVector lambda);
-RcppExport SEXP _rxode2_llikPoisInternal(SEXP xSEXP, SEXP lambdaSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type lambda(lambdaSEXP);
-    rcpp_result_gen = Rcpp::wrap(llikPoisInternal(x, lambda));
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape1(shape1SEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape2(shape2SEXP);
+    rcpp_result_gen = Rcpp::wrap(llikBetaInternal(x, shape1, shape2));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -564,30 +552,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// llikBetaInternal
-Rcpp::DataFrame llikBetaInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape1, Rcpp::NumericVector shape2);
-RcppExport SEXP _rxode2_llikBetaInternal(SEXP xSEXP, SEXP shape1SEXP, SEXP shape2SEXP) {
+// llikCauchyInternal
+Rcpp::DataFrame llikCauchyInternal(Rcpp::NumericVector x, Rcpp::NumericVector location, Rcpp::NumericVector scale);
+RcppExport SEXP _rxode2_llikCauchyInternal(SEXP xSEXP, SEXP locationSEXP, SEXP scaleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape1(shape1SEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape2(shape2SEXP);
-    rcpp_result_gen = Rcpp::wrap(llikBetaInternal(x, shape1, shape2));
-    return rcpp_result_gen;
-END_RCPP
-}
-// llikTInternal
-Rcpp::DataFrame llikTInternal(Rcpp::NumericVector x, Rcpp::NumericVector df, Rcpp::NumericVector mean, Rcpp::NumericVector sd);
-RcppExport SEXP _rxode2_llikTInternal(SEXP xSEXP, SEXP dfSEXP, SEXP meanSEXP, SEXP sdSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type df(dfSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type mean(meanSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type sd(sdSEXP);
-    rcpp_result_gen = Rcpp::wrap(llikTInternal(x, df, mean, sd));
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type location(locationSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type scale(scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikCauchyInternal(x, location, scale));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -628,6 +602,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// llikGammaInternal
+Rcpp::DataFrame llikGammaInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape, Rcpp::NumericVector rate);
+RcppExport SEXP _rxode2_llikGammaInternal(SEXP xSEXP, SEXP shapeSEXP, SEXP rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape(shapeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type rate(rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikGammaInternal(x, shape, rate));
+    return rcpp_result_gen;
+END_RCPP
+}
 // llikGeomInternal
 Rcpp::DataFrame llikGeomInternal(Rcpp::NumericVector x, Rcpp::NumericVector p);
 RcppExport SEXP _rxode2_llikGeomInternal(SEXP xSEXP, SEXP pSEXP) {
@@ -637,6 +624,71 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type p(pSEXP);
     rcpp_result_gen = Rcpp::wrap(llikGeomInternal(x, p));
+    return rcpp_result_gen;
+END_RCPP
+}
+// llikNbinomInternal
+Rcpp::DataFrame llikNbinomInternal(Rcpp::NumericVector x, Rcpp::NumericVector size, Rcpp::NumericVector prob);
+RcppExport SEXP _rxode2_llikNbinomInternal(SEXP xSEXP, SEXP sizeSEXP, SEXP probSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type prob(probSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikNbinomInternal(x, size, prob));
+    return rcpp_result_gen;
+END_RCPP
+}
+// llikNbinomMuInternal
+Rcpp::DataFrame llikNbinomMuInternal(Rcpp::NumericVector x, Rcpp::NumericVector size, Rcpp::NumericVector mu);
+RcppExport SEXP _rxode2_llikNbinomMuInternal(SEXP xSEXP, SEXP sizeSEXP, SEXP muSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type mu(muSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikNbinomMuInternal(x, size, mu));
+    return rcpp_result_gen;
+END_RCPP
+}
+// llikNormInternal
+Rcpp::DataFrame llikNormInternal(Rcpp::NumericVector x, Rcpp::NumericVector mu, Rcpp::NumericVector sigma);
+RcppExport SEXP _rxode2_llikNormInternal(SEXP xSEXP, SEXP muSEXP, SEXP sigmaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type sigma(sigmaSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikNormInternal(x, mu, sigma));
+    return rcpp_result_gen;
+END_RCPP
+}
+// llikPoisInternal
+Rcpp::DataFrame llikPoisInternal(Rcpp::NumericVector x, Rcpp::NumericVector lambda);
+RcppExport SEXP _rxode2_llikPoisInternal(SEXP xSEXP, SEXP lambdaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type lambda(lambdaSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikPoisInternal(x, lambda));
+    return rcpp_result_gen;
+END_RCPP
+}
+// llikTInternal
+Rcpp::DataFrame llikTInternal(Rcpp::NumericVector x, Rcpp::NumericVector df, Rcpp::NumericVector mean, Rcpp::NumericVector sd);
+RcppExport SEXP _rxode2_llikTInternal(SEXP xSEXP, SEXP dfSEXP, SEXP meanSEXP, SEXP sdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type df(dfSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type sd(sdSEXP);
+    rcpp_result_gen = Rcpp::wrap(llikTInternal(x, df, mean, sd));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -663,19 +715,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape(shapeSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type scale(scaleSEXP);
     rcpp_result_gen = Rcpp::wrap(llikWeibullInternal(x, shape, scale));
-    return rcpp_result_gen;
-END_RCPP
-}
-// llikGammaInternal
-Rcpp::DataFrame llikGammaInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape, Rcpp::NumericVector rate);
-RcppExport SEXP _rxode2_llikGammaInternal(SEXP xSEXP, SEXP shapeSEXP, SEXP rateSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type shape(shapeSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type rate(rateSEXP);
-    rcpp_result_gen = Rcpp::wrap(llikGammaInternal(x, shape, rate));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -2474,6 +2513,80 @@ RcppExport SEXP _rxode2_rxSeedEng(SEXP ncoresSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxnbinomMu_
+IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores);
+static SEXP _rxode2_rxnbinomMu__try(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxnbinomMu_(size, mu, n, ncores));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxnbinomMu_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxnbinomMu__try(sizeSEXP, muSEXP, nSEXP, ncoresSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
+// rxnbinom_
+IntegerVector rxnbinom_(int size, double prob, int n, int ncores);
+static SEXP _rxode2_rxnbinom__try(SEXP sizeSEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< double >::type prob(probSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxnbinom_(size, prob, n, ncores));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxnbinom_(SEXP sizeSEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxnbinom__try(sizeSEXP, probSEXP, nSEXP, ncoresSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxbinom_
 IntegerVector rxbinom_(int n0, double prob, int n, int ncores);
 static SEXP _rxode2_rxbinom__try(SEXP n0SEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
@@ -3324,6 +3437,8 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("NumericVector(*rxNleq)(arma::vec,arma::vec,arma::mat)");
         signatures.insert("arma::mat(*rxMvrandn_)(NumericMatrix,arma::rowvec,arma::mat,arma::vec,arma::vec,int,double,double,double,int)");
         signatures.insert("RObject(*rxSeedEng)(int)");
+        signatures.insert("IntegerVector(*rxnbinomMu_)(int,double,int,int)");
+        signatures.insert("IntegerVector(*rxnbinom_)(int,double,int,int)");
         signatures.insert("IntegerVector(*rxbinom_)(int,double,int,int)");
         signatures.insert("NumericVector(*rxcauchy_)(double,double,int,int)");
         signatures.insert("NumericVector(*rxchisq_)(double,int,int)");
@@ -3406,6 +3521,8 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxNleq", (DL_FUNC)_rxode2_rxNleq_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxMvrandn_", (DL_FUNC)_rxode2_rxMvrandn__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxSeedEng", (DL_FUNC)_rxode2_rxSeedEng_try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxnbinomMu_", (DL_FUNC)_rxode2_rxnbinomMu__try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxnbinom_", (DL_FUNC)_rxode2_rxnbinom__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxbinom_", (DL_FUNC)_rxode2_rxbinom__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxcauchy_", (DL_FUNC)_rxode2_rxcauchy__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxchisq_", (DL_FUNC)_rxode2_rxchisq__try);

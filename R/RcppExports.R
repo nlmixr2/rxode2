@@ -276,24 +276,16 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
-llikNormInternal <- function(x, mu, sigma) {
-    .Call(`_rxode2_llikNormInternal`, x, mu, sigma)
-}
-
-llikPoisInternal <- function(x, lambda) {
-    .Call(`_rxode2_llikPoisInternal`, x, lambda)
+llikBetaInternal <- function(x, shape1, shape2) {
+    .Call(`_rxode2_llikBetaInternal`, x, shape1, shape2)
 }
 
 llikBinomInternal <- function(x, size, prob) {
     .Call(`_rxode2_llikBinomInternal`, x, size, prob)
 }
 
-llikBetaInternal <- function(x, shape1, shape2) {
-    .Call(`_rxode2_llikBetaInternal`, x, shape1, shape2)
-}
-
-llikTInternal <- function(x, df, mean, sd) {
-    .Call(`_rxode2_llikTInternal`, x, df, mean, sd)
+llikCauchyInternal <- function(x, location, scale) {
+    .Call(`_rxode2_llikCauchyInternal`, x, location, scale)
 }
 
 llikChisqInternal <- function(x, df) {
@@ -308,8 +300,32 @@ llikFInternal <- function(x, df1, df2) {
     .Call(`_rxode2_llikFInternal`, x, df1, df2)
 }
 
+llikGammaInternal <- function(x, shape, rate) {
+    .Call(`_rxode2_llikGammaInternal`, x, shape, rate)
+}
+
 llikGeomInternal <- function(x, p) {
     .Call(`_rxode2_llikGeomInternal`, x, p)
+}
+
+llikNbinomInternal <- function(x, size, prob) {
+    .Call(`_rxode2_llikNbinomInternal`, x, size, prob)
+}
+
+llikNbinomMuInternal <- function(x, size, mu) {
+    .Call(`_rxode2_llikNbinomMuInternal`, x, size, mu)
+}
+
+llikNormInternal <- function(x, mu, sigma) {
+    .Call(`_rxode2_llikNormInternal`, x, mu, sigma)
+}
+
+llikPoisInternal <- function(x, lambda) {
+    .Call(`_rxode2_llikPoisInternal`, x, lambda)
+}
+
+llikTInternal <- function(x, df, mean, sd) {
+    .Call(`_rxode2_llikTInternal`, x, df, mean, sd)
 }
 
 llikUnifInternal <- function(x, alpha, beta) {
@@ -318,10 +334,6 @@ llikUnifInternal <- function(x, alpha, beta) {
 
 llikWeibullInternal <- function(x, shape, scale) {
     .Call(`_rxode2_llikWeibullInternal`, x, shape, scale)
-}
-
-llikGammaInternal <- function(x, shape, rate) {
-    .Call(`_rxode2_llikGammaInternal`, x, shape, rate)
 }
 
 rxQs <- function(x) {
@@ -827,6 +839,14 @@ rxMvrandn_ <- function(A_, mu, sigma, lower, upper, ncores = 1L, a = 0.4, tol = 
 
 rxSeedEng <- function(ncores = 1L) {
     .Call(`_rxode2_rxSeedEng`, ncores)
+}
+
+rxnbinomMu_ <- function(size, mu, n, ncores) {
+    .Call(`_rxode2_rxnbinomMu_`, size, mu, n, ncores)
+}
+
+rxnbinom_ <- function(size, prob, n, ncores) {
+    .Call(`_rxode2_rxnbinom_`, size, prob, n, ncores)
 }
 
 rxbinom_ <- function(n0, prob, n, ncores) {
