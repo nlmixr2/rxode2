@@ -29,6 +29,7 @@
 #define _SR (INTEGER(stateRmS))
 #define NEWIND (_solveData->subjects[_cSub]._newind)
 #define newind (_solveData->subjects[_cSub]._newind)
+#define rxFlag (_solveData->subjects[_cSub]._rxFlag)
 #define rx_lambda_ _solveData->subjects[_cSub].lambda
 #define rx_yj_ _solveData->subjects[_cSub].yj
 #define rx_hi_ _solveData->subjects[_cSub].logitHi

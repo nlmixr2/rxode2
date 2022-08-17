@@ -114,6 +114,10 @@ There are a few reserved keywords in a rxode2 model.  They are  in the following
 datatable(rxReservedKeywords, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
 ```
 
+Note that `rxFlag` will always output `11` or `calc_lhs` since that is
+where the final variables are calculated, though you can tweak or test
+certain parts of `rxode2` by using this flag.
+
 ## Bugs and/or deficiencies
 
 - The modulo operator `%%` is currently unsupported. 
