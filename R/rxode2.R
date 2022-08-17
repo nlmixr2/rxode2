@@ -1470,7 +1470,7 @@ rxCompile.rxModelVars <- function(model, # Model
         .model <- .rxModelVarsLast$model
         .model["indLin"] <- .rxMECode
         .rxModelVarsLast$model <- .model
-        if (!is.null(package) & !.newMod) {
+        if (!is.null(package) && !.newMod) {
           .libname <- c(package, gsub(.Platform$dynlib.ext, "", basename(.cDllFile)))
           .Call(
             `_rxode2_codegen`, .cFile, prefix, .libname,
@@ -1514,7 +1514,7 @@ rxCompile.rxModelVars <- function(model, # Model
           .out <- sys::exec_internal(cmd = .cmd, args = .args, error = FALSE)
         })
         .stderr <- rawToChar(.out$stderr)
-        if (!(all(.stderr == "") & length(.stderr) == 1)) {
+        if (!(all(.stderr == "") && length(.stderr) == 1)) {
           message(paste(.stderr, sep = "\n"))
         }
         .badBuild <- function(msg, cSrc = TRUE) {
@@ -1532,7 +1532,7 @@ rxCompile.rxModelVars <- function(model, # Model
           }
           stop(msg, call. = FALSE)
         }
-        if (!(.out$status == 0 & file.exists(.cDllFile))) {
+        if (!(.out$status == 0 && file.exists(.cDllFile))) {
           .badBuild("error building model")
         }
       }
