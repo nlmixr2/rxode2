@@ -50,6 +50,7 @@ typedef void (print_node_fn_t)(int depth, char *token_name, char *token_value, v
 
 int syntaxErrorExtra = 0;
 int isEsc=0;
+int fullPrint = 0;
 const char *lastStr;
 int lastStrLoc=0;
 
@@ -481,10 +482,11 @@ void trans_internal(const char* parse_file, int isStr){
 }
 
 static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
-			     SEXP isEscIn, SEXP inME, SEXP goodFuns) {
+                             SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn) {
   _goodFuns = goodFuns;
   // Make sure buffers are initialized.
   isEsc=INTEGER(isEscIn)[0];
+  fullPrint=INTEGER(fullPrintIn)[0];
 
   int isStr =INTEGER(parseStr)[0];
   reset();
@@ -551,9 +553,9 @@ static inline void finalizeSyntaxError() {
 }
 
 SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
-		  SEXP isEscIn, SEXP inME, SEXP goodFuns){
+                   SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn){
   const char *in = NULL;
-  int isStr = setupTrans(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns);
+  int isStr = setupTrans(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn);
   in = CHAR(STRING_ELT(parse_file,0));
   trans_internal(in, isStr);
   SEXP lst = PROTECT(generateModelVars());
