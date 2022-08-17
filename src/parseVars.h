@@ -83,7 +83,8 @@ static inline int isReservedVariable(const char *s) {
     // newind/t
     !strcmp("newind", s) ||
     !strcmp("NEWIND", s) ||
-    !strcmp("t", s);
+    !strcmp("t", s) ||
+    !strcmp("rxFlag", s);
 }
 
 

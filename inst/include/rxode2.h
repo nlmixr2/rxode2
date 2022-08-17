@@ -222,6 +222,7 @@ typedef struct {
   int allCovWarn;
   int wrongSSDur;
   int _newind;
+  int _rxFlag;
   int err;
   int solved;
   double *linCmtAdvan;

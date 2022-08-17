@@ -39,7 +39,7 @@ lhs symbols?
   int dvidn;
   int ix;                       /* ith of curr symbol */
   int id;                       /* ith of curr symbol */
-  int fn;                       /* curr symbol a fn?*/
+  int fn;                     /* curr symbol a fn?*/
   int ixL;// New assignment index
   int didEq;
   int NEnd;
