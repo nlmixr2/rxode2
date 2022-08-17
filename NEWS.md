@@ -38,6 +38,15 @@
 - `rxode2` treats `DV` as a non-covariate with `etTran` (last time it
   would duplicate if it is in the model).  This is most noticable in
   the nlmixr2 log-likelihood estimation methods.
+  
+** New features
+
+- A new flag (`rxFlag`) has been created to tell you where in the `rxode2` solving process you are.  This is useful for debugging. If outputting this variable it will always be `11` or calculating the left handed equations.
+  
+- An additional option of `fullPrint` has been added to
+  `rxode2()` which allows `rprintf()` to be used in all of `rxode2()`
+  steps instead of just the integration `ddt` step.  It defaults to
+  `FALSE`.
 
 # rxode2 2.0.7
 

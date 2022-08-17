@@ -326,7 +326,7 @@ rxode2 <- # nolint
            linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
            indLin = FALSE,
            verbose = FALSE,
-           fullPrint=FALSE) {
+           fullPrint=getOption("rxode2.fullPrint", FALSE)) {
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
     .modelName <- try(as.character(substitute(model)), silent=TRUE)
