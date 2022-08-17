@@ -343,7 +343,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           break;
         case PPRN:
           // Rprintf
-          if (fullPrint || (!fullPrint && show_ode == 1)) {
+          if ((fullPrint && show_ode != 10 && show_ode != 11) || (!fullPrint && show_ode == 1)) {
             sAppend(&sbOut, "  %s", show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
           }
           break;

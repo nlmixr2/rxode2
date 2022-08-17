@@ -80,8 +80,8 @@ NA_LOGICAL <- NA # nolint
 #'   compartmental model
 #'
 #' @param fullPrint When using `printf` within the model, if `TRUE`
-#'   print on every step, otherwise when `FALSE` print only when
-#'   calculating the `d/dt`
+#'   print on every step (except ME/indLin), otherwise when `FALSE`
+#'   print only when calculating the `d/dt`
 #'
 #' @details
 #'

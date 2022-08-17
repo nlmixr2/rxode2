@@ -20,7 +20,8 @@ rxode2(
   ...,
   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
   indLin = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  fullPrint = getOption("rxode2.fullPrint", FALSE)
 )
 
 RxODE(
@@ -37,7 +38,8 @@ RxODE(
   ...,
   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
   indLin = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  fullPrint = getOption("rxode2.fullPrint", FALSE)
 )
 
 rxode(
@@ -54,7 +56,8 @@ rxode(
   ...,
   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
   indLin = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  fullPrint = getOption("rxode2.fullPrint", FALSE)
 )
 }
 \arguments{
@@ -120,6 +123,10 @@ compile with inductive linearization support.}
 
 \item{verbose}{When \code{TRUE} be verbose with the linear
 compartmental model}
+
+\item{fullPrint}{When using \code{printf} within the model, if \code{TRUE}
+print on every step (except ME/indLin), otherwise when \code{FALSE}
+print only when calculating the \code{d/dt}}
 }
 \value{
 An object (environment) of class \code{rxode2} (see Chambers and Temple Lang (2001))
