@@ -7,7 +7,7 @@ rxTest({
       d / dt(intestine) <- -a * intestine
       lag(intestine) <- 2
       d / dt(blood) <- a * intestine - b * blood
-      printf("%d\n", rxFlag)
+      printf("%f\n", rxFlag)
       flag <- rxFlag
     }, fullPrint=FALSE)
     
@@ -36,7 +36,7 @@ rxTest({
       d / dt(intestine) <- -a * intestine
       lag(intestine) <- 2
       d / dt(blood) <- a * intestine - b * blood
-      printf("%d\n", rxFlag)
+      printf("%f\n", rxFlag)
       flag <- rxFlag
     }, fullPrint=TRUE)
 
