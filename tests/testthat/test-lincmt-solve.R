@@ -27,9 +27,12 @@ rxTest({
         expect_length(res1 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time),0)
         
         ### Note 2: Bug also occurs when simulating one set of parameters at a time
-        res2 <- purrr::map_dfr(1:nn,~rxSolve(rxmod1,unlist(c(pk,as.data.frame(pdpars[.,]))),et1))
-        expect_length(res2 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time),
-                      0)
+        res2 <- do.call("rbind", lapply(1:nn, function(x) {
+          rxSolve(rxmod1,unlist(c(pk,as.data.frame(pdpars[x,]))),et1)
+        }))
+        
+        expect_length(res2 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time), 0)
+        
     })
   })
   
