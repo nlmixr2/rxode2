@@ -10,7 +10,7 @@ void parseFree(int last);
 void RSprintf(const char *format, ...);
 
 SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
-		  SEXP isEscIn, SEXP inME, SEXP goodFuns);
+                   SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 
 typedef struct symtab {
   vLines ss; // Symbol string or symbol lines
@@ -39,7 +39,7 @@ lhs symbols?
   int dvidn;
   int ix;                       /* ith of curr symbol */
   int id;                       /* ith of curr symbol */
-  int fn;                       /* curr symbol a fn?*/
+  int fn;                     /* curr symbol a fn?*/
   int ixL;// New assignment index
   int didEq;
   int NEnd;

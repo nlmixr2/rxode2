@@ -341,7 +341,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxTick", (DL_FUNC) &_rxTick, 0},
     {"_rxProgressStop", (DL_FUNC) &_rxProgressStop, 1},
     {"_rxProgressAbort", (DL_FUNC) &_rxProgressAbort, 1},
-    {"_rxode2_trans", (DL_FUNC) &_rxode2_trans, 7},
+    {"_rxode2_trans", (DL_FUNC) &_rxode2_trans, 8},
     {"_rxode2_codegen", (DL_FUNC) &_rxode2_codegen, 6},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},

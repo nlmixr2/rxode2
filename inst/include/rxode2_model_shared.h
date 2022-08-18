@@ -27,8 +27,9 @@
 #define _PP (_solveData->subjects[_cSub].par_ptr)
 #define _PL (_solveData->subjects[_cSub].lhs)
 #define _SR (INTEGER(stateRmS))
-#define NEWIND (_solveData->subjects[_cSub]._newind)
-#define newind (_solveData->subjects[_cSub]._newind)
+#define NEWIND ((double)_solveData->subjects[_cSub]._newind)
+#define newind ((double)_solveData->subjects[_cSub]._newind)
+#define rxFlag ((double)_solveData->subjects[_cSub]._rxFlag)
 #define rx_lambda_ _solveData->subjects[_cSub].lambda
 #define rx_yj_ _solveData->subjects[_cSub].yj
 #define rx_hi_ _solveData->subjects[_cSub].logitHi

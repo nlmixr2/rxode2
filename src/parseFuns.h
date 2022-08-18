@@ -278,6 +278,7 @@ static inline int handlePrintf(nodeInfo ni, char *name, int i, D_ParseNode *xpn)
     if (i == 0){
       sb.o =0; sbDt.o =0;
       sbt.o=0;
+      tb.thread = 0;
       aType(PPRN);
       aAppendN("Rprintf(", 8);
       sAppendN(&sbt,"printf(", 7);

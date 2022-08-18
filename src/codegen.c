@@ -58,7 +58,7 @@ void prnt_vars(int scenario, int lhs, const char *pre_str, const char *post_str,
 
 
 void print_aux_info(char *model, const char *prefix, const char *libname, const char *pMd5, const char *timeId,
-		    const char *libname2){
+                    const char *libname2){
   sbuf bufw;
   sNull(&bufw);
   sIniTo(&bufw, 1024);
@@ -67,9 +67,9 @@ void print_aux_info(char *model, const char *prefix, const char *libname, const 
 
   sAppend(&sbOut,"extern void %sdydt_lsoda(int *neq, double *t, double *A, double *DADT)\n{\n  %sdydt(neq, *t, A, DADT);\n}\n", prefix, prefix);
   sAppend(&sbOut, "extern int %sdydt_liblsoda(double __t, double *y, double *ydot, void *data)\n{\n  int *neq = (int*)(data);\n  %sdydt(neq, __t, y, ydot);\n  return(0);\n}\n",
-	  prefix,prefix);
+          prefix,prefix);
   sAppend(&sbOut,"extern void %scalc_jac_lsoda(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd){\n  // Update all covariate parameters\n  %scalc_jac(neq, *t, A, JAC, *nrowpd);\n}\n",
-	  prefix, prefix);
+          prefix, prefix);
 
   printRInit(libname, libname2, prefix);
 
@@ -93,14 +93,14 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppend(&sbOut,"#define __MAX_PROD__ %d\n", mx);
       int baseSize = tb.statei-tb.nExtra+extraCmt - tb.sensi;
       if (tb.sensi > 0){
-	// This converts CMT to user CMT in model
-	// Hence CMT = 4 could translate in data to 44 with sensi=10
-	// Then cmt=44 translates back to cmt-10 or 4.
-	// This makes the sensitivity equations insensitive to CMT changes that occur in FOCEi
-	sAppend(&sbOut,"#define _CMT ((abs(CMT)<=%d) ? CMT : ((CMT<0) ? CMT+%d: CMT-%d))\n",
-	      baseSize, tb.sensi, tb.sensi);
+        // This converts CMT to user CMT in model
+        // Hence CMT = 4 could translate in data to 44 with sensi=10
+        // Then cmt=44 translates back to cmt-10 or 4.
+        // This makes the sensitivity equations insensitive to CMT changes that occur in FOCEi
+        sAppend(&sbOut,"#define _CMT ((abs(CMT)<=%d) ? CMT : ((CMT<0) ? CMT+%d: CMT-%d))\n",
+                baseSize, tb.sensi, tb.sensi);
       } else {
-	sAppendN(&sbOut,"#define _CMT CMT\n", 17);
+        sAppendN(&sbOut,"#define _CMT CMT\n", 17);
       }
       // Now define lhs lags
       prnt_vars(print_lhsLags, 1, "", "", 13);
@@ -116,277 +116,277 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppend(&sbOut, "SEXP %smodel_vars();\n", prefix);
       sAppendN(&sbOut,"\n", 1);
       sAppendN(&sbOut, "\n// prj-specific differential eqns\nvoid ", 40);
-      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  ", prefix);
+      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=1;\n  ", prefix);
     } else if (show_ode == 2){
-      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  ", prefix);
+      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=2;\n  ", prefix);
     } else if (show_ode == 3){
-      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n", prefix);
+      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n  (&_solveData->subjects[_cSub])->_rxFlag=3;\n  ", prefix);
       if (foundF0){
-	sAppendN(&sbOut, "  double t=0;\n", 14);
+        sAppendN(&sbOut, "  double t=0;\n", 14);
       }
     } else if (show_ode == 5){
       if (foundF){
-	int nnn = tb.de.n;
-	if (tb.linCmt){
-	  if (tb.hasKa){
-	    nnn+=2;
-	  } else {
-	    nnn+=1;
-	  }
-	}
-	sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double *_f=_solveData->subjects[_cSub].cF;\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  ",
-		prefix, nnn);
-	for (int jjj = nnn; jjj--;){
-	  sAppend(&sbOut, "  _f[%d]=1.0;\n",jjj);
-	}
+        int nnn = tb.de.n;
+        if (tb.linCmt){
+          if (tb.hasKa){
+            nnn+=2;
+          } else {
+            nnn+=1;
+          }
+        }
+        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double *_f=_solveData->subjects[_cSub].cF;\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=4;\n  ",
+                prefix, nnn);
+        for (int jjj = nnn; jjj--;){
+          sAppend(&sbOut, "  _f[%d]=1.0;\n",jjj);
+        }
       } else {
-	sAppend(&sbOut,  "// Functional based bioavailability\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n return _amt;\n",
-		prefix);
+        sAppend(&sbOut,  "// Functional based bioavailability\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n return _amt;\n  ",
+                prefix);
       }
     } else if (show_ode == 6){
       if (foundLag){
-	int nnn = tb.de.n;
-	if (tb.linCmt){
-	  if (tb.hasKa){
-	    nnn+=2;
-	  } else {
-	    nnn+=1;
-	  }
-	}
-	sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double *restrict _alag = _solveData->subjects[_cSub].alag;\n  (void)_alag; \n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  ",
-		prefix, nnn);
-	for (int jjj = nnn; jjj--;){
-	  sAppend(&sbOut, "  _alag[%d]=0.0;\n",jjj);
-	}
+        int nnn = tb.de.n;
+        if (tb.linCmt){
+          if (tb.hasKa){
+            nnn+=2;
+          } else {
+            nnn+=1;
+          }
+        }
+        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double *restrict _alag = _solveData->subjects[_cSub].alag;\n  (void)_alag; \n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=5;\n  ",
+                prefix, nnn);
+        for (int jjj = nnn; jjj--;){
+          sAppend(&sbOut, "  _alag[%d]=0.0;\n",jjj);
+        }
       } else {
-	sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n return __t;\n",
-		prefix);
+        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n return __t;\n",
+                prefix);
       }
     } else if (show_ode == 7){
       if (foundRate){
-	int nnn = tb.de.n;
-	if (tb.linCmt){
-	  if (tb.hasKa){
-	    nnn+=2;
-	  } else {
-	    nnn+=1;
-	  }
-	}
-	sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double *restrict _rate= _solveData->subjects[_cSub].cRate;\n  (void)_rate;\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  ",
-		prefix, nnn);
-	for (int jjj = nnn; jjj--;){
-	  sAppend(&sbOut, "  _rate[%d]=0.0;\n",jjj);
-	}
+        int nnn = tb.de.n;
+        if (tb.linCmt){
+          if (tb.hasKa){
+            nnn+=2;
+          } else {
+            nnn+=1;
+          }
+        }
+        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double *restrict _rate= _solveData->subjects[_cSub].cRate;\n  (void)_rate;\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=6;\n  ",
+                prefix, nnn);
+        for (int jjj = nnn; jjj--;){
+          sAppend(&sbOut, "  _rate[%d]=0.0;\n",jjj);
+        }
       } else {
-	sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n return 0.0;\n",
-		prefix);
+        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n return 0.0;\n",
+                prefix);
       }
     } else if (show_ode == 8){
       if (foundDur){
-	int nnn = tb.de.n;
-	if (tb.linCmt){
-	  if (tb.hasKa){
-	    nnn+=2;
-	  } else {
-	    nnn+=1;
-	  }
-	}
-	sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n double *restrict _dur = _solveData->subjects[_cSub].cDur;\n  (void)_dur;\n    double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  ",
-		prefix, nnn);
-	for (int jjj = nnn; jjj--;){
-	  sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
-	}
+        int nnn = tb.de.n;
+        if (tb.linCmt){
+          if (tb.hasKa){
+            nnn+=2;
+          } else {
+            nnn+=1;
+          }
+        }
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n  int _itwhile = 0;\n  (void)_itwhile;\n double *restrict _dur = _solveData->subjects[_cSub].cDur;\n  (void)_dur;\n    double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=7;\n  ",
+                prefix, nnn);
+        for (int jjj = nnn; jjj--;){
+          sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
+        }
       } else {
-	sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n return 0.0;\n",
-		prefix);
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t){\n return 0.0;\n",
+                prefix);
       }
     } else if (show_ode == 9){
       if (nmtime){
-	sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  ",
-		prefix);
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  (&_solveData->subjects[_cSub])->_rxFlag=8;\n  ",
+                prefix);
       } else {
-	sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n",
-		prefix);
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime){\n",
+                prefix);
       }
     } else if (show_ode == 10){
-      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  ",
-	      tb.matn, prefix);
+      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=9;\n  ",
+              tb.matn, prefix);
     } else if (show_ode == 11){
-      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  ", prefix);
+      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=10;\n  ", prefix);
     } else {
-      sAppend(&sbOut,  "// prj-specific derived vars\nvoid %scalc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  ", prefix);
+      sAppend(&sbOut,  "// prj-specific derived vars\nvoid %scalc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  (&_solveData->subjects[_cSub])->_rxFlag=11;\n  ", prefix);
     }
     if ((show_ode == 2 && found_jac == 1 && good_jac == 1) ||
-	(show_ode != 2 && show_ode != 3 && show_ode != 5  && show_ode != 8 &&
-	 show_ode != 7 && show_ode != 6 &&
-	 show_ode !=0 && show_ode != 9 && show_ode != 10 && show_ode != 11) ||
-	(show_ode == 8 && foundDur) ||
-	(show_ode == 7 && foundRate) ||
-	(show_ode == 6 && foundLag) ||
-	(show_ode == 5 && foundF) ||
-	(show_ode == 3 && foundF0) ||
-	(show_ode == 0 && tb.li) ||
-	(show_ode == 9 && nmtime) ||
-	(show_ode == 10 && tb.matn) ||
-	(show_ode == 11 && tb.matnf)){
+        (show_ode != 2 && show_ode != 3 && show_ode != 5  && show_ode != 8 &&
+         show_ode != 7 && show_ode != 6 &&
+         show_ode !=0 && show_ode != 9 && show_ode != 10 && show_ode != 11) ||
+        (show_ode == 8 && foundDur) ||
+        (show_ode == 7 && foundRate) ||
+        (show_ode == 6 && foundLag) ||
+        (show_ode == 5 && foundF) ||
+        (show_ode == 3 && foundF0) ||
+        (show_ode == 0 && tb.li) ||
+        (show_ode == 9 && nmtime) ||
+        (show_ode == 10 && tb.matn) ||
+        (show_ode == 11 && tb.matnf)){
       prnt_vars(print_double, 0, "", "\n",show_ode);     /* declare all used vars */
       if (maxSumProdN > 0 || SumProdLD > 0){
-	int mx = maxSumProdN;
-	if (SumProdLD > mx) mx = SumProdLD;
-	sAppend(&sbOut,  "  double _p[%d], _input[%d];\n", mx, mx);
-	sAppend(&sbOut,  "  double _pld[%d];\n", mx);
-	sAppend(&sbOut,  "  for (int ddd=%d; ddd--;){_p[ddd]=_input[ddd]=_pld[ddd]=0.0;}", mx);
+        int mx = maxSumProdN;
+        if (SumProdLD > mx) mx = SumProdLD;
+        sAppend(&sbOut,  "  double _p[%d], _input[%d];\n", mx, mx);
+        sAppend(&sbOut,  "  double _pld[%d];\n", mx);
+        sAppend(&sbOut,  "  for (int ddd=%d; ddd--;){_p[ddd]=_input[ddd]=_pld[ddd]=0.0;}", mx);
 
       }
       else prnt_vars(print_void, 0, "  (void)t;\n", "\n",show_ode);     /* declare all used vars */
       if (maxSumProdN){
-	sAppendN(&sbOut,  "  (void)_p;\n  (void)_input;\n", 28);
-	if (SumProdLD){
-	  sAppendN(&sbOut,  "  (void)_pld;\n", 14);
-	}
+        sAppendN(&sbOut,  "  (void)_p;\n  (void)_input;\n", 28);
+        if (SumProdLD){
+          sAppendN(&sbOut,  "  (void)_pld;\n", 14);
+        }
       }
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
       if (show_ode == 3){
-	sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
+        sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
       } else if (show_ode == 6 || show_ode == 7 || show_ode == 8 || show_ode == 9){
-	// functional lag, rate, duration, mtime
-	sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
+        // functional lag, rate, duration, mtime
+        sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
       } else if (show_ode == 11 || show_ode == 10){
-	sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
+        sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
       } else {
-	sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
+        sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
       }
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
       if (show_ode != 9 && show_ode != 11){
-	for (i=0; i<tb.de.n; i++) {                   /* name state vars */
-	  buf = tb.ss.line[tb.di[i]];
-	  if(tb.idu[i] != 0){
-	    if (show_ode == 6 || show_ode == 8 || show_ode == 7){
-	      sAppendN(&sbOut, "  ", 2);
-	      doDot(&sbOut, buf);
-	      sAppend(&sbOut, " = NA_REAL;\n", i, i);
-	    } else {
-	      // stateExtra
-	      sAppendN(&sbOut, "  ", 2);
-	      doDot(&sbOut, buf);
-	      sAppend(&sbOut, " = __zzStateVar__[%d]*((double)(_ON[%d]));\n", i, i);
-	    }
-	  } else {
-	    break;
-	  }
-	}
-	sAppendN(&sbOut, "\n", 1);
+        for (i=0; i<tb.de.n; i++) {                   /* name state vars */
+          buf = tb.ss.line[tb.di[i]];
+          if(tb.idu[i] != 0){
+            if (show_ode == 6 || show_ode == 8 || show_ode == 7){
+              sAppendN(&sbOut, "  ", 2);
+              doDot(&sbOut, buf);
+              sAppend(&sbOut, " = NA_REAL;\n", i, i);
+            } else {
+              // stateExtra
+              sAppendN(&sbOut, "  ", 2);
+              doDot(&sbOut, buf);
+              sAppend(&sbOut, " = __zzStateVar__[%d]*((double)(_ON[%d]));\n", i, i);
+            }
+          } else {
+            break;
+          }
+        }
+        sAppendN(&sbOut, "\n", 1);
       }
     }
     if ((foundDur && show_ode == 8) ||
-	(foundRate && show_ode == 7) ||
-	(foundLag && show_ode == 6) ||
-	(foundF && show_ode == 5) ||
-	(foundF0 && show_ode == 3) ||
-	(show_ode == 0 && tb.li) ||
-	(show_ode == 9 && nmtime) ||
-	(show_ode == 2 && found_jac == 1 && good_jac == 1) ||
-	(show_ode != 9 && show_ode != 0 && show_ode != 2 && show_ode != 3 && show_ode != 5 && show_ode != 6  && show_ode != 7 && show_ode != 8)){
+        (foundRate && show_ode == 7) ||
+        (foundLag && show_ode == 6) ||
+        (foundF && show_ode == 5) ||
+        (foundF0 && show_ode == 3) ||
+        (show_ode == 0 && tb.li) ||
+        (show_ode == 9 && nmtime) ||
+        (show_ode == 2 && found_jac == 1 && good_jac == 1) ||
+        (show_ode != 9 && show_ode != 0 && show_ode != 2 && show_ode != 3 && show_ode != 5 && show_ode != 6  && show_ode != 7 && show_ode != 8)){
       for (i = 0; i < sbPm.n; i++){
-	switch(sbPm.lType[i]){
-	case TLIN:
-	  if (show_ode != 10 && show_ode != 11 &&
-	      show_ode != 5 && show_ode != 6 &&
-	      show_ode != 7 && show_ode !=8){
-	    sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
-	  }
-	  break;
-	case TMTIME:
-	case TASSIGN:
-	  if (show_ode != 10 && show_ode != 11){
-	    sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
-	  }
-	  break;
-	case TINI:
-	  // See if this is an ini or a reclaimed expression.
-	  if (show_ode != 10 && show_ode != 11){
-	    if (sbPm.lProp[i] >= 0 ){
-	      tb.ix = sbPm.lProp[i];
-	      if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam){
-		sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
-	      }
-	    }
-	  }
-	  break;
-	case TF0:
-	  // functional ini
-	  if (show_ode == 3) sAppend(&sbOut,"  %s",sbPmDt.line[i]);
-	  break;
-	case FBIO:
-	  if (show_ode == 5) sAppend(&sbOut,"  %s", sbPmDt.line[i]);
-	  break;
-	case ALAG:
-	  if (show_ode == 6) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
-	  break;
-	case RATE:
-	  if (show_ode == 7) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
-	  break;
-	case DUR:
-	  if (show_ode == 8) sAppend(&sbOut,"  %s", sbPmDt.line[i]);
-	  break;
-	case TJAC:
-	  if (show_ode == 0) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
-	  else if (show_ode == 2)  sAppend(&sbOut, "  %s", sbPm.line[i]);
-	  break;
-	case TDDT:
-	  // d/dt()
-	  if (show_ode != 3 && show_ode != 5 && show_ode != 6 &&
-	      show_ode != 7 && show_ode != 8 && show_ode != 9 &&
-	      show_ode !=10 && show_ode != 11){
-	    sAppend(&sbOut, "  %s", show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
-	  }
-	  break;
-	case PPRN:
-	  // Rprintf
-	  if (show_ode == 1){
-	    sAppend(&sbOut, "  %s", show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
-	  }
-	  break;
-	case TLOGIC:
-	  if (show_ode != 10 && show_ode != 11){
-	    sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
-	  }
-	  break;
-	case TMAT0:
-	  if (show_ode == 10){
-	    sAppend(&sbOut,"  %s", sbPm.line[i]);
-	  }
-	  break;
-	case TMATF:
-	  if (show_ode == 11){
-	    sAppend(&sbOut,"  %s", sbPm.line[i]);
-	  }
-	  break;
-	default:
-	  RSprintf("line Number: %d\n", i);
-	  RSprintf("type: %d\n", sbPm.lType[i]);
-	  RSprintf("line: %s\n", sbPm.line[i]);
-	  RSprintf("PmDt Line: %s\n", sbPmDt.line[i]);
-	  RSprintf("Prop: %d\n", sbPm.lProp[i]);
-	}
+        switch(sbPm.lType[i]){
+        case TLIN:
+          if (show_ode != 10 && show_ode != 11 &&
+              show_ode != 5 && show_ode != 6 &&
+              show_ode != 7 && show_ode !=8){
+            sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
+        case TMTIME:
+        case TASSIGN:
+          if (show_ode != 10 && show_ode != 11){
+            sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
+        case TINI:
+          // See if this is an ini or a reclaimed expression.
+          if (show_ode != 10 && show_ode != 11){
+            if (sbPm.lProp[i] >= 0 ){
+              tb.ix = sbPm.lProp[i];
+              if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam){
+                sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
+              }
+            }
+          }
+          break;
+        case TF0:
+          // functional ini
+          if (show_ode == 3) sAppend(&sbOut,"  %s",sbPmDt.line[i]);
+          break;
+        case FBIO:
+          if (show_ode == 5) sAppend(&sbOut,"  %s", sbPmDt.line[i]);
+          break;
+        case ALAG:
+          if (show_ode == 6) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
+          break;
+        case RATE:
+          if (show_ode == 7) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
+          break;
+        case DUR:
+          if (show_ode == 8) sAppend(&sbOut,"  %s", sbPmDt.line[i]);
+          break;
+        case TJAC:
+          if (show_ode == 0) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
+          else if (show_ode == 2)  sAppend(&sbOut, "  %s", sbPm.line[i]);
+          break;
+        case TDDT:
+          // d/dt()
+          if (show_ode != 3 && show_ode != 5 && show_ode != 6 &&
+              show_ode != 7 && show_ode != 8 && show_ode != 9 &&
+              show_ode !=10 && show_ode != 11){
+            sAppend(&sbOut, "  %s", show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
+        case PPRN:
+          // Rprintf
+          if ((fullPrint && show_ode != 10 && show_ode != 11) || (!fullPrint && show_ode == 1)) {
+            sAppend(&sbOut, "  %s", show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
+        case TLOGIC:
+          if (show_ode != 10 && show_ode != 11){
+            sAppend(&sbOut,"  %s",show_ode == 1 ? sbPm.line[i] : sbPmDt.line[i]);
+          }
+          break;
+        case TMAT0:
+          if (show_ode == 10){
+            sAppend(&sbOut,"  %s", sbPm.line[i]);
+          }
+          break;
+        case TMATF:
+          if (show_ode == 11){
+            sAppend(&sbOut,"  %s", sbPm.line[i]);
+          }
+          break;
+        default:
+          RSprintf("line Number: %d\n", i);
+          RSprintf("type: %d\n", sbPm.lType[i]);
+          RSprintf("line: %s\n", sbPm.line[i]);
+          RSprintf("PmDt Line: %s\n", sbPmDt.line[i]);
+          RSprintf("Prop: %d\n", sbPm.lProp[i]);
+        }
       }
       // End statements
       switch (show_ode){
       case 8:
-	// RATE
-	sAppendN(&sbOut, "\n  return _dur[_cmt];\n", 22);
-	break;
+        // RATE
+        sAppendN(&sbOut, "\n  return _dur[_cmt];\n", 22);
+        break;
       case 7:
-	// DUR
-	sAppendN(&sbOut, "\n  return _rate[_cmt];\n", 23);
-	break;
+        // DUR
+        sAppendN(&sbOut, "\n  return _rate[_cmt];\n", 23);
+        break;
       case 6:
-	// Alag
-	sAppendN(&sbOut, "\n  return t + _alag[_cmt] - _solveData->subjects[_cSub].curShift;\n", 66);
-	break;
+        // Alag
+        sAppendN(&sbOut, "\n  return t + _alag[_cmt] - _solveData->subjects[_cSub].curShift;\n", 66);
+        break;
       case 5:
-	sAppendN(&sbOut, "\n  return _f[_cmt]*_amt;\n", 25);
-	break;
+        sAppendN(&sbOut, "\n  return _f[_cmt]*_amt;\n", 25);
+        break;
       }
     }
     if (show_ode == 1){
@@ -397,14 +397,14 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppendN(&sbOut,  "}\n", 2);
     } else if (show_ode == 3){
       if (foundF0){
-	for (i = 0; i < tb.de.n; i++) {
-	  if (tb.idu[i]) {
-	    buf=tb.ss.line[tb.di[i]];
-	    sAppend(&sbOut, "  __zzStateVar__[%d]=((double)(_ON[%d]))*(",i,i);
-	    doDot(&sbOut, buf);
-	    sAppendN(&sbOut,  ");\n", 3);
-	  }
-	}
+        for (i = 0; i < tb.de.n; i++) {
+          if (tb.idu[i]) {
+            buf=tb.ss.line[tb.di[i]];
+            sAppend(&sbOut, "  __zzStateVar__[%d]=((double)(_ON[%d]))*(",i,i);
+            doDot(&sbOut, buf);
+            sAppendN(&sbOut,  ");\n", 3);
+          }
+        }
       }
       sAppendN(&sbOut,  "}\n", 2);
     } else if (show_ode == 5 || show_ode == 6 || show_ode == 7 || show_ode == 8){
@@ -412,23 +412,23 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
     } else if (show_ode == 0 && tb.li){
       sAppendN(&sbOut,  "\n", 1);
       for (i=0, j=0; i<NV; i++) {
-	if (tb.lh[i] != isLHS && tb.lh[i] != isLhsStateExtra && tb.lh[i] != isLHSparam) continue;
-	buf = tb.ss.line[i];
-	sAppend(&sbOut,  "  _lhs[%d]=", j);
-	doDot(&sbOut, buf);
-	sAppendN(&sbOut,  ";\n", 2);
-	j++;
+        if (tb.lh[i] != isLHS && tb.lh[i] != isLhsStateExtra && tb.lh[i] != isLHSparam) continue;
+        buf = tb.ss.line[i];
+        sAppend(&sbOut,  "  _lhs[%d]=", j);
+        doDot(&sbOut, buf);
+        sAppendN(&sbOut,  ";\n", 2);
+        j++;
       }
       sAppendN(&sbOut,  "}\n", 2);
     } else if (show_ode == 9 && nmtime){
       sAppendN(&sbOut,  "\n", 1);
       for (i=0, j=0; i<NV; i++) {
-	if (tb.mtime[i] != 1) continue;
-	buf = tb.ss.line[i];
-	sAppend(&sbOut,  "  _mtime[%d]=", j);
-	doDot(&sbOut, buf);
-	sAppendN(&sbOut,  ";\n", 2);
-	j++;
+        if (tb.mtime[i] != 1) continue;
+        buf = tb.ss.line[i];
+        sAppend(&sbOut,  "  _mtime[%d]=", j);
+        doDot(&sbOut, buf);
+        sAppendN(&sbOut,  ";\n", 2);
+        j++;
       }
       sAppendN(&sbOut,  "}\n", 2);
     } else {
@@ -459,7 +459,7 @@ void writeSb(sbuf *sbb, FILE *fp){
 }
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
-		    SEXP pMd5, SEXP timeId, SEXP mvLast){
+                     SEXP pMd5, SEXP timeId, SEXP mvLast){
   if (!sbPm.o || !sbNrm.o){
     err_trans("nothing in output queue to write");
   }
@@ -542,9 +542,9 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     for (int i=tb.de.n; i--;) {                     /* name state vars */
       buf=tb.ss.line[tb.di[i]];
       if (tb.hasKa == 1 && !strcmp(buf,"depot")){
-	badDepot=true;
+        badDepot=true;
       } else if (!strcmp(buf, "central")) {
-	badCentral=true;
+        badCentral=true;
       }
     }
     if (badCentral && badDepot){
@@ -563,9 +563,9 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
       sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei+1);
     } else if (tb.hasCentral == 1) {
       if (tb.hasDepot){
-	fclose(fpIO);
-	err_trans("linCmt() does not have 'depot' compartment without a 'ka'");
-	return R_NilValue;
+        fclose(fpIO);
+        err_trans("linCmt() does not have 'depot' compartment without a 'ka'");
+        return R_NilValue;
       }
       sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei);
     }

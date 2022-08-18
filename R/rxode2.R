@@ -9,7 +9,7 @@ NA_LOGICAL <- NA # nolint
   assignInMyNamespace(".rxMECode", "")
   assignInMyNamespace(".indLinInfo", list())
 }
-
+.rxFullPrint <- FALSE
 #' Create an ODE-based model specification
 #'
 #' Create a dynamic ODE-based model object suitably for translation
@@ -78,6 +78,10 @@ NA_LOGICAL <- NA # nolint
 #'
 #' @param verbose When `TRUE` be verbose with the linear
 #'   compartmental model
+#'
+#' @param fullPrint When using `printf` within the model, if `TRUE`
+#'   print on every step (except ME/indLin), otherwise when `FALSE`
+#'   print only when calculating the `d/dt`
 #'
 #' @details
 #'
@@ -321,7 +325,9 @@ rxode2 <- # nolint
            collapseModel = FALSE, package = NULL, ...,
            linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
            indLin = FALSE,
-           verbose = FALSE) {
+           verbose = FALSE,
+           fullPrint=getOption("rxode2.fullPrint", FALSE)) {
+    assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
     .modelName <- try(as.character(substitute(model)), silent=TRUE)
     if (inherits(.modelName, "try-error")) .modelName <- NULL
@@ -1091,7 +1097,7 @@ rxMd5 <- function(model, # Model File
       rxode2.calculate.sensitivity)
     .ret <- c(
       .ret, .tmp, .rxIndLinStrategy, .rxIndLinState,
-      .linCmtSens, ls(.symengineFs)
+      .linCmtSens, ls(.symengineFs), .rxFullPrint
     )
     if (is.null(.md5Rx)) {
       .tmp <- getLoadedDLLs()$rxode2
@@ -1200,7 +1206,8 @@ rxTrans.character <- memoise::memoise(function(model,
   .ret <- .Call(
     `_rxode2_trans`, model, modelPrefix, md5, .isStr,
     as.integer(crayon::has_color()),
-    .rxMECode, .rxSupportedFuns()
+    .rxMECode, .rxSupportedFuns(),
+    .rxFullPrint
   )
   if (inherits(.ret, "try-error")) {
     message("model")
@@ -1463,7 +1470,7 @@ rxCompile.rxModelVars <- function(model, # Model
         .model <- .rxModelVarsLast$model
         .model["indLin"] <- .rxMECode
         .rxModelVarsLast$model <- .model
-        if (!is.null(package) & !.newMod) {
+        if (!is.null(package) && !.newMod) {
           .libname <- c(package, gsub(.Platform$dynlib.ext, "", basename(.cDllFile)))
           .Call(
             `_rxode2_codegen`, .cFile, prefix, .libname,
@@ -1507,7 +1514,7 @@ rxCompile.rxModelVars <- function(model, # Model
           .out <- sys::exec_internal(cmd = .cmd, args = .args, error = FALSE)
         })
         .stderr <- rawToChar(.out$stderr)
-        if (!(all(.stderr == "") & length(.stderr) == 1)) {
+        if (!(all(.stderr == "") && length(.stderr) == 1)) {
           message(paste(.stderr, sep = "\n"))
         }
         .badBuild <- function(msg, cSrc = TRUE) {
@@ -1525,7 +1532,7 @@ rxCompile.rxModelVars <- function(model, # Model
           }
           stop(msg, call. = FALSE)
         }
-        if (!(.out$status == 0 & file.exists(.cDllFile))) {
+        if (!(.out$status == 0 && file.exists(.cDllFile))) {
           .badBuild("error building model")
         }
       }
