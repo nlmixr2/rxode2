@@ -41,6 +41,23 @@ rxUiGet <- function(x, ...) {
   }
   UseMethod("rxUiGet")
 }
+
+#' @export
+rxUiGet.state <- function(x, ...) {
+  .ui <- x[[1]]
+  rxModelVars(.ui)$state
+}
+attr(rxUiGet.state, "desc") <- "states associated with the model (in order)"
+
+#' @export
+rxUiGet.stateDf <- function(x, ...) {
+  .ui <- x[[1]]
+  .state <- rxModelVars(.ui)$state
+  data.frame("Compartment Number"=seq_along(.state), "Compartment Name"=.state,
+             check.names=FALSE)
+}
+attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.theta <- function(x, ...) {
