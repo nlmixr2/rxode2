@@ -3455,7 +3455,7 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   double curTime= getTime(ind->ix[idx], ind); // t0
   while (t < curTime) {
     idx--;
-    if (idx < 0) return NA_TIME;
+    if (idx < 0) return NA_REAL;
     curTime = getTime(ind->ix[idx], ind);
   }
   int sameTime = isSameTime(t, curTime);
