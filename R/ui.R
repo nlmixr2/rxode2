@@ -304,7 +304,10 @@ print.rxUi <-function(x, ...) {
       print(.omega)
     }
   }
-
+  if (length(x$state) > 0) {
+    cat(paste0(crayon::bold("\nStates"), " (", crayon::bold$blue("$state"), " or ", crayon::bold$blue("$stateDf"), "):"), "\n")
+    print(rxUiGet.stateDf(list(x,TRUE)))
+  }
   # Multiple Endpoint
   .me <- x$multipleEndpoint
   if (!is.null(.me)) {
