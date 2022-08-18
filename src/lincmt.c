@@ -117,7 +117,7 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
 #define T(i) getTime(id->ix[i], id)
 #define V(i) getValue(i, y, id, Meth)
 double rx_approxP(double v, double *y, int n,
-		  rx_solving_options *Meth, rx_solving_options_ind *id){
+                  rx_solving_options *Meth, rx_solving_options_ind *id){
   /* Approximate  y(v),  given (x,y)[i], i = 0,..,n-1 */
   int i, j, ij;
 
@@ -175,8 +175,8 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   if (op->do_par_cov){
     for (int k = op->ncov; k--;){
       if (op->par_cov[k] == parNo+1){
-	double *y = ind->cov_ptr + ind->n_all_times*k;
-	return y[ind->ix[idx]];
+        double *y = ind->cov_ptr + ind->n_all_times*k;
+        return y[ind->ix[idx]];
       }
     }
   }
@@ -199,26 +199,26 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
     int ncov = op->ncov;
     if (op->do_par_cov){
       for (k = ncov; k--;){
-	if (op->par_cov[k]){
-	  if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
-	    // Get or sample id from overall ids
-	    if (ind->cov_sample[k] == 0) {
-	      ind->cov_sample[k] = (int)rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
-	    }
-	    indSample = &(rx->subjects[ind->cov_sample[k]-1]);
-	    idxSample = -1;
-	  } else {
-	    indSample = ind;
-	    idxSample = idx;
-	  }
-	  double *y = indSample->cov_ptr + indSample->n_all_times*k;
-	  ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
-	  if (idx == 0){
-	    ind->cacheME=0;
-	  } else if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
-	    ind->cacheME=0;
-	  }
-	}
+        if (op->par_cov[k]){
+          if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
+            // Get or sample id from overall ids
+            if (ind->cov_sample[k] == 0) {
+              ind->cov_sample[k] = (int)rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
+            }
+            indSample = &(rx->subjects[ind->cov_sample[k]-1]);
+            idxSample = -1;
+          } else {
+            indSample = ind;
+            idxSample = idx;
+          }
+          double *y = indSample->cov_ptr + indSample->n_all_times*k;
+          ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
+          if (idx == 0){
+            ind->cacheME=0;
+          } else if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
+            ind->cacheME=0;
+          }
+        }
       }
     }
   } else {
@@ -228,38 +228,38 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
     int ncov = op->ncov;
     if (op->do_par_cov){
       for (k = ncov; k--;){
-	if (op->par_cov[k]){
-	  if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
-	    // Get or sample id from overall ids
-	    if (ind->cov_sample[k] == 0) {
-	      ind->cov_sample[k] = (int)rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
-	    }
-	    indSample = &(rx->subjects[ind->cov_sample[k]-1]);
-	    idxSample = -1;
-	  } else {
-	    indSample = ind;
-	    idxSample = idx;
-	  }
-	  double *par_ptr = ind->par_ptr;
-	  double *all_times = indSample->all_times;
-	  double *y = indSample->cov_ptr + indSample->n_all_times*k;
-	  if (idxSample == 0 && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
-	    par_ptr[op->par_cov[k]-1] = y[0];
-	    ind->cacheME=0;
-	  } else if (idxSample > 0 && idxSample < indSample->n_all_times && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
-	    par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
-	    if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
-	      ind->cacheME=0;
-	    }
-	  } else {
-	    // Use the same methodology as approxfun.
-	    indSample->ylow = getValue(0, y, indSample, op);/* cov_ptr[ind->n_all_times*k]; */
-	    indSample->yhigh = getValue(indSample->n_all_times-1, y, indSample, op);/* cov_ptr[ind->n_all_times*k+ind->n_all_times-1]; */
-	    par_ptr[op->par_cov[k]-1] = rx_approxP(t, y, indSample->n_all_times, op, indSample);
-	    // Don't need to reset ME because solver doesn't use the
-	    // times in-between.
-	  }
-	}
+        if (op->par_cov[k]){
+          if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
+            // Get or sample id from overall ids
+            if (ind->cov_sample[k] == 0) {
+              ind->cov_sample[k] = (int)rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
+            }
+            indSample = &(rx->subjects[ind->cov_sample[k]-1]);
+            idxSample = -1;
+          } else {
+            indSample = ind;
+            idxSample = idx;
+          }
+          double *par_ptr = ind->par_ptr;
+          double *all_times = indSample->all_times;
+          double *y = indSample->cov_ptr + indSample->n_all_times*k;
+          if (idxSample == 0 && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+            par_ptr[op->par_cov[k]-1] = y[0];
+            ind->cacheME=0;
+          } else if (idxSample > 0 && idxSample < indSample->n_all_times && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+            par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
+            if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
+              ind->cacheME=0;
+            }
+          } else {
+            // Use the same methodology as approxfun.
+            indSample->ylow = getValue(0, y, indSample, op);/* cov_ptr[ind->n_all_times*k]; */
+            indSample->yhigh = getValue(indSample->n_all_times-1, y, indSample, op);/* cov_ptr[ind->n_all_times*k+ind->n_all_times-1]; */
+            par_ptr[op->par_cov[k]-1] = rx_approxP(t, y, indSample->n_all_times, op, indSample);
+            // Don't need to reset ME because solver doesn't use the
+            // times in-between.
+          }
+        }
       }
     }
   }
@@ -272,7 +272,7 @@ void sortRadix(rx_solving_options_ind *ind);
 
 
 /*
-rxOptExpr(rxNorm(rxode2({
+  rxOptExpr(rxNorm(rxode2({
   A1=r1/ka-((r1+(-b1-A1last)*ka)*exp(-ka*t))/ka;
   A2=((r1+(-b1-A1last)*ka)*exp(-ka*t))/(ka-k20)-(((ka-k20)*r2+ka*r1+(-b2-b1-A2last-A1last)*k20*ka+(b2+A2last)*k20^2)*exp(-k20*t))/(k20*ka-k20^2)+(r2+r1)/k20}))) = 
 */
@@ -292,20 +292,20 @@ rxOptExpr(rxNorm(rxode2({
 #define A4last Alast[3]
 
 static inline void oneCmtKaRateSSr1(double *A, double *r1,
-				    double *ka, double *k20) {
+                                    double *ka, double *k20) {
   A1 = (*r1)/(*ka);
   A2 = (*r1)/(*k20);
 }
 
 static inline void oneCmtKaRateSSr2(double *A, double *r2,
-				    double *ka, double *k20) {
+                                    double *ka, double *k20) {
   A1 = 0;
   A2 = (*r2)/(*k20);
 }
 
 static inline void oneCmtKaRateSStr1(double *A,
-				     double *tinf, double *tau, double *r1,
-				     double *ka, double *k20) {
+                                     double *tinf, double *tau, double *r1,
+                                     double *ka, double *k20) {
   double eKa = exp(-(*ka)*((*tau)-(*tinf)))/(1.0-exp(-(*tau)*(*ka)));
   double eiKa = exp(-(*ka)*(*tinf));
   double eiK = exp(-(*k20)*(*tinf));
@@ -315,8 +315,8 @@ static inline void oneCmtKaRateSStr1(double *A,
 }
 
 static inline void oneCmtKaRateSStr2(double *A,
-				     double *tinf, double *tau, double *r2, 
-				     double *ka, double *k20){
+                                     double *tinf, double *tau, double *r2, 
+                                     double *ka, double *k20){
   double eiK = exp(-(*k20)*(*tinf));
   double eK = exp(-(*k20)*((*tau)-(*tinf)))/(1.0-exp(-(*k20)*(*tau)));
   A1=0.0;
@@ -324,9 +324,9 @@ static inline void oneCmtKaRateSStr2(double *A,
 }
 
 static inline void oneCmtKaRate(double *A, double *Alast, double *t,
-				double *b1, double *b2,
-				double *r1, double *r2,
-				double *ka, double *k20) {
+                                double *b1, double *b2,
+                                double *r1, double *r2,
+                                double *ka, double *k20) {
   double eKa = exp(-(*ka)*(*t));
   double e20 = exp(-(*k20)*(*t));
   A1 = (*r1)/(*ka)-(((*r1)-A1last*(*ka))*eKa)/(*ka);
@@ -334,12 +334,12 @@ static inline void oneCmtKaRate(double *A, double *Alast, double *t,
 }
 
 /*
-Two compartment with rates in each
- */
+  Two compartment with rates in each
+*/
 
 static inline void twoCmtKaRateSSr1(double *A, double *r1,
-				    double *ka,  double *k20, 
-				    double *k23, double *k32) {
+                                    double *ka,  double *k20, 
+                                    double *k23, double *k32) {
   double s = (*k23)+(*k32)+(*k20);
   double beta  = 0.5*(s - sqrt(s*s - 4*(*k32)*(*k20)));
   double alpha = (*k32)*(*k20)/beta;
@@ -349,8 +349,8 @@ static inline void twoCmtKaRateSSr1(double *A, double *r1,
 }
 
 static inline void twoCmtKaRateSSr2(double *A, double *r2,
-				    double *ka,  double *k20, 
-				    double *k23, double *k32) {
+                                    double *ka,  double *k20, 
+                                    double *k23, double *k32) {
   double s = (*k23)+(*k32)+(*k20);
   double beta  = 0.5*(s - sqrt(s*s - 4*(*k32)*(*k20)));
   double alpha = (*k32)*(*k20)/beta;
@@ -360,8 +360,8 @@ static inline void twoCmtKaRateSSr2(double *A, double *r2,
 }
 
 static inline void twoCmtKaRateSStr1(double *A, double *tinf, double *tau, double *r1, 
-				     double *ka,  double *k20, 
-				     double *k23, double *k32){
+                                     double *ka,  double *k20, 
+                                     double *k23, double *k32){
   double s = (*k23)+(*k32)+(*k20);
   double beta  = 0.5*(s - sqrt(s*s - 4*(*k32)*(*k20)));
   double alpha = (*k32)*(*k20)/beta;
@@ -389,8 +389,8 @@ static inline void twoCmtKaRateSStr1(double *A, double *tinf, double *tau, doubl
 }
 
 static inline void twoCmtKaRateSStr2(double *A, double *tinf, double *tau, double *r2,
-				     double *ka,  double *k20, 
-				     double *k23, double *k32) {
+                                     double *ka,  double *k20, 
+                                     double *k23, double *k32) {
   double E2 = (*k20)+(*k23);
   double E3 = (*k32);
   double s = (*k23)+(*k32)+(*k20);
@@ -414,10 +414,10 @@ static inline void twoCmtKaRateSStr2(double *A, double *tinf, double *tau, doubl
 }
 
 static inline void twoCmtKaRate(double *A, double *Alast,
-				double *t, double *b1, double *b2,
-				double *r1, double *r2,
-				double *ka,  double *k20, 
-				double *k23, double *k32) {
+                                double *t, double *b1, double *b2,
+                                double *r1, double *r2,
+                                double *ka,  double *k20, 
+                                double *k23, double *k32) {
   double E2 =  (*k20)+ (*k23);
   double s = (*k23)+(*k32)+(*k20);
   double beta  = 0.5*(s - sqrt(s*s - 4*(*k32)*(*k20)));
@@ -441,9 +441,9 @@ static inline void twoCmtKaRate(double *A, double *Alast,
 }
 
 static inline void threeCmtKaRateSSr1(double *A, double *r1,
-				      double *ka, double *k20,
-				      double *k23, double *k32,
-				      double *k24, double *k42){
+                                      double *ka, double *k20,
+                                      double *k23, double *k32,
+                                      double *k24, double *k42){
   double j = (*k23)+(*k20)+(*k32)+(*k42)+(*k24);
   double k = (*k23)*(*k42)+(*k20)*(*k32)+(*k20)*(*k42)+(*k32)*(*k42)+(*k24)*(*k32);
   double l = (*k20)*(*k32)*(*k42);
@@ -471,9 +471,9 @@ static inline void threeCmtKaRateSSr1(double *A, double *r1,
 }
 
 static inline void threeCmtKaRateSSr2(double *A, double *r2, 
-				      double *ka, double *k20,
-				      double *k23, double *k32,
-				      double *k24, double *k42){
+                                      double *ka, double *k20,
+                                      double *k23, double *k32,
+                                      double *k24, double *k42){
   double j = (*k23)+(*k20)+(*k32)+(*k42)+(*k24);
   double k = (*k23)*(*k42)+(*k20)*(*k32)+(*k20)*(*k42)+(*k32)*(*k42)+(*k24)*(*k32);
   double l = (*k20)*(*k32)*(*k42);
@@ -501,9 +501,9 @@ static inline void threeCmtKaRateSSr2(double *A, double *r2,
 }
 
 static inline void threeCmtKaRateSStr1(double *A, double *tinf, double *tau, double *r1, 
-				       double *ka, double *k20,
-				       double *k23, double *k32,
-				       double *k24, double *k42){
+                                       double *ka, double *k20,
+                                       double *k23, double *k32,
+                                       double *k24, double *k42){
   double E2 =  (*k20)+ (*k23) + (*k24);
   double E3 = (*k32);
   double E4 = (*k42);
@@ -560,9 +560,9 @@ static inline void threeCmtKaRateSStr1(double *A, double *tinf, double *tau, dou
 }
 
 static inline void threeCmtKaRateSStr2(double *A, double *tinf, double *tau, double *r2, 
-				       double *ka, double *k20,
-				       double *k23, double *k32,
-				       double *k24, double *k42) {
+                                       double *ka, double *k20,
+                                       double *k23, double *k32,
+                                       double *k24, double *k42) {
   double E2 =  (*k20)+ (*k23) + (*k24);
   double E3 = (*k32);
   double E4 = (*k42);
@@ -613,12 +613,12 @@ static inline void threeCmtKaRateSStr2(double *A, double *tinf, double *tau, dou
 }
 
 static inline void threeCmtKaRate(double *A, double *Alast,
-				  double *t,
-				  double *b1, double *b2,
-				  double *r1, double *r2,
-				  double *ka, double *k20,
-				  double *k23, double *k32,
-				  double *k24, double *k42) {
+                                  double *t,
+                                  double *b1, double *b2,
+                                  double *r1, double *r2,
+                                  double *ka, double *k20,
+                                  double *k23, double *k32,
+                                  double *k24, double *k42) {
   double E2 =  (*k20)+ (*k23) + (*k24);
   double j = (*k23)+(*k20)+(*k32)+(*k42)+(*k24);
   double k = (*k23)*(*k42)+(*k20)*(*k32)+(*k20)*(*k42)+(*k32)*(*k42)+(*k24)*(*k32);
@@ -685,7 +685,7 @@ static inline void threeCmtKaRate(double *A, double *Alast,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void oneCmtKaSSb1(double *A, double *tau,
-				double *b1, double *ka, double *k20) {
+                                double *b1, double *ka, double *k20) {
   double eKa = 1.0/(1.0-exp(-(*tau)*(*ka)));
   double eK =  1.0/(1.0-exp(-(*tau)*(*k20)));
   A1=eKa*(*b1);
@@ -693,15 +693,15 @@ static inline void oneCmtKaSSb1(double *A, double *tau,
 }
 
 static inline void oneCmtKaSSb2(double *A, double *tau,
-				double *b2, double *ka, double *k20) {
+                                double *b2, double *ka, double *k20) {
   double eK =  1.0/(1.0-exp(-(*tau)*(*k20)));
   A1=0.0;
   A2=eK*(*b2);
 }
 
 static inline void oneCmtKa(double *A, double *Alast,
-			    double *t, double *b1, double *b2,
-			    double *ka, double *k20) {
+                            double *t, double *b1, double *b2,
+                            double *ka, double *k20) {
   double rx_expr_0=exp(-(*t)*(*ka));
   A1=A1last*rx_expr_0;
   double rx_expr_1=exp(-(*t)*(*k20));
@@ -709,8 +709,8 @@ static inline void oneCmtKa(double *A, double *Alast,
 }
 
 static inline void twoCmtKaSSb1(double *A, double *tau, double *b1,
-				double *ka, double *k20,
-				double *k23, double *k32) {
+                                double *ka, double *k20,
+                                double *k23, double *k32) {
   double E2 = (*k20)+(*k23);
   double E3 = (*k32);
   double e2e3 = E2+E3;
@@ -727,8 +727,8 @@ static inline void twoCmtKaSSb1(double *A, double *tau, double *b1,
 }
 
 static inline void twoCmtKaSSb2(double *A, double *tau, double *b2,
-				double *ka, double *k20,
-				double *k23, double *k32) {
+                                double *ka, double *k20,
+                                double *k23, double *k32) {
   double E2 = (*k20)+(*k23);
   double E3 = (*k32);
   double e2e3 = E2+E3;
@@ -745,9 +745,9 @@ static inline void twoCmtKaSSb2(double *A, double *tau, double *b2,
 }
 
 static inline void twoCmtKa(double *A, double *Alast, double *t,
-			    double *b1, double *b2,
-			    double *ka, double *k20,
-			    double *k23, double *k32) {
+                            double *b1, double *b2,
+                            double *ka, double *k20,
+                            double *k23, double *k32) {
   double rxe2=exp(-(*t)*(*ka));
   A1=rxe2*A1last;
   double rxe0=(*k23)+(*k32);
@@ -766,9 +766,9 @@ static inline void twoCmtKa(double *A, double *Alast, double *t,
 
 
 static inline void threeCmtKaSSb1(double *A, double *tau, double *b1, 
-				  double *ka, double *k20,
-				  double *k23, double *k32,
-				  double *k24, double *k42){
+                                  double *ka, double *k20,
+                                  double *k23, double *k32,
+                                  double *k24, double *k42){
   double E2 = (*k20)+(*k23)+(*k24);
   double E3 = (*k32);
   double E4 = (*k42);
@@ -807,9 +807,9 @@ static inline void threeCmtKaSSb1(double *A, double *tau, double *b1,
 }
 
 static inline void threeCmtKaSSb2(double *A, double *tau, double *b2, 
-				  double *ka, double *k20,
-				  double *k23, double *k32,
-				  double *k24, double *k42) {
+                                  double *ka, double *k20,
+                                  double *k23, double *k32,
+                                  double *k24, double *k42) {
   double E2 = (*k20)+(*k23)+(*k24);
   double E3 = (*k32);
   double E4 = (*k42);
@@ -846,10 +846,10 @@ static inline void threeCmtKaSSb2(double *A, double *tau, double *b2,
 }
 
 static inline void threeCmtKa(double *A, double *Alast, double *t,
-			      double *b1, double *b2,
-			      double *ka, double *k20,
-			      double *k23, double *k32,
-			      double *k24, double *k42) {
+                              double *b1, double *b2,
+                              double *ka, double *k20,
+                              double *k23, double *k32,
+                              double *k24, double *k42) {
   double E2 = (*k20)+(*k23)+(*k24);
   double E3 = (*k32);
   double E4 = (*k42);
@@ -942,9 +942,9 @@ static inline void oneCmtRateSS(double *A, double *tinf, double *tau, double *r1
 }
 
 static inline void oneCmtRate(double *A, double *Alast, 
-			      double *t,
-			      double *b1, double *r1,
-			      double *k10) {
+                              double *t,
+                              double *b1, double *r1,
+                              double *k10) {
   double eT = exp(-(*k10)*(*t));
   A1 = (*r1)/(*k10)*(1-eT)+A1last*eT;
 }
@@ -961,7 +961,7 @@ static inline void twoCmtRateSSr1(double *A, double *r1, double *k10, double *k1
 }
 
 static inline void twoCmtRateSS(double *A, double *tinf, double *tau, double *r1, 
-				double *k10, double *k12, double *k21) {
+                                double *k10, double *k12, double *k21) {
   double E1 = (*k10)+(*k12);
   double E2 = (*k21);
 
@@ -979,8 +979,8 @@ static inline void twoCmtRateSS(double *A, double *tinf, double *tau, double *r1
 }
 
 static inline void twoCmtRate(double *A, double *Alast, double *t,
-			      double *b1, double *r1,
-			      double *k10, double *k12, double *k21) {
+                              double *b1, double *r1,
+                              double *k10, double *k12, double *k21) {
   double E1 = (*k10)+(*k12);
   double E2 = (*k21);
 
@@ -1011,8 +1011,8 @@ static inline void twoCmtRate(double *A, double *Alast, double *t,
 }
 
 static inline void threeCmtRateSSr1(double *A, double *r1,
-				    double *k10, double *k12, double *k21,
-				    double *k13, double *k31) {
+                                    double *k10, double *k12, double *k21,
+                                    double *k13, double *k31) {
   double E1 = (*k10)+(*k12)+(*k13);
   double E2 = (*k21);
   double E3 = (*k31);
@@ -1045,9 +1045,9 @@ static inline void threeCmtRateSSr1(double *A, double *r1,
 }
 
 static inline void threeCmtRateSS(double *A,
-				  double *tinf, double *tau, double *r1, 
-				  double *k10, double *k12, double *k21,
-				  double *k13, double *k31){
+                                  double *tinf, double *tau, double *r1, 
+                                  double *k10, double *k12, double *k21,
+                                  double *k13, double *k31){
   double E1 = (*k10)+(*k12)+(*k13);
   double E2 = (*k21);
   double E3 = (*k31);
@@ -1085,9 +1085,9 @@ static inline void threeCmtRateSS(double *A,
 }
 
 static inline void threeCmtRate(double *A, double *Alast,
-				double *t, double *b1, double *r1,
-				double *k10, double *k12, double *k21,
-				double *k13, double *k31) {
+                                double *t, double *b1, double *r1,
+                                double *k10, double *k12, double *k21,
+                                double *k13, double *k31) {
   double E1 = (*k10)+(*k12)+(*k13);
   double E2 = (*k21);
   double E3 = (*k31);
@@ -1163,19 +1163,19 @@ static inline void threeCmtRate(double *A, double *Alast,
 // 1-3 compartment bolus only
 //
 static inline void oneCmtBolusSS(double *A, double *tau,
-				 double *b1, double *k10) {
+                                 double *b1, double *k10) {
   double eT = 1.0/(1.0-exp(-(*k10)*(*tau)));
   A1 = (*b1)*eT;
 }
 
 static inline void oneCmtBolus(double *A, double *Alast, 
-			       double *t, double *b1, double *k10) {
+                               double *t, double *b1, double *k10) {
   A1 = A1last*exp(-(*k10)*(*t));
 }
 
 static inline void twoCmtBolusSS(double *A,
-				 double *tau, double *b1, double *k10,
-				 double *k12, double *k21) {
+                                 double *tau, double *b1, double *k10,
+                                 double *k12, double *k21) {
   double E2 = (*k21);
 
   double s = (*k12)+(*k21)+(*k10);
@@ -1191,8 +1191,8 @@ static inline void twoCmtBolusSS(double *A,
 }
 
 static inline void twoCmtBolus(double *A, double *Alast,
-			       double *t, double *b1, double *k10,
-			       double *k12, double *k21) {
+                               double *t, double *b1, double *k10,
+                               double *k12, double *k21) {
   double E1 = (*k10)+(*k12);
   double E2 = (*k21);
 
@@ -1209,8 +1209,8 @@ static inline void twoCmtBolus(double *A, double *Alast,
 }
 
 static inline void threeCmtBolusSS(double *A, double *tau, double *b1, double *k10,
-				   double *k12, double *k21,
-				   double *k13, double *k31){
+                                   double *k12, double *k21,
+                                   double *k13, double *k31){
   double E1 = (*k10)+(*k12)+(*k13);
   double E2 = (*k21);
   double E3 = (*k31);
@@ -1247,9 +1247,9 @@ static inline void threeCmtBolusSS(double *A, double *tau, double *b1, double *k
 }
 
 static inline void threeCmtBolus(double *A, double *Alast,
-				 double *t, double *b1, double *k10,
-				 double *k12, double *k21,
-				 double *k13, double *k31){
+                                 double *t, double *b1, double *k10,
+                                 double *k12, double *k21,
+                                 double *k13, double *k31){
   double E1 = (*k10)+(*k12)+(*k13);
   double E2 = (*k21);
   double E3 = (*k31);
@@ -1318,45 +1318,45 @@ static inline void threeCmtBolus(double *A, double *Alast,
 }
 
 static inline void ssRateTau(double *A,
-			     int ncmt,
-			     int oral0,
-			     double *tinf,
-			     double *tau,
-			     double *r1,
-			     double *r2,
-			     double *ka, 
-			     double *kel,  
-			     double *k12, double *k21,
-			     double *k13, double *k31){
+                             int ncmt,
+                             int oral0,
+                             double *tinf,
+                             double *tau,
+                             double *r1,
+                             double *r2,
+                             double *ka, 
+                             double *kel,  
+                             double *k12, double *k21,
+                             double *k13, double *k31){
   if (oral0){
     if ((*r1) > 0 ){
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSStr1(A, tinf, tau, r1, ka, kel);
-	return;
+        oneCmtKaRateSStr1(A, tinf, tau, r1, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKaRateSStr1(A, tinf, tau, r1, ka, kel, k12, k21);
-	return;
+        twoCmtKaRateSStr1(A, tinf, tau, r1, ka, kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKaRateSStr1(A, tinf, tau, r1, ka, kel, k12, k21, k13, k31);
-	return;
+        threeCmtKaRateSStr1(A, tinf, tau, r1, ka, kel, k12, k21, k13, k31);
+        return;
       } break;
       }
     } else {
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSStr2(A, tinf, tau, r2, ka, kel);
-	return;
+        oneCmtKaRateSStr2(A, tinf, tau, r2, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKaRateSStr2(A, tinf, tau, r2, ka, kel, k12, k21);
-	return;
+        twoCmtKaRateSStr2(A, tinf, tau, r2, ka, kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKaRateSStr2(A, tinf, tau, r2, ka, kel, k12,  k21, k13, k31);
-	return;
+        threeCmtKaRateSStr2(A, tinf, tau, r2, ka, kel, k12,  k21, k13, k31);
+        return;
       } break;
       }
     }
@@ -1379,44 +1379,44 @@ static inline void ssRateTau(double *A,
 }
 
 static inline void ssTau(double *A,
-			 int ncmt,
-			 int oral0,
-			 double *tau,
-			 double *b1,
-			 double *b2,
-			 double *ka, // ka (for oral doses)
-			 double *kel,  //double rx_v,
-			 double *k12, double *k21,
-			 double *k13, double *k31){
+                         int ncmt,
+                         int oral0,
+                         double *tau,
+                         double *b1,
+                         double *b2,
+                         double *ka, // ka (for oral doses)
+                         double *kel,  //double rx_v,
+                         double *k12, double *k21,
+                         double *k13, double *k31){
   if (oral0){
     if ((*b1) > 0 ){
       switch (ncmt){
       case 1: {
-	oneCmtKaSSb1(A, tau, b1, ka, kel);
-	return;
+        oneCmtKaSSb1(A, tau, b1, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKaSSb1(A, tau, b1, ka, kel, k12, k21);
-	return;
+        twoCmtKaSSb1(A, tau, b1, ka, kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKaSSb1(A, tau, b1, ka, kel, k12,  k21, k13, k31);
-	return;
+        threeCmtKaSSb1(A, tau, b1, ka, kel, k12,  k21, k13, k31);
+        return;
       } break;
       }
     } else {
       switch (ncmt){
       case 1: {
-	oneCmtKaSSb2(A, tau, b2, ka, kel);
-	return;
+        oneCmtKaSSb2(A, tau, b2, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKaSSb2(A, tau, b2, ka, kel, k12, k21);
-	return;
+        twoCmtKaSSb2(A, tau, b2, ka, kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKaSSb2(A, tau, b2, ka, kel, k12,  k21, k13, k31);
-	return;
+        threeCmtKaSSb2(A, tau, b2, ka, kel, k12,  k21, k13, k31);
+        return;
       } break;
       }
     }
@@ -1439,43 +1439,43 @@ static inline void ssTau(double *A,
 }
 
 static inline void ssRate(double *A,
-			  int ncmt, // Number of compartments
-			  int oral0, // Indicator of if this is an oral system)
-			  double *r1, // Rate in Compartment #1
-			  double *r2, // Rate in Compartment #2
-			  double *ka, // ka (for oral doses)
-			  double *kel,  //double rx_v,
-			  double *k12, double *k21,
-			  double *k13, double *k31) {
+                          int ncmt, // Number of compartments
+                          int oral0, // Indicator of if this is an oral system)
+                          double *r1, // Rate in Compartment #1
+                          double *r2, // Rate in Compartment #2
+                          double *ka, // ka (for oral doses)
+                          double *kel,  //double rx_v,
+                          double *k12, double *k21,
+                          double *k13, double *k31) {
   if (oral0){
     if ((*r1) > 0){
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSSr1(A, r1, ka, kel);
-	return;
+        oneCmtKaRateSSr1(A, r1, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKaRateSSr1(A, r1, ka, kel, k12, k21);
-	return;
+        twoCmtKaRateSSr1(A, r1, ka, kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKaRateSSr1(A, r1, ka, kel, k12,  k21, k13,  k31);
-	return;
+        threeCmtKaRateSSr1(A, r1, ka, kel, k12,  k21, k13,  k31);
+        return;
       } break;
       }
     } else {
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSSr2(A, r2, ka, kel);
-	return;
+        oneCmtKaRateSSr2(A, r2, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKaRateSSr2(A, r2, ka, kel, k12, k21);
-	return;
+        twoCmtKaRateSSr2(A, r2, ka, kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKaRateSSr2(A, r2, ka, kel, k12,  k21, k13,  k31);
-	return;
+        threeCmtKaRateSSr2(A, r2, ka, kel, k12,  k21, k13,  k31);
+        return;
       } break;
       }
     }
@@ -1498,19 +1498,19 @@ static inline void ssRate(double *A,
 }
 
 static inline void doAdvan(double *A,// Amounts
-			   double *Alast, // Last amounts
-			   double tlast, // Time of last amounts
-			   double ct, // Time of the dose
-			   int ncmt, // Number of compartments
-			   int oral0, // Indicator of if this is an oral system
-			   double *b1, // Amount of the dose in compartment #1
-			   double *b2, // Amount of the dose in compartment #2
-			   double *r1, // Rate in Compartment #1
-			   double *r2, // Rate in Compartment #2
-			   double *ka, // ka (for oral doses)
-			   double *kel,  //double rx_v,
-			   double *k12, double *k21,
-			   double *k13, double *k31){
+                           double *Alast, // Last amounts
+                           double tlast, // Time of last amounts
+                           double ct, // Time of the dose
+                           int ncmt, // Number of compartments
+                           int oral0, // Indicator of if this is an oral system
+                           double *b1, // Amount of the dose in compartment #1
+                           double *b2, // Amount of the dose in compartment #2
+                           double *r1, // Rate in Compartment #1
+                           double *r2, // Rate in Compartment #2
+                           double *ka, // ka (for oral doses)
+                           double *kel,  //double rx_v,
+                           double *k12, double *k21,
+                           double *k13, double *k31){
   double t = ct - tlast;
   if (isSameTime(ct, tlast)){
     for (int i = ncmt+oral0; i--;) {
@@ -1522,34 +1522,34 @@ static inline void doAdvan(double *A,// Amounts
     if (oral0){
       switch (ncmt){
       case 1: {
-	oneCmtKaRate(A, Alast, &t, b1, b2, r1, r2, ka, kel);
-	return;
+        oneCmtKaRate(A, Alast, &t, b1, b2, r1, r2, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKaRate(A, Alast, &t, b1, b2, r1, r2,
-		     ka,  kel, k12, k21);
-	return;
+        twoCmtKaRate(A, Alast, &t, b1, b2, r1, r2,
+                     ka,  kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKaRate(A, Alast, &t, b1, b2, r1, r2, ka, kel, k12,  k21, k13,  k31);
-	return;
+        threeCmtKaRate(A, Alast, &t, b1, b2, r1, r2, ka, kel, k12,  k21, k13,  k31);
+        return;
       } break;
       }
     } else {
       switch (ncmt){
       case 1: {
-	oneCmtRate(A, Alast, &t, b1, r1, kel);
-	return;
+        oneCmtRate(A, Alast, &t, b1, r1, kel);
+        return;
       } break;
       case 2: {
-	twoCmtRate(A, Alast, &t, b1, r1,
-		   kel, k12, k21);
-	return;
+        twoCmtRate(A, Alast, &t, b1, r1,
+                   kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtRate(A, Alast, &t, b1, r1, kel,
-		     k12, k21, k13, k31);
-	return;
+        threeCmtRate(A, Alast, &t, b1, r1, kel,
+                     k12, k21, k13, k31);
+        return;
       } break;
 
       }
@@ -1559,35 +1559,35 @@ static inline void doAdvan(double *A,// Amounts
     if (oral0){
       switch (ncmt){
       case 1: {
-	oneCmtKa(A, Alast, 
-		 &t, b1, b2, ka, kel);
-	return;
+        oneCmtKa(A, Alast, 
+                 &t, b1, b2, ka, kel);
+        return;
       } break;
       case 2: {
-	twoCmtKa(A, Alast, &t, b1, b2, ka,  kel, k12, k21);
-	return;
+        twoCmtKa(A, Alast, &t, b1, b2, ka,  kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtKa(A, Alast, 
-		   &t, b1, b2, ka, kel,
-		   k12,  k21, k13,  k31);
-	return;
+        threeCmtKa(A, Alast, 
+                   &t, b1, b2, ka, kel,
+                   k12,  k21, k13,  k31);
+        return;
       } break;
       }
     } else {
       // Bolus
       switch (ncmt){
       case 1: {
-	oneCmtBolus(A, Alast, &t, b1, kel);
-	return;
+        oneCmtBolus(A, Alast, &t, b1, kel);
+        return;
       } break;
       case 2: {
-	twoCmtBolus(A, Alast, &t, b1,
-		    kel, k12, k21);
-	return;
+        twoCmtBolus(A, Alast, &t, b1,
+                    kel, k12, k21);
+        return;
       } break;
       case 3: {
-	threeCmtBolus(A, Alast, &t, b1, kel, k12, k21, k13, k31);
+        threeCmtBolus(A, Alast, &t, b1, kel, k12, k21, k13, k31);
       } break;
       }
     }
@@ -1595,11 +1595,11 @@ static inline void doAdvan(double *A,// Amounts
 }
 
 static inline int parTrans(int *trans, 
-			   double *p1, double *v1,
-			   double *p2, double *p3,
-			   double *p4, double *p5,
-			   unsigned int *ncmt, double *rx_k, double *rx_v, double *rx_k12,
-			   double *rx_k21, double *rx_k13, double *rx_k31){
+                           double *p1, double *v1,
+                           double *p2, double *p3,
+                           double *p4, double *p5,
+                           unsigned int *ncmt, double *rx_k, double *rx_v, double *rx_k12,
+                           double *rx_k21, double *rx_k13, double *rx_k31){
   double btemp, ctemp, dtemp;
   if ((*p5) > 0.) {
     (*ncmt) = 3;
@@ -1637,7 +1637,7 @@ static inline int parTrans(int *trans,
       (*rx_k31) = 0.5*(-btemp-dtemp);
       (*rx_k)   = alpha*beta*gamma/(*rx_k21)/(*rx_k31);
       (*rx_k12) = ((beta*gamma + alpha*beta + alpha*gamma) -
-		(*rx_k21)*(alpha+beta+gamma) - (*rx_k) * (*rx_k31) + (*rx_k21)*(*rx_k21))/((*rx_k31) - (*rx_k21));
+                   (*rx_k21)*(alpha+beta+gamma) - (*rx_k) * (*rx_k31) + (*rx_k21)*(*rx_k21))/((*rx_k31) - (*rx_k21));
       (*rx_k13) = alpha + beta + gamma - ((*rx_k) + (*rx_k12) + (*rx_k21) + (*rx_k31));
       break;
     case 10:
@@ -1652,7 +1652,7 @@ static inline int parTrans(int *trans,
       (*rx_k31) = 0.5*(-btemp-dtemp);
       (*rx_k)   = alpha*beta*gamma/(*rx_k21)/(*rx_k31);
       (*rx_k12) = ((beta*gamma + alpha*beta + alpha*gamma) -
-		(*rx_k21)*(alpha+beta+gamma) - (*rx_k) * (*rx_k31) + (*rx_k21)*(*rx_k21))/((*rx_k31) - (*rx_k21));
+                   (*rx_k21)*(alpha+beta+gamma) - (*rx_k) * (*rx_k31) + (*rx_k21)*(*rx_k21))/((*rx_k31) - (*rx_k21));
       (*rx_k13) = alpha + beta + gamma - ((*rx_k) + (*rx_k12) + (*rx_k21) + (*rx_k31));
 #undef A
 #undef B
@@ -1757,12 +1757,12 @@ static inline int parTrans(int *trans,
 }
 
 void linCmtPar1(double *v, double *k, 
-		double *vss,
-		double *cl,
-		double *A,
-		double *Af,
-		double *alpha,
-		double *t12alpha) {
+                double *vss,
+                double *cl,
+                double *A,
+                double *Af,
+                double *alpha,
+                double *t12alpha) {
   *vss = *v;
   *cl = (*v)*(*k);
   *A = 1/(*v);
@@ -1772,38 +1772,38 @@ void linCmtPar1(double *v, double *k,
 }
 
 void linCmtPar2(double *v, double *k,
-		double *k12, double *k21,
-		double *vp, double *vss,
-		double *cl, double *q,
-		double *A, double *B,
-		double *Af, double *Bf,
-		double *alpha, double *beta,
-		double *t12alpha, double *t12beta){
-    *vp = (*v)*(*k12)/(*k21);
-    *vss = (*v)+(*vp);
-    *cl = (*v)*(*k);
-    *q  = (*v)*(*k12);
-    double a0 = (*k) * (*k21);
-    double a1 = -((*k) + (*k12) + (*k21));
-    double sq = sqrt(a1*a1-4*a0);
-    *alpha = 0.5*(-a1+sq);
-    *beta = 0.5*(-a1-sq);
-    *A = ((*k21)-(*alpha))/((*beta)-(*alpha))/(*v);
-    *B = ((*k21)-(*beta))/((*alpha)-(*beta))/(*v);
-    *Af = (*A)*(*v);
-    *Bf = (*B)*(*v);
-    *t12alpha = M_LN2/(*alpha);
-    *t12beta = M_LN2/(*beta);
+                double *k12, double *k21,
+                double *vp, double *vss,
+                double *cl, double *q,
+                double *A, double *B,
+                double *Af, double *Bf,
+                double *alpha, double *beta,
+                double *t12alpha, double *t12beta){
+  *vp = (*v)*(*k12)/(*k21);
+  *vss = (*v)+(*vp);
+  *cl = (*v)*(*k);
+  *q  = (*v)*(*k12);
+  double a0 = (*k) * (*k21);
+  double a1 = -((*k) + (*k12) + (*k21));
+  double sq = sqrt(a1*a1-4*a0);
+  *alpha = 0.5*(-a1+sq);
+  *beta = 0.5*(-a1-sq);
+  *A = ((*k21)-(*alpha))/((*beta)-(*alpha))/(*v);
+  *B = ((*k21)-(*beta))/((*alpha)-(*beta))/(*v);
+  *Af = (*A)*(*v);
+  *Bf = (*B)*(*v);
+  *t12alpha = M_LN2/(*alpha);
+  *t12beta = M_LN2/(*beta);
 }
 
 void linCmtPar3(double *v, double *k10,
-		double *k12, double *k21, double *k13, double *k31,
-		double *vp, double *vp2, double *vss,
-		double *cl, double *q, double *q2,
-		double *A, double *B, double *C,
-		double *Af, double *Bf, double *Cf,
-		double *alpha, double *beta, double *gamma,
-		double *t12alpha, double *t12beta, double *t12gamma) {
+                double *k12, double *k21, double *k13, double *k31,
+                double *vp, double *vp2, double *vss,
+                double *cl, double *q, double *q2,
+                double *A, double *B, double *C,
+                double *Af, double *Bf, double *Cf,
+                double *alpha, double *beta, double *gamma,
+                double *t12alpha, double *t12beta, double *t12gamma) {
   double a0 = (*k10) * (*k21) * (*k31);
   double a1 = ((*k10) * (*k31)) + ((*k21) * (*k31)) + ((*k21) * (*k13)) + ((*k10) * (*k21)) + ((*k31) * (*k12));
   double a2 = (*k10) + (*k12) + (*k13) + (*k21) + (*k31);
@@ -1941,8 +1941,8 @@ SEXP derived1(int trans, SEXP inp, double dig) {
 
   for (int i = lenOut; i--;){
     parTrans(&trans, ((lenP == 1) ? p1 : p1++),
-	     ((lenV == 1) ? v1 : v1++), &zer, &zer, &zer, &zer,
-	     &ncmta, kel, vc, &zer, &zer, &zer, &zer);
+             ((lenV == 1) ? v1 : v1++), &zer, &zer, &zer, &zer,
+             &ncmta, kel, vc, &zer, &zer, &zer, &zer);
     linCmtPar1(vc, kel, vss, cl, A, fracA, alpha, thalf);
     if (dig > 0){
       (*vc) = fprec((*vc), dig);
@@ -1986,9 +1986,9 @@ SEXP derived2(int trans, SEXP inp, double dig) {
   lenOut = max2(lenOut, lenV);
   if (lenOut != 1) {
     if ((lenP1 != 1 && lenP1 != lenOut) ||
-	(lenP2 != 1 && lenP2 != lenOut) ||
-	(lenP3 != 1 && lenP3 != lenOut) ||
-	(lenV != 1  && lenV != lenOut)) {
+        (lenP2 != 1 && lenP2 != lenOut) ||
+        (lenP3 != 1 && lenP3 != lenOut) ||
+        (lenV != 1  && lenV != lenOut)) {
       Rf_errorcall(R_NilValue, _("The dimensions of the parameters must match"));
     }
   }
@@ -2092,10 +2092,10 @@ SEXP derived2(int trans, SEXP inp, double dig) {
 
   for (int i = lenOut; i--;){
     parTrans(&trans, ((lenP1 == 1) ? p1 : p1++), ((lenV == 1) ? v1 : v1++),
-	     ((lenP2 == 1) ? p2 : p2++), ((lenP3 == 1) ? p3 : p3++), &zer, &zer,
-	     &ncmta, kel, vc, k12, k21, &zer, &zer);
+             ((lenP2 == 1) ? p2 : p2++), ((lenP3 == 1) ? p3 : p3++), &zer, &zer,
+             &ncmta, kel, vc, k12, k21, &zer, &zer);
     linCmtPar2(vc, kel, k12, k21, vp, vss, cl, q, A, B, fracA, fracB,
-	       alpha, beta, thalfAlpha, thalfBeta);
+               alpha, beta, thalfAlpha, thalfBeta);
     if (dig > 0){
       (*vc) = fprec((*vc), dig);
       (*kel) = fprec((*kel), dig);
@@ -2156,11 +2156,11 @@ SEXP derived3(int trans, SEXP inp, double dig) {
   lenOut = max2(lenOut, lenP5);
   if (lenOut != 1) {
     if ((lenP1 != 1 && lenP1 != lenOut) ||
-	(lenP2 != 1 && lenP2 != lenOut) ||
-	(lenP3 != 1 && lenP3 != lenOut) ||
-	(lenP4 != 1 && lenP4 != lenOut) ||
-	(lenP5 != 1 && lenP5 != lenOut) ||
-	(lenV != 1  && lenV != lenOut)) {
+        (lenP2 != 1 && lenP2 != lenOut) ||
+        (lenP3 != 1 && lenP3 != lenOut) ||
+        (lenP4 != 1 && lenP4 != lenOut) ||
+        (lenP5 != 1 && lenP5 != lenOut) ||
+        (lenV != 1  && lenV != lenOut)) {
       Rf_errorcall(R_NilValue, _("The dimensions of the parameters must match"));
     }
   }
@@ -2305,13 +2305,13 @@ SEXP derived3(int trans, SEXP inp, double dig) {
 
   for (int i = lenOut; i--;){
     parTrans(&trans, ((lenP1 == 1) ? p1 : p1++), ((lenV == 1) ? v1 : v1++),
-	     ((lenP2 == 1) ? p2 : p2++), ((lenP3 == 1) ? p3 : p3++),
-	     ((lenP4 == 1) ? p4 : p4++), ((lenP5 == 1) ? p5 : p5++),
-	     &ncmta, kel, vc, k12, k21, k13, k31);
+             ((lenP2 == 1) ? p2 : p2++), ((lenP3 == 1) ? p3 : p3++),
+             ((lenP4 == 1) ? p4 : p4++), ((lenP5 == 1) ? p5 : p5++),
+             &ncmta, kel, vc, k12, k21, k13, k31);
     linCmtPar3(vc, kel, k12, k21, k13, k31,
-	       vp, vp2, vss, cl, q, q2,
-	       A, B, C, fracA, fracB, fracC, alpha, beta, gamma,
-	       thalfAlpha, thalfBeta, thalfGamma);
+               vp, vp2, vss, cl, q, q2,
+               A, B, C, fracA, fracB, fracC, alpha, beta, gamma,
+               thalfAlpha, thalfBeta, thalfGamma);
     if (dig > 0) {
       (*vc)  = fprec((*vc), dig);
       (*kel) = fprec((*kel), dig);
@@ -2385,38 +2385,38 @@ SEXP _calcDerived(SEXP ncmtSXP, SEXP transSXP, SEXP inp, SEXP sigdigSXP) {
 }
 
 static inline void ssRateTauD(double *A, int ncmt, int oral0, double *tinf,
-			      double *tau, double *r1, double *r2, double *ka,
-			      double *kel, double *k12, double *k21, double *k13, double *k31) {
+                              double *tau, double *r1, double *r2, double *ka,
+                              double *kel, double *k12, double *k21, double *k13, double *k31) {
   if (oral0){
     if ((*r1) > 0 ){
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSStr1(A, tinf, tau, r1, ka, kel);
-	return;
+        oneCmtKaRateSStr1(A, tinf, tau, r1, ka, kel);
+        return;
       } break;
-      /* case 2: { */
-      /* 	twoCmtKaRateSStr1D(A, tinf, tau, r1, ka, kel, k12, k21); */
-      /* 	return; */
-      /* } break; */
-      /* case 3: { */
-      /* 	threeCmtKaRateSStr1D(A, tinf, tau, r1, ka, kel, k12, k21, k13, k31); */
-      /* 	return; */
-      /* } break; */
+        /* case 2: { */
+        /*  twoCmtKaRateSStr1D(A, tinf, tau, r1, ka, kel, k12, k21); */
+        /*  return; */
+        /* } break; */
+        /* case 3: { */
+        /*  threeCmtKaRateSStr1D(A, tinf, tau, r1, ka, kel, k12, k21, k13, k31); */
+        /*  return; */
+        /* } break; */
       }
     } else {
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSStr2D(A, tinf, tau, r2, ka, kel);
-	return;
+        oneCmtKaRateSStr2D(A, tinf, tau, r2, ka, kel);
+        return;
       } break;
-      /* case 2: { */
-      /* 	twoCmtKaRateSStr2D(A, tinf, tau, r2, ka, kel, k12, k21); */
-      /* 	return; */
-      /* } break; */
-      /* case 3: { */
-      /* 	threeCmtKaRateSStr2D(A, tinf, tau, r2, ka, kel, k12, k21, k13, k31); */
-      /* 	return; */
-      /* } break; */
+        /* case 2: { */
+        /*  twoCmtKaRateSStr2D(A, tinf, tau, r2, ka, kel, k12, k21); */
+        /*  return; */
+        /* } break; */
+        /* case 3: { */
+        /*  threeCmtKaRateSStr2D(A, tinf, tau, r2, ka, kel, k12, k21, k13, k31); */
+        /*  return; */
+        /* } break; */
       }
     }
   } else {
@@ -2425,57 +2425,57 @@ static inline void ssRateTauD(double *A, int ncmt, int oral0, double *tinf,
       oneCmtRateSSD(A, tinf, tau, r1, kel);
       return;
     } break;
-    /* case 2: { */
-    /*   twoCmtRateSSD(A, tinf, tau, r1, kel, k12, k21); */
-    /*   return; */
-    /* } break; */
-    /* case 3: { */
-    /*   threeCmtRateSSD(A, tinf, tau, r1, kel, k12, k21, k13, k31); */
-    /*   return; */
-    /* } break; */
+      /* case 2: { */
+      /*   twoCmtRateSSD(A, tinf, tau, r1, kel, k12, k21); */
+      /*   return; */
+      /* } break; */
+      /* case 3: { */
+      /*   threeCmtRateSSD(A, tinf, tau, r1, kel, k12, k21, k13, k31); */
+      /*   return; */
+      /* } break; */
     }
   }
 }
 
 static inline void ssTauD(double *A,
-			  int ncmt,
-			  int oral0,
-			  double *tau,
-			  double *b1,
-			  double *b2,
-			  double *ka, // ka (for oral doses)
-			  double *kel,  //double rx_v,
-			  double *k12, double *k21, double *k13, double *k31){
+                          int ncmt,
+                          int oral0,
+                          double *tau,
+                          double *b1,
+                          double *b2,
+                          double *ka, // ka (for oral doses)
+                          double *kel,  //double rx_v,
+                          double *k12, double *k21, double *k13, double *k31){
   if (oral0){
     if ((*b1) > 0 ){
       switch (ncmt){
       case 1: {
-	oneCmtKaSSb1D(A, tau, b1, ka, kel);
-	return;
+        oneCmtKaSSb1D(A, tau, b1, ka, kel);
+        return;
       } break;
-      /* case 2: { */
-      /* 	twoCmtKaSSb1D(A, tau, b1, ka, kel, k12, k21); */
-      /* 	return; */
-      /* } break; */
-      /* case 3: { */
-      /* 	threeCmtKaSSb1D(A, tau, b1, ka, kel, k12, k21, k13, k31); */
-      /* 	return; */
-      /* } break; */
+        /* case 2: { */
+        /*  twoCmtKaSSb1D(A, tau, b1, ka, kel, k12, k21); */
+        /*  return; */
+        /* } break; */
+        /* case 3: { */
+        /*  threeCmtKaSSb1D(A, tau, b1, ka, kel, k12, k21, k13, k31); */
+        /*  return; */
+        /* } break; */
       }
     } else {
       switch (ncmt){
       case 1: {
-	oneCmtKaSSb2D(A, tau, b2, ka, kel);
-	return;
+        oneCmtKaSSb2D(A, tau, b2, ka, kel);
+        return;
       } break;
-      /* case 2: { */
-      /* 	twoCmtKaSSb2D(A, tau, b2, ka, kel, k12, k21); */
-      /* 	return; */
-      /* } break; */
-      /* case 3: { */
-      /* 	threeCmtKaSSb2D(A, tau, b2, ka, kel, k12, k21, k13, k31); */
-      /* 	return; */
-      /* } break; */
+        /* case 2: { */
+        /*  twoCmtKaSSb2D(A, tau, b2, ka, kel, k12, k21); */
+        /*  return; */
+        /* } break; */
+        /* case 3: { */
+        /*  threeCmtKaSSb2D(A, tau, b2, ka, kel, k12, k21, k13, k31); */
+        /*  return; */
+        /* } break; */
       }
     }
   } else {
@@ -2484,57 +2484,57 @@ static inline void ssTauD(double *A,
       oneCmtBolusSSD(A, tau, b1, kel);
       return;
     } break;
-    /* case 2: { */
-    /*   twoCmtBolusSSD(A, tau, b1, kel, k12, k21); */
-    /*   return; */
-    /* } break; */
-    /* case 3: { */
-    /*   threeCmtBolusSSD(A, tau, b1, kel, k12, k21, k13, k31); */
-    /*   return; */
-    /* } break; */
+      /* case 2: { */
+      /*   twoCmtBolusSSD(A, tau, b1, kel, k12, k21); */
+      /*   return; */
+      /* } break; */
+      /* case 3: { */
+      /*   threeCmtBolusSSD(A, tau, b1, kel, k12, k21, k13, k31); */
+      /*   return; */
+      /* } break; */
     }
   }
 }
 
 static inline void ssRateD(double *A,
-			   int ncmt, // Number of compartments
-			   int oral0, // Indicator of if this is an oral system)
-			   double *r1, // Rate in Compartment #1
-			   double *r2, // Rate in Compartment #2
-			   double *ka, // ka (for oral doses)
-			   double *kel,  //double rx_v,
-			   double *k12, double *k21,
-			   double *k13, double *k31) {
+                           int ncmt, // Number of compartments
+                           int oral0, // Indicator of if this is an oral system)
+                           double *r1, // Rate in Compartment #1
+                           double *r2, // Rate in Compartment #2
+                           double *ka, // ka (for oral doses)
+                           double *kel,  //double rx_v,
+                           double *k12, double *k21,
+                           double *k13, double *k31) {
   if (oral0){
     if ((*r1) > 0){
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSSr1D(A, r1, ka, kel);
-	return;
+        oneCmtKaRateSSr1D(A, r1, ka, kel);
+        return;
       } break;
-      /* case 2: { */
-      /* 	twoCmtKaRateSSr1D(A, r1, ka, kel, k12, k21); */
-      /* 	return; */
-      /* } break; */
-      /* case 3: { */
-      /* 	threeCmtKaRateSSr1D(A, r1, ka, kel, k12, k21, k13, k31); */
-      /* 	return; */
-      /* } */
+        /* case 2: { */
+        /*  twoCmtKaRateSSr1D(A, r1, ka, kel, k12, k21); */
+        /*  return; */
+        /* } break; */
+        /* case 3: { */
+        /*  threeCmtKaRateSSr1D(A, r1, ka, kel, k12, k21, k13, k31); */
+        /*  return; */
+        /* } */
       }
     } else {
       switch (ncmt){
       case 1: {
-	oneCmtKaRateSSr2D(A, r2, ka, kel);
-	return;
+        oneCmtKaRateSSr2D(A, r2, ka, kel);
+        return;
       } break;
-      /* case 2: { */
-      /* 	twoCmtKaRateSSr2D(A, r2, ka, kel, k12, k21); */
-      /* 	return; */
-      /* } break; */
-      /* case 3: { */
-      /* 	threeCmtKaRateSSr2D(A, r2, ka, kel, k12, k21, k13, k31); */
-      /* 	return; */
-      /* } break; */
+        /* case 2: { */
+        /*  twoCmtKaRateSSr2D(A, r2, ka, kel, k12, k21); */
+        /*  return; */
+        /* } break; */
+        /* case 3: { */
+        /*  threeCmtKaRateSSr2D(A, r2, ka, kel, k12, k21, k13, k31); */
+        /*  return; */
+        /* } break; */
       }
     }
   } else {
@@ -2543,40 +2543,40 @@ static inline void ssRateD(double *A,
       oneCmtRateSSr1D(A, r1, kel);
       return;
     } break;
-    /* case 2: { */
-    /*   twoCmtRateSSr1D(A, r1, kel, k12, k21); */
-    /*   return; */
-    /* } break; */
-    /* case 3: { */
-    /*   threeCmtRateSSr1D(A, r1, kel, k12, k21, k13, k31); */
-    /*   return; */
-    /* } break; */
+      /* case 2: { */
+      /*   twoCmtRateSSr1D(A, r1, kel, k12, k21); */
+      /*   return; */
+      /* } break; */
+      /* case 3: { */
+      /*   threeCmtRateSSr1D(A, r1, kel, k12, k21, k13, k31); */
+      /*   return; */
+      /* } break; */
     }
   }
 }
 
 static inline void handleSSL(double *A,// Amounts
-			     double *Alast, // Last amounts
-			     double tlast, // Time of last amounts
-			     double ct, // Time of the dose
-			     int ncmt, // Number of compartments
-			     int oral0, // Indicator of if this is an oral system
-			     double *b1, // Amount of the dose in compartment #1
-			     double *b2, // Amount of the dose in compartment #2
-			     double *r1, // Rate in Compartment #1
-			     double *r2, // Rate in Compartment #2
-			     double *ka, // ka (for oral doses)
-			     double *kel,  //double rx_v,
-			     double *k12, double *k21,
-			     double *k13, double *k31,
-			     int *linCmt,
-			     double *d_F, double *d_F2,
+                             double *Alast, // Last amounts
+                             double tlast, // Time of last amounts
+                             double ct, // Time of the dose
+                             int ncmt, // Number of compartments
+                             int oral0, // Indicator of if this is an oral system
+                             double *b1, // Amount of the dose in compartment #1
+                             double *b2, // Amount of the dose in compartment #2
+                             double *r1, // Rate in Compartment #1
+                             double *r2, // Rate in Compartment #2
+                             double *ka, // ka (for oral doses)
+                             double *kel,  //double rx_v,
+                             double *k12, double *k21,
+                             double *k13, double *k31,
+                             int *linCmt,
+                             double *d_F, double *d_F2,
 
-			     double *d_rate1, double *d_rate2,
-			     double *d_dur1, double *d_dur2,
-			     double *aSave, int *nSave,
-			     bool doDiff,
-			     rx_solving_options_ind* ind) {
+                             double *d_rate1, double *d_rate2,
+                             double *d_dur1, double *d_dur2,
+                             double *aSave, int *nSave,
+                             bool doDiff,
+                             rx_solving_options_ind* ind) {
   // handle_evid has been called, so ind->wh0 and like have already been called
   double *rate = ind->linCmtRate;
   // note ind->ixds has already advanced
@@ -2598,10 +2598,10 @@ static inline void handleSSL(double *A,// Amounts
     }
     if (doDiff){
       ssRateD(A, ncmt, oral0, r1, r2,
-	      ka, kel, k12, k21, k13, k31);
+              ka, kel, k12, k21, k13, k31);
     } else {
       ssRate(A, ncmt, oral0, r1, r2,
-	     ka, kel, k12, k21, k13, k31);
+             ka, kel, k12, k21, k13, k31);
     }
     //
   } break;
@@ -2617,62 +2617,62 @@ static inline void handleSSL(double *A,// Amounts
     switch (ind->whI) {
     case 0: { // bolus dose
       if (cmtOff == 0){
-	*b1 = amt*(*d_F);
-	*b2 = 0;
+        *b1 = amt*(*d_F);
+        *b2 = 0;
       } else {
-	*b1 = 0;
-	*b2 = amt*(*d_F2);
+        *b1 = 0;
+        *b2 = amt*(*d_F2);
       }
       if (doDiff){
-	ssTauD(A, ncmt, oral0, &tau, b1, b2, ka,
-	       kel, k12, k21, k13, k31);
+        ssTauD(A, ncmt, oral0, &tau, b1, b2, ka,
+               kel, k12, k21, k13, k31);
       } else {
-	ssTau(A, ncmt, oral0, &tau, b1, b2, ka,
-	    kel, k12, k21, k13, k31);
+        ssTau(A, ncmt, oral0, &tau, b1, b2, ka,
+              kel, k12, k21, k13, k31);
       }
     } break;
     case 8: // Duration is modeled
     case 9: { // Rate is modeled
       double tinf;
       if (ind->whI == 9) {
-	if (cmtOff == 0){
-	  // Infusion to central compartment with oral dosing
-	  *r1 = *d_rate1;
-	  tinf = amt*(*r1)/(*d_F);
-	  rate[0] = *r1;
-	} else {
-	  // Infusion to central compartment or depot
-	  *r2 = *d_rate2;
-	  tinf = amt*(*r2)/(*d_F2);
-	  rate[1] = *r2;
-	}
+        if (cmtOff == 0){
+          // Infusion to central compartment with oral dosing
+          *r1 = *d_rate1;
+          tinf = amt*(*r1)/(*d_F);
+          rate[0] = *r1;
+        } else {
+          // Infusion to central compartment or depot
+          *r2 = *d_rate2;
+          tinf = amt*(*r2)/(*d_F2);
+          rate[1] = *r2;
+        }
       } else {
-	// duration is modeled
-	if (cmtOff == 0) {
-	  // With oral dosing infusion to central compartment
-	  tinf = *d_dur1;
-	  *r1 = amt/tinf*(*d_F);
-	  rate[0] = *r1;
-	} else {
-	  // Infusion to compartment #1 or depot
-	  tinf = *d_dur2;
-	  *r2 = amt/tinf*(*d_F2);
-	  rate[1] = *r2;
-	}
+        // duration is modeled
+        if (cmtOff == 0) {
+          // With oral dosing infusion to central compartment
+          tinf = *d_dur1;
+          *r1 = amt/tinf*(*d_F);
+          rate[0] = *r1;
+        } else {
+          // Infusion to compartment #1 or depot
+          tinf = *d_dur2;
+          *r2 = amt/tinf*(*d_F2);
+          rate[1] = *r2;
+        }
       }
       if (tinf >= tau){
-	ind->wrongSSDur=1;
-	for (int i = ncmt + oral0; i--;){
-	  A[i] += R_NaN;
-	}
+        ind->wrongSSDur=1;
+        for (int i = ncmt + oral0; i--;){
+          A[i] += R_NaN;
+        }
       } else {
-	if (doDiff) {
-	  ssRateTauD(A, ncmt, oral0, &tinf, &tau,
-		     r1, r2, ka, kel, k12, k21, k13, k31);
-	} else {
-	  ssRateTau(A, ncmt, oral0, &tinf, &tau,
-		  r1, r2, ka, kel, k12, k21, k13, k31);
-	}
+        if (doDiff) {
+          ssRateTauD(A, ncmt, oral0, &tinf, &tau,
+                     r1, r2, ka, kel, k12, k21, k13, k31);
+        } else {
+          ssRateTau(A, ncmt, oral0, &tinf, &tau,
+                    r1, r2, ka, kel, k12, k21, k13, k31);
+        }
       }
     } break;
     case 1: // Infusion rate is fixed
@@ -2680,52 +2680,52 @@ static inline void handleSSL(double *A,// Amounts
       double tinf;
       if (ISNA(amt)){
       } else if (amt > 0) {
-	unsigned int p;
-	tinf = _getDur(ind->ixds-1, ind, 1, &p);
-	if (ind->whI == 1){
-	  // Duration changes with F
-	  if (cmtOff == 0){
-	    tinf *= (*d_F);
-	    *r1 = amt;
-	    rate[0] = *r1;
-	  } else {
-	    tinf *= (*d_F2);
-	    *r2 = amt;
-	    rate[1] = *r2;
-	  }
-	} else {
-	  // rate changes with F; tinf remains constant
-	  if (cmtOff == 0){
-	    *r1 = amt*(*d_F);
-	    rate[0] = *r1;
-	  } else {
-	    *r2 = amt*(*d_F2);
-	    rate[1] = *r2;
-	  }
-	}
-	if (tinf >= tau){
-	  ind->wrongSSDur=1;
-	  for (int i = ncmt + oral0; i--;){
-	    A[i] += R_NaN;
-	  }
-	} else {
-	  if (doDiff){
-	    ssRateTauD(A, ncmt, oral0, &tinf, &tau,
-		       r1, r2, ka, kel, k12, k21, k13, k31);
-	  } else {
-	    ssRateTau(A, ncmt, oral0, &tinf, &tau,
-		      r1, r2, ka, kel, k12, k21, k13, k31);
-	  }
-	}
+        unsigned int p;
+        tinf = _getDur(ind->ixds-1, ind, 1, &p);
+        if (ind->whI == 1){
+          // Duration changes with F
+          if (cmtOff == 0){
+            tinf *= (*d_F);
+            *r1 = amt;
+            rate[0] = *r1;
+          } else {
+            tinf *= (*d_F2);
+            *r2 = amt;
+            rate[1] = *r2;
+          }
+        } else {
+          // rate changes with F; tinf remains constant
+          if (cmtOff == 0){
+            *r1 = amt*(*d_F);
+            rate[0] = *r1;
+          } else {
+            *r2 = amt*(*d_F2);
+            rate[1] = *r2;
+          }
+        }
+        if (tinf >= tau){
+          ind->wrongSSDur=1;
+          for (int i = ncmt + oral0; i--;){
+            A[i] += R_NaN;
+          }
+        } else {
+          if (doDiff){
+            ssRateTauD(A, ncmt, oral0, &tinf, &tau,
+                       r1, r2, ka, kel, k12, k21, k13, k31);
+          } else {
+            ssRateTau(A, ncmt, oral0, &tinf, &tau,
+                      r1, r2, ka, kel, k12, k21, k13, k31);
+          }
+        }
       }
     } break;
     }
     // Add back saved values
     if (ind->wh0 == 20) {
       if (amt > 0) {
-	for (int i = *nSave; i--;){
-	  A[i] += aSave[i];
-	}
+        for (int i = *nSave; i--;){
+          A[i] += aSave[i];
+        }
       }
     }
   } break;
@@ -2733,13 +2733,13 @@ static inline void handleSSL(double *A,// Amounts
 }
 
 double linCmtA(rx_solve *rx, unsigned int id, double _t, int linCmt,
-	       int i_cmt, int trans,
-	       double p1, double v1,
-	       double p2, double p3,
-	       double p4, double p5,
-	       double d_tlag, double d_F, double d_rate1, double d_dur1,
-	       // Oral parameters
-	       double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
+               int i_cmt, int trans,
+               double p1, double v1,
+               double p2, double p3,
+               double p4, double p5,
+               double d_tlag, double d_F, double d_rate1, double d_dur1,
+               // Oral parameters
+               double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   double t = _t - ind->curShift;
   int evid = 0;
@@ -2765,21 +2765,27 @@ double linCmtA(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if (sameTime && idx <= ind->solved){
     // Pull from last solved value (cached)
     A = getAdvan(idx);
-    if (trans == 10) {
-      return(A[oral0]*(v1+p3+p5));
+    if (A[oral0] == 0.0) {
+      ind->solved = max2(idx-1, 0);
     } else {
-      return(A[oral0]/v1);
+      if (trans == 10) {
+        return(A[oral0]*(v1+p3+p5));
+      } else {
+        return(A[oral0]/v1);
+      }
     }
   }
   while (t < curTime) {
     idx--;
-    if (idx < 0) return 0.0;
+    if (idx < 0) {
+      return NA_REAL;
+    }
     curTime = getTime(ind->ix[idx], ind);
   }
   A = getAdvan(idx);
   if (!parTrans(&trans, &p1, &v1, &p2, &p3, &p4, &p5,
-		&ncmt, &rx_k, &rx_v, &rx_k12,
-		&rx_k21, &rx_k13, &rx_k31)){
+                &ncmt, &rx_k, &rx_v, &rx_k12,
+                &rx_k21, &rx_k13, &rx_k31)){
     return NA_REAL;
   }
   if (idx >= ind->solved){
@@ -2803,20 +2809,20 @@ double linCmtA(rx_solve *rx, unsigned int id, double _t, int linCmt,
       Alast=Alast0;
     } else {
       doAdvan(A, Alast, tlast, // Time of last amounts
-	      curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
-	      &d_ka, &rx_k, &rx_k12, &rx_k21,
-	      &rx_k13, &rx_k31);
+              curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
+              &d_ka, &rx_k, &rx_k12, &rx_k21,
+              &rx_k13, &rx_k31);
       double aSave[4] = {0.0, 0.0, 0.0, 0.0};
       int nSave = ncmt + oral0;
       for (int i = nSave; i--;){
-	aSave[i] = A[i];
+        aSave[i] = A[i];
       }
       if (handle_evidL(evid, A, curTime, id, ind)){
-	handleSSL(A, Alast, tlast, curTime, ncmt, oral0,
-		  &b1, &b2, &r1, &r2, &d_ka, &rx_k,
-		  &rx_k12, &rx_k21, &rx_k13, &rx_k31,
-		  &linCmt, &d_F, &d_F2, &d_rate1, &d_rate2,
-		  &d_dur1, &d_dur2, aSave, &nSave, false, ind);
+        handleSSL(A, Alast, tlast, curTime, ncmt, oral0,
+                  &b1, &b2, &r1, &r2, &d_ka, &rx_k,
+                  &rx_k12, &rx_k21, &rx_k13, &rx_k31,
+                  &linCmt, &d_F, &d_F2, &d_rate1, &d_rate2,
+                  &d_dur1, &d_dur2, aSave, &nSave, false, ind);
       }
     }
   }
@@ -2830,9 +2836,9 @@ double linCmtA(rx_solve *rx, unsigned int id, double _t, int linCmt,
     b1 = b2 = 0;
     // FIXME adjust rates
     doAdvan(Acur, Alast, tlast, // Time of last amounts
-  	    curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
-  	    &d_ka, &rx_k, &rx_k12, &rx_k21,
-  	    &rx_k13, &rx_k31);
+            curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
+            &d_ka, &rx_k, &rx_k12, &rx_k21,
+            &rx_k13, &rx_k31);
     return Acur[oral0]/rx_v;
   }
   return A[oral0]/rx_v;
@@ -2840,13 +2846,13 @@ double linCmtA(rx_solve *rx, unsigned int id, double _t, int linCmt,
 
 
 double linCmtC(rx_solve *rx, unsigned int id, double _t, int linCmt,
-	       int i_cmt, int trans,
-	       double p1, double v1,
-	       double p2, double p3,
-	       double p4, double p5,
-	       double d_tlag, double d_F, double d_rate1, double d_dur1,
-	       // Oral parameters
-	       double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
+               int i_cmt, int trans,
+               double p1, double v1,
+               double p2, double p3,
+               double p4, double p5,
+               double d_tlag, double d_F, double d_rate1, double d_dur1,
+               // Oral parameters
+               double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   double t = _t - ind->curShift;
   rx_solving_options *op = rx->op;
@@ -2869,7 +2875,6 @@ double linCmtC(rx_solve *rx, unsigned int id, double _t, int linCmt,
   double it = getTime(ind->ix[idxF], ind);
   double curTime, tlast;
   curTime = tlast = getTime(ind->ix[0], ind); // t0
-
   if (t != it) {
     // Try to get another idx by bisection
     idxF = _locateTimeIndex(t, ind);
@@ -2883,8 +2888,8 @@ double linCmtC(rx_solve *rx, unsigned int id, double _t, int linCmt,
   double rx_k31=0;
   double b1=0, b2=0, r1 = 0, r2 = 0;
   if (!parTrans(&trans, &p1, &v1, &p2, &p3, &p4, &p5,
-		&ncmt, &rx_k, &rx_v, &rx_k12,
-		&rx_k21, &rx_k13, &rx_k31)){
+                &ncmt, &rx_k, &rx_v, &rx_k12,
+                &rx_k21, &rx_k13, &rx_k31)){
     return NA_REAL;
   } else {
     ind->ixds = 0;
@@ -2900,39 +2905,39 @@ double linCmtC(rx_solve *rx, unsigned int id, double _t, int linCmt,
       curTime = getTime(ind->ix[idx], ind);
       evid = ind->evid[ind->ix[idx]];
       if (op->nlinR == 2){
-	r1 = rate[0];
-	r2 = rate[1];
+        r1 = rate[0];
+        r2 = rate[1];
       } else {
-	r1 = rate[0];
+        r1 = rate[0];
       }
       ind->wh0 = 0;
       if (isObs(evid)){
-	if (idx != idxF){
-	  // Don't calculate observations (unless it is the current observation)
-	  continue;
-	}
+        if (idx != idxF){
+          // Don't calculate observations (unless it is the current observation)
+          continue;
+        }
       } else if (evid == 3){
-	// Reset event
-	for (int i = nSave; i--;){
-	  Alast[i] = 0.0;
-	}
+        // Reset event
+        for (int i = nSave; i--;){
+          Alast[i] = 0.0;
+        }
       }
       doAdvan(A, Alast, tlast, // Time of last amounts
-	      curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
-	      &d_ka, &rx_k, &rx_k12, &rx_k21,
-	      &rx_k13, &rx_k31);
+              curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
+              &d_ka, &rx_k, &rx_k12, &rx_k21,
+              &rx_k13, &rx_k31);
       for (int i = nSave; i--;){
-	aSave[i] = A[i];
+        aSave[i] = A[i];
       }
       if (handle_evidL(evid, A, curTime, id, ind)){
-	handleSSL(A, Alast, tlast, curTime, ncmt, oral0, 
-		  &b1, &b2, &r1, &r2, &d_ka, &rx_k,
-		  &rx_k12, &rx_k21, &rx_k13, &rx_k31,
-		  &linCmt, &d_F, &d_F2, &d_rate1, &d_rate2,
-		  &d_dur1, &d_dur2, aSave, &nSave, false, ind);
+        handleSSL(A, Alast, tlast, curTime, ncmt, oral0, 
+                  &b1, &b2, &r1, &r2, &d_ka, &rx_k,
+                  &rx_k12, &rx_k21, &rx_k13, &rx_k31,
+                  &linCmt, &d_F, &d_F2, &d_rate1, &d_rate2,
+                  &d_dur1, &d_dur2, aSave, &nSave, false, ind);
       }
       for (int i = nSave; i--;){
-	Alast[i] = A[i];
+        Alast[i] = A[i];
       }
       b1=b2=r1=r2=0;
       tlast = curTime;
@@ -2950,17 +2955,17 @@ double linCmtC(rx_solve *rx, unsigned int id, double _t, int linCmt,
 }
 
 double linCmtD(rx_solve *rx, unsigned int id, double t, int linCmt,
-	       int i_cmt, int trans, int val,
-	       double p1, double v1,
-	       double p2, double p3,
-	       double p4, double p5,
-	       double d_tlag, double d_F, double d_rate1, double d_dur1,
-	       // Oral parameters
-	       double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
+               int i_cmt, int trans, int val,
+               double p1, double v1,
+               double p2, double p3,
+               double p4, double p5,
+               double d_tlag, double d_F, double d_rate1, double d_dur1,
+               // Oral parameters
+               double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
   // Forward difference
   double v0 = linCmtA(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2);
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2);
 #define h 1.4901161193847656e-08
 #define h2 67108864
   switch (val){
@@ -2968,64 +2973,64 @@ double linCmtD(rx_solve *rx, unsigned int id, double t, int linCmt,
     return v0;
   case 1:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1 + h, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2)- v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2)- v0);
   case 2:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1 + h,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 3:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		      p2 + h, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2 + h, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 4:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		      p2, p3 + h, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3 + h, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 5:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		      p2, p3, p4 + h, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4 + h, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 6:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5 + h, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5 + h, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 7:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag + h, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag + h, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 8:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F + h, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F + h, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 9:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1 + h, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1 + h, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 10:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1 + h, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1 + h, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 11:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka + h, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka + h, d_tlag2, d_F2,  d_rate2, d_dur2) - v0);
   case 12:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2 + h, d_F2,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2 + h, d_F2,  d_rate2, d_dur2) - v0);
   case 13:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2  + h,  d_rate2, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2  + h,  d_rate2, d_dur2) - v0);
   case 14:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2,  d_rate2 + h, d_dur2) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2,  d_rate2 + h, d_dur2) - v0);
   case 15:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2 + h) - v0);
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2 + h) - v0);
   default:
     Rf_errorcall(R_NilValue, "undef diff");
   }
@@ -3034,127 +3039,127 @@ double linCmtD(rx_solve *rx, unsigned int id, double t, int linCmt,
 }
 
 double linCmtE(rx_solve *rx, unsigned int id, double t, int linCmt,
-	       int i_cmt, int trans, int val,
-	       double p1, double v1,
-	       double p2, double p3,
-	       double p4, double p5,
-	       double d_tlag, double d_F, double d_rate1, double d_dur1,
-	       // Oral parameters
-	       double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
+               int i_cmt, int trans, int val,
+               double p1, double v1,
+               double p2, double p3,
+               double p4, double p5,
+               double d_tlag, double d_F, double d_rate1, double d_dur1,
+               // Oral parameters
+               double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
   // Central difference
 #define h 7.4505805969238281e-09
 #define h2 134217728
   switch (val){
   case 0:
     return linCmtA(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2);
+                   p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                   d_ka, d_tlag2, d_F2,  d_rate2, d_dur2);
   case 1:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1 + h, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1 - h, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1 - h, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 2:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1 + h,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1 - h,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1 - h,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 3:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2 + h, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2 - h, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2 + h, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2 - h, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 4:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3 + h, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3 - h, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3 + h, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3 - h, p4, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 5:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4 + h, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4 - h, p5, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4 + h, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4 - h, p5, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 6:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5 + h, d_tlag, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-			  p2, p3, p4, p5 - h, d_tlag, d_F, d_rate1, d_dur1, 
-			  d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5 + h, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5 - h, d_tlag, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 7:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag + h, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag - h, d_F, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag + h, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag - h, d_F, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 8:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F + h, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F - h, d_rate1, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F + h, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F - h, d_rate1, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 9:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1 + h, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1 - h, d_dur1, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1 + h, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1 - h, d_dur1, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 10:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1 + h, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1 - h, 
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1 + h, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1 - h, 
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 11:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka + h, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka - h, d_tlag2, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka + h, d_tlag2, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka - h, d_tlag2, d_F2,  d_rate2, d_dur2));
   case 12:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2 + h, d_F2,  d_rate2, d_dur2) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2 - h, d_F2,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2 + h, d_F2,  d_rate2, d_dur2) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2 - h, d_F2,  d_rate2, d_dur2));
   case 13:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2  + h,  d_rate2, d_dur2) +
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2 - h,  d_rate2, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2  + h,  d_rate2, d_dur2) +
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2 - h,  d_rate2, d_dur2));
   case 14:
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2,  d_rate2 + h, d_dur2) +
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2,  d_rate2 - h, d_dur2));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2,  d_rate2 + h, d_dur2) +
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2,  d_rate2 - h, d_dur2));
   case 15:
 
     return h2*(linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2 + h) -
-	       linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
-		       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2 - h));
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2 + h) -
+               linCmtC(rx, id, t, linCmt, i_cmt, trans, p1, v1,
+                       p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                       d_ka, d_tlag2, d_F2,  d_rate2, d_dur2 - h));
   default:
     Rf_errorcall(R_NilValue, "undef diff");
   }
@@ -3163,63 +3168,63 @@ double linCmtE(rx_solve *rx, unsigned int id, double t, int linCmt,
 }
 
 static inline void doAdvanD(double *A,// Amounts
-			    double *Alast, // Last amounts
-			    double tlast, // Time of last amounts
-			    double ct, // Time of the dose
-			    int ncmt, // Number of compartments
-			    int oral0, // Indicator of if this is an oral system
-			    double *b1, // Amount of the dose in compartment #1
-			    double *b2, // Amount of the dose in compartment #2
-			    double *r1, // Rate in Compartment #1
-			    double *r2, // Rate in Compartment #2
-			    double *ka, // ka (for oral doses)
-			    double *kel,  //double rx_v,
-			    double *k12, double *k21, double *k13, double *k31){
+                            double *Alast, // Last amounts
+                            double tlast, // Time of last amounts
+                            double ct, // Time of the dose
+                            int ncmt, // Number of compartments
+                            int oral0, // Indicator of if this is an oral system
+                            double *b1, // Amount of the dose in compartment #1
+                            double *b2, // Amount of the dose in compartment #2
+                            double *r1, // Rate in Compartment #1
+                            double *r2, // Rate in Compartment #2
+                            double *ka, // ka (for oral doses)
+                            double *kel,  //double rx_v,
+                            double *k12, double *k21, double *k13, double *k31){
   double t = ct - tlast;
-    if (oral0){
-      switch (ncmt){
-      case 1: {
-	oneCmtKaRateD(A, Alast, &t, b1, b2, r1, r2, ka, kel);
-	return;
-      } break;
+  if (oral0){
+    switch (ncmt){
+    case 1: {
+      oneCmtKaRateD(A, Alast, &t, b1, b2, r1, r2, ka, kel);
+      return;
+    } break;
       /* case 2: { */
-      /* 	twoCmtKaRateD(A, Alast, &t, b1, b2, r1, r2, */
-      /* 		      ka,  kel, k12, k21); */
-      /* 	return; */
+      /*    twoCmtKaRateD(A, Alast, &t, b1, b2, r1, r2, */
+      /*              ka,  kel, k12, k21); */
+      /*    return; */
       /* } break; */
       /* case 3: { */
-      /* 	threeCmtKaRateD(A, Alast, &t, b1, b2, r1, r2, */
-      /* 			ka,  kel, k12, k21, k13, k31); */
-      /* 	return; */
+      /*    threeCmtKaRateD(A, Alast, &t, b1, b2, r1, r2, */
+      /*            ka,  kel, k12, k21, k13, k31); */
+      /*    return; */
       /* } break; */
-      }
-    } else {
-      switch (ncmt){
-      case 1: {
-	oneCmtRateD(A, Alast, &t, b1, r1, kel);
-	return;
-      } break;
-      /* case 2: { */
-      /* 	twoCmtRateD(A, Alast, &t, b1, r1, */
-      /* 		    kel, k12, k21); */
-      /* 	return; */
-      /* } break; */
-      /* case 3: { */
-      /* 	threeCmtRateD(A, Alast, &t, b1, r1, */
-      /* 		      kel, k12, k21, k13, k31); */
-      /* 	return; */
-      /* } break; */
-      }
     }
+  } else {
+    switch (ncmt){
+    case 1: {
+      oneCmtRateD(A, Alast, &t, b1, r1, kel);
+      return;
+    } break;
+      /* case 2: { */
+      /*    twoCmtRateD(A, Alast, &t, b1, r1, */
+      /*            kel, k12, k21); */
+      /*    return; */
+      /* } break; */
+      /* case 3: { */
+      /*    threeCmtRateD(A, Alast, &t, b1, r1, */
+      /*              kel, k12, k21, k13, k31); */
+      /*    return; */
+      /* } break; */
+    }
+  }
 }
 
 double derTrans(rx_solve *rx, double *A, int ncmt, int trans, int val,
-		double p1, double v1,
-		double p2, double p3,
-		double p4, double p5,
-		double d_tlag, double d_F, double d_rate1, double d_dur1,
-		// Oral parameters
-		double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
+                double p1, double v1,
+                double p2, double p3,
+                double p4, double p5,
+                double d_tlag, double d_F, double d_rate1, double d_dur1,
+                // Oral parameters
+                double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
   int oral0 = (d_ka > 0) ? 1 : 0;
   if (val == 0){
     // Apply trans
@@ -3234,152 +3239,152 @@ double derTrans(rx_solve *rx, double *A, int ncmt, int trans, int val,
     if (val == 11) {
       // d/dt(ka)
       if (trans == 10) {
-	return A[6]*v1;
+        return A[6]*v1;
       } else {
-	return A[6]/v1;
+        return A[6]/v1;
       }
     }
     switch (trans){
     case 1: // cl=(*p1) v=(*v1) q=(*p2) vp=(*p3)
       switch (val) {
       case 1: // cl
-	return A[2 + oral0 * 5]/(v1 * v1);
+        return A[2 + oral0 * 5]/(v1 * v1);
       case 2: // v
-	return -A[oral0]/(v1 * v1) +
-	  (-p1 * A[2 + oral0 * 5]/(v1 * v1) -
-	   p2 * A[3 + oral0 * 5]/(v1 *v1))/v1;
+        return -A[oral0]/(v1 * v1) +
+          (-p1 * A[2 + oral0 * 5]/(v1 * v1) -
+           p2 * A[3 + oral0 * 5]/(v1 *v1))/v1;
       case 3: // q
-	return (A[4 + oral0 * 5]/p3 + A[3 + oral0 * 5]/v1)/v1;
+        return (A[4 + oral0 * 5]/p3 + A[3 + oral0 * 5]/v1)/v1;
       case 4: // vp
-	return -p2 * A[4 + oral0 * 5]/(p3 * p3 * v1);
+        return -p2 * A[4 + oral0 * 5]/(p3 * p3 * v1);
       }
     case 2: // Direct translation
       switch (val) {
       case 1: // k
-	// A1k10 A[2]
-	// A2k20 A[7]
-	return A[2+oral0*5]/v1;
+        // A1k10 A[2]
+        // A2k20 A[7]
+        return A[2+oral0*5]/v1;
       case 2: // v
-	return -A[oral0]/(v1*v1);
+        return -A[oral0]/(v1*v1);
       case 3: // k12
-	return A[3+oral0*5]/v1;
+        return A[3+oral0*5]/v1;
       case 4: // k21
-	return A[4+oral0*5]/v1;
+        return A[4+oral0*5]/v1;
       }
     case 3: // cl=(*p1) v=(*v1) q=(*p2) vss=(*p3)
       switch (val) {
       case 1: // cl
-	return A[2 + oral0 * 5]/(v1 * v1);
+        return A[2 + oral0 * 5]/(v1 * v1);
       case 2: // v
-	return -A[oral0]/(v1 * v1) + (-p1 * A[2 + oral0 * 5]/(v1 * v1) -
-				      p2 * A[3 + oral0 * 5]/(v1 * v1) +
-				      p2 * A[4 + oral0 * 5]/((p3 - v1) * (p3 - v1)))/v1;
+        return -A[oral0]/(v1 * v1) + (-p1 * A[2 + oral0 * 5]/(v1 * v1) -
+                                      p2 * A[3 + oral0 * 5]/(v1 * v1) +
+                                      p2 * A[4 + oral0 * 5]/((p3 - v1) * (p3 - v1)))/v1;
       case 3: // q
-	return (A[3 + oral0 * 5]/v1 + A[4 + oral0 * 5]/(p3 - v1))/v1;
+        return (A[3 + oral0 * 5]/v1 + A[4 + oral0 * 5]/(p3 - v1))/v1;
       case 4: // vss
-	return -p2 * A[4 + oral0 * 5]/((p3 - v1) * (p3 - v1) * v1);
+        return -p2 * A[4 + oral0 * 5]/((p3 - v1) * (p3 - v1) * v1);
       }
     case 4: // alpha=(*p1) beta=(*p2) k21=(*p3)
       switch (val) {
       case 1: // alpha
-	return ((1 - p2/p3) * A[3 + oral0 * 5] + p2 * A[2 + oral0 * 5]/p3)/v1;
+        return ((1 - p2/p3) * A[3 + oral0 * 5] + p2 * A[2 + oral0 * 5]/p3)/v1;
       case 2: // v
-	return -A[oral0]/(v1 * v1);
+        return -A[oral0]/(v1 * v1);
       case 3: // beta
-	return ((1 - p1/p3) * A[3 + oral0 * 5] + p1 * A[2 + oral0 * 5]/p3)/v1;
+        return ((1 - p1/p3) * A[3 + oral0 * 5] + p1 * A[2 + oral0 * 5]/p3)/v1;
       case 4: // k21
-	return (A[3 + oral0 * 5] * (-1 + p2 * p1/(p3 * p3)) -
-		p2 * p1 * A[2 + oral0 * 5]/(p3 * p3) +
-		A[4 + oral0 * 5])/v1;
+        return (A[3 + oral0 * 5] * (-1 + p2 * p1/(p3 * p3)) -
+                p2 * p1 * A[2 + oral0 * 5]/(p3 * p3) +
+                A[4 + oral0 * 5])/v1;
       }
     case 5: // alpha=(*p1) beta=(*p2) aob=(*p3)
       switch (val) {
       case 1: // alpha
-	return (A[4 + oral0 * 5]/(1 + p3) + (p2 * (1 + p3)/(p1 + p2 * p3) -
-					     p2 * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) * A[2 + oral0 * 5] +
-		A[3 + oral0 * 5] * (1 - p2 * (1 + p3)/(p1 + p2 * p3) +
-				    p2 * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3)) -
-				    (1/(1 + p3))))/v1;
+        return (A[4 + oral0 * 5]/(1 + p3) + (p2 * (1 + p3)/(p1 + p2 * p3) -
+                                             p2 * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) * A[2 + oral0 * 5] +
+                A[3 + oral0 * 5] * (1 - p2 * (1 + p3)/(p1 + p2 * p3) +
+                                    p2 * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3)) -
+                                    (1/(1 + p3))))/v1;
       case 2: // v
-	return -A[oral0]/(v1 * v1);
+        return -A[oral0]/(v1 * v1);
       case 3: // beta
-	return ((p1 * (1 + p3)/(p1 + p2 * p3) -
-		 p2 * p1 * p3 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) * A[2 + oral0 * 5] +
-		(1 - p3/(1 + p3) - p1 * (1 + p3)/(p1 + p2 * p3) +
-		 p2 * p1 * p3 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) * A[3 + oral0 * 5] +
-		p3 * A[4 + oral0 * 5]/(1 + p3))/v1;
+        return ((p1 * (1 + p3)/(p1 + p2 * p3) -
+                 p2 * p1 * p3 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) * A[2 + oral0 * 5] +
+                (1 - p3/(1 + p3) - p1 * (1 + p3)/(p1 + p2 * p3) +
+                 p2 * p1 * p3 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) * A[3 + oral0 * 5] +
+                p3 * A[4 + oral0 * 5]/(1 + p3))/v1;
       case 4: // aob
-	return ((p2/(1 + p3) - (p1 + p2 * p3)/((1 + p3) * (1 + p3))) * A[4 + oral0 * 5] +
-		A[2 + oral0 * 5] * (p2 * p1/(p1 + p2 * p3) -
-				    (p2*p2) * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) +
-		A[3 + oral0 * 5] * (-p2/(1 + p3) + (p1 + p2 * p3)/((1 + p3) * (1 + p3)) -
-				    p2 * p1/(p1 + p2 * p3) +
-				    (p2 * p2) * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))))/v1;
+        return ((p2/(1 + p3) - (p1 + p2 * p3)/((1 + p3) * (1 + p3))) * A[4 + oral0 * 5] +
+                A[2 + oral0 * 5] * (p2 * p1/(p1 + p2 * p3) -
+                                    (p2*p2) * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))) +
+                A[3 + oral0 * 5] * (-p2/(1 + p3) + (p1 + p2 * p3)/((1 + p3) * (1 + p3)) -
+                                    p2 * p1/(p1 + p2 * p3) +
+                                    (p2 * p2) * p1 * (1 + p3)/((p1 + p2 * p3) * (p1 + p2 * p3))))/v1;
       }
     case 11: // A2 V, alpha=(*p1), beta=(*p2), k21
       switch (val) {
       case 1: // alpha
-	return (A[2 + oral0 * 5] * ( p2 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) -  p2 * p1 * p3 * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) + A[3 + oral0 * 5] * (1 -  p3/(p3 +  1.0/v1) -  p2 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) +  p2 * p1 * p3 * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) +  p3 * A[4 + oral0 * 5]/(p3 +  1.0/v1))/v1;
+        return (A[2 + oral0 * 5] * ( p2 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) -  p2 * p1 * p3 * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) + A[3 + oral0 * 5] * (1 -  p3/(p3 +  1.0/v1) -  p2 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) +  p2 * p1 * p3 * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) +  p3 * A[4 + oral0 * 5]/(p3 +  1.0/v1))/v1;
       case 2: // v
-	return -A[oral0]/(v1*v1) + (A[2 + oral0 * 5] * (- p2 * p1/((v1*v1) * (p1 * p3 +  p2/v1)) +  (p2*p2) * p1 * (p3 +  1.0/v1)/((v1*v1) * (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) + A[3 + oral0 * 5] * (  p2/((v1*v1) * (p3 +  1.0/v1)) -  (p1 * p3 +  p2/v1)/((v1*v1) * (((p3 +  1.0/v1)) * ((p3 +  1.0/v1)))) +  p2 * p1/((v1*v1) * (p1 * p3 +  p2/v1)) -  (p2*p2) * p1 * (p3 +  1.0/v1)/((v1*v1) *      (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) + A[4 + oral0 * 5] * (- p2/((v1*v1) * (p3 +  1.0/v1)) +  (p1 * p3 +  p2/v1)/((v1*v1) * (((p3 +  1.0/v1)) * ((p3 +  1.0/v1))))))/v1;
+        return -A[oral0]/(v1*v1) + (A[2 + oral0 * 5] * (- p2 * p1/((v1*v1) * (p1 * p3 +  p2/v1)) +  (p2*p2) * p1 * (p3 +  1.0/v1)/((v1*v1) * (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) + A[3 + oral0 * 5] * (  p2/((v1*v1) * (p3 +  1.0/v1)) -  (p1 * p3 +  p2/v1)/((v1*v1) * (((p3 +  1.0/v1)) * ((p3 +  1.0/v1)))) +  p2 * p1/((v1*v1) * (p1 * p3 +  p2/v1)) -  (p2*p2) * p1 * (p3 +  1.0/v1)/((v1*v1) *      (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) + A[4 + oral0 * 5] * (- p2/((v1*v1) * (p3 +  1.0/v1)) +  (p1 * p3 +  p2/v1)/((v1*v1) * (((p3 +  1.0/v1)) * ((p3 +  1.0/v1))))))/v1;
       case 3: // beta
-	return (A[2 + oral0 * 5] * ( p1 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) -  p2 * p1 * (p3 +  1.0/v1)/(v1 * (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) + A[3 + oral0 * 5] * (1 -  1/(v1 * (p3 +  1.0/v1)) -  p1 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) +  p2 * p1 * (p3 +  1.0/v1)/(v1 * (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) +  A[4 + oral0 * 5]/(v1 * (p3 +  1.0/v1)))/v1;
+        return (A[2 + oral0 * 5] * ( p1 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) -  p2 * p1 * (p3 +  1.0/v1)/(v1 * (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) + A[3 + oral0 * 5] * (1 -  1/(v1 * (p3 +  1.0/v1)) -  p1 * (p3 +  1.0/v1)/(p1 * p3 +  p2/v1) +  p2 * p1 * (p3 +  1.0/v1)/(v1 * (((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1))))) +  A[4 + oral0 * 5]/(v1 * (p3 +  1.0/v1)))/v1;
       case 4: // k21
-	return ((0 -  p1/(p3 +  1.0/v1) +  (p1 * p3 +  p2/v1)/(((p3 +  1.0/v1)) * ((p3 +  1.0/v1))) -  p2 * p1/(p1 * p3 +  p2/v1) +  p2 * ((p1) * (p1)) * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) * A[3 + oral0 * 5] + A[2 + oral0 * 5] * (p2 * p1/(p1 * p3 +  p2/v1) -  p2 * ((p1) * (p1)) * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) + A[4 + oral0 * 5] * ( p1/(p3 + 1.0/v1) -  (p1 * p3 +  p2/v1)/((p3 + 1.0/v1) * (p3 +  1.0/v1))))/v1;
+        return ((0 -  p1/(p3 +  1.0/v1) +  (p1 * p3 +  p2/v1)/(((p3 +  1.0/v1)) * ((p3 +  1.0/v1))) -  p2 * p1/(p1 * p3 +  p2/v1) +  p2 * ((p1) * (p1)) * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) * A[3 + oral0 * 5] + A[2 + oral0 * 5] * (p2 * p1/(p1 * p3 +  p2/v1) -  p2 * ((p1) * (p1)) * (p3 +  1.0/v1)/(((p1 * p3 +  p2/v1)) * ((p1 * p3 +  p2/v1)))) + A[4 + oral0 * 5] * ( p1/(p3 + 1.0/v1) -  (p1 * p3 +  p2/v1)/((p3 + 1.0/v1) * (p3 +  1.0/v1))))/v1;
       }
     case 10: // A=(*v1), alpha=(*p1), beta=(*p2), B=(*p3)
       switch (val) {
       case 1: // alpha
-	return (( (p3 + v1) * p2/(p1 * p3 + p2 * v1) -  (p3 + v1) * p2 * p1 * p3/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (1 -  p3/(p3 + v1) -  (p3 + v1) * p2/(p1 * p3 + p2 * v1) +  (p3 + v1) * p2 * p1 * p3/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) +  p3 * A[4 + oral0 * 5]/(p3 + v1))/v1;
+        return (( (p3 + v1) * p2/(p1 * p3 + p2 * v1) -  (p3 + v1) * p2 * p1 * p3/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (1 -  p3/(p3 + v1) -  (p3 + v1) * p2/(p1 * p3 + p2 * v1) +  (p3 + v1) * p2 * p1 * p3/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) +  p3 * A[4 + oral0 * 5]/(p3 + v1))/v1;
       case 2: // A
-	return -A[oral0]/(v1*v1) + (( p2 * p1/(p1 * p3 + p2 * v1) -  (p3 + v1) * (p2*p2) * p1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (0 -  p2/(p3 + v1) +  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1))) -  p2 * p1/(p1 * p3 + p2 * v1) +  (p3 + v1) * (p2*p2) * p1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) + A[4 + oral0 * 5] * ( p2/(p3 + v1) -  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1)))))/v1;
+        return -A[oral0]/(v1*v1) + (( p2 * p1/(p1 * p3 + p2 * v1) -  (p3 + v1) * (p2*p2) * p1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (0 -  p2/(p3 + v1) +  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1))) -  p2 * p1/(p1 * p3 + p2 * v1) +  (p3 + v1) * (p2*p2) * p1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) + A[4 + oral0 * 5] * ( p2/(p3 + v1) -  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1)))))/v1;
       case 3: // beta
-	return (( (p3 + v1) * p1/(p1 * p3 + p2 * v1) -  (p3 + v1) * p2 * p1 * v1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (1 -  v1/(p3 + v1) -  (p3 + v1) * p1/(p1 * p3 + p2 * v1) +  (p3 + v1) * p2 * p1 * v1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) +  v1 * A[4 + oral0 * 5]/(p3 + v1))/v1;
+        return (( (p3 + v1) * p1/(p1 * p3 + p2 * v1) -  (p3 + v1) * p2 * p1 * v1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (1 -  v1/(p3 + v1) -  (p3 + v1) * p1/(p1 * p3 + p2 * v1) +  (p3 + v1) * p2 * p1 * v1/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) +  v1 * A[4 + oral0 * 5]/(p3 + v1))/v1;
       case 4: // B
-	return (( p2 * p1/(p1 * p3 + p2 * v1) -  (p3 + v1) * p2 * ((p1) * (p1))/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (0 -  p1/(p3 + v1) +  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1))) -  p2 * p1/(p1 * p3 + p2 * v1) +  (p3 + v1) * p2 * ((p1) * (p1))/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) + A[4 + oral0 * 5] * ( p1/(p3 + v1) -  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1)))))/v1;
+        return (( p2 * p1/(p1 * p3 + p2 * v1) -  (p3 + v1) * p2 * ((p1) * (p1))/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) * A[2 + oral0 * 5] + A[3 + oral0 * 5] * (0 -  p1/(p3 + v1) +  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1))) -  p2 * p1/(p1 * p3 + p2 * v1) +  (p3 + v1) * p2 * ((p1) * (p1))/(((p1 * p3 + p2 * v1)) * ((p1 * p3 + p2 * v1)))) + A[4 + oral0 * 5] * ( p1/(p3 + v1) -  (p1 * p3 + p2 * v1)/(((p3 + v1)) * ((p3 + v1)))))/v1;
       }
     }
   case 1: // One compartment model
     if (val == 11) {
       // d/dt(ka)
       if (trans == 10) {
-	return A[3]*v1;
+        return A[3]*v1;
       } else {
-	return A[3]/v1;
+        return A[3]/v1;
       }
     }
     switch (trans){
     case 1: // cl v
       switch (val){
       case 1: // d/dt(p1) = d/dt(cl) f = A[oral0]/v
-	//A2k20 = A[4]
-	//A1k10 = A[1]
-	return A[oral0*3 + 1]/(v1*v1);
+        //A2k20 = A[4]
+        //A1k10 = A[1]
+        return A[oral0*3 + 1]/(v1*v1);
       case 2: // d/dt(v)
-	return -A[oral0]/(v1*v1) - p1*A[oral0*3+1]/(v1*v1*v1);
+        return -A[oral0]/(v1*v1) - p1*A[oral0*3+1]/(v1*v1*v1);
       }
     case 2: // k V
       switch (val) {
       case 1: // d/dt(p1) = d/dt(kel)
-	//A2k20 = A[4]
-	//A1k10 = A[1]
-	return A[oral0*3 + 1]/(v1);
+        //A2k20 = A[4]
+        //A1k10 = A[1]
+        return A[oral0*3 + 1]/(v1);
       case 2: // d/dt(v)
-	return -A[oral0]/(v1*v1);
+        return -A[oral0]/(v1*v1);
       }
     case 11: // alpha V
       switch (val) {
       case 1: // d/dt(p1) = d/dt(alpha)  //alpha=kel
-	return A[oral0*3 + 1]/(v1);
+        return A[oral0*3 + 1]/(v1);
       case 2: // d/dt(v)
-	return -A[oral0]/(v1*v1);
+        return -A[oral0]/(v1*v1);
       }
     case 10: // alpha A
       switch (val) {
       case 1: // d/dt(alpha)
-	return A[oral0*3+1]*v1;
+        return A[oral0*3+1]*v1;
       case 2: // d/dt(A)
-	return A[oral0];
+        return A[oral0];
       }
     } break;
   }
@@ -3424,17 +3429,17 @@ double derTrans(rx_solve *rx, double *A, int ncmt, int trans, int val,
 }
 
 double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
-	       int i_cmt, int trans, int val,
-	       double p1, double v1,
-	       double p2, double p3,
-	       double p4, double p5,
-	       double d_tlag, double d_F, double d_rate1, double d_dur1,
-	       // Oral parameters
-	       double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
+               int i_cmt, int trans, int val,
+               double p1, double v1,
+               double p2, double p3,
+               double p4, double p5,
+               double d_tlag, double d_F, double d_rate1, double d_dur1,
+               // Oral parameters
+               double d_ka, double d_tlag2, double d_F2,  double d_rate2, double d_dur2) {
   /* if (i_cmt == 3 || i_cmt == 2) */
   /*   return linCmtBB(rx, id, t, linCmt, i_cmt, trans, val, */
-  /* 		    p1, v1, p2, p3, p4, p5, d_tlag, d_F, */
-  /* 		    d_rate1, d_dur1, d_ka, d_tlag2, d_F2, d_rate2, d_dur2); */
+  /*            p1, v1, p2, p3, p4, p5, d_tlag, d_F, */
+  /*            d_rate1, d_dur1, d_ka, d_tlag2, d_F2, d_rate2, d_dur2); */
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   double t = _t - ind->curShift;
   int evid;
@@ -3450,16 +3455,20 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   double curTime= getTime(ind->ix[idx], ind); // t0
   while (t < curTime) {
     idx--;
-    if (idx < 0) return 0.0;
+    if (idx < 0) return NA_TIME;
     curTime = getTime(ind->ix[idx], ind);
   }
   int sameTime = isSameTime(t, curTime);
   if (idx <= ind->solved && sameTime){
     // Pull from last solved value (cached)
     A = getAdvan(idx);
-    return derTrans(rx, A, i_cmt, trans, val, p1, v1, p2, p3,
-		    p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
-		    d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
+    if (A[oral0] == 0.0) {
+      ind->solved = max2(idx-1, 0);
+    } else {
+      return derTrans(rx, A, i_cmt, trans, val, p1, v1, p2, p3,
+                      p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
+                      d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
+    }
   }
   unsigned int ncmt = 1;
   double rx_k=0, rx_v=0;
@@ -3472,8 +3481,8 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   A = Alast0;
   if (idx <= ind->solved){
     if (!parTrans(&trans, &p1, &v1, &p2, &p3, &p4, &p5,
-		  &ncmt, &rx_k, &rx_v, &rx_k12,
-		  &rx_k21, &rx_k13, &rx_k31)){
+                  &ncmt, &rx_k, &rx_v, &rx_k12,
+                  &rx_k21, &rx_k13, &rx_k31)){
       return NA_REAL;
     }
   } else {
@@ -3487,8 +3496,8 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
     }
     curTime = getTime(ind->ix[idx], ind);
     if (!parTrans(&trans, &p1, &v1, &p2, &p3, &p4, &p5,
-		  &ncmt, &rx_k, &rx_v, &rx_k12,
-		  &rx_k21, &rx_k13, &rx_k31)){
+                  &ncmt, &rx_k, &rx_v, &rx_k12,
+                  &rx_k21, &rx_k13, &rx_k31)){
       return NA_REAL;
     }
     evid = ind->evid[ind->ix[idx]];
@@ -3504,19 +3513,19 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
       Alast=Alast0;
     } else {
       doAdvanD(A, Alast, tlast, // Time of last amounts
-	       curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
-	       &d_ka, &rx_k, &rx_k12, &rx_k21, &rx_k13, &rx_k31);
+               curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
+               &d_ka, &rx_k, &rx_k12, &rx_k21, &rx_k13, &rx_k31);
       double aSave[15];
       int nSave = (ncmt == 1 ? (oral0 ? 5 : 2) : (oral0 ? 15 : 8));
       for (int i = nSave; i--;){
-	aSave[i] = A[i];
+        aSave[i] = A[i];
       }
       if (handle_evidL(evid, A, curTime, id, ind)){
-	handleSSL(A, Alast, tlast, curTime, ncmt, oral0, 
-		  &b1, &b2, &r1, &r2, &d_ka, &rx_k,
-		  &rx_k12, &rx_k21, &rx_k13, &rx_k31,
-		  &linCmt, &d_F, &d_F2, &d_rate1, &d_rate2,
-		  &d_dur1, &d_dur2, aSave, &nSave, true, ind);
+        handleSSL(A, Alast, tlast, curTime, ncmt, oral0, 
+                  &b1, &b2, &r1, &r2, &d_ka, &rx_k,
+                  &rx_k12, &rx_k21, &rx_k13, &rx_k31,
+                  &linCmt, &d_F, &d_F2, &d_rate1, &d_rate2,
+                  &d_dur1, &d_dur2, aSave, &nSave, true, ind);
       }
     }
   }
@@ -3529,34 +3538,34 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
     curTime = t;
     b1 = b2 = 0;
     doAdvanD(Ac, Alast, tlast, // Time of last amounts
-	     curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
-	     &d_ka, &rx_k, &rx_k12, &rx_k21, &rx_k13, &rx_k31);
+             curTime, ncmt, oral0, &b1, &b2, &r1, &r2,
+             &d_ka, &rx_k, &rx_k12, &rx_k21, &rx_k13, &rx_k31);
   }
   if (op->nlin2 == op->nlin) {
     return derTrans(rx, Ac, ncmt, trans, val, p1, v1, p2, p3,
-		    p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
-		    d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
+                    p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
+                    d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
   }
   double v0 = derTrans(rx, Ac, ncmt, trans, 0, p1, v1, p2, p3,
-		       p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
-		       d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
+                       p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
+                       d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
   int cur = op->nlin2;
   double curD;
   if ((op->linBflag & 64) && (sameTime || (!sameTime && val == 7))) { // tlag
     if (op->cTlag) {
       curD =(linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		     p2, p3, p4, p5, d_tlag + 0.5*op->hTlag,
-		     d_F, d_rate1, d_dur1,
-		     d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	     linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		     p2, p3, p4, p5, d_tlag - 0.5*op->hTlag,
-		     d_F, d_rate1, d_dur1,
-		     d_ka, d_tlag2, d_F2,  d_rate2, d_dur2))/op->hTlag;
+                     p2, p3, p4, p5, d_tlag + 0.5*op->hTlag,
+                     d_F, d_rate1, d_dur1,
+                     d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+             linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
+                     p2, p3, p4, p5, d_tlag - 0.5*op->hTlag,
+                     d_F, d_rate1, d_dur1,
+                     d_ka, d_tlag2, d_F2,  d_rate2, d_dur2))/op->hTlag;
     } else {
       curD =(linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		     p2, p3, p4, p5, d_tlag + op->hTlag, d_F,
-		     d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
-		     d_rate2, d_dur2) - v0)/op->hTlag;
+                     p2, p3, p4, p5, d_tlag + op->hTlag, d_F,
+                     d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
+                     d_rate2, d_dur2) - v0)/op->hTlag;
     }
     if (sameTime) A[cur++] = curD;
     else return curD;
@@ -3564,19 +3573,19 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if ((op->linBflag & 128) && (sameTime || (!sameTime && val == 8))) { // f
     if (op->cF) {
       double c1 = linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-			  p2, p3, p4, p5, d_tlag, d_F + 0.5*op->hF,
-			  d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
-			  d_rate2, d_dur2);
+                          p2, p3, p4, p5, d_tlag, d_F + 0.5*op->hF,
+                          d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
+                          d_rate2, d_dur2);
       double c2 = linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-			  p2, p3, p4, p5, d_tlag, d_F - 0.5*op->hF,
-			  d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
-			  d_rate2, d_dur2);
+                          p2, p3, p4, p5, d_tlag, d_F - 0.5*op->hF,
+                          d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
+                          d_rate2, d_dur2);
       curD =(c1 - c2)/op->hF;
     } else {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F + op->hF,
-		      d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
-		      d_rate2, d_dur2) - v0)/op->hF;
+                      p2, p3, p4, p5, d_tlag, d_F + op->hF,
+                      d_rate1, d_dur1, d_ka, d_tlag2, d_F2,
+                      d_rate2, d_dur2) - v0)/op->hF;
     }
     if (sameTime) A[cur++] = curD;
     else return curD;
@@ -3584,18 +3593,18 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if ((op->linBflag & 256) && (sameTime || (!sameTime && val == 9))) { // rate
     if (op->cRate) {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F,
-		      d_rate1 + 0.5*op->hRate, d_dur1,
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	      linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F,
-		      d_rate1 - 0.5*op->hRate, d_dur1,
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2))/op->hRate;
+                      p2, p3, p4, p5, d_tlag, d_F,
+                      d_rate1 + 0.5*op->hRate, d_dur1,
+                      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+              linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
+                      p2, p3, p4, p5, d_tlag, d_F,
+                      d_rate1 - 0.5*op->hRate, d_dur1,
+                      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2))/op->hRate;
     } else {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F,
-		      d_rate1 + op->hRate, d_dur1,
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0)/op->hRate;
+                      p2, p3, p4, p5, d_tlag, d_F,
+                      d_rate1 + op->hRate, d_dur1,
+                      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0)/op->hRate;
     }
     if (sameTime) A[cur++] = curD;
     else return curD;
@@ -3603,18 +3612,18 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if ((op->linBflag & 512) && (sameTime || (!sameTime && val == 10))) { // dur
     if (op->cDur) {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1,
-		      d_dur1 + 0.5*op->hDur,
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
-	      linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1,
-		      d_dur1 - 0.5*op->hDur,
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2))/op->hDur;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1,
+                      d_dur1 + 0.5*op->hDur,
+                      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) -
+              linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1,
+                      d_dur1 - 0.5*op->hDur,
+                      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2))/op->hDur;
     } else {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1,
-		      d_dur1 + op->hDur,
-		      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0)/op->hDur;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1,
+                      d_dur1 + op->hDur,
+                      d_ka, d_tlag2, d_F2,  d_rate2, d_dur2) - v0)/op->hDur;
     }
     if (sameTime) A[cur++] = curD;
     return curD;
@@ -3622,18 +3631,18 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if ((op->linBflag & 2048) && (sameTime && (!sameTime && val == 12))) { // tlag2
     if (op->cTlag2) {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2 + 0.5*op->hTlag2, d_F2,
-		      d_rate2, d_dur2) -
-	      linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2 - 0.5*op->hTlag2, d_F2,
-		      d_rate2, d_dur2))/op->hTlag2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2 + 0.5*op->hTlag2, d_F2,
+                      d_rate2, d_dur2) -
+              linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2 - 0.5*op->hTlag2, d_F2,
+                      d_rate2, d_dur2))/op->hTlag2;
     } else {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2 + op->hTlag2, d_F2, d_rate2,
-		      d_dur2) - v0)/op->hTlag2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2 + op->hTlag2, d_F2, d_rate2,
+                      d_dur2) - v0)/op->hTlag2;
     }
     if (sameTime) A[cur++] = curD;
     return curD;
@@ -3641,18 +3650,18 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if ((op->linBflag & 4096) && (sameTime || (!sameTime && val == 13))) { // f2
     if (op->cF2) {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2 + 0.5*op->hF2,
-		      d_rate2, d_dur2) -
-	      linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2 - 0.5*op->hF2,
-		      d_rate2, d_dur2))/op->hF2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2 + 0.5*op->hF2,
+                      d_rate2, d_dur2) -
+              linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2 - 0.5*op->hF2,
+                      d_rate2, d_dur2))/op->hF2;
     } else {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2 + op->hF2,
-		      d_rate2, d_dur2) - v0)/op->hF2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2 + op->hF2,
+                      d_rate2, d_dur2) - v0)/op->hF2;
     }
     if (sameTime) A[cur++] = curD;
     return curD;
@@ -3660,18 +3669,18 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if ((op->linBflag & 8192) && (sameTime || (!sameTime && val == 14))) { // rate2
     if (op->cRate2){
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2,
-		      d_rate2 + 0.5*op->hRate2, d_dur2) -
-	      linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2,
-		      d_rate2 - 0.5*op->hRate2, d_dur2))/op->hRate2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2,
+                      d_rate2 + 0.5*op->hRate2, d_dur2) -
+              linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2,
+                      d_rate2 - 0.5*op->hRate2, d_dur2))/op->hRate2;
     } else {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2,
-		      d_rate2 + op->hRate2, d_dur2) - v0)/op->hRate2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2,
+                      d_rate2 + op->hRate2, d_dur2) - v0)/op->hRate2;
     }
     if (sameTime) A[cur++] = curD;
     else return curD;
@@ -3679,24 +3688,24 @@ double linCmtF(rx_solve *rx, unsigned int id, double _t, int linCmt,
   if ((op->linBflag & 16384) && (sameTime || (!sameTime && val == 15))) { // dur2
     if (op->cDur2){
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2,  d_rate2,
-		      d_dur2 + 0.5*op->hDur2) -
-	      linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2,  d_rate2,
-		      d_dur2 - 0.5*op->hDur2))/op->hDur2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2,  d_rate2,
+                      d_dur2 + 0.5*op->hDur2) -
+              linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2,  d_rate2,
+                      d_dur2 - 0.5*op->hDur2))/op->hDur2;
     } else {
       curD = (linCmtC(rx, id, t, linCmt, ncmt, trans, p1, v1,
-		      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
-		      d_ka, d_tlag2, d_F2,  d_rate2,
-		      d_dur2 + op->hDur2) - v0)/op->hDur2;
+                      p2, p3, p4, p5, d_tlag, d_F, d_rate1, d_dur1,
+                      d_ka, d_tlag2, d_F2,  d_rate2,
+                      d_dur2 + op->hDur2) - v0)/op->hDur2;
     }
     if (sameTime) A[cur++] = curD;
     return curD;
   }
   return derTrans(rx, Ac, ncmt, trans, val, p1, v1, p2, p3,
-		  p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
-		  d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
+                  p4, p5, d_tlag,  d_F,  d_rate1,  d_dur1,
+                  d_ka, d_tlag2, d_F2, d_rate2, d_dur2);
   return R_NaN;
 }
