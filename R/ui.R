@@ -84,7 +84,8 @@
   }
   warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
           call.=FALSE)
-  .fun2 <- function() {}
+  .fun2 <- function() {
+  }
   body(.fun2) <- as.call(lapply(c(-1L, .idx[-.w], .w), function(i) {
     if (i == -1L) return(quote(`{`))
     .lst[[i]]
