@@ -84,7 +84,8 @@
   }
   warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
           call.=FALSE)
-  .fun2 <- function() {}
+  .fun2 <- function() {
+  }
   body(.fun2) <- as.call(lapply(c(-1L, .idx[-.w], .w), function(i) {
     if (i == -1L) return(quote(`{`))
     .lst[[i]]
@@ -304,7 +305,10 @@ print.rxUi <-function(x, ...) {
       print(.omega)
     }
   }
-
+  if (length(x$state) > 0) {
+    cat(paste0(crayon::bold("\nStates"), " (", crayon::bold$blue("$state"), " or ", crayon::bold$blue("$stateDf"), "):"), "\n")
+    print(rxUiGet.stateDf(list(x,TRUE)))
+  }
   # Multiple Endpoint
   .me <- x$multipleEndpoint
   if (!is.null(.me)) {
