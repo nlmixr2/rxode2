@@ -28,6 +28,11 @@
     .s3register("dplyr::rename", "function")
   }
 
+  if (requireNamespace("nlme", quietly=TRUE)) {
+    .s3register("nlme::fixef", "rxUi")
+    .s3register("nlme::fixef", "function")
+  }
+
   if (requireNamespace("pillar", quietly = TRUE)) {
     .s3register("pillar::type_sum", "rxEvid")
     .s3register("pillar::type_sum", "rxRateDur")
