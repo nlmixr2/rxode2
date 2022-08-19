@@ -1,4 +1,13 @@
 .iniModifyFixedForThetaOrEtablock <- function(ini, w, fixedValue) {
+  if (rxode2.verbose.pipe) {
+    if (ini$fix[w] != fixedValue) {
+      if (fixedValue) {
+        .minfo(paste0("fix {.code ", ini$name[w], "} to {.code ", ini$est[w], "}"))
+      } else {
+        .minfo(paste0("unfix {.code ", ini$name[w], "} keeping initial estimate {.code ", ini$est[w], "}"))
+      }
+    }
+  }
   ini$fix[w] <- fixedValue
   .neta <- ini$neta1[w]
   if (!is.na(.neta)) {
@@ -6,7 +15,16 @@
     .fixedEtas <- NULL
     while (length(.etas) > 0) {
       .neta <- .etas[1]
-      w <-which(ini$neta1 == .neta | ini$neta2 == .neta)
+      w <- which(ini$neta1 == .neta | ini$neta2 == .neta)
+      if (rxode2.verbose.pipe) {
+        if (ini$fix[w] != fixedValue) {
+          if (fixedValue) {
+            .minfo(paste0("fix {.code ", ini$name[w], "} to {.code ", ini$est[w], "}"))
+          } else {
+            .minfo(paste0("unfix {.code ", ini$name[w], "} keeping initial estimate {.code ", ini$est[w], "}"))
+          }
+        }
+      }
       ini$fix[w] <- fixedValue
       .etas <- unique(c(.etas, ini$neta1[w], ini$neta2[w]))
       .fixedEtas <- c(.neta, .fixedEtas)

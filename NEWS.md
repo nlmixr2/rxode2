@@ -29,6 +29,8 @@
 
 - The memory footprint of a `rxode2` solving has been reduced
 
+- Piping now allow named strings (issue #249)
+
 ** Bug fixes
 
 - `rxode2`'s symengine would convert `sqrt(2)` to `M_SQRT_2` when it
@@ -41,12 +43,18 @@
   
 ** New features
 
-- A new flag (`rxFlag`) has been created to tell you where in the `rxode2` solving process you are.  This is useful for debugging. If outputting this variable it will always be `11` or calculating the left handed equations.
+- A new flag (`rxFlag`) has been created to tell you where in the
+  `rxode2` solving process you are.  This is useful for debugging. If
+  outputting this variable it will always be `11` or calculating the
+  left handed equations.  If you are using in conjunction with the
+  `printf()` methods, it is a double variable and should be formatted
+  with `"%f"`.
   
-- An additional option of `fullPrint` has been added to
-  `rxode2()` which allows `rprintf()` to be used in all of `rxode2()`
-  steps instead of just the integration `ddt` step.  It defaults to
-  `FALSE`.
+- An additional option of `fullPrint` has been added to `rxode2()`
+  which allows `rprintf()` to be used in almost all of `rxode2()`
+  steps (inductive linearization and matrix exponential are the
+  exception here) instead of just the integration `ddt` step.  It
+  defaults to `FALSE`.
 
 # rxode2 2.0.7
 
