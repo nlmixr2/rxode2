@@ -446,10 +446,32 @@
   "ordinal"="rordinal"
 )
 
+.getOrdinalDistPred <- function(env, pred1) {
+  # final should be log((DV==1)*prob1 + (DV==2)*prob2 + ... + (DV==n)*(1 - prob1 - prob2 - ...))
+  .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
+  if (length(.c) > 2) {
+    .first <- vapply(seq(2, length(.c)), function(i) {
+      paste0("(DV==",(i-1),")*(",
+             deparse1(.c[[i]]),")")
+      
+    }, character(1), USE.NAMES=FALSE)
+    .last <- vapply(seq(2, length(.c)), function(i) {
+      paste0("(", deparse1(.c[[i]]), ")")
+    }, character(1), USE.NAMES=FALSE)
+    .last <- "(DV==", length(.c), ")*(1.0 -",paste(.last, collapse="-"),")"
+    .ret <- paste0("log(", paste(c(.first, .last), collapse="+"),")")
+    return(str2lang(.ret))
+  } else {
+    stop("not enough categories to estimate")
+  }
+}
+
 .getQuotedDistributionAndLlikArgs <- function(env, pred1, errNum=1L) {
   .dist <- as.character(pred1$distribution)
   if (.dist == "LL") {
     return(env$lstExpr[[pred1$line]][[3]])
+  } else if (.dist == "ordinal") {
+    return(.getOrdinalDistPred(env, pred1))
   }
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond
