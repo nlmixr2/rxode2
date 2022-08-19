@@ -1,12 +1,18 @@
-.iniModifyFixedForThetaOrEtablock <- function(ini, w, fixedValue) {
-  if (rxode2.verbose.pipe) {
-    if (ini$fix[w] != fixedValue) {
+.msgFix<- function(ini, w, fixedValue) {
+  lapply(w, function(.w) {
+    if (ini$fix[.w] != fixedValue) {
       if (fixedValue) {
-        .minfo(paste0("fix {.code ", ini$name[w], "} to {.code ", ini$est[w], "}"))
+        .minfo(paste0("fix {.code ", ini$name[.w], "} to {.code ", ini$est[.w], "}"))
       } else {
-        .minfo(paste0("unfix {.code ", ini$name[w], "} keeping initial estimate {.code ", ini$est[w], "}"))
+        .minfo(paste0("unfix {.code ", ini$name[.w], "} keeping initial estimate {.code ", ini$est[.w], "}"))
       }
     }
+  })
+}
+
+.iniModifyFixedForThetaOrEtablock <- function(ini, w, fixedValue) {
+  if (rxode2.verbose.pipe) {
+    .msgFix(ini, w, fixedValue)
   }
   ini$fix[w] <- fixedValue
   .neta <- ini$neta1[w]
@@ -17,13 +23,7 @@
       .neta <- .etas[1]
       w <- which(ini$neta1 == .neta | ini$neta2 == .neta)
       if (rxode2.verbose.pipe) {
-        if (ini$fix[w] != fixedValue) {
-          if (fixedValue) {
-            .minfo(paste0("fix {.code ", ini$name[w], "} to {.code ", ini$est[w], "}"))
-          } else {
-            .minfo(paste0("unfix {.code ", ini$name[w], "} keeping initial estimate {.code ", ini$est[w], "}"))
-          }
-        }
+        .msgFix(ini, w, fixedValue)
       }
       ini$fix[w] <- fixedValue
       .etas <- unique(c(.etas, ini$neta1[w], ini$neta2[w]))
