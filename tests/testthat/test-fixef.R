@@ -5,9 +5,7 @@ test_that("fixef()", {
       ## You may label each parameter with a comment
       tka <- 0.45 # Ka
       tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
+      tv <- 3.45
       ## the label("Label name") works with all models
       eta.ka ~ 0.6
       eta.cl ~ 0.3
