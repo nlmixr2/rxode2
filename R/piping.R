@@ -83,6 +83,9 @@
           class(.cur2) <- c("lotriFix", class(.cur))
         }
         .unlistedBrackets <- as.list(as.expression(.cur2)[[-1]])[-1]
+      } else if (inherits(.cur, "character") && !is.null(names(.cur))) {
+        .unlistedBrackets <- lapply(paste(names(.cur),"=", setNames(.cur, NULL)),
+                                    str2lang)
       } else {
         stop("vectors and list need to named numeric expression", call.=FALSE)
       }
