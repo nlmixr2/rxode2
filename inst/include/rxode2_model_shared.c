@@ -183,8 +183,7 @@ double _rxord(int _cSub, unsigned int n,  ...) {
       }
     }
   }
-  if (p >= 1) ret = NA_REAL;
-  else if (!found) ret =(double)(n+1);
+  if (!found) ret =(double)(n+1);
   va_end(valist);
   return ret;
 }
