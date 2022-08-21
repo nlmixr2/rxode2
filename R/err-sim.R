@@ -118,6 +118,27 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .pred1 <- line[[2]]
   .errNum <- line[[3]]
   .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
+  .ce <- try(eval(.c),silent=TRUE)
+  if (inherits(.ce, "try-error")) {
+  } else if (inherits(.ce, "numeric") &&
+               !is.null(names(.ce))) {
+    .n <- names(.ce)
+    .ln <- length(.n)
+    if (.n[.ln] != "") {
+      stop("last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number",
+           call.=FALSE)
+    }
+    .n <- .n[.n != ""]
+    if (length(.n) != .ln - 1) {
+      stop("names for ordinal simulation incorrect")
+    }
+    .ret <- vector("list", 2)
+    .ret[[1]] <- quote(ipredSim <- NA)
+    .ret[[2]] <- str2lang(paste0("sim <- rxord2(",
+                                 paste(c(.n, setNames(.ce, NULL)), collapse=", "),
+                                 ")"))
+    return(.ret)
+  }
   .c[[1]] <- quote(`rxord`)
   .ret <- vector("list", 2)
   .ret[[1]] <- quote(ipredSim <- NA)

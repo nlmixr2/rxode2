@@ -170,7 +170,7 @@ double _sign(unsigned int n, ...) {
 double _rxord(int _cSub, unsigned int n,  ...) {
   va_list valist;
   va_start(valist, n);
-  double ret = 0.0;
+  double ret = 1.0;
   double p = 0.0;
   double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
   int found = 0;
@@ -186,6 +186,37 @@ double _rxord(int _cSub, unsigned int n,  ...) {
   if (!found) ret =(double)(n+1);
   va_end(valist);
   return ret;
+}
+
+double _rxord2(int _cSub, unsigned int n0,  ...) {
+  va_list valist;
+  va_start(valist, n0);
+  int n = (n0-1)/2;
+  double ret = 1.0;
+  double p = 0.0;
+  double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
+  int found = 0;
+  for (unsigned int i = 0; i < n; i++) {
+    p += va_arg(valist, double);
+    if (!found) {
+      if (u < p) {
+        ret = (double)(i+1);
+        found = 1;
+      }
+    }
+  }
+  if (!found) ret =(double)(n+1);
+  double retF, cur;
+  for (unsigned int i = 0; i < n; i++) {
+    cur = va_arg(valist, double);
+    if ((double)(i+1) == ret) {
+      retF = cur;
+    }
+  }
+  cur = va_arg(valist, double);
+  if (!found) retF = cur;
+  va_end(valist);
+  return retF;
 }
 
 double _max(unsigned int n, ...) {
