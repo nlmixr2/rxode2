@@ -42,7 +42,7 @@ rxTest({
     f <- function() {
       ini({
         tkel <- 0.1
-        tp0 <- -3
+        tp0 <- -0.01
         eta.p ~ 0.02
         add.sd <- 0.2
       })

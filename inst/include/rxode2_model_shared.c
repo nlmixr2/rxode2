@@ -168,11 +168,15 @@ double _sign(unsigned int n, ...) {
 }
 
 double _rxord(int _cSub, unsigned int n,  ...) {
+  rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
+  if (!ind->inLhs) {
+    return 1.0;
+  }
   va_list valist;
   va_start(valist, n);
   double ret = 1.0;
   double p = 0.0;
-  double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
+  double u = rxunif(ind, 0.0, 1.0);
   int found = 0;
   for (unsigned int i = 0; i < n; i++) {
     p += va_arg(valist, double);
@@ -189,34 +193,44 @@ double _rxord(int _cSub, unsigned int n,  ...) {
 }
 
 double _rxord2(int _cSub, unsigned int n0,  ...) {
+  rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
+  unsigned int i = 0;
+  // size is n0 = (n-1)+n = 2n-1
+  // n=(n0+1)/2
+  unsigned int n = (n0+1)/2;
+  if (!ind->inLhs) {
+    va_list valist;
+    va_start(valist, n0);
+    for (;i < n-1; i++) {
+      va_arg(valist, double);
+    }
+    double ret = va_arg(valist, double);
+    va_end(valist);
+    return ret;
+  }
+  double u = rxunif(ind, 0.0, 1.0), p = 0.0;
+  unsigned int w=0;
   va_list valist;
   va_start(valist, n0);
-  int n = (n0-1)/2;
-  double ret = 1.0;
-  double p = 0.0;
-  double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
-  int found = 0;
-  for (unsigned int i = 0; i < n; i++) {
+  for (;i < n - 1; ++i) {
     p += va_arg(valist, double);
-    if (!found) {
-      if (u < p) {
-        ret = (double)(i+1);
-        found = 1;
+    if (u < p) {
+      // found it
+      w = i;
+      for (; i < n - 2 + w; ++i) {
       }
+      double ret = va_arg(valist, double);
+      va_end(valist);
+      return ret;
     }
   }
-  if (!found) ret =(double)(n+1);
-  double retF, cur;
-  for (unsigned int i = 0; i < n; i++) {
-    cur = va_arg(valist, double);
-    if ((double)(i+1) == ret) {
-      retF = cur;
-    }
+  // did not find it, assume it is the highest arg.
+  for (; i < n0 - 1; ++i) {
+    va_arg(valist, double);
   }
-  cur = va_arg(valist, double);
-  if (!found) retF = cur;
+  double ret = va_arg(valist, double);
   va_end(valist);
-  return retF;
+  return ret;
 }
 
 double _max(unsigned int n, ...) {

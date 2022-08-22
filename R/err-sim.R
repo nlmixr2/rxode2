@@ -119,7 +119,6 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
   .ce <- try(eval(.c), silent=TRUE)
   if (inherits(.ce, "try-error")) {
-    print(.ce)
   } else if (inherits(.ce, "numeric") &&
                !is.null(names(.ce))) {
     .n <- names(.ce)
