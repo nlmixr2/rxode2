@@ -77,7 +77,6 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   .errNum <- line[[3]]
   .err <- str2lang(paste0("err.", pred1$var))
   .ret <- vector("list", 2)
-  #.ret[[1]] <- bquote(.(.err) <- 0)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
@@ -118,8 +117,9 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .pred1 <- line[[2]]
   .errNum <- line[[3]]
   .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
-  .ce <- try(eval(.c),silent=TRUE)
+  .ce <- try(eval(.c), silent=TRUE)
   if (inherits(.ce, "try-error")) {
+    print(.ce)
   } else if (inherits(.ce, "numeric") &&
                !is.null(names(.ce))) {
     .n <- names(.ce)

@@ -27,7 +27,7 @@ rxTest({
       et(id=1:20) %>%
       dplyr::as_tibble()
 
-    rxWithPreserveSeed({
+    rxWithSeed(42, {
       
       s <- rxSolve(tmp, ev,
                    returnType="tibble", addCov=TRUE)
@@ -65,7 +65,7 @@ rxTest({
       et(id=1:20) %>%
       dplyr::as_tibble()
 
-    rxWithPreserveSeed({
+    rxWithSeed(42, {
       
       s <- rxSolve(tmp, ev,
                    returnType="tibble", addCov=TRUE)
