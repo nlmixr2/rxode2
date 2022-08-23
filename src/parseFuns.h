@@ -165,7 +165,7 @@ static inline int handleFunctionLogit(transFunctions *tf) {
 static inline int handleFunctionSum(transFunctions *tf) {
   if (!strcmp("prod",tf->v)   || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
-      !strcmp("rxord", tf->v) || !strcmp("rxord2", tf->v)){
+      !strcmp("rxord", tf->v)){
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (!strcmp("prod", tf->v)){
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -182,9 +182,6 @@ static inline int handleFunctionSum(transFunctions *tf) {
     } else if (!strcmp("rxord", tf->v)) {
       sAppend(&sb, "_rxord(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_rxord(_cSub, %d, (double) ", ii);
-    } else if (!strcmp("rxord2", tf->v)) {
-      sAppend(&sb, "_rxord2(_cSub, %d, (double) ", ii);
-      sAppend(&sbDt, "_rxord2(_cSub, %d, (double) ", ii);
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);
