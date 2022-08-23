@@ -449,6 +449,27 @@
 .getOrdinalDistPred <- function(env, pred1) {
   # final should be log((DV==1)*prob1 + (DV==2)*prob2 + ... + (DV==n)*(1 - prob1 - prob2 - ...))
   .c <- env$lstExpr[[pred1$line[1]]][[3]]
+  .ce <- try(eval(.c), silent=TRUE)
+  if (inherits(.ce, "try-error")) {
+  } else if (inherits(.ce, "numeric") &&
+               !is.null(names(.ce))) {
+    .n <- names(.ce)
+    .ln <- length(.n)
+    if (.n[.ln] != "") {
+      stop("last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number",
+           call.=FALSE)
+    }
+    .n <- .n[.n != ""]
+    if (length(.n) != .ln - 1) {
+      stop("names for ordinal simulation incorrect")
+    }
+    .first <- vapply(seq_along(.n), function(i) {
+      paste0("(DV==",.ce[i],")*(", .n[i], ")")
+    }, character(1), USE.NAMES=FALSE)
+    .last <- paste0("(DV==", .ce[length(.n) + 1], ")*(1.0 -",paste(.n, collapse="-"),")")
+    .ret <- paste0("log(", paste(c(.first, .last), collapse="+"),")")
+    return(str2lang(.ret))
+  }
   if (length(.c) >= 2) {
     .first <- vapply(seq(2, length(.c)), function(i) {
       paste0("(DV==",(i-1),")*(",

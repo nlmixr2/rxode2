@@ -77,7 +77,6 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   .errNum <- line[[3]]
   .err <- str2lang(paste0("err.", pred1$var))
   .ret <- vector("list", 2)
-  #.ret[[1]] <- bquote(.(.err) <- 0)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
@@ -118,6 +117,30 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .pred1 <- line[[2]]
   .errNum <- line[[3]]
   .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
+  .ce <- try(eval(.c), silent=TRUE)
+  if (inherits(.ce, "try-error")) {
+  } else if (inherits(.ce, "numeric") &&
+               !is.null(names(.ce))) {
+    .n <- names(.ce)
+    .ln <- length(.n)
+    if (.n[.ln] != "") {
+      stop("last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number",
+           call.=FALSE)
+    }
+    .n <- .n[.n != ""]
+    if (length(.n) != .ln - 1) {
+      stop("names for ordinal simulation incorrect")
+    }
+    .ret <- vector("list", 3)
+    .ret[[1]] <- quote(ipredSim <- NA)
+    .ret[[2]] <- str2lang(paste0("rx_sim_~rxord(", .n, ")"))
+    .ce <- setNames(.ce, NULL)
+    
+    .ret[[3]] <- str2lang(paste0("sim<-", paste(vapply(seq_along(.ce), function(i) {
+      paste("(rx_sim_ == ", i, ")*", .ce[i]) 
+   }, character(1), USE.NAMES=FALSE), collapse="+")))
+    return(.ret)
+  }
   .c[[1]] <- quote(`rxord`)
   .ret <- vector("list", 2)
   .ret[[1]] <- quote(ipredSim <- NA)

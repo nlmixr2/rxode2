@@ -15,10 +15,10 @@ void trans_syntax_error_report_fn0(char *err){
   if (!rx_suppress_syntax_info){
     if (lastSyntaxErrorLine == 0){
       if (isEsc) {
-	RSprintf(_("\033[1mrxode2 model syntax error:\n================================================================================\033[0m"));
+        RSprintf(_("\033[1mrxode2 model syntax error:\n================================================================================\033[0m"));
       }
       else {
-	RSprintf(_("rxode2 model syntax error:\n================================================================================"));
+        RSprintf(_("rxode2 model syntax error:\n================================================================================"));
       }
       lastSyntaxErrorLine=1;
     }
@@ -68,24 +68,24 @@ static inline void printErrorInfo(Parser *p, char *err, char *after, int printLi
   } else {
     if (after){
       if (isEsc){
-	RSprintf(_("\n\n\033[1mrxode2 syntax error after\033[0m '\033[35m\033[1m%s\033[0m':\n"),  after);
+        RSprintf(_("\n\n\033[1mrxode2 syntax error after\033[0m '\033[35m\033[1m%s\033[0m':\n"),  after);
       }
       else {
-	RSprintf(_("\n\nrxode2 syntax error after '%s'\n"),  after);
+        RSprintf(_("\n\nrxode2 syntax error after '%s'\n"),  after);
       }
       if (firstErrD == 0) {
-	sAppend(&firstErr, _("rxode2 syntax error after '%s':\n"), after);
+        sAppend(&firstErr, _("rxode2 syntax error after '%s':\n"), after);
       }
     }
     else{
       if (isEsc){
-	RSprintf(_("\n\n\033[1mrxode2 syntax error\033[0m:\n"));
+        RSprintf(_("\n\n\033[1mrxode2 syntax error\033[0m:\n"));
       }
       else{
-	RSprintf(_("\n\nrxode2 syntax error:\n"));
+        RSprintf(_("\n\nrxode2 syntax error:\n"));
       }
       if (firstErrD == 0) {
-	sAppendN(&firstErr, "rxode2 syntax error:\n", 20);
+        sAppendN(&firstErr, "rxode2 syntax error:\n", 20);
       }
     }
   }
@@ -191,7 +191,7 @@ static inline int printErrorLineHighligt2afterCol(Parser *p, char *buf, char *af
     for (int i = len; i--;) {
       RSprintf("~");
       if (firstErrD == 0) {
-	sAppendN(&firstErr, "~", 1);
+        sAppendN(&firstErr, "~", 1);
       }
     }
   }
@@ -215,7 +215,7 @@ static inline void printErrorLineHighligt2after(Parser *p, char *buf, char *afte
     for (int i = 0; i < p->user.loc.col; i++){
       RSprintf(" ");
       if (firstErrD == 0) {
-	sAppendN(&firstErr, " ", 1);
+        sAppendN(&firstErr, " ", 1);
       }
       if (i == len-2) { i++; break;}
     }
@@ -232,13 +232,14 @@ static inline void printErrorLineHighligt2after(Parser *p, char *buf, char *afte
 }
 
 static inline void printErrorLineHighlight2(Parser *p, char *buf, char *after, int len) {
+  RSprintf("\n      ");
   if (after){
     printErrorLineHighligt2after(p, buf, after, len);
   } else {
     for (int i = 0; i < p->user.loc.col; i++){
       RSprintf(" ");
       if (firstErrD == 0) {
-	sAppendN(&firstErr, " ", 1);
+        sAppendN(&firstErr, " ", 1);
       }
       if (i == len-2) { i++; break;}
     }

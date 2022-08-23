@@ -168,11 +168,15 @@ double _sign(unsigned int n, ...) {
 }
 
 double _rxord(int _cSub, unsigned int n,  ...) {
+  rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
+  if (!ind->inLhs) {
+    return 1.0;
+  }
   va_list valist;
   va_start(valist, n);
-  double ret = 0.0;
+  double ret = 1.0;
   double p = 0.0;
-  double u = rxunif(&_solveData->subjects[_cSub], 0.0, 1.0);
+  double u = rxunif(ind, 0.0, 1.0);
   int found = 0;
   for (unsigned int i = 0; i < n; i++) {
     p += va_arg(valist, double);
