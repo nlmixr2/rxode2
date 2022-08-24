@@ -48,25 +48,36 @@ static inline void llikUnifFull(double* ret, double x, double alpha, double beta
     ret[6] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(2);
-  y(0) = x;
-  params(0) = alpha;
-  params(1) = beta;
-  stanLl ll = llik_unif(y, params);
-  ret[0] = isUnif;
-  ret[1] = x;
-  ret[2] = alpha;
-  ret[3] = beta;
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  ret[6] = ll.J(0, 1);
+  if (!llikNeedDeriv()) {
+    ret[0] = isUnif;
+    ret[1] = x;
+    ret[2] = alpha;
+    ret[3] = beta;
+    ret[4] = stan::math::uniform_log(x, alpha, beta);
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(2);
+    y(0) = x;
+    params(0) = alpha;
+    params(1) = beta;
+    stanLl ll = llik_unif(y, params);
+    ret[0] = isUnif;
+    ret[1] = x;
+    ret[2] = alpha;
+    ret[3] = beta;
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    ret[6] = ll.J(0, 1);    
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikUnifInternal(Rcpp::NumericVector x,
                                  Rcpp::NumericVector alpha, Rcpp::NumericVector beta) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dAlpha(x.size());
   NumericVector dBeta(x.size());

@@ -1,6 +1,8 @@
 #include "llik2.h"
 ////////////////////////////////////////////////////////////////////////////////
 
+int llikNeedDeriv_ = 0;
+
 struct beta_llik {
   const Eigen::VectorXd y_;
   beta_llik(const Eigen::VectorXd& y) : y_(y) { }
@@ -45,25 +47,36 @@ static inline void llikBetaFull(double* ret, double x, double shape1, double sha
     ret[6] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(2);
-  y(0) = x;
-  params(0) = shape1;
-  params(1) = shape2;
-  stanLl ll = llik_beta(y, params);
-  ret[0] = isBeta;
-  ret[1] = x;
-  ret[2] = _smallIsNotZero(shape1);
-  ret[3] = _smallIsNotZero(shape2);
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  ret[6] = ll.J(0, 1);
-  return;
+  if (!llikNeedDeriv()) {
+    ret[0] = isBeta;
+    ret[1] = x;
+    ret[2] = _smallIsNotZero(shape1);
+    ret[3] = _smallIsNotZero(shape2);
+    ret[4] = stan::math::beta_log(x, _smallIsNotZero(shape1), _smallIsNotZero(shape2));
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(2);
+    y(0) = x;
+    params(0) = shape1;
+    params(1) = shape2;
+    stanLl ll = llik_beta(y, params);
+    ret[0] = isBeta;
+    ret[1] = x;
+    ret[2] = _smallIsNotZero(shape1);
+    ret[3] = _smallIsNotZero(shape2);
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    ret[6] = ll.J(0, 1);
+    return;
+  }
 }
 
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikBetaInternal(Rcpp::NumericVector x, Rcpp::NumericVector shape1, Rcpp::NumericVector shape2) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dShape1(x.size());
   NumericVector dShape2(x.size());

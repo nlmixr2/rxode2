@@ -41,21 +41,30 @@ static inline void llikExpFull(double* ret, double x, double rate) {
     ret[4] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(1);
-  y(0) = x;
-  params(0) = _smallIsNotZero(rate);
-  stanLl ll = llik_exp(y, params);
-  ret[0] = isExp;
-  ret[1] = x;
-  ret[2] = rate;
-  ret[3] = ll.fx(0);
-  ret[4] = ll.J(0, 0);
+  if (!llikNeedDeriv()) {
+    ret[0] = isExp;
+    ret[1] = x;
+    ret[2] = rate;
+    ret[3] = stan::math::exponential_log(x, _smallIsNotZero(rate));
+    ret[4] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(1);
+    y(0) = x;
+    params(0) = _smallIsNotZero(rate);
+    stanLl ll = llik_exp(y, params);
+    ret[0] = isExp;
+    ret[1] = x;
+    ret[2] = rate;
+    ret[3] = ll.fx(0);
+    ret[4] = ll.J(0, 0);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikExpInternal(Rcpp::NumericVector x, Rcpp::NumericVector rate) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dRate(x.size());
   double cur[5];

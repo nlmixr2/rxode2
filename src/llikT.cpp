@@ -50,22 +50,34 @@ static inline void llikTFull(double* ret, double x, double df, double mean, doub
     ret[8] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(3);
-  y(0) = x;
-  params(0) = _smallIsNotZero(df);
-  params(1) = mean;
-  params(2) = _smallIsOne(sd);
-  stanLl ll = llik_t(y, params);
-  ret[0] = isT;
-  ret[1] = x;
-  ret[2] = df;
-  ret[3] = mean;
-  ret[4] = sd;
-  ret[5] = ll.fx(0);
-  ret[6] = ll.J(0, 0);
-  ret[7] = ll.J(0, 1);
-  ret[8] = ll.J(0, 2);
+  if (!llikNeedDeriv()) {
+    ret[0] = isT;
+    ret[1] = x;
+    ret[2] = df;
+    ret[3] = mean;
+    ret[4] = sd;
+    ret[5] = stan::math::student_t_log(x, df, mean, sd);
+    ret[6] = NA_REAL;
+    ret[7] = NA_REAL;
+    ret[8] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(3);
+    y(0) = x;
+    params(0) = _smallIsNotZero(df);
+    params(1) = mean;
+    params(2) = _smallIsOne(sd);
+    stanLl ll = llik_t(y, params);
+    ret[0] = isT;
+    ret[1] = x;
+    ret[2] = df;
+    ret[3] = mean;
+    ret[4] = sd;
+    ret[5] = ll.fx(0);
+    ret[6] = ll.J(0, 0);
+    ret[7] = ll.J(0, 1);
+    ret[8] = ll.J(0, 2);
+  }
   return;
 }
 
@@ -73,6 +85,7 @@ static inline void llikTFull(double* ret, double x, double df, double mean, doub
 //[[Rcpp::export]]
 Rcpp::DataFrame llikTInternal(Rcpp::NumericVector x, Rcpp::NumericVector df,
                               Rcpp::NumericVector mean,  Rcpp::NumericVector sd) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dDf(x.size());
   NumericVector dMean(x.size());

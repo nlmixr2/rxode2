@@ -45,24 +45,35 @@ static inline void llikNormFull(double* ret, double x, double mu, double sigma) 
     ret[6] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(2);
-  y(0) = x;
-  params(0) = mu;
-  params(1) = _smallIsOne(sigma);
-  stanLl ll = llik_normal(y, params);
-  ret[0] = isNorm;
-  ret[1] = x;
-  ret[2] = mu;
-  ret[3] = sigma;
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  ret[6] = ll.J(0, 1);
+  if (!llikNeedDeriv()) {
+    ret[0] = isNorm;
+    ret[1] = x;
+    ret[2] = mu;
+    ret[3] = sigma;
+    ret[4] = stan::math::normal_log(x, mu, sigma);
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(2);
+    y(0) = x;
+    params(0) = mu;
+    params(1) = _smallIsOne(sigma);
+    stanLl ll = llik_normal(y, params);
+    ret[0] = isNorm;
+    ret[1] = x;
+    ret[2] = mu;
+    ret[3] = sigma;
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    ret[6] = ll.J(0, 1);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikNormInternal(Rcpp::NumericVector x, Rcpp::NumericVector mu, Rcpp::NumericVector sigma) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dMu(x.size());
   NumericVector dSigma(x.size());

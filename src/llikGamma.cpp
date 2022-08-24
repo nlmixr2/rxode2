@@ -48,25 +48,36 @@ static inline void llikGammaFull(double* ret, double x, double shape, double rat
     ret[6] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(2);
-  y(0) = x;
-  params(0) = _smallIsNotZero(shape);
-  params(1) = _smallIsNotZero(rate);
-  stanLl ll = llik_gamma(y, params);
-  ret[0] = isGamma;
-  ret[1] = x;
-  ret[2] = shape;
-  ret[3] = rate;
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  ret[6] = ll.J(0, 1);
+  if (!llikNeedDeriv()) {
+    ret[0] = isGamma;
+    ret[1] = x;
+    ret[2] = shape;
+    ret[3] = rate;
+    ret[4] = stan::math::gamma_log(x, _smallIsNotZero(shape), _smallIsNotZero(rate));
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(2);
+    y(0) = x;
+    params(0) = _smallIsNotZero(shape);
+    params(1) = _smallIsNotZero(rate);
+    stanLl ll = llik_gamma(y, params);
+    ret[0] = isGamma;
+    ret[1] = x;
+    ret[2] = shape;
+    ret[3] = rate;
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    ret[6] = ll.J(0, 1);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikGammaInternal(Rcpp::NumericVector x,
                                  Rcpp::NumericVector shape, Rcpp::NumericVector rate) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dShape(x.size());
   NumericVector dRate(x.size());

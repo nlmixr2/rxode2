@@ -152,6 +152,7 @@ typedef struct {
   bool cDur2;
   double hDur2;
   int nLlik;
+  int hasLlikDer;
 } rx_solving_options;
 
 

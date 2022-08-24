@@ -42,21 +42,30 @@ static inline void llikChisqFull(double* ret, double x, double df) {
     ret[4] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(1);
-  y(0) = x;
-  params(0) = df;
-  stanLl ll = llik_chisq(y, params);
-  ret[0] = isChisq;
-  ret[1] = x;
-  ret[2] = df;
-  ret[3] = ll.fx(0);
-  ret[4] = ll.J(0, 0);
+  if (!llikNeedDeriv()) {
+    ret[0] = isChisq;
+    ret[1] = x;
+    ret[2] = df;
+    ret[3] = stan::math::chi_square_log(x, df);
+    ret[4] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(1);
+    y(0) = x;
+    params(0) = df;
+    stanLl ll = llik_chisq(y, params);
+    ret[0] = isChisq;
+    ret[1] = x;
+    ret[2] = df;
+    ret[3] = ll.fx(0);
+    ret[4] = ll.J(0, 0);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikChisqInternal(Rcpp::NumericVector x, Rcpp::NumericVector df) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dDf(x.size());
   double cur[5];

@@ -49,25 +49,38 @@ static inline void llikFFull(double* ret, double x, double df1, double df2) {
     ret[6] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(2);
-  y(0) = x;
-  params(0) = df1;
-  params(1) = df2;
-  stanLl ll = llik_f(y, params);
-  ret[0] = isF;
-  ret[1] = x;
-  ret[2] = df1;
-  ret[3] = df2;
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  ret[6] = ll.J(0, 1);
+  if (!llikNeedDeriv()) {
+    ret[0] = isF;
+    ret[1] = x;
+    ret[2] = df1;
+    ret[3] = df2;
+    ret[4] = lgamma(0.5*df1+0.5*df2) - lgamma(0.5*df1) - lgamma(0.5*df2) +
+      (0.5*df1)*log(df1/df2)  + (0.5*df1 - 1.0)*log(x)  -
+      (0.5*(df1+df2))*log(1.0+df1*x/df2);
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(2);
+    y(0) = x;
+    params(0) = df1;
+    params(1) = df2;
+    stanLl ll = llik_f(y, params);
+    ret[0] = isF;
+    ret[1] = x;
+    ret[2] = df1;
+    ret[3] = df2;
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    ret[6] = ll.J(0, 1);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikFInternal(Rcpp::NumericVector x, Rcpp::NumericVector df1,
                               Rcpp::NumericVector df2) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dDf1(x.size());
   NumericVector dDf2(x.size());

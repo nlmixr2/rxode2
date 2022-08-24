@@ -39,3 +39,16 @@ typedef struct stanLl {
 #define _smallIsOne(x) ((x) < sqrt(DBL_EPSILON) ? 1 : (x))
 #define _smallIsNotZero(x) (fabs(x) < sqrt(DBL_EPSILON) ? sqrt(DBL_EPSILON) : (x))
 #define _parIsProb(x) ((x) < sqrt(DBL_EPSILON) ? sqrt(DBL_EPSILON): ((x) > 0.999999999999999 ? 0.999999999999999 :(x)))
+
+extern int llikNeedDeriv_;
+
+static inline int llikNeedDeriv() {
+  switch (llikNeedDeriv_) {
+  case 0: return 0;
+  case 1: return 1;
+  default:
+    rx_solve* rx = getRxSolve_();
+    rx_solving_options *op = rx->op;
+    return op->hasLlikDer != 0;
+  }
+}

@@ -45,24 +45,35 @@ static inline void llikBinomFull(double* ret, double x, double size, double prob
     ret[5] = NA_REAL;
     return;
   }
-  Eigen::VectorXi y(1);
-  Eigen::VectorXi N(1);
-  Eigen::VectorXd params(1);
-  y(0) = (int)(x);
-  N(0) = (int)(size);
-  params(0) = prob;
-  stanLl ll = llik_binom(y, N, params);
-  ret[0] = isBinom;
-  ret[1] = x;
-  ret[2] = size;
-  ret[3] = _parIsProb(prob);
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  return;
+  if (!llikNeedDeriv()) {
+    ret[0] = isBinom;
+    ret[1] = x;
+    ret[2] = size;
+    ret[3] = _parIsProb(prob);
+    ret[4] = stan::math::binomial_log(x, size, ret[3]);
+    ret[5] = NA_REAL;
+  } else {
+    Eigen::VectorXi y(1);
+    Eigen::VectorXi N(1);
+    Eigen::VectorXd params(1);
+    y(0) = (int)(x);
+    N(0) = (int)(size);
+    params(0) = prob;
+    stanLl ll = llik_binom(y, N, params);
+    ret[0] = isBinom;
+    ret[1] = x;
+    ret[2] = size;
+    ret[3] = _parIsProb(prob);
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    return;
+
+  }
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikBinomInternal(Rcpp::NumericVector x, Rcpp::NumericVector size, Rcpp::NumericVector prob) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dProb(x.size());
   double cur[6];

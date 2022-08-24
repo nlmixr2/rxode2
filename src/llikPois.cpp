@@ -43,22 +43,31 @@ static inline void llikPoisFull(double* ret, double x, double lambda) {
     ret[4] = NA_REAL;
     return;
   }
-  Eigen::VectorXi y(1);
-  Eigen::VectorXd params(1);
-  y(0) = (int)(x);
-  params(0) = _smallIsNotZero(lambda);
-  stanLl ll = llik_poisson(y, params);
-  ret[0] = isPois;
-  ret[1] = x;
-  ret[2] = lambda;
-  ret[3] = ll.fx(0);
-  ret[4] = ll.J(0, 0);
+  if (!llikNeedDeriv()) {
+    ret[0] = isPois;
+    ret[1] = x;
+    ret[2] = lambda;
+    ret[3] = stan::math::poisson_log(x, lambda);
+    ret[4] = NA_REAL;
+  } else {
+    Eigen::VectorXi y(1);
+    Eigen::VectorXd params(1);
+    y(0) = (int)(x);
+    params(0) = _smallIsNotZero(lambda);
+    stanLl ll = llik_poisson(y, params);
+    ret[0] = isPois;
+    ret[1] = x;
+    ret[2] = lambda;
+    ret[3] = ll.fx(0);
+    ret[4] = ll.J(0, 0);      
+  }
   return;
 }
 
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikPoisInternal(Rcpp::NumericVector x, Rcpp::NumericVector lambda) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dLambda(x.size());
   double cur[5];

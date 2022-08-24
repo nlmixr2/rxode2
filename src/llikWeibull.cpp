@@ -50,25 +50,36 @@ static inline void llikWeibullFull(double* ret, double x, double shape, double s
     ret[6] = NA_REAL;
     return;    
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(2);
-  y(0) = x;
-  params(0) = _smallIsNotZero(shape);
-  params(1) = _smallIsNotZero(scale);
-  stanLl ll = llik_weibull(y, params);
-  ret[0] = isWeibull;
-  ret[1] = x;
-  ret[2] = shape;
-  ret[3] = scale;
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  ret[6] = ll.J(0, 1);
+  if (!llikNeedDeriv()) {
+    ret[0] = isWeibull;
+    ret[1] = x;
+    ret[2] = shape;
+    ret[3] = scale;
+    ret[4] = stan::math::weibull_log(x, shape, scale);
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(2);
+    y(0) = x;
+    params(0) = _smallIsNotZero(shape);
+    params(1) = _smallIsNotZero(scale);
+    stanLl ll = llik_weibull(y, params);
+    ret[0] = isWeibull;
+    ret[1] = x;
+    ret[2] = shape;
+    ret[3] = scale;
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    ret[6] = ll.J(0, 1);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikWeibullInternal(Rcpp::NumericVector x,
                                  Rcpp::NumericVector shape, Rcpp::NumericVector scale) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dShape(x.size());
   NumericVector dScale(x.size());

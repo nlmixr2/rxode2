@@ -63,7 +63,7 @@ extern "C" void setSilentErr(int silent);
 bool useForder();
 Function getForder();
 
-
+extern int llikNeedDeriv_;
 // https://github.com/Rdatatable/data.table/blob/588e0725320eacc5d8fc296ee9da4967cee198af/src/forder.c#L193-L211
 // range_d is modified because it DOES NOT count na/inf because rxode2 assumes times cannot be NA, NaN, -Inf, Inf
 // Also can integrate with prior range information (like prior integer range)
@@ -4686,6 +4686,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     CharacterVector lhs = rxSolveDat->mv[RxMv_lhs];
     op->neq = state.size();
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
+    op->hasLlikDer = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasLlikDer];
+    llikNeedDeriv_=-1;
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
     }

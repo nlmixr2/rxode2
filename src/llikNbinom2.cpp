@@ -49,24 +49,34 @@ static inline void llikNbinomMuFull(double* ret, double x, double size, double m
     ret[5] = NA_REAL;
     return;
   }
-  Eigen::VectorXi y(1);
-  Eigen::VectorXi N(1);
-  Eigen::VectorXd params(1);
-  y(0) = (int)(x);
-  N(0) = (int)(size);
-  params(0) = mu;
-  stanLl ll = llik_nbinomMu(y, N, params);
-  ret[0] = isNbinomMu;
-  ret[1] = x;
-  ret[2] = size;
-  ret[3] = mu;
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
+  if (!llikNeedDeriv()) {
+    ret[0] = isNbinomMu;
+    ret[1] = x;
+    ret[2] = size;
+    ret[3] = mu;
+    ret[4] = stan::math::neg_binomial_2_lpmf((int)x, mu, (int)size);
+    ret[5] = NA_REAL;
+  } else {
+    Eigen::VectorXi y(1);
+    Eigen::VectorXi N(1);
+    Eigen::VectorXd params(1);
+    y(0) = (int)(x);
+    N(0) = (int)(size);
+    params(0) = mu;
+    stanLl ll = llik_nbinomMu(y, N, params);
+    ret[0] = isNbinomMu;
+    ret[1] = x;
+    ret[2] = size;
+    ret[3] = mu;
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikNbinomMuInternal(Rcpp::NumericVector x, Rcpp::NumericVector size, Rcpp::NumericVector mu) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dMu(x.size());
   double cur[6];

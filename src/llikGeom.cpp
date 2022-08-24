@@ -43,21 +43,30 @@ static inline void llikGeomFull(double* ret, double x, double p) {
     ret[4] = NA_REAL;
     return;
   }
-  Eigen::VectorXi y(1);
-  Eigen::VectorXd params(1);
-  y(0) = (int)(x);
-  params(0) = p;
-  stanLl ll = llik_geom(y, params);
-  ret[0] = isGeom;
-  ret[1] = x;
-  ret[2] = _parIsProb(p);
-  ret[3] = ll.fx(0);
-  ret[4] = ll.J(0, 0);
+  if (!llikNeedDeriv()) {
+    ret[0] = isGeom;
+    ret[1] = x;
+    ret[2] = _parIsProb(p);
+    ret[3] = log(ret[2])+x*log(1-ret[2]);
+    ret[4] = NA_REAL;
+  } else {
+    Eigen::VectorXi y(1);
+    Eigen::VectorXd params(1);
+    y(0) = (int)(x);
+    params(0) = p;
+    stanLl ll = llik_geom(y, params);
+    ret[0] = isGeom;
+    ret[1] = x;
+    ret[2] = _parIsProb(p);
+    ret[3] = ll.fx(0);
+    ret[4] = ll.J(0, 0);
+  }
   return;
 }
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikGeomInternal(Rcpp::NumericVector x, Rcpp::NumericVector p) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dP(x.size());
   double cur[5];

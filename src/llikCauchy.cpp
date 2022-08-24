@@ -48,26 +48,37 @@ static inline void llikCauchyFull(double* ret, double x, double location, double
     ret[6] = NA_REAL;
     return;
   }
-  Eigen::VectorXd y(1);
-  Eigen::VectorXd params(2);
-  y(0) = x;
-  params(0) = location;
-  params(1) = _smallIsOne(scale);
-  stanLl ll = llik_cauchy(y, params);
-  ret[0] = isCauchy;
-  ret[1] = x;
-  ret[2] = location;
-  ret[3] = scale;
-  ret[4] = ll.fx(0);
-  ret[5] = ll.J(0, 0);
-  ret[6] = ll.J(0, 1);
+  if (!llikNeedDeriv()) {
+    ret[0] = isCauchy;
+    ret[1] = x;
+    ret[2] = location;
+    ret[3] = scale;
+    ret[4] = stan::math::student_t_log(x, 1.0, location, scale);
+    ret[5] = NA_REAL;
+    ret[6] = NA_REAL;
+  } else {
+    Eigen::VectorXd y(1);
+    Eigen::VectorXd params(2);
+    y(0) = x;
+    params(0) = location;
+    params(1) = _smallIsOne(scale);
+    stanLl ll = llik_cauchy(y, params);
+    ret[0] = isCauchy;
+    ret[1] = x;
+    ret[2] = location;
+    ret[3] = scale;
+    ret[4] = ll.fx(0);
+    ret[5] = ll.J(0, 0);
+    ret[6] = ll.J(0, 1);
+
+  }
   return;
 }
-
 
 //[[Rcpp::export]]
 Rcpp::DataFrame llikCauchyInternal(Rcpp::NumericVector x, 
                                    Rcpp::NumericVector location,  Rcpp::NumericVector scale) {
+  llikNeedDeriv_=1;
   NumericVector fx(x.size());
   NumericVector dLocation(x.size());
   NumericVector dScale(x.size());
