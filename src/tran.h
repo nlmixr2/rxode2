@@ -88,6 +88,7 @@ lhs symbols?
   int thread;
   int lastDdt;
   int nLlik;
+  int hasLlikDer;
 } symtab;
 
 extern symtab tb;

@@ -225,10 +225,64 @@ static inline void handleLlFunctions(transFunctions *tf) {
     D_ParseNode *xpn = d_get_child(tf->pn,2);
     char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     tb.nLlik = max2(tb.nLlik, toInt(v2)+1);
+    if (tb.hasLlikDer ||
+        !strcmp("llikXNormDsd", tf->v) ||
+        !strcmp("llikXNormDmean", tf->v) ||
+        !strcmp("llikXPoisDlambda", tf->v) ||
+        !strcmp("llikXBinomDprob", tf->v) ||
+        !strcmp("llikXNbinomDprob", tf->v) ||
+        !strcmp("llikXNbinomMuDmu", tf->v) ||
+        !strcmp("llikXBetaDshape1", tf->v) ||
+        !strcmp("llikXBetaDshape2", tf->v) ||
+        !strcmp("llikXTDdf", tf->v) ||
+        !strcmp("llikXTDmean", tf->v) ||
+        !strcmp("llikXTDsd", tf->v) ||
+        !strcmp("llikXChisqDdf", tf->v) ||
+        !strcmp("llikXExpDrate", tf->v) ||
+        !strcmp("llikXFDdf1", tf->v) ||
+        !strcmp("llikXFDdf2", tf->v) ||
+        !strcmp("llikXGeomDprob", tf->v) ||
+        !strcmp("llikXUnifDalpha", tf->v) ||
+        !strcmp("llikXWeibullDshape", tf->v) ||
+        !strcmp("llikXWeibullDscale", tf->v) ||
+        !strcmp("llikXGammaDshape", tf->v) ||
+        !strcmp("llikXGammaDrate", tf->v) ||
+        !strcmp("llikXCauchyDlocation", tf->v) ||
+        !strcmp("llikXCauchyDscale", tf->v)) {
+      tb.hasLlikDer = 1;
+    }
   } else if (!strncmp("llik", tf->v, 4)) {
     tb.nLlik = max2(tb.nLlik, 1);
+    if (tb.hasLlikDer ||
+        !strcmp("llikNormDsd", tf->v) ||
+        !strcmp("llikNormDmean", tf->v) ||
+        !strcmp("llikPoisDlambda", tf->v) ||
+        !strcmp("llikBinomDprob", tf->v) ||
+        !strcmp("llikNbinomDprob", tf->v) ||
+        !strcmp("llikNbinomMuDmu", tf->v) ||
+        !strcmp("llikBetaDshape1", tf->v) ||
+        !strcmp("llikBetaDshape2", tf->v) ||
+        !strcmp("llikTDdf", tf->v) ||
+        !strcmp("llikTDmean", tf->v) ||
+        !strcmp("llikTDsd", tf->v) ||
+        !strcmp("llikChisqDdf", tf->v) ||
+        !strcmp("llikExpDrate", tf->v) ||
+        !strcmp("llikFDdf1", tf->v) ||
+        !strcmp("llikFDdf2", tf->v) ||
+        !strcmp("llikGeomDprob", tf->v) ||
+        !strcmp("llikUnifDalpha", tf->v) ||
+        !strcmp("llikWeibullDshape", tf->v) ||
+        !strcmp("llikWeibullDscale", tf->v) ||
+        !strcmp("llikGammaDshape", tf->v) ||
+        !strcmp("llikGammaDrate", tf->v) ||
+        !strcmp("llikCauchyDlocation", tf->v) ||
+        !strcmp("llikCauchyDscale", tf->v)) {
+      tb.hasLlikDer = 1;
+    }
   }
 }
+
+
 
 static inline void handleBadFunctions(transFunctions *tf) {
   // Split out to handle anticipated automatic conversion of R

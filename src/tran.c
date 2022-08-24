@@ -359,6 +359,7 @@ void reset() {
   tb.nInd       = 0;
   tb.simflg     = 0;
   tb.nLlik      = 0;
+  tb.hasLlikDer = 0;
   // Reset Arrays
   // Reset integers
   NV		= 0;
