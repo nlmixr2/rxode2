@@ -133,7 +133,7 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
     }
     .ret <- vector("list", 3)
     .ret[[1]] <- quote(ipredSim <- NA)
-    .ret[[2]] <- str2lang(paste0("rx_sim_~rxord(", .n, ")"))
+    .ret[[2]] <- str2lang(paste0("rx_sim_~rxord(", paste(.n, collapse=", "), ")"))
     .ce <- setNames(.ce, NULL)
     
     .ret[[3]] <- str2lang(paste0("sim<-", paste(vapply(seq_along(.ce), function(i) {

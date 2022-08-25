@@ -1,6 +1,135 @@
 rxTest({
   test_that("ordinal simulation", {
 
+    # large simulation model #1
+    ord <- function() {
+      ini({
+        b1 <- 7.86
+        slope <- log(0.045)
+        b2 <- c(-Inf, -1.73, 0)
+        b3 <- c(-Inf, -1.95, 0)
+        b4 <- c(-Inf, -1.55, 0)
+        b5 <- c(-Inf, -1.54, 0)
+        b6 <- c(-Inf, -1.51, 0)
+        b7 <- c(-Inf, -1.49, 0)
+        b8 <- c(-Inf, -1.80, 0)
+        b9 <- c(-Inf, -2.22, 0)
+        b10 <- c(-Inf, -2.09, 0)
+        eta ~ 11.1
+        eta.slope ~ 0.09
+      })
+      model({
+        slp <- exp(slope + eta.slope) # modified to be mu-referenced
+        drg <- dose * slp # drug-effect
+        lge1 <- b1 + eta - drg
+        lge2 <- b2 + lge1
+        lge3 <- b3 + lge2
+        lge4 <- b4 + lge3
+        lge5 <- b5 + lge4
+        lge6 <- b6 + lge5
+        lge7 <- b7 + lge6
+        lge8 <- b8 + lge7
+        lge9 <- b9 + lge8
+        lge10 <- b10 + lge9
+
+        # Probabilities y >= X
+        pge1 <- exp(lge1)/(1 + exp(lge1))
+        pge2 <- exp(lge2)/(1 + exp(lge2))
+        pge3 <- exp(lge3)/(1 + exp(lge3))
+        pge4 <- exp(lge4)/(1 + exp(lge4))
+        pge5 <- exp(lge5)/(1 + exp(lge5))
+        pge6 <- exp(lge6)/(1 + exp(lge6))
+        pge7 <- exp(lge7)/(1 + exp(lge7))
+        pge8 <- exp(lge8)/(1 + exp(lge8))
+        pge9 <- exp(lge9)/(1 + exp(lge9))
+        pge10 <- exp(lge10)/(1 + exp(lge10))
+
+        # Probabilities of y == X
+        p0 <- (1    - pge1)
+        p1 <- (pge1 - pge2)
+        p2 <- (pge2 - pge3)
+        p3 <- (pge3 - pge4)
+        p4 <- (pge4 - pge5)
+        p5 <- (pge5 - pge6)
+        p6 <- (pge6 - pge7)
+        p7 <- (pge7 - pge8)
+        p8 <- (pge8 - pge9)
+        p9 <- (pge9 - pge10)
+        p10 <- pge10
+
+        sp <- p0 + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10
+        y ~ c(p0=0, p1=1, p2=2, p3=3, p4=4, p5=5, p6=6, p7=7, p8=8, p9=9, 10)
+      })
+    }
+
+
+    tmp <- ord()
+    expect_error(tmp$simulationModel, NA)
+
+
+    ord <- function() {
+      ini({
+        b1 <- 7.86
+        slope <- log(0.045)
+        b2 <- c(-Inf, -1.73, 0)
+        b3 <- c(-Inf, -1.95, 0)
+        b4 <- c(-Inf, -1.55, 0)
+        b5 <- c(-Inf, -1.54, 0)
+        b6 <- c(-Inf, -1.51, 0)
+        b7 <- c(-Inf, -1.49, 0)
+        b8 <- c(-Inf, -1.80, 0)
+        b9 <- c(-Inf, -2.22, 0)
+        b10 <- c(-Inf, -2.09, 0)
+        eta ~ 11.1
+        eta.slope ~ 0.09
+      })
+      model({
+        slp <- exp(slope + eta.slope) # modified to be mu-referenced
+        drg <- dose * slp # drug-effect
+        lge1 <- b1 + eta - drg
+        lge2 <- b2 + lge1
+        lge3 <- b3 + lge2
+        lge4 <- b4 + lge3
+        lge5 <- b5 + lge4
+        lge6 <- b6 + lge5
+        lge7 <- b7 + lge6
+        lge8 <- b8 + lge7
+        lge9 <- b9 + lge8
+        lge10 <- b10 + lge9
+
+        # Probabilities y >= X
+        pge1 <- exp(lge1)/(1 + exp(lge1))
+        pge2 <- exp(lge2)/(1 + exp(lge2))
+        pge3 <- exp(lge3)/(1 + exp(lge3))
+        pge4 <- exp(lge4)/(1 + exp(lge4))
+        pge5 <- exp(lge5)/(1 + exp(lge5))
+        pge6 <- exp(lge6)/(1 + exp(lge6))
+        pge7 <- exp(lge7)/(1 + exp(lge7))
+        pge8 <- exp(lge8)/(1 + exp(lge8))
+        pge9 <- exp(lge9)/(1 + exp(lge9))
+        pge10 <- exp(lge10)/(1 + exp(lge10))
+
+        # Probabilities of y == X
+        p0 <- (1    - pge1)
+        p1 <- (pge1 - pge2)
+        p2 <- (pge2 - pge3)
+        p3 <- (pge3 - pge4)
+        p4 <- (pge4 - pge5)
+        p5 <- (pge5 - pge6)
+        p6 <- (pge6 - pge7)
+        p7 <- (pge7 - pge8)
+        p8 <- (pge8 - pge9)
+        p9 <- (pge9 - pge10)
+        p10 <- pge10
+
+        sp <- p0 + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10
+        y ~ c(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9)
+      })
+    }
+
+    tmp <- ord()
+    expect_error(tmp$simulationModel, NA)
+
     f <- function() {
       ini({
         tkel <- 0.1
