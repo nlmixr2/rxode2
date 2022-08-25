@@ -1,4 +1,60 @@
 rxTest({
+
+  test_that("symengine loading ", {
+    expect_error(rxS("b1=THETA[1];
+slope=THETA[2];
+b2=THETA[3];
+b3=THETA[4];
+b4=THETA[5];
+b5=THETA[6];
+b6=THETA[7];
+b7=THETA[8];
+b8=THETA[9];
+b9=THETA[10];
+b10=THETA[11];
+eta=ETA[1];
+eta.slope=ETA[2];
+slp=exp(slope+eta.slope);
+drg=dose*slp;
+lge1=b1+eta-drg;
+lge2=b2+lge1;
+lge3=b3+lge2;
+lge4=b4+lge3;
+lge5=b5+lge4;
+lge6=b6+lge5;
+lge7=b7+lge6;
+lge8=b8+lge7;
+lge9=b9+lge8;
+lge10=b10+lge9;
+pge1=exp(lge1)/(1+exp(lge1));
+pge2=exp(lge2)/(1+exp(lge2));
+pge3=exp(lge3)/(1+exp(lge3));
+pge4=exp(lge4)/(1+exp(lge4));
+pge5=exp(lge5)/(1+exp(lge5));
+pge6=exp(lge6)/(1+exp(lge6));
+pge7=exp(lge7)/(1+exp(lge7));
+pge8=exp(lge8)/(1+exp(lge8));
+pge9=exp(lge9)/(1+exp(lge9));
+pge10=exp(lge10)/(1+exp(lge10));
+p0=(1-pge1);
+p1=(pge1-pge2);
+p2=(pge2-pge3);
+p3=(pge3-pge4);
+p4=(pge4-pge5);
+p5=(pge5-pge6);
+p6=(pge6-pge7);
+p7=(pge7-pge8);
+p8=(pge8-pge9);
+p9=(pge9-pge10);
+p10=pge10;
+sp=p0+p1+p2+p3+p4+p5+p6+p7+p8+p9+p10;
+rx_yj_~142;
+rx_lambda_~1;
+rx_low_~0;
+rx_hi_~1;
+rx_r_~0;
+rx_pred_~log((DV==0)*(p0)+(DV==1)*(p1)+(DV==2)*(p2)+(DV==3)*(p3)+(DV==4)*(p4)+(DV==5)*(p5)+(DV==6)*(p6)+(DV==7)*(p7)+(DV==8)*(p8)+(DV==9)*(p9)+(DV==10)*(1-p0-p1-p2-p3-p4-p5-p6-p7-p8-p9));"), NA)
+  })
   # Test symengine<->rxode2 dsl
   test_that("d/dt(x) parsing", {
     expect_equal(rxToSE(d / dt(matt)), "rx__d_dt_matt__")
