@@ -1,4 +1,5 @@
 rxTest({
+  
   .rx <- loadNamespace("rxode2")
 
   testPipeQuote <- function(..., envir=parent.frame()) {
@@ -6,6 +7,9 @@ rxTest({
   }
 
   test_that("test of standard quoting of piping arguments", {
+
+    expect_equal(testPipeQuote(lag(A1) <- NULL),
+                 list(quote(-lag(A1))))
 
     expect_equal(testPipeQuote(-ka, tka=0.5, {
       tv = 3
