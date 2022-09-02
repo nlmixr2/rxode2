@@ -151,7 +151,8 @@ into fast C code</p>
 <span>  <span class="va">...</span>,</span>
 <span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,</span>
 <span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  fullPrint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.fullPrint"</span>, <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">RxODE</span><span class="op">(</span></span>
@@ -168,7 +169,8 @@ into fast C code</p>
 <span>  <span class="va">...</span>,</span>
 <span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,</span>
 <span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  fullPrint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.fullPrint"</span>, <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">rxode</span><span class="op">(</span></span>
@@ -185,7 +187,8 @@ into fast C code</p>
 <span>  <span class="va">...</span>,</span>
 <span>  linCmtSens <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linCmtA"</span>, <span class="st">"linCmtB"</span>, <span class="st">"linCmtC"</span><span class="op">)</span>,</span>
 <span>  indLin <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  fullPrint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"rxode2.fullPrint"</span>, <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -275,6 +278,12 @@ compile with inductive linearization support.</p></dd>
 <dt>verbose</dt>
 <dd><p>When <code>TRUE</code> be verbose with the linear
 compartmental model</p></dd>
+
+
+<dt>fullPrint</dt>
+<dd><p>When using <code>printf</code> within the model, if <code>TRUE</code>
+print on every step (except ME/indLin), otherwise when <code>FALSE</code>
+print only when calculating the <code>d/dt</code></p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -533,7 +542,7 @@ Springer-Verlag (1993).</p>
 <span class="r-in"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu">rxode</span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_65a47ea3ce10bd9835670eac57a130a4</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_0dc26502e895589401f6e7a353a8552e</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: V2, V3, KA, CL, Q, Kin, Kout, EC50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$lhs</span>: C2, C3</span>
@@ -602,7 +611,6 @@ Springer-Verlag (1993).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>    4  44.4 5.94   <span style="text-decoration: underline;">3</span>122. <span style="text-decoration: underline;">1</span>784. <span style="text-decoration: underline;">1</span>765.  1.23</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>    5  36.5 7.14   <span style="text-decoration: underline;">2</span>334. <span style="text-decoration: underline;">1</span>466. <span style="text-decoration: underline;">2</span>120.  1.21</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># … with 31 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ Use `print(n = ...)` to see more rows</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">qd.cp</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="rxode2-1.png" alt="" width="700" height="433"></span>
@@ -637,7 +645,7 @@ Springer-Verlag (1993).</p>
 <span class="r-in"><span> <span class="co"># this pre-compiles and displays the simulation model</span></span></span>
 <span class="r-in"><span> <span class="va">u</span><span class="op">$</span><span class="va">simulationModel</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_1c66adf667cb9bfd12d3207a805545ce</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_7a9bf536127ac9bb228c9ef7600b8df7</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: KA, CL, V2, Q, V3, Kin, Kout, EC50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$lhs</span>: C2, C3</span>
@@ -663,7 +671,6 @@ Springer-Verlag (1993).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>    4  44.4 5.94   <span style="text-decoration: underline;">3</span>122. <span style="text-decoration: underline;">1</span>784. <span style="text-decoration: underline;">1</span>765.  1.23</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>    5  36.5 7.14   <span style="text-decoration: underline;">2</span>334. <span style="text-decoration: underline;">1</span>466. <span style="text-decoration: underline;">2</span>120.  1.21</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># … with 31 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ Use `print(n = ...)` to see more rows</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>

@@ -139,6 +139,9 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-rxGetLowBoundaryPred1AndIni.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/dot-rxGetPredictionDVTransform.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-rxGetPredictionF.html</loc>
   </url>
   <url>
@@ -253,6 +256,9 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/llikBinom.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikCauchy.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/llikChisq.html</loc>
   </url>
   <url>
@@ -266,6 +272,12 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/llikGeom.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikNbinom.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/llikNbinomMu.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/llikNorm.html</loc>
@@ -680,6 +692,9 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxgeom.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/rxnbinom.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxnormV.html</loc>

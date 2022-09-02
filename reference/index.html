@@ -382,9 +382,29 @@ distribution.</dd>
         <dd>Scaled Inverse Chi Squared distribution</dd>
       </dl><dl><dt>
           
+          <code><a href="rxGetSeed.html">rxGetSeed()</a></code> 
+        </dt>
+        <dd>Get the rxode2 seed</dd>
+      </dl><dl><dt>
+          
           <code><a href="rxPp.html">rxPp()</a></code> 
         </dt>
         <dd>Simulate a from a Poisson process</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rxSetSeed.html">rxSetSeed()</a></code> 
+        </dt>
+        <dd>Set the parallel seed for rxode2 random number generation</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rxSimThetaOmega.html">rxSimThetaOmega()</a></code> 
+        </dt>
+        <dd>Simulate Parameters from a Theta/Omega specification</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rxWithSeed.html">rxWithSeed()</a></code> <code><a href="rxWithSeed.html">rxWithPreserveSeed()</a></code> 
+        </dt>
+        <dd>Preserved seed and possibly set the seed</dd>
       </dl><dl><dt>
           
           <code><a href="rxbeta.html">rxbeta()</a></code> 
@@ -412,21 +432,6 @@ distribution.</dd>
         <dd>Simulate exponential variable from threefry generator</dd>
       </dl><dl><dt>
           
-          <code><a href="rxnormV.html">rxnorm()</a></code> <code><a href="rxnormV.html">rxnormV()</a></code> 
-        </dt>
-        <dd>Simulate random normal variable from threefry/vandercorput generator</dd>
-      </dl><dl><dt>
-          
-          <code><a href="rxpois.html">rxpois()</a></code> 
-        </dt>
-        <dd>Simulate random Poisson variable from threefry generator</dd>
-      </dl><dl><dt>
-          
-          <code><a href="rxt.html">rxt()</a></code> 
-        </dt>
-        <dd>Simulate student t variable from threefry generator</dd>
-      </dl><dl><dt>
-          
           <code><a href="rxf.html">rxf()</a></code> 
         </dt>
         <dd>Simulate F variable from threefry generator</dd>
@@ -442,9 +447,14 @@ distribution.</dd>
         <dd>Simulate geometric variable from threefry generator</dd>
       </dl><dl><dt>
           
-          <code><a href="rxunif.html">rxunif()</a></code> 
+          <code><a href="rxnbinom.html">rxnbinom()</a></code> <code><a href="rxnbinom.html">rxnbinomMu()</a></code> 
         </dt>
-        <dd>Simulate uniform variable from threefry generator</dd>
+        <dd>Simulate Binomial variable from threefry generator</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rxnormV.html">rxnorm()</a></code> <code><a href="rxnormV.html">rxnormV()</a></code> 
+        </dt>
+        <dd>Simulate random normal variable from threefry/vandercorput generator</dd>
       </dl><dl><dt>
           
           <code><a href="rxord.html">rxord()</a></code> 
@@ -452,29 +462,24 @@ distribution.</dd>
         <dd>Simulate ordinal value</dd>
       </dl><dl><dt>
           
+          <code><a href="rxpois.html">rxpois()</a></code> 
+        </dt>
+        <dd>Simulate random Poisson variable from threefry generator</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rxt.html">rxt()</a></code> 
+        </dt>
+        <dd>Simulate student t variable from threefry generator</dd>
+      </dl><dl><dt>
+          
+          <code><a href="rxunif.html">rxunif()</a></code> 
+        </dt>
+        <dd>Simulate uniform variable from threefry generator</dd>
+      </dl><dl><dt>
+          
           <code><a href="rxweibull.html">rxweibull()</a></code> 
         </dt>
         <dd>Simulate Weibull variable from threefry generator</dd>
-      </dl><dl><dt>
-          
-          <code><a href="rxSimThetaOmega.html">rxSimThetaOmega()</a></code> 
-        </dt>
-        <dd>Simulate Parameters from a Theta/Omega specification</dd>
-      </dl><dl><dt>
-          
-          <code><a href="rxGetSeed.html">rxGetSeed()</a></code> 
-        </dt>
-        <dd>Get the rxode2 seed</dd>
-      </dl><dl><dt>
-          
-          <code><a href="rxWithSeed.html">rxWithSeed()</a></code> <code><a href="rxWithSeed.html">rxWithPreserveSeed()</a></code> 
-        </dt>
-        <dd>Preserved seed and possibly set the seed</dd>
-      </dl><dl><dt>
-          
-          <code><a href="rxSetSeed.html">rxSetSeed()</a></code> 
-        </dt>
-        <dd>Set the parallel seed for rxode2 random number generation</dd>
       </dl></div><div class="section level2">
       <h2 id="optimizing-models-and-or-adding-precision">Optimizing models and/or adding precision<a class="anchor" aria-label="anchor" href="#optimizing-models-and-or-adding-precision"></a></h2>
       
@@ -624,29 +629,19 @@ testing suite on your system.</dd>
 
       <dl><dt>
           
-          <code><a href="llikNorm.html">llikNorm()</a></code> 
-        </dt>
-        <dd>Log likelihood for normal distribution</dd>
-      </dl><dl><dt>
-          
-          <code><a href="llikPois.html">llikPois()</a></code> 
-        </dt>
-        <dd>log-likelihood for the Poisson distribution</dd>
-      </dl><dl><dt>
-          
-          <code><a href="llikBinom.html">llikBinom()</a></code> 
-        </dt>
-        <dd>Calculate the log liklihood aof the binomial function (and its derivatives)</dd>
-      </dl><dl><dt>
-          
           <code><a href="llikBeta.html">llikBeta()</a></code> 
         </dt>
         <dd>Calculate the log liklihood aof the binomial function (and its derivatives)</dd>
       </dl><dl><dt>
           
-          <code><a href="llikT.html">llikT()</a></code> 
+          <code><a href="llikBinom.html">llikBinom()</a></code> 
         </dt>
-        <dd>log likelihood of T and it's derivatives (from stan)</dd>
+        <dd>Calculate the log liklihood of the binomial function (and its derivatives)</dd>
+      </dl><dl><dt>
+          
+          <code><a href="llikCauchy.html">llikCauchy()</a></code> 
+        </dt>
+        <dd>log likelihood of Cauchy distribution and it's derivatives (from stan)</dd>
       </dl><dl><dt>
           
           <code><a href="llikChisq.html">llikChisq()</a></code> 
@@ -664,9 +659,39 @@ testing suite on your system.</dd>
         <dd>log likelihood and derivaties for F distribution</dd>
       </dl><dl><dt>
           
+          <code><a href="llikGamma.html">llikGamma()</a></code> 
+        </dt>
+        <dd>log likelihood and derivaties for Gamma distribution</dd>
+      </dl><dl><dt>
+          
           <code><a href="llikGeom.html">llikGeom()</a></code> 
         </dt>
         <dd>log likelihood and derivaties for Geom distribution</dd>
+      </dl><dl><dt>
+          
+          <code><a href="llikNbinom.html">llikNbinom()</a></code> 
+        </dt>
+        <dd>Calculate the log liklihood of the negative binomial function (and its derivatives)</dd>
+      </dl><dl><dt>
+          
+          <code><a href="llikNbinomMu.html">llikNbinomMu()</a></code> 
+        </dt>
+        <dd>Calculate the log liklihood of the negative binomial function (and its derivatives)</dd>
+      </dl><dl><dt>
+          
+          <code><a href="llikNorm.html">llikNorm()</a></code> 
+        </dt>
+        <dd>Log likelihood for normal distribution</dd>
+      </dl><dl><dt>
+          
+          <code><a href="llikPois.html">llikPois()</a></code> 
+        </dt>
+        <dd>log-likelihood for the Poisson distribution</dd>
+      </dl><dl><dt>
+          
+          <code><a href="llikT.html">llikT()</a></code> 
+        </dt>
+        <dd>log likelihood of T and it's derivatives (from stan)</dd>
       </dl><dl><dt>
           
           <code><a href="llikUnif.html">llikUnif()</a></code> 
@@ -677,11 +702,6 @@ testing suite on your system.</dd>
           <code><a href="llikWeibull.html">llikWeibull()</a></code> 
         </dt>
         <dd>log likelihood and derivaties for Weibull distribution</dd>
-      </dl><dl><dt>
-          
-          <code><a href="llikGamma.html">llikGamma()</a></code> 
-        </dt>
-        <dd>log likelihood and derivaties for Gamma distribution</dd>
       </dl></div><div class="section level2">
       <h2 id="parallel-processing-support-commands">Parallel processing support commands<a class="anchor" aria-label="anchor" href="#parallel-processing-support-commands"></a></h2>
       

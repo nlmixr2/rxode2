@@ -242,7 +242,9 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  rtolSens <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  ssAtolSens <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  ssRtolSens <span class="op">=</span> <span class="fl">1e-06</span>,</span>
-<span>  simVariability <span class="op">=</span> <span class="cn">NA</span></span>
+<span>  simVariability <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  nLlikAlloc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  useStdPow <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for `function`</span></span>
@@ -1031,6 +1033,19 @@ calculating if steady state has been achieved for sensitivity compartments.</p><
 <dt>simVariability</dt>
 <dd><p>determines if the variability is simulated.
 When <code>NA</code> (default) this is determined by the solver.</p></dd>
+
+
+<dt>nLlikAlloc</dt>
+<dd><p>The number of log likelihood endpoints that are
+used in the model.  This allows independent lliklihood per
+endpoint in focei for nlmixr2.  It likely shouldn't be set,
+though it won't hurt anything if you do (just may take up more
+memory for larger allocations).</p></dd>
+
+
+<dt>useStdPow</dt>
+<dd><p>This uses C's <code>pow</code> for exponentiation instead of
+R's <code>R_pow</code> or <code>R_pow_di</code>.  By default this is <code>FALSE</code></p></dd>
 
 
 <dt>a</dt>
