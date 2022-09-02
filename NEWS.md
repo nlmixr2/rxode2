@@ -38,7 +38,7 @@
   nlmixr2 log-likelihood estimation methods
   
 - `rxode2` treats `DV` as a non-covariate with `etTran` (last time it
-  would duplicate if it is in the model).  This is most noticable in
+  would duplicate if it is in the model).  This is most noticeable in
   the nlmixr2 log-likelihood estimation methods.
   
 ** New features

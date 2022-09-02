@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikNbinom}
 \alias{llikNbinom}
-\title{Calculate the log liklihood of the negative binomial function (and its derivatives)}
+\title{Calculate the log likelihood of the negative binomial function (and its derivatives)}
 \usage{
 llikNbinom(x, size, prob, full = FALSE)
 }
@@ -22,7 +22,7 @@ data frame with \code{fx} for the pdf value of with
 the observation time-point
 }
 \description{
-Calculate the log liklihood of the negative binomial function (and its derivatives)
+Calculate the log likelihood of the negative binomial function (and its derivatives)
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikNbinom()} but you have to

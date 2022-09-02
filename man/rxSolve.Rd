@@ -741,7 +741,7 @@ calculating if steady state has been achieved for sensitivity compartments.}
 When \code{NA} (default) this is determined by the solver.}
 
 \item{nLlikAlloc}{The number of log likelihood endpoints that are
-used in the model.  This allows independent lliklihood per
+used in the model.  This allows independent log likelihood per
 endpoint in focei for nlmixr2.  It likely shouldn't be set,
 though it won't hurt anything if you do (just may take up more
 memory for larger allocations).}

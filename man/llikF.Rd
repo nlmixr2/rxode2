@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikF}
 \alias{llikF}
-\title{log likelihood and derivaties for F distribution}
+\title{log likelihood and derivatives for F distribution}
 \usage{
 llikF(x, df1, df2, full = FALSE)
 }
@@ -20,7 +20,7 @@ that has the derivatives with respect to the \code{df1}/\code{df2} parameters at
 the observation time-point
 }
 \description{
-log likelihood and derivaties for F distribution
+log likelihood and derivatives for F distribution
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikF()} but you have to

@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikBeta}
 \alias{llikBeta}
-\title{Calculate the log liklihood aof the binomial function (and its derivatives)}
+\title{Calculate the log likelihood of the binomial function (and its derivatives)}
 \usage{
 llikBeta(x, shape1, shape2, full = FALSE)
 }
@@ -20,7 +20,7 @@ data frame with \code{fx} for the log pdf value of with
 the observation time-point
 }
 \description{
-Calculate the log liklihood aof the binomial function (and its derivatives)
+Calculate the log likelihood of the binomial function (and its derivatives)
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikBeta()} but you have to

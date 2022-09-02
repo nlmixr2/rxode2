@@ -12,7 +12,7 @@
 \item{vars}{Variables}
 }
 \value{
-Jacobian informat
+Jacobian information
 }
 \description{
 Internal function for calculating the Jacobian

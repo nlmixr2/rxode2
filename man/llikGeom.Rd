@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikGeom}
 \alias{llikGeom}
-\title{log likelihood and derivaties for Geom distribution}
+\title{log likelihood and derivatives for Geom distribution}
 \usage{
 llikGeom(x, prob, full = FALSE)
 }
@@ -20,7 +20,7 @@ that has the derivatives with respect to the \code{prob} parameters at
 the observation time-point
 }
 \description{
-log likelihood and derivaties for Geom distribution
+log likelihood and derivatives for Geom distribution
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikGeom()} but you have to

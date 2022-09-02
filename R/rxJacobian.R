@@ -38,7 +38,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #'
 #' @param model symengine environment
 #' @param vars Variables
-#' @return Jacobian informat
+#' @return Jacobian information
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
