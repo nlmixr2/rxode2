@@ -147,17 +147,7 @@
   })
   .w <- which(.bracket)
   .ret <- .quoteExpandBracketsOrCs(.ret, .w, envir=envir)
-  .ret <- .ret[vapply(seq_along(.ret), function(i) {
+  .ret[vapply(seq_along(.ret), function(i) {
     !is.null(.ret[[i]])
   }, logical(1), USE.NAMES=FALSE)]
-  lapply(seq_along(.ret),
-         function(i) {
-           .x <- .ret[[i]]
-           if (identical(.x[[1]], quote(`<-`))) {
-             if (is.null(.x[[3]])) {
-               return(str2lang(paste0("-",deparse1(.x[[2]]))))
-             }
-           }
-           .x
-         })
 }
