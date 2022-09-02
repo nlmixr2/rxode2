@@ -263,6 +263,7 @@ llikNbinomMu <- function(x, size, mu, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' 
 llikBeta <- function(x, shape1, shape2, full=FALSE) {
   checkmate::assertNumeric(x, min.len=0, lower=0, upper=1, any.missing=FALSE, finite=TRUE)
   checkmate::assertNumeric(shape1, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
