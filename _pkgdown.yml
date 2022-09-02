@@ -53,25 +53,26 @@ reference:
   contents:
   - cvPost
   - rinvchisq
+  - rxGetSeed
   - rxPp
+  - rxSetSeed
+  - rxSimThetaOmega
+  - rxWithSeed
   - rxbeta
   - rxbinom
   - rxcauchy
   - rxchisq
   - rxexp
-  - rxnorm
-  - rxpois
-  - rxt
   - rxf
   - rxgamma
   - rxgeom
-  - rxunif
+  - rxnbinom
+  - rxnorm
   - rxord
+  - rxpois
+  - rxt
+  - rxunif
   - rxweibull
-  - rxSimThetaOmega
-  - rxGetSeed
-  - rxWithSeed
-  - rxSetSeed
 - title: Optimizing models and/or adding precision
   contents:
   - rxOptExpr
@@ -100,18 +101,21 @@ reference:
     - erf
 - title: log likelihood functions supporting generalized likelihoods for focei methods
   contents:
-    - llikNorm
-    - llikPois
-    - llikBinom
     - llikBeta
-    - llikT
+    - llikBinom
+    - llikCauchy
     - llikChisq
     - llikExp
     - llikF
+    - llikGamma
     - llikGeom
+    - llikNbinom
+    - llikNbinomMu
+    - llikNorm
+    - llikPois
+    - llikT
     - llikUnif
     - llikWeibull
-    - llikGamma
 - title: Parallel processing support commands
   contents:
   -  getRxThreads
