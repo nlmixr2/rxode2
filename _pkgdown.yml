@@ -257,8 +257,8 @@ navbar:
     menu:
       - text: rxode2 User Guide
         href: https://nlmixr2.github.io/rxode2-manual/
-      - text: nlmixr
-        href: https://nlmixr2.org
+      - text: nlmixr2
+        href: https://nlmixr2.org/
   - icon: fa-github
     href: https://github.com/nlmixr2/rxode2
   - icon: fa-download
