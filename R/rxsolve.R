@@ -901,16 +901,16 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         rtolSens <- 0.5 * 10^(-sigdig - 1.5)
       }
       if (missing(ssAtol)) {
-        ssAtol <- 0.5 * 10^(-sigdig - 2)
+        ssAtol <- 0.5 * 10^(-sigdig)
       }
       if (missing(ssRtol)) {
-        ssRtol <- 0.5 * 10^(-sigdig - 2)
+        ssRtol <- 0.5 * 10^(-sigdig)
       }
       if (missing(ssAtolSens)) {
-        ssAtolSens <- 0.5 * 10^(-sigdig - 1.5)
+        ssAtolSens <- 0.5 * 10^(-sigdig + 0.5)
       }
       if (missing(ssRtolSens)) {
-        ssRtolSens <- 0.5 * 10^(-sigdig - 1.5)
+        ssRtolSens <- 0.5 * 10^(-sigdig + 0.5)
       }
     }
     checkmate::assertNumeric(atol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
