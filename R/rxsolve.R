@@ -88,11 +88,12 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'   solving requests.  When specified this controls the relative and
 #'   absolute tolerances of the ODE solvers.  By default the tolerance
 #'   is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
-#'   sensitivity equations and steady-state solutions the default is
-#'   \code{0.5*10^(-sigdig-1.5)} (sensitivity changes only applicable
-#'   for liblsoda).  By default this is unspecified (`NULL`) and uses
-#'   the standard `atol`/`rtol`.
-#'
+#'   sensitivity equations the default is \code{0.5*10^(-sigdig-1.5)}
+#'   (sensitivity changes only applicable for liblsoda).  This also
+#'   controls the `atol`/`rtol` of the steady state solutions. The
+#'   `ssAtol`/`ssRtol` is `0.5*10^(-sigdig)` and for the sensitivities 
+#'   `0.5*10^(-sigdig+0.625)`.  By default
+#'   this is unspecified (`NULL`) and uses the standard `atol`/`rtol`.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
 #'     by the ODE solver to determine if a good solution has been
@@ -887,7 +888,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertNumeric(scale, lower=0, finite=TRUE, any.missing=FALSE,names="strict")
     }
     if (!is.null(sigdig)) {
-      checkmate::assertNumeric(sigdig, lower=1, finite=TRUE, any.missing=FALSE, len=1)
+      checkmate::assertNumeric(sigdig, lower=2, finite=TRUE, any.missing=FALSE, len=1)
       if (missing(atol)) {
         atol <- 0.5 * 10^(-sigdig - 2)
       }
@@ -907,10 +908,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         ssRtol <- 0.5 * 10^(-sigdig)
       }
       if (missing(ssAtolSens)) {
-        ssAtolSens <- 0.5 * 10^(-sigdig + 0.5)
+        ssAtolSens <- 0.5 * 10^(-sigdig + 0.625)
       }
       if (missing(ssRtolSens)) {
-        ssRtolSens <- 0.5 * 10^(-sigdig + 0.5)
+        ssRtolSens <- 0.5 * 10^(-sigdig + 0.625)
       }
     }
     checkmate::assertNumeric(atol, lower=0, finite=TRUE, any.missing=FALSE, min.len=1)
