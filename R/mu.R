@@ -249,7 +249,7 @@
   for (i in seq_along(length(x))) {
     if(is.call(x[[i]])) {
       .expr <- x[[i]]
-      if (identical(.expr[[1]], quote(`+`))){
+      if (identical(.expr[[1]], quote(`+`))) {
         if (length(.expr) == 2L) {
           .expr <- NULL
         } else {
@@ -273,8 +273,8 @@
 #' @noRd
 .muRefDowngradeEvalToAdditive <- function(.we, .wt, .names, env) {
   .w <- c(.we, .wt)
-  if (length(.w) > 0){
-    lapply(.w, function(i){
+  if (length(.w) > 0) {
+    lapply(.w, function(i) {
       .muRefSetCurEval(.names[i], env, "")
     })
   }
@@ -452,7 +452,7 @@
 #' @return Nothing, called for its side effects
 #' @author Matthew Fidler
 #' @noRd
-.muRefSetNonMuEta <- function(.curEta, env){
+.muRefSetNonMuEta <- function(.curEta, env) {
   if (!any(env$nonMuEtas == .curEta)) {
     env$nonMuEtas <- c(env$nonMuEtas, .curEta)
     .wEtaInDf <- which(env$muRefDataFrame$eta == .curEta)
@@ -516,7 +516,7 @@
         #
         # In this case, the eta.emax is no longer mu-referenced
         #
-        if (!all(env$muRefDataFrame$theta[.wEtaInDf] == .names[.wt]) |
+        if (!all(env$muRefDataFrame$theta[.wEtaInDf] == .names[.wt]) ||
               !all(env$muRefDataFrame$eta[.wEtaInDf] == .curEta)) {
           .muRefSetNonMuEta(.curEta, env)
         }
@@ -588,7 +588,7 @@
       .extraItems <- .extraItems[.ord]
     }
     .muRefHandleSingleThetaMuRef(.we, .wt, .names, .doubleNames, .extraItems, env)
-  } else if (length(.we) == 1){
+  } else if (length(.we) == 1) {
     .curEta <- .names[.we]
     .muRefSetCurEval(.curEta, env)
     .muRefSetNonMuEta(.curEta, env)
@@ -642,12 +642,12 @@
       if (identical(x[[1]], quote(`=`)) ||
             identical(x[[1]], quote(`~`))) {
         #.handleSingleEtaIfExists(x[[3]], env)
-        if (.rxMuRefHasThetaEtaOrCov(x[[3]], env)){
+        if (.rxMuRefHasThetaEtaOrCov(x[[3]], env)) {
           # This line has etas or covariates and might need to be
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
           if (rxode2.debug) {
-            .tmp <- lapply(x, function(y, env){
+            .tmp <- lapply(x, function(y, env) {
               assign(".curEval", "", env)
               .rxMuRef0(y, env=env)
             }, env=env)
@@ -819,7 +819,7 @@
   for (.err in .w) {
     .curErr <- .iniDf$err[.err]
     .wN <- which(names(.errDistArgRanges) == .curErr)
-    if (length(.wN) == 1L){
+    if (length(.wN) == 1L) {
       .range <- .errDistArgRanges[[.curErr]]
       .est <- .iniDf$est[.err]
       .lower <- .iniDf$lower[.err]
@@ -972,7 +972,7 @@
   if (.env$hasErrors) {
     .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
                       paste(vapply(seq_along(.env$lstExpr),
-                                   function(i){
+                                   function(i) {
                                      sprintf(paste0("%s", crayon::bold("%03d:"), " %s"),
                                              ifelse(is.null(.env$lstErr[[i]]), "",
                                                     sprintf(paste0(crayon::bold("%s"), "\n"), .env$lstErr[[i]])),
