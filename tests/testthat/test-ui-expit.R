@@ -22,6 +22,6 @@ test_that("markov llik", {
   }
 
   f <- rxode2(markov)
-  expect_true(f$muRefCurEval$low == 0)
-  expect_true(f$muRefCurEval$hi == 0)
+  expect_true(all(f$muRefCurEval$low == 0))
+  expect_true(all(f$muRefCurEval$hi == 1))
 })
