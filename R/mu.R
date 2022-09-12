@@ -987,6 +987,13 @@
   } else if (.env$hasErrors) {
     stop("syntax/parsing errors, see above", call.=FALSE)
   }
+  .muRefCurEval <- .env$muRefCurEval
+  .w <- which(.muRefCurEval$curEval %in% c("expit", "logit", "probit", "probitInv"))
+  if (length(.w > 0)) {
+    .env$muRefCurEval[.w, "low"] <- ifelse(is.na(.env$muRefCurEval[.w, "low"]), 0, .env$muRefCurEval[.w, "low"])
+    .env$muRefCurEval[.w, "hi"] <- ifelse(is.na(.env$muRefCurEval[.w, "hi"]), 1, .env$muRefCurEval[.w, "low"])
+  }
+
   .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
