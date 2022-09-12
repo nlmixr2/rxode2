@@ -12,16 +12,18 @@ test_that("markov llik", {
       p00 <- 1 - p02
       p20 <- expit(logitp20)
       p22 <- 1 - p20
-      current_p <-
+      p <-
         p02*(PDV == 0 & DV == 2) +
         p00*(PDV == 0 & DV == 0) +
         p20*(PDV == 2 & DV == 0) +
         p22*(PDV == 2 & DV == 2)
-      ll(err) ~ log(current_p)
+      ll(err) ~ log(p)
     })
   }
 
   f <- rxode2(markov)
+  
   expect_true(all(f$muRefCurEval$low == 0))
   expect_true(all(f$muRefCurEval$hi == 1))
+  
 })

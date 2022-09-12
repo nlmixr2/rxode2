@@ -143,34 +143,36 @@
   if (length(x) == 4) {
     # expit(x, 1, 2)
     if (is.numeric(x[[3]])) {
-      env$curLow <- as.numeric(x[[3]])
+      assign("curLow", as.numeric(x[[3]]), envir=env)
     } else {
-      env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric")))
-      env$curLow <- -Inf
+      assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric"))))
+      assign("curLow", -Inf, envir=env)
     }
     if (is.numeric(x[[4]])) {
-      env$curHi <- as.numeric(x[[4]])
+      assign("curHi", as.numeric(x[[4]]), envir=env)
     } else {
       env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric")))
-      env$curHi <- Inf
+      assign("curHi", Inf, envir=env)
     }
     x <- x[1:2]
   } else if (length(x) == 3) {
     # expit(x, 1)
     if (is.numeric(x[[3]])) {
-      env$curLow <- as.numeric(x[[3]])
+      assign("curLow", as.numeric(x[[3]]), envir=env)
     } else {
-      env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric")))
-      env$curLow <- -Inf
+      assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric"))),
+             envir=env)
+      assign("curLow", -Inf, envir=env)
     }
-    env$curHi <- 1
+    assign("curHi", 1, envir=env)
     x <- x[1:2]
   } else {
-    env$curLow <- 0
-    env$curHi <- 1
+    assign("curLow", 0, envir=env)
+    assign("curHi", 1, envir=env)
   }
   if (env$curLow >= env$curHi) {
-    env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be lower, higher")))
+    assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be lower, higher"))),
+           envir=env)
   }
   x
 }
@@ -621,7 +623,6 @@
 #' @noRd
 .rxMuRefHandleNonPlusCall <- function(x, env) {
   assign(".curEval", as.character(x[[1]]), env)
-  .handleSingleEtaIfExists(x[[2]], env)
   env$curHi <- NA_real_
   env$curLow <- NA_real_
   if (env$.curEval == "probitInv" ||
@@ -630,6 +631,7 @@
         env$.curEval == "probit") {
     x <- .rxMuRefHandleLimits(x, env)
   }
+  .handleSingleEtaIfExists(x[[2]], env)
   lapply(x[-1], .rxMuRef0, env=env)
 }
 
@@ -689,7 +691,7 @@
   }
 }
 
-#' This sets the current evaluation for a singlet parameter, either a theta or an eta
+#' This sets the current evaluation for a single parameter, either a theta or an eta
 #'
 #' @param parameter The parameter is the string for theta or eta
 #'   value
@@ -987,13 +989,6 @@
   } else if (.env$hasErrors) {
     stop("syntax/parsing errors, see above", call.=FALSE)
   }
-  .muRefCurEval <- .env$muRefCurEval
-  .w <- which(.muRefCurEval$curEval %in% c("expit", "logit", "probit", "probitInv"))
-  if (length(.w > 0)) {
-    .env$muRefCurEval[.w, "low"] <- ifelse(is.na(.env$muRefCurEval[.w, "low"]), 0, .env$muRefCurEval[.w, "low"])
-    .env$muRefCurEval[.w, "hi"] <- ifelse(is.na(.env$muRefCurEval[.w, "hi"]), 1, .env$muRefCurEval[.w, "low"])
-  }
-
   .rm <- intersect(c(".curEval", ".curLineClean", ".expr", ".found", "body", "cov.ref",
                      "err", "exp.theta", "expit.theta", "expit.theta.hi", "expit.theta.low",
                      "found", "info", "log.theta", "logit.theta", "logit.theta.hi",
