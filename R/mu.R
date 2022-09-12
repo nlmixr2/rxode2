@@ -143,34 +143,36 @@
   if (length(x) == 4) {
     # expit(x, 1, 2)
     if (is.numeric(x[[3]])) {
-      env$curLow <- as.numeric(x[[3]])
+      assign("curLow", as.numeric(x[[3]]), envir=env)
     } else {
-      env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric")))
-      env$curLow <- -Inf
+      assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric"))))
+      assign("curLow", -Inf, envir=env)
     }
     if (is.numeric(x[[4]])) {
-      env$curHi <- as.numeric(x[[4]])
+      assign("curHi", as.numeric(x[[4]]), envir=env)
     } else {
       env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric")))
-      env$curHi <- Inf
+      assign("curHi", Inf, envir=env)
     }
     x <- x[1:2]
   } else if (length(x) == 3) {
     # expit(x, 1)
     if (is.numeric(x[[3]])) {
-      env$curLow <- as.numeric(x[[3]])
+      assign("curLow", as.numeric(x[[3]]), envir=env)
     } else {
-      env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric")))
-      env$curLow <- -Inf
+      assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric"))),
+             envir=env)
+      assign("curLow", -Inf, envir=env)
     }
-    env$curHi <- 1
+    assign("curHi", 1, envir=env)
     x <- x[1:2]
   } else {
-    env$curLow <- 0
-    env$curHi <- 1
+    assign("curLow", 0, envir=env)
+    assign("curHi", 1, envir=env)
   }
   if (env$curLow >= env$curHi) {
-    env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be lower, higher")))
+    assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be lower, higher"))),
+           envir=env)
   }
   x
 }
@@ -249,7 +251,7 @@
   for (i in seq_along(length(x))) {
     if(is.call(x[[i]])) {
       .expr <- x[[i]]
-      if (identical(.expr[[1]], quote(`+`))){
+      if (identical(.expr[[1]], quote(`+`))) {
         if (length(.expr) == 2L) {
           .expr <- NULL
         } else {
@@ -273,8 +275,8 @@
 #' @noRd
 .muRefDowngradeEvalToAdditive <- function(.we, .wt, .names, env) {
   .w <- c(.we, .wt)
-  if (length(.w) > 0){
-    lapply(.w, function(i){
+  if (length(.w) > 0) {
+    lapply(.w, function(i) {
       .muRefSetCurEval(.names[i], env, "")
     })
   }
@@ -452,7 +454,7 @@
 #' @return Nothing, called for its side effects
 #' @author Matthew Fidler
 #' @noRd
-.muRefSetNonMuEta <- function(.curEta, env){
+.muRefSetNonMuEta <- function(.curEta, env) {
   if (!any(env$nonMuEtas == .curEta)) {
     env$nonMuEtas <- c(env$nonMuEtas, .curEta)
     .wEtaInDf <- which(env$muRefDataFrame$eta == .curEta)
@@ -516,7 +518,7 @@
         #
         # In this case, the eta.emax is no longer mu-referenced
         #
-        if (!all(env$muRefDataFrame$theta[.wEtaInDf] == .names[.wt]) |
+        if (!all(env$muRefDataFrame$theta[.wEtaInDf] == .names[.wt]) ||
               !all(env$muRefDataFrame$eta[.wEtaInDf] == .curEta)) {
           .muRefSetNonMuEta(.curEta, env)
         }
@@ -588,7 +590,7 @@
       .extraItems <- .extraItems[.ord]
     }
     .muRefHandleSingleThetaMuRef(.we, .wt, .names, .doubleNames, .extraItems, env)
-  } else if (length(.we) == 1){
+  } else if (length(.we) == 1) {
     .curEta <- .names[.we]
     .muRefSetCurEval(.curEta, env)
     .muRefSetNonMuEta(.curEta, env)
@@ -621,7 +623,6 @@
 #' @noRd
 .rxMuRefHandleNonPlusCall <- function(x, env) {
   assign(".curEval", as.character(x[[1]]), env)
-  .handleSingleEtaIfExists(x[[2]], env)
   env$curHi <- NA_real_
   env$curLow <- NA_real_
   if (env$.curEval == "probitInv" ||
@@ -630,6 +631,7 @@
         env$.curEval == "probit") {
     x <- .rxMuRefHandleLimits(x, env)
   }
+  .handleSingleEtaIfExists(x[[2]], env)
   lapply(x[-1], .rxMuRef0, env=env)
 }
 
@@ -642,12 +644,12 @@
       if (identical(x[[1]], quote(`=`)) ||
             identical(x[[1]], quote(`~`))) {
         #.handleSingleEtaIfExists(x[[3]], env)
-        if (.rxMuRefHasThetaEtaOrCov(x[[3]], env)){
+        if (.rxMuRefHasThetaEtaOrCov(x[[3]], env)) {
           # This line has etas or covariates and might need to be
           # separated into mu-referenced line
           .rxMuRefLineIsClean(x, env)
           if (rxode2.debug) {
-            .tmp <- lapply(x, function(y, env){
+            .tmp <- lapply(x, function(y, env) {
               assign(".curEval", "", env)
               .rxMuRef0(y, env=env)
             }, env=env)
@@ -689,7 +691,7 @@
   }
 }
 
-#' This sets the current evaluation for a singlet parameter, either a theta or an eta
+#' This sets the current evaluation for a single parameter, either a theta or an eta
 #'
 #' @param parameter The parameter is the string for theta or eta
 #'   value
@@ -819,7 +821,7 @@
   for (.err in .w) {
     .curErr <- .iniDf$err[.err]
     .wN <- which(names(.errDistArgRanges) == .curErr)
-    if (length(.wN) == 1L){
+    if (length(.wN) == 1L) {
       .range <- .errDistArgRanges[[.curErr]]
       .est <- .iniDf$est[.err]
       .lower <- .iniDf$lower[.err]
@@ -972,7 +974,7 @@
   if (.env$hasErrors) {
     .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
                       paste(vapply(seq_along(.env$lstExpr),
-                                   function(i){
+                                   function(i) {
                                      sprintf(paste0("%s", crayon::bold("%03d:"), " %s"),
                                              ifelse(is.null(.env$lstErr[[i]]), "",
                                                     sprintf(paste0(crayon::bold("%s"), "\n"), .env$lstErr[[i]])),
