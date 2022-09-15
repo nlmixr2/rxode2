@@ -1115,10 +1115,6 @@ etExpand <- function(et) {
   .Call(`_rxode2_et_`, list(expand = TRUE), et)
 }
 
-#' @importFrom magrittr %>%
-#' @export
-magrittr::`%>%`
-
 #' EVID formatting for tibble and other places.
 #'
 #' This is to make an EVID more readable by non
