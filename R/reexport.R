@@ -116,6 +116,9 @@ ggplot2::scale_y_date
 #' @export
 ggplot2::expand_limits
 
+#' @importFrom magrittr %>%
+#' @export
+magrittr::`%>%`
 
 .SD <- NULL
 `:=` <- function(...) { ## nocov start
