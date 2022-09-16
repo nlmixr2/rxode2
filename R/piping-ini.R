@@ -316,7 +316,7 @@
 #' @keywords internal
 #' @export
 .iniHandleFixOrUnfix <- function(expr, rxui, envir=parent.frame()) {
-  if (is.call(expr) && length(expr) == 2 && is.name(expr[[2]])) {
+ if (is.call(expr) && length(expr) == 2 && is.name(expr[[2]])) {
     if (identical(expr[[1]], quote(`fix`)) ||
           identical(expr[[1]], quote(`fixed`))) {
       expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
@@ -333,13 +333,13 @@
     .rhs <- expr[[2]]
     if (length(.rhs) > 1) {
       if (identical(.rhs[[1]], quote(`+`))) {
-        .iniHandleLotriMatrix(eval(as.call(list(quote(`lotri::lotri`), as.call(list(quote(`{`), expr)))),
+        .iniHandleLotriMatrix(eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
                                    envir=envir),
                               rxui)
         return(invisible())
       }
     }
-    expr[[3]] <- eval(as.call(list(quote(`lotri::lotri`), as.call(list(quote(`{`), expr)))),
+    expr[[3]] <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
                       envir=envir)[1, 1]
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
   }
