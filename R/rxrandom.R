@@ -609,8 +609,8 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #' @template birthdayProblem
 #'
 #' @return negative binomial random deviates. Note that `rxbinom2`
-#'   uses the `mu` parameterzation an dhe `rxbinom` uses the `prob`
-#'   parameterziation (`mu=size/(prob+size)`)
+#'   uses the `mu` parameterization an the `rxbinom` uses the `prob`
+#'   parameterization (`mu=size/(prob+size)`)
 #'
 #' @examples
 #' \donttest{

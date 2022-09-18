@@ -28,8 +28,8 @@ uses the vandercorput generator}
 }
 \value{
 negative binomial random deviates. Note that \code{rxbinom2}
-uses the \code{mu} parameterzation an dhe \code{rxbinom} uses the \code{prob}
-parameterziation (\code{mu=size/(prob+size)})
+uses the \code{mu} parameterization an the \code{rxbinom} uses the \code{prob}
+parameterization (\code{mu=size/(prob+size)})
 }
 \description{
 Care should be taken with this method not to encounter the

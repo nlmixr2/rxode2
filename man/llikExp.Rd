@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikExp}
 \alias{llikExp}
-\title{log likelihood and derivaties for exponential distribution}
+\title{log likelihood and derivatives for exponential distribution}
 \usage{
 llikExp(x, rate, full = FALSE)
 }
@@ -20,7 +20,7 @@ that has the derivatives with respect to the \code{rate} parameter
 the observation time-point
 }
 \description{
-log likelihood and derivaties for exponential distribution
+log likelihood and derivatives for exponential distribution
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikExp()} but you have to

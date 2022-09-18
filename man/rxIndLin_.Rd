@@ -22,7 +22,7 @@
 \item Final Time
 }}
 
-\item{InfusionRate}{= Rates of each comparment;  vector size = neq}
+\item{InfusionRate}{= Rates of each compartment;  vector size = neq}
 
 \item{on}{Indicator for if the compartment is "on"}
 

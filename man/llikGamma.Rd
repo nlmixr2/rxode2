@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikGamma}
 \alias{llikGamma}
-\title{log likelihood and derivaties for Gamma distribution}
+\title{log likelihood and derivatives for Gamma distribution}
 \usage{
 llikGamma(x, shape, rate, full = FALSE)
 }
@@ -22,7 +22,7 @@ that has the derivatives with respect to the \code{prob} parameters at
 the observation time-point
 }
 \description{
-log likelihood and derivaties for Gamma distribution
+log likelihood and derivatives for Gamma distribution
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikGamma()} but you have to

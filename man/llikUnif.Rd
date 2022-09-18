@@ -2,7 +2,7 @@
 % Please edit documentation in R/llik.R
 \name{llikUnif}
 \alias{llikUnif}
-\title{log likelihood and derivaties for Unif distribution}
+\title{log likelihood and derivatives for Unif distribution}
 \usage{
 llikUnif(x, alpha, beta, full = FALSE)
 }
@@ -22,7 +22,7 @@ that has the derivatives with respect to the \code{prob} parameters at
 the observation time-point
 }
 \description{
-log likelihood and derivaties for Unif distribution
+log likelihood and derivatives for Unif distribution
 }
 \details{
 In an \code{rxode2()} model, you can use \code{llikUnif()} but you have to

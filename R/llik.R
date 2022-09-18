@@ -90,7 +90,7 @@ llikPois <- function(x, lambda, full=FALSE) {
   .ret
 }
 
-#' Calculate the log liklihood of the binomial function (and its derivatives)
+#' Calculate the log likelihood of the binomial function (and its derivatives)
 #'
 #' 
 #' @param x  Number of successes
@@ -137,7 +137,7 @@ llikBinom <- function(x, size, prob, full=FALSE) {
   .ret
 }
 
-#' Calculate the log liklihood of the negative binomial function (and its derivatives)
+#' Calculate the log likelihood of the negative binomial function (and its derivatives)
 #' 
 #' @param x  Number of successes
 #' @param size Size of trial
@@ -183,7 +183,7 @@ llikNbinom <- function(x, size, prob, full=FALSE) {
   .ret
 }
 
-#' Calculate the log liklihood of the negative binomial function (and its derivatives)
+#' Calculate the log likelihood of the negative binomial function (and its derivatives)
 #' 
 #' @param x  Number of successes
 #' @param size Size of trial
@@ -229,7 +229,7 @@ llikNbinomMu <- function(x, size, mu, full=FALSE) {
   .ret
 }
 
-#' Calculate the log liklihood aof the binomial function (and its derivatives)
+#' Calculate the log likelihood of the binomial function (and its derivatives)
 #'
 #' @inheritParams stats::dbeta
 #' 
@@ -263,6 +263,7 @@ llikNbinomMu <- function(x, size, mu, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' 
 llikBeta <- function(x, shape1, shape2, full=FALSE) {
   checkmate::assertNumeric(x, min.len=0, lower=0, upper=1, any.missing=FALSE, finite=TRUE)
   checkmate::assertNumeric(shape1, min.len=0, lower=0, any.missing=FALSE, finite=TRUE)
@@ -368,7 +369,7 @@ llikChisq <-function(x, df, full=FALSE) {
   .ret
 }
 
-#' log likelihood and derivaties for exponential distribution
+#' log likelihood and derivatives for exponential distribution
 #' 
 #' @param x variable that is distributed by exponential distribution
 #' @inheritParams llikNorm
@@ -414,7 +415,7 @@ llikExp <-function(x, rate, full=FALSE) {
   .ret
 }
 
-#' log likelihood and derivaties for F distribution
+#' log likelihood and derivatives for F distribution
 #'
 #' @param x variable that is distributed by f distribution
 #' @inheritParams llikNorm
@@ -463,7 +464,7 @@ llikF <-function(x, df1, df2, full=FALSE) {
   .ret
 }
 
-#' log likelihood and derivaties for Geom distribution
+#' log likelihood and derivatives for Geom distribution
 #'
 #' @param x variable distributed by a geom distribution
 #' 
@@ -507,7 +508,7 @@ llikGeom <-function(x, prob, full=FALSE) {
   .ret
 }
 
-#' log likelihood and derivaties for Unif distribution
+#' log likelihood and derivatives for Unif distribution
 #'
 #' @param x variable distributed by a uniform distribution
 #' @param alpha is the lower limit of the uniform distribution
@@ -558,7 +559,7 @@ llikUnif <-function(x, alpha, beta, full=FALSE) {
   .ret
 }
 
-#' log likelihood and derivaties for Weibull distribution
+#' log likelihood and derivatives for Weibull distribution
 #' 
 #' @param x variable distributed by a Weibull distribution
 #' 
@@ -609,7 +610,7 @@ llikWeibull <-function(x, shape, scale, full=FALSE) {
 }
 
 
-#' log likelihood and derivaties for Gamma distribution
+#' log likelihood and derivatives for Gamma distribution
 #'
 #' @param x variable that is distributed by gamma distribution
 #' @param shape this is the distribution's shape parameter. Must be positive.
