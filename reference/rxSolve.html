@@ -397,10 +397,12 @@ must be setup specially to use this solving routine.</p></li>
 solving requests.  When specified this controls the relative and
 absolute tolerances of the ODE solvers.  By default the tolerance
 is <code>0.5*10^(-sigdig-2)</code> for regular ODEs. For the
-sensitivity equations and steady-state solutions the default is
-<code>0.5*10^(-sigdig-1.5)</code> (sensitivity changes only applicable
-for liblsoda).  By default this is unspecified (<code>NULL</code>) and uses
-the standard <code>atol</code>/<code>rtol</code>.</p></dd>
+sensitivity equations the default is <code>0.5*10^(-sigdig-1.5)</code>
+(sensitivity changes only applicable for liblsoda).  This also
+controls the <code>atol</code>/<code>rtol</code> of the steady state solutions. The
+<code>ssAtol</code>/<code>ssRtol</code> is <code>0.5*10^(-sigdig)</code> and for the sensitivities
+<code>0.5*10^(-sigdig+0.625)</code>.  By default
+this is unspecified (<code>NULL</code>) and uses the standard <code>atol</code>/<code>rtol</code>.</p></dd>
 
 
 <dt>atol</dt>
@@ -1037,7 +1039,7 @@ When <code>NA</code> (default) this is determined by the solver.</p></dd>
 
 <dt>nLlikAlloc</dt>
 <dd><p>The number of log likelihood endpoints that are
-used in the model.  This allows independent lliklihood per
+used in the model.  This allows independent log likelihood per
 endpoint in focei for nlmixr2.  It likely shouldn't be set,
 though it won't hurt anything if you do (just may take up more
 memory for larger allocations).</p></dd>
