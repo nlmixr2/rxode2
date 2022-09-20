@@ -630,4 +630,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
 
   goodParse("while-break", "a=1;while(1){a=a+3; break;}")
   badParse("while-break-bad", "a=1;while(1){a=a+3;}; break;")
+
+  goodParse("Dotted initial conditions",
+            paste(c("d/dt(C.A) = - 1",
+                    "C.A(0) = A"), collapse="\n"))
 })

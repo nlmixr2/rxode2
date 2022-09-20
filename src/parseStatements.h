@@ -46,8 +46,7 @@ static inline int handleRemainingAssignments(nodeInfo ni, char *name, int i, D_P
     aType(TF0);
     sb.o =0; sbDt.o=0; sbt.o = 0;
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-    sAppend(&sb,  "%s",v);
-    sAppend(&sbDt,"%s",v);
+    doDot2(&sb, &sbDt, v);
     sAppend(&sbt, "%s(0)",v);
   }
 
