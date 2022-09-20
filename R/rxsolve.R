@@ -833,7 +833,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else if (inherits(sigma, "character")) {
       .sigma <- sigma
     } else {
-      .sigma <- lotri::lotri(sigma)
+      .sigma <- lotri(sigma)
     }
     if (inherits(omega, "logical")) {
       .omega <- omega
@@ -842,7 +842,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else if (inherits(omega, "lotri")) {
       .omega <- omega
     } else {
-      .omega <- lotri::lotri(omega)
+      .omega <- lotri(omega)
     }
     if (checkmate::testIntegerish(indLinMatExpType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .indLinMatExpType <- as.integer(indLinMatExpType)
