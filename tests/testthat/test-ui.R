@@ -112,6 +112,8 @@ test_that("meta information parsing", {
 
   tmp1 <- one.cmt()
 
+  expect_true(inherits(as.function(tmp1), "function"))
+
   expect_equal(tmp1$meta$meta1, "meta")
   expect_equal(tmp1$meta$meta2, "meta2")
 
