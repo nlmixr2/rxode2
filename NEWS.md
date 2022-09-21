@@ -1,6 +1,6 @@
 # rxode2 2.0.8
 
-** Breaking changes
+## Breaking changes
 
 - `rxgamma` now only allows a `rate` input.  This aligns with the
   internal `rxode2` version of `rxgamma` and clarifies how this will
@@ -18,7 +18,7 @@
   at the end of the line.  It also means `dnorm()` now doesn't take
   any arguments.
 
-** New features
+## New features
 
 - Allow models in the `nlmixr2` form without an `ini({})` block
 
@@ -31,7 +31,7 @@
 
 - Piping now allow named strings (issue #249)
 
-** Bug fixes
+## Bug fixes
 
 - `rxode2`'s symengine would convert `sqrt(2)` to `M_SQRT_2` when it
   should be `M_SQRT2`.  This has been fixed; it was most noticeable in
@@ -41,7 +41,7 @@
   would duplicate if it is in the model).  This is most noticeable in
   the nlmixr2 log-likelihood estimation methods.
   
-** New features
+## New features
 
 - A new flag (`rxFlag`) has been created to tell you where in the
   `rxode2` solving process you are.  This is useful for debugging. If
