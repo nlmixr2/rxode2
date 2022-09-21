@@ -129,23 +129,31 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.8" id="rxode2-208">rxode2 2.0.8<a class="anchor" aria-label="anchor" href="#rxode2-208"></a></h2>
-<p>** Breaking changes</p>
+<div class="section level3">
+<h3 id="breaking-changes-2-0-8">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-2-0-8"></a></h3>
 <ul><li><p><code>rxgamma</code> now only allows a <code>rate</code> input. This aligns with the internal <code>rxode2</code> version of <code>rxgamma</code> and clarifies how this will be used. It is also aligned with the <code>llikGamma</code> function used for generalized likelihood estimation.</p></li>
 <li><p>ui <code>cauchy</code> simulations now follow the ui for <code>normal</code> and <code>t</code> distributions, which means you can combine with transformations. This is because the <code>cauchy</code> is a <code>t</code> distribution with one degree of freedom.</p></li>
 <li><p>ui <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> and <code><a href="https://rdrr.io/r/base/norm.html" class="external-link">norm()</a></code> are no longer equivalent to <code>add()</code>. Now it allows you to use the loglik <code><a href="../reference/llikNorm.html">llikNorm()</a></code> instead of the standard <code>nlmixr2</code> style focei likelihood. This is done by adding <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> at the end of the line. It also means <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> now doesn’t take any arguments.</p></li>
-</ul><p>** New features</p>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-2-0-8">New features<a class="anchor" aria-label="anchor" href="#new-features-2-0-8"></a></h3>
 <ul><li><p>Allow models in the <code>nlmixr2</code> form without an <code>ini({})</code> block</p></li>
 <li><p>Allow model piping of an omega matrix by <code>f %&gt;% ini(omegaMatrix)</code></p></li>
 <li><p>Families of log-likelihood were added to <code>rxode2</code> so that mixed likelihood nonlinear mixed effects models may be specified and run.</p></li>
 <li><p>The memory footprint of a <code>rxode2</code> solving has been reduced</p></li>
 <li><p>Piping now allow named strings (issue <a href="https://github.com/nlmixr2/rxode2/issues/249" class="external-link">#249</a>)</p></li>
-</ul><p>** Bug fixes</p>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-2-0-8">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-2-0-8"></a></h3>
 <ul><li><p><code>rxode2</code>’s symengine would convert <code>sqrt(2)</code> to <code>M_SQRT_2</code> when it should be <code>M_SQRT2</code>. This has been fixed; it was most noticeable in nlmixr2 log-likelihood estimation methods</p></li>
 <li><p><code>rxode2</code> treats <code>DV</code> as a non-covariate with <code>etTran</code> (last time it would duplicate if it is in the model). This is most noticeable in the nlmixr2 log-likelihood estimation methods.</p></li>
-</ul><p>** New features</p>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-2-0-8-1">New features<a class="anchor" aria-label="anchor" href="#new-features-2-0-8-1"></a></h3>
 <ul><li><p>A new flag (<code>rxFlag</code>) has been created to tell you where in the <code>rxode2</code> solving process you are. This is useful for debugging. If outputting this variable it will always be <code>11</code> or calculating the left handed equations. If you are using in conjunction with the <code>printf()</code> methods, it is a double variable and should be formatted with <code>"%f"</code>.</p></li>
 <li><p>An additional option of <code>fullPrint</code> has been added to <code><a href="../reference/rxode2.html">rxode2()</a></code> which allows <code>rprintf()</code> to be used in almost all of <code><a href="../reference/rxode2.html">rxode2()</a></code> steps (inductive linearization and matrix exponential are the exception here) instead of just the integration <code>ddt</code> step. It defaults to <code>FALSE</code>.</p></li>
 </ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.7" id="rxode2-207">rxode2 2.0.7<a class="anchor" aria-label="anchor" href="#rxode2-207"></a></h2><p class="text-muted">CRAN release: 2022-05-17</p>
 <ul><li><p>Removed accidental <code>^S</code> from news as requested by CRAN.</p></li>
