@@ -744,7 +744,8 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         }
       }
     }
-    .theta <- max(.iniDf$ntheta, na.rm=TRUE) + 1
+    .theta <- suppressWarnings(max(.iniDf$ntheta, na.rm=TRUE)) + 1
+    if (!is.finite(.theta)) .theta <- 1
     .extra <- .rxIniDfTemplate
     .extra$est <- value
     .extra$ntheta <- .theta
