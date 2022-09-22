@@ -2,10 +2,7 @@
 
 The following platforms were tested with a succesful check: MacOS release, Windows
   release, ubuntu devel, and ubuntu release.
+  
+Also the win-builder was checked and ran successfully
 
-Additionally solaris was tested on our local virtual machines
-
-* Changed to depend on R 4.0.  Windows needs special instructions for using with old R 3.6 tool-chain.
-
-* Changed sun options to match old sun options that successfully compiled the vignette.
-
+* This fix allows log-likelihood estimation in nlmixr2
