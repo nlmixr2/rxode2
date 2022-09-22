@@ -6,6 +6,9 @@
 #' @author Matthew L. Fidler
 #' @export
 #' @examples
+#' 
+#' \donttest{
+#' 
 #' ocmt <- function() {
 #'    ini({
 #'      tka <- exp(0.45) # Ka
@@ -43,12 +46,13 @@
 #' }
 #'
 #' rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
-#'
+#' }
 #'
 rxAppendModel <- function(model1, model2) {
   model1 <- assertRxUi(model1)
   model1 <- .copyUi(model1) # so modifications do not affect first model
   model2 <- assertRxUi(model2)
+  model2 <- .copyUi(model2)
   .ini1 <- model1$iniDf
   .ini2 <- model2$iniDf
   .bind <- intersect(c(model1$mv0$lhs, model1$mv0$state), model2$allCovs)

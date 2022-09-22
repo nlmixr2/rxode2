@@ -18,6 +18,9 @@ New model with both models appended together
 Append two rxui models together
 }
 \examples{
+
+\donttest{
+
 ocmt <- function() {
    ini({
      tka <- exp(0.45) # Ka
@@ -55,7 +58,7 @@ idr <- function() {
 }
 
 rxAppendModel(ocmt \%>\% model(ceff=cp,append=TRUE), idr)
-
+}
 
 }
 \author{
