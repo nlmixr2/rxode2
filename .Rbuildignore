@@ -135,3 +135,4 @@ tests/testthat/test-lincmt-parse.R
 ^/?build/refresh.R$
 ^/?build/sensitivites.R$
 
+^CRAN-SUBMISSION$
