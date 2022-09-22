@@ -240,9 +240,9 @@ $(document).on("keyup", function(e) {
             tmp <- tolower(cmt)
             p <- ggplot2::ggplot(as.data.frame(dat), ggplot2::aes_(x = as.name("time"), y = as.name(cmt)))
             if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
-              p <- p +geom_line(size = 1.2)
+              p <- p + geom_line(size = 1.2)
             } else {
-              p <- p+geom_line(linewidth = 1.2)
+              p <- p + geom_line(linewidth = 1.2)
             }
 
             p <- p +

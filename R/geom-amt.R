@@ -44,7 +44,8 @@ StatAmt <- ggplot2::ggproto("StatAmt", ggplot2::Stat,
 #' @return This returns a stat_amt in context of a ggplot2 plot
 #'
 #' @examples
-#'
+#' 
+#' \donttest{ 
 #' library(rxode2)
 #' library(units)
 #'
@@ -89,6 +90,7 @@ StatAmt <- ggplot2::ggproto("StatAmt", ggplot2::Stat,
 #' # of course you can make it a bit more visible
 #'
 #' plot(bidQd, C2) + geom_amt(aes(amt=amt), col="red", lty=1, size=1.2)
+#' }
 #' @export
 #' @inheritParams ggplot2::stat_identity
 stat_amt <- function(mapping = NULL, data = NULL,
