@@ -3,6 +3,8 @@
 \name{model.function}
 \alias{model.function}
 \alias{model.rxUi}
+\alias{model.rxode2}
+\alias{model.rxModelVars}
 \alias{model}
 \alias{model.default}
 \title{Model block for rxode2/nlmixr models}
@@ -10,6 +12,10 @@
 \method{model}{`function`}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
 
 \method{model}{rxUi}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
+
+\method{model}{rxode2}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
+
+\method{model}{rxModelVars}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
 
 model(
   x,

@@ -24,6 +24,8 @@
 
 - Allow model piping of an omega matrix by `f %>% ini(omegaMatrix)`
 
+- Standard models created with `rxode2()` can no be piped into a model function
+
 - Families of log-likelihood were added to `rxode2` so that mixed
   likelihood nonlinear mixed effects models may be specified and run.
 
