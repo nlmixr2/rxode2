@@ -3,6 +3,8 @@
 \name{ini.rxUi}
 \alias{ini.rxUi}
 \alias{ini.function}
+\alias{ini.rxode2}
+\alias{ini.rxModelVars}
 \alias{ini}
 \alias{ini.default}
 \title{Ini block for rxode2/nlmixr models}
@@ -10,6 +12,10 @@
 \method{ini}{rxUi}(x, ..., envir = parent.frame())
 
 \method{ini}{`function`}(x, ..., envir = parent.frame())
+
+\method{ini}{rxode2}(x, ..., envir = parent.frame())
+
+\method{ini}{rxModelVars}(x, ..., envir = parent.frame())
 
 ini(x, ..., envir = parent.frame())
 

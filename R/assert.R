@@ -81,6 +81,9 @@
 #'
 assertRxUi <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
+  if (inherits(model, "rxode2") || inherits(model, "rxModelVars")) {
+    model <- as.function(model)
+  }
   if (inherits(model, "function")) {
     model <- try(rxode2(model), silent=TRUE)
     if (inherits(model, "try-error")) {

@@ -14,6 +14,19 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
 }
 
+#' @export
+#' @rdname model
+model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
+  .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
+  x <- as.function(x)
+  .ret <- rxode2(x)
+  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
+}
+
+#' @export
+#' @rdname model
+model.rxModelVars <- model.rxode2
+
 #'  Handle model lines
 #'
 #' @param modelLines The model lines that are being considered
@@ -744,7 +757,11 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         }
       }
     }
-    .theta <- max(.iniDf$ntheta, na.rm=TRUE) + 1
+    if (all(is.na(.iniDf$ntheta))) {
+      .theta <- 1
+    } else {
+      .theta <- max(.iniDf$ntheta, na.rm=TRUE) + 1
+    }
     .extra <- .rxIniDfTemplate
     .extra$est <- value
     .extra$ntheta <- .theta

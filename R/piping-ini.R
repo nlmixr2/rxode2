@@ -367,6 +367,20 @@ ini.function <- function(x, ..., envir=parent.frame()) {
   .ret
 }
 
+#' @export
+#' @rdname ini
+ini.rxode2 <- function(x, ..., envir=parent.frame()) {
+  .ret <- as.function(x)
+  ini.function(.ret, ..., envir=envir)
+}
+
+#' @export
+#' @rdname ini
+ini.rxModelVars <- function(x, ..., envir=parent.frame()) {
+  .ret <- as.function(x)
+  ini.function(.ret, ..., envir=envir)
+}
+
 #' This tells if the line is modifying an estimate instead of a line of the model
 #'
 #' @param line Quoted line
