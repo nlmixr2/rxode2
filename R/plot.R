@@ -46,7 +46,7 @@ rxTheme <- function(base_size = 11, base_family = "",
     .greyX <- NULL
   .greyY <- NULL
   .blankGrid <- NULL
-  if (inherits(grid, "character") | grid == TRUE) {
+  if (inherits(grid, "character") || grid == TRUE) {
     .greyMajor <- ggplot2::element_line(color = "#BFBFB4")
     .panelGrid <- .greyMajor
     .greyMinor <- ggplot2::element_line(color = "#E6E6D8")
