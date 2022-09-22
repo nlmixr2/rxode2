@@ -757,6 +757,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         }
       }
     }
+
     if (all(is.na(.iniDf$ntheta))) {
       .theta <- 1
     } else {
