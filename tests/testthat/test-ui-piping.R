@@ -18,7 +18,7 @@ rxTest({
       tv = 3
       tcl = 10
       eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
-    }), list(quote(-ka),
+    }, "tv10=3"), list(quote(-ka),
              quote(tka <- 0.5),
              quote(tv <- 3),
              quote(tcl <- 10),
@@ -28,7 +28,8 @@ rxTest({
              quote(eta.ka ~ 3),
              quote(tv <- 3),
              quote(tcl <- 10),
-             quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1))))))
+             quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+             quote(tv10 <- 3)))
 
     expect_equal(testPipeQuote(tka=0.5, {
       tv = 3

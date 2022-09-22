@@ -86,6 +86,15 @@
       } else if (inherits(.cur, "character") && !is.null(names(.cur))) {
         .unlistedBrackets <- lapply(paste(names(.cur),"=", setNames(.cur, NULL)),
                                     str2lang)
+      } else if (inherits(.cur, "character") && length(.cur) == 1) {
+        .unlistedBrackets <- try(str2lang(.cur), silent=TRUE)
+        if (inherits(.unlistedBrackets, "try-error")) {
+          stop("vectors and list need to named numeric expression", call.=FALSE)
+        }
+        if (identical(.unlistedBrackets[[1]], quote(`=`))) {
+          .unlistedBrackets[[1]] <- quote(`<-`)
+        }
+        .unlistedBrackets <- list(.unlistedBrackets)
       } else {
         stop("vectors and list need to named numeric expression", call.=FALSE)
       }
