@@ -46,7 +46,7 @@ rxTheme <- function(base_size = 11, base_family = "",
     .greyX <- NULL
   .greyY <- NULL
   .blankGrid <- NULL
-  if (inherits(grid, "character") | grid == TRUE) {
+  if (inherits(grid, "character") || grid == TRUE) {
     .greyMajor <- ggplot2::element_line(color = "#BFBFB4")
     .panelGrid <- .greyMajor
     .greyMinor <- ggplot2::element_line(color = "#E6E6D8")
@@ -283,7 +283,11 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   if (!getOption("rxode2.theme", TRUE)) .theme <- NULL
   .repel <- NULL
   .legend <- NULL
-  .line <- geom_line(size = 1.2)
+  if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+    .line <- geom_line(size = 1.2)
+  } else {
+    .line <- geom_line(linewidth = 1.2)
+  }
   .rxSpaghetti <- getOption("rxode2.spaghetti", 7L)
   .ggrepel <- getOption("rxode2.ggrepel", TRUE) &&
     requireNamespace("ggrepel", quietly = TRUE)
@@ -298,7 +302,11 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
       .legend <- ggplot2::theme(legend.title = ggplot2::element_blank())
     } else {
       .legend <- ggplot2::guides(color = "none")
-      .line <- geom_line(size = 1.2, alpha = 0.2)
+      if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+        .line <- geom_line(size = 1.2, alpha = 0.2)
+      } else {
+        .line <- geom_line(linewidth = 1.2, alpha = 0.2)
+      }
       .aes <- .aesG
     }
   }
@@ -340,7 +348,11 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   if (length(.parm) > 1) {
     .facet <- facet_wrap(~trt, scales = "free_y")
   }
-  .line <- geom_line(size = 1.2, show.legend = !is.null(.facet))
+  if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+    .line <- geom_line(size = 1.2, show.legend = !is.null(.facet))
+  } else {
+    .line <- geom_line(linewidth = 1.2, show.legend = !is.null(.facet))
+  }
   .theme <- NULL
   if (getOption("rxode2.theme_bw", TRUE)) {
     .theme <- rxTheme()
@@ -395,7 +407,11 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   if (length(.parm) > 1) {
     .facet <- facet_wrap(~trt, scales = "free_y")
   }
-  .line <- geom_line(size = 1.1, show.legend = FALSE)
+  if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+    .line <- geom_line(size = 1.1, show.legend = FALSE)
+  } else {
+    .line <- geom_line(linewidth = 1.1, show.legend = FALSE)
+  }
   .theme <- NULL
   if (getOption("rxode2.theme_bw", TRUE)) {
     .theme <- rxTheme()

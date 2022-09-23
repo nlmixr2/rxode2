@@ -238,8 +238,14 @@ $(document).on("keyup", function(e) {
           plotname <- paste("plot", cmt, sep = "")
           output[[plotname]] <- renderPlot({
             tmp <- tolower(cmt)
-            p <- ggplot2::ggplot(as.data.frame(dat), ggplot2::aes_(x = as.name("time"), y = as.name(cmt))) +
-              ggplot2::geom_line(size = 1.2) +
+            p <- ggplot2::ggplot(as.data.frame(dat), ggplot2::aes_(x = as.name("time"), y = as.name(cmt)))
+            if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+              p <- p + geom_line(size = 1.2)
+            } else {
+              p <- p + geom_line(linewidth = 1.2)
+            }
+
+            p <- p +
               ggplot2::theme_bw(base_size = 18)
             if (values$logy) {
               p <- p + g.y.log10()
