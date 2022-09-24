@@ -1,3 +1,8 @@
+# rxode2 2.0.9
+
+- Remove log likelihoods from 'rxode2' to reduce compilation time and
+  increase maintainability of 'rxode2'. They were transferred to 'rxode2ll'
+
 # rxode2 2.0.8
 
 ## Breaking changes
