@@ -58,7 +58,7 @@ jobs:
           remotes::install_deps(dependencies = TRUE)
           remotes::install_dev("pkgdown")
           remotes::install_github('nlmixr2/lotri')
-          remotes::install_github('nlmixr2/roxde2ll')
+          remotes::install_github('nlmixr2/rxode2ll')
         shell: Rscript {0}
 
       - name: Install package
