@@ -40,6 +40,7 @@ Suggests:
     DT,
     covr,
     crayon,
+    checkmate,
     curl,
     data.table (>= 1.12.4),
     digest,
@@ -75,9 +76,9 @@ Suggests:
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
+    rxode2ll,
     assertthat,
     backports,
-    checkmate,
     cli (>= 2.0.0),
     dparser (>= 0.1.8),
     ggplot2,

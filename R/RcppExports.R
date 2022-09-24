@@ -276,66 +276,6 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
-llikBetaInternal <- function(x, shape1, shape2) {
-    .Call(`_rxode2_llikBetaInternal`, x, shape1, shape2)
-}
-
-llikBinomInternal <- function(x, size, prob) {
-    .Call(`_rxode2_llikBinomInternal`, x, size, prob)
-}
-
-llikCauchyInternal <- function(x, location, scale) {
-    .Call(`_rxode2_llikCauchyInternal`, x, location, scale)
-}
-
-llikChisqInternal <- function(x, df) {
-    .Call(`_rxode2_llikChisqInternal`, x, df)
-}
-
-llikExpInternal <- function(x, rate) {
-    .Call(`_rxode2_llikExpInternal`, x, rate)
-}
-
-llikFInternal <- function(x, df1, df2) {
-    .Call(`_rxode2_llikFInternal`, x, df1, df2)
-}
-
-llikGammaInternal <- function(x, shape, rate) {
-    .Call(`_rxode2_llikGammaInternal`, x, shape, rate)
-}
-
-llikGeomInternal <- function(x, p) {
-    .Call(`_rxode2_llikGeomInternal`, x, p)
-}
-
-llikNbinomInternal <- function(x, size, prob) {
-    .Call(`_rxode2_llikNbinomInternal`, x, size, prob)
-}
-
-llikNbinomMuInternal <- function(x, size, mu) {
-    .Call(`_rxode2_llikNbinomMuInternal`, x, size, mu)
-}
-
-llikNormInternal <- function(x, mu, sigma) {
-    .Call(`_rxode2_llikNormInternal`, x, mu, sigma)
-}
-
-llikPoisInternal <- function(x, lambda) {
-    .Call(`_rxode2_llikPoisInternal`, x, lambda)
-}
-
-llikTInternal <- function(x, df, mean, sd) {
-    .Call(`_rxode2_llikTInternal`, x, df, mean, sd)
-}
-
-llikUnifInternal <- function(x, alpha, beta) {
-    .Call(`_rxode2_llikUnifInternal`, x, alpha, beta)
-}
-
-llikWeibullInternal <- function(x, shape, scale) {
-    .Call(`_rxode2_llikWeibullInternal`, x, shape, scale)
-}
-
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }

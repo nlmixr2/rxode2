@@ -1,4 +1,49 @@
 #' @export
+llikBeta <- rxode2ll::llikBeta
+
+#' @export
+llikBinom <- rxode2ll::llikBinom
+
+#' @export
+llikCauchy <- rxode2ll::llikCauchy
+
+#' @export
+llikChisq <- rxode2ll::llikChisq
+
+#' @export
+llikExp <- rxode2ll::llikExp
+
+#' @export
+llikF <- rxode2ll::llikF
+
+#' @export
+llikGamma <- rxode2ll::llikGamma
+
+#' @export
+llikGeom <- rxode2ll::llikGeom
+
+#' @export
+llikNbinom <- rxode2ll::llikNbinom
+
+#' @export
+llikNbinomMu <- rxode2ll::llikNbinomMu
+
+#' @export
+llikNorm <-  rxode2ll::llikNorm
+
+#' @export
+llikPois <- rxode2ll::llikPois
+
+#' @export
+llikT <- rxode2ll::llikT
+
+#' @export
+llikUnif <- rxode2ll::llikUnif
+
+#' @export
+llikWeibull <- rxode2ll::llikWeibull
+
+#' @export
 scale_type <- ggplot2::scale_type
 
 #' @export
