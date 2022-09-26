@@ -1,47 +1,62 @@
+#' @importFrom rxode2ll llikBeta
 #' @export
-llikBeta <- rxode2ll::llikBeta
+rxode2ll::llikBeta
 
+#' @importFrom rxode2ll llikBinom
 #' @export
-llikBinom <- rxode2ll::llikBinom
+rxode2ll::llikBinom
 
+#' @importFrom rxode2ll llikCauchy
 #' @export
-llikCauchy <- rxode2ll::llikCauchy
+rxode2ll::llikCauchy
 
+#' @importFrom rxode2ll llikChisq
 #' @export
-llikChisq <- rxode2ll::llikChisq
+rxode2ll::llikChisq
 
+#' @importFrom rxode2ll llikExp
 #' @export
-llikExp <- rxode2ll::llikExp
+rxode2ll::llikExp
 
+#' @importFrom rxode2ll llikF
 #' @export
-llikF <- rxode2ll::llikF
+rxode2ll::llikF
 
+#' @importFrom rxode2ll llikGamma
 #' @export
-llikGamma <- rxode2ll::llikGamma
+rxode2ll::llikGamma
 
+#' @importFrom rxode2ll llikGeom
 #' @export
-llikGeom <- rxode2ll::llikGeom
+rxode2ll::llikGeom
 
+#' @importFrom rxode2ll llikNbinom
 #' @export
-llikNbinom <- rxode2ll::llikNbinom
+rxode2ll::llikNbinom
 
+#' @importFrom rxode2ll llikNbinomMu
 #' @export
-llikNbinomMu <- rxode2ll::llikNbinomMu
+rxode2ll::llikNbinomMu
 
+#' @importFrom rxode2ll llikNorm
 #' @export
-llikNorm <-  rxode2ll::llikNorm
+rxode2ll::llikNorm
 
+#' @importFrom rxode2ll llikPois
 #' @export
-llikPois <- rxode2ll::llikPois
+rxode2ll::llikPois
 
+#' @importFrom rxode2ll llikT
 #' @export
-llikT <- rxode2ll::llikT
+rxode2ll::llikT
 
+#' @importFrom rxode2ll llikUnif
 #' @export
-llikUnif <- rxode2ll::llikUnif
+rxode2ll::llikUnif
 
+#' @importFrom rxode2ll llikWeibull
 #' @export
-llikWeibull <- rxode2ll::llikWeibull
+rxode2ll::llikWeibull
 
 #' @export
 scale_type <- ggplot2::scale_type

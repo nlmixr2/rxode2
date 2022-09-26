@@ -3,6 +3,21 @@
 \docType{import}
 \name{reexports}
 \alias{reexports}
+\alias{llikBeta}
+\alias{llikBinom}
+\alias{llikCauchy}
+\alias{llikChisq}
+\alias{llikExp}
+\alias{llikF}
+\alias{llikGamma}
+\alias{llikGeom}
+\alias{llikNbinom}
+\alias{llikNbinomMu}
+\alias{llikNorm}
+\alias{llikPois}
+\alias{llikT}
+\alias{llikUnif}
+\alias{llikWeibull}
 \alias{aes}
 \alias{facet_wrap}
 \alias{geom_line}
@@ -36,5 +51,7 @@ below to see their documentation.
   \item{lotri}{\code{\link[lotri]{lotri}}}
 
   \item{magrittr}{\code{\link[magrittr:pipe]{\%>\%}}}
+
+  \item{rxode2ll}{\code{\link[rxode2ll]{llikBeta}}, \code{\link[rxode2ll]{llikBinom}}, \code{\link[rxode2ll]{llikCauchy}}, \code{\link[rxode2ll]{llikChisq}}, \code{\link[rxode2ll]{llikExp}}, \code{\link[rxode2ll]{llikF}}, \code{\link[rxode2ll]{llikGamma}}, \code{\link[rxode2ll]{llikGeom}}, \code{\link[rxode2ll]{llikNbinom}}, \code{\link[rxode2ll]{llikNbinomMu}}, \code{\link[rxode2ll]{llikNorm}}, \code{\link[rxode2ll]{llikPois}}, \code{\link[rxode2ll]{llikT}}, \code{\link[rxode2ll]{llikUnif}}, \code{\link[rxode2ll]{llikWeibull}}}
 }}
 
