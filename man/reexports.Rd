@@ -55,3 +55,4 @@ below to see their documentation.
   \item{rxode2ll}{\code{\link[rxode2ll]{llikBeta}}, \code{\link[rxode2ll]{llikBinom}}, \code{\link[rxode2ll]{llikCauchy}}, \code{\link[rxode2ll]{llikChisq}}, \code{\link[rxode2ll]{llikExp}}, \code{\link[rxode2ll]{llikF}}, \code{\link[rxode2ll]{llikGamma}}, \code{\link[rxode2ll]{llikGeom}}, \code{\link[rxode2ll]{llikNbinom}}, \code{\link[rxode2ll]{llikNbinomMu}}, \code{\link[rxode2ll]{llikNorm}}, \code{\link[rxode2ll]{llikPois}}, \code{\link[rxode2ll]{llikT}}, \code{\link[rxode2ll]{llikUnif}}, \code{\link[rxode2ll]{llikWeibull}}}
 }}
 
+\value{ Inherited from parent routine }
