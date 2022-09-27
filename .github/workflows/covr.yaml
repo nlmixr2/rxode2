@@ -1,67 +1,39 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
   pull_request:
-    branches:
-      - main
-      - master
+    branches: [main, master]
 
 name: test-coverage
 
 jobs:
   test-coverage:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
-      RSPM: https://packagemanager.rstudio.com/cran/__linux__/focal/latest
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - uses: actions/checkout@v2
 
-      - uses: r-lib/actions/setup-r@v1
-
-      - uses: r-lib/actions/setup-pandoc@v1
-
-      - uses: r-lib/actions/setup-tinytex@v1
-
-      - name: Install packages from cran (source)
-        run: |
-          install.packages('remotes')
-          install.packages("jsonlite", type="source")
-          install.packages("usethis", type="source")
-          install.packages("symengine", type="source")
-          remotes::install_cran("covr")
-        shell: Rscript {0}
-
-      - name: Query dependencies
-        run: |
-          install.packages('remotes')
-          remotes::install_github("nlmixr2/lotri")
-          remotes::install_github("nlmixr2/rxode2ll")
-        shell: Rscript {0}
-
-      - name: Cache R packages
-        uses: actions/cache@v2
+      - uses: r-lib/actions/setup-r@v2
         with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }}
-          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-
+          use-public-rspm: true
 
-      - name: Install dependencies
-        run: |
-          remotes::install_deps(dependencies = TRUE)
-        shell: Rscript {0}
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::covr
+          needs: coverage
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          pak-version: devel
+          extra-packages: |
+            any::rcmdcheck
+            github::nlmixr2/lotri
+            github::nlmixr2/rxode2ll
 
       - name: Test coverage
-        run: |
-           options(covr.flags = c(CFLAGS = "-O0 --coverage", CXXFLAGS = "-O0 --coverage", LDFLAGS = "--coverage"))
-           pkgbuild::with_build_tools(covr::codecov(quiet=FALSE))
+        run: covr::codecov(quiet = FALSE)
         shell: Rscript {0}
-
-      - name: Show testthat output
-        if: always()
-        run: find /tmp/ -name 'testthat.Rout*' -exec cat '{}' \; || true
-        shell: bash
-
