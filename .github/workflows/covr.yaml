@@ -1,45 +1,58 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+      - master
 
 name: test-coverage
 
 jobs:
   test-coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
+      R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
+      RSPM: https://packagemanager.rstudio.com/cran/__linux__/focal/latest
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
       - uses: actions/checkout@v2
 
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
+      - uses: r-lib/actions/setup-r@v1
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            any::covr
-            any::rcmdcheck
-          needs: coverage
+      - uses: r-lib/actions/setup-pandoc@v1
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          pak-version: devel
-          extra-packages: |
-            github::nlmixr2/lotri
+      - uses: r-lib/actions/setup-tinytex@v1
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Install packages from cran (source)
+        run: |
+          install.packages('remotes')
+          install.packages("jsonlite", type="source")
+          install.packages("usethis", type="source")
+          install.packages("symengine", type="source")
+          remotes::install_cran("covr")
+        shell: Rscript {0}
+
+      - name: Query dependencies
+        run: |
+          install.packages('remotes')
+          remotes::install_github("nlmixr2/lotri")
+          remotes::install_github("nlmixr2/rxode2ll")
+        shell: Rscript {0}
+
+      - name: Cache R packages
+        uses: actions/cache@v2
         with:
-          pak-version: devel
-          extra-packages: |
-            github::nlmixr2/rxode2ll
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }}
+          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-
+
+      - name: Install dependencies
+        run: remotes::install_deps(dependencies = TRUE)
+        shell: Rscript {0}
 
       - name: Test coverage
-        run: covr::codecov(quiet = FALSE)
+        run: covr::codecov(quiet=FALSE)
         shell: Rscript {0}
