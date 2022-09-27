@@ -128,12 +128,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2.0.8" id="rxode2-208">rxode2 2.0.8<a class="anchor" aria-label="anchor" href="#rxode2-208"></a></h2>
+<h2 class="pkg-version" data-toc-text="2.0.9" id="rxode2-209">rxode2 2.0.9<a class="anchor" aria-label="anchor" href="#rxode2-209"></a></h2>
+<ul><li>Remove log likelihoods from ‘rxode2’ to reduce compilation time and increase maintainability of ‘rxode2’. They were transferred to ‘rxode2ll’</li></ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2.0.8" id="rxode2-208">rxode2 2.0.8<a class="anchor" aria-label="anchor" href="#rxode2-208"></a></h2><p class="text-muted">CRAN release: 2022-09-23</p>
 <div class="section level3">
 <h3 id="breaking-changes-2-0-8">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-2-0-8"></a></h3>
 <ul><li><p><code>rxgamma</code> now only allows a <code>rate</code> input. This aligns with the internal <code>rxode2</code> version of <code>rxgamma</code> and clarifies how this will be used. It is also aligned with the <code>llikGamma</code> function used for generalized likelihood estimation.</p></li>
 <li><p>ui <code>cauchy</code> simulations now follow the ui for <code>normal</code> and <code>t</code> distributions, which means you can combine with transformations. This is because the <code>cauchy</code> is a <code>t</code> distribution with one degree of freedom.</p></li>
-<li><p>ui <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> and <code><a href="https://rdrr.io/r/base/norm.html" class="external-link">norm()</a></code> are no longer equivalent to <code>add()</code>. Now it allows you to use the loglik <code><a href="../reference/llikNorm.html">llikNorm()</a></code> instead of the standard <code>nlmixr2</code> style focei likelihood. This is done by adding <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> at the end of the line. It also means <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> now doesn’t take any arguments.</p></li>
+<li><p>ui <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> and <code><a href="https://rdrr.io/r/base/norm.html" class="external-link">norm()</a></code> are no longer equivalent to <code>add()</code>. Now it allows you to use the loglik <code><a href="https://nlmixr2.github.io/rxode2ll/reference/llikNorm.html">llikNorm()</a></code> instead of the standard <code>nlmixr2</code> style focei likelihood. This is done by adding <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> at the end of the line. It also means <code><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm()</a></code> now doesn’t take any arguments.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="new-features-2-0-8">New features<a class="anchor" aria-label="anchor" href="#new-features-2-0-8"></a></h3>
