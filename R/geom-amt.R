@@ -17,10 +17,7 @@
   return(ret)
 }
 
-GeomAmt <- ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
-  required_aes = c("x", "y", "xend", "yend"),
-  default_aes = ggplot2::aes(colour = "black", linetype = "dotted", size = 0.5, alpha = 1, fill = "black")
-)
+GeomAmt <- NULL
 
 StatAmt <- ggplot2::ggproto("StatAmt", ggplot2::Stat,
   compute_group = function(data, scales) {
