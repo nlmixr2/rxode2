@@ -17,6 +17,8 @@
       "' is loaded\nRecompile rxode2 with the this version of dparser",
       call. = FALSE
     )
+  } else {
+    requireNamespace("dparser", quietly=TRUE)
   }
   if (!identical(.PreciseSumsVersion, utils::packageVersion("PreciseSums"))) {
     stop("rxode2 compiled with PreciseSums '", as.character(.PreciseSumsVersion),
@@ -24,6 +26,8 @@
       "' is loaded\nRecompile rxode2 with the this version of PreciseSums",
       call. = FALSE
     )
+  } else {
+    requireNamespace("PreciseSums", quietly=TRUE)
   }
 
   if (!identical(.rxode2llVersion, utils::packageVersion("rxode2ll"))) {
@@ -32,6 +36,8 @@
          "' but rxode2ll '", as.character(utils::packageVersion("rxode2ll")),
          "' is loaded\nRecompile rxode2 with the this version of rxode2ll",
          call. = FALSE)
+  } else {
+    requireNamespace("rxode2ll", quietly=TRUE)
   }
 
   if (requireNamespace("dplyr", quietly=TRUE)) {
