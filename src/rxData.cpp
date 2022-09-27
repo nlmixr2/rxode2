@@ -1263,7 +1263,7 @@ NumericVector rxSetupScale(const RObject &obj,
   return ret;
 }
 
-typedef struct {
+struct rx_globals {
   double *gLlikSave;
   double *gSolveLast2;
   double *gSolveLast;
@@ -1328,7 +1328,7 @@ typedef struct {
   bool zeroOmega = false;
   bool zeroSigma = false;
   int *gindLin = NULL;
-} rx_globals;
+};
 
 
 rx_globals _globals;
@@ -2483,7 +2483,7 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
   }
 }
 
-typedef struct{
+struct rxSolve_t {
   bool updateObject;
   bool isRxSolve;
   bool isEnvironment;
@@ -2520,7 +2520,7 @@ typedef struct{
   CharacterVector idLevels;
   bool convertInt = false;
   bool throttle = false;
-} rxSolve_t;
+};
 
 SEXP rxSolve_(const RObject &obj, const List &rxControl, const Nullable<CharacterVector> &specParams,
               const Nullable<List> &extraArgs, const RObject &params, const RObject &events,

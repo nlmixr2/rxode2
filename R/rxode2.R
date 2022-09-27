@@ -309,7 +309,6 @@ NA_LOGICAL <- NA # nolint
 #' @useDynLib rxode2, .registration=TRUE
 #' @importFrom PreciseSums fsum
 #' @importFrom Rcpp evalCpp
-#' @importFrom rxode2ll llikNorm
 #' @importFrom checkmate qassert
 #' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion
 #' @importFrom stats setNames update dnorm integrate
