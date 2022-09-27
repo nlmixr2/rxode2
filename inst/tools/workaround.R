@@ -115,7 +115,7 @@ def <- gsub("[^ ]* *[*]?([^;]*);", "\\1", def)
 def <- unique(c(def, c("_sum", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord")))
 
 ## deparse1 came from R 4.0, use deparse2
-deparse2 <- function (expr, collapse = " ", width.cutoff = 500L, ...) {
+deparse2 <- function(expr, collapse = " ", width.cutoff = 500L, ...) {
   paste(deparse(expr, width.cutoff, ...), collapse = collapse)
 }
 

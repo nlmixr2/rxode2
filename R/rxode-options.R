@@ -8,7 +8,9 @@
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
 .dparserVersion <- utils::packageVersion("dparser")
 .rxode2llVersion <- utils::packageVersion("rxode2ll")
-.onLoad <- function(libname, pkgname) { ## nocov start
+
+## nocov start
+.onLoad <- function(libname, pkgname) {
   if (!identical(.dparserVersion, utils::packageVersion("dparser"))) {
     stop("rxode2 compiled with dparser '", as.character(.dparserVersion),
       "' but dparser '", as.character(utils::packageVersion("dparser")),
@@ -25,11 +27,11 @@
   }
 
   if (!identical(.rxode2llVersion, utils::packageVersion("rxode2ll"))) {
-    stop("rxode2 compiled with rxode2ll '", as.character(.rxode2llVersion,
+    stop("rxode2 compiled with rxode2ll '",
+         as.character(.rxode2llVersion),
          "' but rxode2ll '", as.character(utils::packageVersion("rxode2ll")),
          "' is loaded\nRecompile rxode2 with the this version of rxode2ll",
-         call. = FALSE
-         )
+         call. = FALSE)
   }
 
   if (requireNamespace("dplyr", quietly=TRUE)) {
