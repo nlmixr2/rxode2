@@ -23,6 +23,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          pak-version: devel
           extra-packages: |
             github::nlmixr2/lotri
             github::nlmixr2/rxode2ll
