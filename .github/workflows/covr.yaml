@@ -23,16 +23,12 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::covr
-          needs: coverage
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          pak-version: devel
           extra-packages: |
-            any::rcmdcheck
             github::nlmixr2/lotri
             github::nlmixr2/rxode2ll
+            any::covr
+            any::rcmdcheck
+          needs: coverage
 
       - name: Test coverage
         run: covr::codecov(quiet = FALSE)
