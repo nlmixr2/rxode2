@@ -1117,12 +1117,28 @@ rxMd5 <- function(model, # Model File
   }
 } # end function rxMd5
 
+.rxLastModels <- NULL
+
+.rxShouldUnload <- function(parseMd5) {
+  if (is.null(.rxLastModels)) return(TRUE)
+  return(!(parseMd5 %in% .rxLastModels))
+}
+
 .rxTimeId <- function(parseMd5) {
   if (exists(parseMd5, envir = .rxModels)) {
     .timeId <- get(parseMd5, envir = .rxModels)
   } else {
     .timeId <- as.integer(Sys.time())
     assign(parseMd5, .timeId, envir = .rxModels)
+    .rxLastModels <- c(parseMd5, .rxLastModels)
+    .nKeep <- getOption("rxode2.dontUnload", 10)
+    .nKeep <- as.integer(.nKeep)
+    if (.nKeep <= 0L) {
+      .rxLastModels <- NULL
+    } else if (length(.rxLastModels) < .nKeep) {
+      .rxLastModels <- .rxLastModels[seq(1, .nKeep)]
+    }
+    assignInMyNamespace(".rxLastModels", .rxLastModels)
   }
   return(.timeId)
 }

@@ -5940,6 +5940,7 @@ bool rxAllowUnload(bool allow){
 RObject rxUnloadAll_(){
   getRxModels();
   Function dynUnload("dyn.unload", R_BaseNamespace);
+  Function shouldUnloadDll = getRxFn(".rxShouldUnload");
   CharacterVector vars = _rxModels.ls(true);
   std::string exclude = ".rxSolveDat.";
   for (unsigned int i = vars.size(); i--;) {
@@ -5949,8 +5950,10 @@ RObject rxUnloadAll_(){
         int val = asInt(_rxModels[varC], "_rxModels[varC]");
         if (val > 1){
         } else if (val == 0 && rxUnload_){
-          dynUnload(varC);
-          rmRxModelsFromDll(varC);
+          if (shouldUnloadDll(varC)){
+            dynUnload(varC);
+            rmRxModelsFromDll(varC);
+          }
         }
       }
     }
