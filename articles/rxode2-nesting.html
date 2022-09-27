@@ -299,24 +299,24 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/dimnames.html" class="external-link">dimnames</a></span><span class="op">(</span><span class="va">tMat</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">theta</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">theta</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">tMat</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt;               TKA          TCl            V2           Q           V3</span></span>
-<span><span class="co">#&gt; TKA   0.061285908 -0.008448978 -0.0154487932  0.03675053 -0.063933650</span></span>
-<span><span class="co">#&gt; TCl  -0.008448978  0.123720797 -0.0663250234 -0.04811193  0.058161171</span></span>
-<span><span class="co">#&gt; V2   -0.015448793 -0.066325023  0.0738559960  0.03361093 -0.061746785</span></span>
-<span><span class="co">#&gt; Q     0.036750526 -0.048111929  0.0336109322  0.14710306 -0.115016307</span></span>
-<span><span class="co">#&gt; V3   -0.063933650  0.058161171 -0.0617467854 -0.11501631  0.207128467</span></span>
-<span><span class="co">#&gt; Kin   0.026359049 -0.017391761 -0.0043793993 -0.07074348  0.028897872</span></span>
-<span><span class="co">#&gt; Kout -0.036512968  0.020393828 -0.0259098201 -0.04383442  0.107955589</span></span>
-<span><span class="co">#&gt; EC50  0.029917232 -0.052550098  0.0002598937  0.03508936 -0.004832978</span></span>
-<span><span class="co">#&gt;               Kin        Kout          EC50</span></span>
-<span><span class="co">#&gt; TKA   0.026359049 -0.03651297  0.0299172315</span></span>
-<span><span class="co">#&gt; TCl  -0.017391761  0.02039383 -0.0525500978</span></span>
-<span><span class="co">#&gt; V2   -0.004379399 -0.02590982  0.0002598937</span></span>
-<span><span class="co">#&gt; Q    -0.070743477 -0.04383442  0.0350893625</span></span>
-<span><span class="co">#&gt; V3    0.028897872  0.10795559 -0.0048329781</span></span>
-<span><span class="co">#&gt; Kin   0.154271884  0.02687671  0.0160853828</span></span>
-<span><span class="co">#&gt; Kout  0.026876711  0.16185710  0.0518462370</span></span>
-<span><span class="co">#&gt; EC50  0.016085383  0.05184624  0.0943540481</span></span></code></pre>
+<pre><code><span><span class="co">#&gt;              TKA         TCl           V2           Q           V3          Kin</span></span>
+<span><span class="co">#&gt; TKA   0.06344890  0.06879131 -0.048287014  0.03344906  0.025624213  0.055378537</span></span>
+<span><span class="co">#&gt; TCl   0.06879131  0.16938193 -0.045407510  0.03992253  0.070006368  0.100406524</span></span>
+<span><span class="co">#&gt; V2   -0.04828701 -0.04540751  0.111033446 -0.01264408 -0.026448922 -0.085914662</span></span>
+<span><span class="co">#&gt; Q     0.03344906  0.03992253 -0.012644079  0.09498835 -0.021342390  0.071218722</span></span>
+<span><span class="co">#&gt; V3    0.02562421  0.07000637 -0.026448922 -0.02134239  0.051851013  0.009989921</span></span>
+<span><span class="co">#&gt; Kin   0.05537854  0.10040652 -0.085914662  0.07121872  0.009989921  0.177201266</span></span>
+<span><span class="co">#&gt; Kout -0.01615779 -0.06342977 -0.045437856  0.01265418 -0.048234069  0.056052016</span></span>
+<span><span class="co">#&gt; EC50 -0.05030045 -0.05233210  0.001169806 -0.00364850 -0.032828592  0.014133587</span></span>
+<span><span class="co">#&gt;             Kout         EC50</span></span>
+<span><span class="co">#&gt; TKA  -0.01615779 -0.050300447</span></span>
+<span><span class="co">#&gt; TCl  -0.06342977 -0.052332101</span></span>
+<span><span class="co">#&gt; V2   -0.04543786  0.001169806</span></span>
+<span><span class="co">#&gt; Q     0.01265418 -0.003648500</span></span>
+<span><span class="co">#&gt; V3   -0.04823407 -0.032828592</span></span>
+<span><span class="co">#&gt; Kin   0.05605202  0.014133587</span></span>
+<span><span class="co">#&gt; Kout  0.14841163  0.028956647</span></span>
+<span><span class="co">#&gt; EC50  0.02895665  0.125792865</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="nesting-variability">Nesting Variability<a class="anchor" aria-label="anchor" href="#nesting-variability"></a>
@@ -381,18 +381,18 @@
 <pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 8,000 x 24</span></span></span>
-<span><span class="co">#&gt;    sim.id id    inv.C~1 inv.C~2 inv.K~3 inv.K~4 eye.C~5 eye.C~6 eye.K~7 eye.Ka~8</span></span>
-<span><span class="co">#&gt;     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>      1 1     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span>  0.074<span style="text-decoration: underline;">7</span>  0.248  -<span style="color: #BB0000;">0.084</span><span style="color: #BB0000; text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.277</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>      1 2     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.119</span>   0.159   0.333   0.089<span style="text-decoration: underline;">4</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>      1 3     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.094</span><span style="color: #BB0000; text-decoration: underline;">9</span>  0.135  -<span style="color: #BB0000;">0.104</span>   0.513  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>      1 4     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.177</span>   0.033<span style="text-decoration: underline;">3</span>  0.266  -<span style="color: #BB0000;">0.397</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>      1 5     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span>  0.143  -<span style="color: #BB0000;">0.213</span>  -<span style="color: #BB0000;">0.160</span>   0.197  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>      1 6     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span>  0.158   0.077<span style="text-decoration: underline;">0</span> -<span style="color: #BB0000;">0.240</span>   0.133  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>      1 7     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.153</span>   0.208   0.390  -<span style="color: #BB0000;">0.022</span><span style="color: #BB0000; text-decoration: underline;">4</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>      1 8     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.407</span>   0.342   0.224   0.004<span style="text-decoration: underline;">37</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>      1 9     0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.178</span>   0.084<span style="text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.122</span>   0.144  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>      1 10    0.005<span style="text-decoration: underline;">09</span> -<span style="color: #BB0000;">0.097</span><span style="color: #BB0000; text-decoration: underline;">1</span>   0.204 -<span style="color: #BB0000;">0.074</span><span style="color: #BB0000; text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.013</span><span style="color: #BB0000; text-decoration: underline;">0</span>  0.261   0.042<span style="text-decoration: underline;">4</span>  0.036<span style="text-decoration: underline;">3</span> </span></span>
+<span><span class="co">#&gt;    sim.id id    inv.C~1 inv.C~2 inv.K~3 inv.K~4 eye.C~5 eye.C~6 eye.Ka~7 eye.K~8</span></span>
+<span><span class="co">#&gt;     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>      1 1      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156  0.097<span style="text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.343</span>  -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">32</span> -<span style="color: #BB0000;">0.079</span><span style="color: #BB0000; text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>      1 2      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156  0.087<span style="text-decoration: underline;">1</span> -<span style="color: #BB0000;">0.022</span><span style="color: #BB0000; text-decoration: underline;">7</span>  0.112    0.396 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>      1 3      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156 -<span style="color: #BB0000;">0.304</span>   0.061<span style="text-decoration: underline;">0</span>  0.439    0.046<span style="text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>      1 4      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156  0.374  -<span style="color: #BB0000;">0.072</span><span style="color: #BB0000; text-decoration: underline;">3</span>  0.161    0.105 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>      1 5      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156 -<span style="color: #BB0000;">0.102</span>  -<span style="color: #BB0000;">0.047</span><span style="color: #BB0000; text-decoration: underline;">5</span> -<span style="color: #BB0000;">0.202</span>   -<span style="color: #BB0000;">0.382</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>      1 6      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156  0.035<span style="text-decoration: underline;">1</span>  0.377  -<span style="color: #BB0000;">0.007</span><span style="color: #BB0000; text-decoration: underline;">39</span>  0.089<span style="text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>      1 7      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156 -<span style="color: #BB0000;">0.195</span>   0.092<span style="text-decoration: underline;">0</span>  0.086<span style="text-decoration: underline;">1</span>   0.267 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>      1 8      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156  0.471   0.034<span style="text-decoration: underline;">2</span>  0.064<span style="text-decoration: underline;">6</span>  -<span style="color: #BB0000;">0.018</span><span style="color: #BB0000; text-decoration: underline;">1</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>      1 9      0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156 -<span style="color: #BB0000;">0.121</span>   0.298   0.394   -<span style="color: #BB0000;">0.179</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>      1 10     0.016<span style="text-decoration: underline;">4</span>  0.032<span style="text-decoration: underline;">5</span>  -<span style="color: #BB0000;">0.164</span>   0.156  0.072<span style="text-decoration: underline;">7</span>  0.141  -<span style="color: #BB0000;">0.252</span>   -<span style="color: #BB0000;">0.065</span><span style="color: #BB0000; text-decoration: underline;">2</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ... with 7,990 more rows, 14 more variables: `iov.Cl(occ==1)` &lt;dbl&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   `iov.Cl(occ==2)` &lt;dbl&gt;, `iov.Ka(occ==1)` &lt;dbl&gt;, `iov.Ka(occ==2)` &lt;dbl&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   V2 &lt;dbl&gt;, V3 &lt;dbl&gt;, TCl &lt;dbl&gt;, eta.Cl &lt;dbl&gt;, TKA &lt;dbl&gt;, eta.Ka &lt;dbl&gt;,</span></span></span>
@@ -410,17 +410,17 @@
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 976,000 x 21</span></span></span>
-<span><span class="co">#&gt;   sim.id    id time  inv.Cl inv.Ka eye.Cl  eye.Ka   iov.Cl iov.Ka      C2</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494;">[h]</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>      1     1  0   0.005<span style="text-decoration: underline;">09</span>  0.204 0.074<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.084</span><span style="color: #BB0000; text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">11</span> -<span style="color: #BB0000;">0.125</span>    0   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>      1     1  0.1 0.005<span style="text-decoration: underline;">09</span>  0.204 0.248  -<span style="color: #BB0000;">0.277</span>  -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">11</span> -<span style="color: #BB0000;">0.125</span>   -<span style="color: #BB0000;">7.13</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>      1     1  4   0.005<span style="text-decoration: underline;">09</span>  0.204 0.074<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.084</span><span style="color: #BB0000; text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">11</span> -<span style="color: #BB0000;">0.125</span> -<span style="color: #BB0000;">140.</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>      1     1  4.1 0.005<span style="text-decoration: underline;">09</span>  0.204 0.248  -<span style="color: #BB0000;">0.277</span>  -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">11</span> -<span style="color: #BB0000;">0.125</span> -<span style="color: #BB0000;">166.</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>      1     1  8   0.005<span style="text-decoration: underline;">09</span>  0.204 0.074<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.084</span><span style="color: #BB0000; text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">11</span> -<span style="color: #BB0000;">0.125</span> -<span style="color: #BB0000;">251.</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>      1     1  8.1 0.005<span style="text-decoration: underline;">09</span>  0.204 0.248  -<span style="color: #BB0000;">0.277</span>  -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">11</span> -<span style="color: #BB0000;">0.125</span>  -<span style="color: #BB0000;">67.3</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ... with 975,994 more rows, and 11 more variables: C3 &lt;dbl&gt;, CL &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   KA &lt;dbl&gt;, ef0 &lt;dbl&gt;, depot &lt;dbl&gt;, centr &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   occ &lt;fct&gt;, eye &lt;fct&gt;, inv &lt;fct&gt;</span></span></span></code></pre>
+<span><span class="co">#&gt;   sim.id    id time inv.Cl inv.Ka  eye.Cl   eye.Ka iov.Cl  iov.Ka    C2     C3</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494;">[h]</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>      1     1  0   0.016<span style="text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.164</span>  0.097<span style="text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">32</span>  0.148 -<span style="color: #BB0000;">0.082</span><span style="color: #BB0000; text-decoration: underline;">4</span>  0    0     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>      1     1  0.1 0.016<span style="text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.164</span> -<span style="color: #BB0000;">0.343</span>  -<span style="color: #BB0000;">0.079</span><span style="color: #BB0000; text-decoration: underline;">8</span>   0.148 -<span style="color: #BB0000;">0.082</span><span style="color: #BB0000; text-decoration: underline;">4</span> 13.3  0.015<span style="text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>      1     1  4   0.016<span style="text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.164</span>  0.097<span style="text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">32</span>  0.148 -<span style="color: #BB0000;">0.082</span><span style="color: #BB0000; text-decoration: underline;">4</span> -<span style="color: #BB0000;">1.76</span> 6.77  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>      1     1  4.1 0.016<span style="text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.164</span> -<span style="color: #BB0000;">0.343</span>  -<span style="color: #BB0000;">0.079</span><span style="color: #BB0000; text-decoration: underline;">8</span>   0.148 -<span style="color: #BB0000;">0.082</span><span style="color: #BB0000; text-decoration: underline;">4</span> 39.8  6.91  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>      1     1  8   0.016<span style="text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.164</span>  0.097<span style="text-decoration: underline;">6</span> -<span style="color: #BB0000;">0.003</span><span style="color: #BB0000; text-decoration: underline;">32</span>  0.148 -<span style="color: #BB0000;">0.082</span><span style="color: #BB0000; text-decoration: underline;">4</span> 19.0  9.95  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>      1     1  8.1 0.016<span style="text-decoration: underline;">4</span> -<span style="color: #BB0000;">0.164</span> -<span style="color: #BB0000;">0.343</span>  -<span style="color: #BB0000;">0.079</span><span style="color: #BB0000; text-decoration: underline;">8</span>   0.148 -<span style="color: #BB0000;">0.082</span><span style="color: #BB0000; text-decoration: underline;">4</span> 16.8  9.97  </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ... with 975,994 more rows, and 10 more variables: CL &lt;dbl&gt;, KA &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   ef0 &lt;dbl&gt;, depot &lt;dbl&gt;, centr &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, occ &lt;fct&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   eye &lt;fct&gt;, inv &lt;fct&gt;</span></span></span></code></pre>
 <p>There are multiple investigators in a study; Each investigator has a number of individuals enrolled at their site. <code>rxode2</code> automatically determines the number of investigators and then will simulate an effect for each investigator. With the output, <code>inv.Cl(inv==1)</code> will be the <code>inv.Cl</code> for investigator 1, <code>inv.Cl(inv==2)</code> will be the <code>inv.Cl</code> for investigator 2, etc.</p>
 <p><code>inv.Cl(inv==1)</code>, <code>inv.Cl(inv==2)</code>, etc will be simulated for each study and then combined to form the between investigator variability. In equation form these represent the following:</p>
 <pre><code><span><span class="va">inv.Cl</span> <span class="op">=</span> <span class="op">(</span><span class="va">inv</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">*</span> <span class="va">`inv.Cl(inv==1)`</span> <span class="op">+</span> <span class="op">(</span><span class="va">inv</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span> <span class="op">*</span> <span class="va">`inv.Cl(inv==2)`</span></span></code></pre>
@@ -428,63 +428,63 @@
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">params</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt;   sim.id id inv.Cl(inv==1) inv.Cl(inv==2) inv.Ka(inv==1) inv.Ka(inv==2)</span></span>
-<span><span class="co">#&gt; 1      1  1    0.005090218    -0.09709692      0.2039294    -0.07462939</span></span>
-<span><span class="co">#&gt; 2      1  2    0.005090218    -0.09709692      0.2039294    -0.07462939</span></span>
-<span><span class="co">#&gt; 3      1  3    0.005090218    -0.09709692      0.2039294    -0.07462939</span></span>
-<span><span class="co">#&gt; 4      1  4    0.005090218    -0.09709692      0.2039294    -0.07462939</span></span>
-<span><span class="co">#&gt; 5      1  5    0.005090218    -0.09709692      0.2039294    -0.07462939</span></span>
-<span><span class="co">#&gt; 6      1  6    0.005090218    -0.09709692      0.2039294    -0.07462939</span></span>
+<span><span class="co">#&gt; 1      1  1     0.01637329     0.03247944     -0.1642054       0.156104</span></span>
+<span><span class="co">#&gt; 2      1  2     0.01637329     0.03247944     -0.1642054       0.156104</span></span>
+<span><span class="co">#&gt; 3      1  3     0.01637329     0.03247944     -0.1642054       0.156104</span></span>
+<span><span class="co">#&gt; 4      1  4     0.01637329     0.03247944     -0.1642054       0.156104</span></span>
+<span><span class="co">#&gt; 5      1  5     0.01637329     0.03247944     -0.1642054       0.156104</span></span>
+<span><span class="co">#&gt; 6      1  6     0.01637329     0.03247944     -0.1642054       0.156104</span></span>
 <span><span class="co">#&gt;   eye.Cl(eye==1) eye.Cl(eye==2) eye.Ka(eye==1) eye.Ka(eye==2) iov.Cl(occ==1)</span></span>
-<span><span class="co">#&gt; 1     0.07467931     0.24825482    -0.08442751    -0.27696009   -0.003112505</span></span>
-<span><span class="co">#&gt; 2    -0.11882226     0.15870408     0.33254423     0.08941103    0.147255927</span></span>
-<span><span class="co">#&gt; 3    -0.09485958     0.13495775    -0.10427301     0.51296049   -0.099502023</span></span>
-<span><span class="co">#&gt; 4    -0.17709007     0.03329511     0.26570809    -0.39705713    0.074448164</span></span>
-<span><span class="co">#&gt; 5     0.14320016    -0.21299141    -0.15994932     0.19713451    0.143415895</span></span>
-<span><span class="co">#&gt; 6     0.15797711     0.07695910    -0.24012841     0.13348107   -0.043201740</span></span>
+<span><span class="co">#&gt; 1     0.09761364    -0.34336831   -0.003323582    -0.07982070    0.148188343</span></span>
+<span><span class="co">#&gt; 2     0.08705695    -0.02267806    0.111643782     0.39559746    0.023792042</span></span>
+<span><span class="co">#&gt; 3    -0.30361823     0.06099940    0.438724258     0.04682514    0.140617867</span></span>
+<span><span class="co">#&gt; 4     0.37366054    -0.07233246    0.161349679     0.10541834    0.007643423</span></span>
+<span><span class="co">#&gt; 5    -0.10239301    -0.04752524   -0.202127331    -0.38159114    0.126883681</span></span>
+<span><span class="co">#&gt; 6     0.03512441     0.37740185   -0.007387025     0.08968555   -0.121379845</span></span>
 <span><span class="co">#&gt;   iov.Cl(occ==2) iov.Ka(occ==1) iov.Ka(occ==2)       V2       V3      TCl</span></span>
-<span><span class="co">#&gt; 1     0.17566348   -0.125305603    -0.02374922 40.32575 297.5132 18.72815</span></span>
-<span><span class="co">#&gt; 2    -0.10777103   -0.006823600    -0.08095540 40.32575 297.5132 18.72815</span></span>
-<span><span class="co">#&gt; 3     0.02386142    0.062428919     0.11526203 40.32575 297.5132 18.72815</span></span>
-<span><span class="co">#&gt; 4     0.20726021    0.197702602    -0.09890634 40.32575 297.5132 18.72815</span></span>
-<span><span class="co">#&gt; 5    -0.03915625    0.141090403    -0.02013283 40.32575 297.5132 18.72815</span></span>
-<span><span class="co">#&gt; 6     0.08379968    0.009639074     0.08215335 40.32575 297.5132 18.72815</span></span>
-<span><span class="co">#&gt;        eta.Cl        TKA       eta.Ka        Q      Kin     Kout     EC50</span></span>
-<span><span class="co">#&gt; 1 -0.20681492 -0.1867819 -0.109597359 9.845409 1.463486 1.720473 199.6867</span></span>
-<span><span class="co">#&gt; 2 -0.03133139 -0.1867819 -0.157031529 9.845409 1.463486 1.720473 199.6867</span></span>
-<span><span class="co">#&gt; 3  0.33403087 -0.1867819  0.053338841 9.845409 1.463486 1.720473 199.6867</span></span>
-<span><span class="co">#&gt; 4 -0.06913564 -0.1867819  0.321506421 9.845409 1.463486 1.720473 199.6867</span></span>
-<span><span class="co">#&gt; 5  0.24793894 -0.1867819 -0.030413821 9.845409 1.463486 1.720473 199.6867</span></span>
-<span><span class="co">#&gt; 6  0.07699806 -0.1867819 -0.001107915 9.845409 1.463486 1.720473 199.6867</span></span></code></pre>
+<span><span class="co">#&gt; 1    -0.01012253   -0.082363308   -0.196890806 39.78914 297.0024 18.73878</span></span>
+<span><span class="co">#&gt; 2     0.01761796   -0.059341144   -0.056515060 39.78914 297.0024 18.73878</span></span>
+<span><span class="co">#&gt; 3     0.03008623    0.001726408   -0.007621788 39.78914 297.0024 18.73878</span></span>
+<span><span class="co">#&gt; 4    -0.02079817   -0.147993555    0.058939464 39.78914 297.0024 18.73878</span></span>
+<span><span class="co">#&gt; 5     0.05883827   -0.061506175    0.030971702 39.78914 297.0024 18.73878</span></span>
+<span><span class="co">#&gt; 6    -0.01381446    0.195433113    0.023528742 39.78914 297.0024 18.73878</span></span>
+<span><span class="co">#&gt;       eta.Cl       TKA      eta.Ka       Q      Kin     Kout     EC50</span></span>
+<span><span class="co">#&gt; 1  0.1087519 0.4081473 -0.10141680 10.7334 1.366045 1.248981 200.2727</span></span>
+<span><span class="co">#&gt; 2 -0.1195177 0.4081473 -0.18010707 10.7334 1.366045 1.248981 200.2727</span></span>
+<span><span class="co">#&gt; 3  0.1077865 0.4081473 -0.17894604 10.7334 1.366045 1.248981 200.2727</span></span>
+<span><span class="co">#&gt; 4 -0.1391977 0.4081473 -0.08842413 10.7334 1.366045 1.248981 200.2727</span></span>
+<span><span class="co">#&gt; 5  0.1340199 0.4081473  0.30524866 10.7334 1.366045 1.248981 200.2727</span></span>
+<span><span class="co">#&gt; 6 -0.5570264 0.4081473 -0.51427367 10.7334 1.366045 1.248981 200.2727</span></span></code></pre>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">params</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">sim.id</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt;   sim.id id inv.Cl(inv==1) inv.Cl(inv==2) inv.Ka(inv==1) inv.Ka(inv==2)</span></span>
-<span><span class="co">#&gt; 1      2  1     -0.2540111     0.05206311    -0.04147076      0.1489295</span></span>
-<span><span class="co">#&gt; 2      2  2     -0.2540111     0.05206311    -0.04147076      0.1489295</span></span>
-<span><span class="co">#&gt; 3      2  3     -0.2540111     0.05206311    -0.04147076      0.1489295</span></span>
-<span><span class="co">#&gt; 4      2  4     -0.2540111     0.05206311    -0.04147076      0.1489295</span></span>
-<span><span class="co">#&gt; 5      2  5     -0.2540111     0.05206311    -0.04147076      0.1489295</span></span>
-<span><span class="co">#&gt; 6      2  6     -0.2540111     0.05206311    -0.04147076      0.1489295</span></span>
+<span><span class="co">#&gt; 1      2  1    -0.02576672      0.1226642     0.06400054     0.01769766</span></span>
+<span><span class="co">#&gt; 2      2  2    -0.02576672      0.1226642     0.06400054     0.01769766</span></span>
+<span><span class="co">#&gt; 3      2  3    -0.02576672      0.1226642     0.06400054     0.01769766</span></span>
+<span><span class="co">#&gt; 4      2  4    -0.02576672      0.1226642     0.06400054     0.01769766</span></span>
+<span><span class="co">#&gt; 5      2  5    -0.02576672      0.1226642     0.06400054     0.01769766</span></span>
+<span><span class="co">#&gt; 6      2  6    -0.02576672      0.1226642     0.06400054     0.01769766</span></span>
 <span><span class="co">#&gt;   eye.Cl(eye==1) eye.Cl(eye==2) eye.Ka(eye==1) eye.Ka(eye==2) iov.Cl(occ==1)</span></span>
-<span><span class="co">#&gt; 1     0.11022645    -0.21900451    -0.07151394     0.03210421   -0.002918237</span></span>
-<span><span class="co">#&gt; 2     0.08955079     0.29818903     0.09837862     0.02075010   -0.002148392</span></span>
-<span><span class="co">#&gt; 3     0.06267090    -0.12305881     0.02734113    -0.17492816    0.050002648</span></span>
-<span><span class="co">#&gt; 4     0.12474816     0.08775940     0.08006608     0.03132881    0.021407627</span></span>
-<span><span class="co">#&gt; 5     0.02601861     0.07524075    -0.16608533    -0.16682310    0.063080529</span></span>
-<span><span class="co">#&gt; 6    -0.07935085     0.29276608     0.16917904    -0.04313666    0.067009237</span></span>
-<span><span class="co">#&gt;   iov.Cl(occ==2) iov.Ka(occ==1) iov.Ka(occ==2)       V2       V3      TCl</span></span>
-<span><span class="co">#&gt; 1     0.01028113     0.10850166     0.07245258 40.51063 297.0996 18.56845</span></span>
-<span><span class="co">#&gt; 2    -0.08327950    -0.01951902    -0.04906687 40.51063 297.0996 18.56845</span></span>
-<span><span class="co">#&gt; 3     0.04508711    -0.06311640    -0.04736876 40.51063 297.0996 18.56845</span></span>
-<span><span class="co">#&gt; 4    -0.04965968    -0.03799188    -0.05413302 40.51063 297.0996 18.56845</span></span>
-<span><span class="co">#&gt; 5     0.04546793    -0.03138379    -0.03977587 40.51063 297.0996 18.56845</span></span>
-<span><span class="co">#&gt; 6    -0.08174549    -0.12654764     0.04373828 40.51063 297.0996 18.56845</span></span>
-<span><span class="co">#&gt;        eta.Cl         TKA      eta.Ka        Q      Kin     Kout     EC50</span></span>
-<span><span class="co">#&gt; 1  0.16449335 -0.06299824  0.01523371 10.54447 1.127659 1.613121 199.9807</span></span>
-<span><span class="co">#&gt; 2 -0.04964399 -0.06299824 -0.24755732 10.54447 1.127659 1.613121 199.9807</span></span>
-<span><span class="co">#&gt; 3 -0.13743395 -0.06299824 -0.41535935 10.54447 1.127659 1.613121 199.9807</span></span>
-<span><span class="co">#&gt; 4 -0.12816060 -0.06299824  0.57589017 10.54447 1.127659 1.613121 199.9807</span></span>
-<span><span class="co">#&gt; 5  0.02282826 -0.06299824 -0.05013492 10.54447 1.127659 1.613121 199.9807</span></span>
-<span><span class="co">#&gt; 6  0.25090742 -0.06299824  0.56267845 10.54447 1.127659 1.613121 199.9807</span></span></code></pre>
+<span><span class="co">#&gt; 1   -0.006388396    -0.13838101     0.15382832     0.02638575     0.04749804</span></span>
+<span><span class="co">#&gt; 2    0.474746641    -0.02186804     0.04051666    -0.12270186     0.09081451</span></span>
+<span><span class="co">#&gt; 3   -0.053057466     0.07180881     0.32430994    -0.19607676     0.01097079</span></span>
+<span><span class="co">#&gt; 4    0.221865490     0.15319064    -0.33470358    -0.13018895    -0.10552383</span></span>
+<span><span class="co">#&gt; 5    0.146934200     0.17593328    -0.06781542     0.32450668    -0.04426457</span></span>
+<span><span class="co">#&gt; 6   -0.081107754    -0.25720168    -0.20652081    -0.41074717     0.03460290</span></span>
+<span><span class="co">#&gt;   iov.Cl(occ==2) iov.Ka(occ==1) iov.Ka(occ==2)      V2       V3      TCl</span></span>
+<span><span class="co">#&gt; 1   -0.085412766    -0.13089349    -0.10355795 40.0141 296.9743 18.77442</span></span>
+<span><span class="co">#&gt; 2   -0.063682652     0.12512201    -0.07655485 40.0141 296.9743 18.77442</span></span>
+<span><span class="co">#&gt; 3   -0.019315637    -0.04098336     0.12110939 40.0141 296.9743 18.77442</span></span>
+<span><span class="co">#&gt; 4    0.036916487     0.12823275     0.10783749 40.0141 296.9743 18.77442</span></span>
+<span><span class="co">#&gt; 5   -0.001101943     0.02416755     0.25366252 40.0141 296.9743 18.77442</span></span>
+<span><span class="co">#&gt; 6   -0.002638306    -0.02334153     0.08739670 40.0141 296.9743 18.77442</span></span>
+<span><span class="co">#&gt;        eta.Cl       TKA     eta.Ka        Q     Kin     Kout     EC50</span></span>
+<span><span class="co">#&gt; 1  0.24498739 0.5701278  0.3089055 10.76488 1.32086 1.210969 199.5943</span></span>
+<span><span class="co">#&gt; 2 -0.26162175 0.5701278 -0.1905318 10.76488 1.32086 1.210969 199.5943</span></span>
+<span><span class="co">#&gt; 3  0.05898967 0.5701278  0.1182628 10.76488 1.32086 1.210969 199.5943</span></span>
+<span><span class="co">#&gt; 4  0.45997083 0.5701278  0.1384342 10.76488 1.32086 1.210969 199.5943</span></span>
+<span><span class="co">#&gt; 5  0.14519562 0.5701278  0.4923051 10.76488 1.32086 1.210969 199.5943</span></span>
+<span><span class="co">#&gt; 6  0.79028484 0.5701278 -0.2637393 10.76488 1.32086 1.210969 199.5943</span></span></code></pre>
 <p>For between eye variability and between occasion variability each individual simulates a number of variables that become the between eye and between occasion variability; In the case of the eye:</p>
 <pre><code><span><span class="va">eye.Cl</span> <span class="op">=</span> <span class="op">(</span><span class="va">eye</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">*</span> <span class="va">`eye.Cl(eye==1)`</span> <span class="op">+</span> <span class="op">(</span><span class="va">eye</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span> <span class="op">*</span> <span class="va">`eye.Cl(eye==2)`</span></span></code></pre>
 <p>So when you look the simulation each of these variables (ie <code>eye.Cl(eye==1)</code>, <code>eye.Cl(eye==2)</code>, etc) they change for each individual and when combined make the between eye variability or the between occasion variability that can be seen in some pharamcometric models.</p>
