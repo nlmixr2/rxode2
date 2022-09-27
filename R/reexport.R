@@ -1,103 +1,26 @@
-#' @importFrom rxode2ll llikBeta
+#' @importFrom ggplot2 scale_type
 #' @export
-rxode2ll::llikBeta
+ggplot2::scale_type
 
-#' @importFrom rxode2ll llikBinom
+#' @importFrom ggplot2 ggplot
 #' @export
-rxode2ll::llikBinom
-
-#' @importFrom rxode2ll llikCauchy
-#' @export
-rxode2ll::llikCauchy
-
-#' @importFrom rxode2ll llikChisq
-#' @export
-rxode2ll::llikChisq
-
-#' @importFrom rxode2ll llikExp
-#' @export
-rxode2ll::llikExp
-
-#' @importFrom rxode2ll llikF
-#' @export
-rxode2ll::llikF
-
-#' @importFrom rxode2ll llikGamma
-#' @export
-rxode2ll::llikGamma
-
-#' @importFrom rxode2ll llikGeom
-#' @export
-rxode2ll::llikGeom
-
-#' @importFrom rxode2ll llikNbinom
-#' @export
-rxode2ll::llikNbinom
-
-#' @importFrom rxode2ll llikNbinomMu
-#' @export
-rxode2ll::llikNbinomMu
-
-#' @importFrom rxode2ll llikNorm
-#' @export
-rxode2ll::llikNorm
-
-#' @importFrom rxode2ll llikPois
-#' @export
-rxode2ll::llikPois
-
-#' @importFrom rxode2ll llikT
-#' @export
-rxode2ll::llikT
-
-#' @importFrom rxode2ll llikUnif
-#' @export
-rxode2ll::llikUnif
-
-#' @importFrom rxode2ll llikWeibull
-#' @export
-rxode2ll::llikWeibull
-
-#' @export
-scale_type <- ggplot2::scale_type
-
-#' @export
-ggplot <- ggplot2::ggplot
-
-#' @export
-aes <- ggplot2::aes
-
-#' @export
-geom_line <- ggplot2::geom_line
-
-#' @export
-facet_wrap <- ggplot2::facet_wrap
-
-
-#' @importFrom ggplot2 %+replace%
-`%+replace%`
+ggplot2::ggplot
 
 #' @importFrom ggplot2 aes
 #' @export
 ggplot2::aes
+
+#' @importFrom ggplot2 geom_line
+#' @export
+ggplot2::geom_line
 
 #' @importFrom ggplot2 facet_wrap
 #' @export
 ggplot2::facet_wrap
 
 
-#' @importFrom ggplot2 geom_line
-#' @export
-ggplot2::geom_line
-
-
-#' @importFrom ggplot2 ggplot
-#' @export
-ggplot2::ggplot
-
-#' @importFrom ggplot2 scale_type
-#' @export
-ggplot2::scale_type
+#' @importFrom ggplot2 %+replace%
+`%+replace%`
 
 #' @importFrom ggplot2 ylab
 #' @export
