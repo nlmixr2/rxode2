@@ -3,6 +3,17 @@
   if (any(ls(.ggplot2) == "guide_none")) {
     assignInMyNamespace("guide_none", .ggplot2$guide_none)
   }
+  if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+    assignInMyNamespace("GeomAmt",
+                        ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
+                                         required_aes = c("x", "y", "xend", "yend"),
+                                         default_aes = ggplot2::aes(colour = "black", linetype = "dotted", size = 0.5, alpha = 1, fill = "black")))
+  } else {
+    assignInMyNamespace("GeomAmt",
+                        ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
+                                         required_aes = c("x", "y", "xend", "yend"),
+                                         default_aes = ggplot2::aes(colour = "black", linetype = "dotted", linewidth = 0.5, alpha = 1, fill = "black")))
+  }
 }
 .hasUnits <- FALSE
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
