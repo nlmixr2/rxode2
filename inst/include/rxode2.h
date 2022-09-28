@@ -358,6 +358,7 @@ static inline void _splitYj(int *yj, int *dist,  int *trans) {
 // Inverse 
 static inline double _powerDi(double x, double lambda, int yj0, double low, double high)  __attribute__((unused));
 static inline double _powerDi(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
   double x0=x, ret, l2, yjd;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
@@ -432,6 +433,7 @@ static inline double _powerDi(double x, double lambda, int yj0, double low, doub
 
 static inline double _powerD(double x, double lambda, int yj0, double low, double high)  __attribute__((unused));
 static inline double _powerD(double x, double lambda, int yj0, double low, double high) {
+  if (!R_finite(x)) return NA_REAL;
   double x0=x, l2, p;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
@@ -503,6 +505,7 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
 
 static inline double _powerDD(double x, double lambda, int yj0, double low, double high)  __attribute__((unused));
 static inline double _powerDD(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
   double x0 = x, xl, hl,eri;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
@@ -548,6 +551,7 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
 
 static inline double _powerDDD(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
 static inline double _powerDDD(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
   double x0 = x, hl, hl2, xl,  t1, dL, eri;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
@@ -597,6 +601,7 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
 
 static inline double _powerL(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
 static inline double _powerL(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
   double x0 = x, hl, xl, hl2, eri;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
@@ -653,6 +658,7 @@ static inline double _powerL(double x, double lambda, int yj0, double low, doubl
 static inline double _powerDL(double x, double lambda, int yj0, double low, double hi) __attribute__((unused));
 static inline double _powerDL(double x, double lambda, int yj0, double low, double hi) {
   // d(logLik/dlambda)
+  if (!R_finite(x)) return NA_REAL;
   double x0 = x;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
