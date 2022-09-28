@@ -247,13 +247,19 @@ model.rxModelVars <- model.rxode2
   if (!errorLine && length(expr) == 2L) {
     .expr1 <- expr[[1]]
     .expr2 <- expr[[2]]
-    if (identical(.expr1, quote(`f`)) ||
+    if (is.numeric(.expr2)) {
+      .state <- as.character(.expr1)
+    } else {
+      .state <- as.character(.expr2)
+    }
+    if (is.numeric(.expr2) ||
+          identical(.expr1, quote(`f`)) ||
           identical(.expr1, quote(`F`)) ||
           identical(.expr1, quote(`alag`)) ||
           identical(.expr1, quote(`lag`)) ||
           identical(.expr1, quote(`rate`)) ||
           identical(.expr1, quote(`dur`))) {
-      .expr3 <- eval(parse(text=paste0("quote(d/dt(",as.character(.expr2),"))")))
+      .expr3 <- eval(parse(text=paste0("quote(d/dt(",.state,"))")))
       for (.i in seq_along(origLines)) {
         .expr <- origLines[[.i]]
         if (identical(.expr[[2]], .expr3)) {
@@ -412,7 +418,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
       } else {
         .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr, .isDrop)
       }
-      if (length(.ret == 1)) {
+      if (length(.ret)  == 1) {
         if (.isErr && is.na(.ret)) {
           stop("the error '", deparse1(line[[2]]), "' is not in the multiple-endpoint model and cannot be modified",
                call.=FALSE)
