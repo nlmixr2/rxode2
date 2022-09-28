@@ -725,7 +725,8 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
     .extra$name <- var
     .extra$condition <- "id"
     if (rxode2.verbose.pipe) {
-      if (promote) {
+      if (is.na(promote)) {
+      } else if (promote) {
         if (is.na(value))  {
           value <- 1
           .minfo(paste0("promote {.code ", var, "} to between subject variability"))
