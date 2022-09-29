@@ -19,7 +19,7 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
 model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   x <- as.function(x)
-  .ret <- rxode2(rxode2(x))
+  .ret <- rxUiDecompress(rxode2(x))
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
 }
 
