@@ -42,6 +42,7 @@ model.rxModelVars <- model.rxode2
   checkmate::assertLogical(append, any.missing=TRUE, len=1)
   checkmate::assertLogical(auto, any.missing=TRUE, len=1)
   .doAppend <- FALSE
+  rxui <- rxUiDecompress(rxui)
   if (is.na(append)) {
     assign("lstExpr", c(modelLines, rxui$lstExpr), envir=rxui)
     .doAppend <- TRUE
@@ -68,7 +69,7 @@ model.rxModelVars <- model.rxode2
     for (v in .rhs) {
       .addVariableToIniDf(v, rxui, promote=NA)
     }
-    return(rxui$fun())
+    return(rxUiCompress(rxui$fun()))
   }
   .modifyModelLines(modelLines, rxui, modifyIni, envir)
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
@@ -87,7 +88,7 @@ model.rxModelVars <- model.rxode2
       }
     })
   }
-  rxui$fun()
+  return(rxUiCompress(rxui$fun()))
 }
 
 .getModelLineEquivalentLhsExpressionDropEndpoint <- function(expr) {

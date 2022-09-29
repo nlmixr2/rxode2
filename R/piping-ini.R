@@ -353,7 +353,7 @@ ini.rxUi <- function(x, ..., envir=parent.frame()) {
   lapply(.iniLines, function(line) {
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
   })
-  .ret
+  rxUiCompress(.ret)
 }
 
 #' @export
@@ -364,7 +364,7 @@ ini.function <- function(x, ..., envir=parent.frame()) {
   lapply(.iniLines, function(line) {
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
   })
-  .ret
+  rxUiCompress(.ret)
 }
 
 #' @export

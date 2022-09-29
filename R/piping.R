@@ -5,6 +5,9 @@
 #' @author Matthew L. Fidler
 #' @export
 .copyUi <- function(ui) {
+  if (inherits(ui, "raw")) {
+    return(rxUiDecompress(ui))
+  }
   .ret <- new.env(parent=emptyenv())
   lapply(ls(envir=ui, all.names=TRUE), function(item){
     assign(item, get(item, envir=ui), envir=.ret)
