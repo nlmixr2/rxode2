@@ -2,7 +2,11 @@
 
 - Remove log likelihoods from 'rxode2' to reduce compilation time and
   increase maintainability of 'rxode2'. They were transferred to
-  'rxode2ll'.
+  'rxode2ll' (requested by CRAN).
+  
+- Change the `rxode2` ui object so it is a compressed, serialized
+  object by default.  This could reduce the `C stack size` problem
+  that occurs with too many environments in R.
 
 # rxode2 2.0.8 (not on CRAN)
 
