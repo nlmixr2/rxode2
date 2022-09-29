@@ -1866,6 +1866,14 @@ rxModelVarsS3 <- function(obj) {
 
 #' @rdname rxModelVars
 #' @export
+rxModelVarsS3.rxUi <- function(obj) {
+  .ret <- rxUiDecompress(obj)
+  get("mv0", .ret)
+}
+
+
+#' @rdname rxModelVars
+#' @export
 rxModelVarsS3.default <- function(obj) {
   stop("need an rxode2-type object to extract model variables",
        call.=FALSE)

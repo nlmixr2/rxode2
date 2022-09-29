@@ -836,11 +836,14 @@ List rxModelVars_(const RObject &obj){
     return rxModelVars_rxode2(obj);
   } else if (Rf_isFunction(obj)){
     Function getUi = getRxFn("assertRxUi");
-    Environment e = asEnv(getUi(obj), "rxode2(obj)");
+    RObject ro = getUi(obj);
+    Function rxUiDecompress = getRxFn("rxUiDecompress");
+    Environment e = asEnv(rxUiDecompress(ro), "rxode2(rxUiDecompress(obj))");
     List ret = asList(e["mv0"], "e[\"mv0\"]");
     return ret;
   } else if (rxIs(obj, "rxUi")){
-    Environment e = asEnv(obj, "obj");
+    Function rxUiDecompress = getRxFn("rxUiDecompress");
+    Environment e = asEnv(rxUiDecompress(obj), "obj");
     List ret = asList(e["mv0"], "e[\"mv0\"]");
     return ret;
   } else if (rxIs(obj, "rxS")){

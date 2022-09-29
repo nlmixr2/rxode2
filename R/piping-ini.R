@@ -348,7 +348,7 @@
 #' @export
 #' @rdname ini
 ini.rxUi <- function(x, ..., envir=parent.frame()) {
-  .ret <- .copyUi(x) # copy so (as expected) old UI isn't affected by the call
+  .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
@@ -359,7 +359,7 @@ ini.rxUi <- function(x, ..., envir=parent.frame()) {
 #' @export
 #' @rdname ini
 ini.function <- function(x, ..., envir=parent.frame()) {
-  .ret <- rxode2(x)
+  .ret <- rxUiDecompress(rxode2(x))
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
