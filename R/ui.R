@@ -97,8 +97,9 @@
   .fun <- .rxFunctionRearrange(eval(parse(text=paste(.rxFunction2string(fun), collapse="\n"))))
   .ret <- .fun()
   # Save $model like nlmixr UI used to...
+  .ret <- rxUiDecompress(.ret)
   assign("model", fun, envir=.ret)
-  .ret
+  rxUiCompress(.ret)
 }
 
 .lastIni <- NULL
@@ -271,7 +272,7 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     }
     assign("modelName", .funName, envir=.mod)
     class(.mod) <- "rxUi"
-    return(.mod)
+    return(rxUiCompress(.mod))
   }
   UseMethod("model")
 }
@@ -341,4 +342,52 @@ print.rxUi <-function(x, ...) {
   cat("\nfunction() ")
   print(as.call(x$funPrint))
   return(invisible(x))
+}
+#' Compress/Decompress `rxode2` ui
+#'
+#' 
+#' @param ui rxode2 ui object
+#' @return A compressed or decompressed rxui object
+#' @author Matthew L. Fidler
+#' @export 
+#' @examples
+#'   one.cmt <- function() {
+#'    ini({
+#'      ## You may label each parameter with a comment
+#'      tka <- 0.45 # Log Ka
+#'      tcl <- log(c(0, 2.7, 100)) # Log Cl
+#'      ## This works with interactive models
+#'      ## You may also label the preceding line with label("label text")
+#'      tv <- 3.45; label("log V")
+#'      ## the label("Label name") works with all models
+#'      eta.ka ~ 0.6
+#'      eta.cl ~ 0.3
+#'      eta.v ~ 0.1
+#'      add.sd <- 0.7
+#'    })
+#'    model({
+#'      ka <- exp(tka + eta.ka)
+#'      cl <- exp(tcl + eta.cl)
+#'      v <- exp(tv + eta.v)
+#'      linCmt() ~ add(add.sd) | tmp
+#'   })
+#'  }
+rxUiDecompress <- function(ui) {
+  if (!inherits(ui, "rxUi")) stop("needs to be a 'rxUi' object", call.=FALSE)
+  if (is.environment(ui))  return(ui)
+  .ret <- qs::qdeserialize(ui)
+  class(.ret) <- "rxUi"
+  .ret
+}
+
+#' @rdname rxUiDecompress
+#' @export
+rxUiCompress <- function(ui) {
+  if (!inherits(ui, "rxUi")) stop("needs to be a 'rxUi' object", call.=FALSE)
+  if (is.environment(ui)) {
+    .ret <- qs::qserialize(ui)
+    class(.ret) <- c("rxUi", "raw")
+    return(.ret)
+  }
+  ui
 }

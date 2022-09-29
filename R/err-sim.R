@@ -413,6 +413,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
   }
+  uiModel <- rxUiDecompress(uiModel)
   .predDf <- uiModel$predDf
   if (is.null(.predDf)) {
     return(.rxModelNoErrorLines(uiModel, prefixLines=prefixLines, paramsLine=paramsLine,

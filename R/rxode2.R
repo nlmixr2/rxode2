@@ -387,9 +387,9 @@ rxode2 <- # nolint
         if (length(.args) != 1L) {
           stop("model functions can only be called with one argument", call.=FALSE)
         }
-        .tmp <- .rxFunction2ui(model)
+        .tmp <- rxUiDecompress(.rxFunction2ui(model))
         assign("modelName", .modelName, envir=.tmp)
-        return(.tmp)
+        return(rxUiCompress(.tmp))
       } else if (is(model, "rxode2")) {
         package <- get("package", model)
         if (!is.null(package)) {
@@ -1844,6 +1844,10 @@ rxModelVars <- function(obj) {
     .obj <- paste(.obj, collapse = "\n")
     return(rxModelVars_(.obj))
   }
+  if (inherits(obj, "raw") &&
+        inherits(obj, "rxUi")) {
+    obj <- rxUiDecompress(obj)
+  }
   if (is(obj, "rxModelVars")) {
     return(obj)
   }
@@ -1859,6 +1863,14 @@ rxModelVars <- function(obj) {
 rxModelVarsS3 <- function(obj) {
   UseMethod("rxModelVarsS3")
 }
+
+#' @rdname rxModelVars
+#' @export
+rxModelVarsS3.rxUi <- function(obj) {
+  .ret <- rxUiDecompress(obj)
+  get("mv0", .ret)
+}
+
 
 #' @rdname rxModelVars
 #' @export

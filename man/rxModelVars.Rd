@@ -3,12 +3,15 @@
 \name{rxModelVars}
 \alias{rxModelVars}
 \alias{rxModelVarsS3}
+\alias{rxModelVarsS3.rxUi}
 \alias{rxModelVarsS3.default}
 \title{All model variables for a rxode2 object}
 \usage{
 rxModelVars(obj)
 
 rxModelVarsS3(obj)
+
+\method{rxModelVarsS3}{rxUi}(obj)
 
 \method{rxModelVarsS3}{default}(obj)
 }
