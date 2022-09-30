@@ -40,6 +40,18 @@ Compress/Decompress \code{rxode2} ui
      linCmt() ~ add(add.sd) | tmp
   })
  }
+
+f <- rxode2(one.cmt)
+print(class(f))
+print(is.environment(f))
+
+f  <- rxUiDecompress(f)
+print(class(f))
+print(is.environment(f))
+
+f  <- rxUiCompress(f)
+print(class(f))
+print(is.environment(f))
 }
 \author{
 Matthew L. Fidler

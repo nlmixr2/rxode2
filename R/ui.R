@@ -372,8 +372,20 @@ print.rxUi <-function(x, ...) {
 #'      linCmt() ~ add(add.sd) | tmp
 #'   })
 #'  }
+#'
+#' f <- rxode2(one.cmt)
+#' print(class(f))
+#' print(is.environment(f))
+#' 
+#' f  <- rxUiDecompress(f)
+#' print(class(f))
+#' print(is.environment(f))
+#'
+#' f  <- rxUiCompress(f)
+#' print(class(f))
+#' print(is.environment(f))
 rxUiDecompress <- function(ui) {
-  if (!inherits(ui, "rxUi")) stop("needs to be a 'rxUi' object", call.=FALSE)
+  if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)
   .ret <- qs::qdeserialize(ui)
   class(.ret) <- "rxUi"
@@ -383,7 +395,7 @@ rxUiDecompress <- function(ui) {
 #' @rdname rxUiDecompress
 #' @export
 rxUiCompress <- function(ui) {
-  if (!inherits(ui, "rxUi")) stop("needs to be a 'rxUi' object", call.=FALSE)
+  if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui)) {
     .ret <- qs::qserialize(ui)
     class(.ret) <- c("rxUi", "raw")
