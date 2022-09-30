@@ -486,7 +486,7 @@ Hairer, E., Norsett, S. P., and Wanner, G.
 Springer-Verlag (1993).
 
 Plevyak, J.
-\emph{\code{dparser}}, \url{http://dparser.sourceforge.net}. Web. 12 Oct. 2015.
+\emph{\code{dparser}}, \url{https://dparser.sourceforge.net/}. Web. 12 Oct. 2015.
 }
 \seealso{
 \code{\link[=eventTable]{eventTable()}}, \code{\link[=et]{et()}}, \code{\link[=add.sampling]{add.sampling()}}, \code{\link[=add.dosing]{add.dosing()}}

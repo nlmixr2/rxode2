@@ -199,7 +199,7 @@ NA_LOGICAL <- NA # nolint
 #' Springer-Verlag (1993).
 #'
 #' Plevyak, J.
-#' *`dparser`*, <http://dparser.sourceforge.net>. Web. 12 Oct. 2015.
+#' *`dparser`*, <https://dparser.sourceforge.net/>. Web. 12 Oct. 2015.
 #'
 #' @author Melissa Hallow, Wenping Wang and Matthew Fidler
 #'
