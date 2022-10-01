@@ -36,6 +36,8 @@ reference:
   - rxRename
   - update.rxUi
   - rxSetCovariateNamesForPiping
+  - rxUiDecompress
+  - rxUiCompress
 - title: ggplot2/plot support functions
   contents:
   - stat_cens

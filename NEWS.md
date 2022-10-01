@@ -8,7 +8,7 @@
   object by default.  This could reduce the `C stack size` problem
   that occurs with too many environments in R.
 
-# rxode2 2.0.8 (not on CRAN)
+# rxode2 2.0.8
 
 ## Breaking changes
 
