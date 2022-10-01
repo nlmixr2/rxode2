@@ -8,6 +8,10 @@
 #' @author Matthew L. Fidler
 #' @export
 rxRemoveControl <- function(ui) {
+  if (inherits(ui, "raw")) {
+    stop("cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'",
+         call.=FALSE)
+  }
   if (exists("control", ui))
     rm("control", envir=ui)
   invisible()
@@ -40,6 +44,10 @@ rxSetControl <- function(ui, control) {
 #' @author Matthew L. Fidler
 #' @export
 rxAssignControlValue <- function(ui, option, value) {
+  if (inherits(ui, "raw")) {
+    stop("cannot assign value to compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'",
+         call.=FALSE)
+  }
   if (exists("control", envir=ui)) {
     .ctl <- get("control", envir=ui)
   } else {
@@ -59,6 +67,7 @@ rxAssignControlValue <- function(ui, option, value) {
 #' @author Matthew L. Fidler
 #' @export
 rxGetControl <- function(ui, option, default) {
+  ui <- rxUiDecompress(ui)
   if (!exists("control", envir=ui)) return(default)
   .ctl <- get("control", envir=ui)
   if (option %in% names(.ctl)) return(.ctl[[option]])
