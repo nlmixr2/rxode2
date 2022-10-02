@@ -276,14 +276,6 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
-rxQs <- function(x) {
-    .Call(`_rxode2_rxQs`, x)
-}
-
-rxQr <- function(encoded_string) {
-    .Call(`_rxode2_rxQr`, encoded_string)
-}
-
 #' Check the type of an object using Rcpp
 #'
 #' @param obj Object to check

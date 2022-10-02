@@ -329,6 +329,7 @@ rxode2 <- # nolint
            fullPrint=getOption("rxode2.fullPrint", FALSE)) {
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
+    rxode2parse::rxParseSuppressMsg()
     .modelName <- try(as.character(substitute(model)), silent=TRUE)
     if (inherits(.modelName, "try-error")) .modelName <- NULL
     if (!missing(modName)) {
@@ -1314,6 +1315,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 
 .getIncludeDir <- function() {
   .cache <- R_user_dir("rxode2", "cache")
+  .parseInclude <- system.file("include", package = "rxode2parse")
   if (dir.exists(.cache)) {
     .include <- .normalizePath(file.path(.cache, "include"))
     if (!dir.exists(.include)) {
@@ -1337,6 +1339,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
       .malert("precompiling headers")
       .args <- paste0(
         .cc, " -I", gsub("[\\]", "/", .normalizePath(R.home("include"))), " ",
+        " -I\"", .normalizePath(.parseInclude), "\" ", 
         .cflags, " ", .shlibCflags, " ", .cpicflags, " -I", gsub("[\\]", "/", .normalizePath(.include)), " ",
         paste(gsub("[\\]", "/", .normalizePath(.include)), "rxode2_model_shared.h", sep = "/"),
         ""
@@ -1504,9 +1507,10 @@ rxCompile.rxModelVars <- function(model, # Model
         }
         .defs <- ""
         .ret <- sprintf(
-          "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
+          "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
           getOption("rxode2.compile.O", "2"),
-          .defs, .getIncludeDir()
+          .defs, .getIncludeDir(),
+          system.file("include", package = "rxode2parse")
         )
         ## .ret <- paste(.ret, "-g")
         sink(.Makevars)

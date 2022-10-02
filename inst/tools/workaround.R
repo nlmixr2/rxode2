@@ -90,52 +90,8 @@ md5file <- file("R/rxode2_md5.R", "wb")
 writeLines(sprintf("rxode2.md5 <- \"%s\"\n", md5), md5file)
 close(md5file)
 
-l <- readLines("DESCRIPTION")
-w <- which(regexpr("Version[:] *(.*)$", l) != -1)
-v <- gsub("Version[:] *(.*)$", "\\1", l[w])
+l <- readLines(file.path(system.file(package="rxode2parse"), "include", "sbuf.c"))
 
-unlink("src/ode.h")
-ode.h <- file("src/ode.h", "wb")
-writeLines(c(sprintf("#define __VER_md5__ \"%s\"", md5),
-             "#define __VER_repo__ \"https://github.com/nlmixr2/rxode2\"",
-             sprintf("#define __VER_ver__ \"%s\"", v)),
-           ode.h)
-close(ode.h)
-
-unlink("src/codegen2.h")
-l <- readLines("inst/include/rxode2_model_shared.c")
-
-l <- l[l != ""]
-l <- gsub(" *= *NULL;", "=NULL;", l)
-
-def <- l
-w <- which(regexpr("double _prod", def) != -1) - 1
-def <- def[1:w]
-def <- gsub("=NULL", "", def)
-def <- gsub("[^ ]* *[*]?([^;]*);", "\\1", def)
-
-def <- unique(c(def, c("_sum", "_sign", "_prod", "_max", "_min", "_transit4P", "_transit3P", "_assignFuns0", "_assignFuns", "_getRxSolve_", "_solveData", "_rxord")))
-
-## deparse1 came from R 4.0, use deparse2
-deparse2 <- function(expr, collapse = " ", width.cutoff = 500L, ...) {
-  paste(deparse(expr, width.cutoff, ...), collapse = collapse)
-}
-
-final <- c("#include <time.h>",
-           "#include <stdlib.h>",
-           "unsigned long int __timeId=0;",
-           "void writeHeader(const char *md5, const char *extra) {",
-           paste0("sAppend(&sbOut, \"#define ", def, " _rx%s%s%ld\\n\", extra, md5, __timeId++);"),
-           "}",
-           "void writeBody() {",
-           paste0("sAppendN(&sbOut, ", vapply(paste0(l, "\n"), deparse2, character(1)), ", ", nchar(l) + 1, ");"),
-           "}",
-           "void writeFooter() {",
-           paste0("sAppendN(&sbOut, \"#undef ", def, "\\n\", ", nchar(def) + 8, ");"),
-           "}"
-           )
-
-codegen2.h <- file("src/codegen2.h", "wb")
-writeLines(final,
-           codegen2.h)
-close(codegen2.h)
+sbuf.c <- file("src/sbuf.c", "wb")
+writeLines(l, sbuf.c)
+close(sbuf.c)

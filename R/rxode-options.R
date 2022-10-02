@@ -19,6 +19,7 @@
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
 .dparserVersion <- utils::packageVersion("dparser")
 .rxode2llVersion <- utils::packageVersion("rxode2ll")
+.rxode2parseVersion <- utils::packageVersion("rxode2parse")
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
@@ -50,6 +51,17 @@
   } else {
     requireNamespace("rxode2ll", quietly=TRUE)
   }
+
+  if (!identical(.rxode2parseVersion, utils::packageVersion("rxode2parse"))) {
+    stop("rxode2 compiled with rxode2parse '",
+         as.character(.rxode2parseVersion),
+         "' but rxode2parse '", as.character(utils::packageVersion("rxode2parse")),
+         "' is loaded\nRecompile rxode2 with the this version of rxode2parse",
+         call. = FALSE)
+  } else {
+    requireNamespace("rxode2parse", quietly=TRUE)
+  }
+
 
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")

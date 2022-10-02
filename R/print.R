@@ -203,29 +203,6 @@ print.rxode2 <- function(x, ...) {
   invisible(x)
 }
 
-#' @export
-print.rxModelVars <- function(x, ...) {
-  .bound <- .getBound(x, parent.frame(2))
-  cat("rxode2 model variables (see str to see all variables)\n")
-  .cur <- x$state
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$state"), ": ", paste(.cur, collapse = ", "), "\n"))
-  }
-  .cur <- x$stateExtra
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$stateExtra"), ": ", paste(.cur, collapse = ", "), "\n"))
-  }
-  .cur <- x$params
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$params"), ": ", paste(.cur, collapse = ", "), "\n"))
-  }
-  .cur <- x$lhs
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$lhs"), ": ", paste(.cur, collapse = ", "), "\n"))
-  }
-  invisible(x)
-}
-
 #' Print the rxCoef object
 #'
 #' This prints out the user supplied arguments for rxCoef object

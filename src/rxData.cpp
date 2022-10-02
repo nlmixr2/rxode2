@@ -29,6 +29,13 @@
 #include "../inst/include/rxode2.h"
 #include "ode.h"
 #include "rxomp.h"
+#ifdef ENABLE_NLS
+#include <libintl.h>
+#define _(String) dgettext ("rxode2", String)
+/* replace pkg as appropriate */
+#else
+#define _(String) (String)
+#endif
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 void resetSolveLinB();
@@ -47,14 +54,10 @@ extern "C" double *global_InfusionRate(unsigned int mx);
 extern "C" void rxOptionsFree();
 extern "C" void rxOptionsIni();
 extern "C" void rxOptionsIniEnsure(int mx);
-extern "C" void parseFree(int last);
 extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
-extern "C" void lineFree(vLines *sbb);
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
-extern "C" void lineIni(vLines *sbb);
-extern "C" void addLine(vLines *sbb, const char *format, ...);
 extern "C" void seedEng(int ncores);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
@@ -2425,7 +2428,6 @@ LogicalVector rxSolveFree(){
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
   rxOptionsFree(); // f77 losda free
   rxOptionsIni();// realloc f77 lsoda cache
-  parseFree(0); //free parser
   rxClearFuns(); // Assign all the global ODE solving functions to NULL pointers
   gFree();// Frees all the global pointers
   return LogicalVector::create(true);

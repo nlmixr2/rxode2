@@ -33,7 +33,7 @@
 #include "par_solve.h"
 #include <Rcpp.h>
 #include "strncmp.h"
-#define rxModelVars(a) rxModelVars_(a)
+#define rxModelVars(a) rxModelVar_s(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 void resetSolveLinB();
 using namespace Rcpp;

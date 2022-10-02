@@ -10,6 +10,24 @@
 #include <Rmath.h>
 #include <stdbool.h>
 #include <R_ext/Rdynload.h>
+#include <rxode2parse.h>
+
+#define rc_buf_read _rxode2_rc_buf_read
+#define sIniTo _rxode2_sIniTo
+#define sFree _rxode2_sFree
+#define sFreeIni _rxode2_sFreeIni
+#define sAppendN _rxode2_sAppendN
+#define sAppend _rxode2_sAppend
+#define sPrint _rxode2_sPrint
+#define lineIni _rxode2_lineIni
+#define lineFree _rxode2_lineFree
+#define addLine _rxode2_addLine
+#define curLineProp _rxode2_curLineProp
+#define curLineType _rxode2_curLineType
+#define doDot _rxode2_doDot
+#define doDot2 _rxode2_doDot2
+
+#include <rxode2parseSbuf.h>
 
 #include <float.h>
 #include <stdio.h>
@@ -60,24 +78,6 @@ typedef void (*t_calc_mtime)(int cSub, double *mtime);
   
 typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
 typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
-
-typedef struct sbuf {
-  char *s;        /* curr print buffer */
-  int sN;
-  int o;                        /* offset of print buffer */
-} sbuf;
-  
-typedef struct vLines {
-  char *s;
-  int sN;
-  int o;
-  int n;
-  int nL;
-  char **line;
-  int *lProp;
-  int *lType;
-  int *os;
-} vLines;
 
 typedef struct {
   // These options should not change based on an individual solve
@@ -718,25 +718,6 @@ static inline double dabs(double x) {
 static inline double dabs2(double x) {
   return 0.0;
 }
-
-static inline void sNull(sbuf *sbb) {
-  sbb->s = NULL;
-  sbb->sN=0;
-  sbb->o=0;
-}
-
-static inline void lineNull(vLines *sbb) {
-  sbb->s = NULL;
-  sbb->lProp = NULL;
-  sbb->lType = NULL;
-  sbb->line = NULL;
-  sbb->os = NULL;
-  sbb->sN = 0;
-  sbb->nL = 0;
-  sbb->n  = 0;
-  sbb->o  = 0;
-}
-
 
 extern rx_solve rx_global;
 extern rx_solving_options op_global;

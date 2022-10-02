@@ -9,7 +9,6 @@
 #include <R_ext/Rdynload.h>
 #include "../inst/include/rxode2.h"
 #define __DOINIT__
-#include "tran.h"
 #include "rxthreefry.h"
 #include "cbindThetaOmega.h"
 #include "seed.h"
@@ -217,10 +216,6 @@ SEXP _rxode2_convertId_(SEXP);
 SEXP _rxode2_rpp_(SEXP nS, SEXP lambdaS, SEXP gammaS, SEXP probS, SEXP t0S,
 		 SEXP tmaxS, SEXP randomOrderS);
 
-SEXP _rxode2_rxQs(SEXP);
-
-SEXP _rxode2_rxQr(SEXP);
-
 SEXP _rxode2_rxEtTransAsDataFrame_(SEXP);
 
 extern int rxIsCurrentC(SEXP obj);
@@ -316,8 +311,13 @@ SEXP _rxode2_rxErf(SEXP);
 void simeps(int id);
 void simeta(int id);
 
-void transIniNull();
 void nullGlobals();
+SEXP _rxode2_codeLoaded();
+SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv);
+SEXP _rxode2_parseModel(SEXP type);
+SEXP _rxode2_isLinCmt();
+SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
+                   SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
@@ -452,8 +452,6 @@ void R_init_rxode2(DllInfo *info){
     {"_probit", (DL_FUNC) _probit, 3},
     {"_probitInv", (DL_FUNC) _probitInv, 3},
     {"_rxode2_rxrandnV", (DL_FUNC) _rxode2_rxrandnV, 2},
-    {"_rxode2_rxQs", (DL_FUNC) _rxode2_rxQs, 1},
-    {"_rxode2_rxQr", (DL_FUNC) _rxode2_rxQr, 1},
     {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) _rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
@@ -465,7 +463,6 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0} 
   };
   // C callable to assign environments.
-  R_RegisterCCallable("rxode2","_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr);
   R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
   R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
@@ -569,7 +566,6 @@ void R_init_rxode2(DllInfo *info){
   rxOptionsIni();
   initRxThreads();
   avoid_openmp_hang_within_fork();
-  transIniNull();
   nullGlobals();
   /* rxOptionsIniFocei(); */
 }
