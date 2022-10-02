@@ -96,10 +96,11 @@ print.rxEt <- function(x, ...) {
 
 
     }
-    if (x$nobs != 0 | x$ndose != 0) {
+    if (x$nobs != 0 || x$ndose != 0) {
       if (!.nb) {
         cat(cli::cli_format_method({
-          .h2(paste0("First part of ", crayon::yellow(bound), ":"))        }), sep = "\n")
+          .h2(paste0("First part of ", crayon::yellow(bound), ":"))
+        }), sep = "\n")
       }
       print(tibble::as_tibble(data.frame(.etAddCls(x))))
     }
