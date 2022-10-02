@@ -1322,8 +1322,12 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
       .malert("creating rxode2 include directory")
       dir.create(.include, recursive = TRUE)
       .sysInclude <- system.file("include", package = "rxode2")
+      .files <- list.files(.parseInclude)
+      lapply(.files, function(file) {
+        file.copy(file.path(.parseInclude, file), file.path(.include, file))
+      })
       .files <- list.files(.sysInclude)
-      sapply(.files, function(file) {
+      lapply(.files, function(file) {
         file.copy(file.path(.sysInclude, file), file.path(.include, file))
       })
       .malert("getting R compile options")

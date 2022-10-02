@@ -1,4 +1,4 @@
-ma#define USE_FC_LEN_T
+#define USE_FC_LEN_T
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
