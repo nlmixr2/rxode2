@@ -27,7 +27,7 @@
 #include "checkmate.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #include "../inst/include/rxode2.h"
-#include "ode.h"
+#include <rxode2parseVer.h>
 #include "rxomp.h"
 #ifdef ENABLE_NLS
 #include <libintl.h>
