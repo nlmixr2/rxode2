@@ -17,21 +17,11 @@
 }
 .hasUnits <- FALSE
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
-.dparserVersion <- utils::packageVersion("dparser")
 .rxode2llVersion <- utils::packageVersion("rxode2ll")
 .rxode2parseVersion <- utils::packageVersion("rxode2parse")
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
-  if (!identical(.dparserVersion, utils::packageVersion("dparser"))) {
-    stop("rxode2 compiled with dparser '", as.character(.dparserVersion),
-      "' but dparser '", as.character(utils::packageVersion("dparser")),
-      "' is loaded\nRecompile rxode2 with the this version of dparser",
-      call. = FALSE
-    )
-  } else {
-    requireNamespace("dparser", quietly=TRUE)
-  }
   if (!identical(.PreciseSumsVersion, utils::packageVersion("PreciseSums"))) {
     stop("rxode2 compiled with PreciseSums '", as.character(.PreciseSumsVersion),
       "' but PreciseSums '", as.character(utils::packageVersion("PreciseSums")),

@@ -1219,7 +1219,6 @@ rxTrans.character <- memoise::memoise(function(model,
   if (missing(md5)) {
     md5 <- rxMd5(model)$digest
   }
-  rxode2::rxReq("dparser")
   .ret <- .Call(
     `_rxode2_trans`, model, modelPrefix, md5, .isStr,
     as.integer(crayon::has_color()),
