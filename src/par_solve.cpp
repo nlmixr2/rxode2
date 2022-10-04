@@ -11,8 +11,8 @@
 #include <R_ext/Rdynload.h>
 #include "../inst/include/rxode2.h"
 #include "strncmp.h"
-#include "handle_evid.h"
-#include "getTime.h"
+#include <rxode2parseHandleEvid.h>
+#include <rxode2parseGetTime.h>
 
 extern "C" {
 #include "dop853.h"
@@ -524,6 +524,51 @@ double *global_rwork(unsigned int mx){
   }
   return global_rworkp;
 }
+extern "C" void _rxode2parseAssignPtrsInRxode2(rx_solve rx,
+                                               rx_solving_options op,
+                                               t_F f,
+                                               t_LAG lag,
+                                               t_RATE rate,
+                                               t_DUR dur, 
+                                               t_calc_mtime mtime,
+                                               t_ME me,
+                                               t_IndF indf,
+                                               t_getTime gettime,
+                                               t_locateTimeIndex timeindex,
+                                               t_handle_evidL handleEvid,
+                                               t_getDur getdur) {
+  static void (*fun)(rx_solve,
+                     rx_solving_options,
+                     t_F,
+                     t_LAG,
+                     t_RATE,
+                     t_DUR,
+                     t_calc_mtime,
+                     t_ME,
+                     t_IndF,
+                     t_getTime,
+                     t_locateTimeIndex,
+                     t_handle_evidL,
+                     t_getDur) = NULL;
+  if (fun == NULL) {
+    fun = (void (*)(rx_solve,
+                    rx_solving_options,
+                    t_F,
+                    t_LAG,
+                    t_RATE,
+                    t_DUR,
+                    t_calc_mtime,
+                    t_ME,
+                    t_IndF,
+                    t_getTime,
+                    t_locateTimeIndex,
+                    t_handle_evidL,
+                    t_getDur)) R_GetCCallable("rxode2parse","_rxode2parseAssignPtrs");
+  }
+  return fun(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
+}
+
+extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
 void rxUpdateFuns(SEXP trans){
   const char *lib, *s_dydt, *s_calc_jac, *s_calc_lhs, *s_inis, *s_dydt_lsoda_dum, *s_dydt_jdum_lsoda,
@@ -575,6 +620,19 @@ void rxUpdateFuns(SEXP trans){
   IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
   calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);
   assignFuns = R_GetCCallable(lib, s_assignFuns);
+  _rxode2parseAssignPtrsInRxode2(rx_global,
+                                 op_global,
+                                 AMT,
+                                 LAG,
+                                 RATE,
+                                 DUR, 
+                                 calc_mtime,
+                                 ME,
+                                 IndF,
+                                 getTime,
+                                 _locateTimeIndex,
+                                 handle_evidL,
+                                 _getDur);
 }
 
 extern "C" void rxClearFuns(){

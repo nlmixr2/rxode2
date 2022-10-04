@@ -70,5 +70,13 @@ void parseFree(int last) {
   if (fun == NULL) {
     fun = (void (*)(int)) R_GetCCallable("rxode2parse","_rxode2parse_parseFree");
   }
-  return fun(last);
+  fun(last);
+}
+
+SEXP _calcDerived(SEXP ncmtSXP, SEXP transSXP, SEXP inp, SEXP sigdigSXP) {
+  static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP)=NULL;
+  if (fun == NULL) {
+    fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2parse","_rxode2parse_calcDerived");
+  }
+  return fun(ncmtSXP, transSXP, inp, sigdigSXP);
 }

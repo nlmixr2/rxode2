@@ -5,8 +5,14 @@
 #include <Rcpp.h>
 #include <R.h>
 #include "timsort.h"
-#include "handle_evid.h"
+#include <rxode2parse.h>
+extern rx_solve rx_global;
+extern rx_solving_options op_global;
+#include <rxode2parseHandleEvid.h>
+
+
 #define SORT gfx::timsort
+
 using namespace Rcpp;
 
 #include "checkmate.h"

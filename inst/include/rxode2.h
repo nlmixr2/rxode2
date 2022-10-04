@@ -46,6 +46,7 @@
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define isSameTime(xout, xp) ((xout)-(xp) <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
+void parseFree(int last);
 
 #else
 #if defined(__cplusplus)

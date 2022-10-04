@@ -43,7 +43,7 @@ using namespace Rcpp;
 using namespace arma;
 
 #include "cbindThetaOmega.h"
-#include "handle_evid.h"
+#include <rxode2parseHandleEvid.h>
 #include "rxThreadData.h"
 
 extern "C" uint64_t dtwiddle(const void *p, int i);
