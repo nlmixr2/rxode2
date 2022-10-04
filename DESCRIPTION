@@ -113,11 +113,8 @@ Biarch: true
 LinkingTo: 
     rxode2parse,
     PreciseSums (>= 0.3),
-    RcppEigen (>= 0.3.3.3.0),
     RcppArmadillo (>= 0.9.300.2.0),
-    sitmo,
-    StanHeaders (>= 2.21.0),
-    BH
+    sitmo
 Encoding: UTF-8
 LazyData: true
 Language: en-US
