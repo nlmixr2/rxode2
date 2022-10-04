@@ -308,6 +308,7 @@ NA_LOGICAL <- NA # nolint
 #' @concept Pharmacodynamics (PD)
 #' @useDynLib rxode2, .registration=TRUE
 #' @importFrom PreciseSums fsum
+#' @importFrom rxode2parse rxode2parse
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
 #' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion

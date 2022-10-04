@@ -76,6 +76,7 @@ Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
     rxode2ll,
+    rxode2parse,
     assertthat,
     backports,
     cli (>= 2.0.0),
