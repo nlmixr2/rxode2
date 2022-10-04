@@ -49,8 +49,10 @@
 void parseFree(int last);
 
 #else
+
 #if defined(__cplusplus)
 #include "rxode2_RcppExports.h"
+
 #endif
 
 #endif // _isrxode2_
