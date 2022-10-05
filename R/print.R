@@ -96,10 +96,11 @@ print.rxEt <- function(x, ...) {
 
 
     }
-    if (x$nobs != 0 | x$ndose != 0) {
+    if (x$nobs != 0 || x$ndose != 0) {
       if (!.nb) {
         cat(cli::cli_format_method({
-          .h2(paste0("First part of ", crayon::yellow(bound), ":"))        }), sep = "\n")
+          .h2(paste0("First part of ", crayon::yellow(bound), ":"))
+        }), sep = "\n")
       }
       print(tibble::as_tibble(data.frame(.etAddCls(x))))
     }
@@ -199,29 +200,6 @@ print.rxode2 <- function(x, ...) {
     if (length(.cur) > 0) {
       cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$lhs"), ": ", paste(.cur, collapse = ", "), "\n"))
     }
-  }
-  invisible(x)
-}
-
-#' @export
-print.rxModelVars <- function(x, ...) {
-  .bound <- .getBound(x, parent.frame(2))
-  cat("rxode2 model variables (see str to see all variables)\n")
-  .cur <- x$state
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$state"), ": ", paste(.cur, collapse = ", "), "\n"))
-  }
-  .cur <- x$stateExtra
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$stateExtra"), ": ", paste(.cur, collapse = ", "), "\n"))
-  }
-  .cur <- x$params
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$params"), ": ", paste(.cur, collapse = ", "), "\n"))
-  }
-  .cur <- x$lhs
-  if (length(.cur) > 0) {
-    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$lhs"), ": ", paste(.cur, collapse = ", "), "\n"))
   }
   invisible(x)
 }

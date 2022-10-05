@@ -9,11 +9,10 @@
 #include <R_ext/Rdynload.h>
 #include "../inst/include/rxode2.h"
 #define __DOINIT__
-#include "tran.h"
 #include "rxthreefry.h"
 #include "cbindThetaOmega.h"
 #include "seed.h"
-#include "getTime.h"
+#include <rxode2parseGetTime.h>
 
 SEXP _rxHasOpenMp();
 
@@ -217,10 +216,6 @@ SEXP _rxode2_convertId_(SEXP);
 SEXP _rxode2_rpp_(SEXP nS, SEXP lambdaS, SEXP gammaS, SEXP probS, SEXP t0S,
 		 SEXP tmaxS, SEXP randomOrderS);
 
-SEXP _rxode2_rxQs(SEXP);
-
-SEXP _rxode2_rxQr(SEXP);
-
 SEXP _rxode2_rxEtTransAsDataFrame_(SEXP);
 
 extern int rxIsCurrentC(SEXP obj);
@@ -234,33 +229,6 @@ void initRxThreads();
 
 void rxOptionsIni();
 /* void rxOptionsIniFocei(); */
-
-double linCmtA(rx_solve *rx, unsigned int id, double t, int linCmt,
-	       int ncmt, int trans, double d_ka,
-	       double p1, double v1,
-	       double p2, double p3,
-	       double p4, double p5,
-	       double d_tlag, double d_tlag2, double d_F, double d_F2,
-	       double d_rate, double d_dur, double d_rate2, double d_dur2);
-
-double linCmtC(rx_solve *rx, unsigned int id, double t, int linCmt,
-	       int ncmt, int trans, double d_ka,
-	       double p1, double v1,
-	       double p2, double p3,
-	       double p4, double p5,
-	       double d_tlag, double d_tlag2, double d_F, double d_F2,
-	       double d_rate, double d_dur, double d_rate2, double d_dur2);
-
-double linCmtB(rx_solve *rx, unsigned int id, double t, int linCmt,
-	       int i_cmt, int trans, int val,
-	       double dd_p1, double dd_v1,
-	       double dd_p2, double dd_p3,
-	       double dd_p4, double dd_p5,
-	       double dd_ka,
-	       double dd_tlag, double dd_tlag2,
-	       double dd_F, double dd_F2,
-	       double dd_rate, double dd_dur,
-	       double dd_rate2, double dd_dur2);
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
@@ -316,8 +284,13 @@ SEXP _rxode2_rxErf(SEXP);
 void simeps(int id);
 void simeta(int id);
 
-void transIniNull();
 void nullGlobals();
+SEXP _rxode2_codeLoaded();
+SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv);
+SEXP _rxode2_parseModel(SEXP type);
+SEXP _rxode2_isLinCmt();
+SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
+                   SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
@@ -452,8 +425,6 @@ void R_init_rxode2(DllInfo *info){
     {"_probit", (DL_FUNC) _probit, 3},
     {"_probitInv", (DL_FUNC) _probitInv, 3},
     {"_rxode2_rxrandnV", (DL_FUNC) _rxode2_rxrandnV, 2},
-    {"_rxode2_rxQs", (DL_FUNC) _rxode2_rxQs, 1},
-    {"_rxode2_rxQr", (DL_FUNC) _rxode2_rxQr, 1},
     {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) _rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
@@ -465,7 +436,6 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0} 
   };
   // C callable to assign environments.
-  R_RegisterCCallable("rxode2","_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr);
   R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
   R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
@@ -518,15 +488,12 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "isRstudio", (DL_FUNC) &isRstudio);
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
-  R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
-  R_RegisterCCallable("rxode2", "linCmtC", (DL_FUNC) &linCmtC);
-  R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);
   
-  R_RegisterCCallable("rxode2","rxode2_ode_free",           (DL_FUNC) &rxode2_ode_free);
+  R_RegisterCCallable("rxode2","rxode2_ode_free", (DL_FUNC) &rxode2_ode_free);
   
   //Functions
   
@@ -569,7 +536,6 @@ void R_init_rxode2(DllInfo *info){
   rxOptionsIni();
   initRxThreads();
   avoid_openmp_hang_within_fork();
-  transIniNull();
   nullGlobals();
   /* rxOptionsIniFocei(); */
 }

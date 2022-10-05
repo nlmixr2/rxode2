@@ -9,7 +9,7 @@
 #include <R_ext/Rdynload.h>
 #include "../inst/include/rxode2.h"
 #include "strncmp.h"
-#include "handle_evid.h"
+#include <rxode2parseHandleEvid.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #define _(String) dgettext ("rxode2", String)

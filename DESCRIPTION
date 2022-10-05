@@ -76,11 +76,11 @@ Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
     rxode2ll,
+    rxode2parse,
     assertthat,
     backports,
     cli (>= 2.0.0),
     checkmate,
-    dparser (>= 0.1.8),
     ggplot2,
     inline,
     lotri (>= 0.4.0),
@@ -112,13 +112,10 @@ URL: https://nlmixr2.github.io/rxode2/, https://github.com/nlmixr2/rxode2/
 RoxygenNote: 7.2.1
 Biarch: true
 LinkingTo: 
-    dparser (>= 1.3.1-0),
+    rxode2parse,
     PreciseSums (>= 0.3),
-    RcppEigen (>= 0.3.3.3.0),
     RcppArmadillo (>= 0.9.300.2.0),
-    sitmo,
-    StanHeaders (>= 2.21.0),
-    BH
+    sitmo
 Encoding: UTF-8
 LazyData: true
 Language: en-US

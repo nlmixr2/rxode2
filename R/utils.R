@@ -116,19 +116,6 @@ rxClean <- function(wd) {
   suppressMessages(.mkCache(rxTempDir()))
 }
 
-refresh <- function(derivs = FALSE) {
-  ## nocov start
-  cat("Dparser Version\n")
-  print(dparser::dpVersion())
-  if (derivs) {
-    Sys.setenv(rxode2_derivs = TRUE)
-  } else {
-    Sys.setenv(rxode2_derivs = FALSE)
-  }
-  source(devtools::package_file("build/refresh.R"))
-  ## nocov end
-}
-
 #' Defunct setting of sum
 #'
 #' @param type used to be type of product

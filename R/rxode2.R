@@ -308,6 +308,7 @@ NA_LOGICAL <- NA # nolint
 #' @concept Pharmacodynamics (PD)
 #' @useDynLib rxode2, .registration=TRUE
 #' @importFrom PreciseSums fsum
+#' @importFrom rxode2parse rxode2parse
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
 #' @importFrom utils getFromNamespace assignInMyNamespace download.file head sessionInfo compareVersion packageVersion
@@ -329,6 +330,7 @@ rxode2 <- # nolint
            fullPrint=getOption("rxode2.fullPrint", FALSE)) {
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
+    rxode2parse::rxParseSuppressMsg()
     .modelName <- try(as.character(substitute(model)), silent=TRUE)
     if (inherits(.modelName, "try-error")) .modelName <- NULL
     if (!missing(modName)) {
@@ -1218,7 +1220,6 @@ rxTrans.character <- memoise::memoise(function(model,
   if (missing(md5)) {
     md5 <- rxMd5(model)$digest
   }
-  rxode2::rxReq("dparser")
   .ret <- .Call(
     `_rxode2_trans`, model, modelPrefix, md5, .isStr,
     as.integer(crayon::has_color()),
@@ -1314,14 +1315,19 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
 
 .getIncludeDir <- function() {
   .cache <- R_user_dir("rxode2", "cache")
+  .parseInclude <- system.file("include", package = "rxode2parse")
   if (dir.exists(.cache)) {
     .include <- .normalizePath(file.path(.cache, "include"))
     if (!dir.exists(.include)) {
       .malert("creating rxode2 include directory")
       dir.create(.include, recursive = TRUE)
       .sysInclude <- system.file("include", package = "rxode2")
+      .files <- list.files(.parseInclude)
+      lapply(.files, function(file) {
+        file.copy(file.path(.parseInclude, file), file.path(.include, file))
+      })
       .files <- list.files(.sysInclude)
-      sapply(.files, function(file) {
+      lapply(.files, function(file) {
         file.copy(file.path(.sysInclude, file), file.path(.include, file))
       })
       .malert("getting R compile options")
@@ -1337,6 +1343,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
       .malert("precompiling headers")
       .args <- paste0(
         .cc, " -I", gsub("[\\]", "/", .normalizePath(R.home("include"))), " ",
+        " -I\"", .normalizePath(.parseInclude), "\" ", 
         .cflags, " ", .shlibCflags, " ", .cpicflags, " -I", gsub("[\\]", "/", .normalizePath(.include)), " ",
         paste(gsub("[\\]", "/", .normalizePath(.include)), "rxode2_model_shared.h", sep = "/"),
         ""
@@ -1504,9 +1511,10 @@ rxCompile.rxModelVars <- function(model, # Model
         }
         .defs <- ""
         .ret <- sprintf(
-          "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
+          "#rxode2 Makevars\nPKG_CFLAGS=-O%s %s -I\"%s\" -I\"%s\"\nPKG_LIBS=$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)\n",
           getOption("rxode2.compile.O", "2"),
-          .defs, .getIncludeDir()
+          .defs, .getIncludeDir(),
+          system.file("include", package = "rxode2parse")
         )
         ## .ret <- paste(.ret, "-g")
         sink(.Makevars)

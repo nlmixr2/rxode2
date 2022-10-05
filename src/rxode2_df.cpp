@@ -27,13 +27,13 @@
 #include "checkmate.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #include "../inst/include/rxode2.h"
-#include "ode.h"
-#include "handle_evid.h"
-#include "getTime.h"
+#include <rxode2parseVer.h>
+#include <rxode2parseHandleEvid.h>
+#include <rxode2parseGetTime.h>
 #include "par_solve.h"
 #include <Rcpp.h>
 #include "strncmp.h"
-#define rxModelVars(a) rxModelVars_(a)
+#define rxModelVars(a) rxModelVar_s(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 void resetSolveLinB();
 using namespace Rcpp;
