@@ -4,6 +4,10 @@
   increase maintainability of 'rxode2'. They were transferred to
   'rxode2ll' (requested by CRAN).
   
+- Remove the parsing from 'rxode2' and solved linear compartment code
+  and move to 'rxode2parse' to reduce the compilation time (as requested
+  by CRAN).
+  
 - Change the `rxode2` ui object so it is a compressed, serialized
   object by default.  This could reduce the `C stack size` problem
   that occurs with too many environments in R.
