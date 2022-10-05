@@ -130,6 +130,7 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.9" id="rxode2-209">rxode2 2.0.9<a class="anchor" aria-label="anchor" href="#rxode2-209"></a></h2>
 <ul><li><p>Remove log likelihoods from ‘rxode2’ to reduce compilation time and increase maintainability of ‘rxode2’. They were transferred to ‘rxode2ll’ (requested by CRAN).</p></li>
+<li><p>Remove the parsing from ‘rxode2’ and solved linear compartment code and move to ‘rxode2parse’ to reduce the compilation time (as requested by CRAN).</p></li>
 <li><p>Change the <code>rxode2</code> ui object so it is a compressed, serialized object by default. This could reduce the <code>C stack size</code> problem that occurs with too many environments in R.</p></li>
 </ul></div>
     <div class="section level2">
