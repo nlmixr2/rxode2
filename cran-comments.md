@@ -8,7 +8,7 @@ Also the win-builder, rhub was checked and ran successfully.
 * The clang errors are taken care of, as well as the latex errors.
  
 * This shortens compilation time (as requested) by moving
-  log-likelihood functions to `rxode2ll`.
+  log-likelihood functions to `rxode2ll` and parsing to `rxode2parse`.
   
 * This also changes the `rxode2` model structure, which will change
   `nlmixr2est` and `nlmixr2extra` causing them to fail without an
