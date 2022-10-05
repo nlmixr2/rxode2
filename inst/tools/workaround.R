@@ -69,10 +69,10 @@ cmd <- file.path(R.home("bin"), "R")
 args <- c("CMD", "config")
 
 md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
-                                 paste0("inst/include/", include),
-                                 rxode2parse::rxode2parseMd5()#,
+                                 paste0("inst/include/", include)#,
                                  #paste0("R/", Rfiles)
                                  ), digest::digest, file = TRUE),
+                        rxode2parse::rxode2parseMd5(),
                         ## vapply(c("BLAS_LIBS", "CC",  "CFLAGS", "CPICFLAGS",
                         ##          "CXX", "CXXFLAGS", "CXXPICFLAGS",
                         ##          "CXX11", "CXX11STD", "CXX11FLAGS", "CXX11PICFLAGS",
