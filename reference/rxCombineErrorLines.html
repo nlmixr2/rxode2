@@ -234,6 +234,7 @@ to make other types of estimation methods (if needed)</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">one.cmt</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># You can get the simulation model easily by</span></span></span>
@@ -260,6 +261,7 @@ to make other types of estimation methods (if needed)</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># You can then get the compiled model by simply evaluting the model:</span></span></span>
 <span class="r-in"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval</a></span><span class="op">(</span><span class="fu">rxCombineErrorLines</span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># This also works with multile endpoint models:</span></span></span>
@@ -319,6 +321,7 @@ to make other types of estimation methods (if needed)</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">pk.turnover.emax</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-in"><span><span class="fu">rxCombineErrorLines</span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> rxode2({</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50, </span>
@@ -376,7 +379,8 @@ to make other types of estimation methods (if needed)</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">f</span><span class="op">$</span><span class="va">simulationModel</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.9 model named <span style="color: #BBBB00; font-weight: bold;">rx_b71a0774e860cad422392beaa36c36b7</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.9 model named <span style="color: #BBBB00; font-weight: bold;">rx_04abbc6efc16d319c0595d2d1f331434</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, gut, center, effect</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: cp</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50, tkout, te0, pdadd.err, eta.ktr, eta.ka, eta.cl, eta.v, eta.emax, eta.ec50, eta.kout, eta.e0, CMT, err.cp, err.effect</span>
