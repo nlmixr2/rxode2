@@ -18,10 +18,10 @@
 //--------------------------------------------------------------------------
 
 // These are now allocated via R structures in Rcpp.
-extern void rxode2_ode_free(){
+extern void rxode2_ode_free(void){
 }
 
-void rxode2_ode_alloc(){
+void rxode2_ode_alloc(void){
 }
 
 char __mv[1000];
@@ -31,7 +31,7 @@ extern void rxode2_assign_fn_pointers_(const char *mv){
 
 void rxAssignPtrC(SEXP obj);
 int rxode2_current_fn_pointer_id_ = 0;
-extern int rxode2_current_fn_pointer_id(){
+extern int rxode2_current_fn_pointer_id(void){
   return rxode2_current_fn_pointer_id_;
 }
 extern void rxode2_assign_fn_pointers(SEXP mv){
@@ -44,7 +44,7 @@ extern void rxode2_assign_fn_pointers(SEXP mv){
 
 SEXP rxModelVarsC(char *ptr);
 
-extern SEXP rxode2_get_mv(){
+extern SEXP rxode2_get_mv(void){
   return rxModelVarsC(__mv);
 }
 
@@ -52,7 +52,7 @@ extern SEXP rxode2_get_mv(){
 
 extern void rxode2_assign_rx(rx_solve *rx);
 
-rx_solve *getRxSolve_();
+rx_solve *getRxSolve_(void);
 int *global_BadDose(unsigned int mx);
 double *global_InfusionRate(unsigned int mx);
 

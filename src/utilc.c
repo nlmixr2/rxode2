@@ -30,9 +30,9 @@ extern void setRstudioPrint(int rstudio){
 }
 
 
-extern int getSilentErr(){return _setSilentErr;}
+extern int getSilentErr(void){return _setSilentErr;}
 
-extern int getRstudioPrint(){return _isRstudio2;}
+extern int getRstudioPrint(void){return _isRstudio2;}
 
 extern void RSprintf(const char *format, ...) {
   if (_setSilentErr == 0) {

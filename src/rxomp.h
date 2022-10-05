@@ -11,19 +11,19 @@ static inline int rx_get_thread(int mx) {
 
 #else
 
-static inline int omp_get_num_procs(){
+static inline int omp_get_num_procs(void){
   return 1;
 }
 
-static inline int omp_get_thread_limit(){
+static inline int omp_get_thread_limit(void){
   return 1;
 }
 
-static inline int omp_get_max_threads(){
+static inline int omp_get_max_threads(void){
   return 1;
 }
 
-static inline int omp_get_thread_num() {
+static inline int omp_get_thread_num(void) {
   return 0;
 }
 

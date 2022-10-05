@@ -14,7 +14,7 @@
 #include "seed.h"
 #include <rxode2parseGetTime.h>
 
-SEXP _rxHasOpenMp();
+SEXP _rxHasOpenMp(void);
 
 SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);
@@ -40,17 +40,17 @@ double powerL(double x, double lambda, int yj);
 double powerDL(double x, double lambda, int yj);
 
 SEXP _rxProgress(SEXP num, SEXP core);
-SEXP _rxTick();
+SEXP _rxTick(void);
 SEXP _rxProgressStop(SEXP);
 SEXP _rxProgressAbort(SEXP);
-SEXP _rxode2_codeLoaded();
+SEXP _rxode2_codeLoaded(void);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv);
 SEXP _rxode2_parseModel(SEXP type);
-SEXP _rxode2_isLinCmt();
-SEXP _rxode2_RcppExport_registerCCallable();
+SEXP _rxode2_isLinCmt(void);
+SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_setRstudio(SEXP);
-SEXP _rxode2_rxSolveFree();
+SEXP _rxode2_rxSolveFree(void);
 SEXP _rxode2_linCmtEnv(SEXP rho);
 SEXP _rxode2_rxInv(SEXP matrix);
 SEXP _rxode2_removableDrive(SEXP letter);
@@ -100,8 +100,8 @@ SEXP _rxode2_nestingInfo_(SEXP omega, SEXP data);
 
 SEXP _rxode2_isNullZero(SEXP in);
 
-SEXP rxode2_get_mv();
-SEXP _rxode2_rxGetSeed();
+SEXP rxode2_get_mv(void);
+SEXP _rxode2_rxGetSeed(void);
 
 SEXP _gammap(SEXP, SEXP);
 SEXP _gammaq(SEXP, SEXP);
@@ -128,7 +128,7 @@ static R_NativePrimitiveArgType rxode2_Sum_t[] = {
   REALSXP, INTSXP
 };
 
-extern int rxode2_current_fn_pointer_id();
+extern int rxode2_current_fn_pointer_id(void);
 extern double rxode2_sum(double *input, int len);
 extern double rxode2_prod(double *input, int len);
 
@@ -136,7 +136,7 @@ extern void rxode2_assign_fn_pointers(SEXP mv);
 
 
 // Need to change to remove global variables
-extern void rxode2_ode_free();
+extern void rxode2_ode_free(void);
 
 // Changed for Parallel
 extern void rxode2_ode_freeP(rx_solve *rx, unsigned int id);
@@ -162,10 +162,10 @@ SEXP _rxode2_rinvchisq(SEXP, SEXP, SEXP);
 
 SEXP _rxode2_getRxFn(SEXP);
 SEXP _rxode2_setProgSupported(SEXP);
-SEXP _rxode2_getProgSupported();
+SEXP _rxode2_getProgSupported(void);
 SEXP _rxode2_rxSetIni0(SEXP);
 SEXP _rxode2_rxSetSilentErr(SEXP silentSEXP);
-SEXP _rxode2_rxUnloadAll_();
+SEXP _rxode2_rxUnloadAll_(void);
 SEXP _rxode2_rxLock(SEXP);
 SEXP _rxode2_rxUnlock(SEXP);
 SEXP _rxode2_rxAllowUnload(SEXP);
@@ -220,15 +220,15 @@ SEXP _rxode2_rxEtTransAsDataFrame_(SEXP);
 
 extern int rxIsCurrentC(SEXP obj);
 
-rx_solve *getRxSolve_();
+rx_solve *getRxSolve_(void);
 
-void avoid_openmp_hang_within_fork();
-void initRxThreads();
+void avoid_openmp_hang_within_fork(void);
+void initRxThreads(void);
 
 // Remove these functions later...
 
-void rxOptionsIni();
-/* void rxOptionsIniFocei(); */
+void rxOptionsIni(void);
+/* void rxOptionsIniFocei(void); */
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
@@ -238,7 +238,7 @@ void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
 	       t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
 	       t_dydt c_dydt, t_update_inis u_inis, int jt);
 void par_solve(rx_solve *rx);
-int isRstudio();
+int isRstudio(void);
 
 const char *rxGetId(int id);
 
@@ -264,13 +264,13 @@ SEXP _rxode2_rxSolve_(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP getRxThreads_R(SEXP verbose);
 SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
 
-int getSilentErr();
+int getSilentErr(void);
 
 int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 		t_update_inis u_inis);
 
-t_calc_lhs getRxLhs();
-t_update_inis getUpdateInis();
+t_calc_lhs getRxLhs(void);
+t_update_inis getUpdateInis(void);
 
 void sortIds(rx_solve* rx, int ini);
 
@@ -284,11 +284,11 @@ SEXP _rxode2_rxErf(SEXP);
 void simeps(int id);
 void simeta(int id);
 
-void nullGlobals();
-SEXP _rxode2_codeLoaded();
+void nullGlobals(void);
+SEXP _rxode2_codeLoaded(void);
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv);
 SEXP _rxode2_parseModel(SEXP type);
-SEXP _rxode2_isLinCmt();
+SEXP _rxode2_isLinCmt(void);
 SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 void R_init_rxode2(DllInfo *info){
@@ -541,9 +541,9 @@ void R_init_rxode2(DllInfo *info){
 }
 
 void parseFree(int last);
-void rxOptionsFree();
-void gFree();
-void rxFreeLast();
+void rxOptionsFree(void);
+void gFree(void);
+void rxFreeLast(void);
 void R_unload_rxode2(DllInfo *info){
   gFree();
   rxOptionsFree();

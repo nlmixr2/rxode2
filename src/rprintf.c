@@ -73,7 +73,7 @@ char err[47][180] = {
 
 
 #ifdef __STANDALONE__
-int main()
+int main(void)
 {
 	int ix, fatal=0;
 	ix = 1; xerrwd_(&ix, &fatal);

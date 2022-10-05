@@ -11,9 +11,9 @@
 #endif
 
 
-SEXP _rxode2_codeLoaded() {
-  static SEXP (*fun)()=NULL;
-  if (fun == NULL) fun = (SEXP (*)()) R_GetCCallable("rxode2parse","_rxode2parse_codeLoaded");
+SEXP _rxode2_codeLoaded(void) {
+  static SEXP (*fun)(void)=NULL;
+  if (fun == NULL) fun = (SEXP (*)(void)) R_GetCCallable("rxode2parse","_rxode2parse_codeLoaded");
   return fun();
 }
 
@@ -33,9 +33,9 @@ SEXP _rxode2_parseModel(SEXP type) {
   return fun(type);
 }
 
-SEXP _rxode2_isLinCmt() {
-  static SEXP (*fun)()=NULL;
-  if (fun == NULL) fun = (SEXP (*)()) R_GetCCallable("rxode2parse","_rxode2parse_isLinCmt");
+SEXP _rxode2_isLinCmt(void) {
+  static SEXP (*fun)(void)=NULL;
+  if (fun == NULL) fun = (SEXP (*)(void)) R_GetCCallable("rxode2parse","_rxode2parse_isLinCmt");
   return fun();
 }
 

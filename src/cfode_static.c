@@ -21,7 +21,7 @@ void cfode_static (struct lsoda_context_t * ctx, int meth)
 #endif
 }
 #include <stdio.h>
-void printcm12() {
+void printcm12(void) {
 	RSprintf("static double cm1[13] = {\n");
 	int i;
 	for(i = 0; i < 13; i++) {
