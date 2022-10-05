@@ -3,11 +3,8 @@
  * ddot.c *
  **********/
 
-double 
-ddot0(n, dx, incx, dy, incy)
-	double         *dx, *dy;
-	int             n, incx, incy;
-
+double ddot0(int n, double *dx, int incx, double *dy, int incy) {
+  
 /*
    Purpose : Inner product dx . dy
 
@@ -87,3 +84,4 @@ ddot0(n, dx, incx, dy, incy)
 
 }
 
+}

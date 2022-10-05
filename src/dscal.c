@@ -3,10 +3,7 @@
  * dscal.c *
  ***********/
 
-void 
-dscal0(n, da, dx, incx)
-	double          da, *dx;
-	int             n, incx;
+void dscal0(int n, double da, double *dx, int incx) {
 
 /* Purpose : scalar vector multiplication
 
@@ -66,3 +63,4 @@ dscal0(n, da, dx, incx)
 
 }
 
+}
