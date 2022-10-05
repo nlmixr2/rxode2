@@ -5,10 +5,7 @@
 
 #include <math.h>
 
-int 
-idamax0(n, dx, incx)
-	double         *dx;
-	int             n, incx;
+int idamax0(int n, double *dx, int incx) {
 
 /* Purpose : Find largest component of double vector dx
 
@@ -70,3 +67,4 @@ idamax0(n, dx, incx)
 
 }
 
+}

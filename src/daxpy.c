@@ -11,11 +11,8 @@ From: tam@dragonfly.wri.com
 To: whitbeck@sanjuan.wrc.unr.edu
 */
 
-void 
-daxpy0(n, da, dx, incx, dy, incy)
-	double          da, *dx, *dy;
-	int             n, incx, incy;
-
+void daxpy0(int n, double da, double *dx, int incx, double *dy, int incy) {
+  
 /*
    Purpose : To compute
 
@@ -94,3 +91,4 @@ daxpy0(n, da, dx, incx, dy, incy)
 
 }
 
+}

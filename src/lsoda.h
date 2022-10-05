@@ -40,8 +40,8 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout);
 void lsoda_free(struct lsoda_context_t * ctx);
 void lsoda_free_opt(struct lsoda_opt_t * opt);
 
-struct lsoda_context_t * lsoda_create_ctx();
-struct lsoda_opt_t * lsoda_create_opt();
+struct lsoda_context_t * lsoda_create_ctx(void);
+struct lsoda_opt_t * lsoda_create_opt(void);
 
 
 #endif

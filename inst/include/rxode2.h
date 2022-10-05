@@ -71,7 +71,7 @@ typedef void (*t_update_inis)(int cSub, double *);
 typedef void (*t_dydt_lsoda_dum)(int *neq, double *t, double *A, double *DADT);
 typedef void (*t_jdum_lsoda)(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd);
 typedef int (*t_dydt_liblsoda)(double t, double *y, double *ydot, void *data);
-typedef void (*t_ode_current)();
+typedef void (*t_ode_current)(void);
 typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
 typedef double (*t_LAG)(int _cSub,  int _cmt, double t);
 typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t);
@@ -83,12 +83,12 @@ typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double 
 typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
   
 typedef void (*t_set_solve)(rx_solve *);
-typedef rx_solve *(*t_get_solve)();
+typedef rx_solve *(*t_get_solve)(void);
 
-typedef void *(*t_assignFuns)();
+typedef void *(*t_assignFuns)(void);
 
-rx_solve *getRxSolve_();
-rx_solve *getRxSolve2_();
+rx_solve *getRxSolve_(void);
+rx_solve *getRxSolve2_(void);
 rx_solve *getRxSolve(SEXP ptr);
 
 void par_solve(rx_solve *rx);
@@ -96,7 +96,7 @@ void par_solve(rx_solve *rx);
 rx_solving_options *getRxOp(rx_solve *rx);
 
 SEXP rxode2_df(int doDose, int doTBS);
-SEXP rxode2_par_df();
+SEXP rxode2_par_df(void);
 
 void rxOptionsIniEnsure(int mx);
 

@@ -5,17 +5,17 @@
 extern "C" {
 #endif
   double get_fkeep(int col, int id, rx_solving_options_ind *ind);
-  double *getLlikSave();
-  SEXP get_fkeepn();
+  double *getLlikSave(void);
+  SEXP get_fkeepn(void);
   void cliAlert(const char *format, ...);
   void setZeroMatrix(int which);
   double * getAol(int n, double atol);
   double * getRol(int n, double rtol);
-  void gFree();
-  double *rxGetErrs();
-  int rxGetErrsNcol();
-  int rxGetErrsNrow();
-  void rxSolveFreeC();
+  void gFree(void);
+  double *rxGetErrs(void);
+  int rxGetErrsNcol(void);
+  int rxGetErrsNrow(void);
+  void rxSolveFreeC(void);
   void sortIds(rx_solve* rx, int ini);
   void setupRxInd(rx_solving_options_ind* ind, int first);
   SEXP rxGetModelLib(const char *s);
@@ -27,8 +27,8 @@ extern "C" {
   SEXP rxParamNames(char *ptr);
   int rxIsCurrentC(SEXP obj);
   int Rcat(char *msg);
-  int isRstudio();
-  int isProgSupported();
+  int isRstudio(void);
+  int isProgSupported(void);
   
 #if defined(__cplusplus)
 }
