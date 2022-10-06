@@ -592,6 +592,13 @@ void getRxModels(){
   }
 }
 
+extern "C" void rxModelsAssignC(const char *str0, SEXP assign) {
+  getRxModels();
+  std::string str = str0;
+  _rxModels[str] = assign;
+}
+
+
 void rxModelsAssign(std::string str, SEXP assign){
   getRxModels();
   _rxModels[str] = assign;

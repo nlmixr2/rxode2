@@ -77,6 +77,7 @@ Imports:
     Rcpp (>= 0.12.3),
     rxode2ll,
     rxode2parse,
+    rxode2random,
     assertthat,
     backports,
     cli (>= 2.0.0),
@@ -113,9 +114,9 @@ RoxygenNote: 7.2.1
 Biarch: true
 LinkingTo: 
     rxode2parse,
+    rxode2random,
     PreciseSums (>= 0.3),
-    RcppArmadillo (>= 0.9.300.2.0),
-    sitmo
+    RcppArmadillo (>= 0.9.300.2.0)
 Encoding: UTF-8
 LazyData: true
 Language: en-US

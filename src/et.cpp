@@ -5,18 +5,17 @@
 #include <Rcpp.h>
 #include <R.h>
 #include "timsort.h"
+#include "../inst/include/rxode2.h"
 #include <rxode2parse.h>
 extern rx_solve rx_global;
 extern rx_solving_options op_global;
 #include <rxode2parseHandleEvid.h>
-
-
+#include "checkmate.h"
 #define SORT gfx::timsort
 
 using namespace Rcpp;
 
-#include "checkmate.h"
-#include "../inst/include/rxode2_as.h"
+#include <rxode2random_as.h>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>

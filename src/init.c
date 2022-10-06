@@ -9,7 +9,6 @@
 #include <R_ext/Rdynload.h>
 #include "../inst/include/rxode2.h"
 #define __DOINIT__
-#include "rxthreefry.h"
 #include "cbindThetaOmega.h"
 #include "seed.h"
 #include <rxode2parseGetTime.h>
@@ -53,7 +52,6 @@ SEXP _rxode2_setRstudio(SEXP);
 SEXP _rxode2_rxSolveFree(void);
 SEXP _rxode2_linCmtEnv(SEXP rho);
 SEXP _rxode2_rxInv(SEXP matrix);
-SEXP _rxode2_removableDrive(SEXP letter);
 SEXP _rxCholInv(SEXP dms, SEXP theta, SEXP tn);
 SEXP _rxode2_rxSymInvCholEnvCalculate(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxSymInvChol(SEXP, SEXP, SEXP, SEXP);
@@ -305,7 +303,6 @@ void R_init_rxode2(DllInfo *info){
     {"rxode2_get_mv", (DL_FUNC) &rxode2_get_mv, 0},
     {"_rxode2_rxGetSeed", (DL_FUNC) &_rxode2_rxGetSeed, 0},
     {"_rxode2_rxInv", (DL_FUNC) &_rxode2_rxInv, 1},
-    {"_rxode2_removableDrive", (DL_FUNC) &_rxode2_removableDrive, 1},
     {"_rxCholInv", (DL_FUNC) &_rxCholInv, 3},
     {"_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC) &_rxode2_rxSymInvCholEnvCalculate, 3},
     {"_rxode2_rxSymInvChol", (DL_FUNC) &_rxode2_rxSymInvChol, 4},
@@ -436,47 +433,9 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0} 
   };
   // C callable to assign environments.
-  R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
-  R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
-  R_RegisterCCallable("rxode2", "phi", (DL_FUNC) &phi);
-  
-  R_RegisterCCallable("rxode2", "rxnormV", (DL_FUNC) &rxnormV);
-  R_RegisterCCallable("rxode2", "rinormV", (DL_FUNC) &rinormV);
-  
-  R_RegisterCCallable("rxode2", "rxgamma", (DL_FUNC) &rxgamma);
-  R_RegisterCCallable("rxode2", "rxbeta", (DL_FUNC) &rxbeta);
-  R_RegisterCCallable("rxode2", "rxbinom", (DL_FUNC) &rxbinom);
-  R_RegisterCCallable("rxode2", "rxnbinomMu", (DL_FUNC) &rxnbinomMu);
-  R_RegisterCCallable("rxode2", "rxnbinom", (DL_FUNC) &rxnbinom);
-  R_RegisterCCallable("rxode2", "rxcauchy", (DL_FUNC) &rxcauchy);
-  R_RegisterCCallable("rxode2", "rxchisq", (DL_FUNC) &rxchisq);
-  R_RegisterCCallable("rxode2", "rxexp", (DL_FUNC) &rxexp);
-  R_RegisterCCallable("rxode2", "rxf", (DL_FUNC) &rxf);
-  R_RegisterCCallable("rxode2", "rxgeom", (DL_FUNC) &rxgeom);
-  R_RegisterCCallable("rxode2", "rxnorm", (DL_FUNC) &rxnorm);
-  R_RegisterCCallable("rxode2", "rxpois", (DL_FUNC) &rxpois);
-  R_RegisterCCallable("rxode2", "rxt_", (DL_FUNC) &rxt_);
-  R_RegisterCCallable("rxode2", "rxunif", (DL_FUNC) &rxunif);
-  R_RegisterCCallable("rxode2", "rxweibull", (DL_FUNC) &rxweibull);
-
-  R_RegisterCCallable("rxode2", "rigamma", (DL_FUNC) &rigamma);
-  R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
-  R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);
-  R_RegisterCCallable("rxode2", "rinbinomMu", (DL_FUNC) &rinbinomMu);
-  R_RegisterCCallable("rxode2", "rinbinom", (DL_FUNC) &rinbinom);
-  R_RegisterCCallable("rxode2", "ricauchy", (DL_FUNC) &ricauchy);
-  R_RegisterCCallable("rxode2", "richisq", (DL_FUNC) &richisq);
-  R_RegisterCCallable("rxode2", "riexp", (DL_FUNC) &riexp);
-  R_RegisterCCallable("rxode2", "rif", (DL_FUNC) &rif);
-  R_RegisterCCallable("rxode2", "rigeom", (DL_FUNC) &rigeom);
-  R_RegisterCCallable("rxode2", "rinorm", (DL_FUNC) &rinorm);
-  R_RegisterCCallable("rxode2", "ripois", (DL_FUNC) &ripois);
-  R_RegisterCCallable("rxode2", "rit_", (DL_FUNC) &rit_);
-  R_RegisterCCallable("rxode2", "riunif", (DL_FUNC) &riunif);
-  R_RegisterCCallable("rxode2", "riweibull", (DL_FUNC) &riweibull);
   
   R_RegisterCCallable("rxode2", "powerDi", (DL_FUNC) &powerDi);
   R_RegisterCCallable("rxode2", "powerD", (DL_FUNC) &powerD);
@@ -495,8 +454,7 @@ void R_init_rxode2(DllInfo *info){
   
   R_RegisterCCallable("rxode2","rxode2_ode_free", (DL_FUNC) &rxode2_ode_free);
   
-  //Functions
-  
+  //Functions  
   R_RegisterCCallable("rxode2","rxode2_sum",                (DL_FUNC) &rxode2_sum);
   R_RegisterCCallable("rxode2","rxode2_prod",               (DL_FUNC) &rxode2_prod);
 
