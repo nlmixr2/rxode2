@@ -10,6 +10,8 @@
 #define _(String) (String)
 #endif
 
+#include "seed.h"
+
 bool qtest(SEXP in, const char *test) {
   static bool (*fun)(SEXP, const char *)=NULL;
   if (fun == NULL) {
@@ -394,4 +396,22 @@ SEXP _rxode2_invWR1d(SEXP dSEXP, SEXP nuSEXP, SEXP omegaIsCholSEXP) {
   }
   return fun(dSEXP, nuSEXP, omegaIsCholSEXP);
 }
-  
+
+SEXP _rxode2_convertId_(SEXP id) {
+  static SEXP (*fun)(SEXP) = NULL;
+  if (fun == NULL) {
+    fun = (SEXP (*)(SEXP)) R_GetCCallable("rxode2random","_rxode2random_convertId_");
+  }
+  return fun(id);
+}
+
+SEXP _rxode2_assignSeedInfo(void) {
+  getRxSeed1 = (getRxSeed1_t)R_GetCCallable("rxode2random","_rxode2random_getRxSeed1");
+  setSeedEng1V = (setSeedEng1V_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1V");
+  setSeedEng1 = (setSeedEng1_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1");
+  setRxSeedFinal = (setRxSeedFinal_t)R_GetCCallable("rxode2random","_rxode2random_setRxSeedFinal");
+  seedEng = (seedEng_t) R_GetCCallable("rxode2random","_rxode2random_seedEng");
+  seedEngV = (seedEng_t) R_GetCCallable("rxode2random","_rxode2random_seedEngV");
+}
+
+

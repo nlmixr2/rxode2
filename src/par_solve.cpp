@@ -13,6 +13,7 @@
 #include "strncmp.h"
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
+#include "seed.h"
 
 extern "C" {
 #include "dop853.h"
@@ -524,6 +525,17 @@ double *global_rwork(unsigned int mx){
   }
   return global_rworkp;
 }
+
+
+
+getRxSeed1_t getRxSeed1;
+setSeedEng1V_t setSeedEng1V;
+setSeedEng1_t setSeedEng1;
+setRxSeedFinal_t setRxSeedFinal;
+seedEng_t seedEng;
+seedEngV_t seedEngV;
+
+
 extern "C" void _rxode2parseAssignPtrsInRxode2(rx_solve rx,
                                                rx_solving_options op,
                                                t_F f,
@@ -1430,9 +1442,6 @@ extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
 }
 
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
-extern "C" void setSeedEng1(uint32_t seed);
-extern "C" void setRxSeedFinal(uint32_t seed);
-uint32_t getRxSeed1(int ncores);
 
 extern "C" void par_liblsodaR(rx_solve *rx) {
   rx_solving_options *op = &op_global;

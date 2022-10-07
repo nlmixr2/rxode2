@@ -19,6 +19,7 @@
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
 .rxode2llVersion <- utils::packageVersion("rxode2ll")
 .rxode2parseVersion <- utils::packageVersion("rxode2parse")
+.rxode2randomVersion <- utils::packageVersion("rxode2random")
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
@@ -51,6 +52,18 @@
   } else {
     requireNamespace("rxode2parse", quietly=TRUE)
   }
+
+  if (!identical(.rxode2randomVersion, utils::packageVersion("rxode2random"))) {
+    stop("rxode2 compiled with rxode2random '",
+         as.character(.rxode2randomVersion),
+         "' but rxode2random '", as.character(utils::packageVersion("rxode2random")),
+         "' is loaded\nRecompile rxode2 with the this version of rxode2random",
+         call. = FALSE)
+  } else {
+    requireNamespace("rxode2random", quietly=TRUE)
+    .Call(`_rxode2_assignSeedInfo`)
+  }
+
 
 
   if (requireNamespace("dplyr", quietly=TRUE)) {

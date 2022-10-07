@@ -181,10 +181,6 @@ rxIndLin_ <- function(states) {
     .Call(`_rxode2_rxIndLin_`, states)
 }
 
-convertId_ <- function(x) {
-    .Call(`_rxode2_convertId_`, x)
-}
-
 #' Check the type of an object using Rcpp
 #'
 #' @param obj Object to check
