@@ -17,6 +17,16 @@ for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
   close(file.out)
 }
 
+l <- readLines("R/RcppExports.R")
+w <- which(regexpr("# Register entry points", l, fixed=TRUE) != -1)
+if (length(w) >= 1) {
+  w <- w[1]
+  l <- l[seq(1, w-1)]
+  RcppExports.R <- file("R/RcppExports.R", "wb")
+  writeLines(l, RcppExports.R)
+  close(RcppExports.R)
+}
+
 .in <- suppressWarnings(readLines("src/Makevars.in"))
 .in <- gsub("@ARMA@", file.path(find.package("RcppArmadillo"),"include"), .in)
 .in <- gsub("@BH@", file.path(find.package("BH"),"include"), .in)

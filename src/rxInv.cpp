@@ -1,5 +1,5 @@
 #define USE_FC_LEN_T
-// [[Rcpp::interfaces(r, cpp)]]
+// [[Rcpp::interfaces(r,cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
 //#undef NDEBUG
 #define STRICT_R_HEADER

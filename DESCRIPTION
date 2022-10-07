@@ -116,7 +116,9 @@ LinkingTo:
     rxode2parse,
     rxode2random,
     PreciseSums (>= 0.3),
-    RcppArmadillo (>= 0.9.300.2.0)
+    Rcpp,
+    RcppArmadillo (>= 0.9.300.2.0),
+    BH
 Encoding: UTF-8
 LazyData: true
 Language: en-US

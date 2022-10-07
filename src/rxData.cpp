@@ -1,6 +1,6 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
 #define USE_FC_LEN_T
-// [[Rcpp::interfaces(r, cpp)]]
+// [[Rcpp::interfaces(r,cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
 //#undef NDEBUG
 #define STRICT_R_HEADER

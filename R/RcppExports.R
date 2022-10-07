@@ -654,40 +654,6 @@ rxStack <- function(Data, vars = NULL) {
     .Call(`_rxode2_rxStack`, Data, vars)
 }
 
-#' Get the rxode2 seed
-#'
-#' @return rxode2 seed state or -1 when the seed isn't set
-#'
-#' @export
-#' @seealso rxSetSeed, rxWithSeed, rxWithPreserveSeed
-#' @examples
-#'
-#' # without setting seed
-#'
-#' rxGetSeed()
-#' # Now set the seed
-#' rxSetSeed(42)
-#'
-#' rxGetSeed()
-#'
-#' rxnorm()
-#'
-#' rxGetSeed()
-#'
-#' # don't use the rxode2 seed again
-#'
-#' rxSetSeed(-1)
-#'
-#' rxGetSeed()
-#'
-#' rxnorm()
-#'
-#' rxGetSeed()
-#'
-rxGetSeed <- function() {
-    .Call(`_rxode2_rxGetSeed`)
-}
-
 isNullZero <- function(obj) {
     .Call(`_rxode2_isNullZero`, obj)
 }
@@ -696,7 +662,3 @@ rxErf <- function(v) {
     .Call(`_rxode2_rxErf`, v)
 }
 
-# Register entry points for exported C++ functions
-methods::setLoadAction(function(ns) {
-    .Call('_rxode2_RcppExport_registerCCallable', PACKAGE = 'rxode2')
-})

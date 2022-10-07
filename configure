@@ -2,7 +2,7 @@
 
 #echo --------[begin Workaround]--------
 ${R_HOME}/bin/R CMD BATCH  inst/tools/workaround.R
-#cat workaround.Rout
+cat workaround.Rout
 rm workaround.Rout
 #echo --------[end Workaround]--------
 
