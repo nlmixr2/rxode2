@@ -581,6 +581,8 @@ extern "C" void _rxode2parseAssignPtrsInRxode2(rx_solve rx,
   fun(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
 }
 
+extern "C" void _rxode2random_assignPtrsInRxode2nowVoid(void);
+
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
 void rxUpdateFuns(SEXP trans){
@@ -647,6 +649,7 @@ void rxUpdateFuns(SEXP trans){
                                  handle_evidL,
                                  _getDur);
   _rxode2random_assignSolveOnly2(rx_global, op_global);
+  _rxode2random_assignPtrsInRxode2nowVoid();
 }
 
 extern "C" void rxClearFuns(){

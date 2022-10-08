@@ -351,6 +351,21 @@ void _rxode2random_assignPtrsInRxode2now(rx_solve rx,
   fun(rx, op, rSF, sZM, et, rmac, mv, rens, cin, glv, guv, gams);
 }
 
+void _rxode2random_assignPtrsInRxode2nowVoid(void) {
+  _rxode2random_assignPtrsInRxode2now(rx_global,
+                                      op_global,
+                                      _rxode2_rxSolveFree,
+                                      setZeroMatrix,
+                                      _rxode2_etTrans,
+                                      rxModelsAssignC,
+                                      _rxode2_rxModelVars_,
+                                      _rxode2_rxExpandNesting,
+                                      chin,
+                                      getLowerVecSexp,
+                                      getUpperVecSexp,
+                                      getArmaMatSexp);
+}
+
 extern rx_solve rx_global;
 extern rx_solving_options op_global;
 extern void setZeroMatrix(int which);
