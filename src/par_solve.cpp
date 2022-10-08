@@ -526,6 +526,17 @@ double *global_rwork(unsigned int mx){
   return global_rworkp;
 }
 
+extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx,
+                                                rx_solving_options op) {
+  static void (*fun)(rx_solve,
+                     rx_solving_options)=NULL;
+  if (fun == NULL) {
+    fun = (void (*)(rx_solve,
+                    rx_solving_options))  R_GetCCallable("rxode2random","_rxode2random_assignSolveOnly");
+  }
+  fun(rx, op);
+}
+
 extern "C" void _rxode2parseAssignPtrsInRxode2(rx_solve rx,
                                                rx_solving_options op,
                                                t_F f,
@@ -567,7 +578,7 @@ extern "C" void _rxode2parseAssignPtrsInRxode2(rx_solve rx,
                     t_handle_evidL,
                     t_getDur)) R_GetCCallable("rxode2parse","_rxode2parseAssignPtrs");
   }
-  return fun(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
+  fun(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
 }
 
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
@@ -635,6 +646,7 @@ void rxUpdateFuns(SEXP trans){
                                  _locateTimeIndex,
                                  handle_evidL,
                                  _getDur);
+  _rxode2random_assignSolveOnly2(rx_global, op_global);
 }
 
 extern "C" void rxClearFuns(){
