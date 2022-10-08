@@ -1,15 +1,4 @@
-#' @export
-#' @rdname rxnormV
-rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
-  checkmate::assertNumeric(mean, len = 1)
-  checkmate::assertNumeric(sd, lower = 0, len = 1)
-  checkmate::assertCount(n)
-  checkmate::assertCount(ncores)
-  rxSeedEng(ncores)
-  .Call(`_rxode2_rxnorm_`, mean, sd, n, ncores)
-}
-
-#' Simulate random normal variable from threefry/vandercorput generator
+#' Simulate random normal variable from threefry generator
 #'
 #' @inheritParams stats::rnorm
 #'
@@ -17,8 +6,7 @@ rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #'
 #' @param ncores Number of cores for the simulation
 #'
-#' `rxnorm` simulates using the threefry sitmo generator; `rxnormV`
-#' uses the vandercorput generator
+#' `rxnorm` simulates using the threefry sitmo generator
 #'
 #' @return normal random number deviates
 #'
@@ -42,38 +30,21 @@ rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #'
 #' s <- rxSolve(rx, et)
 #'
-#' ## Use vandercorput generator
-#'
-#' rxnormV(n = 10) # with rxnorm you have to explicitly state n
-#' rxnormV(n = 10, ncores = 2) # You can parallelize the simulation using openMP
-#'
-#' rxnormV(2, 3) ## The first 2 arguments are the mean and standard deviation
-#'
-#'
-#' ## This example uses `rxnormV` directly in the model
-#'
-#' rx <- rxode2({
-#'   a <- rxnormV()
-#' })
-#'
-#' et <- et(1, id = 1:2)
-#'
-#' s <- rxSolve(rx, et)
 #' }
 #' @export
-rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
+rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(mean, len = 1)
   checkmate::assertNumeric(sd, lower = 0, len = 1)
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
-  .Call(`_rxode2_rxnormV_`, mean, sd, n, ncores)
+  .Call(`_rxode2_rxnorm_`, mean, sd, n, ncores)
 }
 
 #' Simulate random Poisson variable from threefry generator
 #'
 #' @inheritParams stats::rpois
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #' @return poission random number deviates
@@ -110,7 +81,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' Simulate student t variable from threefry generator
 #'
 #' @inheritParams stats::rt
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #' @return t-distribution random numbers
@@ -148,7 +119,7 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #' Simulate uniform variable from threefry generator
 #'
 #' @inheritParams stats::runif
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #' @return uniform random numbers
@@ -188,7 +159,7 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #' Simulate Weibull variable from threefry generator
 #'
 #' @inheritParams stats::rweibull
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #' @return Weibull random deviates
@@ -230,7 +201,7 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #' Simulate geometric variable from threefry generator
 #'
 #' @inheritParams stats::rgeom
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #' @return geometric random deviates
@@ -269,7 +240,7 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #' Simulate beta variable from threefry generator
 #'
 #' @inheritParams stats::rbeta
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #'
@@ -312,7 +283,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #'
 #' @param shape The shape of the gamma random variable
 #' @inheritParams stats::rgamma
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #'
@@ -357,7 +328,7 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #' Simulate F variable from threefry generator
 #'
 #' @inheritParams stats::rf
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #'
@@ -401,7 +372,7 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #' Simulate exponential variable from threefry generator
 #'
 #' @inheritParams stats::rexp
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #'
@@ -443,7 +414,7 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #' Simulate chi-squared variable from threefry generator
 #'
 #' @inheritParams stats::rchisq
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #'
@@ -484,7 +455,7 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #' Simulate Cauchy variable from threefry generator
 #'
 #' @inheritParams stats::rcauchy
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #'
@@ -565,7 +536,7 @@ rxord <- function(...) {
 #' Simulate Binomial variable from threefry generator
 #'
 #' @inheritParams stats::rbinom
-#' @inheritParams rxnormV
+#' @inheritParams rxnorm
 #'
 #' @template birthdayProblem
 #'

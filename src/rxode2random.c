@@ -356,14 +356,6 @@ SEXP _rxode2_rxrandnV(SEXP nrowSEXP, SEXP ncolSEXP) {
   return fun(nrowSEXP, ncolSEXP);
 }
 
-SEXP _rxode2_rxnormV_(SEXP meanSEXP, SEXP sdSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
-  static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxnormV_");
-  }
-  return fun(meanSEXP, sdSEXP, nSEXP, ncoresSEXP);
-}
-
 SEXP _rxode2_rxGetSeed(void) {
   static SEXP (*fun)(void) = NULL;
   if (fun == NULL) {
@@ -405,21 +397,17 @@ SEXP _rxode2_convertId_(SEXP id) {
 }
 
 getRxSeed1_t getRxSeed1;
-setSeedEng1V_t setSeedEng1V;
 setSeedEng1_t setSeedEng1;
 setRxSeedFinal_t setRxSeedFinal;
 seedEng_t seedEng;
-seedEngV_t seedEngV;
 rxunif_t rxodeUnif;
 
 
 SEXP _rxode2_assignSeedInfo(void) {
   getRxSeed1 = (getRxSeed1_t)R_GetCCallable("rxode2random","_rxode2random_getRxSeed1");
-  setSeedEng1V = (setSeedEng1V_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1V");
   setSeedEng1 = (setSeedEng1_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1");
   setRxSeedFinal = (setRxSeedFinal_t)R_GetCCallable("rxode2random","_rxode2random_setRxSeedFinal");
   seedEng = (seedEng_t) R_GetCCallable("rxode2random","_rxode2random_seedEng");
-  seedEngV = (seedEngV_t) R_GetCCallable("rxode2random","_rxode2random_seedEngV");
   rxodeUnif = (rxunif_t) R_GetCCallable("rxode2random", "rxunif");
 }
 

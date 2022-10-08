@@ -14,8 +14,7 @@ rxf(df1, df2, n = 1L, ncores = 1L)
 
 \item{ncores}{Number of cores for the simulation
 
-\code{rxnorm} simulates using the threefry sitmo generator; \code{rxnormV}
-uses the vandercorput generator}
+\code{rxnorm} simulates using the threefry sitmo generator}
 }
 \value{
 f random deviates

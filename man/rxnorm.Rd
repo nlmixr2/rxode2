@@ -2,12 +2,9 @@
 % Please edit documentation in R/rxrandom.R
 \name{rxnorm}
 \alias{rxnorm}
-\alias{rxnormV}
-\title{Simulate random normal variable from threefry/vandercorput generator}
+\title{Simulate random normal variable from threefry generator}
 \usage{
 rxnorm(mean = 0, sd = 1, n = 1L, ncores = 1L)
-
-rxnormV(mean = 0, sd = 1, n = 1L, ncores = 1L)
 }
 \arguments{
 \item{mean}{vector of means.}
@@ -18,14 +15,13 @@ rxnormV(mean = 0, sd = 1, n = 1L, ncores = 1L)
 
 \item{ncores}{Number of cores for the simulation
 
-\code{rxnorm} simulates using the threefry sitmo generator; \code{rxnormV}
-uses the vandercorput generator}
+\code{rxnorm} simulates using the threefry sitmo generator}
 }
 \value{
 normal random number deviates
 }
 \description{
-Simulate random normal variable from threefry/vandercorput generator
+Simulate random normal variable from threefry generator
 }
 \examples{
 \donttest{
@@ -47,22 +43,5 @@ et <- et(1, id = 1:2)
 
 s <- rxSolve(rx, et)
 
-## Use vandercorput generator
-
-rxnormV(n = 10) # with rxnorm you have to explicitly state n
-rxnormV(n = 10, ncores = 2) # You can parallelize the simulation using openMP
-
-rxnormV(2, 3) ## The first 2 arguments are the mean and standard deviation
-
-
-## This example uses `rxnormV` directly in the model
-
-rx <- rxode2({
-  a <- rxnormV()
-})
-
-et <- et(1, id = 1:2)
-
-s <- rxSolve(rx, et)
 }
 }

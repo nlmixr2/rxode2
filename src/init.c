@@ -180,7 +180,6 @@ SEXP _rxode2_rcvC1(SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_rxSeedEng(SEXP);
 SEXP _rxode2_rxnorm_(SEXP, SEXP, SEXP, SEXP);
-SEXP _rxode2_rxnormV_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxpois_(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxt__(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxunif_(SEXP, SEXP, SEXP, SEXP);
@@ -351,20 +350,6 @@ void _rxode2random_assignPtrsInRxode2now(rx_solve rx,
   fun(rx, op, rSF, sZM, et, rmac, mv, rens, cin, glv, guv, gams);
 }
 
-void _rxode2random_assignPtrsInRxode2nowVoid(void) {
-  _rxode2random_assignPtrsInRxode2now(rx_global,
-                                      op_global,
-                                      _rxode2_rxSolveFree,
-                                      setZeroMatrix,
-                                      _rxode2_etTrans,
-                                      rxModelsAssignC,
-                                      _rxode2_rxModelVars_,
-                                      _rxode2_rxExpandNesting,
-                                      chin,
-                                      getLowerVecSexp,
-                                      getUpperVecSexp,
-                                      getArmaMatSexp);
-}
 
 extern rx_solve rx_global;
 extern rx_solving_options op_global;
@@ -460,7 +445,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxMvrandn_", (DL_FUNC) &_rxode2_rxMvrandn_, 10},
     {"_rxode2_rxSeedEng", (DL_FUNC) &_rxode2_rxSeedEng, 1},
     {"_rxode2_rxnorm_", (DL_FUNC) &_rxode2_rxnorm_, 4},
-    {"_rxode2_rxnormV_", (DL_FUNC) &_rxode2_rxnormV_, 4},
     {"_rxode2_rxpois_", (DL_FUNC) &_rxode2_rxpois_, 3},
     {"_rxode2_rxt__", (DL_FUNC) &_rxode2_rxt__, 3},
     {"_rxode2_rxunif_", (DL_FUNC) &_rxode2_rxunif_, 4},
@@ -508,7 +492,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxHasOpenMp", (DL_FUNC) _rxHasOpenMp, 0},
     {"_probit", (DL_FUNC) _probit, 3},
     {"_probitInv", (DL_FUNC) _probitInv, 3},
-    {"_rxode2_rxrandnV", (DL_FUNC) _rxode2_rxrandnV, 2},
     {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) _rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},

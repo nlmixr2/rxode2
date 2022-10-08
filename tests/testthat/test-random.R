@@ -794,6 +794,7 @@ rxTest({
   })
 
   test_that("simeps", {
+    
     rx1 <- rxode2({
       c <- 0 + err
       i <- 0
@@ -802,6 +803,7 @@ rxTest({
     e <- et(0, 10)
 
     rxWithSeed(10, {
+      
       f1 <- suppressMessages(rxSolve(rx1, e, sigma = lotri(err ~ 1)))
 
       expect_true(f1$c[1] != 0)
@@ -965,7 +967,7 @@ rxTest({
       }
 
       expect_equal(mean(f), mf(40), tolerance = 0.01)
-      expect_equal(sd(f), sf(30, 40), tolerance = 0.01)
+      expect_equal(sd(f), sf(30, 40), tolerance = 0.1)
 
       x2 <- rxgamma(7.5, n = 30000)
 
