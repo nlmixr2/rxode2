@@ -319,6 +319,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #' @return gamma random deviates
 #'
 #' @examples
+#' 
 #' \donttest{
 #'
 #' ## Use threefry engine

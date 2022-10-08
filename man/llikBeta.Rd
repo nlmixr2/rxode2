@@ -28,7 +28,8 @@ use all arguments.  You can also get the derivative of \code{shape1} and \code{s
 \code{llikBetaDshape1()} and \code{llikBetaDshape2()}.
 }
 \examples{
-\dontest{
+
+\donttest{
 
 x <- seq(1e-4, 1 - 1e-4, length.out = 21)
 

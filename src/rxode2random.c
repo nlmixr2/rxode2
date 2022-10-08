@@ -70,7 +70,7 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
 SEXP _phi(SEXP q) {
   static SEXP (*fun)(SEXP)=NULL;
   if (fun == NULL) {
-    fun = (SEXP (*)(SEXP)) R_GetCCallable("rxode2random","__rxode2random_phi");
+    fun = (SEXP (*)(SEXP)) R_GetCCallable("rxode2random","_rxode2random_phi");
   }
   return fun(q);
 }
@@ -102,7 +102,7 @@ SEXP _rxode2_cvPost_(SEXP nuSSEXP, SEXP omegaSSEXP, SEXP nSSEXP, SEXP omegaIsCho
 SEXP _rxode2_rinvchisq(SEXP nSEXP, SEXP nuSEXP, SEXP scaleSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rinvchisq_");
+    fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rinvchisq");
   }
   return fun(nSEXP, nuSEXP, scaleSEXP);  
 }
@@ -170,7 +170,6 @@ SEXP _rxode2_rxGradpsi(SEXP ySEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP) {
   }
   return fun(ySEXP, LSEXP, lSEXP, uSEXP);
 }
-
 
 SEXP _rxode2_rxNleq(SEXP lSEXP, SEXP uSEXP, SEXP LSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;

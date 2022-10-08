@@ -229,7 +229,8 @@ llikNbinomMu <- function(x, size, mu, full=FALSE) {
 #' @export
 #' 
 #' @examples
-#' \dontest{
+#' 
+#' \donttest{
 #'
 #' x <- seq(1e-4, 1 - 1e-4, length.out = 21)
 #' 
