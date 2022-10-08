@@ -41,6 +41,7 @@ jobs:
           remotes::install_github("nlmixr2/lotri")
           remotes::install_github("nlmixr2/rxode2ll")
           remotes::install_github("nlmixr2/rxode2parse")
+          remotes::install_github("nlmixr2/rxode2random")
         shell: Rscript {0}
 
       - name: Cache R packages
