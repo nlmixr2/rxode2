@@ -9,6 +9,7 @@
 #include "../inst/include/rxode2.h"
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
+#include "seed.h"
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)
 #define _as_dbleps(a) (fabs(a) < sqrt(DBL_EPSILON) ? ((a) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : a)
@@ -182,8 +183,6 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   return ind->par_ptr[parNo];
 }
 
-double rxunif(rx_solving_options_ind* ind, double low, double hi);
-
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
   if (rx == NULL) Rf_errorcall(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
@@ -202,7 +201,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = (int)rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
+              ind->cov_sample[k] = (int)rxodeUnif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
@@ -231,7 +230,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = (int)rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
+              ind->cov_sample[k] = (int)rxodeUnif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;

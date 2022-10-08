@@ -10,7 +10,7 @@
 #include "../inst/include/rxode2.h"
 #define __DOINIT__
 #include "cbindThetaOmega.h"
-#include "seed.h"
+//#include "seed.h"
 #include <rxode2parseGetTime.h>
 
 SEXP _rxHasOpenMp(void);
@@ -291,6 +291,75 @@ SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 SEXP _rxode2_assignSeedInfo(void);
 SEXP _rxSetSeed(SEXP);
+
+typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
+typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
+typedef SEXP (*lotriSep_type) (SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*lotriAllNames_type) (SEXP);
+typedef SEXP (*lotriGetBounds_type) (SEXP, SEXP, SEXP);
+typedef SEXP (*isLotri_type) (SEXP);
+typedef SEXP (*lotriMaxNu_type) (SEXP);
+typedef SEXP (*rxSolveFreeSexp_t)(void);
+typedef void (*setZeroMatrix_t)(int which);
+typedef SEXP (*etTrans_t)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef void (*rxModelsAssignC_t)(const char* str, SEXP assign);
+typedef SEXP (*rxModelVars_SEXP_t)(SEXP);
+typedef SEXP (*rxExpandNestingSexp_t)(SEXP, SEXP, SEXP);
+typedef SEXP (*chin_t)(SEXP x, SEXP table);
+typedef SEXP (*getLowerVec_t)(int type, rx_solve* rx);
+typedef SEXP (*getUpperVec_t)(int type, rx_solve* rx);
+typedef SEXP (*getArmaMat_t)(int type, int csim, rx_solve* rx);
+
+void _rxode2random_assignPtrsInRxode2now(rx_solve rx,
+                                         rx_solving_options op,
+                                         rxSolveFreeSexp_t rSF,
+                                         setZeroMatrix_t sZM,
+                                         etTrans_t et,
+                                         rxModelsAssignC_t rmac,
+                                         rxModelVars_SEXP_t mv,
+                                         rxExpandNestingSexp_t rens,
+                                         chin_t cin,
+                                         getLowerVec_t glv,
+                                         getUpperVec_t guv,
+                                         getArmaMat_t gams) {
+  static void (*fun)(rx_solve,
+                     rx_solving_options,
+                     rxSolveFreeSexp_t,
+                     setZeroMatrix_t,
+                     etTrans_t,
+                     rxModelsAssignC_t,
+                     rxModelVars_SEXP_t,
+                     rxExpandNestingSexp_t,
+                     chin_t,
+                     getLowerVec_t,
+                     getUpperVec_t,
+                     getArmaMat_t) = NULL;
+  if (fun == NULL) {
+    fun = (void (*)(rx_solve,
+                     rx_solving_options,
+                     rxSolveFreeSexp_t,
+                     setZeroMatrix_t,
+                     etTrans_t,
+                     rxModelsAssignC_t,
+                     rxModelVars_SEXP_t,
+                     rxExpandNestingSexp_t,
+                     chin_t,
+                     getLowerVec_t,
+                     getUpperVec_t,
+                     getArmaMat_t)) R_GetCCallable("rxode2random","_rxode2random_assignPtrsInRxode2");
+  }
+  fun(rx, op, rSF, sZM, et, rmac, mv, rens, cin, glv, guv, gams);
+}
+
+extern rx_solve rx_global;
+extern rx_solving_options op_global;
+extern void setZeroMatrix(int which);
+extern void rxModelsAssignC(const char *str0, SEXP assign);
+extern SEXP chin(SEXP x, SEXP table);
+extern SEXP getLowerVecSexp(int type, rx_solve* rx);
+extern SEXP getUpperVecSexp(int type, rx_solve* rx);
+extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
@@ -498,6 +567,19 @@ void R_init_rxode2(DllInfo *info){
   initRxThreads();
   avoid_openmp_hang_within_fork();
   nullGlobals();
+
+  _rxode2random_assignPtrsInRxode2now(rx_global,
+                                      op_global,
+                                      _rxode2_rxSolveFree,
+                                      setZeroMatrix,
+                                      _rxode2_etTrans,
+                                      rxModelsAssignC,
+                                      _rxode2_rxModelVars_,
+                                      _rxode2_rxExpandNesting,
+                                      chin,
+                                      getLowerVecSexp,
+                                      getUpperVecSexp,
+                                      getArmaMatSexp);
   /* rxOptionsIniFocei(); */
 }
 

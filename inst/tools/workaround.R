@@ -44,6 +44,7 @@ if (length(w) >= 1) {
 .in <- gsub("@SL@", "", ##paste(capture.output(StanHeaders:::LdFlags()), capture.output(RcppParallel:::RcppParallelLibs())),
             .in)
 
+
 if (.Platform$OS.type == "windows" && !file.exists("src/Makevars.win")) {
   .in <- gsub("@CXX14STD@", "-std=c++1y", .in)
   file.out <- file("src/Makevars.win", "wb")
@@ -83,6 +84,7 @@ md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
                                  #paste0("R/", Rfiles)
                                  ), digest::digest, file = TRUE),
                         rxode2parse::rxode2parseMd5(),
+                        rxode2random::rxode2randomMd5(),
                         ## vapply(c("BLAS_LIBS", "CC",  "CFLAGS", "CPICFLAGS",
                         ##          "CXX", "CXXFLAGS", "CXXPICFLAGS",
                         ##          "CXX11", "CXX11STD", "CXX11FLAGS", "CXX11PICFLAGS",

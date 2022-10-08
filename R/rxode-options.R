@@ -102,7 +102,6 @@
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
-  suppressMessages(.rxWinRtoolsPath(retry = NA))
   rxTempDir()
   if (!interactive()) {
     setProgSupported(0)
@@ -115,11 +114,6 @@
   ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
-  if (!.rxWinRtoolsPath(retry = NA)) {
-    ## nocov start
-    packageStartupMessage("Rtools is not set up correctly!\n\nYou need a working Rtools installation for rxode2 to compile models\n")
-    ## nocov end
-  }
   if (!interactive()) {
     setProgSupported(0)
   }

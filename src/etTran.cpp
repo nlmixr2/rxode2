@@ -94,7 +94,7 @@ Function getChin() {
   return b["%in%"];
 }
 
-SEXP chin(SEXP x, SEXP table){
+extern "C" SEXP chin(SEXP x, SEXP table) {
   Function chin_ = getChin();
   return chin_(x, table);
 }
@@ -332,7 +332,9 @@ bool rxSetIni0(bool ini0 = true){
 
 IntegerVector convertMethod(RObject method);
 
-SEXP convertId_(SEXP x);
+extern "C" SEXP _rxode2_convertId_(SEXP id);
+#define convertId_ _rxode2_convertId_
+
 bool warnedNeg=false;
 //' Event translation for rxode2
 //'

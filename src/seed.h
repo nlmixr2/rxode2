@@ -16,6 +16,8 @@ extern "C" {
   extern seedEngV_t seedEngV;
   typedef void (*seedEng_t)(uint32_t ncores);
   extern seedEng_t seedEng;
+  typedef double (*rxunif_t)(rx_solving_options_ind* ind, double low, double hi);
+  extern rxunif_t rxodeUnif;
 #if defined(__cplusplus)
 }
 #endif

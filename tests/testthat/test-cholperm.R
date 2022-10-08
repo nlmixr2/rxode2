@@ -166,6 +166,7 @@ nleq <-
   }
 
 test_that("cholperm", {
+  
   rxWithSeed(12, {
     d <- 5
 
@@ -202,6 +203,7 @@ test_that("cholperm", {
     ## microbenchmark::microbenchmark(cholperm(mcov, -2 * (1:5), -(1:5)), rxCholperm(mcov, -2 * (1:5), -(1:5)))
     ## microbenchmark::microbenchmark(microbenchmark::cholperm(mcov, -2 * (1:5), -(1:5)), rxCholperm(mcov, -2 * (1:5), -(1:5)))
   })
+  
 })
 
 test_that("gradpsi", {

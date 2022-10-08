@@ -103,7 +103,68 @@ ggplot2::expand_limits
 #' @export
 magrittr::`%>%`
 
+#' @importFrom rxode2random rxWithPreserveSeed
+#' @export
+rxode2random::rxWithPreserveSeed
+
+#' @importFrom rxode2random rxSetSeed
+#' @export
+rxode2random::rxSetSeed
+
+#' @importFrom rxode2random rxWithSeed
+#' @export
+rxode2random::rxWithSeed
+
+#' @importFrom rxode2random rxSetSeed
+#' @export
+rxode2random::rxSetSeed
+
+#' @importFrom rxode2random rxGetSeed
+#' @export
+rxode2random::rxGetSeed
+
+#' @importFrom rxode2random cvPost
+#' @export
+rxode2random::cvPost
+
+#' @importFrom rxode2random invWR1d
+#' @export
+rxode2random::invWR1d
+
+#' @importFrom rxode2random phi
+#' @export
+rxode2random::phi
+
+#' @importFrom rxode2random rLKJ1
+#' @export
+rxode2random::rLKJ1
+
+#' @importFrom rxode2random rinvchisq
+#' @export
+rxode2random::rinvchisq
+
+#' @importFrom rxode2random rxGetSeed
+#' @export
+rxode2random::rxGetSeed
+
+#' @importFrom rxode2random rxRmvn
+#' @export
+rxode2random::rxRmvn
+
+#' @importFrom rxode2random rxSetSeed
+#' @export
+rxode2random::rxSetSeed
+
+#' @importFrom rxode2random rxWithSeed
+#' @export
+rxode2random::rxWithSeed
+
+#' @importFrom rxode2random rxSeedEng
+#' @export
+rxode2random::rxSeedEng
+
 .SD <- NULL
 `:=` <- function(...) { ## nocov start
   stop("this is only used in 'data.table'", .call = FALSE)
 } ## nocov end
+

@@ -405,13 +405,22 @@ SEXP _rxode2_convertId_(SEXP id) {
   return fun(id);
 }
 
+getRxSeed1_t getRxSeed1;
+setSeedEng1V_t setSeedEng1V;
+setSeedEng1_t setSeedEng1;
+setRxSeedFinal_t setRxSeedFinal;
+seedEng_t seedEng;
+seedEngV_t seedEngV;
+rxunif_t rxodeUnif;
+
+
 SEXP _rxode2_assignSeedInfo(void) {
   getRxSeed1 = (getRxSeed1_t)R_GetCCallable("rxode2random","_rxode2random_getRxSeed1");
   setSeedEng1V = (setSeedEng1V_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1V");
   setSeedEng1 = (setSeedEng1_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1");
   setRxSeedFinal = (setRxSeedFinal_t)R_GetCCallable("rxode2random","_rxode2random_setRxSeedFinal");
   seedEng = (seedEng_t) R_GetCCallable("rxode2random","_rxode2random_seedEng");
-  seedEngV = (seedEng_t) R_GetCCallable("rxode2random","_rxode2random_seedEngV");
+  seedEngV = (seedEngV_t) R_GetCCallable("rxode2random","_rxode2random_seedEngV");
+  rxodeUnif = (rxunif_t) R_GetCCallable("rxode2random", "rxunif");
 }
-
 
