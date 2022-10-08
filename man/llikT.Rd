@@ -34,6 +34,7 @@ use all arguments.  You can also get the derivative of \code{df}, \code{mean} an
 }
 \examples{
 
+\donttest{
 x <- seq(-3, 3, length.out = 21)
 
 llikT(x, 7, 0, 1)
@@ -53,6 +54,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
+}
 
 }
 \author{

@@ -31,6 +31,8 @@ use all arguments.  You can also get the derivatives with
 }
 \examples{
 
+\donttest{
+
 llikNorm(0)
 
 llikNorm(seq(-2,2,length.out=10), full=TRUE)
@@ -49,6 +51,7 @@ model <- rxode2({
 
 ret <- rxSolve(model, et)
 ret
+}
 }
 \author{
 Matthew L. Fidler

@@ -29,6 +29,7 @@ use the x and df arguments.  You can also get the derivative of \code{df} with
 }
 \examples{
 
+\donttest{
 llikChisq(1, df = 1:3, full=TRUE)
 
 llikChisq(1, df = 6:9)
@@ -42,6 +43,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
+}
 }
 \author{
 Matthew L. Fidler

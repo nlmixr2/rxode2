@@ -30,7 +30,7 @@ use all arguments.  You can also get the derivative of \code{prob} with
 \code{llikNbinomDprob()}
 }
 \examples{
-
+\donttest{
 llikNbinom(46:54, 100, 0.5)
 
 llikNbinom(46:54, 100, 0.5, TRUE)
@@ -47,7 +47,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
-
+}
 }
 \author{
 Matthew L. Fidler

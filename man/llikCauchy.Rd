@@ -28,7 +28,7 @@ use all arguments.  You can also get the derivative of \code{location} and \code
 \code{llikCauchyDlocation()} and \code{llikCauchyDscale()}.
 }
 \examples{
-
+\donttest{
 x <- seq(-3, 3, length.out = 21)
 
 llikCauchy(x, 0, 1)
@@ -46,6 +46,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
+}
 }
 \author{
 Matthew L. Fidler
