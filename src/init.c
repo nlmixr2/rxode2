@@ -360,6 +360,8 @@ extern SEXP getLowerVecSexp(int type, rx_solve* rx);
 extern SEXP getUpperVecSexp(int type, rx_solve* rx);
 extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
+
+SEXP _rxode2_RcppExport_registerCCallable();
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
@@ -578,6 +580,7 @@ void R_init_rxode2(DllInfo *info){
                                       getLowerVecSexp,
                                       getUpperVecSexp,
                                       getArmaMatSexp);
+  _rxode2_RcppExport_registerCCallable();
   /* rxOptionsIniFocei(); */
 }
 
