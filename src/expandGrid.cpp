@@ -1,7 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
-// [[Rcpp::interfaces(r, cpp)]]
+// [[Rcpp::interfaces(r,cpp)]]
 //#undef NDEBUG
 #include <Rcpp.h>
 using namespace Rcpp;

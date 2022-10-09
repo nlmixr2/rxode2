@@ -28,7 +28,7 @@ use the x and rate arguments.  You can also get the derivative of \code{rate} wi
 \code{llikExpDrate()}.
 }
 \examples{
-
+\donttest{
 llikExp(1, 1:3)
 
 llikExp(1, 1:3, full=TRUE)
@@ -44,6 +44,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
+}
 }
 \author{
 Matthew L. Fidler

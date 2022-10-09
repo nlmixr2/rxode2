@@ -1,6 +1,6 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
 #define USE_FC_LEN_T
-// [[Rcpp::interfaces(r, cpp)]]
+// [[Rcpp::interfaces(r,cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
 //#undef NDEBUG
 #define STRICT_R_HEADER
@@ -120,7 +120,10 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
   di = 0;
 }
 
+extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx, rx_solving_options op);
+
 extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
+	_rxode2random_assignSolveOnly2(rx_global, op_global);
   rx_solve *rx;
   rx = &rx_global;
   rx_solving_options *op = &op_global;

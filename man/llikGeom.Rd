@@ -29,6 +29,8 @@ use the x and rate arguments.  You can also get the derivative of \code{prob} wi
 }
 \examples{
 
+\donttest{
+
 llikGeom(1:10, 0.2)
 
 et  <- et(1:10)
@@ -40,6 +42,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
+}
 }
 \author{
 Matthew L. Fidler

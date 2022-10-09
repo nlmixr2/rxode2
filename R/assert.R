@@ -52,6 +52,7 @@
 #'
 #' @examples
 #'
+#' \donttest{
 #' one.cmt <- function() {
 #'  ini({
 #'    ## You may label each parameter with a comment
@@ -78,7 +79,7 @@
 #' # assertRxUi(rnorm) # will fail
 #'
 #' assertRxUiSingleEndpoint(one.cmt)
-#'
+#' }
 assertRxUi <- function(model, extra="", .var.name=.vname(model)) {
   force(.var.name)
   if (inherits(model, "rxode2") || inherits(model, "rxModelVars")) {

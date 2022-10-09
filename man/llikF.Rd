@@ -29,6 +29,7 @@ use the x and rate arguments.  You can also get the derivative of \code{df1} and
 }
 \examples{
 
+\donttest{
 x <- seq(0.001, 5, length.out = 100)
 
 llikF(x^2, 1, 5)
@@ -44,6 +45,7 @@ et$df1 <- 1
 et$df2 <- 5
 
 rxSolve(model, et)
+}
 }
 \author{
 Matthew L. Fidler

@@ -24,6 +24,19 @@
 \alias{scale_y_date}
 \alias{expand_limits}
 \alias{\%>\%}
+\alias{rxWithPreserveSeed}
+\alias{rxSetSeed}
+\alias{rxWithSeed}
+\alias{rxGetSeed}
+\alias{cvPost}
+\alias{invWR1d}
+\alias{phi}
+\alias{rLKJ1}
+\alias{rinvchisq}
+\alias{rxRmvn}
+\alias{rxSeedEng}
+\alias{.vecDf}
+\alias{.cbindOme}
 \title{Objects exported from other packages}
 \keyword{internal}
 \description{
@@ -36,6 +49,7 @@ below to see their documentation.
   \item{lotri}{\code{\link[lotri]{lotri}}}
 
   \item{magrittr}{\code{\link[magrittr:pipe]{\%>\%}}}
+
+  \item{rxode2random}{\code{\link[rxode2random:dot-cbindOme]{.cbindOme}}, \code{\link[rxode2random:dot-vecDf]{.vecDf}}, \code{\link[rxode2random]{cvPost}}, \code{\link[rxode2random]{invWR1d}}, \code{\link[rxode2random]{phi}}, \code{\link[rxode2random]{rinvchisq}}, \code{\link[rxode2random]{rLKJ1}}, \code{\link[rxode2random]{rxGetSeed}}, \code{\link[rxode2random]{rxGetSeed}}, \code{\link[rxode2random]{rxRmvn}}, \code{\link[rxode2random]{rxSeedEng}}, \code{\link[rxode2random]{rxSetSeed}}, \code{\link[rxode2random]{rxSetSeed}}, \code{\link[rxode2random]{rxSetSeed}}, \code{\link[rxode2random:rxWithSeed]{rxWithPreserveSeed}}, \code{\link[rxode2random]{rxWithSeed}}, \code{\link[rxode2random]{rxWithSeed}}}
 }}
 
-\value{ Inherited from parent routine }

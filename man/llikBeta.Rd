@@ -29,6 +29,8 @@ use all arguments.  You can also get the derivative of \code{shape1} and \code{s
 }
 \examples{
 
+\donttest{
+
 x <- seq(1e-4, 1 - 1e-4, length.out = 21)
 
 llikBeta(x, 0.5, 0.5)
@@ -46,6 +48,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
+}
 }
 \author{
 Matthew L. Fidler

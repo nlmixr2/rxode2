@@ -2,6 +2,7 @@ rxTest({
   test_that("occasions", {
 
     .rx <- loadNamespace("rxode2")
+    .rxr <- loadNamespace("rxode2random")
 
     # Nesting tests
 
@@ -87,7 +88,7 @@ rxTest({
         ) | inv(nu = 10)
       )
 
-      .ni <- .rx$nestingInfo_(omega, ev)
+      .ni <- .rxr$nestingInfo_(omega, ev)
 
       expect_equal(.ni$below, c(eye = 2L, occ = 2L))
       expect_equal(.ni$above, c(inv = 2L))
@@ -276,7 +277,7 @@ rxTest({
 
       ## Test edge case -- no between or above occasion variability
 
-      .ni <- .rx$nestingInfo_(
+      .ni <- .rxr$nestingInfo_(
         lotri(lotri(eta.Cl ~ 0.1, eta.Ka ~ 0.1) | id(nu = 100)),
         ev
       )

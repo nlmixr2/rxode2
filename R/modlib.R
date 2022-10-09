@@ -286,7 +286,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       message(paste(readLines(paste0(.tempR, "out")), collapse="\n"))
     })
     .stderr <- rawToChar(.out$stderr)
-    if (!(all(.stderr == "") & length(.stderr) == 1)) {
+    if (!(all(.stderr == "") && length(.stderr) == 1)) {
       message(paste(.stderr, sep = "\n"))
     }
     if (!file.exists(.tempfile)) {
@@ -346,6 +346,8 @@ rxPkg <- function(..., package,
   )
   setwd(.dir2)
   usethis::use_package("rxode2", "LinkingTo")
+  usethis::use_package("rxode2random", "LinkingTo")
+  usethis::use_package("rxode2parse", "LinkingTo")
   usethis::use_package("rxode2", "Depends")
   if (license == "gpl3") {
     usethis::use_gpl3_license()

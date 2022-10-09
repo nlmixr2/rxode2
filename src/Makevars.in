@@ -1,26 +1,14 @@
 # -*- mode: makefile-gmake -*-
-ARMA=@ARMA@
 BH=@BH@
-RCPP=@RCPP@
 EG=@EG@
-SH=@SH@
 CXX_STD = CXX14
 CXX14STD = @CXX14STD@
+SH=@SH@
 
 ################################################################################
 ## Package library flags.
-PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS) @SL@
+PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS)
 
 # Release options
 PKG_CFLAGS  =  -D_isrxode2_
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_NO_CXX11_STATIC_ASSERT -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -DBOOST_NO_AUTO_PTR -D_REENTRANT -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)" -@ISYSTEM@"$(ARMA)"
-SOURCES_C = approx.c sbuf.c rxode2parse.c init.c call_dvode.c handle_evid.c strncmp.c checkmate_stub.c utilc.c dop853.c omegaChol.c  cfode.c common.c corfailure.c correction.c daxpy.c ddot.c dgefa.c dgesl.c dscal.c fnorm.c idamax.c intdy.c lsoda.c methodswitch.c orderswitch.c prja.c scaleh.c solsy.c stoda.c vmnorm.c strdup_printf.c rprintf.c box.c matexp_HM98.c 
-SOURCES_CPP = et.cpp rxData.cpp par_solve.cpp rxode2_df.cpp etTran.cpp RcppExports.cpp rxvandercorput.cpp seed.cpp rxthreefry.cpp cbindThetaOmega.cpp cvPost.cpp checkmate.cpp utilcpp.cpp forder.cpp boost.cpp fast_factor.cpp expandGrid.cpp WinDrive.cpp rxInv.cpp rxStack.cpp rxOptRep.cpp expm.cpp
-SOURCES_FORTAN = dlsoda.f opkda2.f matexp.f dsphiv.f dgpadm.f
-
-OBJECTS = $(SOURCES_C:.c=.o) $(SOURCES_CPP:.cpp=.o) $(SOURCES_FORTAN:.f=.o) 
-
-.PHONY: all 
-all: $(SHLIB)
-
-
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_NO_CXX11_STATIC_ASSERT -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -DBOOST_NO_AUTO_PTR -D_REENTRANT -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" @SH@

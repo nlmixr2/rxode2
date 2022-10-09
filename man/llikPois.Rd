@@ -28,7 +28,7 @@ use all arguments.  You can also get the derivatives with
 \code{llikPoisDlambda()}
 }
 \examples{
-
+\donttest{
 llikPois(0:7, lambda = 1)
 
 llikPois(0:7, lambda = 4, full=TRUE)
@@ -44,7 +44,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
-
+}
 }
 \author{
 Matthew L. Fidler

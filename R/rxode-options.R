@@ -19,6 +19,7 @@
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
 .rxode2llVersion <- utils::packageVersion("rxode2ll")
 .rxode2parseVersion <- utils::packageVersion("rxode2parse")
+.rxode2randomVersion <- utils::packageVersion("rxode2random")
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
@@ -51,6 +52,18 @@
   } else {
     requireNamespace("rxode2parse", quietly=TRUE)
   }
+
+  if (!identical(.rxode2randomVersion, utils::packageVersion("rxode2random"))) {
+    stop("rxode2 compiled with rxode2random '",
+         as.character(.rxode2randomVersion),
+         "' but rxode2random '", as.character(utils::packageVersion("rxode2random")),
+         "' is loaded\nRecompile rxode2 with the this version of rxode2random",
+         call. = FALSE)
+  } else {
+    requireNamespace("rxode2random", quietly=TRUE)
+    .Call(`_rxode2_assignSeedInfo`)
+  }
+
 
 
   if (requireNamespace("dplyr", quietly=TRUE)) {
@@ -89,7 +102,6 @@
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
-  suppressMessages(.rxWinRtoolsPath(retry = NA))
   rxTempDir()
   if (!interactive()) {
     setProgSupported(0)
@@ -102,11 +114,6 @@
   ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
-  if (!.rxWinRtoolsPath(retry = NA)) {
-    ## nocov start
-    packageStartupMessage("Rtools is not set up correctly!\n\nYou need a working Rtools installation for rxode2 to compile models\n")
-    ## nocov end
-  }
   if (!interactive()) {
     setProgSupported(0)
   }

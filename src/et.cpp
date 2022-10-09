@@ -9,14 +9,12 @@
 extern rx_solve rx_global;
 extern rx_solving_options op_global;
 #include <rxode2parseHandleEvid.h>
-
-
+#include "checkmate.h"
 #define SORT gfx::timsort
 
 using namespace Rcpp;
 
-#include "checkmate.h"
-#include "../inst/include/rxode2_as.h"
+#include <rxode2random_as.h>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -934,7 +932,8 @@ IntegerVector convertMethod(RObject method){
   return oldEvid;
 }
 
-SEXP convertId_(SEXP x);
+extern "C" SEXP _rxode2_convertId_(SEXP id);
+#define convertId_ _rxode2_convertId_
 
 List etImportEventTable(List inData, bool warnings = true){
   CharacterVector lName0 = asCv(inData.attr("names"), "names");

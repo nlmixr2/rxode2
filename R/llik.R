@@ -19,7 +19,9 @@
 #' @export
 #' @importFrom Rcpp sourceCpp
 #' @examples
-#'
+#' 
+#' \donttest{
+#' 
 #' llikNorm(0)
 #'
 #' llikNorm(seq(-2,2,length.out=10), full=TRUE)
@@ -38,6 +40,7 @@
 #'
 #' ret <- rxSolve(model, et)
 #' ret
+#' }
 llikNorm <- function(x, mean = 0, sd = 1, full=FALSE) {
   rxode2ll::llikNorm(x, mean, sd, full)
 }
@@ -58,7 +61,7 @@ llikNorm <- function(x, mean = 0, sd = 1, full=FALSE) {
 #' @author Matthew L. Fidler
 #' @export
 #' @examples
-#'
+#' \donttest{
 #' llikPois(0:7, lambda = 1)
 #'
 #' llikPois(0:7, lambda = 4, full=TRUE)
@@ -74,7 +77,7 @@ llikNorm <- function(x, mean = 0, sd = 1, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
-#' 
+#' }
 llikPois <- function(x, lambda, full=FALSE) {
   rxode2ll::llikPois(x, lambda, full)
 }
@@ -99,7 +102,7 @@ llikPois <- function(x, lambda, full=FALSE) {
 #' @author Matthew L. Fidler
 #' @export 
 #' @examples
-#' 
+#' \donttest{
 #' llikBinom(46:54, 100, 0.5)
 #'
 #' llikBinom(46:54, 100, 0.5, TRUE)
@@ -116,7 +119,7 @@ llikPois <- function(x, lambda, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
-#' 
+#' }
 llikBinom <- function(x, size, prob, full=FALSE) {
   rxode2ll::llikBinom(x, size, prob, full)
 }
@@ -139,7 +142,7 @@ llikBinom <- function(x, size, prob, full=FALSE) {
 #' @author Matthew L. Fidler
 #' @export 
 #' @examples
-#' 
+#' \donttest{
 #' llikNbinom(46:54, 100, 0.5)
 #'
 #' llikNbinom(46:54, 100, 0.5, TRUE)
@@ -156,7 +159,7 @@ llikBinom <- function(x, size, prob, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
-#' 
+#' }
 llikNbinom <- function(x, size, prob, full=FALSE) {
   rxode2ll::llikNbinom(x, size, prob, full)
 }
@@ -185,7 +188,7 @@ llikNbinom <- function(x, size, prob, full=FALSE) {
 #' 
 #' @export 
 #' @examples
-#' 
+#' \donttest{
 #' llikNbinomMu(46:54, 100, 40)
 #'
 #' llikNbinomMu(46:54, 100, 40, TRUE)
@@ -200,6 +203,7 @@ llikNbinom <- function(x, size, prob, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 llikNbinomMu <- function(x, size, mu, full=FALSE) {
   rxode2ll::llikNbinomMu(x, size, mu, full)
 }
@@ -225,6 +229,8 @@ llikNbinomMu <- function(x, size, mu, full=FALSE) {
 #' @export
 #' 
 #' @examples
+#' 
+#' \donttest{
 #'
 #' x <- seq(1e-4, 1 - 1e-4, length.out = 21)
 #' 
@@ -243,6 +249,7 @@ llikNbinomMu <- function(x, size, mu, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 llikBeta <- function(x, shape1, shape2, full=FALSE) {
   rxode2ll::llikBeta(x, shape1, shape2, full)
 }
@@ -264,6 +271,7 @@ llikBeta <- function(x, shape1, shape2, full=FALSE) {
 #' @export 
 #' @examples
 #'
+#' \donttest{
 #' x <- seq(-3, 3, length.out = 21)
 #'
 #' llikT(x, 7, 0, 1)
@@ -283,6 +291,7 @@ llikBeta <- function(x, shape1, shape2, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 #'
 llikT <- function(x, df, mean=0, sd=1, full=FALSE) {
   rxode2ll::llikT(x, df, mean, sd)
@@ -304,6 +313,7 @@ llikT <- function(x, df, mean=0, sd=1, full=FALSE) {
 #' `llikChisqDdf()`.
 #' @examples
 #'
+#' \donttest{
 #' llikChisq(1, df = 1:3, full=TRUE)
 #' 
 #' llikChisq(1, df = 6:9)
@@ -317,6 +327,7 @@ llikT <- function(x, df, mean=0, sd=1, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 llikChisq <- function(x, df, full=FALSE) {
   rxode2ll::llikChisq(x, df, full)
 }
@@ -340,7 +351,7 @@ llikChisq <- function(x, df, full=FALSE) {
 #' `llikExpDrate()`.
 #' 
 #' @examples
-#'
+#' \donttest{
 #' llikExp(1, 1:3)
 #'
 #' llikExp(1, 1:3, full=TRUE)
@@ -356,6 +367,7 @@ llikChisq <- function(x, df, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 llikExp <- function(x, rate, full=FALSE) {
   rxode2ll::llikExp(x, rate, full)
 }
@@ -380,6 +392,7 @@ llikExp <- function(x, rate, full=FALSE) {
 #' 
 #' @examples
 #'
+#' \donttest{
 #' x <- seq(0.001, 5, length.out = 100)
 #'
 #' llikF(x^2, 1, 5)
@@ -395,6 +408,7 @@ llikExp <- function(x, rate, full=FALSE) {
 #' et$df2 <- 5
 #' 
 #' rxSolve(model, et)
+#' }
 llikF <- function(x, df1, df2, full=FALSE) {
   rxode2ll::llikF(x, df1, df2, full)
 }
@@ -419,7 +433,9 @@ llikF <- function(x, df1, df2, full=FALSE) {
 #' `llikGeomDprob()`.
 #' 
 #' @examples
-#'
+#' 
+#' \donttest{
+#' 
 #' llikGeom(1:10, 0.2)
 #' 
 #' et  <- et(1:10)
@@ -431,6 +447,7 @@ llikF <- function(x, df1, df2, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 llikGeom <- function(x, prob, full=FALSE) {
   rxode2ll::llikGeom(x, prob, full)
 }
@@ -458,6 +475,8 @@ llikGeom <- function(x, prob, full=FALSE) {
 #' 
 #' @examples
 #'
+#' \donttest{
+#'
 #' llikUnif(1, -2, 2)
 #'
 #' et  <- et(seq(1,1, length.out=4))
@@ -471,6 +490,7 @@ llikGeom <- function(x, prob, full=FALSE) {
 #' })
 #' 
 #' rxSolve(model, et)
+#' }
 llikUnif <- function(x, alpha, beta, full=FALSE) {
   rxode2ll::llikUnif(x, alpha, beta, full)
 }
@@ -496,7 +516,7 @@ llikUnif <- function(x, alpha, beta, full=FALSE) {
 #' `llikWeibullDshape()` and `llikWeibullDscale()`.
 #' 
 #' @examples
-#'
+#' \donttest{
 #' llikWeibull(1, 1, 10)
 #'
 #' # rxode2 can use this too:
@@ -512,6 +532,7 @@ llikUnif <- function(x, alpha, beta, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 llikWeibull <- function(x, shape, scale, full=FALSE) {
   rxode2ll::llikWeibull(x, shape, scale, full)
 }
@@ -542,7 +563,8 @@ llikWeibull <- function(x, shape, scale, full=FALSE) {
 #' `llikGammaDshape()` and `llikGammaDrate()`.
 #' 
 #' @examples
-#'
+#' \donttest{
+#' 
 #' llikGamma(1, 1, 10)
 #' 
 #' # You can use this in `rxode2` too:
@@ -558,6 +580,7 @@ llikWeibull <- function(x, shape, scale, full=FALSE) {
 #' })
 #' 
 #' rxSolve(model, et)
+#' }
 llikGamma <- function(x, shape, rate, full=FALSE) {
   rxode2ll::llikGamma(x, shape, rate, full)
 }
@@ -579,7 +602,7 @@ llikGamma <- function(x, shape, rate, full=FALSE) {
 #' `llikCauchyDlocation()` and `llikCauchyDscale()`.
 #' @export 
 #' @examples
-#'
+#' \donttest{
 #' x <- seq(-3, 3, length.out = 21)
 #'
 #' llikCauchy(x, 0, 1)
@@ -597,6 +620,7 @@ llikGamma <- function(x, shape, rate, full=FALSE) {
 #' })
 #'
 #' rxSolve(model, et)
+#' }
 llikCauchy <- function(x, location=0, scale=1, full=FALSE) {
   rxode2ll::llikCauchy(x, location, scale, full)
 }

@@ -17,6 +17,16 @@ for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
   close(file.out)
 }
 
+l <- readLines("R/RcppExports.R")
+w <- which(regexpr("# Register entry points", l, fixed=TRUE) != -1)
+if (length(w) >= 1) {
+  w <- w[1]
+  l <- l[seq(1, w-1)]
+  RcppExports.R <- file("R/RcppExports.R", "wb")
+  writeLines(l, RcppExports.R)
+  close(RcppExports.R)
+}
+
 .in <- suppressWarnings(readLines("src/Makevars.in"))
 .in <- gsub("@ARMA@", file.path(find.package("RcppArmadillo"),"include"), .in)
 .in <- gsub("@BH@", file.path(find.package("BH"),"include"), .in)
@@ -33,6 +43,7 @@ for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
 
 .in <- gsub("@SL@", "", ##paste(capture.output(StanHeaders:::LdFlags()), capture.output(RcppParallel:::RcppParallelLibs())),
             .in)
+
 
 if (.Platform$OS.type == "windows" && !file.exists("src/Makevars.win")) {
   .in <- gsub("@CXX14STD@", "-std=c++1y", .in)
@@ -73,6 +84,7 @@ md5 <- digest::digest(c(lapply(c(paste0("src/", cpp),
                                  #paste0("R/", Rfiles)
                                  ), digest::digest, file = TRUE),
                         rxode2parse::rxode2parseMd5(),
+                        rxode2random::rxode2randomMd5(),
                         ## vapply(c("BLAS_LIBS", "CC",  "CFLAGS", "CPICFLAGS",
                         ##          "CXX", "CXXFLAGS", "CXXPICFLAGS",
                         ##          "CXX11", "CXX11STD", "CXX11FLAGS", "CXX11PICFLAGS",

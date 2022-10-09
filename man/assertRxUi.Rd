@@ -71,6 +71,7 @@ effect model (not a population effect)
 }
 \examples{
 
+\donttest{
 one.cmt <- function() {
  ini({
    ## You may label each parameter with a comment
@@ -97,7 +98,7 @@ assertRxUi(one.cmt)
 # assertRxUi(rnorm) # will fail
 
 assertRxUiSingleEndpoint(one.cmt)
-
+}
 }
 \author{
 Matthew L. Fidler

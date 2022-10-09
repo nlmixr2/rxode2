@@ -31,6 +31,8 @@
   `nlmixr2` style focei likelihood.  This is done by adding `dnorm()`
   at the end of the line.  It also means `dnorm()` now doesn't take
   any arguments.
+  
+- Vandercorput normal removed (non-random number generator)
 
 ## New features
 

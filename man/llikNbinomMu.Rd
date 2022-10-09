@@ -30,7 +30,7 @@ use all arguments.  You can also get the derivative of \code{mu} with
 \code{llikNbinomMuDmu()}
 }
 \examples{
-
+\donttest{
 llikNbinomMu(46:54, 100, 40)
 
 llikNbinomMu(46:54, 100, 40, TRUE)
@@ -45,6 +45,7 @@ model <- rxode2({
 })
 
 rxSolve(model, et)
+}
 }
 \author{
 Matthew L. Fidler

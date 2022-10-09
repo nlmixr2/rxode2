@@ -1,7 +1,6 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
 #define USE_FC_LEN_T
-// [[Rcpp::interfaces(r, cpp)]]
-// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::interfaces(r,cpp)]]
 //#undef NDEBUG
 #define STRICT_R_HEADER
 #define NCMT 100
@@ -28,6 +27,7 @@
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #include "../inst/include/rxode2.h"
 #include <rxode2parseVer.h>
+#include <rxode2random_fillVec.h>
 #include "rxomp.h"
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -42,9 +42,14 @@ void resetSolveLinB();
 using namespace Rcpp;
 using namespace arma;
 
+typedef void (*seedEng_t)(uint32_t ncores);
+extern seedEng_t seedEng;
+
+
 #include "cbindThetaOmega.h"
 #include <rxode2parseHandleEvid.h>
 #include "rxThreadData.h"
+//#include "seed.h"
 
 extern "C" uint64_t dtwiddle(const void *p, int i);
 extern "C" void calcNradix(int *nbyte, int *nradix, int *spare, uint64_t *maxD, uint64_t *minD);
@@ -58,7 +63,6 @@ extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
-extern "C" void seedEng(int ncores);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
@@ -99,8 +103,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 RObject et_(List input, List et__);
 void setEvCur(RObject cur);
 
-SEXP cvPost_(SEXP nuS, SEXP omega, SEXP n, SEXP omegaIsChol, SEXP returnChol,
-             SEXP type, SEXP diagXformType);
+extern "C" SEXP _rxode2_cvPost_(SEXP nuS, SEXP omega, SEXP n, SEXP omegaIsChol, SEXP returnChol,
+                                SEXP type, SEXP diagXformType);
 
 RObject rxUnlock(RObject obj);
 RObject rxLock(RObject obj);
@@ -434,9 +438,14 @@ extern "C" void cliAlert(const char *format, ...) {
   va_end (args);
 }
 
+extern "C" SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP isCholSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP);
 SEXP rxRmvn0(NumericMatrix& A_, arma::rowvec mu, arma::mat sigma,
              arma::vec lower, arma::vec upper, int ncores=1, bool isChol=false,
-             double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100);
+             double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100) {
+  return _rxode2_rxRmvn0(wrap(A_), wrap(mu), wrap(sigma),
+                         wrap(lower), wrap(upper), wrap(ncores), wrap(isChol),
+                         wrap(a), wrap(tol), wrap(nlTol), wrap(nlMaxiter));
+}
 
 Function getRxFn(std::string name);
 RObject rxSimSigma(const RObject &sigma,
@@ -591,6 +600,13 @@ void getRxModels(){
     foundEnv = true;
   }
 }
+
+extern "C" void rxModelsAssignC(const char *str0, SEXP assign) {
+  getRxModels();
+  std::string str = str0;
+  _rxModels[str] = assign;
+}
+
 
 void rxModelsAssign(std::string str, SEXP assign){
   getRxModels();
@@ -1705,7 +1721,7 @@ void rxSimOmega(bool &simOmega,
         } else if (omegaSeparation == "separation") {
           defaultType = 3;
         }
-        RObject ol = cvPost_(as<SEXP>(NumericVector::create(dfSub)),
+        RObject ol = _rxode2_cvPost_(as<SEXP>(NumericVector::create(dfSub)),
                              as<SEXP>(omegaMC),
                              as<SEXP>(IntegerVector::create(1)),
                              as<SEXP>(LogicalVector::create(false)),
@@ -1718,7 +1734,7 @@ void rxSimOmega(bool &simOmega,
           omegaList = List::create(ol);
         }
       } else {
-        RObject ol = cvPost_(as<SEXP>(NumericVector::create(dfSub)),
+        RObject ol = _rxode2_cvPost_(as<SEXP>(NumericVector::create(dfSub)),
                              as<SEXP>(omegaMC),
                              as<SEXP>(IntegerVector::create(nStud)),
                              as<SEXP>(LogicalVector::create(true)),
@@ -1758,6 +1774,14 @@ arma::vec getLowerVec(int type, rx_solve* rx) {
   }
 }
 
+extern "C" SEXP getLowerVecSexp(int type, rx_solve* rx) {
+  if (type == 0) { // eps
+    return wrap(arma::vec(_globals.gsigma, rx->neps, false, true));
+  } else { // eta
+    return wrap(arma::vec(_globals.gomega, rx->neta, false, true));
+  }
+}
+
 arma::vec getUpperVec(int type, rx_solve* rx) {
   if (type == 0) { // eps
     return arma::vec(_globals.gsigma + rx->neps, rx->neps, false, true);
@@ -1765,6 +1789,15 @@ arma::vec getUpperVec(int type, rx_solve* rx) {
     return arma::vec(_globals.gomega + rx->neta, rx->neta, false, true);
   }
 }
+
+extern "C" SEXP getUpperVecSexp(int type, rx_solve* rx) {
+  if (type == 0) { // eps
+    return wrap(arma::vec(_globals.gsigma + rx->neps, rx->neps, false, true));
+  } else { // eta
+    return wrap(arma::vec(_globals.gomega + rx->neta, rx->neta, false, true));
+  }
+}
+
 
 arma::mat getArmaMat(int type, int csim, rx_solve* rx) {
   if (type == 0) { // eps
@@ -1782,7 +1815,22 @@ arma::mat getArmaMat(int type, int csim, rx_solve* rx) {
   }
 }
 
-arma::vec fillVec(arma::vec& in, int len);
+extern "C" SEXP getArmaMatSexp(int type, int csim, rx_solve* rx) {
+  if (type == 0) { // eps
+    if (_globals.nSigma == 1) {
+      return wrap(arma::mat(_globals.gsigma + 2 * rx->neps + csim * rx->neps * rx->neps, rx->neps, rx->neps, false, true));
+    } else {
+      return wrap(arma::mat(_globals.gsigma + 2 * rx->neps, rx->neps, rx->neps, false, true));
+    }
+  } else { // eta
+    if (_globals.nOmega == 1) {
+      return wrap(arma::mat(_globals.gomega + 2 * rx->neta  + csim * rx->neta * rx->neta, rx->neta,  rx->neta, false, true));
+    } else {
+      return wrap(arma::mat(_globals.gomega + 2 * rx->neta, rx->neta,  rx->neta, false, true));
+    }
+  }
+}
+
 
 //' Simulate Parameters from a Theta/Omega specification
 //'
@@ -4294,7 +4342,8 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   }
 }
 
-SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS);
+#define expandPars_ _rxode2_expandPars_
+extern "C" SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS);
 
 static inline void iniRx(rx_solve* rx) {
   rx->hasEvid2 = 0;

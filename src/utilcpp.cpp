@@ -1,6 +1,6 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
-// [[Rcpp::interfaces(r, cpp)]]
+// [[Rcpp::interfaces(r,cpp)]]
 //#undef NDEBUG
 #include <RcppArmadillo.h>
 #include "../inst/include/rxode2.h"
@@ -52,7 +52,6 @@ LogicalVector isNullZero(RObject obj) {
   }
   return false;
 }
-
 
 //[[Rcpp::export]]
 NumericVector rxErf(NumericVector v) {
