@@ -409,5 +409,6 @@ SEXP _rxode2_assignSeedInfo(void) {
   setRxSeedFinal = (setRxSeedFinal_t)R_GetCCallable("rxode2random","_rxode2random_setRxSeedFinal");
   seedEng = (seedEng_t) R_GetCCallable("rxode2random","_rxode2random_seedEng");
   rxodeUnif = (rxunif_t) R_GetCCallable("rxode2random", "rxunif");
+  return R_NilValue;
 }
 
