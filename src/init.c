@@ -503,6 +503,7 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0} 
   };
   // C callable to assign environments.
+  R_RegisterCCallable("rxode2", "_rxode2_rxModelVars_", &_rxode2_rxModelVars_);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
