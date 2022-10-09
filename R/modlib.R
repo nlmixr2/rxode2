@@ -286,7 +286,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       message(paste(readLines(paste0(.tempR, "out")), collapse="\n"))
     })
     .stderr <- rawToChar(.out$stderr)
-    if (!(all(.stderr == "") & length(.stderr) == 1)) {
+    if (!(all(.stderr == "") && length(.stderr) == 1)) {
       message(paste(.stderr, sep = "\n"))
     }
     if (!file.exists(.tempfile)) {
