@@ -14,7 +14,11 @@ rxexp(rate, n = 1L, ncores = 1L)
 
 \item{ncores}{Number of cores for the simulation
 
-\code{rxnorm} simulates using the threefry sitmo generator}
+\code{rxnorm} simulates using the threefry sitmo generator.
+
+\code{rxnormV} used to simulate with the vandercorput simulator, but
+since it didn't satisfy the normal properties it was changed to simple be
+an alias of \code{rxnorm}. It is no longer supported in \code{rxode2({})} blocks}
 }
 \value{
 exponential random deviates

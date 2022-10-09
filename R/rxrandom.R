@@ -6,7 +6,12 @@
 #'
 #' @param ncores Number of cores for the simulation
 #'
-#' `rxnorm` simulates using the threefry sitmo generator
+#' `rxnorm` simulates using the threefry sitmo generator.
+#'
+#'
+#' `rxnormV` used to simulate with the vandercorput simulator, but
+#' since it didn't satisfy the normal properties it was changed to simple be
+#' an alias of `rxnorm`. It is no longer supported in `rxode2({})` blocks
 #'
 #' @return normal random number deviates
 #'
@@ -32,7 +37,7 @@
 #'
 #' }
 #' @export
-rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
+rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(mean, len = 1)
   checkmate::assertNumeric(sd, lower = 0, len = 1)
   checkmate::assertCount(n)
@@ -40,6 +45,9 @@ rxnorm <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   rxSeedEng(ncores)
   .Call(`_rxode2_rxnorm_`, mean, sd, n, ncores)
 }
+#' @rdname rxnormV
+#' @export
+rxnorm <- rxnormV
 
 #' Simulate random Poisson variable from threefry generator
 #'
@@ -708,22 +716,3 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
   .Call(`_rxode2_rpp_`, n, lambda, gamma, prob, t0, tmax, randomOrder, PACKAGE = "rxode2")
 }
 
-#' Create a random "normal" matrix using vandercorput generator
-#'
-#' @param nrow Number of rows
-#'
-#' @param ncol Number of Columns
-#'
-#' @return Matrix of random numbers
-#'
-#' @author Matthew Fidler
-#' @export
-#' @examples
-#'
-#' rxRandNV(1, 1)
-#' rxRandNV(3, 2)
-rxRandNV <- function(nrow = 1, ncol = 1) {
-  checkmate::assertIntegerish(nrow, len = 1, any.missing = FALSE, lower = 1L)
-  checkmate::assertIntegerish(ncol, len = 1, any.missing = FALSE, lower = 1L)
-  .Call(`_rxode2_rxrandnV`, as.integer(nrow), as.integer(ncol))
-}

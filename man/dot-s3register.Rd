@@ -54,8 +54,8 @@ by using "delayed method registration", i.e. placing the following in your
 # printing when they are used.
 
 .onLoad <- function(...) {
-  s3_register("pillar::pillar_shaft", "vctrs_vctr")
-  s3_register("tibble::type_sum", "vctrs_vctr")
+  .s3Register("pillar::pillar_shaft", "vctrs_vctr")
+  .s3Register("tibble::type_sum", "vctrs_vctr")
 }
 }
 \keyword{internal}
