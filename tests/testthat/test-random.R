@@ -70,45 +70,7 @@ rxTest({
     })
 
   })
-
-  test_that("rnormV", {
-    rxWithSeed(1024, {
-
-      rx <- rxode2({
-        x1 <- rnormV()
-        x2 <- rxnormV(a)
-        x3 <- rnormV(b, c)
-        d / dt(x0) <- 0
-      })
-
-      suppressMessages(expect_error(rxode2({
-        x4 <- rnormV(a, b, c, d)
-      })))
-
-      ## Make sure seeds are reproducible
-      ev <- et(1, id = 1:10)
-
-      set.seed(1)
-      f <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
-
-      set.seed(1)
-      f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
-      expect_equal(as.data.frame(f), as.data.frame(f2))
-
-      ## Make sure different seed value gives different result
-      set.seed(2)
-      f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
-
-      expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
-
-
-      x <- rxnorm(n = 1e4)
-
-      expect_equal(mean(x), 0, tolerance = 0.1)
-    })
-
-  })
-
+  
   test_that("rbinom", {
     rx <- rxode2({
       x1 <- rbinom(4, 0.5)
@@ -707,9 +669,6 @@ rxTest({
       x1 <- rinorm(a)
       x2 <- rinorm(b, c)
       x3 <- rinorm()
-      x4 <- rinormV()
-      x5 <- rinormV(a)
-      x6 <- rinormV(b, c)
       x7 <- ricauchy()
       x8 <- ricauchy(a)
       x9 <- ricauchy(b, c)
@@ -751,9 +710,6 @@ rxTest({
         x1 <- rinorm(a)
         x2 <- rinorm(b, c)
         x3 <- rinorm()
-        x4 <- rinormV()
-        x5 <- rinormV(a)
-        x6 <- rinormV(b, c)
         x7 <- ricauchy()
         x8 <- ricauchy(a)
         x9 <- ricauchy(b, c)
@@ -930,7 +886,6 @@ rxTest({
 
   test_that("random variables work in R alone", {
     rxWithSeed(1024, {
-      expect_true(is.numeric(rxnormV()))
 
       expect_true(is.numeric(rxcauchy()))
 

@@ -565,7 +565,6 @@ void R_init_rxode2(DllInfo *info){
   initRxThreads();
   avoid_openmp_hang_within_fork();
   nullGlobals();
-
   _rxode2random_assignPtrsInRxode2now(rx_global,
                                       op_global,
                                       _rxode2_rxSolveFree,

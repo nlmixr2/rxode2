@@ -163,6 +163,14 @@ rxode2random::rxWithSeed
 #' @export
 rxode2random::rxSeedEng
 
+#' @importFrom rxode2random .vecDf
+#' @export
+rxode2random::.vecDf
+
+#' @importFrom rxode2random .cbindOme
+#' @export
+rxode2random::.cbindOme
+
 .SD <- NULL
 `:=` <- function(...) { ## nocov start
   stop("this is only used in 'data.table'", .call = FALSE)

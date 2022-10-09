@@ -633,6 +633,10 @@ void rxUpdateFuns(SEXP trans){
   IndF  = (t_IndF) R_GetCCallable(lib, s_IndF);
   calc_mtime = (t_calc_mtime) R_GetCCallable(lib, s_mtime);
   assignFuns = R_GetCCallable(lib, s_assignFuns);
+  rx_solve *rx=(&rx_global);
+  rx->subjects = inds_global;
+  rx_solving_options *op = &op_global;
+  rx->op = op;
   _rxode2parseAssignPtrsInRxode2(rx_global,
                                  op_global,
                                  AMT,
