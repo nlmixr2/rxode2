@@ -14,7 +14,6 @@ Authors@R: c(
    person("Awad H.", "Al-Mohy",role="ctb"),
    person("Matt", "Dowle", role="ctb", email="mattjdowle@gmail.com"),
    person("Cleve", "Moler", role="ctb"),
-   person("David", "Cooley", role="ctb"), 
    person("Drew", "Schmidt", role="ctb"),
    person("Arun", "Srinivasan", role="ctb", email="arunkumar.sriniv@gmail.com"),
    person("Ernst", "Hairer", role="ctb"),
@@ -29,7 +28,6 @@ Authors@R: c(
    person("Nicholas J.", "Higham",role="ctb"),
    person("Roger B.", "Sidje", role="ctb"),
    person("Simon", "Frost", role="ctb"),
-   person("Kevin", "Ushey", role="ctb"),
    person("Yu", "Feng", role="ctb")
    )
 Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
