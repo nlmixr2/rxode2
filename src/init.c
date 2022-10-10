@@ -361,7 +361,7 @@ extern SEXP getUpperVecSexp(int type, rx_solve* rx);
 extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
 
-SEXP _rxode2_RcppExport_registerCCallable();
+SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
