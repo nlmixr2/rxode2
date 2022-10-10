@@ -283,7 +283,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   if (!getOption("rxode2.theme", TRUE)) .theme <- NULL
   .repel <- NULL
   .legend <- NULL
-  if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+  if (compareVersion(as.character(packageVersion("ggplot2")), "3.3.6.9000") < 0) {
     .line <- geom_line(size = 1.2)
   } else {
     .line <- geom_line(linewidth = 1.2)
@@ -302,7 +302,7 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
       .legend <- ggplot2::theme(legend.title = ggplot2::element_blank())
     } else {
       .legend <- ggplot2::guides(color = "none")
-      if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+      if (compareVersion(as.character(packageVersion("ggplot2")), " 3.3.6.9000") < 0) {
         .line <- geom_line(size = 1.2, alpha = 0.2)
       } else {
         .line <- geom_line(linewidth = 1.2, alpha = 0.2)

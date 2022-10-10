@@ -3,7 +3,7 @@
   if (any(ls(.ggplot2) == "guide_none")) {
     assignInMyNamespace("guide_none", .ggplot2$guide_none)
   }
-  if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
+  if (compareVersion(as.character(packageVersion("ggplot2")), "3.3.6.9000") < 0) {
     assignInMyNamespace("GeomAmt",
                         ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
                                          required_aes = c("x", "y", "xend", "yend"),
