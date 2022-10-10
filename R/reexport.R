@@ -176,3 +176,10 @@ rxode2random::.cbindOme
   stop("this is only used in 'data.table'", .call = FALSE)
 } ## nocov end
 
+#' @importFrom rxode2et et
+#' @export
+rxode2et::et
+
+#' @importFrom rxode2et etTrans
+#' @export
+rxode2et::etTrans

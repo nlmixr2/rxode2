@@ -69,13 +69,13 @@ Suggests:
     devtools,
     patchwork,
     nlmixr2data,
-    lifecycle
+    lifecycle,
+    rxode2parse,
+    rxode2random
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
     rxode2ll,
-    rxode2parse,
-    rxode2random,
     assertthat,
     backports,
     cli (>= 2.0.0),
@@ -90,7 +90,8 @@ Imports:
     qs,
     sys,
     tools,
-    utils
+    utils,
+    rxode2et
 Description: Facilities for running simulations from ordinary
     differential equation ('ODE') models, such as pharmacometrics and other
     compartmental models.  A compilation manager translates the ODE model

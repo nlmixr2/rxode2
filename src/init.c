@@ -83,7 +83,6 @@ SEXP _rxode2_rxMvrandn_(SEXP, SEXP, SEXP, SEXP, SEXP,
 		       SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_rxSolveDollarNames(SEXP);
-SEXP _rxode2_etDollarNames(SEXP);
 SEXP _rxode2_rxExpandNesting(SEXP, SEXP, SEXP);
 SEXP _rxode2_expandTheta_(SEXP, SEXP, SEXP, SEXP, SEXP,
 			 SEXP);
@@ -426,7 +425,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxExpandFEta_", (DL_FUNC) &_rxode2_rxExpandFEta_, 3},
     {"_rxode2_rxRepR0_", (DL_FUNC) &_rxode2_rxRepR0_, 1},
     {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 1},
-    {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_rxSetSilentErr", (DL_FUNC) &_rxode2_rxSetSilentErr, 1},
     {"_rxode2_rxIndLin_",(DL_FUNC) &_rxode2_rxIndLin_, 1},
     {"_rxode2_rxUnloadAll_", (DL_FUNC) &_rxode2_rxUnloadAll_, 0},
@@ -462,7 +460,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxnbinomMu_", (DL_FUNC) &_rxode2_rxnbinomMu_, 4},
     {"_rxode2_rxnbinom_", (DL_FUNC) &_rxode2_rxnbinomMu_, 4},
     {"_rxode2_rxSolveDollarNames", (DL_FUNC) _rxode2_rxSolveDollarNames, 1},
-    {"_rxode2_etDollarNames", (DL_FUNC) _rxode2_etDollarNames, 1},
     {"_rxode2_rxExpandNesting", (DL_FUNC) _rxode2_rxExpandNesting, 3},
     {"_rxode2_rxRmvn0", (DL_FUNC) _rxode2_rxRmvn0, 11},
     {"_vecDF", (DL_FUNC) _vecDF, 2},
