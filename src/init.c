@@ -355,7 +355,7 @@ extern rx_solve rx_global;
 extern rx_solving_options op_global;
 extern void setZeroMatrix(int which);
 extern void rxModelsAssignC(const char *str0, SEXP assign);
-extern SEXP chin(SEXP x, SEXP table);
+extern SEXP _rxode2_chin(SEXP x, SEXP table);
 extern SEXP getLowerVecSexp(int type, rx_solve* rx);
 extern SEXP getUpperVecSexp(int type, rx_solve* rx);
 extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
@@ -576,7 +576,7 @@ void R_init_rxode2(DllInfo *info){
                                       rxModelsAssignC,
                                       _rxode2_rxModelVars_,
                                       _rxode2_rxExpandNesting,
-                                      chin,
+                                      _rxode2_chin,
                                       getLowerVecSexp,
                                       getUpperVecSexp,
                                       getArmaMatSexp);
