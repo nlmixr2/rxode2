@@ -261,3 +261,12 @@ rxode2et::.collectWarnings
 #' @importFrom rxode2et .clearPipe
 #' @export
 rxode2et::.clearPipe
+
+#' @importFrom rxode2et rxCbindStudyIndividual
+#' @export
+rxode2et::rxCbindStudyIndividual
+
+
+#' @importFrom rxode2et rxStack
+#' @export
+rxode2et::rxStack

@@ -61,7 +61,6 @@ rxParams.rxode2 <- function(obj, constants = TRUE, ...,
     ## Most likely
     ## rxode2() %>% rxParams() %>%
     rxode2et::.pipeRx(obj)
-    rxode2et::.pipeRx(obj)
     rxode2et::.pipeInits(NULL)
     rxode2et::.pipeEvents(NULL)
     rxode2et::.pipeParams(NULL)

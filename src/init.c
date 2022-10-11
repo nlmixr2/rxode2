@@ -25,7 +25,6 @@ SEXP _rxode2_etSeq_(SEXP, SEXP, SEXP, SEXP, SEXP,
 		   SEXP);
 SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
 			SEXP, SEXP, SEXP);
-SEXP _rxode2_rxStack(SEXP, SEXP);
 SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_et_(SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -414,7 +413,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 8},
     {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
     {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
-    {"_rxode2_rxStack", (DL_FUNC) &_rxode2_rxStack, 2},
     {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
     {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
@@ -496,7 +494,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},
-    {"_rxCbindStudyIndividual", (DL_FUNC) _rxCbindStudyIndividual, 2},
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},

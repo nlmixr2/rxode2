@@ -169,6 +169,15 @@ extern "C" SEXP _rxode2_getForder(void) {
   return getForder();
 }
 
+List cbindThetaOmega(RObject inputParametersRO, List individualParameters) {
+  if (!rxode2et_loaded) {
+    rxode2et_loaded = true;
+    rxode2et = loadNamespace("rxode2et");
+  }
+  Function f = as<Function>(rxode2et[".cbindThetaOmega"]);
+  return as<List>(f(wrap(inputParametersRO), wrap(individualParameters)));
+}
+
 //[[Rcpp::export]]
 NumericVector rxErf(NumericVector v) {
   NumericVector ret(v.size());
