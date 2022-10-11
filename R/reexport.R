@@ -252,22 +252,3 @@ rxode2et::rxCbindStudyIndividual
 #' @importFrom rxode2et rxStack
 #' @export
 rxode2et::rxStack
-
-
-.chin <- function(left, right) {
-  .Call(`_rxode2_chin`, left, right)
-}
-
-
-.forderForceBase <- function(x1) {
-  .Call(`_rxode2_forderForceBase`, x1)
-}
-
-
-.useForder <- function() {
-  .Call(`_rxode2_useForder`)
-}
-
-.getForder <- function() {
-  .Call(`_rxode2_getForder`)
-}
