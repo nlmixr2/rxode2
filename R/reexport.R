@@ -183,3 +183,81 @@ rxode2et::et
 #' @importFrom rxode2et etTrans
 #' @export
 rxode2et::etTrans
+
+#' @importFrom rxode2et .s3register
+#' @export
+rxode2et::.s3register
+
+#' @importFrom rxode2et add.dosing
+#' @export
+rxode2et::add.dosing
+
+#' @importFrom rxode2et add.sampling
+#' @export
+rxode2et::add.sampling
+
+#' @importFrom rxode2et as.et
+#' @export
+rxode2et::as.et
+
+#' @importFrom rxode2et as.rxEvid
+#' @export
+rxode2et::as.rxEvid
+
+#' @importFrom rxode2et as.rxRateDur
+#' @export
+rxode2et::as.rxRateDur
+
+#' @importFrom rxode2et etExpand
+#' @export
+rxode2et::etExpand
+
+#' @importFrom rxode2et etRbind
+#' @export
+rxode2et::etRbind
+
+#' @importFrom rxode2et etRep
+#' @export
+rxode2et::etRep
+
+
+#' @importFrom rxode2et etSeq
+#' @export
+rxode2et::etSeq
+
+#' @importFrom rxode2et eventTable
+#' @export
+rxode2et::eventTable
+
+#' @importFrom rxode2et forderForceBase
+#' @export
+rxode2et::forderForceBase
+
+#' @importFrom rxode2et rxEtDispatchSolve
+#' @export
+rxode2et::rxEtDispatchSolve
+
+#' @importFrom rxode2et rxEvid
+#' @export
+rxode2et::rxEvid
+
+#' @importFrom rxode2et rxRateDur
+#' @export
+rxode2et::rxRateDur
+
+#' @importFrom rxode2et rxReq
+#' @export
+rxode2et::rxReq
+
+#' @importFrom rxode2et rxSetIni0
+#' @export
+rxode2et::rxSetIni0
+
+
+#' @importFrom rxode2et .collectWarnings
+#' @export
+rxode2et::.collectWarnings
+
+#' @importFrom rxode2et .clearPipe
+#' @export
+rxode2et::.clearPipe

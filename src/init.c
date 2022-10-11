@@ -193,11 +193,9 @@ SEXP _rxode2_rxcauchy_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxbinom_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxnbinomMu_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxnbinom_(SEXP, SEXP, SEXP, SEXP);
-
 SEXP _rxode2_rxRmvn0(SEXP, SEXP, SEXP, SEXP, SEXP,
 		    SEXP, SEXP, SEXP, SEXP, SEXP,
 		    SEXP);
-
 SEXP _rxode2_invWR1d(SEXP dSEXP, SEXP nuSEXP, SEXP omegaIsCholSEXP);
 
 SEXP _rxode2_rxSimThetaOmega(SEXP paramsSEXP, SEXP omegaSEXP, SEXP omegaDfSEXP, SEXP omegaLowerSEXP, SEXP omegaUpperSEXP,
@@ -359,10 +357,13 @@ extern SEXP getLowerVecSexp(int type, rx_solve* rx);
 extern SEXP getUpperVecSexp(int type, rx_solve* rx);
 extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
+SEXP _rxode2_getEtRxsolve(SEXP e);
+
 
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
     {"_rxTick", (DL_FUNC) &_rxTick, 0},

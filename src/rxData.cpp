@@ -2245,6 +2245,10 @@ List getEtRxsolve(Environment e){
   return e[".et"];
 }
 
+extern "C" SEXP _rxode2_getEtRxsolve(SEXP e) {
+  return(wrap(getEtRxsolve(as<Environment>(e))));
+}
+
 inline void updateParNames0(CharacterVector &ret, Environment &e,
                             const std::string& what){
   if (e.exists(what)){

@@ -1180,8 +1180,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           length(.env$mv0$state),
           .vars,
           setNames(
-            c(
-              "linCmtA" = 1L, "linCmtB" = 2L,
+            c("linCmtA" = 1L, "linCmtB" = 2L,
               "linCmtC" = 3L
             )[match.arg(linCmtSens)],
             NULL

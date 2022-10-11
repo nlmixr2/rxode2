@@ -63,7 +63,7 @@
     requireNamespace("rxode2random", quietly=TRUE)
     .Call(`_rxode2_assignSeedInfo`)
   }
-
+  rxode2et::.setRxode2()
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
@@ -79,7 +79,7 @@
   } else {
     assignInMyNamespace(".hasUnits", FALSE)
   }
-  backports::import(pkgname)
+  backports::import(pkgname) 
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")

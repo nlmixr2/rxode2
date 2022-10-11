@@ -1237,60 +1237,60 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         call. = FALSE
       )
     }
-    if (is.null(.pipelineRx)) {
+    if (is.null(rxode2et::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
         call. = FALSE
       )
     } else {
       events <- object
-      object <- .pipelineRx
+      object <- rxode2et::.pipeRx(NA)
     }
   } else if (rxIs(object, "rxParams")) {
     .applyParams <- TRUE
     if (is.null(params) && !is.null(object$params)) {
       params <- object$params
     }
-    if (is.null(.pipelineRx)) {
+    if (is.null(rxode2et::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
         call. = FALSE
       )
     } else {
       .rxParams <- object
-      object <- .pipelineRx
+      object <- rxode2et::.pipeRx(NA)
     }
-    if (is.null(.pipelineEvents)) {
+    if (is.null(rxode2et::.pipeEvents(NA))) {
       stop("need an rxode2 events as a part of the pipeline",
         call. = FALSE
       )
     } else {
-      events <- .pipelineEvents
-      assignInMyNamespace(".pipelineEvents", NULL)
+      events <- rxode2et::.pipeEvents(NA)
+      rxode2et::.pipeEvents(NULL)
     }
   }
-  if (!is.null(.pipelineEvents) && is.null(events) && is.null(params)) {
-    events <- .pipelineEvents
-  } else if (!is.null(.pipelineEvents) && !is.null(events)) {
+  if (!is.null(rxode2et::.pipeEvents(NA)) && is.null(events) && is.null(params)) {
+    events <- rxode2et::.pipeEvents(NA)
+  } else if (!is.null(rxode2et::.pipeEvents(NA)) && !is.null(events)) {
     stop("'events' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
-  } else if (!is.null(.pipelineEvents) && !is.null(params) &&
+  } else if (!is.null(rxode2et::.pipeEvents(NA)) && !is.null(params) &&
     rxIs(params, "event.data.frame")) {
     stop("'events' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
   }
 
-  if (!is.null(.pipelineParams) && is.null(params)) {
-    params <- .pipelineParams
-  } else if (!is.null(.pipelineParams) && !is.null(params)) {
+  if (!is.null(rxode2et::.pipeParams(NA)) && is.null(params)) {
+    params <- rxode2et::.pipeParams(NA)
+  } else if (!is.null(rxode2et::.pipeParams(NA)) && !is.null(params)) {
     stop("'params' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
   }
 
-  if (!is.null(.pipelineInits) && is.null(inits)) {
-    inits <- .pipelineInits
-  } else if (!is.null(.pipelineInits) && !is.null(inits)) {
+  if (!is.null(rxode2et::.pipeInits(NA)) && is.null(inits)) {
+    inits <- rxode2et::.pipeInits(NA)
+  } else if (!is.null(rxode2et::.pipeInits(NA)) && !is.null(inits)) {
     stop("'inits' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
@@ -1343,35 +1343,32 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       paste(.n1, collapse = "', '")
     ), call. = FALSE)
   }
-  if (!is.null(.pipelineThetaMat) && is.null(.ctl$thetaMat)) {
-    .ctl$thetaMat <- .pipelineThetaMat
+  if (!is.null(rxode2et::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
+    .ctl$thetaMat <- rxode2et::.pipeThetaMat(NA)
   }
-  if (!is.null(.pipelineOmega) && is.null(.ctl$omega)) {
-    .ctl$omega <- .pipelineOmega
+  if (!is.null(rxode2et::.pipeOmega(NA)) && is.null(.ctl$omega)) {
+    .ctl$omega <- rxode2et::.pipeOmega(NA)
   }
-  if (!is.null(.pipelineSigma) && is.null(.ctl$sigma)) {
-    .ctl$sigma <- .pipelineSigma
+  if (!is.null(rxode2et::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    .ctl$sigma <- rxode2et::.pipeSigma(NA)
   }
-  if (!is.null(.pipelineSigma) && is.null(.ctl$sigma)) {
-    .ctl$sigma <- .pipelineSigma
+  if (!is.null(rxode2et::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    .ctl$sigma <- rxode2et::.pipeSigma(NA)
   }
-  if (!is.null(.pipelineDfObs) && .ctl$dfObs == 0) {
-    .ctl$dfObs <- .pipelineDfObs
+  if (!is.null(rxode2et::.pipeDfObs(NA)) && .ctl$dfObs == 0) {
+    .ctl$dfObs <- rxode2et::.pipeDfObs(NA)
   }
-  if (!is.null(.pipelineDfSub) && .ctl$dfSub == 0) {
-    .ctl$dfSub <- .pipelineDfSub
+  if (!is.null(rxode2et::.pipeDfSub(NA)) && .ctl$dfSub == 0) {
+    .ctl$dfSub <- rxode2et::.pipeDfSub(NA)
   }
-  if (!is.null(.pipelineNSub) && .ctl$nSub == 1) {
-    .ctl$nSub <- .pipelineNSub
+  if (!is.null(rxode2et::.pipeNSub(NA)) && .ctl$nSub == 1) {
+    .ctl$nSub <- rxode2et::.pipeNSub(NA)
   }
-  if (!is.null(.pipelineNStud) && .ctl$nStud == 1) {
-    .ctl$nStud <- .pipelineNStud
+  if (!is.null(rxode2et::.pipeNStud(NA)) && .ctl$nStud == 1) {
+    .ctl$nStud <- rxode2et::.pipeNStud(NA)
   }
-  if (!is.null(.pipelineICov) && is.null(.ctl$iCov)) {
-    .ctl$iCov <- .pipelineICov
-  }
-  if (!is.null(.pipelineKeep) && is.null(.ctl$keep)) {
-    .ctl$keep <- .pipelineKeep
+  if (!is.null(rxode2et::.pipeKeep(NA)) && is.null(.ctl$keep)) {
+    .ctl$keep <- rxode2et::.pipeKeep(NA)
   }
   if (.applyParams) {
     if (!is.null(.rxParams$thetaMat) && is.null(.ctl$thetaMat)) {
@@ -1401,11 +1398,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (!is.null(.rxParams$dfObs)) {
       if (.ctl$dfObs == 0) {
         .ctl$dfObs <- .rxParams$dfObs
-      }
-    }
-    if (!is.null(.rxParams$iCov)) {
-      if (is.null(.ctl$iCov)) {
-        .ctl$iCov <- .rxParams$iCov
       }
     }
     if (!is.null(.rxParams$keep)) {
@@ -1470,51 +1462,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       stop("cannot specify 'params' and 'theta'/'eta' at the same time",
         call. = FALSE
       )
-    }
-  }
-
-  if (!is.null(.ctl$iCov)) {
-    if (inherits(.ctl$iCov, "data.frame")) {
-      .icovId <- which(tolower(names(.ctl$iCov)) == "id")
-      .useEvents <- FALSE
-      if (rxIs(events, "event.data.frame")) {
-        .events <- events
-        .useEvents <- TRUE
-      } else if (rxIs(params, "event.data.frame")) {
-        .events <- params
-      } else {
-        stop("Cannot detect an event data frame to merge 'iCov'")
-      }
-      .eventId <- which(tolower(names(.events)) == "id")
-      if (length(.eventId) != 1) {
-        stop("to use 'iCov' you must have an id in your event table")
-      }
-      .by <- names(.events)[.eventId]
-      if (length(.icovId) == 0) {
-        .id <- unique(events[[.by]])
-        if (length(.ctl$iCov[, 1]) != length(.id)) {
-          stop("'iCov' and 'id' mismatch")
-        }
-        .ctl$iCov$id <- .id
-      } else if (length(.icovId) > 1) {
-        stop("iCov has duplicate IDs, cannot continue")
-      }
-      names(.ctl$iCov)[.icovId] <- .by
-      .lEvents <- length(.events[, 1])
-      .events <- merge(.events, .ctl$iCov, by = .by)
-      if (.lEvents != length(.events[, 1])) {
-        warning("combining iCov and events dropped some event information")
-      }
-      if (length(unique(.events[[.by]])) != length(.ctl$iCov[, 1])) {
-        warning("combining iCov and events dropped some iCov information")
-      }
-      if (.useEvents) {
-        events <- .events
-      } else {
-        params <- .events
-      }
-    } else {
-      stop("'iCov' must be an input dataset")
     }
   }
   if (rxode2.debug) {
@@ -1838,4 +1785,15 @@ drop_units.rxSolve <- function(x) {
 #' @export
 rxControl <- function(..., params = NULL, events = NULL, inits = NULL) {
   rxSolve(object = NULL, params = params, events = events, inits = inits, ...)
+}
+
+#' @export
+rxEtDispatchSolve.rxode2et <- function(x, ...) {
+  .lst <- x
+  class(.lst) <- NULL
+  do.call(rxSolve, .lst)
+}
+
+.getEtRxSolve <- function(x) {
+  .Call(`_rxode2_getEtRxsolve`, x)  
 }
