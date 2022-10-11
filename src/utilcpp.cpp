@@ -57,25 +57,6 @@ extern Function loadNamespace;
 bool rxode2et_loaded = false;
 Environment rxode2et;
 
-extern "C" SEXP _rxode2_chin(SEXP x, SEXP table) {
-  if (!rxode2et_loaded) {
-    rxode2et_loaded = true;
-    rxode2et = loadNamespace("rxode2et");
-  }
-  Function chin2 = as<Function>(rxode2et[".chin"]);
-  return chin2(x, table);
-}
-
-extern "C" SEXP _rxode2_etTrans(SEXP x1, SEXP x2, SEXP x3, SEXP x4, SEXP x5,
-                                SEXP x6, SEXP x7, SEXP x8) {
-  if (!rxode2et_loaded) {
-    rxode2et_loaded = true;
-    rxode2et = loadNamespace("rxode2et");
-  }
-  Function etTrans2 = as<Function>(rxode2et["etTrans"]);
-  return etTrans2(x1, x2, x3, x4, x5, x6, x7, x8);
-}
-
 extern "C" SEXP _rxode2_et_(SEXP x1, SEXP x2) {
   if (!rxode2et_loaded) {
     rxode2et_loaded = true;
@@ -117,32 +98,7 @@ extern "C" SEXP _rxode2_etRep_(SEXP x1, SEXP x2, SEXP x3, SEXP x4, SEXP x5,
   return etRep(x1, x2, x3, x4, x5,
                x6, x7);
 }
-extern "C" SEXP _rxode2_rxSetIni0(SEXP x1) {
-  if (!rxode2et_loaded) {
-    rxode2et_loaded = true;
-    rxode2et = loadNamespace("rxode2et");
-  }
-  Function rxSetIni0 = as<Function>(rxode2et["rxSetIni0"]);
-  return rxSetIni0(x1);
-}
 
-extern "C" SEXP _rxode2_forderForceBase(SEXP x1) {
-  if (!rxode2et_loaded) {
-    rxode2et_loaded = true;
-    rxode2et = loadNamespace("rxode2et");
-  }
-  Function forderForceBase = as<Function>(rxode2et[".forderForceBase"]);
-  return forderForceBase(x1);
-}
-
-extern "C" SEXP _rxode2_rxEtTransAsDataFrame_(SEXP x1) {
-  if (!rxode2et_loaded) {
-    rxode2et_loaded = true;
-    rxode2et = loadNamespace("rxode2et");
-  }
-  Function asDF = as<Function>(rxode2et["rxEtTransAsDataFrame_"]);
-  return asDF(x1);
-}
 extern "C" SEXP _rxode2_setEvCur(SEXP x1) {
   if (!rxode2et_loaded) {
     rxode2et_loaded = true;
@@ -150,23 +106,6 @@ extern "C" SEXP _rxode2_setEvCur(SEXP x1) {
   }
   Function setEvCur = as<Function>(rxode2et[".setEvCur"]);
   return setEvCur(x1);
-}
-extern "C" SEXP _rxode2_useForder(void) {
-  if (!rxode2et_loaded) {
-    rxode2et_loaded = true;
-    rxode2et = loadNamespace("rxode2et");
-  }
-  Function useForder = as<Function>(rxode2et[".useForder"]);
-  return useForder();
-}
-
-extern "C" SEXP _rxode2_getForder(void) {
-  if (!rxode2et_loaded) {
-    rxode2et_loaded = true;
-    rxode2et = loadNamespace("rxode2et");
-  }
-  Function getForder = as<Function>(rxode2et[".getForder"]);
-  return getForder();
 }
 
 List cbindThetaOmega(RObject inputParametersRO, List &individualParameters) {

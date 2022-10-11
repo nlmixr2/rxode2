@@ -67,16 +67,8 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
 
-extern "C" SEXP _rxode2_useForder(void);
-
-bool useForder() {
-  return as<bool>(_rxode2_useForder());
-}
-
-extern "C" SEXP _rxode2_getForder(void);
-Function getForder() {
-  return as<Function>(_rxode2_getForder());
-}
+bool useForder();
+Function getForder();
 
 
 // https://github.com/Rdatatable/data.table/blob/588e0725320eacc5d8fc296ee9da4967cee198af/src/forder.c#L193-L211
@@ -103,17 +95,10 @@ SEXP qassertS(SEXP in, const char *test, const char *what);
 
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
-extern "C" SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
-                                SEXP, SEXP, SEXP);
 List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
              bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
-             CharacterVector keep = CharacterVector(0)) {
-  return(as<List>(_rxode2_etTrans(wrap(inData), wrap(obj), wrap(addCmt),
-                                  wrap(dropUnits), wrap(allTimeVar),
-                                  wrap(keepDosingOnly), wrap(combineDvid),
-                                  wrap(keep))));
-}
+             CharacterVector keep = CharacterVector(0));
 extern "C" SEXP _rxode2_et_(SEXP x1, SEXP x2);
 
 RObject et_(List input, List et__) {
