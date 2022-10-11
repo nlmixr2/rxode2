@@ -220,10 +220,6 @@ rxode2et::etSeq
 #' @export
 rxode2et::eventTable
 
-#' @importFrom rxode2et forderForceBase
-#' @export
-rxode2et::forderForceBase
-
 #' @importFrom rxode2et rxEtDispatchSolve
 #' @export
 rxode2et::rxEtDispatchSolve

@@ -49,7 +49,6 @@
 \alias{etRep}
 \alias{etSeq}
 \alias{eventTable}
-\alias{forderForceBase}
 \alias{rxEtDispatchSolve}
 \alias{rxEvid}
 \alias{rxRateDur}
