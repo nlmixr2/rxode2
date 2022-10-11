@@ -8,6 +8,14 @@
   and move to 'rxode2parse' to reduce the compilation time (as requested
   by CRAN).
   
+- Remove the random number generation from 'rxode2' and move to
+  'rxode2random' to reduce the compilation time (as requested by
+  CRAN).
+
+- Remove the event table translation and generation from 'rxode2' and
+  move to 'rxode2et' to reduce the compilation time (as requested by
+  CRAN).
+  
 - Change the `rxode2` ui object so it is a compressed, serialized
   object by default.  This could reduce the `C stack size` problem
   that occurs with too many environments in R.

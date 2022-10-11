@@ -60,20 +60,18 @@ rxParams.rxode2 <- function(obj, constants = TRUE, ...,
     }
     ## Most likely
     ## rxode2() %>% rxParams() %>%
-    assignInMyNamespace(".pipelineRx", obj)
-    assignInMyNamespace(".pipelineInits", NULL)
-    assignInMyNamespace(".pipelineEvents", NULL)
-    assignInMyNamespace(".pipelineParams", NULL)
-    assignInMyNamespace(".pipelineKeep", NULL)
-    assignInMyNamespace(".pipelineThetaMat", NULL)
-    assignInMyNamespace(".pipelineOmega", NULL)
-    assignInMyNamespace(".pipelineSigma", NULL)
-    assignInMyNamespace(".pipelineDfObs", NULL)
-    assignInMyNamespace(".pipelineDfSub", NULL)
-    assignInMyNamespace(".pipelineNSub", NULL)
-    assignInMyNamespace(".pipelineNStud", NULL)
-
-
+    rxode2et::.pipeRx(obj)
+    rxode2et::.pipeInits(NULL)
+    rxode2et::.pipeEvents(NULL)
+    rxode2et::.pipeParams(NULL)
+    rxode2et::.pipeKeep(NULL)
+    rxode2et::.pipeThetaMat(NULL)
+    rxode2et::.pipeOmega(NULL)
+    rxode2et::.pipeSigma(NULL)
+    rxode2et::.pipeDfObs(NULL)
+    rxode2et::.pipeDfSub(NULL)
+    rxode2et::.pipeNSub(NULL)
+    rxode2et::.pipeNStud(NULL)
     class(.ret) <- "rxParams"
     return(.ret)
   }
@@ -123,23 +121,23 @@ rxParams.rxSolve <- function(obj, constants = TRUE, ...,
     ## Assign prior information
     ## Need to extract:
     ## 1. rxode2 model
-    assignInMyNamespace(".pipelineRx", .x$.args.object)
+    rxode2et::.pipeRx(.x$.args.object)
     ## Events
-    assignInMyNamespace(".pipelineEvents", .x$.args.events)
+    rxode2et::.pipeEvents(.x$.args.events)
     ## 2. rxode2 parameters
-    assignInMyNamespace(".pipelineParams", .x$.args.par0)
+    rxode2et::.pipeParams(.x$.args.par0)
     ## 3. rxode2 inits
-    assignInMyNamespace(".pipelineInits", .x$.args.inits)
+    rxode2et::.pipeInits(.x$.args.inits)
     ## 4. rxode2 thetaMat
-    assignInMyNamespace(".pipelineThetaMat", .x$.args$thetaMat)
+    rxode2et::.pipeThetaMat(.x$.args$thetaMat)
     ## 5. rxode2 omega
-    assignInMyNamespace(".pipelineOmega", .x$.args$omega)
+    rxode2et::.pipeOmega(.x$.args$omega)
     ## 6. rxode2 sigma
-    assignInMyNamespace(".pipelineSigma", .x$.args$sigma)
+    rxode2et::.pipeSigma(.x$.args$sigma)
     ## 7. rxode2 dfObs
-    assignInMyNamespace(".pipelineDfObs", .x$env$.args$dfObs)
+    rxode2et::.pipeDfObs(.x$env$.args$dfObs)
     ## 8. rxode2 dfSub
-    assignInMyNamespace(".pipelineDfSub", .x$env$.args$dfSub)
+    rxode2et::.pipeDfSub(.x$env$.args$dfSub)
     class(.ret) <- "rxParams"
     return(.ret)
   }
@@ -158,7 +156,7 @@ rxParams.rxEt <- function(obj, ...,
     stop("'iCov' in a pipline is no longer supported", call. = FALSE)
   }
   # et() %>% rxParams() %>%
-  assignInMyNamespace(".pipelineEvents", obj)
+  rxode2et::.pipeEvents(obj)
   .lst <- list(...)
   if (length(.lst) > 0) {
     .clearPipe()

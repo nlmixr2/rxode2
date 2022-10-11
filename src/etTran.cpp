@@ -330,7 +330,7 @@ bool rxSetIni0(bool ini0 = true){
   return _ini0;
 }
 
-IntegerVector convertMethod(RObject method);
+#include <rxode2etConvertMethod.h>
 
 extern "C" SEXP _rxode2_convertId_(SEXP id);
 #define convertId_ _rxode2_convertId_

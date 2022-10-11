@@ -14,7 +14,6 @@ Authors@R: c(
    person("Awad H.", "Al-Mohy",role="ctb"),
    person("Matt", "Dowle", role="ctb", email="mattjdowle@gmail.com"),
    person("Cleve", "Moler", role="ctb"),
-   person("David", "Cooley", role="ctb"), 
    person("Drew", "Schmidt", role="ctb"),
    person("Arun", "Srinivasan", role="ctb", email="arunkumar.sriniv@gmail.com"),
    person("Ernst", "Hairer", role="ctb"),
@@ -29,7 +28,6 @@ Authors@R: c(
    person("Nicholas J.", "Higham",role="ctb"),
    person("Roger B.", "Sidje", role="ctb"),
    person("Simon", "Frost", role="ctb"),
-   person("Kevin", "Ushey", role="ctb"),
    person("Yu", "Feng", role="ctb")
    )
 Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
@@ -41,7 +39,6 @@ Suggests:
     covr,
     crayon,
     curl,
-    data.table (>= 1.12.4),
     digest,
     dplyr (>= 0.8.0),
     ggrepel,
@@ -75,10 +72,6 @@ Suggests:
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
-    rxode2ll,
-    rxode2parse,
-    rxode2random,
-    assertthat,
     backports,
     cli (>= 2.0.0),
     checkmate,
@@ -89,10 +82,15 @@ Imports:
     memoise,
     methods,
     rex,
-    qs,
     sys,
     tools,
-    utils
+    utils,
+    rxode2ll,
+    rxode2et,
+    rxode2parse,
+    rxode2random,
+    data.table (>= 1.12.4),
+    qs
 Description: Facilities for running simulations from ordinary
     differential equation ('ODE') models, such as pharmacometrics and other
     compartmental models.  A compilation manager translates the ODE model
@@ -115,6 +113,7 @@ Biarch: true
 LinkingTo: 
     rxode2parse,
     rxode2random,
+    rxode2et,
     PreciseSums (>= 0.3),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),

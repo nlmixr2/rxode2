@@ -63,9 +63,7 @@
     requireNamespace("rxode2random", quietly=TRUE)
     .Call(`_rxode2_assignSeedInfo`)
   }
-
-
-
+  rxode2et::.setRxode2()
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
@@ -75,30 +73,13 @@
     .s3register("nlme::fixef", "rxUi")
     .s3register("nlme::fixef", "function")
   }
-
-  if (requireNamespace("pillar", quietly = TRUE)) {
-    .s3register("pillar::type_sum", "rxEvid")
-    .s3register("pillar::type_sum", "rxRateDur")
-    .s3register("pillar::pillar_shaft", "rxEvid")
-    .s3register("pillar::pillar_shaft", "rxRateDur")
-  }
-  if (requireNamespace("tibble", quietly = TRUE)) {
-    .s3register("tibble::as_tibble", "rxEt")
-  }
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    .s3register("data.table::as.data.table", "rxEt")
-  }
   if (requireNamespace("units", quietly = TRUE)) {
-    .s3register("units::set_units", "rxEt")
-    .s3register("units::set_units", "rxRateDur")
-    .s3register("units::drop_units", "rxEt")
     .s3register("units::drop_units", "rxSolve")
-    .s3register("units::units<-", "rxEvid")
     assignInMyNamespace(".hasUnits", TRUE)
   } else {
     assignInMyNamespace(".hasUnits", FALSE)
   }
-  backports::import(pkgname)
+  backports::import(pkgname) 
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
@@ -106,7 +87,6 @@
   if (!interactive()) {
     setProgSupported(0)
   }
-  .getDTEnv()
   .ggplot2Fix()
 } ## nocov end
 
@@ -118,7 +98,6 @@
     setProgSupported(0)
   }
   rxTempDir()
-  .getDTEnv()
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")
   packageStartupMessage(
@@ -218,7 +197,6 @@ rxCreateCache <- function() {
   utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
   invisible()
 }
-
 
 #' Clear memoise cache for rxode2
 #'

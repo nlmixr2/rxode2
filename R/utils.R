@@ -59,22 +59,6 @@
   )
 }
 
-#' Require namespace, otherwise throw error.
-#'
-#' @param pkg Package required for function to work.
-#' @return Nothing
-#' @author Matthew L. Fidler
-#' @export
-#' @keywords internal
-rxReq <- function(pkg) {
-  ## nocov start
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    stop(sprintf(gettext("package \"%s\" needed for this function to work"), pkg),
-      call. = FALSE
-    )
-  }
-  ## nocov end
-}
 #' Use cat when rxode2.verbose is TRUE
 #'
 #' @param ... Parameters sent to cat
@@ -149,36 +133,6 @@ rxSetProgressBar <- function(seconds = 1.0) {
   invisible(.Call(`_rxParProgress`, as.double(seconds)))
 }
 
-#' Collect warnings and just warn once.
-#'
-#' @param expr R expression
-#' @param lst When `TRUE` return a list with
-#'     list(object,warnings) instead of issuing the warnings.
-#'     Otherwise, when `FALSE` issue the warnings and return the
-#'     object.
-#' @return The value of the expression or a list with the value of
-#'     the expression and a list of warning messages
-#' @author Matthew L. Fidler
-#' @noRd
-.collectWarnings <- function(expr, lst = FALSE) {
-  .ws <- NULL
-  .thisEnv <- environment()
-  .ret <- suppressWarnings(
-    withCallingHandlers(expr,
-      warning = function(w) {
-        assign(".ws", unique(c(w$message, .ws)), .thisEnv)
-      }
-    )
-  )
-  if (lst) {
-    return(list(.ret, .ws))
-  } else {
-    for (.w in .ws) {
-      warning(.w, call. = FALSE)
-    }
-    return(.ret)
-  }
-}
 
 
 #' Error function

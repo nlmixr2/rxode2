@@ -13,12 +13,13 @@
   setNames(rxode2::rxModelVars(obj)$model["normModel"], NULL)
 }
 
-.isWritable <- function(...) {
-  .ret <- try(assertthat::is.writeable(...), silent = TRUE)
-  if (inherits(.ret, "try-error")) {
-    .ret <- FALSE
+.isWritable <- function(path) {
+  if (checkmate::checkString(path, len=1)) {
+    if (file.exists(path)) {
+      return(file.access(path, mode = 2)[[1]] == 0)
+    }
   }
-  .ret
+  FALSE
 }
 
 .rxPkgInst <- function(obj) {

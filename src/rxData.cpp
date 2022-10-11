@@ -95,13 +95,16 @@ SEXP qassertS(SEXP in, const char *test, const char *what);
 
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
-
 List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
              bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
              CharacterVector keep = CharacterVector(0));
-RObject et_(List input, List et__);
-void setEvCur(RObject cur);
+extern "C" SEXP _rxode2_et_(SEXP x1, SEXP x2);
+
+RObject et_(List input, List et__) {
+  return as<RObject>(_rxode2_et_(wrap(input), wrap(et__)));
+}
+extern "C" SEXP _rxode2_setEvCur(SEXP x1);
 
 extern "C" SEXP _rxode2_cvPost_(SEXP nuS, SEXP omega, SEXP n, SEXP omegaIsChol, SEXP returnChol,
                                 SEXP type, SEXP diagXformType);
@@ -2185,7 +2188,7 @@ List getEtRxsolve(Environment e){
     RObject eventso = e[".args.events"];
     List emptyLst(0);
     RObject et = et_(emptyLst, emptyLst);
-    setEvCur(et);
+    _rxode2_setEvCur(et);
     et_(List::create(_["data"] = eventso), List::create("importQuiet"));
     e[".et"] = et;
     Function parse2("parse", R_BaseNamespace);
@@ -2225,6 +2228,10 @@ List getEtRxsolve(Environment e){
     // Note event.copy doesn't really make sense...?  The create.eventTable does basically the same thing.
   }
   return e[".et"];
+}
+
+extern "C" SEXP _rxode2_getEtRxsolve(SEXP e) {
+  return(wrap(getEtRxsolve(as<Environment>(e))));
 }
 
 inline void updateParNames0(CharacterVector &ret, Environment &e,

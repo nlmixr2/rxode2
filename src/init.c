@@ -25,7 +25,6 @@ SEXP _rxode2_etSeq_(SEXP, SEXP, SEXP, SEXP, SEXP,
 		   SEXP);
 SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
 			SEXP, SEXP, SEXP);
-SEXP _rxode2_rxStack(SEXP, SEXP);
 SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_et_(SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
@@ -83,7 +82,6 @@ SEXP _rxode2_rxMvrandn_(SEXP, SEXP, SEXP, SEXP, SEXP,
 		       SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_rxSolveDollarNames(SEXP);
-SEXP _rxode2_etDollarNames(SEXP);
 SEXP _rxode2_rxExpandNesting(SEXP, SEXP, SEXP);
 SEXP _rxode2_expandTheta_(SEXP, SEXP, SEXP, SEXP, SEXP,
 			 SEXP);
@@ -194,11 +192,9 @@ SEXP _rxode2_rxcauchy_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxbinom_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxnbinomMu_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxnbinom_(SEXP, SEXP, SEXP, SEXP);
-
 SEXP _rxode2_rxRmvn0(SEXP, SEXP, SEXP, SEXP, SEXP,
 		    SEXP, SEXP, SEXP, SEXP, SEXP,
 		    SEXP);
-
 SEXP _rxode2_invWR1d(SEXP dSEXP, SEXP nuSEXP, SEXP omegaIsCholSEXP);
 
 SEXP _rxode2_rxSimThetaOmega(SEXP paramsSEXP, SEXP omegaSEXP, SEXP omegaDfSEXP, SEXP omegaLowerSEXP, SEXP omegaUpperSEXP,
@@ -355,15 +351,18 @@ extern rx_solve rx_global;
 extern rx_solving_options op_global;
 extern void setZeroMatrix(int which);
 extern void rxModelsAssignC(const char *str0, SEXP assign);
-extern SEXP chin(SEXP x, SEXP table);
 extern SEXP getLowerVecSexp(int type, rx_solve* rx);
 extern SEXP getUpperVecSexp(int type, rx_solve* rx);
 extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
+SEXP _rxode2_getEtRxsolve(SEXP e);
+extern SEXP chin(SEXP x, SEXP table);
 
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
+    {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
     {"_rxTick", (DL_FUNC) &_rxTick, 0},
@@ -414,7 +413,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 8},
     {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
     {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
-    {"_rxode2_rxStack", (DL_FUNC) &_rxode2_rxStack, 2},
     {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
     {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
@@ -426,7 +424,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxExpandFEta_", (DL_FUNC) &_rxode2_rxExpandFEta_, 3},
     {"_rxode2_rxRepR0_", (DL_FUNC) &_rxode2_rxRepR0_, 1},
     {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 1},
-    {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_rxSetSilentErr", (DL_FUNC) &_rxode2_rxSetSilentErr, 1},
     {"_rxode2_rxIndLin_",(DL_FUNC) &_rxode2_rxIndLin_, 1},
     {"_rxode2_rxUnloadAll_", (DL_FUNC) &_rxode2_rxUnloadAll_, 0},
@@ -462,7 +459,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxnbinomMu_", (DL_FUNC) &_rxode2_rxnbinomMu_, 4},
     {"_rxode2_rxnbinom_", (DL_FUNC) &_rxode2_rxnbinomMu_, 4},
     {"_rxode2_rxSolveDollarNames", (DL_FUNC) _rxode2_rxSolveDollarNames, 1},
-    {"_rxode2_etDollarNames", (DL_FUNC) _rxode2_etDollarNames, 1},
     {"_rxode2_rxExpandNesting", (DL_FUNC) _rxode2_rxExpandNesting, 3},
     {"_rxode2_rxRmvn0", (DL_FUNC) _rxode2_rxRmvn0, 11},
     {"_vecDF", (DL_FUNC) _vecDF, 2},
@@ -498,7 +494,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},
-    {"_rxCbindStudyIndividual", (DL_FUNC) _rxCbindStudyIndividual, 2},
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
