@@ -318,6 +318,7 @@ NA_LOGICAL <- NA # nolint
 #' @importFrom utils capture.output
 #' @importFrom qs qsave
 #' @import tools
+#' @import data.table
 #' @export
 rxode2 <- # nolint
   function(model, modName = basename(wd),

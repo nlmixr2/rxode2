@@ -198,7 +198,6 @@ rxCreateCache <- function() {
   invisible()
 }
 
-
 #' Clear memoise cache for rxode2
 #'
 #' @author Matthew L. Fidler

@@ -39,7 +39,6 @@ Suggests:
     covr,
     crayon,
     curl,
-    data.table (>= 1.12.4),
     digest,
     dplyr (>= 0.8.0),
     ggrepel,
@@ -69,12 +68,10 @@ Suggests:
     devtools,
     patchwork,
     nlmixr2data,
-    lifecycle,
-    qs
+    lifecycle
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
-    assertthat,
     backports,
     cli (>= 2.0.0),
     checkmate,
@@ -92,6 +89,7 @@ Imports:
     rxode2et,
     rxode2parse,
     rxode2random,
+    data.table (>= 1.12.4),
     qs
 Description: Facilities for running simulations from ordinary
     differential equation ('ODE') models, such as pharmacometrics and other

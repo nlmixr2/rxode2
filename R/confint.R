@@ -9,7 +9,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     stop("simulation summaries must be between 0 and 1", call. = FALSE)
   }
   .stk <- rxStack(object, parm)
-  data.table::setDT(.stk)
+  setDT(.stk)
   .a <- (1 - level) / 2
   .p <- c(.a, 0.5, 1 - .a)
   .lst <- list(
