@@ -180,6 +180,10 @@ with:
 
 ``` r
 # install.packages("devtools")
+devtools::install_github("nlmixr2/rxode2parse")
+devtools::install_github("nlmixr2/rxode2random")
+devtools::install_github("nlmixr2/rxode2et")
+devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
 
