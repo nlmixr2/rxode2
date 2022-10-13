@@ -1,5 +1,4 @@
 rxTest({
-  
   .rx <- loadNamespace("rxode2")
 
   testPipeQuote <- function(..., envir=parent.frame()) {
