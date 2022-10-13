@@ -88,25 +88,10 @@
     <loc>https://nlmixr2.github.io/rxode2/news/index.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/add.dosing.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/add.sampling.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/as.et.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/assertRxUi.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/coef.rxode2.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/cvPost.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/dot-clearPipe.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-copyUi.html</loc>
@@ -175,34 +160,13 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-rxWithWd.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/dot-s3register.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-useUtf.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/erf.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/et.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/etExpand.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/etRbind.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/etRep.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/etSeq.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/etTrans.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/eventTable.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/findLhs.html</loc>
@@ -239,12 +203,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/ini.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/invWR1d.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/is.rxEt.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/is.rxSolve.html</loc>
@@ -304,9 +262,6 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/model.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/phi.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/plot.rxSolve.html</loc>
   </url>
   <url>
@@ -325,13 +280,7 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/probit.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rLKJ1.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/reexports.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rinvchisq.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxAllowUnload.html</loc>
@@ -353,9 +302,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxCat.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxCbindStudyIndividual.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxChain.html</loc>
@@ -409,9 +355,6 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/rxErrTypeCombine.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxEvid.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxExpandFEta_.html</loc>
   </url>
   <url>
@@ -446,9 +389,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxGetModel.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxGetSeed.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxGetrxode2.html</loc>
@@ -514,9 +454,6 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/rxParsePred.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxPhysicalDrives.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxPkg.html</loc>
   </url>
   <url>
@@ -532,12 +469,6 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/rxPrune.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxRandNV.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxRateDur.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxReload.html</loc>
   </url>
   <url>
@@ -550,13 +481,7 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/rxRepR0_.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxReq.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxReservedKeywords.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxRmvn.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxS.html</loc>
@@ -575,9 +500,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxSetProgressBar.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxSetSeed.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxSetSilentErr.html</loc>
@@ -605,9 +527,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxSplitPlusQ.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxStack.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxState.html</loc>
@@ -665,12 +584,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxVersion.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxWinSetup.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxWithSeed.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxbeta.html</loc>

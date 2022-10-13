@@ -17,7 +17,7 @@
 <link href="../deps/bootstrap-5.1.3/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.1.3/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.js"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Speeding up rxode2">
+<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Speeding up rxode2">
 <meta property="og:description" content="rxode2">
 <meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
@@ -157,7 +157,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Speeding up rxode2</h1>
                         <h4 data-toc-skip class="author">Matthew Fidler</h4>
             
-            <h4 data-toc-skip class="date">2022-10-06</h4>
+            <h4 data-toc-skip class="date">2022-10-13</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-speed.Rmd" class="external-link"><code>vignettes/rxode2-speed.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-speed.Rmd</code></div>
@@ -191,14 +191,14 @@
 <span></span>
 <span><span class="co">## Create an event table</span></span>
 <span></span>
-<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, addl<span class="op">=</span><span class="fl">9</span>,ii<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">120</span>, amt<span class="op">=</span><span class="fl">20000</span>, addl<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>    <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span> <span class="co">## Add Sampling</span></span>
+<span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, addl<span class="op">=</span><span class="fl">9</span>,ii<span class="op">=</span><span class="fl">12</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">120</span>, amt<span class="op">=</span><span class="fl">20000</span>, addl<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">24</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">240</span><span class="op">)</span> <span class="co">## Add Sampling</span></span>
 <span></span>
 <span><span class="va">nsub</span> <span class="op">&lt;-</span> <span class="fl">100</span> <span class="co"># 100 sub-problems</span></span>
 <span><span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.09</span>,<span class="fl">0.08</span>,<span class="fl">0.08</span>,<span class="fl">0.25</span><span class="op">)</span>,<span class="fl">2</span>,<span class="fl">2</span><span class="op">)</span> <span class="co"># IIV covariance matrix</span></span>
-<span><span class="va">mv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxRmvn.html">rxRmvn</a></span><span class="op">(</span>n<span class="op">=</span><span class="va">nsub</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">2</span><span class="op">)</span>, <span class="va">sigma</span><span class="op">)</span> <span class="co"># Sample from covariance matrix</span></span>
+<span><span class="va">mv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2random/reference/rxRmvn.html">rxRmvn</a></span><span class="op">(</span>n<span class="op">=</span><span class="va">nsub</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">2</span><span class="op">)</span>, <span class="va">sigma</span><span class="op">)</span> <span class="co"># Sample from covariance matrix</span></span>
 <span><span class="va">CL</span> <span class="op">&lt;-</span> <span class="fl">7</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">mv</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">V2</span> <span class="op">&lt;-</span> <span class="fl">40</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">mv</span><span class="op">[</span>,<span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">params.all</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">0.3</span>, CL<span class="op">=</span><span class="va">CL</span>, V2<span class="op">=</span><span class="va">V2</span>, Q<span class="op">=</span><span class="fl">10</span>, V3<span class="op">=</span><span class="fl">300</span>,</span>
@@ -256,11 +256,11 @@
 <code class="sourceCode R"><span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">runFor</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSapply</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSingleThread</span><span class="op">(</span><span class="op">)</span>,<span class="fu">run2Thread</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;               expr      min        lq      mean    median        uq      max</span></span>
-<span><span class="co">#&gt;           runFor() 540.7468 561.52710 574.39046 571.12500 584.16110 770.3325</span></span>
-<span><span class="co">#&gt;        runSapply() 531.2040 565.92345 580.07214 573.94410 583.64235 746.4435</span></span>
-<span><span class="co">#&gt;  runSingleThread()  41.0491  43.65240  44.98112  44.84880  46.06545  51.5203</span></span>
-<span><span class="co">#&gt;       run2Thread()  24.0077  26.92265  28.19345  27.70005  28.75535  35.4245</span></span>
+<span><span class="co">#&gt;               expr      min       lq      mean    median       uq      max</span></span>
+<span><span class="co">#&gt;           runFor() 536.8801 559.5675 573.00008 566.90520 576.2660 740.2280</span></span>
+<span><span class="co">#&gt;        runSapply() 538.3722 556.6764 567.80537 564.67625 571.5560 711.3849</span></span>
+<span><span class="co">#&gt;  runSingleThread()  40.4643  42.7737  44.32043  43.58655  44.8332  57.8118</span></span>
+<span><span class="co">#&gt;       run2Thread()  24.8277  26.5223  27.80647  27.31490  28.3864  36.5312</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span>
@@ -282,9 +282,9 @@
 <span>                                           collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;          expr     min       lq     mean  median       uq     max neval</span></span>
-<span><span class="co">#&gt;  runThread(1) 41.4891 44.82385 46.11813 45.9895 47.43580 56.0770   100</span></span>
-<span><span class="co">#&gt;  runThread(2) 26.1103 27.40010 28.91121 28.1237 29.39285 38.9497   100</span></span></code></pre></div>
+<span><span class="co">#&gt;          expr     min      lq     mean   median      uq     max neval</span></span>
+<span><span class="co">#&gt;  runThread(1) 40.6245 43.0693 44.69540 44.19370 45.4699 53.9285   100</span></span>
+<span><span class="co">#&gt;  runThread(2) 24.9751 27.0518 28.29703 27.68365 28.9616 37.0269   100</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will replace the existing one.</span></span></code></pre></div>
@@ -322,7 +322,7 @@
 <span>  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fl">0.2</span></span>
 <span><span class="co">#Sample from the multivariate normal</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">98176247</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">98176247</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://nlmixr2.github.io/rxode2random/reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">98176247</span><span class="op">)</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.stats.ox.ac.uk/pub/MASS4/" class="external-link">MASS</a></span><span class="op">)</span></span>
 <span>  <span class="va">mv</span> <span class="op">&lt;-</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html" class="external-link">mvrnorm</a></span><span class="op">(</span><span class="va">nsub</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">omega</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>, <span class="va">omega</span><span class="op">)</span> <span class="co"># Sample from covariance matrix</span></span>
@@ -344,7 +344,7 @@
 <span><span class="co">#selects the parameters associated with the subject to be simulated</span></span>
 <span>    <span class="va">params</span> <span class="op">&lt;-</span> <span class="va">params.all</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
 <span><span class="co">#creates an eventTable with 7 doses every 24 hours</span></span>
-<span>    <span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>    <span class="va">ev</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span></span>
 <span>      dose <span class="op">=</span> <span class="va">params</span><span class="op">$</span><span class="va">AMT</span>,</span>
 <span>      nbr.doses <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -366,7 +366,7 @@
 <span><span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  </span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 12.59203 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 12.24983 secs</span></span></code></pre></div>
 <p>By applying some of the new parallel solving concepts you can simply run the same simulation both with less code and faster:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -391,12 +391,12 @@
 <span><span class="va">startParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"rbind"</span>,</span>
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">doses</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">{</span></span>
-<span>            <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="va">doses</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add single dose</span></span>
-<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add 0 observation</span></span>
+<span>            <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>                <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="va">doses</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add single dose</span></span>
+<span>                <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Add 0 observation</span></span>
 <span>                <span class="co">## Generate 4 samples in 24 hour period</span></span>
-<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span><span class="op">)</span><span class="op">}</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>                <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span>id<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">nsubg</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">i</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">*</span> <span class="va">nsubg</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>                <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">24</span><span class="op">)</span><span class="op">}</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>                <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>id<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">nsubg</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">i</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">*</span> <span class="va">nsubg</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>                <span class="co">## Convert to data frame to skip sorting the data</span></span>
 <span>                <span class="co">## When binding the data together</span></span>
 <span>                <span class="va">as.data.frame</span> </span>
@@ -405,7 +405,7 @@
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span></span>
 <span><span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 0.1823714 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 0.1687994 secs</span></span></code></pre></div>
 <p>You can see a striking time difference between the two methods; A few things to keep in mind:</p>
 <ul>
 <li><p><code>rxode2</code> use the thread-safe sitmo <code>threefry</code> routines for simulation of <code>eta</code> values. Therefore the results are expected to be different (also the random samples are taken in a different order which would be different)</p></li>
@@ -415,7 +415,7 @@
 <div class="section level3">
 <h3 id="want-more-ways-to-run-multi-subject-simulations">Want more ways to run multi-subject simulations<a class="anchor" aria-label="anchor" href="#want-more-ways-to-run-multi-subject-simulations"></a>
 </h3>
-<p>The version since the tutorial has even more ways to run multi-subject simulations, including adding variability in sampling and dosing times with <code><a href="../reference/et.html">et()</a></code> (see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-events.html#add-doses-and-samples-within-a-sampling-window">rxode2 events</a> for more information), ability to supply both an <code>omega</code> and <code>sigma</code> matrix as well as adding as a <code>thetaMat</code> to R to simulate with uncertainty in the <code>omega</code>, <code>sigma</code> and <code>theta</code> matrices; see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html">rxode2 simulation vignette</a>.</p>
+<p>The version since the tutorial has even more ways to run multi-subject simulations, including adding variability in sampling and dosing times with <code><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et()</a></code> (see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-events.html#add-doses-and-samples-within-a-sampling-window">rxode2 events</a> for more information), ability to supply both an <code>omega</code> and <code>sigma</code> matrix as well as adding as a <code>thetaMat</code> to R to simulate with uncertainty in the <code>omega</code>, <code>sigma</code> and <code>theta</code> matrices; see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html">rxode2 simulation vignette</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="session-information">Session Information<a class="anchor" aria-label="anchor" href="#session-information"></a>
@@ -446,27 +446,28 @@
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] Rcpp_1.0.9          lattice_0.20-45     rprojroot_2.0.3    </span></span>
-<span><span class="co">#&gt;  [4] digest_0.6.29       utf8_1.2.2          R6_2.5.1           </span></span>
-<span><span class="co">#&gt;  [7] backports_1.4.1     sys_3.4             evaluate_0.16      </span></span>
-<span><span class="co">#&gt; [10] highr_0.9           pillar_1.8.1        rlang_1.0.6        </span></span>
-<span><span class="co">#&gt; [13] rxode2ll_2.0.9      jquerylib_0.1.4     checkmate_2.1.0    </span></span>
-<span><span class="co">#&gt; [16] rmarkdown_2.16      pkgdown_2.0.6.9000  qs_0.25.4          </span></span>
-<span><span class="co">#&gt; [19] textshaping_0.3.6   desc_1.4.2          dparser_1.3.1-6    </span></span>
-<span><span class="co">#&gt; [22] stringr_1.4.1       PreciseSums_0.5     munsell_0.5.0      </span></span>
-<span><span class="co">#&gt; [25] compiler_4.2.1      xfun_0.33           pkgconfig_2.0.3    </span></span>
-<span><span class="co">#&gt; [28] systemfonts_1.0.4   htmltools_0.5.3     tidyselect_1.1.2   </span></span>
-<span><span class="co">#&gt; [31] tibble_3.1.8        rxode2parse_2.0.10  fansi_1.0.3        </span></span>
-<span><span class="co">#&gt; [34] crayon_1.5.2        dplyr_1.0.10        withr_2.5.0        </span></span>
-<span><span class="co">#&gt; [37] grid_4.2.1          nlme_3.1-157        jsonlite_1.8.2     </span></span>
-<span><span class="co">#&gt; [40] gtable_0.3.1        lifecycle_1.0.2     magrittr_2.0.3     </span></span>
-<span><span class="co">#&gt; [43] units_0.8-0         scales_1.2.1        RcppParallel_5.1.5 </span></span>
-<span><span class="co">#&gt; [46] cli_3.4.1           stringi_1.7.8       cachem_1.0.6       </span></span>
-<span><span class="co">#&gt; [49] farver_2.1.1        fs_1.5.2            bslib_0.4.0        </span></span>
-<span><span class="co">#&gt; [52] ragg_1.2.3          generics_0.1.3      vctrs_0.4.2        </span></span>
-<span><span class="co">#&gt; [55] stringfish_0.15.7   lotri_0.4.2         RApiSerialize_0.1.2</span></span>
-<span><span class="co">#&gt; [58] tools_4.2.1         glue_1.6.2          purrr_0.3.4        </span></span>
-<span><span class="co">#&gt; [61] fastmap_1.1.0       yaml_2.3.5          colorspace_2.0-3   </span></span>
-<span><span class="co">#&gt; [64] memoise_2.0.1       knitr_1.40          sass_0.4.2</span></span></code></pre></div>
+<span><span class="co">#&gt;  [4] digest_0.6.29       utf8_1.2.2          rxode2random_2.0.9 </span></span>
+<span><span class="co">#&gt;  [7] R6_2.5.1            backports_1.4.1     sys_3.4            </span></span>
+<span><span class="co">#&gt; [10] evaluate_0.17       highr_0.9           pillar_1.8.1       </span></span>
+<span><span class="co">#&gt; [13] rlang_1.0.6         rxode2ll_2.0.9      jquerylib_0.1.4    </span></span>
+<span><span class="co">#&gt; [16] checkmate_2.1.0     rmarkdown_2.17      pkgdown_2.0.6.9000 </span></span>
+<span><span class="co">#&gt; [19] qs_0.25.4           textshaping_0.3.6   desc_1.4.2         </span></span>
+<span><span class="co">#&gt; [22] dparser_1.3.1-7     stringr_1.4.1       PreciseSums_0.5    </span></span>
+<span><span class="co">#&gt; [25] munsell_0.5.0       compiler_4.2.1      xfun_0.33          </span></span>
+<span><span class="co">#&gt; [28] pkgconfig_2.0.3     systemfonts_1.0.4   htmltools_0.5.3    </span></span>
+<span><span class="co">#&gt; [31] tidyselect_1.2.0    tibble_3.1.8        rxode2parse_2.0.11 </span></span>
+<span><span class="co">#&gt; [34] fansi_1.0.3         crayon_1.5.2        dplyr_1.0.10       </span></span>
+<span><span class="co">#&gt; [37] withr_2.5.0         grid_4.2.1          nlme_3.1-157       </span></span>
+<span><span class="co">#&gt; [40] jsonlite_1.8.2      gtable_0.3.1        lifecycle_1.0.3    </span></span>
+<span><span class="co">#&gt; [43] magrittr_2.0.3      units_0.8-0         scales_1.2.1       </span></span>
+<span><span class="co">#&gt; [46] RcppParallel_5.1.5  cli_3.4.1           stringi_1.7.8      </span></span>
+<span><span class="co">#&gt; [49] cachem_1.0.6        farver_2.1.1        fs_1.5.2           </span></span>
+<span><span class="co">#&gt; [52] bslib_0.4.0         ragg_1.2.3          generics_0.1.3     </span></span>
+<span><span class="co">#&gt; [55] vctrs_0.4.2         stringfish_0.15.7   lotri_0.4.2        </span></span>
+<span><span class="co">#&gt; [58] RApiSerialize_0.1.2 tools_4.2.1         glue_1.6.2         </span></span>
+<span><span class="co">#&gt; [61] purrr_0.3.5         rxode2et_2.0.9      fastmap_1.1.0      </span></span>
+<span><span class="co">#&gt; [64] yaml_2.3.5          colorspace_2.0-3    memoise_2.0.1      </span></span>
+<span><span class="co">#&gt; [67] knitr_1.40          sass_0.4.2</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
