@@ -1,14 +1,11 @@
-<!--
 ---
 output:
-  md_document:
-    variant: markdown_github
+  github_document:
     toc: true
     toc_depth: 3
 ---
--->
+
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-<!-- https://blog.r-hub.io/2019/12/03/readmes/ -->
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
