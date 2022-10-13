@@ -131,7 +131,6 @@ reference:
   - rxNorm
   - rxParams
   - rxProgress
-  - rxRandNV
   - rxState
   - rxSymInvChol
   - uppergamma
