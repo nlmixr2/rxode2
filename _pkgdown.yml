@@ -170,7 +170,6 @@ reference:
   - rxTheme
   - rxToSE
   - rxTrans
-  - rxWinSetup
   - summary.rxode2
   - rxAssignControlValue
   - rxControlUpdateSens
