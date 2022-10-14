@@ -172,40 +172,7 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9"><ul>
-<li>
-<a href="#rxode2" id="toc-rxode2">rxode2</a><ul>
-<li><a href="#overview" id="toc-overview">Overview</a></li>
-<li>
-<a href="#installation" id="toc-installation">Installation</a><ul>
-<li><a href="#windows" id="toc-windows">Windows</a></li>
-<li><a href="#mac-osx" id="toc-mac-osx">Mac OSX</a></li>
-<li><a href="#linux" id="toc-linux">Linux</a></li>
-</ul>
-</li>
-<li><a href="#development-version" id="toc-development-version">Development Version</a></li>
-</ul>
-</li>
-<li>
-<a href="#illustrated-example" id="toc-illustrated-example">Illustrated Example</a><ul>
-<li><a href="#specify-ode-parameters-and-initial-conditions" id="toc-specify-ode-parameters-and-initial-conditions">Specify ODE parameters and initial conditions</a></li>
-<li><a href="#specify-dosing-and-sampling-in-rxode2" id="toc-specify-dosing-and-sampling-in-rxode2">Specify Dosing and sampling in rxode2</a></li>
-<li><a href="#solving-odes" id="toc-solving-odes">Solving ODEs</a></li>
-</ul>
-</li>
-<li>
-<a href="#related-r-packages" id="toc-related-r-packages">Related R Packages</a><ul>
-<li><a href="#ode-solving" id="toc-ode-solving">ODE solving</a></li>
-<li>
-<a href="#pk-solved-systems" id="toc-pk-solved-systems">PK Solved systems</a><ul>
-<li><a href="#the-following-packages-for-solved-pk-systems-are-on-cran" id="toc-the-following-packages-for-solved-pk-systems-are-on-cran">The following packages for solved PK systems are on CRAN</a></li>
-<li><a href="#non-cran-libraries" id="toc-non-cran-libraries">Non-CRAN libraries:</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<!-- README.md is generated from README.Rmd. Please edit that file --><div class="section level1">
+  <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
 <img src="logo.png" class="logo" alt=""><h1 id="rxode2">rxode2<a class="anchor" aria-label="anchor" href="#rxode2"></a>
 </h1>
@@ -307,8 +274,7 @@
 <p>To load <code>rxode2</code> package and compile the model:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 2.0.9 using 8 threads (see ?getRxThreads)</span></span>
-<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
+<span><span class="co">#&gt; rxode2 2.0.9 using 4 threads (see ?getRxThreads)</span></span>
 <span></span>
 <span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;</span>
