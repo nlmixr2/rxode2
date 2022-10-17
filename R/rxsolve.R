@@ -73,16 +73,7 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'     vector must be the same as the state variables (e.g., PK/PD
 #'     compartments);
 #'
-#' @param method The method for solving ODEs.  Currently this supports:
-#'
-#' * `"liblsoda"` thread safe lsoda.  This supports parallel
-#'            thread-based solving, and ignores user Jacobian specification.
-#' * `"lsoda"` -- LSODA solver.  Does not support parallel thread-based
-#'       solving, but allows user Jacobian specification.
-#' * `"dop853"` -- DOP853 solver.  Does not support parallel thread-based
-#'         solving nor user Jacobain specification
-#' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
-#'         must be setup specially to use this solving routine.
+#' @inheritParams odeMethodToInt
 #'
 #' @param sigdig Specifies the "significant digits" that the ode
 #'   solving requests.  When specified this controls the relative and
@@ -91,7 +82,7 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'   sensitivity equations the default is \code{0.5*10^(-sigdig-1.5)}
 #'   (sensitivity changes only applicable for liblsoda).  This also
 #'   controls the `atol`/`rtol` of the steady state solutions. The
-#'   `ssAtol`/`ssRtol` is `0.5*10^(-sigdig)` and for the sensitivities 
+#'   `ssAtol`/`ssRtol` is `0.5*10^(-sigdig)` and for the sensitivities
 #'   `0.5*10^(-sigdig+0.625)`.  By default
 #'   this is unspecified (`NULL`) and uses the standard `atol`/`rtol`.
 #'
@@ -796,14 +787,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         nStud <- as.integer(nsim)
       }
     }
-    if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
-      method <- 1L
-    } else if (checkmate::testIntegerish(method)) {
-        method <- as.integer(method)
-    } else {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
-      method <- .methodIdx[match.arg(method)]
-    }
+    method <- odeMethodToInt(method)
     if (checkmate::testIntegerish(returnType, len=1, lower=0, upper=5, any.missing=FALSE)) {
       returnType <- as.integer(returnType)
     } else {
@@ -1839,5 +1823,38 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 }
 
 .getEtRxSolve <- function(x) {
-  .Call(`_rxode2_getEtRxsolve`, x)  
+  .Call(`_rxode2_getEtRxsolve`, x)
+}
+
+#' Conversion between character and integer ODE integration methods for rxode2
+#'
+#' If \code{NULL} is given as the method, all choices are returned as a named
+#' vector.
+#'
+#' @param method The method for solving ODEs.  Currently this supports:
+#'
+#' * `"liblsoda"` thread safe lsoda.  This supports parallel
+#'            thread-based solving, and ignores user Jacobian specification.
+#' * `"lsoda"` -- LSODA solver.  Does not support parallel thread-based
+#'       solving, but allows user Jacobian specification.
+#' * `"dop853"` -- DOP853 solver.  Does not support parallel thread-based
+#'         solving nor user Jacobian specification
+#' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
+#'         must be setup specially to use this solving routine.
+#' @keywords Internal
+#' @return An integer for the method (unless the input is NULL, in which case,
+#'   see the details)
+#' @export
+odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) {
+  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+  if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
+    method <- 1L
+  } else if (is.null(method)) {
+    method <- .methodIdx
+  } else if (checkmate::testIntegerish(method)) {
+    method <- as.integer(method)
+  } else {
+    method <- .methodIdx[match.arg(method)]
+  }
+  method
 }
