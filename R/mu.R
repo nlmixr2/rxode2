@@ -583,7 +583,7 @@
   if (length(.wt) >= 2) {
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
-                               paste(env$info$theta[.wt], collapse="', '"), "'")))
+                               paste(env$info$theta[.wt], collapse="', '"), "'\nthis could occur when a between subject variability parameter is not initialized with a '~'")))
   } else if (length(.wt) == 1) {
     if (!is.null(.extraItems)) {
       .ord <- order(vapply(.extraItems, nchar, integer(1)))
