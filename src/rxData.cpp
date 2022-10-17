@@ -4549,7 +4549,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     trueParams = params;
   } else {
     rxSolveFree();
-    stop(_("cannot solve without event information"));
+    stop(_("cannot solve without event information\nthis can occur when the data frame you are providing does not have the column 'time'"));
   }
   getRxModels();
   bool didNesting=false;
