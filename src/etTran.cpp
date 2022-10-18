@@ -1866,25 +1866,22 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               nvTmp = as<NumericVector>(lst1[1+j]);
 							int ii1 =idx1;
 							double cur1 = nvTmp[ii1];
-							if (ISNA(cur1)) {
-							} else {
-								int ii2 = i;
-								double cur2 =nvTmp2[idxInput[idxOutput[i]]];
-								while (ISNA(cur2) && ii2 != 0 && lastId==id[idxOutput[ii2-1]]) {
-									ii2--;
-									cur2 =nvTmp2[idxInput[idxOutput[i]]];
-								}
-								if (nvTmp[idx1] != cur2){
-									sub0[baseSize+j] = true;
-									sub1[1+j] = false;
-									fPars[idx1*pars.size()+covParPos[j]] = NA_REAL;
-									if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()){
-										covParPosTV.push_back(covParPos[j]);
-									}
-									nTv++;
-								}								
+							int ii2 = i;
+							double cur2 =nvTmp2[idxInput[idxOutput[i]]];
+							while (ISNA(cur2) && ii2 != 0 && lastId==id[idxOutput[ii2-1]]) {
+								ii2--;
+								cur2 =nvTmp2[idxInput[idxOutput[i]]];
 							}
-            }
+							if (nvTmp[idx1] != cur2){
+								sub0[baseSize+j] = true;
+								sub1[1+j] = false;
+								fPars[idx1*pars.size()+covParPos[j]] = NA_REAL;
+								if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()){
+									covParPosTV.push_back(covParPos[j]);
+								}
+								nTv++;
+							}								
+						}
           }
         }
       }
