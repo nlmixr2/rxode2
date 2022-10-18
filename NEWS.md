@@ -22,7 +22,10 @@
   
 - Warn when ignoring items during simulations
 
-- Export a method to change rxode2 solve methods into internal integers
+- Export a method to change 'rxode2' solve methods into internal integers
+
+- Bug fix for time invariant covariates identified as time variant
+  covariate when the individual's time starts after `0`.
 
 # rxode2 2.0.8
 
