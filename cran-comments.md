@@ -1,31 +1,57 @@
 # CRAN Comments
 
-The following platforms were tested with a succesful check: MacOS release, Windows
-  release, ubuntu devel, and ubuntu release.
-  
-Also the win-builder, rhub was checked and ran successfully.
+## Clang 15
+Thanks, we see:
 
-* The clang errors are taken care of, as well as the latex errors.
- 
-* This shortens compilation time (as requested) by moving
-  log-likelihood functions to `rxode2ll`, parsing to `rxode2parse`,
-  random number generation to `rxode2random` and event table 
-  creation to `rxode2et`
-  
-* Also removed some tests from CRAN (but still kept them for testing
-  externally) since the testing was taking 274s on win builder.
-  
-* This also has pre-release fixes for `ggplot2` 3.4.0 which is slated
-  to be released at the end of October.
-  
-* This also changes the `rxode2` model structure, which will change
-  `nlmixr2est` and `nlmixr2extra` causing them to fail without an
-  update.  The `nlmixr2est` is also ready and will be submitted as
-  soon as `rxode2` is accepted.  Once `nlmixr2est` is released,
-  `nlmixr2extra`, `nlmixr2plot` (to fix upcoming ggplot2 3.4 issues),
-  and `nlmixr2` will be submitted (to fix a bug that doesn't capture
-  the model name).  Once accepted, this will allow `ggPMX`, and
-  `xpose.nlmixr2` to run correctly.
-  
-* Campsis will run with this new `rxode2` without any modifications
-  (the tests were successful).
+with clang15 still
+
+
+Found the following significant warnings:
+   dgefa.c:9:1: warning: a function definition without a prototype is
+deprecated in all versions of C and is not supported in C2x
+[-Wdeprecated-non-prototype]
+   dgesl.c:8:1: warning: a function definition without a prototype is
+deprecated in all versions of C and is not supported in C2x
+[-Wdeprecated-non-prototype]
+
+Fixed
+
+## Authorhsip
+
+Are those not based on LINPACK code?  We see no credit in the files (nor
+others) nor the DESCRIPTION file.  LINPACK may be copyrighted in some
+countries (and maybe not in the USA), but it has authors and R credits
+those for the LINPACK code it includes (in doc/COPYRIGHTS).
+
+Fixed as discussed below:
+
+- All authors of LAPACK are listed as contributors and the inst/COPYRIGHTS
+- NOTE we also added Jim Bunch who is not included in the R's (doc/COPYRIGHTS)
+
+## M1 mac
+
+On M1mac it fails miserably:
+
+When this is installed:
+
+ > library(nlmixr2)
+Loading required package: nlmixr2data
+
+ > library(nlmixr2est)
+Error: package or namespace load failed for ‘nlmixr2est’:
+  .onAttach failed in attachNamespace() for 'nlmixr2est', details:
+   call: NULL
+   error: nlmixr2 compiled against different version of rxode2, cannot
+run nlmixr2
+try `install.packages("nlmixr2", type = "source")` to recompile
+
+This should say `install.packages("nlmixr2est", type="source")`
+
+BUT this package is currently broken because of CRAN's request reduce
+compile time for 'rxode2'.
+
+This package will immediately be resubmitted once rxode2 is accepted.
+
+Should I submit it on CRAN at the same time?
+
+Matt
