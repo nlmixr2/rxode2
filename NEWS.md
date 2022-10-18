@@ -19,6 +19,10 @@
 - Change the `rxode2` ui object so it is a compressed, serialized
   object by default.  This could reduce the `C stack size` problem
   that occurs with too many environments in R.
+  
+- Warn when ignoring items during simulations
+
+- Export a method to change rxode2 solve methods into internal integers
 
 # rxode2 2.0.8
 
