@@ -144,21 +144,29 @@ reference:
   - .rxWithOptions
   - .rxWithWd
   - invWR1d
+  - odeMethodToInt
   - rLKJ1
   - rxAllowUnload
+  - rxAssignControlValue
   - rxAssignPtr
   - rxChain
+  - rxControlUpdateSens
   - rxDfdy
   - rxEvid
   - rxFun
+  - rxGetControl
   - rxGetLin
   - rxGetrxode2
   - rxHtml
   - rxIndLinState
   - rxIndLinStrategy
+  - rxIndLin_
+  - rxPreferredDistributionName
   - rxRateDur
+  - rxRemoveControl
   - rxReservedKeywords
   - rxS
+  - rxSetControl
   - rxSetIni0
   - rxSetProgressBar
   - rxStack
@@ -170,15 +178,8 @@ reference:
   - rxTheme
   - rxToSE
   - rxTrans
-  - summary.rxode2
-  - rxAssignControlValue
-  - rxControlUpdateSens
-  - rxGetControl
-  - rxIndLin_
-  - rxPreferredDistributionName
-  - rxRemoveControl
-  - rxSetControl
   - rxUiGet
+  - summary.rxode2
 navbar:
   left:
   - text: Articles

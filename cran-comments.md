@@ -16,7 +16,7 @@ deprecated in all versions of C and is not supported in C2x
 
 Fixed
 
-## Authorhsip
+## Authorship
 
 Are those not based on LINPACK code?  We see no credit in the files (nor
 others) nor the DESCRIPTION file.  LINPACK may be copyrighted in some
@@ -26,7 +26,9 @@ those for the LINPACK code it includes (in doc/COPYRIGHTS).
 Fixed as discussed below:
 
 - All authors of LAPACK are listed as contributors and the inst/COPYRIGHTS
-- NOTE we also added Jim Bunch who is not included in the R's (doc/COPYRIGHTS)
+- Added Gilbert Stewart and Jim Bunch since they were the only authors
+  missing in our DESCRIPTION file
+- NOTE we also Jim Bunch who is not included in the R's (doc/COPYRIGHTS)
 
 ## M1 mac
 
