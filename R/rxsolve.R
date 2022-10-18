@@ -816,6 +816,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .sigma <- sigma
     } else if (inherits(sigma, "character")) {
       .sigma <- sigma
+      checkmate::assertNumeric(dfObs, lower=length(sigma), finite=TRUE, any.missing=FALSE, len=1)
     } else {
       .sigma <- lotri(sigma)
     }
@@ -823,6 +824,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .omega <- omega
     }  else if (inherits(omega, "character")) {
       .omega <- omega
+      checkmate::testNumeric(dfSub, lower=length(omega), finite=TRUE, any.missing=FALSE, len=1)
     } else if (inherits(omega, "lotri")) {
       .omega <- omega
     } else {
