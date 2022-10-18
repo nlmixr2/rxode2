@@ -1550,7 +1550,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             dv.push_back(NA_REAL);
             limit.push_back(NA_REAL);
             cens.push_back(0);
-            idxInput.push_back(-1);
+            //idxInput.push_back(-1);
+						idxInput.push_back(i);
             idxOutput.push_back(curIdx);curIdx++;
           }
         }
