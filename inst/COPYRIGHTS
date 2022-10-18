@@ -1,3 +1,16 @@
+The files (if they exist) below:
+
+src/{dchdc,dpfa,dpbsl,dpoco,dpodi,dpofa,dposl,dqrdc,
+          dqrsl,dsvdc,dtrco,dtrsl}.c
+
+are derived part of LINPACK, with authors J.J. Dongarra, Jim Bunch, Cleve Moler
+and G.W. Stewart and were included in liblsoda software below.  Very
+minor modifications were made by Matthew Filder for CRAN compliance
+
+The status of the included LINPACK routines is unclear:
+they are said to be in the public domain in the USA (as stated in R).
+Both R and rxode2 include variants of these programs.
+
 
 The ODE solvers DVode and LSODA was written at LLNL. DVode is in the
 Public Domain and are freely available from the CASC Software Download
