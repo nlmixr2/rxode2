@@ -1507,6 +1507,55 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .envReset$cacheReset <- FALSE
   .envReset$unload <- FALSE
   # take care of too many DLLs or not provided simulation errors
+  .names <- NULL
+  if (inherits(.ctl$thetaMat, "matrix")) {
+    .mv <- rxModelVars(object)
+    .col <- colnames(.ctl$thetaMat)
+    .w <- .col %in% .mv$params
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .names <- c(.names, .col[.w])
+  }
+  if (inherits(.ctl$omega, "matrix")) {
+    .mv <- rxModelVars(object)
+    .col <- colnames(.ctl$omega)
+    .w <- .col %in% .mv$params
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .names <- c(.names, .col[.w])
+  } else if ( inherits(.ctl$omega, "character")) {
+    .mv <- rxModelVars(object)
+    .col <- .ctl$omega
+    .w <- .col %in% .mv$params
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .names <- c(.names, .col[.w])
+  }
+  if (inherits(.ctl$sigma, "matrix")) {
+    .mv <- rxModelVars(object)
+    .col <- colnames(.ctl$sigma)
+    .w <- .col %in% .mv$params
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .names <- c(.names, .col[.w])
+  } else if ( inherits(.ctl$sigma, "character")) {
+    .mv <- rxModelVars(object)
+    .col <- .ctl$sigma
+    .w <- .col %in% .mv$params
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .names <- c(.names, .col[.w])
+  }
   if (rxode2.debug) {
     rxSetCovariateNamesForPiping(NULL)
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
