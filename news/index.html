@@ -134,6 +134,9 @@
 <li><p>Remove the random number generation from ‘rxode2’ and move to ‘rxode2random’ to reduce the compilation time (as requested by CRAN).</p></li>
 <li><p>Remove the event table translation and generation from ‘rxode2’ and move to ‘rxode2et’ to reduce the compilation time (as requested by CRAN).</p></li>
 <li><p>Change the <code>rxode2</code> ui object so it is a compressed, serialized object by default. This could reduce the <code>C stack size</code> problem that occurs with too many environments in R.</p></li>
+<li><p>Warn when ignoring items during simulations</p></li>
+<li><p>Export a method to change ‘rxode2’ solve methods into internal integers</p></li>
+<li><p>Bug fix for time invariant covariates identified as time variant covariate when the individual’s time starts after <code>0</code>.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.8" id="rxode2-208">rxode2 2.0.8<a class="anchor" aria-label="anchor" href="#rxode2-208"></a></h2><p class="text-muted">CRAN release: 2022-09-23</p>
