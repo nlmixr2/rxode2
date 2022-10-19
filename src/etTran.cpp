@@ -1859,7 +1859,18 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             nvTmp[jj] = nvTmp2[idxInput[idxOutput[i]]];
             if (addId){
               nvTmp = as<NumericVector>(lst1[1+j]);
-              nvTmp[idx1] = nvTmp2[idxInput[idxOutput[i]]];
+							int iCur = i;
+							double vCur = nvTmp2[idxInput[idxOutput[i]]];
+							// Could be NA, look for non NA value OR beginning of subject
+							while (ISNA(vCur) && iCur != 0 && lastId == id[idxOutput[iCur]]) {
+								iCur--;
+								vCur = nvTmp2[idxInput[idxOutput[i]]];
+							}
+							if (ISNA(vCur)) {
+								Rf_warningcall(R_NilValue,"column '%s' has only 'NA' values for id '%s'" , CHAR(nme1[1+j]),
+															 CHAR(idLvl[((inId.size() == 0) ? 1 : lastId)-1]));
+							}
+              nvTmp[idx1] = vCur;
               fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
               added = true;
             } else if (sub1[1+j]) {

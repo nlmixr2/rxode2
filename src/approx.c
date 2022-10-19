@@ -88,10 +88,6 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
         while (ISNA(ret) && i != 0){
           i--; ret = y[ind->ix[i]];
         }
-        if (ISNA(ret)){
-          // All Covariates values for a single individual are NA.
-          ind->allCovWarn=1;
-        }
       }
     } else {
       // Go backward.
@@ -103,10 +99,6 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
         i = idx;
         while (ISNA(ret) && i != ind->n_all_times){
           i++; ret = y[ind->ix[i]];
-        }
-        if (ISNA(ret)){
-          // All Covariates values for a single individual are NA.
-          ind->allCovWarn=1;
         }
       }
 

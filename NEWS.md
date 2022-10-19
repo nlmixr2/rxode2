@@ -1,5 +1,10 @@
 # rxode2 (development version)
 
+- Time invariant covariates can now contain 'NA' values.
+
+- When a column has 'NA' for the entire id, now 'rxode2' warns about
+  both the id and column instead of just the id.
+
 # rxode2 2.0.9
 
 - Remove log likelihoods from 'rxode2' to reduce compilation time and

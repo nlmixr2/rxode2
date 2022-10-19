@@ -348,7 +348,7 @@ rxTest({
     test_that("All covariates are NA give a warning", {
       expect_warning(
         rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
-        "one or more covariates were all 'NA' for subject 'id=2'"
+        "column 'V1I' has only 'NA' values for id '2'"
       )
     })
   }

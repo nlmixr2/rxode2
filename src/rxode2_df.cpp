@@ -289,9 +289,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       ntimes = ind->n_all_times;
       par_ptr = ind->par_ptr;
       di = 0;
-      if (ind->allCovWarn && csim == 0){
-        warning(_("one or more covariates were all 'NA' for subject 'id=%d'"), csub+1);
-      }
       for (i = 0; i < ntimes; i++){
         ind->idx = i;
         if (evid == 3) {

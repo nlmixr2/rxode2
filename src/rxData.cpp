@@ -1480,7 +1480,7 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
       std::copy(iniPars.begin(), iniPars.end(), &_globals.gpars[0]+rx->nsub*npars*j);
     }
     IntegerVector parPos = envCls["covParPos0"];
-    std::copy(parPos.begin(),parPos.end(), &_globals.gParPos2[0]);
+    std::copy(parPos.begin(), parPos.end(), &_globals.gParPos2[0]);
     rx->nCov0 = parPos.size();
     rx->cov0 = _globals.gParPos2;
   }
