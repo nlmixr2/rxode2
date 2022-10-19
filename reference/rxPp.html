@@ -10,7 +10,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.9.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -205,28 +205,29 @@ dropout is equal to or after tmax.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample homogenous Poisson process of rate 1/10</span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  3.348147  9.671143 11.413518 13.180057 20.549819 30.151318 37.706824</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 51.918786 73.115465 77.400091</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  4.624374 10.583724 45.309960 58.404043 65.627759 67.118584 71.496843</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 76.498483 93.480731 93.643613</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample inhomogenous Poisson rate of 1/10</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]   8.259087   9.432254  24.445875  49.978001  83.243928 100.000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 100.000000 100.000000 100.000000 100.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  5.232327 11.433971 17.503089 38.865575 39.164464 53.152704 59.018570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 73.234841 74.231457 74.837137</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Typically the Poisson process times are in a sequential order,</span></span></span>
 <span class="r-in"><span><span class="co">## using randomOrder gives the Poisson process in random order</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">10</span>, randomOrder <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  7.21098 10.00000 10.00000 10.00000 10.00000 10.00000 10.00000 10.00000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 10.00000 10.00000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 10.000000 10.000000 10.000000 10.000000 10.000000  2.421967 10.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 10.000000 10.000000 10.000000</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This uses an arbitrary function to sample a non-homogenous Poisson process</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, prob <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fl">1</span> <span class="op">/</span> <span class="va">x</span></span></span>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in rxPp(10, 1/10, prob = function(x) {    1/x}):</span> 'prob' function should return values between 0 and 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]   2.348482  59.810138 145.750593 247.004913 291.491101 308.081436</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 471.323260 490.281174 622.956177 688.515926</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>

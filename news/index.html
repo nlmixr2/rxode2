@@ -10,7 +10,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.9.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -128,7 +128,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2.0.9" id="rxode2-209">rxode2 2.0.9<a class="anchor" aria-label="anchor" href="#rxode2-209"></a></h2>
+<h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
+<ul><li><p>Time invariant covariates can now contain ‘NA’ values.</p></li>
+<li><p>When a column has ‘NA’ for the entire id, now ‘rxode2’ warns about both the id and column instead of just the id.</p></li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2.0.9" id="rxode2-209">rxode2 2.0.9<a class="anchor" aria-label="anchor" href="#rxode2-209"></a></h2><p class="text-muted">CRAN release: 2022-10-19</p>
 <ul><li><p>Remove log likelihoods from ‘rxode2’ to reduce compilation time and increase maintainability of ‘rxode2’. They were transferred to ‘rxode2ll’ (requested by CRAN).</p></li>
 <li><p>Remove the parsing from ‘rxode2’ and solved linear compartment code and move to ‘rxode2parse’ to reduce the compilation time (as requested by CRAN).</p></li>
 <li><p>Remove the random number generation from ‘rxode2’ and move to ‘rxode2random’ to reduce the compilation time (as requested by CRAN).</p></li>
