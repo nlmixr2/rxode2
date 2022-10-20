@@ -20,7 +20,7 @@ engine threefry and then run the code."><meta property="og:image" content="https
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.10</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -199,16 +199,16 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># with rxweibull you have to explicitly state n</span></span></span>
 <span class="r-in"><span><span class="fu">rxweibull</span><span class="op">(</span>shape <span class="op">=</span> <span class="fl">1</span>, scale <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 8.7717060 4.9638110 2.1817873 7.3781070 6.9271536 2.7544618 3.5984949</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 0.6780346 1.9746591 6.3309197</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 9.32307460 0.01758922 1.23103754 2.32787881 4.72755477 6.04912143</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 1.85094628 2.10225139 6.62202225 3.86956745</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># You can parallelize the simulation using openMP</span></span></span>
 <span class="r-in"><span><span class="fu">rxweibull</span><span class="op">(</span>shape <span class="op">=</span> <span class="fl">1</span>, scale <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 15.4579748  5.6143374  3.4707142  0.3209687  5.1351336  1.1217345</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  3.1202929  6.8341781  0.6674622  2.8872673</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  1.3750730  6.1968311  5.4514133  0.9142893  1.0395357  2.7561288</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  3.4915216  1.4911605  1.3615743 10.7762190</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxweibull</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.300513</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.6674085</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxweibull` directly in the model</span></span></span>
