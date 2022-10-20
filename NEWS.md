@@ -1,9 +1,12 @@
-# rxode2 (development version)
+# rxode2 2.0.10
 
 - Time invariant covariates can now contain 'NA' values.
 
 - When a column has 'NA' for the entire id, now 'rxode2' warns about
   both the id and column instead of just the id.
+  
+- To fix some CRAN issues in 'nlmixr2est', make the version dependency
+  explicit.
 
 # rxode2 2.0.9
 
