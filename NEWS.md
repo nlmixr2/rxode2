@@ -1,3 +1,5 @@
+# rxode2 (development version)
+
 # rxode2 2.0.10
 
 - Time invariant covariates can now contain 'NA' values.
