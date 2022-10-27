@@ -112,7 +112,7 @@ extern "C" void parseFree(int last) {
   INTEGER(iv)[0] = last;
   parseFreeSexp(iv);
   UNPROTECT(1);
-   END_RCPP
+  VOID_END_RCPP
 }
 
 
