@@ -2147,7 +2147,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
   .env$..lhs <- NULL
   .env$..lhs0 <- NULL
   .env$..doConst <- doConst
-  .rxD <- rxode2parse:rxode2parseD()
+  .rxD <- rxode2parse::rxode2parseD()
   for (.f in c(
     ls(.rxD), "linCmtA", "linCmtB", "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead"
