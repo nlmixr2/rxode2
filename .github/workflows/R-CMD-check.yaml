@@ -42,9 +42,9 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            nlmixr2/rxode2parse
-            nlmixr2/rxode2random
-            nlmixr2/rxode2et
+            github::nlmixr2/rxode2parse
+            github::nlmixr2/rxode2random
+            github::nlmixr2/rxode2et
             any::rcmdcheck
           needs: check
 
