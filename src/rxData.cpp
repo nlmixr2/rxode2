@@ -4811,7 +4811,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // This fixes random issues on windows where the solves are done and the data set cannot be solved.
     getRxModels();
     _rxModels[as<std::string>(trans[RxMvTrans_model_vars])] = rxSolveDat->mv;
-    sprintf(op->modNamePtr, "%s", (as<std::string>(trans[RxMvTrans_model_vars])).c_str());
+    snprintf(op->modNamePtr, 1000, "%s", (as<std::string>(trans[RxMvTrans_model_vars])).c_str());
     // approx fun options
     op->is_locf = covs_interpolation;
     if (op->is_locf == 0){//linear
