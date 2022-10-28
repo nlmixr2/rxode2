@@ -428,6 +428,7 @@ bool rxIs(const RObject &obj, std::string cls){
 }
 
 Function loadNamespace("loadNamespace", R_BaseNamespace);
+Function requireNamespace("requireNamespace", R_BaseNamespace);
 
 Environment cliNS = loadNamespace("cli");
 Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
@@ -625,6 +626,10 @@ inline bool fileExists(const std::string& name) {
 // Use this function to keep dynLoad options consistent.
 //[[Rcpp::export]]
 SEXP dynLoad(std::string dll){
+  requireNamespace("rxode2ll", _["quietly"]=true);
+  requireNamespace("rxode2parse", _["quietly"]=true);
+  requireNamespace("rxode2random", _["quietly"]=true);
+  requireNamespace("rxode2et", _["quietly"]=true);
   Function dl("dyn.load", R_BaseNamespace);
   SEXP ret = dl(dll, _["local"]=false, _["now"]=true);
   return ret;
