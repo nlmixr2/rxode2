@@ -12,7 +12,7 @@ rxTest({
     }
     expect_error(f(), "model")
     
-  }
+  })
   test_that("issue nlmixr#501", {
 
     nlmixr_threecmt_mm_no_add_wtcl_pdtg_kout_delay <- function() {
