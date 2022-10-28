@@ -1161,12 +1161,20 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         } else {
           .lstChr <- .lstChr[-.lines]
         }
+        if (length(.lstChr) == 0) {
+          stop("a rxode2 ui model must have more than error definition(s) in the `model({})` block",
+               call.=FALSE)
+        }
         if (any(.env$predDf$linCmt)) {
           .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
         } else {
           .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
         }
       } else {
+        if (length(.lstChr) ==0) {
+          stop("a rxode2 ui model must have more than error definition(s) in the `model({})` block",
+               call.=FALSE)
+        }
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
       }
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
