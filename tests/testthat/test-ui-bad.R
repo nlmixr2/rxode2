@@ -1,6 +1,6 @@
 rxTest({
 
-  test_that("bad ui") {
+  test_that("bad ui", {
     
     f <- function() {
       ini({
@@ -10,7 +10,7 @@ rxTest({
         err ~ add(sd)
       })
     }
-
+    expect_error(f(), "model")
     
   }
   test_that("issue nlmixr#501", {
