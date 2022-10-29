@@ -137,7 +137,7 @@ rxExpandNesting <- function(obj, nestingInfo, compile = FALSE) {
 #'
 #' @param cSub = Current subject number
 #' @param op - rxode2 solving options
-#' @param tp - Prior time point/time zeor
+#' @param tp - Prior time point/time zero
 #' @param yp - Prior state;  vector size = neq; Final state is updated here
 #' @param tf - Final Time
 #' @param InfusionRate = Rates of each compartment;  vector size = neq
