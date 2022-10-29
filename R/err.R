@@ -1171,10 +1171,6 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           .env$mv0 <- rxModelVars(paste(.lstChr, collapse="\n"))
         }
       } else {
-        if (length(.lstChr) ==0) {
-          stop("a rxode2 ui model must have more than error definition(s) in the `model({})` block",
-               call.=FALSE)
-        }
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
       }
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
