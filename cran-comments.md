@@ -1,6 +1,8 @@
 # CRAN Comments
 
-This is submitted because `nlmixr2parse` is currently ABI linked t `rxode2`
+This is the exact same submission as before in hopes that the ubuntu server has update `rxode2parse`
+
+This is submitted because `nlmixr2parse` is currently ABI linked t `rxode2`.
 
 In addition:
 
