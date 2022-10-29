@@ -689,3 +689,11 @@ is.latex <- function() {
   }
   get("is_latex_output", asNamespace("knitr"))()
 }
+
+
+.nsToLoad <- function() {
+  vapply(rxode2parse::rxode2parseGetPackagesToLoad(),
+         function(pkg) {
+           requireNamespace(pkg, quietly = TRUE)
+         }, logical(1))
+}

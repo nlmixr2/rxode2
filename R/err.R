@@ -1161,6 +1161,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         } else {
           .lstChr <- .lstChr[-.lines]
         }
+        if (length(.lstChr) == 0) {
+          stop("a rxode2 ui model must have more than error definition(s) in the `model({})` block",
+               call.=FALSE)
+        }
         if (any(.env$predDf$linCmt)) {
           .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()"), collapse="\n"))
         } else {
