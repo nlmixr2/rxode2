@@ -1,8 +1,12 @@
 # CRAN Comments
 
-This is the exact same submission as before in hopes that the ubuntu server has update `rxode2parse`
+This submission is meant to replace the `rxode2` `2.0.11` submission currently in the CRAN queue.
 
-This is submitted because `nlmixr2parse` is currently ABI linked t `rxode2`.
+This is because it has some unintended suggested packages that were not declared, see:
+
+https://github.com/nlmixr2/rxode2/issues/350
+
+This submission is because `nlmixr2parse` is currently ABI linked to `rxode2`.
 
 In addition:
 
