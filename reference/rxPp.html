@@ -205,28 +205,28 @@ dropout is equal to or after tmax.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample homogenous Poisson process of rate 1/10</span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 11.22108 11.49743 19.53778 31.63179 39.43217 52.96765 66.45697 70.07014</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 70.41388 77.12745</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]   8.570666  42.442350  51.640727  56.493521  69.232804  91.386539</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  95.299701 105.804119 114.502090 114.987560</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample inhomogenous Poisson rate of 1/10</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 11.13938 14.09869 15.43829 16.92678 51.06965 51.18028 54.64210 67.18991</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 71.30137 97.27313</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 16.50131 22.80622 23.20502 41.12961 57.44114 58.12620 60.49014 74.79991</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 79.20725 89.01768</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Typically the Poisson process times are in a sequential order,</span></span></span>
 <span class="r-in"><span><span class="co">## using randomOrder gives the Poisson process in random order</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">10</span>, randomOrder <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 10 10 10 10 10 10 10 10 10 10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 10.000000 10.000000 10.000000 10.000000 10.000000 10.000000 10.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  2.480717 10.000000 10.000000</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This uses an arbitrary function to sample a non-homogenous Poisson process</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, prob <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fl">1</span> <span class="op">/</span> <span class="va">x</span></span></span>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  11.32403  17.32219  92.73950 202.28917 224.67684 331.40023 355.91388</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 455.02083 550.43474 605.37121</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in rxPp(10, 1/10, prob = function(x) {    1/x}):</span> 'prob' function should return values between 0 and 1</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
