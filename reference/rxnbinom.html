@@ -215,16 +215,16 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnbinom</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">0.9</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxbinom you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  9  9  8 10  9 10  8  9 10 10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  8 10 10 10 10  9 10  9 10 10</span>
 <span class="r-in"><span><span class="fu">rxnbinom</span><span class="op">(</span><span class="fl">3</span>, <span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2 2 3 2 3 3 3 2 3 3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 3 3 3 2 3 2 3 2 2 3</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnbinom</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">0.7</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># use mu parameter</span></span></span>
 <span class="r-in"><span><span class="fu">rxnbinomMu</span><span class="op">(</span><span class="fl">40</span>, <span class="fl">40</span>, n<span class="op">=</span><span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 20 20 24 25 23 12 18 20 21 26</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 19 18 25 21 14 23 23 20 16 20</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxbinom` directly in the model</span></span></span>
 <span class="r-in"><span></span></span>

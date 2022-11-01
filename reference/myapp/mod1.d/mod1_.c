@@ -668,9 +668,9 @@ extern SEXP mod1__model_vars(void){
   SEXP _mv = PROTECT(_rxGetModelLib("mod1__model_vars"));pro++;
   if (!_rxIsCurrentC(_mv)){
     SEXP hash    = PROTECT(allocVector(STRSXP, 1));pro++;
-#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAAN/yAAAv7#aT)9XKyMAU.Ya=W6xYB~1\"d|dB8EGxwtN$Wq3{5\"uNN^SoOnR4!WdSW9}PCh|lecoe!hSt|Ng|m];|^zpI9}RK;>YwWK\"jAnBR=mZN5C$Ji[%%exX<#.TrjU6]$Jm%%\?*k6U3_PJ&2[:{7$}}UU<~Ft${41MShkW(W^3rDIp/^s9ITZar$Ts#ENf>cs)XG=Laez^>t`cp&Y_c`LG|czJ#b+8|o[B04k>Kx=rIXTsGb`shlzF.<cBA=$2Dt`Q$eB3`!u@Hhz|Vn`rTRY[9LU45bt`M_M%%dqu1|VQBX3L&7S=5wQ{Z#LRGiuu<}\?0j+[4#BHxQ8mYgkOI|c6MSft9/TIoCPjtsQ=$YQn9g+MoHed}s.\"C72ZQ~T~X!mL%%Iob/4YnzKOD%%,=IF|L>lkLYAuiZY0a$u:/oGZd\?94d8Q^X6.@8zt\"#>N3\?#UR!C!\"YrIZYj+S6D)#z_i5q@9~ay5fpTdPSi=i)>4c*b,I3\"5cowv=KRcte`}Np0jtpUaXCf@>kxc@otcaO^`1xiSvvigzT`u*`=9c}4\?7$7Xz(%%6UXbrC&|sm#+mRz`,gHkSLaq,@kF`krm>$t\?NYIvfo^S{gxmrQ/aB/h!6@z@tw{e!l=87s@{H;Z4e!@5T<`bOz70}mt*>1z9p4}xkib/Av^la^>iQ/<^CMjK(r:_p535V_Ct^/{|7P(.qa[;6O6T:3/VRYNrR2PV_YFcYRX.mN~#DA]7XMN`L)U1HXj5b3{TOrwG!Pv(4kG#*\"2+RQJ+<\?f1\"bL8wAemLE\"#\?>B%%Z_t|/66xtY\?Bk\?NxFWP1Tab4T]s`!=@}ChfCz\?9Xk(($Hbb<n4VZh8hM~4yq@GAlD}fRd0S:Vm0R;L/k=9]O7L[6i9qp~9\"CtfR^i)(6QzbWC.,VR;\".M>rF@oK5`sQt{r(@O1[$[CGU(*ZUJ4ZHAf7a!cYpV9=aZ.=h1|HCf*RORknM4a1_e8}*J`i<vI\"ndf[TbWDiMYGO0++W:i<zD)S4}GrLH");
-    char buf[1040];
-#define __doBufN__ 1040
+#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA+>yAAAv7#aT)9XvzMAU.ca=W6xYB~1\"d|dB8{$YY)Gftd8PBtX1zpJUH%%Id<\"I~b9sytg~2HHKJ^2xisxeX=}SA&]=!9I2s_[~]WK\"jAnBR=Wcs)C$!gb(ex3<#.TrQX:]|U;&D[:@\?2JQtW3[:{Z+0EwToF<h${51IShkVWsE4r(Io/&vCJjZ|SBm//eI2pqn62m<\"cky@)U2z8kQ$M&~(qy3oTK(=OG^v3$ug3Q<M,%%*y5c0sD\"1=Ngy:TW:!RVxbbpOmM^\"Ov~FXVp`COgjjnLUv8KwWMVM10quGUfL#DTjBS]Umfa>!{Vv3E=ysy&%%+UDfL*,F@H[vW*goM,A*e8wp<vRFFCa!,0zC%%@[joIzP(8V1*Jc!lM$j&;gw9x.0|^OJIDK5{uZxo{\?(V:#.EoWBo0FM5NyI##Cs2@<p8qXCHYG2r;;>tml]%%(Bo,jWM\"x7RL`aAO/6S`5UfQ>TE8em7f3Oe>dg$L!i|4QfohkAl1gm\?Bfv:re)~,gdKj3ld4t0g5<sHxjLH1w@WkM2Ev!Y4b[vyj3y3$)$r,I/yj|c$XDLGBq,oJPF3zTG[B,y2~5OloSx|\"UV_PW2zw}*8qefJPxPgA/}X/h!6kOnYZE9\?c|cdM,cR\"G{9}<Ynz[ofue4T{\"*>:wQ$4}%%kn.tBB=63;(Bs1#sFY+Ss67>^>aHutF}<}=4j{x6`i.6b&lL$,!_j>w#.x7vr,o(NQGxzK^Uc\?ZUJhOjhBz$Z3uA],kZyEKtGnqhg7SHR`jxx\"Imc86o2eZU)b7Y{|L6yTVWt}kWcWJeH|9P&B.&Bpim*Sk8O}*i_L$4=@(9l[/spxx&$}t8O)^$v_]}]7>;c0=BtgX\"Hc0NbqyK6/#.`>{Q}.7ZUQ<8K@~9(uW!1q!\?hdI,NMu[j51lt.M>rF@oK5`sQt{r(@O1[$[CGU(*ZUJ4ZHAf7a!cYpV9=aZ.=h1|HCf*RORknM4a1_e8}*J`i<vI\"ndf[TbWDiMYGO0++W:i<zD)SV%%Y&|E");
+    char buf[1042];
+#define __doBufN__ 1042
     __doBuf__
 #undef __doBuf__
 #undef __doBufN__
