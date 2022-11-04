@@ -26,7 +26,7 @@ void rxode2_ode_alloc(void){
 
 char __mv[1000];
 extern void rxode2_assign_fn_pointers_(const char *mv){
-  sprintf(__mv, "%s", mv);
+  snprintf(__mv, 1000, "%s", mv);
 }
 
 void rxAssignPtrC(SEXP obj);

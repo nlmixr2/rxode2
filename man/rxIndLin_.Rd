@@ -11,7 +11,7 @@
 }}
 
 \item{tp}{\itemize{
-\item Prior time point/time zeor
+\item Prior time point/time zero
 }}
 
 \item{yp}{\itemize{

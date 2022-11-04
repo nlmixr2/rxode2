@@ -46,7 +46,6 @@
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define isSameTime(xout, xp) ((xout)-(xp) <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
-void parseFree(int last);
 
 #else
 
@@ -63,6 +62,10 @@ void parseFree(int last);
 extern "C" {
 #endif
 
+
+#ifdef _isrxode2_
+  void parseFree(int last);
+#endif
 
 typedef void (*t_dydt)(int *neq, double t, double *A, double *DADT);
 typedef void (*t_calc_jac)(int *neq, double t, double *A, double *JAC, unsigned int __NROWPD__);

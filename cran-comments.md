@@ -1,17 +1,20 @@
 # CRAN Comments
 
-> Dear maintainer,
+This submission is meant to replace the `rxode2` `2.0.11` submission currently in the CRAN queue.
 
-> Please see the problems shown on
->  <https://cran.r-project.org/web/checks/check_results_nlmixr2extra.html>.
+This is because it has some unintended suggested packages that were not declared, see:
 
-> Please correct before 2022-11-03 to safely retain your package on CRAN.
+https://github.com/nlmixr2/rxode2/issues/350
 
-> The CRAN Team
+This submission is because `nlmixr2parse` is currently ABI linked to `rxode2`.
 
- This is caused by using an 'rxode2' version linked to the wrong version of 'rxode2parse' or an older 'rxode2' version.
- 
- This version of 'rxode2' directly refers to the version that is
- needed so no errors occur for 'nlmixr2est'.  'nlmixr2est' and
- 'nlmixr2extra' will then directly use those versions as well.
- 
+In addition:
+
+- This version break the ABI requirement between `roxde2()` and
+  `rxode2parse()` (so in theory this will not need to be resubmitted
+  as often)
+
+- Give a more meaningful error for 'rxode2' ui models with only error expressions 
+
+- The new `rxode2parse` will fix the `sprintf` exclusion shown on CRAN.
+

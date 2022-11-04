@@ -17,8 +17,7 @@
 }
 .hasUnits <- FALSE
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
-.rxode2llVersion <- utils::packageVersion("rxode2ll")
-.rxode2parseVersion <- utils::packageVersion("rxode2parse")
+.rxode2parseMd5 <- rxode2parse::rxode2parseMd5()
 .rxode2randomVersion <- utils::packageVersion("rxode2random")
 
 ## nocov start
@@ -33,21 +32,9 @@
     requireNamespace("PreciseSums", quietly=TRUE)
   }
 
-  if (!identical(.rxode2llVersion, utils::packageVersion("rxode2ll"))) {
-    stop("rxode2 compiled with rxode2ll '",
-         as.character(.rxode2llVersion),
-         "' but rxode2ll '", as.character(utils::packageVersion("rxode2ll")),
-         "' is loaded\nRecompile rxode2 with the this version of rxode2ll",
-         call. = FALSE)
-  } else {
-    requireNamespace("rxode2ll", quietly=TRUE)
-  }
-
-  if (!identical(.rxode2parseVersion, utils::packageVersion("rxode2parse"))) {
-    stop("rxode2 compiled with rxode2parse '",
-         as.character(.rxode2parseVersion),
-         "' but rxode2parse '", as.character(utils::packageVersion("rxode2parse")),
-         "' is loaded\nRecompile rxode2 with the this version of rxode2parse",
+  if (!identical(.rxode2parseMd5, rxode2parse::rxode2parseMd5())) {
+    stop("rxode2 compiled with rxode2parse with a different solving structure",
+         "\ncan try: install.packages('rxode2', type='source')",
          call. = FALSE)
   } else {
     requireNamespace("rxode2parse", quietly=TRUE)
