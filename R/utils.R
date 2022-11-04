@@ -697,3 +697,40 @@ is.latex <- function() {
            requireNamespace(pkg, quietly = TRUE)
          }, logical(1))
 }
+
+#' Check if a language object matches a template language object
+#'
+#' The \code{template} is usually a language object when it gets to a name, if
+#' the name is "name", then matching is generic to any name.  If the name is
+#' anything else, then it must match exactly
+#'
+#' @param x The object to check
+#' @param template The template object it should match
+#' @return TRUE if it matches, FALSE, otherwise
+#' @keywords Internal
+#' @examples
+#' matchesTemplate(str2lang("d/dt(foo)"), str2lang("d/dt(name)"))
+#' matchesTemplate(str2lang("d/dt(foo)"), str2lang("d/foo(name)"))
+#' @noRd
+matchesTemplate <- function(x, template) {
+  ret <- all(class(x) == class(template))
+  if (ret) {
+    if (length(x) == length(template)) {
+      if (length(x) > 1) {
+        for (idx in seq_along(x)) {
+          ret <- ret && matchesTemplate(x[[idx]], template[[idx]])
+        }
+      } else if (is.name(x)) {
+        if (as.character(template) != "name") {
+          # Check for a value if the name is not "name"
+          ret <- x == template
+        }
+      } else {
+        # Do nothing for numeric, character, etc.
+      }
+    } else {
+      ret <- FALSE
+    }
+  }
+  ret
+}
