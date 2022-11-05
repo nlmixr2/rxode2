@@ -109,7 +109,7 @@ model.rxModelVars <- model.rxode2
 # is not an assignment or endpoint
 .getLhs <- function(expr) {
   ret <- NULL
-  if (.isAssignment(expr) | .isEndpoint(expr)) {
+  if (.isAssignment(expr) || .isEndpoint(expr)) {
     ret <- expr[[2]]
   }
   ret
