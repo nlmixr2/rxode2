@@ -71,7 +71,7 @@ model.rxModelVars <- model.rxode2
     }
     return(rxUiCompress(rxui$fun()))
   }
-  .modifyModelLines(modelLines, rxui, modifyIni, envir)
+  .modifyModelLines(lines = modelLines, rxui = rxui, modifyIni = modifyIni, envir = envir)
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
     lapply(.v$rm, function(x) {
@@ -88,39 +88,51 @@ model.rxModelVars <- model.rxode2
       }
     })
   }
-  return(rxUiCompress(rxui$fun()))
+  rxUiCompress(rxui$fun())
+}
+
+# Determine if the input is an endpoint by being 3 long and the call part being
+# a tilde
+.isEndpoint <- function(expr) {
+  matchesLangTemplate(expr, str2lang(". ~ ."))
+}
+
+# Determine if the input is an assignment by being 3 long and the call part
+# being either the left arrow, right arrow, or equal sign
+.isAssignment <- function(expr) {
+  matchesLangTemplate(expr, str2lang(". <- .")) |
+    matchesLangTemplate(expr, str2lang(". = .")) |
+    matchesLangTemplate(expr, str2lang(". -> ."))
+}
+
+# get the left hand side of an assignment or endpoint; returns NULL if the input
+# is not an assignment or endpoint
+.getLhs <- function(expr) {
+  ret <- NULL
+  if (.isAssignment(expr) | .isEndpoint(expr)) {
+    ret <- expr[[2]]
+  }
+  ret
 }
 
 .getModelLineEquivalentLhsExpressionDropEndpoint <- function(expr) {
-  if (length(expr) == 3L) {
-    if (identical(expr[[1]], quote(`~`))) {
-      .expr2 <- expr[[2]]
-      if (length(.expr2) == 2L) {
-        if (identical(.expr2[[1]], quote(`-`)) &&
-              is.name(.expr2[[2]])) {
-          return(.expr2[[2]])
-        }
-      }
+  ret <- NULL
+  if (.isEndpoint(expr)) {
+    lhs <- .getLhs(expr)
+    if (matchesLangTemplate(lhs, str2lang("-."))) {
+      # If it is a drop expression with a minus sign, grab the non-minus part
+      ret <- lhs[[2]]
     }
   }
-  NULL
+  ret
 }
 
 .getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {
   .expr3 <- NULL
-  if (length(expr) == 3L) {
-    .expr1 <- expr[[1]]
-    .expr2 <- expr[[2]]
-    if (identical(.expr1, quote(`/`))) {
-      if (length(.expr2) == 2L) {
-        if (identical(.expr2[[1]], quote(`-`)) &&
-              identical(.expr2[[2]], quote(`d`)) &&
-              is.call(expr[[3]]) &&
-              identical(expr[[3]][[1]], quote(`dt`))) {
-          .expr3 <- as.call(list(.expr1, .expr2[[2]], expr[[3]]))
-        }
-      }
-    }
+  if (matchesLangTemplate(x = expr, template = str2lang("-d/dt(.name)"))) {
+    .expr3 <- expr
+    # remove the minus sign from the numerator
+    .expr3[[2]] <- .expr3[[2]][[2]]
   }
   .expr3
 }

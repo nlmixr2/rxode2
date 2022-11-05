@@ -123,3 +123,58 @@ rxTest({
     expect_true(is(ps1, "rxSolve"))
   })
 })
+
+test_that("drop linCmt() endpoint (#355)", {
+  ui <- function() {
+    ini({
+      tcl <- 1
+      tvc <- 1
+      addSd <- 1
+    })
+    model({
+      cl <- tcl
+      vc <- tvc
+      linCmt() ~ add(addSd)
+    })
+  }
+  expect_error(model(ui, -linCmt()~.), NA)
+})
+
+# Tests of individual functions ####
+
+test_that(".getModelLineEquivalentLhsExpressionDropDdt", {
+  expect_null(.getModelLineEquivalentLhsExpressionDropDdt(str2lang("d/dt(a)")))
+  expect_equal(
+    .getModelLineEquivalentLhsExpressionDropDdt(str2lang("-d/dt(a)")),
+    str2lang("d/dt(a)")
+  )
+})
+
+test_that(".getModelLineEquivalentLhsExpressionDropEndpoint", {
+  # drop a normal endpoint
+  expect_equal(
+    .getModelLineEquivalentLhsExpressionDropEndpoint(str2lang("-a~.")),
+    str2lang("a")
+  )
+  # don't drop when not requested (only negation matches)
+  expect_null(
+    .getModelLineEquivalentLhsExpressionDropEndpoint(str2lang("a~."))
+  )
+  # don't drop assignment (only endpoints are matched)
+  expect_null(
+    .getModelLineEquivalentLhsExpressionDropEndpoint(str2lang("-a <- ."))
+  )
+  # don't drop a name
+  expect_null(
+    .getModelLineEquivalentLhsExpressionDropEndpoint(str2lang("a"))
+  )
+  # don't drop a negated name
+  expect_null(
+    .getModelLineEquivalentLhsExpressionDropEndpoint(str2lang("-a"))
+  )
+  # drop linCmt() (issue #355)
+  expect_equal(
+    .getModelLineEquivalentLhsExpressionDropEndpoint(str2lang("-linCmt()~.")),
+    str2lang("linCmt()")
+  )
+})
