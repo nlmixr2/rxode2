@@ -52,20 +52,16 @@ model.rxModelVars <- model.rxode2
   }
   if (.doAppend) {
     # in pre-pending or appending, lines are only added
-    .lhs <- NULL
-    .rhs <- NULL
+    .lhs <- character()
+    .rhs <- character()
     for (x in modelLines) {
-      .isTilde <- identical(x[[1]], quote(`~`))
-      if (.isTilde ||
-            identical(x[[1]], quote(`=`)) ||
-            identical(x[[1]], quote(`<-`))) {
-        .tmp <- .getVariablesFromExpression(x[[3]], ignorePipe=.isTilde)
-        .tmp <- .tmp[!(.tmp %in% .lhs)]
-        .rhs <- unique(c(.tmp, .rhs))
-        .lhs <- unique(c(.getVariablesFromExpression(x[[2]]),.lhs))
+      .isTilde <- .isEndpoint(x)
+      if (.isTilde || .isAssignment(x)) {
+        .rhs <- unique(c(.getVariablesFromExpression(.getRhs(x), ignorePipe=.isTilde), .rhs))
+        .lhs <- unique(c(.getVariablesFromExpression(.getLhs(x)), .lhs))
       }
+      .rhs <- setdiff(.rhs, c(.lhs, rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name))
     }
-    .rhs <- .rhs[!(.rhs %in% c(rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name))]
     for (v in .rhs) {
       .addVariableToIniDf(v, rxui, promote=NA)
     }
@@ -111,6 +107,14 @@ model.rxModelVars <- model.rxode2
   ret <- NULL
   if (.isAssignment(expr) || .isEndpoint(expr)) {
     ret <- expr[[2]]
+  }
+  ret
+}
+
+.getRhs <- function(expr, ignorePipe=FALSE) {
+  ret <- NULL
+  if (.isAssignment(expr) || .isEndpoint(expr)) {
+    ret <- expr[[3]]
   }
   ret
 }
@@ -508,7 +512,10 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     character()
   } else if (is.name(x)) {
     return(as.character(x))
-  } else  {
+  } else if (matchesLangTemplate(x, str2lang("d/dt(.name)"))) {
+    # ODE expressions only pull out the state name and not "d" or "dt"
+    return(as.character(x[[3]][[2]]))
+  } else {
     if (is.call(x)) {
       if (ignorePipe && identical(x[[1]], quote(`|`))) {
         return(.getVariablesFromExpression(x[[2]]))

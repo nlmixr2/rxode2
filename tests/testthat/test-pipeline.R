@@ -137,7 +137,38 @@ test_that("drop linCmt() endpoint (#355)", {
       linCmt() ~ add(addSd)
     })
   }
-  expect_error(model(ui, -linCmt()~.), NA)
+  expect_error(newmod <- model(ui, -linCmt()~.), NA)
+  expect_equal(
+    newmod$lstExpr,
+    list(
+      str2lang("cl <- tcl"),
+      str2lang("vc <- tvc")
+    )
+  )
+})
+
+test_that("Compartment should not be added to ini (rxode2#336)", {
+  uifun <- function() {
+    ini({
+      a <- 2
+      propSd <- c(0, 0.3)
+    })
+    model({
+      d/dt(tumor) <- - a*tumor
+      tumor ~ prop(propSd)
+    })
+  }
+
+  rx_orig <- rxode2(uifun)
+  rx_mod <-
+    model(
+      rx_orig,
+      d/dt(transit2) <- (tumor - transit2)/a,
+      append = TRUE
+    )
+  expect_equal(rx_mod$state, c("tumor", "transit2"))
+  expect_equal(rx_mod$ini$est, c(2, 0.3))
+  expect_equal(rx_mod$ini$name, c("a", "propSd"))
 })
 
 # Tests of individual functions ####
@@ -177,4 +208,26 @@ test_that(".getModelLineEquivalentLhsExpressionDropEndpoint", {
     .getModelLineEquivalentLhsExpressionDropEndpoint(str2lang("-linCmt()~.")),
     str2lang("linCmt()")
   )
+})
+
+test_that(".getVariablesFromExpression", {
+  expect_equal(.getVariablesFromExpression(""), character())
+  expect_equal(.getVariablesFromExpression(5), character())
+  expect_equal(.getVariablesFromExpression(as.name("a")), "a")
+  expect_equal(.getVariablesFromExpression(str2lang("a~b")), c("a", "b"))
+  # only pull the state from an ODE expression
+  expect_equal(.getVariablesFromExpression(str2lang("d/dt(foo)")), "foo")
+  expect_equal(.getVariablesFromExpression(str2lang("d(foo)")), "foo")
+  expect_equal(.getVariablesFromExpression(str2lang("d(foo)|bar"), ignorePipe = TRUE), "foo")
+})
+
+test_that(".getLhs, .getRhs", {
+  expect_equal(.getLhs(str2lang("a~b")), as.name("a"))
+  expect_equal(.getLhs(str2lang("a~b|c")), str2lang("a"))
+  expect_equal(.getLhs(str2lang("a~b+d|c")), str2lang("a"))
+  expect_equal(.getLhs(str2lang("linCmt()~b+d|c")), str2lang("linCmt()"))
+
+  expect_equal(.getRhs(str2lang("a~b")), as.name("b"))
+  expect_equal(.getRhs(str2lang("a~b|c")), str2lang("b|c"))
+  expect_equal(.getRhs(str2lang("a~b+d|c")), str2lang("b+d|c"))
 })
