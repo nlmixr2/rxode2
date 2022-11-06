@@ -1,8 +1,6 @@
 rxTest({
-  .rx <- loadNamespace("rxode2")
-
   testPipeQuote <- function(..., envir=parent.frame()) {
-    .rx$.quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir)
+    .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir)
   }
 
   test_that("test of standard quoting of piping arguments", {
@@ -303,17 +301,17 @@ rxTest({
 
   test_that("Model Line from Expression, assign", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
   })
 
@@ -343,25 +341,25 @@ rxTest({
 
   test_that("Model Line from Expression, lower case f()", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), 6L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), 6L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
   })
 
   one.compartment <- function() {
     ini({
-      tka <- 0.45 
-      tcl <- 1 
-      tv <- 3.45 
+      tka <- 0.45
+      tcl <- 1
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -383,17 +381,17 @@ rxTest({
 
   test_that("Model Line from Expression, upper case F()", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), 6L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), 6L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
   })
 
@@ -423,17 +421,17 @@ rxTest({
 
   test_that("Model Line from Expression, lag()", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), 6L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), 6L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
   })
 
@@ -463,17 +461,17 @@ rxTest({
 
   test_that("Model Line from Expression, alag()", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), 6L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), 6L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
   })
 
@@ -503,17 +501,17 @@ rxTest({
 
   test_that("Model Line from Expression, rate()", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), 6L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
   })
 
@@ -543,19 +541,19 @@ rxTest({
 
   test_that("Model Line from Expression, dur()", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), 6L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), 6L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
+    expect_equal(.getModelLineFromExpression(quote(not), f), NA_integer_)
 
   })
 
@@ -586,20 +584,20 @@ rxTest({
 
   test_that("Model Line from Expression, duplicate d/dt(depot)", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), NULL)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), NULL)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -5L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -5L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), -5L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), -5L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -5L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -5L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), -5L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), -5L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -5L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -5L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -5L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -5L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
+    expect_equal(.getModelLineFromExpression(quote(not), f), NA_integer_)
 
   })
 
@@ -631,19 +629,19 @@ rxTest({
 
   test_that("Model Line from Expression, duplicate f(depot)", {
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), NULL)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), NULL)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), NULL)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), NULL)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
+    expect_equal(.getModelLineFromExpression(quote(not), f), NA_integer_)
 
   })
 
@@ -674,22 +672,22 @@ rxTest({
   f <- rxode2(one.compartment)
 
   test_that("Model Line from Expression, duplicate f(depot)", {
-    expect_equal(.rx$.getModelLineFromExpression(quote(ka), f), 1L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
+    expect_equal(.getModelLineFromExpression(quote(ka), f), 1L)
+    expect_equal(.getModelLineFromExpression(quote(d/dt(depot)), f), 4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(f(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(F(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(f(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(F(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(lag(depot)), f), NULL)
-    expect_equal(.rx$.getModelLineFromExpression(quote(alag(depot)), f), NULL)
+    expect_equal(.getModelLineFromExpression(quote(lag(depot)), f), NULL)
+    expect_equal(.getModelLineFromExpression(quote(alag(depot)), f), NULL)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(rate(depot)), f), -4L)
-    expect_equal(.rx$.getModelLineFromExpression(quote(dur(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(rate(depot)), f), -4L)
+    expect_equal(.getModelLineFromExpression(quote(dur(depot)), f), -4L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(not), f), NA_integer_)
-    expect_equal(.rx$.getModelLineFromExpression(quote(cp), f), 8L)
+    expect_equal(.getModelLineFromExpression(quote(not), f), NA_integer_)
+    expect_equal(.getModelLineFromExpression(quote(cp), f), 8L)
 
-    expect_equal(.rx$.getModelLineFromExpression(quote(cp), f, TRUE), 9L)
+    expect_equal(.getModelLineFromExpression(quote(cp), f, TRUE), 9L)
   })
 
   one.compartment <- function() {
@@ -761,7 +759,7 @@ rxTest({
     # Test adding matrix directly
 
     .omega <- lotri::lotri(eta.cl+eta.v~c(0.3, 0.02, 0.1))
-    
+
     testEst(f %>% ini(.omega), "eta.cl", -Inf, 0.3, Inf, FALSE)
     testEst(f %>% ini(.omega), "eta.v", -Inf, 0.1, Inf, FALSE)
     testEst(f %>% ini(.omega), "(eta.cl,eta.v)", -Inf, 0.02, Inf, FALSE)

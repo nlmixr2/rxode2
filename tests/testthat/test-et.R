@@ -1,5 +1,4 @@
 rxTest({ # mostly tested in 'rxode2et'
-  .rx <- loadNamespace("rxode2")
   .rxe <- loadNamespace("rxode2et")
   for (radi in c(1, 2)) {
     .rxe$forderForceBase(switch(radi,

@@ -1,8 +1,5 @@
 rxTest({
   test_that("rxStack preserves factors", {
-
-    .rx <- loadNamespace("rxode2")
-
     pheno2 <- function() {
       ini({
         tcl <- log(0.008) # typical value of clearance
@@ -25,7 +22,7 @@ rxTest({
 
     simdata <- data.frame(time=1:10, ID=factor(c("A", "B")))
 
-    sim <- .rx$rxSolve(pheno2, events=simdata)
+    sim <- rxSolve(pheno2, events=simdata)
 
     expect_equal(levels(sim$id), c("A", "B"))
 

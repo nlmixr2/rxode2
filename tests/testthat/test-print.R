@@ -1,6 +1,4 @@
 rxTest({
-  .rx <- loadNamespace("rxode2")
-
   ## To keep basename the same
   .rxWithOptions(list(
     "rxode2.basename.print" = "basename",

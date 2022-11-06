@@ -1,6 +1,4 @@
 rxTest({
-  .rx <- loadNamespace("rxode2")
-
   test_that("comments are parsed correctly", {
 
     cmt <- c("function() {", "      ini({", "        ## You may label each parameter with a comment",
@@ -20,7 +18,7 @@ rxTest({
             "        v <- exp(tv + eta.v)", "        linCmt() ~ add(add.sd)",
             "    })", "}")
 
-    expect_equal(.rx$.rxReplaceCommentWithLabel(cmt), eq)
+    expect_equal(.rxReplaceCommentWithLabel(cmt), eq)
 
     one.cmt <- function() {
       ini({
@@ -44,7 +42,7 @@ rxTest({
       })
     }
 
-    str <- .rx$.rxFunction2string(one.cmt)
+    str <- .rxFunction2string(one.cmt)
 
     if (!is.null(attr(one.cmt, "srcref"))) {
       expect_equal(str, eq)
@@ -73,7 +71,7 @@ rxTest({
       })
     }
 
-    mkstr <- .rx$.rxFunction2string(one.cmt)
+    mkstr <- .rxFunction2string(one.cmt)
 
     expect_equal(mkstr,
                  c("function () ", "{", "    ini({", "        tka <- 0.45", "        label(\"Log Ka\")",

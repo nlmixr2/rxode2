@@ -1,6 +1,4 @@
 rxTest({
-  .rx <- loadNamespace("rxode2")
-
   test_that("bounded functions needs numeric bounds", {
     lmat <- lotri({
       tka <- 0.2
@@ -13,14 +11,14 @@ rxTest({
     })
 
     testBounded <- function(type="expit") {
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, a, b)"), lmat))
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 1, b)"), lmat))
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 1, b)"), lmat))
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 1, 2)"), lmat), NA)
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 2, 1)"), lmat))
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 0.5)"), lmat), NA)
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, a)"), lmat))
-      expect_error(.rx$.rxMuRef(paste0("a=", type, "(tka + eta.ka, 4)"), lmat))
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, a, b)"), lmat))
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, 1, b)"), lmat))
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, 1, b)"), lmat))
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, 1, 2)"), lmat), NA)
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, 2, 1)"), lmat))
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, 0.5)"), lmat), NA)
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, a)"), lmat))
+      expect_error(.rxMuRef(paste0("a=", type, "(tka + eta.ka, 4)"), lmat))
     }
 
     testBounded("logit")
@@ -37,8 +35,8 @@ rxTest({
   })
 
   test_that("bad mu referencing examples (throw error)", {
-    expect_error(.rx$.rxMuRef("a=theta1+theta2+theta3*wt+eta1", lmat))
-    expect_error(.rx$.rxMuRef("a=theta1+theta2*wt+theta3*wt+eta1", lmat))
+    expect_error(.rxMuRef("a=theta1+theta2+theta3*wt+eta1", lmat))
+    expect_error(.rxMuRef("a=theta1+theta2*wt+theta3*wt+eta1", lmat))
   })
 
   testEnv <- function(env, ref) {
@@ -75,7 +73,7 @@ rxTest({
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
       v <- tv + eta.v
@@ -113,7 +111,7 @@ rxTest({
     })
 
     ## Test a duplicated eta; It shouldn't be counted as mu-referenced
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       EmaxA <- exp(t.EmaxA + eta.emax)
       EmaxB <- exp(t.EmaxB + eta.emax)
       EmaxC <- exp(t.EmaxC + eta.emax)
@@ -134,7 +132,7 @@ rxTest({
                  muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                  muRefExtraEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"), nonMuEtas = "eta.emax"))
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       EmaxA <- exp(t.EmaxA + eta.emax)
       EmaxB <- exp(t.EmaxB + eta.emax)
       EmaxC <- t.EmaxC + eta.emax
@@ -155,7 +153,7 @@ rxTest({
                  muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                  muRefExtraEmpty = c("t.EmaxA", "t.EmaxB", "t.EmaxC"), nonMuEtas = "eta.emax"))
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       EmaxB <- t.EmaxB + eta.emax
       EmaxA <- exp(t.EmaxA + eta.emax)
     }), lmat)
@@ -192,7 +190,7 @@ rxTest({
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       d/dt(depot) = -exp(tka + eta.ka) * depot
       d/dt(center) = exp(tka + eta.ka) * depot - exp(tcl + eta.cl)/exp(tv + eta.v) * center
       cp = center/exp(tv + eta.v)
@@ -248,7 +246,7 @@ rxTest({
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- tka * exp(eta.ka + 0)
       cl <- tcl * exp(eta.cl + 0)
       v <- tv * exp(eta.v + 0)
@@ -276,7 +274,7 @@ rxTest({
                                                                                                               ), class = "data.frame"), muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka",
                                                                                                                                                                               "eta.cl", "eta.v")))
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- tka * exp(eta.ka + 0)
       cl <- tcl * exp(eta.cl + 0)
       v <- tv * exp(eta.v + 0)
@@ -305,7 +303,7 @@ rxTest({
                                                                                                               ), class = "data.frame"), muRefExtraEmpty = "tv", nonMuEtas = c("eta.ka",
                                                                                                                                                                               "eta.cl", "eta.v")))
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- tka * exp(eta.ka)
       cl <- tcl * exp(eta.cl)
       v <- tv * exp(eta.v)
@@ -332,7 +330,7 @@ rxTest({
                  muRefExtraEmpty = NULL, nonMuEtas = c("eta.ka", "eta.cl",
                                                        "eta.v")))
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- tka * exp(eta.ka)
       cl <- tcl * exp(eta.cl)
       v <- tv * exp(eta.v)
@@ -378,7 +376,7 @@ rxTest({
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- exp(tka)
       cl <- exp(tcl + eta.cl)
       v <- tv * exp(eta.v)
@@ -432,7 +430,7 @@ rxTest({
       add.sd <- 0.7
     })
 
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt2 / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)
@@ -467,7 +465,7 @@ rxTest({
 
 
     # This one tv is used in 2 covariate references
-    env <- .rx$.rxMuRef(rxode2({
+    env <- .rxMuRef(rxode2({
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl + log(wt2 / 70) * cl.wt + sex * cl.sex + age * cl.age + 3)
       v  <- exp(tv + eta.v + wt * v.wt + sex * v.sex + age * v.age + 2)

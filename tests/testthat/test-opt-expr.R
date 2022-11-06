@@ -1,6 +1,4 @@
 rxTest({
-  .rx <- loadNamespace("rxode2")
-
   test_that("simple expression optimization", {
     exp1 <- "rx_yj_~2;\nrx_lambda_~1;\nrx_pred_=10*exp(-THETA[1]*t*exp(ETA[1]));\nrx__sens_rx_pred__BY_ETA_1___=-10*THETA[1]*t*exp(ETA[1])*exp(-THETA[1]*t*exp(ETA[1]));\nrx_r_=100*Rx_pow_di(THETA[2],2)*exp(-2*THETA[1]*t);\ndvid(3,4)\n"
     suppressMessages(expect_equal(
@@ -29,6 +27,6 @@ rxTest({
   suppressMessages(rxOptExpr("a=1+(1/2)*b; c=d^(1/2); e=(1/2)*f^(1/2)"))
 
   test_that("simple expression optimization", {
-    expect_equal(length(.rx$..rxOpt(quote(exp(ETA[1] + THETA[4]) + 0))), 1L)
+    expect_equal(length(..rxOpt(quote(exp(ETA[1] + THETA[4]) + 0))), 1L)
   })
 })
