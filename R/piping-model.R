@@ -90,15 +90,14 @@ model.rxModelVars <- model.rxode2
 # Determine if the input is an endpoint by being 3 long and the call part being
 # a tilde
 .isEndpoint <- function(expr) {
-  matchesLangTemplate(expr, str2lang(". ~ ."))
+  .matchesLangTemplate(expr, str2lang(". ~ ."))
 }
 
 # Determine if the input is an assignment by being 3 long and the call part
 # being either the left arrow, right arrow, or equal sign
 .isAssignment <- function(expr) {
-  matchesLangTemplate(expr, str2lang(". <- .")) |
-    matchesLangTemplate(expr, str2lang(". = .")) |
-    matchesLangTemplate(expr, str2lang(". -> ."))
+  .matchesLangTemplate(expr, str2lang(". <- .")) ||
+    .matchesLangTemplate(expr, str2lang(". = ."))
 }
 
 # get the left hand side of an assignment or endpoint; returns NULL if the input
@@ -123,7 +122,7 @@ model.rxModelVars <- model.rxode2
   ret <- NULL
   if (.isEndpoint(expr)) {
     lhs <- .getLhs(expr)
-    if (matchesLangTemplate(lhs, str2lang("-."))) {
+    if (.matchesLangTemplate(lhs, str2lang("-."))) {
       # If it is a drop expression with a minus sign, grab the non-minus part
       ret <- lhs[[2]]
     }
@@ -133,7 +132,7 @@ model.rxModelVars <- model.rxode2
 
 .getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {
   .expr3 <- NULL
-  if (matchesLangTemplate(x = expr, template = str2lang("-d/dt(.name)"))) {
+  if (.matchesLangTemplate(x = expr, template = str2lang("-d/dt(.name)"))) {
     .expr3 <- expr
     # remove the minus sign from the numerator
     .expr3[[2]] <- .expr3[[2]][[2]]
@@ -512,7 +511,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     character()
   } else if (is.name(x)) {
     return(as.character(x))
-  } else if (matchesLangTemplate(x, str2lang("d/dt(.name)"))) {
+  } else if (.matchesLangTemplate(x, str2lang("d/dt(.name)"))) {
     # ODE expressions only pull out the state name and not "d" or "dt"
     return(as.character(x[[3]][[2]]))
   } else {

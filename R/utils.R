@@ -711,11 +711,11 @@ is.latex <- function() {
 #' @return TRUE if it matches, FALSE, otherwise
 #' @keywords Internal
 #' @examples
-#' matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/dt(.name)"))
-#' matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/foo(.name)"))
-#' matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/."))
+#' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/dt(.name)"))
+#' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/foo(.name)"))
+#' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/."))
 #' @noRd
-matchesLangTemplate <- function(x, template) {
+.matchesLangTemplate <- function(x, template) {
   if (identical(template, as.name("."))) {
     ret <- TRUE
   } else if (is.name(x) && identical(template, as.name(".name"))) {
@@ -729,7 +729,7 @@ matchesLangTemplate <- function(x, template) {
       if (length(x) == length(template)) {
         if (length(x) > 1) {
           for (idx in seq_along(x)) {
-            ret <- ret && matchesLangTemplate(x[[idx]], template[[idx]])
+            ret <- ret && .matchesLangTemplate(x[[idx]], template[[idx]])
           }
         } else if (is.name(x)) {
           # Check for a value if the name is not ".name"
