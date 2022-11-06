@@ -46,27 +46,23 @@ rxTest({
     invisible()
   }
 
-  listEnv <- function(env){
+  listEnv <- function(env) {
     refNames <- c("muRefCovariateDataFrame", "muRefCovariateEmpty", "muRefCurEval", "muRefDataFrame",
                   "muRefDropParameters", "muRefExtra", "muRefExtraEmpty", "nonMuEtas")
-    setNames(lapply(refNames, function(n){
+    setNames(lapply(refNames, function(n) {
       get(n, env)
     }), refNames)
   }
 
-  messageEnv <- function(env){
+  messageEnv <- function(env) {
     message(paste0(deparse(listEnv(env)), collapse="\n"))
   }
 
   test_that("simple mu referencing", {
     lmat <- lotri({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Log Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
-      ## the label("Label name") works with all models
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -177,13 +173,9 @@ rxTest({
   test_that("composite ode expressions", {
 
     lmat <- lotri({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Log Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
-      ## the label("Label name") works with all models
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -233,13 +225,9 @@ rxTest({
   test_that("old style tka*eta(eta.ka)", {
 
     lmat <- lotri({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Log Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
-      ## the label("Label name") works with all models
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -364,13 +352,9 @@ rxTest({
   test_that("curEval for theta only", {
 
     lmat <- lotri({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Log Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
-      ## the label("Label name") works with all models
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
       eta.cl ~ 0.3
       eta.v ~ 0.1
       add.sd <- 0.7
@@ -407,13 +391,10 @@ rxTest({
   test_that("test covariates", {
 
     lmat <- lotri({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Log Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
-      tvp <- 3.45; label("log V")
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      tvp <- 3.45
       cl.wt <- 0.1
       v.wt <- 0.1
       cl.sex <- 0.1
@@ -423,7 +404,6 @@ rxTest({
       vp.wt <- 1
       vp.sex <- 1
       vp.age <- 1
-      ## the label("Label name") works with all models
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -596,9 +576,9 @@ rxTest({
 
     one.cmt <- function() {
       ini({
-        tka <- 0.45 ; label("Ka")
-        tcl <- log(c(0, 2.7, 100)) ; label("Log Cl")
-        tv <- 3.45; label("log V")
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         cl.wt <- 0
         v.wt <- 0
         eta.ka ~ 0.6
@@ -623,9 +603,9 @@ rxTest({
 
     one.cmt <- function() {
       ini({
-        tka <- 0.45 ; label("Ka")
-        tcl <- log(c(0, 2.7, 100)) ; label("Log Cl")
-        tv <- 3.45; label("log V")
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         cl.wt <- 0
         v.wt <- 0
         eta.ka ~ 0.6
@@ -651,9 +631,9 @@ rxTest({
 
     one.cmt <- function() {
       ini({
-        tka <- 0.45 ; label("Ka")
-        tcl <- log(c(0, 2.7, 100)) ; label("Log Cl")
-        tv <- 3.45; label("log V")
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         cl.wt <- 0
         v.wt <- 0
         eta.ka ~ 0.6
