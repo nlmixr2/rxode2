@@ -17,7 +17,7 @@
 <link href="../deps/bootstrap-5.1.3/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.1.3/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Speeding up rxode2">
+<!-- bootstrap-toc --><script src="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.js"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Speeding up rxode2">
 <meta property="og:description" content="rxode2">
 <meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
@@ -152,10 +152,12 @@
 
 
 
-<script src="rxode2-speed_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+
+<div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Speeding up rxode2</h1>
-                        <h4 data-toc-skip class="author">Matthew Fidler</h4>
+                        <h4 data-toc-skip class="author">Matthew
+Fidler</h4>
             
             <h4 data-toc-skip class="date">2022-11-07</h4>
       
@@ -168,7 +170,9 @@
 <div class="section level2">
 <h2 id="increasing-rxode2-speed-by-multi-subject-parallel-solving">Increasing rxode2 speed by multi-subject parallel solving<a class="anchor" aria-label="anchor" href="#increasing-rxode2-speed-by-multi-subject-parallel-solving"></a>
 </h2>
-<p><code>rxode2</code> originally developed as an ODE solver that allowed an ODE solve for a single subject. This flexibility is still supported.</p>
+<p><code>rxode2</code> originally developed as an ODE solver that
+allowed an ODE solve for a single subject. This flexibility is still
+supported.</p>
 <p>The original code from the <code>rxode2</code> tutorial is below:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
@@ -206,7 +210,8 @@
 <div class="section level3">
 <h3 id="for-loop">For Loop<a class="anchor" aria-label="anchor" href="#for-loop"></a>
 </h3>
-<p>The slowest way to code this is to use a <code>for</code> loop. In this example we will enclose it in a function to compare timing.</p>
+<p>The slowest way to code this is to use a <code>for</code> loop. In
+this example we will enclose it in a function to compare timing.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runFor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>    <span class="va">res</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
@@ -222,7 +227,9 @@
 <div class="section level3">
 <h3 id="running-with-apply">Running with apply<a class="anchor" aria-label="anchor" href="#running-with-apply"></a>
 </h3>
-<p>In general for R, the <code>apply</code> types of functions perform better than a <code>for</code> loop, so the tutorial also suggests this speed enhancement</p>
+<p>In general for R, the <code>apply</code> types of functions perform
+better than a <code>for</code> loop, so the tutorial also suggests this
+speed enhancement</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runSapply</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>    <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">params.all</span>, <span class="fl">1</span>, <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
@@ -232,8 +239,10 @@
 <div class="section level3">
 <h3 id="run-using-a-single-threaded-solve">Run using a single-threaded solve<a class="anchor" aria-label="anchor" href="#run-using-a-single-threaded-solve"></a>
 </h3>
-<p>You can also have rxode2 solve all the subject simultaneously without collecting the results in R, using a single threaded solve.</p>
-<p>The data output is slightly different here, but still gives the same information:</p>
+<p>You can also have rxode2 solve all the subject simultaneously without
+collecting the results in R, using a single threaded solve.</p>
+<p>The data output is slightly different here, but still gives the same
+information:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runSingleThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
@@ -242,7 +251,10 @@
 <div class="section level3">
 <h3 id="run-a-2-threaded-solve">Run a 2 threaded solve<a class="anchor" aria-label="anchor" href="#run-a-2-threaded-solve"></a>
 </h3>
-<p>rxode2 supports multi-threaded solves, so another option is to have <code>2</code> threads (called <code>cores</code> in the solve options, you can see the options in <code><a href="../reference/rxSolve.html">rxControl()</a></code> or <code><a href="../reference/rxSolve.html">rxSolve()</a></code>).</p>
+<p>rxode2 supports multi-threaded solves, so another option is to have
+<code>2</code> threads (called <code>cores</code> in the solve options,
+you can see the options in <code><a href="../reference/rxSolve.html">rxControl()</a></code> or
+<code><a href="../reference/rxSolve.html">rxSolve()</a></code>).</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">run2Thread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">2</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
@@ -256,11 +268,11 @@
 <code class="sourceCode R"><span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">runFor</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSapply</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSingleThread</span><span class="op">(</span><span class="op">)</span>,<span class="fu">run2Thread</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;               expr      min       lq      mean    median        uq      max</span></span>
-<span><span class="co">#&gt;           runFor() 374.0596 381.1458 387.19088 384.50575 386.80135 469.4390</span></span>
-<span><span class="co">#&gt;        runSapply() 373.7125 380.2905 383.58661 382.52620 385.42620 465.7244</span></span>
-<span><span class="co">#&gt;  runSingleThread()  36.4877  36.7515  37.14692  36.86685  37.10505  45.2273</span></span>
-<span><span class="co">#&gt;       run2Thread()  21.6150  21.9104  22.31662  22.05690  22.31610  26.3604</span></span>
+<span><span class="co">#&gt;               expr      min        lq      mean    median        uq      max</span></span>
+<span><span class="co">#&gt;           runFor() 529.1031 545.80685 557.16478 553.23615 563.69395 686.4507</span></span>
+<span><span class="co">#&gt;        runSapply() 529.9808 547.94875 559.88821 554.24810 564.60580 715.6594</span></span>
+<span><span class="co">#&gt;  runSingleThread()  42.5486  44.43395  45.62989  45.30615  46.51805  50.8579</span></span>
+<span><span class="co">#&gt;       run2Thread()  25.9186  27.59030  28.55992  28.05615  28.88590  36.0794</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span>
@@ -271,8 +283,13 @@
 <span><span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will</span></span>
 <span><span class="co">#&gt; replace the existing one.</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-9-1.png" width="700"></p>
-<p>It is clear that the <strong>largest</strong> jump in performance when using the <code>solve</code> method and providing <em>all</em> the parameters to rxode2 to solve without looping over each subject with either a <code>for</code> or a <code>sapply</code>. The number of cores/threads applied to the solve also plays a role in the solving.</p>
-<p>We can explore the number of threads further with the following code:</p>
+<p>It is clear that the <strong>largest</strong> jump in performance
+when using the <code>solve</code> method and providing <em>all</em> the
+parameters to rxode2 to solve without looping over each subject with
+either a <code>for</code> or a <code>sapply</code>. The number of
+cores/threads applied to the solve also plays a role in the solving.</p>
+<p>We can explore the number of threads further with the following
+code:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">{</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="va">n</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
@@ -283,21 +300,29 @@
 <span>                                           collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;          expr     min       lq     mean   median       uq     max neval</span></span>
-<span><span class="co">#&gt;  runThread(1) 36.6120 36.82595 37.27958 37.09395 37.35070 41.7367   100</span></span>
-<span><span class="co">#&gt;  runThread(2) 21.7528 22.08440 22.51537 22.29325 22.67515 26.3746   100</span></span></code></pre></div>
+<span><span class="co">#&gt;          expr     min       lq     mean  median       uq     max neval</span></span>
+<span><span class="co">#&gt;  runThread(1) 42.1368 45.09480 46.59187 46.1486 47.20425 55.4052   100</span></span>
+<span><span class="co">#&gt;  runThread(2) 27.0404 27.91245 28.92723 28.5766 29.36415 35.3827   100</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will</span></span>
 <span><span class="co">#&gt; replace the existing one.</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-11-1.png" width="700"></p>
-<p>There can be a suite spot in speed vs number or cores. The system type (mac, linux, windows and/or processor), complexity of the ODE solving and the number of subjects may affect this arbitrary number of threads. 4 threads is a good number to use without any prior knowledge because most systems these days have at least 4 threads (or 2 processors with 4 threads).</p>
+<p>There can be a suite spot in speed vs number or cores. The system
+type (mac, linux, windows and/or processor), complexity of the ODE
+solving and the number of subjects may affect this arbitrary number of
+threads. 4 threads is a good number to use without any prior knowledge
+because most systems these days have at least 4 threads (or 2 processors
+with 4 threads).</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="a-real-life-example">A real life example<a class="anchor" aria-label="anchor" href="#a-real-life-example"></a>
 </h2>
-<p>Before some of the parallel solving was implemented, the fastest way to run <code>rxode2</code> was with <code>lapply</code>. This is how Rik Schoemaker created the data-set for <code>nlmixr</code> comparisons, but reduced to run faster automatic building of the pkgdown website.</p>
+<p>Before some of the parallel solving was implemented, the fastest way
+to run <code>rxode2</code> was with <code>lapply</code>. This is how Rik
+Schoemaker created the data-set for <code>nlmixr</code> comparisons, but
+reduced to run faster automatic building of the pkgdown website.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span></span>
@@ -368,8 +393,9 @@
 <span><span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  </span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 7.619157 secs</span></span></code></pre></div>
-<p>By applying some of the new parallel solving concepts you can simply run the same simulation both with less code and faster:</p>
+<span><span class="co">#&gt; Time difference of 11.81359 secs</span></span></code></pre></div>
+<p>By applying some of the new parallel solving concepts you can simply
+run the same simulation both with less code and faster:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">CL</span> <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span></span>
@@ -407,17 +433,41 @@
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span></span>
 <span><span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 0.1345007 secs</span></span></code></pre></div>
-<p>You can see a striking time difference between the two methods; A few things to keep in mind:</p>
+<span><span class="co">#&gt; Time difference of 0.1731608 secs</span></span></code></pre></div>
+<p>You can see a striking time difference between the two methods; A few
+things to keep in mind:</p>
 <ul>
-<li><p><code>rxode2</code> use the thread-safe sitmo <code>threefry</code> routines for simulation of <code>eta</code> values. Therefore the results are expected to be different (also the random samples are taken in a different order which would be different)</p></li>
-<li><p>This prior simulation was run in R 3.5, which has a different random number generator so the results in this simulation will be different from the actual nlmixr comparison when using the slower simulation.</p></li>
-<li><p>This speed comparison used <code>data.table</code>. <code>rxode2</code> uses <code>data.table</code> internally (when available) try to speed up sorting, so this would be different than installations where <code>data.table</code> is not installed. You can force rxode2 to use <code><a href="https://rdrr.io/r/base/order.html" class="external-link">order()</a></code> when sorting by using <code>forderForceBase(TRUE)</code>. In this case there is little difference between the two, though in other examples <code>data.table</code>’s presence leads to a speed increase (and less likely it could lead to a slowdown).</p></li>
+<li><p><code>rxode2</code> use the thread-safe sitmo
+<code>threefry</code> routines for simulation of <code>eta</code>
+values. Therefore the results are expected to be different (also the
+random samples are taken in a different order which would be
+different)</p></li>
+<li><p>This prior simulation was run in R 3.5, which has a different
+random number generator so the results in this simulation will be
+different from the actual nlmixr comparison when using the slower
+simulation.</p></li>
+<li><p>This speed comparison used <code>data.table</code>.
+<code>rxode2</code> uses <code>data.table</code> internally (when
+available) try to speed up sorting, so this would be different than
+installations where <code>data.table</code> is not installed. You can
+force rxode2 to use <code><a href="https://rdrr.io/r/base/order.html" class="external-link">order()</a></code> when sorting by using
+<code>forderForceBase(TRUE)</code>. In this case there is little
+difference between the two, though in other examples
+<code>data.table</code>’s presence leads to a speed increase (and less
+likely it could lead to a slowdown).</p></li>
 </ul>
 <div class="section level3">
 <h3 id="want-more-ways-to-run-multi-subject-simulations">Want more ways to run multi-subject simulations<a class="anchor" aria-label="anchor" href="#want-more-ways-to-run-multi-subject-simulations"></a>
 </h3>
-<p>The version since the tutorial has even more ways to run multi-subject simulations, including adding variability in sampling and dosing times with <code><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et()</a></code> (see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-events.html#add-doses-and-samples-within-a-sampling-window">rxode2 events</a> for more information), ability to supply both an <code>omega</code> and <code>sigma</code> matrix as well as adding as a <code>thetaMat</code> to R to simulate with uncertainty in the <code>omega</code>, <code>sigma</code> and <code>theta</code> matrices; see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html">rxode2 simulation vignette</a>.</p>
+<p>The version since the tutorial has even more ways to run
+multi-subject simulations, including adding variability in sampling and
+dosing times with <code><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et()</a></code> (see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-events.html#add-doses-and-samples-within-a-sampling-window">rxode2
+events</a> for more information), ability to supply both an
+<code>omega</code> and <code>sigma</code> matrix as well as adding as a
+<code>thetaMat</code> to R to simulate with uncertainty in the
+<code>omega</code>, <code>sigma</code> and <code>theta</code> matrices;
+see <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html">rxode2
+simulation vignette</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="session-information">Session Information<a class="anchor" aria-label="anchor" href="#session-information"></a>
@@ -450,26 +500,26 @@
 <span><span class="co">#&gt;  [1] Rcpp_1.0.9              lattice_0.20-45         rprojroot_2.0.3        </span></span>
 <span><span class="co">#&gt;  [4] digest_0.6.30           utf8_1.2.2              rxode2random_2.0.9.9000</span></span>
 <span><span class="co">#&gt;  [7] R6_2.5.1                backports_1.4.1         sys_3.4.1              </span></span>
-<span><span class="co">#&gt; [10] evaluate_0.18           highr_0.9               pillar_1.8.1           </span></span>
+<span><span class="co">#&gt; [10] evaluate_0.17           highr_0.9               pillar_1.8.1           </span></span>
 <span><span class="co">#&gt; [13] rlang_1.0.6             rxode2ll_2.0.9.9000     jquerylib_0.1.4        </span></span>
-<span><span class="co">#&gt; [16] checkmate_2.1.0         rmarkdown_2.17          pkgdown_2.0.6.9000     </span></span>
-<span><span class="co">#&gt; [19] labeling_0.4.2          qs_0.25.4               textshaping_0.3.6      </span></span>
-<span><span class="co">#&gt; [22] desc_1.4.2              dparser_1.3.1-8         stringr_1.4.1          </span></span>
-<span><span class="co">#&gt; [25] PreciseSums_0.5         munsell_0.5.0           compiler_4.2.2         </span></span>
-<span><span class="co">#&gt; [28] xfun_0.34               pkgconfig_2.0.3         systemfonts_1.0.4      </span></span>
-<span><span class="co">#&gt; [31] htmltools_0.5.3         tidyselect_1.2.0        tibble_3.1.8           </span></span>
-<span><span class="co">#&gt; [34] rxode2parse_2.0.13      fansi_1.0.3             crayon_1.5.2           </span></span>
-<span><span class="co">#&gt; [37] dplyr_1.0.10            withr_2.5.0             grid_4.2.2             </span></span>
-<span><span class="co">#&gt; [40] nlme_3.1-160            jsonlite_1.8.3          gtable_0.3.1           </span></span>
-<span><span class="co">#&gt; [43] lifecycle_1.0.3         magrittr_2.0.3          units_0.8-0            </span></span>
-<span><span class="co">#&gt; [46] scales_1.2.1            RcppParallel_5.1.5      cli_3.4.1              </span></span>
-<span><span class="co">#&gt; [49] stringi_1.7.8           cachem_1.0.6            farver_2.1.1           </span></span>
-<span><span class="co">#&gt; [52] fs_1.5.2                bslib_0.4.1             ragg_1.2.4             </span></span>
-<span><span class="co">#&gt; [55] generics_0.1.3          vctrs_0.5.0             stringfish_0.15.7      </span></span>
-<span><span class="co">#&gt; [58] lotri_0.4.2             RApiSerialize_0.1.2     tools_4.2.2            </span></span>
-<span><span class="co">#&gt; [61] glue_1.6.2              purrr_0.3.5             rxode2et_2.0.9.9000    </span></span>
-<span><span class="co">#&gt; [64] fastmap_1.1.0           yaml_2.3.6              colorspace_2.0-3       </span></span>
-<span><span class="co">#&gt; [67] memoise_2.0.1           knitr_1.40              sass_0.4.2</span></span></code></pre></div>
+<span><span class="co">#&gt; [16] checkmate_2.1.0         rmarkdown_2.17          pkgdown_2.0.6          </span></span>
+<span><span class="co">#&gt; [19] qs_0.25.4               textshaping_0.3.6       desc_1.4.2             </span></span>
+<span><span class="co">#&gt; [22] dparser_1.3.1-8         stringr_1.4.1           PreciseSums_0.5        </span></span>
+<span><span class="co">#&gt; [25] munsell_0.5.0           compiler_4.2.2          xfun_0.34              </span></span>
+<span><span class="co">#&gt; [28] pkgconfig_2.0.3         systemfonts_1.0.4       htmltools_0.5.3        </span></span>
+<span><span class="co">#&gt; [31] tidyselect_1.2.0        tibble_3.1.8            rxode2parse_2.0.13     </span></span>
+<span><span class="co">#&gt; [34] fansi_1.0.3             crayon_1.5.2            dplyr_1.0.10           </span></span>
+<span><span class="co">#&gt; [37] withr_2.5.0             grid_4.2.2              nlme_3.1-160           </span></span>
+<span><span class="co">#&gt; [40] jsonlite_1.8.3          gtable_0.3.1            lifecycle_1.0.3        </span></span>
+<span><span class="co">#&gt; [43] magrittr_2.0.3          units_0.8-0             scales_1.2.1           </span></span>
+<span><span class="co">#&gt; [46] RcppParallel_5.1.5      cli_3.4.1               stringi_1.7.8          </span></span>
+<span><span class="co">#&gt; [49] cachem_1.0.6            farver_2.1.1            fs_1.5.2               </span></span>
+<span><span class="co">#&gt; [52] bslib_0.4.1             ragg_1.2.4              generics_0.1.3         </span></span>
+<span><span class="co">#&gt; [55] vctrs_0.5.0             stringfish_0.15.7       lotri_0.4.2            </span></span>
+<span><span class="co">#&gt; [58] RApiSerialize_0.1.2     tools_4.2.2             glue_1.6.2             </span></span>
+<span><span class="co">#&gt; [61] purrr_0.3.5             rxode2et_2.0.9.9000     fastmap_1.1.0          </span></span>
+<span><span class="co">#&gt; [64] yaml_2.3.6              colorspace_2.0-3        memoise_2.0.1          </span></span>
+<span><span class="co">#&gt; [67] knitr_1.40              sass_0.4.2</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -485,7 +535,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.9000.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
     </footer>
