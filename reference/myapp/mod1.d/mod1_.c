@@ -668,9 +668,9 @@ extern SEXP mod1__model_vars(void){
   SEXP _mv = PROTECT(_rxGetModelLib("mod1__model_vars"));pro++;
   if (!_rxIsCurrentC(_mv)){
     SEXP hash    = PROTECT(allocVector(STRSXP, 1));pro++;
-#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA+>yAAAv7#aT)9XvzMAU.ca=WVwaB~1sH]:gkOY8_n;*Fo$B2rL$fRo1N6R\"k5R2~3nw1OIvzUX[4GWcI;hmjCxcO\?Y{g[jYei7zWK\"jAnBR=mZk)C$=d$)ex|<#.TrMX:]|UV)>@j*J.V1{L/om}dgKyG2xy/>Rsm6Ab3</QUWm>uY\?`Mjgv[cY..Ir#@j}^`xWdG=LaYzdj/|aa1)^cg6x}Cbz<RX8qR[\?:<obMzhIEMztG.Rk5)z4#\?7Bt`&SCcwki*nQY>Fcv1R<Tr`{CQjk_KU38=[*j\?Ry07rF%%5K!DLj3Q]U3ca>#{yY|E;ysy&%%UsF!L\?,Vxf:Ko:F,rO4Fb9Kf3KUsDPJ\?oi>rbcYi;hfu1,3pp=\"FSRccWs~vrvnu%%^gBWQM2]WADQpMX_kG<0ZVA!\"Z1v2Si(:<:d0J&>BDJL,C2|H<>tm]7}>&xA]pjYx&r/VUjfrEiXhyO<~!1[u:!5\?Xprt&b8U\?/b9U}$bFPzsIQw]g89.+bte<hB]]mWO}t`zzWd\">WnL=h}45S*(Nyk8|ni(S^ow1>{E\?>dzB3~ld&Y~l\":yuZW>^pUhB]1$%%E4K={n=Z+eQl=hkHdoZMD<>_*8o}FpI9OL,zc[wmq{E<db`}DANsPzs;2=qOHMewK)(in8jmK8s(<KSLASs\"+hgB7=Uy/H$;2Fsik7D.51nz>$6EC:H.;#3Qa!3Nb3xT/g=j^0\?T_}nuN+kLYnpt#6!Mv^Z!b\"S@b<l;s=G<G9JbLDh2e9xZx~Ik5XvK097KkeGFR<7zV\"C95/bcLX2zd;*<u\"lEnuo{(Kfh!F2Q,t!3}x^]p}QmJ\"`hKk5#^t4Paor`4(%%WrQ|%%:jT*hg/\"BI6,G4Mx7q^oV%%VysplGFF$Q+r(^QMcmN58}eIvpwx4}IlNgL%%+qhC%%3ClV6,4V@9%%D^|mUBY/Q|/:*^/BA<O0PHGhF_p</oTfNu*)H{a.a=Jxke6&HPW|*Vf}4vW%%O9o464BRGMDHajjLlRm,BiJ{ODY%%A");
-    char buf[1047];
-#define __doBufN__ 1047
+#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA[9yAAAv7#aT)9XbvMAU.R,ft~kaBaiiqAA6y@P[W41s_>WC<`|L*mbZj~/XjT=m)7ShF^D>E_*+sY74$j<X1#AMx8zNwAm^|kAhAyBfLh=hXFHL!JkvJ4iz;rp9;#E}e$=&FhP3N9(5pQL$Wn$O(6[#rx}4Au^YR<j&.qs)|U|GQ+4GL*SLzAm+$95+F4pr_TIm<\"c#x.)z278jQwMTWk&0x&2ELg0{jMWgXwF@{m%%!{~NnOFSOM$bH5KAd`2RvD8.=v}B.u|Q/h<k_@ORKT#TG3[c_oQR1IJamUC3|E<Bw!2Hq3aOO_%%la5cvlZo(nfL(4d~$JyE;wv\"5yiM,:X8]Re7C0>)D,$*e}3hGU1Nc{yE87VyTB5UN@5];\"C]0qG0>^Q7/=MwD#;g8&t_cp9S2Bt8FU!}/vPoeRTc`JS((MuwI*z7%%4}zmObFnmS$;xJsgZBZvsS7E\"kypF|\?w:d>O<N|dqH3^w8WXqw1g7<La8;\?$[cIpE;o(#e0C=N,:P\"dPTPp)nE&3\?.=CVVn3/Hi:hqnSv`2zBUV_v)fGV~VKp\"MzB&WL3L{Kq4f.@3!b_]NgYx[&xEK|#2wxB>ie42Py;\?b$0o}FpI9O{+`W[wPf{E<dX`}D^McPzs;2:|NH,dwK)(inVimK8s(<>GLASs:+hgc6=Uw/H$;2DsikrD.50nz>Zv|Bt{,;!3R,936EXxT/fgj^s\?T__nIM)kaVnpqS6!MvzZ!b\"S@b<l;sNGMG9JbLDh2e9xZx~Ik5XvK097KkeGFR<7zV\"C95/bcLX2zd;*<u\"lEnuo{(Kfh!F2Q,t!3}x^]p}QmJ\"`hKk5#^t4Paor`4(%%WrQ|%%:jT*hg/\"BI6,G4Mx7q^oV%%VysplGFF$Q+r(^QMcmN58}eIvpwx4}IlNgL%%+qhC%%3ClV6,4V@9%%D^|mUBY/Q|/:*^/BA<O0PHGhF_p</oTfNu*)H{a.a=Jxke6&HPW|*Vf}4vW%%O9o464BRGMDHajjLlRm,BiJ>W|n(A");
+    char buf[1041];
+#define __doBufN__ 1041
     __doBuf__
 #undef __doBuf__
 #undef __doBufN__
