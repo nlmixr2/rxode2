@@ -697,3 +697,52 @@ is.latex <- function() {
            requireNamespace(pkg, quietly = TRUE)
          }, logical(1))
 }
+
+#' Check if a language object matches a template language object
+#'
+#' \itemize{
+#'   \item{If \code{template == str2lang(".")}, it will match anything.}
+#'   \item{If \code{template == str2lang(".name")}, it will match any name.}
+#'   \item{If \code{template == str2lang(".call()")}, it will match any call.}
+#' }
+#'
+#' @param x The object to check
+#' @param template The template object it should match
+#' @return TRUE if it matches, FALSE, otherwise
+#' @keywords Internal
+#' @examples
+#' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/dt(.name)"))
+#' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/foo(.name)"))
+#' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/."))
+#' @noRd
+.matchesLangTemplate <- function(x, template) {
+  if (identical(template, as.name("."))) {
+    ret <- TRUE
+  } else if (is.name(x) && identical(template, as.name(".name"))) {
+    ret <- TRUE
+  } else if (is.call(x) && identical(template, str2lang(".call()"))) {
+    ret <- TRUE
+  } else {
+    # A more specific match is needed
+    ret <- all(class(x) == class(template))
+    if (ret) {
+      if (length(x) == length(template)) {
+        if (length(x) > 1) {
+          for (idx in seq_along(x)) {
+            ret <- ret && .matchesLangTemplate(x[[idx]], template[[idx]])
+          }
+        } else if (is.name(x)) {
+          # Check for a value if the name is not ".name"
+          ret <- x == template
+        } else {
+          # Require identical for one-length calls (e.g. `linCmt()`), numeric,
+          # character, etc.
+          ret <- identical(x, template)
+        }
+      } else {
+        ret <- FALSE
+      }
+    }
+  }
+  ret
+}
