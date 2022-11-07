@@ -668,9 +668,9 @@ extern SEXP mod1__model_vars(void){
   SEXP _mv = PROTECT(_rxGetModelLib("mod1__model_vars"));pro++;
   if (!_rxIsCurrentC(_mv)){
     SEXP hash    = PROTECT(allocVector(STRSXP, 1));pro++;
-#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA[9yAAAv7#aT)9XbvMAU.R,ft~kaBaiiqAA6y@P[W41s_>WC<`|L*mbZj~/XjT=m)7ShF^D>E_*+sY74$j<X1#AMx8zNwAm^|kAhAyBfLh=hXFHL!JkvJ4iz;rp9;#E}e$=&FhP3N9(5pQL$Wn$O(6[#rx}4Au^YR<j&.qs)|U|GQ+4GL*SLzAm+$95+F4pr_TIm<\"c#x.)z278jQwMTWk&0x&2ELg0{jMWgXwF@{m%%!{~NnOFSOM$bH5KAd`2RvD8.=v}B.u|Q/h<k_@ORKT#TG3[c_oQR1IJamUC3|E<Bw!2Hq3aOO_%%la5cvlZo(nfL(4d~$JyE;wv\"5yiM,:X8]Re7C0>)D,$*e}3hGU1Nc{yE87VyTB5UN@5];\"C]0qG0>^Q7/=MwD#;g8&t_cp9S2Bt8FU!}/vPoeRTc`JS((MuwI*z7%%4}zmObFnmS$;xJsgZBZvsS7E\"kypF|\?w:d>O<N|dqH3^w8WXqw1g7<La8;\?$[cIpE;o(#e0C=N,:P\"dPTPp)nE&3\?.=CVVn3/Hi:hqnSv`2zBUV_v)fGV~VKp\"MzB&WL3L{Kq4f.@3!b_]NgYx[&xEK|#2wxB>ie42Py;\?b$0o}FpI9O{+`W[wPf{E<dX`}D^McPzs;2:|NH,dwK)(inVimK8s(<>GLASs:+hgc6=Uw/H$;2DsikrD.50nz>Zv|Bt{,;!3R,936EXxT/fgj^s\?T__nIM)kaVnpqS6!MvzZ!b\"S@b<l;sNGMG9JbLDh2e9xZx~Ik5XvK097KkeGFR<7zV\"C95/bcLX2zd;*<u\"lEnuo{(Kfh!F2Q,t!3}x^]p}QmJ\"`hKk5#^t4Paor`4(%%WrQ|%%:jT*hg/\"BI6,G4Mx7q^oV%%VysplGFF$Q+r(^QMcmN58}eIvpwx4}IlNgL%%+qhC%%3ClV6,4V@9%%D^|mUBY/Q|/:*^/BA<O0PHGhF_p</oTfNu*)H{a.a=Jxke6&HPW|*Vf}4vW%%O9o464BRGMDHajjLlRm,BiJ>W|n(A");
-    char buf[1041];
-#define __doBufN__ 1041
+#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA+>yAAAv7#aT)9XvzMAU.ca=WVwaB~1sH]:j3*)2DR<a4|AAk8FCMRo1N6R\"k5R2~3nw1OIvzUX[4GWcI;hmjCxcO\?Y{g[jYei7cLFtjAnBR=mZk)C$=d$)ex|<#.TrMX:]|UV)>@j*J.V1{L/om}dgKyG2xy/>Rsm6Ab3</QUWm>uY\?`Mjgv[cY..Ir#@j}^`xWdG=LaYzdj/|aa1)^cg6x}Cbz<RX8qR[gH=obMzhIEMztG.Rk5)z4#\?7Bt`&SCcwki*nQY>Fcv1R<Tr`{CQjk_KU38=[*j\?RF;7rF%%5K!DLj3Q]U3ca>#{yY|E;ysy&%%UsF!L\?,Vxf:Ko:F,rO4Fb9Kf3KUsDPJ\?oi>rbcYi;hfu1,3pp=\"FSRccWs~vrvnu%%^gBWQM2]WADQpMX_kG<0ZVA!\"Z1v2Si(:<:d0J&>BDJL,C2|H<>tm]7}>&xA]pjYx&rnbm+!{I)u&Jd7~gR+D4jW*v]{\"&b8U\?/b9U}$bFPzsIQw]g89.+bte<hB]]mWO}t`zzWd\">Wo4=h}45S*(Nyk8|ni(S^ow1>|x\?>dzB3~ld&Y~l\":yuZW>^pUhB]1$%%E4K={n=Z+eQl=hkHdoZMDq_|if%%/yVxeH0@a7oYTVsv^O8|\"uuz)0a(m.n&0DGPZy@>#$;RTFf(hmG2FAJWu@QQv:n3,[E=m.CWRS<u[c/$ZngdDu^w[l=bJ6<b0N/Y4[9m${._K|\"$)Gk#FM%%U)fe<zX}5<Nu2{6_#m(mDmD<E7FvQbP<Y7*tx#c5XFa<dFSPDx1^d,KtB<c^68yLb,O^in)A$vTY%%~>z8R<D.2@X<bs,{{Ut1%%xA}Ry#c>{X/I6&&qc@=5&2}gl#J[9![\"AF:jDcG,:({%%K>KZW(#xvCgIj)>pIH7%%zcet8y)V*YcsE%%z!yh@(9v=bB%%3;@:3`e>B|rU3B5kI\"[]i}[AAn0.0DD#v}%%_[%%J!z*\?\?DrNkN`xYSQ:\?wHL~i4Pt/Y4h0eUd::tJw0uDN#R0#IT]t!EAg+TVA");
+    char buf[1049];
+#define __doBufN__ 1049
     __doBuf__
 #undef __doBuf__
 #undef __doBufN__
