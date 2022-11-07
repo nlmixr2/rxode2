@@ -1,7 +1,6 @@
 rxTest({
   test_that("occasions", {
 
-    .rx <- loadNamespace("rxode2")
     .rxr <- loadNamespace("rxode2random")
 
     # Nesting tests
@@ -102,7 +101,7 @@ rxTest({
       expect_equal(.ni$extraTheta, 4)
       expect_equal(.ni$extraEta, 8)
 
-      .en <- .rx$rxExpandNesting(mod, .ni, compile = TRUE)
+      .en <- rxExpandNesting(mod, .ni, compile = TRUE)
 
       .ett <- etTrans(.ni$data, .en$mod)
 
@@ -123,7 +122,7 @@ rxTest({
         EC50 ~ 0.01
       )
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                thetaMat = thetaMat, omega = omega,
                                nSub = 40, nStud = 3
@@ -133,34 +132,34 @@ rxTest({
       expect_equal(length(.ep$KA), 120L)
       expect_equal(length(unique(.ep$KA)), 3L)
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                thetaMat = thetaMat, omega = omega,
                                nStud = 3
                              )
                              )
 
-      expect_equal(length(.rx$.rxModels[[".thetaL"]]), 3L)
-      expect_equal(length(.rx$.rxModels[[".omegaL"]]), 3L)
-      expect_equal(.rx$.rxModels[[".sigmaL"]], NULL)
+      expect_equal(length(.rxModels[[".thetaL"]]), 3L)
+      expect_equal(length(.rxModels[[".omegaL"]]), 3L)
+      expect_equal(.rxModels[[".sigmaL"]], NULL)
       expect_equal(length(.ep$KA), 60L)
       expect_equal(length(unique(.ep$KA)), 3L)
       expect_true(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                thetaMat = thetaMat, omega = omega,
                                nStud = 3, nSub = 20
                              )
                              )
 
-      expect_equal(length(.rx$.rxModels[[".thetaL"]]), 3L)
-      expect_equal(length(.rx$.rxModels[[".omegaL"]]), 3L)
-      expect_equal(.rx$.rxModels[[".sigmaL"]], NULL)
+      expect_equal(length(.rxModels[[".thetaL"]]), 3L)
+      expect_equal(length(.rxModels[[".omegaL"]]), 3L)
+      expect_equal(.rxModels[[".sigmaL"]], NULL)
       expect_equal(length(.ep$KA), 60L)
       expect_true(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                thetaMat = thetaMat, omega = omega,
                                sigma = lotri(prop.err ~ 0.1), dfObs = 10,
@@ -168,13 +167,13 @@ rxTest({
                              )
                              )
 
-      expect_equal(length(.rx$.rxModels[[".thetaL"]]), 3L)
-      expect_equal(length(.rx$.rxModels[[".omegaL"]]), 3L)
-      expect_equal(length(.rx$.rxModels[[".sigmaL"]]), 3L)
+      expect_equal(length(.rxModels[[".thetaL"]]), 3L)
+      expect_equal(length(.rxModels[[".omegaL"]]), 3L)
+      expect_equal(length(.rxModels[[".sigmaL"]]), 3L)
       expect_equal(length(.ep$KA), 60L)
       expect_true(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                thetaMat = thetaMat,
                                sigma = lotri(prop.err ~ 0.1), dfObs = 10,
@@ -182,91 +181,91 @@ rxTest({
                              )
                              )
 
-      expect_equal(.rx$.rxModels[[".thetaL"]], NULL)
-      expect_equal(.rx$.rxModels[[".omegaL"]], NULL)
-      expect_equal(length(.rx$.rxModels[[".sigmaL"]]), 3L)
+      expect_equal(.rxModels[[".thetaL"]], NULL)
+      expect_equal(.rxModels[[".omegaL"]], NULL)
+      expect_equal(length(.rxModels[[".sigmaL"]]), 3L)
       expect_equal(length(.ep$KA), 60L)
       expect_false(any(names(.ep) == "eta.Cl"))
 
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                sigma = lotri(prop.err ~ 0.1), dfObs = 10,
                                nStud = 3, nSub = 20
                              )
                              )
 
-      expect_equal(.rx$.rxModels[[".thetaL"]], NULL)
-      expect_equal(.rx$.rxModels[[".omegaL"]], NULL)
-      expect_equal(length(.rx$.rxModels[[".sigmaL"]]), 3L)
+      expect_equal(.rxModels[[".thetaL"]], NULL)
+      expect_equal(.rxModels[[".omegaL"]], NULL)
+      expect_equal(length(.rxModels[[".sigmaL"]]), 3L)
       expect_equal(length(.ep$KA), 60L)
       expect_false(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                sigma = lotri(prop.err ~ 0.1), dfObs = 10,
                                nStud = 3, nSub = 20
                              )
                              )
 
-      expect_equal(.rx$.rxModels[[".thetaL"]], NULL)
-      expect_equal(.rx$.rxModels[[".omegaL"]], NULL)
-      expect_equal(length(.rx$.rxModels[[".sigmaL"]]), 3L)
+      expect_equal(.rxModels[[".thetaL"]], NULL)
+      expect_equal(.rxModels[[".omegaL"]], NULL)
+      expect_equal(length(.rxModels[[".sigmaL"]]), 3L)
       expect_equal(length(.ep$KA), 60L)
       expect_false(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                omega = lotri(eta.Cl ~ 0.1), dfObs = 10,
                                nStud = 3, nSub = 20
                              )
                              )
 
-      expect_equal(.rx$.rxModels[[".thetaL"]], NULL)
-      expect_equal(.rx$.rxModels[[".omegaL"]], NULL)
-      expect_equal(.rx$.rxModels[[".sigmaL"]], NULL)
+      expect_equal(.rxModels[[".thetaL"]], NULL)
+      expect_equal(.rxModels[[".omegaL"]], NULL)
+      expect_equal(.rxModels[[".sigmaL"]], NULL)
       expect_equal(length(.ep$KA), 60L)
       expect_true(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(dfObs = 10, nStud = 3, nSub = 4)
                              )
 
-      expect_equal(.rx$.rxModels[[".thetaL"]], NULL)
-      expect_equal(.rx$.rxModels[[".omegaL"]], NULL)
-      expect_equal(.rx$.rxModels[[".sigmaL"]], NULL)
+      expect_equal(.rxModels[[".thetaL"]], NULL)
+      expect_equal(.rxModels[[".omegaL"]], NULL)
+      expect_equal(.rxModels[[".sigmaL"]], NULL)
       expect_equal(length(.ep$KA), 12L)
       expect_false(any(names(.ep) == "eta.Cl"))
 
 
-      expect_error(.rx$.expandPars(mod, NULL, ev,
+      expect_error(.expandPars(mod, NULL, ev,
                                    control = rxControl(thetaMat = thetaMat, omega = omega, nStud = 3)
                                    ))
 
-      .ep <- .rx$.expandPars(mod, NULL, ev,
+      .ep <- .expandPars(mod, NULL, ev,
                              control = rxControl(omega = omega, nStud = 3)
                              )
 
-      expect_equal(length(.rx$.rxModels[[".thetaL"]]), 3L)
-      expect_equal(length(.rx$.rxModels[[".omegaL"]]), 3L)
-      expect_equal(.rx$.rxModels[[".sigmaL"]], NULL)
+      expect_equal(length(.rxModels[[".thetaL"]]), 3L)
+      expect_equal(length(.rxModels[[".omegaL"]]), 3L)
+      expect_equal(.rxModels[[".sigmaL"]], NULL)
       expect_equal(length(.ep$eta.Ka), 60L)
       expect_true(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, NULL, ev,
+      .ep <- .expandPars(mod, NULL, ev,
                              control = rxControl(
                                omega = omega,
                                nStud = 3, dfObs = 100, nSub = 20, dfSub = 10
                              )
                              )
 
-      expect_equal(length(.rx$.rxModels[[".thetaL"]]), 3L)
-      expect_equal(length(.rx$.rxModels[[".omegaL"]]), 3L)
-      expect_equal(.rx$.rxModels[[".sigmaL"]], NULL)
+      expect_equal(length(.rxModels[[".thetaL"]]), 3L)
+      expect_equal(length(.rxModels[[".omegaL"]]), 3L)
+      expect_equal(.rxModels[[".sigmaL"]], NULL)
       expect_equal(length(.ep$eta.Ka), 60L)
       expect_true(any(names(.ep) == "eta.Cl"))
 
-      .ep <- .rx$.expandPars(mod, theta, ev,
+      .ep <- .expandPars(mod, theta, ev,
                              control = rxControl(
                                thetaMat = lotri(KA ~ 1, CL ~ 1),
                                omega = omega,
@@ -288,6 +287,6 @@ rxTest({
       expect_s3_class(.ni$omega, "lotri")
       expect_equal(names(.ni$omega), "id")
 
-      .en <- .rx$rxExpandNesting(mod, .ni)
+      .en <- rxExpandNesting(mod, .ni)
   })
 })

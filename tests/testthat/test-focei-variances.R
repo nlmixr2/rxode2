@@ -1,6 +1,4 @@
 rxTest({
-  .rx <- loadNamespace("rxode2")
-
   f <- function() {
     ini({
       tke <- 0.5
@@ -18,7 +16,7 @@ rxTest({
   }
 
   v1 <- function(ui) {
-    .rx$.rxGetVarianceForErrorType(ui, ui$predDf[1, ])
+    .rxGetVarianceForErrorType(ui, ui$predDf[1, ])
   }
 
   test_that("constant error model tests", {
