@@ -59,7 +59,19 @@ You can install the released version of rxode2 from
 install.packages("rxode2")
 ```
 
-You can install the development version of rxode2 with
+The fastest way to install the development version of `rxode2` is to use
+the `r-universe` service. This service compiles binares of the
+development version for MacOS and for Windows so you don’t have to wait
+for package compilation:
+
+``` r
+install.packages(c("dparser", "rxode2ll", "rxode2parse",
+                   "rxode2random", "rxode2et", "rxode2"),
+                 repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
+                         CRAN="https://cloud.r-project.org"))
+```
+
+If this doesn’t work you install the development version of rxode2 with
 
 ``` r
 devtools::install_github("nlmixr2/rxode2parse")
