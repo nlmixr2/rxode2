@@ -158,14 +158,12 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
 }
 
 #' @rdname rxRename
-#' @export
 rename.rxUi <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
   do.call(rxRename, c(.lst, list(envir=parent.frame(2))))
 }
 #' @rdname rxRename
-#' @export
 rename.function <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
