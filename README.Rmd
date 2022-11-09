@@ -32,7 +32,7 @@ models. These models are convert the rxode2 mini-language to C and
 create a compiled dll for fast solving. ODE solving using rxode2 has a
 few key parts:
 
- - `rxode()` which creates the C code for fast ODE solving based on a
+ - `rxode2()` which creates the C code for fast ODE solving based on a
    [simple syntax](https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html) related to Leibnitz notation.
  - The event data, which can be:
    - a `NONMEM` or `deSolve` [compatible data frame](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html), or
