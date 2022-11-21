@@ -196,7 +196,7 @@ model.rxModelVars <- model.rxode2
 #'
 #' @author Matthew L. Fidler
 #' @noRd
-.getModelineFromExperssionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
+.getModelineFromExpressionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
                                                         errLines, origLines, rxui,
                                                         returnAllLines=FALSE) {
   .ret <- NA_integer_
@@ -325,7 +325,7 @@ model.rxModelVars <- model.rxode2
   .origLines <- rxui$lstExpr
   .errLines <- rxui$predDf$line
   .expr3 <- .getModelLineEquivalentLhsExpression(lhsExpr)
-  .ret <- .getModelineFromExperssionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
+  .ret <- .getModelineFromExpressionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
   if (is.null(.ret)) {
     return(NULL)
   } else if (length(.ret) > 1) {
@@ -432,7 +432,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
         .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
         .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
       } else {
-        .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr, .isDrop)
+        .ret <- .getModelLineFromExpression(.getLhs(line), rxui, .isErr, .isDrop)
       }
       if (length(.ret)  == 1) {
         if (.isErr && is.na(.ret)) {
@@ -500,6 +500,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     stop(paste(.err, collapse="\n"), call.=FALSE)
   }
 }
+
 #' Get the Variables from the expression
 #'
 #' @param x Expression
