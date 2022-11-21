@@ -446,7 +446,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
                envir=.env)
       } else if (is.na(.ret[1])) {
           assign(".err",
-                 c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
+                 c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in the model and cannot be modified by piping")),
                  envir=.env)
 
       } else if (all(.ret > 0)) {
