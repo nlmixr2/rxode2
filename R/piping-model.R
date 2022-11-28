@@ -196,7 +196,7 @@ model.rxModelVars <- model.rxode2
 #'
 #' @author Matthew L. Fidler
 #' @noRd
-.getModelineFromExperssionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
+.getModelineFromExpressionsAndOriginalLines <- function(expr, altExpr, useErrorLine,
                                                         errLines, origLines, rxui,
                                                         returnAllLines=FALSE) {
   .ret <- NA_integer_
@@ -325,7 +325,7 @@ model.rxModelVars <- model.rxode2
   .origLines <- rxui$lstExpr
   .errLines <- rxui$predDf$line
   .expr3 <- .getModelLineEquivalentLhsExpression(lhsExpr)
-  .ret <- .getModelineFromExperssionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
+  .ret <- .getModelineFromExpressionsAndOriginalLines(lhsExpr, .expr3, errorLine, .errLines, .origLines, rxui, returnAllLines)
   if (is.null(.ret)) {
     return(NULL)
   } else if (length(.ret) > 1) {
@@ -432,7 +432,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
         .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
         .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
       } else {
-        .ret <- .getModelLineFromExpression(line[[2]], rxui, .isErr, .isDrop)
+        .ret <- .getModelLineFromExpression(.getLhs(line), rxui, .isErr, .isDrop)
       }
       if (length(.ret)  == 1) {
         if (.isErr && is.na(.ret)) {
@@ -442,11 +442,11 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
       }
       if (is.null(.ret)) {
         assign(".err",
-               c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is duplicated in the model and cannot be modified by piping")),
+               c(.err, paste0("the lhs expression '", deparse1(line[[2]]), "' is duplicated in the model and cannot be modified by piping")),
                envir=.env)
       } else if (is.na(.ret[1])) {
           assign(".err",
-                 c(.err, paste0("the lhs expression '", paste0(as.character(line[[2]])), "' is not in model and cannot be modified by piping")),
+                 c(.err, paste0("the lhs expression '", deparse1(line[[2]]), "' is not in the model and cannot be modified by piping")),
                  envir=.env)
 
       } else if (all(.ret > 0)) {
@@ -500,6 +500,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     stop(paste(.err, collapse="\n"), call.=FALSE)
   }
 }
+
 #' Get the Variables from the expression
 #'
 #' @param x Expression
