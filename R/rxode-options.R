@@ -66,7 +66,7 @@
   } else {
     assignInMyNamespace(".hasUnits", FALSE)
   }
-  backports::import(pkgname) 
+  backports::import(pkgname)
   ## Setup rxode2.prefer.tbl
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
   rxSyncOptions("permissive")
@@ -116,11 +116,11 @@
 
 .mkCache <- function(.tmp) {
   if (!file.exists(.tmp)) {
-    dir.create(.tmp, recursive = TRUE)
+    dir.create(.tmp, recursive = TRUE, showWarnings = FALSE)
   } else if (!file.exists(file.path(.tmp, paste0(rxode2.md5, ".md5")))) {
     if (!.cacheIsTemp) packageStartupMessage("detected new version of rxode2, cleaning cache")
     unlink(.tmp, recursive = TRUE, force = TRUE)
-    dir.create(.tmp, recursive = TRUE)
+    dir.create(.tmp, recursive = TRUE, showWarnings = FALSE)
     writeLines("rxode2", file.path(.tmp, paste0(rxode2.md5, ".md5")))
   }
 }
