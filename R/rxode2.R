@@ -440,7 +440,7 @@ rxode2 <- # nolint
     }
 
     if (!file.exists(wd)) {
-      dir.create(wd, recursive = TRUE)
+      dir.create(wd, recursive = TRUE, showWarnings = FALSE)
     }
 
     .env$modName <- modName
@@ -460,7 +460,7 @@ rxode2 <- # nolint
       with(.(.env), {
         .rx <- base::loadNamespace("rxode2")
         if (!file.exists(wd)) {
-          dir.create(wd, recursive = TRUE)
+          dir.create(wd, recursive = TRUE, showWarnings = FALSE)
         }
         on.exit({
           .rx$.clearME()
@@ -1321,7 +1321,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
     .include <- .normalizePath(file.path(.cache, "include"))
     if (!dir.exists(.include)) {
       .malert("creating rxode2 include directory")
-      dir.create(.include, recursive = TRUE)
+      dir.create(.include, recursive = TRUE, showWarnings = FALSE)
       .sysInclude <- system.file("include", package = "rxode2")
       .files <- list.files(.parseInclude)
       lapply(.files, function(file) {
@@ -1344,7 +1344,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
       .malert("precompiling headers")
       .args <- paste0(
         .cc, " -I", gsub("[\\]", "/", .normalizePath(R.home("include"))), " ",
-        " -I\"", .normalizePath(.parseInclude), "\" ", 
+        " -I\"", .normalizePath(.parseInclude), "\" ",
         .cflags, " ", .shlibCflags, " ", .cpicflags, " -I", gsub("[\\]", "/", .normalizePath(.include)), " ",
         paste(gsub("[\\]", "/", .normalizePath(.include)), "rxode2_model_shared.h", sep = "/"),
         ""
@@ -1392,7 +1392,7 @@ rxCompile.rxModelVars <- function(model, # Model
   }
   .dir <- suppressMessages(.normalizePath(.dir, mustWork = FALSE))
   if (!file.exists(.dir)) {
-    dir.create(.dir, recursive = TRUE)
+    dir.create(.dir, recursive = TRUE, showWarnings = FALSE)
     writeLines("rxode2", file.path(.dir, paste0(rxode2.md5, ".md5")))
   }
 

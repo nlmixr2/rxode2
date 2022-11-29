@@ -90,7 +90,7 @@ genShinyApp.template <-
       )
     }
     if (!file.exists(appDir)) {
-      dir.create(appDir, recursive = TRUE)
+      dir.create(appDir, recursive = TRUE, showWarnings = FALSE)
     }
     # if(.Platform$OS.type=="windows") appDir <- gsub("\\\\", "/", utils::shortPathName(.normalizePath(appDir)))  # safe pathname
 

@@ -187,7 +187,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2",
       }
     }
     if (!dir.exists(devtools::package_file("src"))) {
-      dir.create(devtools::package_file("src"), recursive = TRUE)
+      dir.create(devtools::package_file("src"), recursive = TRUE, showWarnings = FALSE)
     }
     .pkg <- basename(usethis::proj_get())
     .rx <- loadNamespace("rxode2")
