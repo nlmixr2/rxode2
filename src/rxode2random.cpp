@@ -1,5 +1,6 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#include <Rcpp.h>
 #include "../inst/include/rxode2.h"
 #include <R.h>
 #ifdef ENABLE_NLS
@@ -12,78 +13,162 @@
 
 #include "seed.h"
 
-bool qtest(SEXP in, const char *test) {
-  static bool (*fun)(SEXP, const char *)=NULL;
-  if (fun == NULL) {
-    fun = (bool (*)(SEXP, const char *)) R_GetCCallable("rxode2random","_rxode2random_qtest");
+using namespace Rcpp;
+extern Function loadNamespace;
+
+#define rxode2random_loaded rxode2_rxode2random_loaded
+#define rxode2random rxode2_rxode2random
+
+extern Function loadNamespace;
+bool rxode2random_loaded = false;
+Environment rxode2random;
+
+
+extern "C" bool qtest(SEXP in, const char *test) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
-  return fun(in, test);
+  Function fun = as<Function>(rxode2random[".qtest"]);
+  CharacterVector c(1);
+  c[0]= test;
+  return as<bool>(fun(in, c));
+  END_RCPP
 }
 
-SEXP qstrictS(SEXP nn, const char *what) {
-  static SEXP (*fun)(SEXP, const char *)=NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, const char *)) R_GetCCallable("rxode2random","_rxode2random_qstrictS");
+extern "C" SEXP qstrictS(SEXP nn, const char *what) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
-  return fun(nn, what);
+  Function fun = as<Function>(rxode2random[".qstrictS"]);
+  CharacterVector c(1);
+  c[0]= what;
+  return (fun(nn, c));
+  END_RCPP
 }
 
-SEXP qstrictSn(SEXP x_, const char *what) {
-  static SEXP (*fun)(SEXP, const char *)=NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, const char *)) R_GetCCallable("rxode2random","_rxode2random_qstrictSn");
+extern "C" SEXP qstrictSn(SEXP x_, const char *what) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
-  return fun(x_, what);
-}
-SEXP qstrictSdn(SEXP x_, const char *what) {
-  static SEXP (*fun)(SEXP, const char *)=NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, const char *)) R_GetCCallable("rxode2random","_rxode2random_qstrictSdn");
-  }
-  return fun(x_, what);
+  Function fun = as<Function>(rxode2random[".qstrictSn"]);
+  CharacterVector c(1);
+  c[0]= what;
+  return (fun(x_, c));
+  END_RCPP
 }
 
-SEXP qassertS(SEXP in, const char *test, const char *what) {
-  static SEXP (*fun)(SEXP, const char *, const char *)=NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, const char *, const char *)) R_GetCCallable("rxode2random","_rxode2random_qassertS");
+extern "C" SEXP qstrictSdn(SEXP x_, const char *what) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
-  return fun(in, test, what);
+  Function fun = as<Function>(rxode2random[".qstrictSdn"]);
+  CharacterVector c(1);
+  c[0]= what;
+  return (fun(x_, c));
+  END_RCPP
 }
 
-SEXP _vecDF(SEXP cv, SEXP n_) {
-  static SEXP (*fun)(SEXP, SEXP)=NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_vecDF");
+extern "C" SEXP qassertS(SEXP in, const char *test, const char *what) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
+  Function fun = as<Function>(rxode2random[".qassertS"]);
+  CharacterVector c(1);
+  c[0]= test;
+  CharacterVector c2(1);
+  c2[0]= what;
+  return (fun(in, c, c2));
+  END_RCPP
+}
+
+extern "C" SEXP _rxode2_convertId_(SEXP id) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
+  }
+  Function fun = as<Function>(rxode2random[".convertId"]);
+  return(fun(id));
+  END_RCPP
+}
+
+extern "C" SEXP _rxode2_expandPars_(SEXP objectSSEXP, SEXP paramsSSEXP, SEXP eventsSSEXP, SEXP controlSSEXP) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
+  }
+  Function fun = as<Function>(rxode2random[".expandPars"]);
+  return fun(objectSSEXP, paramsSSEXP, eventsSSEXP, controlSSEXP);
+  END_RCPP
+}
+
+extern "C" SEXP _vecDF(SEXP cv, SEXP n_) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
+  }
+  Function fun = as<Function>(rxode2random[".vecDF"]);
   return fun(cv, n_);
+  END_RCPP
 }
 
-SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
-  static SEXP (*fun)(SEXP, SEXP, SEXP)=NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_cbindOme");
+extern "C" SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
+  Function fun = as<Function>(rxode2random[".cbindOme"]);
   return fun(et_, mat_, n_);
+  END_RCPP
 }
 
-SEXP _phi(SEXP q) {
-  static SEXP (*fun)(SEXP)=NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP)) R_GetCCallable("rxode2random","_rxode2random_phi");
+extern "C" SEXP _phi(SEXP q) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
+  Function fun = as<Function>(rxode2random["phi"]);
   return fun(q);
+  END_RCPP
 }
 
-SEXP _rxSetSeed(SEXP x) {
-  static SEXP (*fun)(SEXP) = NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxSetSeed");
+extern "C" SEXP _rxSetSeed(SEXP x) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
   }
+  Function fun = as<Function>(rxode2random["rxSetSeed"]);
   return fun(x);
+  END_RCPP
 }
 
-SEXP _rxode2_nestingInfo_(SEXP omegaSEXP, SEXP dataSEXP) {
+extern "C" SEXP _rxode2_cvPost_(SEXP nuSSEXP, SEXP omegaSSEXP, SEXP nSSEXP, SEXP omegaIsCholSSEXP, SEXP returnCholSSEXP, SEXP typeSSEXP, SEXP diagXformTypeSSEXP) {
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
+  }
+  Function fun = as<Function>(rxode2random["cvPost"]);
+  return fun(nuSSEXP, omegaSSEXP, nSSEXP, omegaIsCholSSEXP, returnCholSSEXP, typeSSEXP, diagXformTypeSSEXP);
+  END_RCPP
+}
+
+extern "C" SEXP _rxode2_nestingInfo_(SEXP omegaSEXP, SEXP dataSEXP) {
   static SEXP (*fun)(SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_nestingInfo_");
@@ -91,15 +176,7 @@ SEXP _rxode2_nestingInfo_(SEXP omegaSEXP, SEXP dataSEXP) {
   return fun(omegaSEXP, dataSEXP);
 }
 
-SEXP _rxode2_cvPost_(SEXP nuSSEXP, SEXP omegaSSEXP, SEXP nSSEXP, SEXP omegaIsCholSSEXP, SEXP returnCholSSEXP, SEXP typeSSEXP, SEXP diagXformTypeSSEXP) {
-  static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_cvPost_");
-  }
-  return fun(nuSSEXP, omegaSSEXP, nSSEXP, omegaIsCholSSEXP, returnCholSSEXP, typeSSEXP, diagXformTypeSSEXP);
-}
-
-SEXP _rxode2_rinvchisq(SEXP nSEXP, SEXP nuSEXP, SEXP scaleSEXP) {
+extern "C" SEXP _rxode2_rinvchisq(SEXP nSEXP, SEXP nuSEXP, SEXP scaleSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rinvchisq");
@@ -107,7 +184,7 @@ SEXP _rxode2_rinvchisq(SEXP nSEXP, SEXP nuSEXP, SEXP scaleSEXP) {
   return fun(nSEXP, nuSEXP, scaleSEXP);  
 }
 
-SEXP _rxode2_rLKJ1(SEXP dSEXP, SEXP etaSEXP, SEXP choleskySEXP) {
+extern "C" SEXP _rxode2_rLKJ1(SEXP dSEXP, SEXP etaSEXP, SEXP choleskySEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rLKJ1");
@@ -115,7 +192,7 @@ SEXP _rxode2_rLKJ1(SEXP dSEXP, SEXP etaSEXP, SEXP choleskySEXP) {
   return fun(dSEXP, etaSEXP, choleskySEXP);
 }
 
-SEXP _rxode2_rLKJcv1(SEXP sdSEXP, SEXP etaSEXP) {
+extern "C" SEXP _rxode2_rLKJcv1(SEXP sdSEXP, SEXP etaSEXP) {
   static SEXP (*fun)(SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rLKJcv1");
@@ -123,7 +200,7 @@ SEXP _rxode2_rLKJcv1(SEXP sdSEXP, SEXP etaSEXP) {
   return fun(sdSEXP, etaSEXP);
 }
 
-SEXP _rxode2_rLKJcvLsd1(SEXP logSdSEXP, SEXP logSdSDSEXP, SEXP etaSEXP) {
+extern "C" SEXP _rxode2_rLKJcvLsd1(SEXP logSdSEXP, SEXP logSdSDSEXP, SEXP etaSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rLKJcvLsd1");
@@ -131,7 +208,7 @@ SEXP _rxode2_rLKJcvLsd1(SEXP logSdSEXP, SEXP logSdSDSEXP, SEXP etaSEXP) {
   return fun(logSdSEXP, logSdSDSEXP, etaSEXP);
 }
 
-SEXP _rxode2_rcvC1(SEXP sdEstSEXP, SEXP nuSEXP, SEXP diagXformTypeSEXP, SEXP rTypeSEXP, SEXP returnCholSEXP) {
+extern "C" SEXP _rxode2_rcvC1(SEXP sdEstSEXP, SEXP nuSEXP, SEXP diagXformTypeSEXP, SEXP rTypeSEXP, SEXP returnCholSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rcvC1");
@@ -139,7 +216,7 @@ SEXP _rxode2_rcvC1(SEXP sdEstSEXP, SEXP nuSEXP, SEXP diagXformTypeSEXP, SEXP rTy
   return fun(sdEstSEXP, nuSEXP, diagXformTypeSEXP, rTypeSEXP, returnCholSEXP);
 }
 
-SEXP _rxode2_rxRmvn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP ncoresSEXP, SEXP isCholSEXP) {
+extern "C" SEXP _rxode2_rxRmvn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP ncoresSEXP, SEXP isCholSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxRmvn_");
@@ -147,7 +224,7 @@ SEXP _rxode2_rxRmvn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP ncoresSEXP, 
   return fun(A_SEXP, muSEXP, sigmaSEXP, ncoresSEXP, isCholSEXP);  
 }
 
-SEXP _rxode2_rxMvnrnd(SEXP nSEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP, SEXP muSEXP, SEXP aSEXP, SEXP tolSEXP) {
+extern "C" SEXP _rxode2_rxMvnrnd(SEXP nSEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP, SEXP muSEXP, SEXP aSEXP, SEXP tolSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxMvnrnd");
@@ -155,7 +232,7 @@ SEXP _rxode2_rxMvnrnd(SEXP nSEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP, SEXP muSEX
   return fun(nSEXP, LSEXP, lSEXP, uSEXP, muSEXP, aSEXP, tolSEXP);
 }
 
-SEXP _rxode2_rxCholperm(SEXP SigSEXP, SEXP lSEXP, SEXP uSEXP, SEXP epsSEXP) {
+extern "C" SEXP _rxode2_rxCholperm(SEXP SigSEXP, SEXP lSEXP, SEXP uSEXP, SEXP epsSEXP) {
    static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxCholperm");
@@ -163,7 +240,7 @@ SEXP _rxode2_rxCholperm(SEXP SigSEXP, SEXP lSEXP, SEXP uSEXP, SEXP epsSEXP) {
   return fun(SigSEXP, lSEXP, uSEXP, epsSEXP);
 }
 
-SEXP _rxode2_rxGradpsi(SEXP ySEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP) {
+extern "C" SEXP _rxode2_rxGradpsi(SEXP ySEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxGradpsi");
@@ -171,7 +248,7 @@ SEXP _rxode2_rxGradpsi(SEXP ySEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP) {
   return fun(ySEXP, LSEXP, lSEXP, uSEXP);
 }
 
-SEXP _rxode2_rxNleq(SEXP lSEXP, SEXP uSEXP, SEXP LSEXP) {
+extern "C" SEXP _rxode2_rxNleq(SEXP lSEXP, SEXP uSEXP, SEXP LSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxNleq");
@@ -179,7 +256,7 @@ SEXP _rxode2_rxNleq(SEXP lSEXP, SEXP uSEXP, SEXP LSEXP) {
   return fun(lSEXP, uSEXP, LSEXP);
 }
 
-SEXP _rxode2_rxMvrandn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP) {
+extern "C" SEXP _rxode2_rxMvrandn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxMvrandn_");
@@ -187,7 +264,7 @@ SEXP _rxode2_rxMvrandn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP
   return fun(A_SEXP, muSEXP, sigmaSEXP, lowerSEXP, upperSEXP, ncoresSEXP, aSEXP, tolSEXP, nlTolSEXP, nlMaxiterSEXP);
 }
 
-SEXP _rxode2_rxSeedEng(SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxSeedEng(SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxSeedEng");
@@ -195,7 +272,7 @@ SEXP _rxode2_rxSeedEng(SEXP ncoresSEXP) {
   return fun(ncoresSEXP);
 }
 
-SEXP _rxode2_rxnbinom_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxnbinom_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxnbinom_");
@@ -203,7 +280,7 @@ SEXP _rxode2_rxnbinom_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) 
   return fun(sizeSEXP, muSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxgamma_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxgamma_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxgamma_");
@@ -211,7 +288,7 @@ SEXP _rxode2_rxgamma_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(sizeSEXP, muSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxpois_(SEXP lambdaSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxpois_(SEXP lambdaSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxpois_");
@@ -219,7 +296,7 @@ SEXP _rxode2_rxpois_(SEXP lambdaSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(lambdaSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxnbinomMu_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxnbinomMu_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxnbinomMu_");
@@ -227,7 +304,7 @@ SEXP _rxode2_rxnbinomMu_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP
   return fun(sizeSEXP, muSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxbinom_(SEXP n0SEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxbinom_(SEXP n0SEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxbinom_");
@@ -235,7 +312,7 @@ SEXP _rxode2_rxbinom_(SEXP n0SEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(n0SEXP, probSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxcauchy_(SEXP locationSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxcauchy_(SEXP locationSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxcauchy_");
@@ -243,7 +320,7 @@ SEXP _rxode2_rxcauchy_(SEXP locationSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncore
   return fun(locationSEXP, scaleSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxchisq_(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxchisq_(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxchisq_");
@@ -251,7 +328,7 @@ SEXP _rxode2_rxchisq_(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(dfSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxexp_(SEXP rateSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxexp_(SEXP rateSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxexp_");
@@ -259,7 +336,7 @@ SEXP _rxode2_rxexp_(SEXP rateSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(rateSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxf_(SEXP df1SEXP, SEXP df2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxf_(SEXP df1SEXP, SEXP df2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxf_");
@@ -267,7 +344,7 @@ SEXP _rxode2_rxf_(SEXP df1SEXP, SEXP df2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(df1SEXP, df2SEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxbeta_(SEXP shape1SEXP, SEXP shape2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxbeta_(SEXP shape1SEXP, SEXP shape2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxbeta_");
@@ -275,7 +352,7 @@ SEXP _rxode2_rxbeta_(SEXP shape1SEXP, SEXP shape2SEXP, SEXP nSEXP, SEXP ncoresSE
   return fun(shape1SEXP, shape2SEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxgeom_(SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxgeom_(SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxgeom_");
@@ -283,7 +360,7 @@ SEXP _rxode2_rxgeom_(SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(probSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxnorm_(SEXP meanSEXP, SEXP sdSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxnorm_(SEXP meanSEXP, SEXP sdSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxnorm_");
@@ -291,7 +368,7 @@ SEXP _rxode2_rxnorm_(SEXP meanSEXP, SEXP sdSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(meanSEXP, sdSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxt__(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxt__(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxt__");
@@ -299,7 +376,7 @@ SEXP _rxode2_rxt__(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(dfSEXP, nSEXP, ncoresSEXP);  
 }
 
-SEXP _rxode2_rxunif_(SEXP lowSEXP, SEXP hiSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxunif_(SEXP lowSEXP, SEXP hiSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxunif_");
@@ -307,7 +384,7 @@ SEXP _rxode2_rxunif_(SEXP lowSEXP, SEXP hiSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   return fun(lowSEXP, hiSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxweibull_(SEXP shapeSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+extern "C" SEXP _rxode2_rxweibull_(SEXP shapeSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxweibull_");
@@ -315,7 +392,7 @@ SEXP _rxode2_rxweibull_(SEXP shapeSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncoresS
   return fun(shapeSEXP, scaleSEXP, nSEXP, ncoresSEXP);
 }
 
-SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP isCholSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP) {
+extern "C" SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP isCholSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxRmvn0");
@@ -324,7 +401,7 @@ SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, S
 }
 
 
-SEXP _rxode2_rxRmvnSEXP(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSSEXP, SEXP upperSSEXP, SEXP ncoresSSEXP, SEXP isCholSSEXP, SEXP keepNamesSSEXP, SEXP aSSEXP, SEXP tolSSEXP, SEXP nlTolSSEXP, SEXP nlMaxiterSSEXP) {
+extern "C" SEXP _rxode2_rxRmvnSEXP(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSSEXP, SEXP upperSSEXP, SEXP ncoresSSEXP, SEXP isCholSSEXP, SEXP keepNamesSSEXP, SEXP aSSEXP, SEXP tolSSEXP, SEXP nlTolSSEXP, SEXP nlMaxiterSSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxRmvnSEXP");
@@ -332,7 +409,7 @@ SEXP _rxode2_rxRmvnSEXP(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSS
   return fun(nSSEXP, muSSEXP, sigmaSSEXP, lowerSSEXP, upperSSEXP, ncoresSSEXP, isCholSSEXP, keepNamesSSEXP, aSSEXP, tolSSEXP, nlTolSSEXP, nlMaxiterSSEXP);  
 }
 
-SEXP _rxode2_rpp_(SEXP nSSEXP, SEXP lambdaSSEXP, SEXP gammaSSEXP, SEXP probSSEXP, SEXP t0SSEXP, SEXP tmaxSSEXP, SEXP randomOrderSSEXP) {
+extern "C" SEXP _rxode2_rpp_(SEXP nSSEXP, SEXP lambdaSSEXP, SEXP gammaSSEXP, SEXP probSSEXP, SEXP t0SSEXP, SEXP tmaxSSEXP, SEXP randomOrderSSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rpp_");
@@ -340,7 +417,7 @@ SEXP _rxode2_rpp_(SEXP nSSEXP, SEXP lambdaSSEXP, SEXP gammaSSEXP, SEXP probSSEXP
   return fun(nSSEXP, lambdaSSEXP, gammaSSEXP, probSSEXP, t0SSEXP, tmaxSSEXP, randomOrderSSEXP);  
 }
 
-SEXP _rxode2_rxordSelect(SEXP uSEXP, SEXP csSEXP) {
+extern "C" SEXP _rxode2_rxordSelect(SEXP uSEXP, SEXP csSEXP) {
   static SEXP (*fun)(SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxordSelect");
@@ -348,7 +425,7 @@ SEXP _rxode2_rxordSelect(SEXP uSEXP, SEXP csSEXP) {
   return fun(uSEXP, csSEXP);  
 }
 
-SEXP _rxode2_rxrandnV(SEXP nrowSEXP, SEXP ncolSEXP) {
+extern "C" SEXP _rxode2_rxrandnV(SEXP nrowSEXP, SEXP ncolSEXP) {
   static SEXP (*fun)(SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_rxrandnV");
@@ -356,7 +433,7 @@ SEXP _rxode2_rxrandnV(SEXP nrowSEXP, SEXP ncolSEXP) {
   return fun(nrowSEXP, ncolSEXP);
 }
 
-SEXP _rxode2_rxGetSeed(void) {
+extern "C" SEXP _rxode2_rxGetSeed(void) {
   static SEXP (*fun)(void) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(void)) R_GetCCallable("rxode2random","_rxode2random_rxGetSeed");
@@ -364,15 +441,7 @@ SEXP _rxode2_rxGetSeed(void) {
   return fun();
 }
 
-SEXP _rxode2_expandPars_(SEXP objectSSEXP, SEXP paramsSSEXP, SEXP eventsSSEXP, SEXP controlSSEXP) {
-  static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP) = NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_expandPars_");
-  }
-  return fun(objectSSEXP, paramsSSEXP, eventsSSEXP, controlSSEXP);
-}
-
-SEXP _rxode2_expandTheta_(SEXP thetaSSEXP, SEXP thetaMatSSEXP, SEXP thetaLowerSSEXP, SEXP thetaUpperSSEXP, SEXP nStudSSEXP, SEXP nCoresRVSSEXP) {
+extern "C" SEXP _rxode2_expandTheta_(SEXP thetaSSEXP, SEXP thetaMatSSEXP, SEXP thetaLowerSSEXP, SEXP thetaUpperSSEXP, SEXP nStudSSEXP, SEXP nCoresRVSSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_expandTheta_");
@@ -380,20 +449,12 @@ SEXP _rxode2_expandTheta_(SEXP thetaSSEXP, SEXP thetaMatSSEXP, SEXP thetaLowerSS
   return fun(thetaSSEXP, thetaMatSSEXP, thetaLowerSSEXP, thetaUpperSSEXP, nStudSSEXP, nCoresRVSSEXP);
 }
 
-SEXP _rxode2_invWR1d(SEXP dSEXP, SEXP nuSEXP, SEXP omegaIsCholSEXP) {
+extern "C" SEXP _rxode2_invWR1d(SEXP dSEXP, SEXP nuSEXP, SEXP omegaIsCholSEXP) {
   static SEXP (*fun)(SEXP, SEXP, SEXP) = NULL;
   if (fun == NULL) {
     fun = (SEXP (*)(SEXP, SEXP, SEXP)) R_GetCCallable("rxode2random","_rxode2random_invWR1d");
   }
   return fun(dSEXP, nuSEXP, omegaIsCholSEXP);
-}
-
-SEXP _rxode2_convertId_(SEXP id) {
-  static SEXP (*fun)(SEXP) = NULL;
-  if (fun == NULL) {
-    fun = (SEXP (*)(SEXP)) R_GetCCallable("rxode2random","_rxode2random_convertId_");
-  }
-  return fun(id);
 }
 
 getRxSeed1_t getRxSeed1;
@@ -403,7 +464,7 @@ seedEng_t seedEng;
 rxunif_t rxodeUnif;
 
 
-SEXP _rxode2_assignSeedInfo(void) {
+extern "C" SEXP _rxode2_assignSeedInfo(void) {
   getRxSeed1 = (getRxSeed1_t)R_GetCCallable("rxode2random","_rxode2random_getRxSeed1");
   setSeedEng1 = (setSeedEng1_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1");
   setRxSeedFinal = (setRxSeedFinal_t)R_GetCCallable("rxode2random","_rxode2random_setRxSeedFinal");
