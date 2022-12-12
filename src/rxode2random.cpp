@@ -563,11 +563,19 @@ rxunif_t rxodeUnif;
 
 
 extern "C" SEXP _rxode2_assignSeedInfo(void) {
-  getRxSeed1 = (getRxSeed1_t)R_GetCCallable("rxode2random","_rxode2random_getRxSeed1");
-  setSeedEng1 = (setSeedEng1_t)R_GetCCallable("rxode2random","_rxode2random_setSeedEng1");
-  setRxSeedFinal = (setRxSeedFinal_t)R_GetCCallable("rxode2random","_rxode2random_setRxSeedFinal");
-  seedEng = (seedEng_t) R_GetCCallable("rxode2random","_rxode2random_seedEng");
-  rxodeUnif = (rxunif_t) R_GetCCallable("rxode2random", "rxunif");
+  BEGIN_RCPP
+  if (!rxode2random_loaded) {
+    rxode2random_loaded = true;
+    rxode2random = loadNamespace("rxode2random");
+  }
+  Function fun = as<Function>(rxode2random[".funPtrs"]);
+  List ptr = as<List>(fun());
+  getRxSeed1 = (getRxSeed1_t)(R_ExternalPtrAddr(ptr[0]));
+  setSeedEng1 = (setSeedEng1_t)(R_ExternalPtrAddr(ptr[1]));
+  setRxSeedFinal = (setRxSeedFinal_t)(R_ExternalPtrAddr(ptr[2]));
+  seedEng = (seedEng_t) (R_ExternalPtrAddr(ptr[3]));
+  rxodeUnif = (rxunif_t) (R_ExternalPtrAddr(ptr[4]));
   return R_NilValue;
+  END_RCPP
 }
 
