@@ -37,7 +37,7 @@
 #'
 #' }
 #' @export
-rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
+rxnormV  <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(mean, len = 1)
   checkmate::assertNumeric(sd, lower = 0, len = 1)
   checkmate::assertCount(n)
