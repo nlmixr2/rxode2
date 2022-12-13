@@ -1,5 +1,4 @@
 rxTest({
-
   warn1 <- function(code) {
     if (rxCores() == 1L) {
       x <- force(code)
@@ -63,14 +62,13 @@ rxTest({
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
 
-      x <- rxnorm(n = 1e5)
+      x <- suppressMessages(rxnorm(n = 1e5))
       expect_equal(mean(x), 0, tolerance = 0.01)
 
       expect_equal(sd(x), 1, tolerance = 0.01)
     })
-
   })
-  
+
   test_that("rbinom", {
     rx <- rxode2({
       x1 <- rbinom(4, 0.5)
@@ -750,7 +748,7 @@ rxTest({
   })
 
   test_that("simeps", {
-    
+
     rx1 <- rxode2({
       c <- 0 + err
       i <- 0
@@ -759,7 +757,7 @@ rxTest({
     e <- et(0, 10)
 
     rxWithSeed(10, {
-      
+
       f1 <- suppressMessages(rxSolve(rx1, e, sigma = lotri(err ~ 1)))
 
       expect_true(f1$c[1] != 0)
