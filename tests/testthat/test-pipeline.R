@@ -1,5 +1,4 @@
 rxTest({
-
   # Test pipeline style of interacting with rxode2
 
   mod <- rxode2({
@@ -137,7 +136,9 @@ test_that("drop linCmt() endpoint (#355)", {
       linCmt() ~ add(addSd)
     })
   }
-  expect_error(newmod <- model(ui, -linCmt()~.), NA)
+  suppressMessages(
+    expect_error(newmod <- model(ui, -linCmt()~.), NA)
+  )
   expect_equal(
     newmod$lstExpr,
     list(
