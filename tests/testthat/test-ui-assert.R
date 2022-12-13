@@ -1,6 +1,5 @@
 rxTest({
   test_that("assert properties of rxUi models", {
-
     one.cmt <- function() {
       ini({
         tka <- 0.45
@@ -75,8 +74,12 @@ rxTest({
       })
     }
 
-    expect_error(assertRxUi(rnorm))
-
+    suppressMessages(
+      expect_error(
+        assertRxUi(rnorm),
+        "needs to be a rxUi model"
+      )
+    )
     expect_error(assertRxUi(one.cmt), NA)
 
     expect_error(assertRxUiSingleEndpoint(pk.turnover.emax))
@@ -155,12 +158,9 @@ rxTest({
 
     expect_error(assertRxUiMixedOnly(one.cmt.pop))
     expect_error(assertRxUiPopulationOnly(one.cmt.pop), NA)
-
-
   })
 
   test_that("There must be at least one prediction assertion", {
-
     uif <- function() {
       ini({
         tka <- 4
@@ -186,12 +186,9 @@ rxTest({
       assertRxUiPrediction(tmp),
       regexp="there must be at least one prediction"
     )
-
-
   })
 
   test_that("Transformably and non-transformably normal", {
-
     one.cmt <- function() {
       ini({
         tka <- 0.45
@@ -213,12 +210,9 @@ rxTest({
 
     expect_error(assertRxUiNormal(one.cmt))
     expect_error(assertRxUiTransformNormal(one.cmt), NA)
-
   })
 
-
   test_that("mu ref only", {
-
     one.cmt <- function() {
       ini({
         tka <- 0.45

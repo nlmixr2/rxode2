@@ -1,6 +1,5 @@
 rxTest({
   test_that("comments are parsed correctly", {
-
     cmt <- c("function() {", "      ini({", "        ## You may label each parameter with a comment",
              "        tka <- 0.45 # Log Ka", "        tcl <- log(c(0, 2.7, 100)) # Log Cl",
              "        ## This works with interactive models", "        ## You may also label the preceding line with label(\"label text\")",
@@ -18,8 +17,9 @@ rxTest({
             "        v <- exp(tv + eta.v)", "        linCmt() ~ add(add.sd)",
             "    })", "}")
 
-    expect_equal(.rxReplaceCommentWithLabel(cmt), eq)
-
+    suppressMessages(
+      expect_equal(.rxReplaceCommentWithLabel(cmt), eq)
+    )
     # Leave comment labels in here as they are required for equality testing below
     one.cmt <- function() {
       ini({
