@@ -1,6 +1,4 @@
 test_that("tests the internal df repetition routines", {
-
-
   expect_equal(
     .vecDf(c(a = 1, b = 1, c = 3), 3),
     structure(list(

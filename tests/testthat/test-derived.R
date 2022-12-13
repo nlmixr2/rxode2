@@ -9,9 +9,9 @@ test_that("v1 rate constants", {
     class = "data.frame", row.names = c(NA, -1L)
     )
   )
-  
+
   p1 <- rxDerived(v1 = 5, k = 0.7, k12 = 0.5, k21 = 0.05, digits = 3)
-  
+
   expect_equal(
     p1,
     structure(list(
@@ -24,9 +24,9 @@ test_that("v1 rate constants", {
     row.names = c(NA, -1L)
     )
   )
-  
+
   p1 <- rxDerived(v1 = 10, k = 0.3, k12 = 0.2, k13 = 0.1, k21 = 0.02, k31 = 0.001, digits = 3)
-  
+
   expect_equal(p1, structure(list(
     vc = 10, kel = 0.3, k12 = 0.2, k21 = 0.02, k13 = 0.1,
     k31 = 0.001, vp = 100, vp2 = 1000, vss = 1110, cl = 3, q = 2,
@@ -42,7 +42,7 @@ test_that("v1 rate constants", {
 
 test_that("Volumes and clearances", {
   p1 <- rxDerived(v1 = 8.0, cl = 4.0, digits = 3)
-  
+
   expect_equal(p1, structure(list(
     vc = 8, kel = 0.5, vss = 8, cl = 4, t12alpha = 1.39,
     alpha = 0.5, A = 0.125, fracA = 1
@@ -50,9 +50,9 @@ test_that("Volumes and clearances", {
   class = "data.frame",
   row.names = c(NA, -1L)
   ))
-  
+
   p1 <- rxDerived(v1 = 5.0, v2 = 50, cl = 3.5, q = 2.5, digits = 3)
-  
+
   expect_equal(p1, structure(list(
     vc = 5, kel = 0.7, k12 = 0.5, k21 = 0.05, vp = 50,
     vss = 55, cl = 3.5, q = 2.5, t12alpha = 0.568, t12beta = 24.2,
@@ -62,12 +62,12 @@ test_that("Volumes and clearances", {
   class = "data.frame",
   row.names = c(NA, -1L)
   ))
-  
+
   p1 <- rxDerived(
     v1 = 10, v2 = 100, v3 = 1000,
     cl = 3, q = 2, q2 = 1, digits = 3
   )
-  
+
   expect_equal(p1, structure(list(
     vc = 10, kel = 0.3, k12 = 0.2, k21 = 0.02, k13 = 0.1,
     k31 = 0.001, vp = 100, vp2 = 1000, vss = 1110, cl = 3, q = 2,
