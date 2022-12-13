@@ -1,12 +1,10 @@
 rxTest({
   test_that("binding together", {
-
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        tv <- exp(3.45) # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         add.sd <- 0.7
       })
       model({
@@ -86,11 +84,9 @@ rxTest({
       eff2 ~ add(idr.sd2) | matt
     }, append=TRUE)
 
-
     expect_true(any(addModelLine$iniDf$name == "idr.sd2"))
     expect_false(any(addModelLine$iniDf$name == "eff"))
     expect_false(any(addModelLine$iniDf$name == "eff2"))
     expect_false(any(addModelLine$iniDf$name == "matt"))
-
   })
 })

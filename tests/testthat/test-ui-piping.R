@@ -1275,12 +1275,9 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- exp(3.45); # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         add.sd <- 0.7
       })
       model({
@@ -1297,7 +1294,6 @@ rxTest({
     expect_error(ocmt %>%
                    model(ka <- exp(tka + eta.ka)),
                  NA)
-
   })
 
 
@@ -1305,12 +1301,9 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- exp(3.45) # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         add.sd <- 0.7
       })
       model({
@@ -1361,12 +1354,9 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- exp(3.45) # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         add.sd <- 0.7
       })
       model({
@@ -1397,11 +1387,8 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- 0.45 # Ka
-        tcl <- 1 # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- 1
         add.sd <- 0.7
       })
       model({
@@ -1477,12 +1464,9 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        eta.v ~ 0.01 # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        eta.v ~ 0.01
         add.sd <- 0.7
       })
       model({
@@ -1536,12 +1520,9 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        eta.v ~ 0.01 # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        eta.v ~ 0.01
         add.sd <- 0.7
         tprop <- 0.5
         prop.eta ~ 0.01
@@ -1565,21 +1546,18 @@ rxTest({
     expect_equal(f2$theta, f1$theta)
 
     expect_equal(f2$omega, f1$omega)
-
   })
 
-
   test_that("Pre-declaring list of covariates works", {
-
     rxSetCovariateNamesForPiping(c("WT","HT", "TC"))
 
     # Note this is case sensitive
 
     one.compartment <- function() {
       ini({
-        tka <- 0.45 ; label("Log Ka")
-        tcl <- 1 ; label("Log Cl")
-        tv <- 3.45 ; label("Log V")
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -1598,7 +1576,6 @@ rxTest({
     }
 
     # now TC is detected as a covariate instead of a population parameter
-
     one.compartment %>%
       model({ka <- exp(tka + eta.ka + TC * cov_C)}) ->
       mod
@@ -1614,8 +1591,6 @@ rxTest({
 
     expect_true("cov_C" %in% mod$iniDf$name)
     expect_true("TC" %in% mod$iniDf$name)
-
-
   })
 })
 
