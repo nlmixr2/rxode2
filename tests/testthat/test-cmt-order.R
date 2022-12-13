@@ -21,13 +21,16 @@ rxTest({
 
     expect_equal(c("intestine", "blood"), rxState(mod))
 
-    expect_error(expect_message(rxode2({
-      a <- 6
-      b <- 0.6
-      cmt(matt) # cmt = 1 now
-      d / dt(intestine) <- -a * intestine
-      d / dt(blood) <- a * intestine - b * blood
-    })))
+    expect_output(
+      expect_error(expect_message(rxode2({
+        a <- 6
+        b <- 0.6
+        cmt(matt) # cmt = 1 now
+        d / dt(intestine) <- -a * intestine
+        d / dt(blood) <- a * intestine - b * blood
+      }))),
+      regexp = "compartment 'matt' needs differential equations defined"
+    )
 
     tmp <- rxode2({
       a <- 6
