@@ -53,10 +53,10 @@ rxTest({
 
     t <- tempfile("test-evid3", fileext = ".csv")
 
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       cat("t\n")
       x <- rxSolve(mod1, et)
-    })
+    }))
 
     d <- read.csv(t)
     unlink(t)
@@ -98,10 +98,10 @@ rxTest({
 
     t <- tempfile("test-evid3", fileext = ".csv")
 
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       cat("t\n")
       x <- rxSolve(mod1, et)
-    })
+    }))
 
     d <- read.csv(t)
     unlink(t)
@@ -147,10 +147,10 @@ rxTest({
 
     t <- tempfile("test-evid3", fileext = ".csv")
 
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       cat("t\n")
       x <- rxSolve(mod1, et)
-    })
+    }))
 
     d <- read.csv(t)
     unlink(t)
