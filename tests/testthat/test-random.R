@@ -305,7 +305,6 @@ rxTest({
         x1 <- rf()
       })))
     })
-
   })
 
   test_that("rgamma tests", {
