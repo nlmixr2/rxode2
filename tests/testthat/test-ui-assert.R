@@ -3,13 +3,9 @@ rxTest({
 
     one.cmt <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -29,25 +25,24 @@ rxTest({
         tka <- log(1)
         tcl <- log(0.1)
         tv <- log(10)
-        ##
+
         eta.ktr ~ 1
         eta.ka ~ 1
         eta.cl ~ 2
         eta.v ~ 1
         prop.err <- 0.1
         pkadd.err <- 0.1
-        ##
+
         temax <- logit(0.8)
-        #temax <- 7.5
         tec50 <- log(0.5)
         tkout <- log(0.05)
         te0 <- log(100)
-        ##
+
         eta.emax ~ .5
         eta.ec50  ~ .5
         eta.kout ~ .5
         eta.e0 ~ .5
-        ##
+
         pdadd.err <- 10
       })
       model({
@@ -94,13 +89,9 @@ rxTest({
 
     one.cmt.t <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -123,13 +114,9 @@ rxTest({
 
     one.cmt.t.est <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -152,13 +139,9 @@ rxTest({
 
     one.cmt.pop <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         add.sd <- 0.7
         nu <- 3
       })
@@ -211,13 +194,9 @@ rxTest({
 
     one.cmt <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -242,13 +221,9 @@ rxTest({
 
     one.cmt <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -267,13 +242,9 @@ rxTest({
 
     one.cmt <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -290,16 +261,11 @@ rxTest({
 
     expect_error(assertRxUiMuRefOnly(one.cmt))
 
-
     one.cmt <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         eta.ka ~ 0.6 | occ
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -313,7 +279,12 @@ rxTest({
       })
     }
 
-    expect_error(assertRxUiRandomOnIdOnly(one.cmt))
-
+    expect_warning(
+      expect_error(
+        assertRxUiRandomOnIdOnly(one.cmt),
+        regexp = "can only have random effects on ID"
+      ),
+      regexp = "some etas defaulted to non-mu referenced"
+    )
   })
 })
