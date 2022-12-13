@@ -16,7 +16,6 @@ rxTest({
     d / dt(blood) <- a * intestine - b * blood
   })
 
-
   ms <- c("liblsoda", "lsoda", "dop853")
   for (m in ms) {
     skip_if_not_installed("units")
