@@ -1,13 +1,10 @@
 rxTest({
   test_that("fixef()", {
-    
     one.cmt <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
         tv <- 3.45
-        ## the label("Label name") works with all models
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -20,7 +17,7 @@ rxTest({
         linCmt() ~ add(add.sd) + dnorm()
       })
     }
-    
+
     expect_equal(nlme::fixef(one.cmt),
                  c(tka = 0.45, tcl = 0.993251773010283, tv = 3.45, add.sd = 0.7))
 
@@ -28,7 +25,5 @@ rxTest({
 
     expect_equal(nlme::fixef(f),
                  c(tka = 0.45, tcl = 0.993251773010283, tv = 3.45, add.sd = 0.7))
-    
-    
   })
 })

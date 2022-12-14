@@ -1,10 +1,9 @@
 test_that("ini piping string", {
-  
   one.compartment <- function() {
     ini({
-      tka <- 0.45 
-      tcl <- 1 
-      tv <- 3.45 
+      tka <- 0.45
+      tcl <- 1
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -27,15 +26,17 @@ test_that("ini piping string", {
   theta <- tmp$theta
 
   fixItems <- setNames(rep("fix",length(theta)), names(theta))
-  ui <- tmp %>% ini(fixItems)
+  suppressMessages(
+    ui <- tmp %>% ini(fixItems)
+  )
 
   expect_true(all(ui$iniDf$fix[!is.na(ui$iniDf$ntheta)]))
-  
 
   unfixItems <- setNames(rep("unfix",length(theta)), names(theta))
 
-  ui2 <- ui %>% ini(unfixItems)
+  suppressMessages(
+    ui2 <- ui %>% ini(unfixItems)
+  )
 
   expect_true(all(!ui2$iniDf$fix[!is.na(ui2$iniDf$ntheta)]))
- 
 })

@@ -1,6 +1,5 @@
 rxTest({
   test_that("pred model errors", {
-
     fn1 <- function() {
       ini({
         tKA <- 1
@@ -114,7 +113,14 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(fn3))
+    expect_message(
+      expect_error(
+        rxode2(fn3),
+        "syntax/parsing errors, see above"
+      ),
+      regexp = "`prop` requires 1 argument(s), you specified 0",
+      fixed = TRUE
+    )
 
     fn4 <- function() {
       ini({
@@ -269,7 +275,15 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn11)))
+    suppressMessages(
+      expect_error(
+        expect_warning(
+          rxode2(fn11),
+          regexp = "`beta` requires 2 argument(s), you specified 1"
+        ),
+        regexp = "syntax/parsing errors, see above"
+      )
+    )
 
     fn12 <- function() {
       ini({
@@ -293,7 +307,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn12)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn12)))
+    )
 
     fn13 <- function() {
       ini({
@@ -333,7 +349,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn14)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn14)))
+    )
 
     fn15 <- function() {
       ini({
@@ -417,7 +435,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn17)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn17)))
+    )
 
     fn18 <- function() {
       ini({
@@ -458,7 +478,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn19)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn19)))
+    )
 
     fn20 <- function() {
       ini({
@@ -482,7 +504,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn20)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn20)))
+    )
 
     fn21 <- function() {
       ini({
@@ -525,7 +549,9 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(fn22))
+    suppressMessages(
+      expect_error(rxode2(fn22))
+    )
 
     fn23 <- function() {
       ini({
@@ -545,7 +571,9 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(fn23))
+    suppressMessages(
+      expect_error(rxode2(fn23))
+    )
 
     fn24 <- function() {
       ini({
@@ -567,7 +595,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn24)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn24)))
+    )
 
     fn25 <- function() {
       ini({
@@ -587,7 +617,9 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(fn25))
+    suppressMessages(
+      expect_error(rxode2(fn25))
+    )
 
     fn26 <- function() {
       ini({
@@ -609,7 +641,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn26)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn26)))
+    )
 
     fn27 <- function() {
       ini({
@@ -629,7 +663,9 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(fn27))
+    suppressMessages(
+      expect_error(rxode2(fn27))
+    )
 
     fn28 <- function() {
       ini({
@@ -651,7 +687,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn28)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn28)))
+    )
 
     fn29 <- function() {
       ini({
@@ -694,7 +732,9 @@ rxTest({
         linCmt() ~ dnorm(par1, par2)
       })
     }
-    expect_error(rxode2(fn30))
+    suppressMessages(
+      expect_error(rxode2(fn30))
+    )
 
     fn31 <- function() {
       ini({
@@ -737,7 +777,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn32)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn32)))
+    )
 
     fn33 <- function() {
       ini({
@@ -759,7 +801,9 @@ rxTest({
       })
     }
 
-    expect_error(expect_message(rxode2(fn33)))
+    suppressMessages(
+      expect_error(expect_message(rxode2(fn33)))
+    )
 
     fn1 <- function() {
       ini({
@@ -809,6 +853,5 @@ rxTest({
     }
 
     expect_error(rxode2(fn35), NA)
-
   })
 })

@@ -1,13 +1,9 @@
 rxTest({
   one.cmt <- function() {
     ini({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Log Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
-      ## the label("Label name") works with all models
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -25,13 +21,10 @@ rxTest({
 
   cov <- function() {
     ini({
-      ## You may label each parameter with a comment
-      tka <- 0.45 # Log Ka
-      tcl <- log(c(0, 2.7, 100)) # Log Cl
-      ## This works with interactive models
-      ## You may also label the preceding line with label("label text")
-      tv <- 3.45; label("log V")
-      tvp <- 3.45; label("log V")
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      tvp <- 3.45
       cl.wt <- 0.1
       v.wt <- 0.1
       cl.sex <- 0.1
@@ -41,7 +34,6 @@ rxTest({
       vp.wt <- 1
       vp.sex <- 1
       vp.age <- 1
-      ## the label("Label name") works with all models
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -75,14 +67,12 @@ rxTest({
     expect_equal(rxState(f2), c("depot", "center"))
   })
 
-
   test_that("rxode2 rxLhs works with ui objects", {
     expect_equal(rxLhs(one.cmt), c("ka", "cl", "v"))
     expect_equal(rxLhs(f), c("ka", "cl", "v"))
     expect_equal(rxLhs(cov), c("ka", "cl", "v", "vp", "cp"))
     expect_equal(rxLhs(f2), c("ka", "cl", "v", "vp", "cp"))
   })
-
 
   test_that("rxode2 rxParams works with ui objects", {
     expect_equal(rxParams(one.cmt), c("tka", "eta.ka", "tcl", "eta.cl", "tv", "eta.v"))
@@ -98,10 +88,8 @@ rxTest({
     expect_equal(rxInits(f2), structure(numeric(0), .Names = character(0)))
   })
 
-
   test_that("data frame doesn't work by itself", {
     matt <- data.frame(a=3)
     expect_error(rxModelVars(matt))
   })
-
 })

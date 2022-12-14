@@ -1,6 +1,5 @@
 rxTest({
   test_that("Now test fix and unfixing", {
-
     one.compartment <- function() {
       ini({
         tka <- 0.45 ; label("Log Ka")
@@ -24,36 +23,50 @@ rxTest({
       })
     }
 
-    f2 <- one.compartment %>% ini(tka=fix)
+    suppressMessages(
+      f2 <- one.compartment %>% ini(tka=fix)
+    )
     w <- which(f2$iniDf$name == "tka")
     expect_true(f2$iniDf$fix[w])
 
-    f3 <- f2 %>% ini(tka=unfix)
+    suppressMessages(
+      f3 <- f2 %>% ini(tka=unfix)
+    )
     w <- which(f3$iniDf$name == "tka")
     expect_false(f3$iniDf$fix[w])
 
-    f2 <- one.compartment %>% ini(tka=fix(3))
+    suppressMessages(
+      f2 <- one.compartment %>% ini(tka=fix(3))
+    )
     w <- which(f2$iniDf$name == "tka")
     expect_true(f2$iniDf$fix[w])
 
-    f3 <- f2 %>% ini(tka=unfix(3))
+    suppressMessages(
+      f3 <- f2 %>% ini(tka=unfix(3))
+    )
     w <- which(f3$iniDf$name == "tka")
     expect_false(f3$iniDf$fix[w])
-
 
     # should fix the entire block
-    f2 <- one.compartment %>% ini(eta.cl=fix)
+    suppressMessages(
+      f2 <- one.compartment %>% ini(eta.cl=fix)
+    )
     expect_equal(f2$iniDf[!is.na(f2$iniDf$neta1), "fix"], c(FALSE, TRUE, TRUE, TRUE))
 
     # should unfix the entire block
-    f3 <- f2 %>% ini(eta.cl=unfix)
+    suppressMessages(
+      f3 <- f2 %>% ini(eta.cl=unfix)
+    )
     expect_equal(f3$iniDf[!is.na(f3$iniDf$neta1), "fix"], c(FALSE, FALSE, FALSE, FALSE))
 
-    f2 <- one.compartment %>% ini(fix(eta.cl))
+    suppressMessages(
+      f2 <- one.compartment %>% ini(fix(eta.cl))
+    )
     expect_equal(f2$iniDf[!is.na(f2$iniDf$neta1), "fix"], c(FALSE, TRUE, TRUE, TRUE))
 
-    f3 <- f2 %>% ini(unfixed(eta.cl))
+    suppressMessages(
+      f3 <- f2 %>% ini(unfixed(eta.cl))
+    )
     expect_equal(f3$iniDf[!is.na(f3$iniDf$neta1), "fix"], c(FALSE, FALSE, FALSE, FALSE))
-
   })
 })

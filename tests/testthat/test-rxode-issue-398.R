@@ -2,9 +2,9 @@ rxTest({
   test_that("RxODE#398", {
     filename <- test_path("test-issue-398.qs")
     skip_if_not(file.exists(filename))
-    
+
     NM_data <- qs::qread(filename)
-    
+
     # Define and Compile model
     mod1 <- rxode2({
       CLH_int <- THETA[1]
@@ -32,9 +32,11 @@ rxTest({
       MDV <- MDV
       PRED <- C_centr
     })
-    
+
     # simulation
     THETA <- c(10, 2.619, 10, 22.14, 5)
-    expect_error(solve(mod1, NM_data, params = setNames(THETA, paste0("THETA[", 1:5, "]"))), NA)
+    suppressWarnings(
+      expect_error(solve(mod1, NM_data, params = setNames(THETA, paste0("THETA[", 1:5, "]"))), NA)
+    )
   })
 })
