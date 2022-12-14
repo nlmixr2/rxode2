@@ -1,14 +1,10 @@
 rxTest({
   test_that("rename for ui makes sense", {
-
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- exp(3.45) # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         add.sd <- 0.7
       })
       model({
@@ -21,7 +17,6 @@ rxTest({
         cp ~ add(add.sd)
       })
     }
-
 
     expect_error(rxRename(ocmt, d/dt(cp1) ~ cp))
     expect_error(rxRename(ocmt, cp1 ~ cp))
@@ -51,12 +46,9 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- exp(3.45) # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         add.sd <- 0.7
       })
       model({
@@ -78,13 +70,10 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- exp(3.45) # log V
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         lag <- 1
-        ## the label("Label name") works with all models
         add.sd <- 0.7
       })
       model({
@@ -108,13 +97,10 @@ rxTest({
 
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- exp(3.45) # log V
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
         d <- 1
-        ## the label("Label name") works with all models
         add.sd <- 0.7
       })
       model({
@@ -131,6 +117,5 @@ rxTest({
 
     f <- dplyr::rename(ocmt, alag=d)
     expect_equal(f$lstExpr[[6]], quote(lag(depot) <- alag))
-
   })
 })

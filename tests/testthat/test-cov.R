@@ -25,7 +25,7 @@ rxTest({
     cov.lin <- approxfun(et$time, et$c, yleft = et$c[1], yright = et$c[length(cov$c)])
 
     t <- tempfile("temp", fileext = ".csv")
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       cat("t,c\n")
       out <- rxSolve(ode,
                      params = c(a = -8 / 3, b = -10),
@@ -35,7 +35,7 @@ rxTest({
                      covsInterpolation = "linear",
                      method = meth
                      )
-    })
+    }))
 
     lin.interp <- read.csv(t)
     unlink(t)
@@ -51,7 +51,7 @@ rxTest({
     })
 
     ## NONMEM interpolation
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       cat("t,c\n")
       out <- rxSolve(ode,
                      params = c(a = -8 / 3, b = -10),
@@ -60,7 +60,7 @@ rxTest({
                      covsInterpolation = "nocb", addCov = TRUE,
                      method = meth
                      )
-    })
+    }))
 
     lin.interp <- read.csv(t)
     unlink(t)
@@ -77,7 +77,7 @@ rxTest({
 
 
     ## midpoint interpolation
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       cat("t,c\n")
       out <- rxSolve(ode,
                      params = c(a = -8 / 3, b = -10),
@@ -86,7 +86,7 @@ rxTest({
                      covsInterpolation = "midpoint", addCov = TRUE,
                      method = meth
                      )
-    })
+    }))
     lin.interp <- read.csv(t)
     unlink(t)
 
@@ -103,7 +103,7 @@ rxTest({
 
 
     ## covs_interpolation
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       cat("t,c\n")
       out <- rxSolve(ode,
                      params = c(a = -8 / 3, b = -10),
@@ -112,7 +112,7 @@ rxTest({
                      covsInterpolation = "locf", addCov = TRUE,
                      method = meth
                      )
-    })
+    }))
 
     lin.interp <- read.csv(t)
     unlink(t)
@@ -128,11 +128,10 @@ rxTest({
       expect_equal(lin.interp$c, lin.interp$c2)
     })
 
-
     out <- as.data.frame(out)
     out <- out[, names(out) != "c"]
 
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       out1 <-
         rxSolve(ode,
                 params = c(a = -8 / 3, b = -10, c = 0),
@@ -140,7 +139,7 @@ rxTest({
                 inits = c(X = 1, Y = 1, Z = 1), addCov = TRUE,
                 method = meth
                 )
-    })
+    }))
     unlink(t)
 
     out1 <- as.data.frame(out1)
@@ -156,7 +155,7 @@ rxTest({
 
     et <- cbind(et0, cov)
 
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       out <- rxSolve(ode,
                      params = c(a = -8 / 3, b = -10),
                      events = et,
@@ -172,7 +171,7 @@ rxTest({
                       addCov = TRUE,
                       method = meth
                       )
-    })
+    }))
     unlink(t)
 
     test_that("time varying covariates output covariate in data frame", {
@@ -180,11 +179,10 @@ rxTest({
       expect_equal(cov$a[et0$get.obs.rec()], out$a)
     })
 
-
     cov <- data.frame(c = et0$get.EventTable()$time + units::set_units(1, hr))
     et <- cbind(et0, cov)
 
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       out2 <- rxSolve(ode,
                       params = c(a = -8 / 3, b = -10),
                       events = et,
@@ -192,7 +190,7 @@ rxTest({
                       addCov = TRUE,
                       method = meth
                       )
-    })
+    }))
     unlink(t)
 
     test_that("Before assinging the time varying to -8/3, out and out2 should be different", {
@@ -202,21 +200,20 @@ rxTest({
     # context(sprintf("Test First Assignment (%s)", meth))
 
     ## Assign a time-varying to a simple parameter
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       out$a <- -8 / 3
-    })
+    }))
     unlink(t)
 
     test_that("The out$a=-8/3 works.", {
       expect_equal(as.data.frame(out), as.data.frame(out2))
     })
 
-
     # context(sprintf("Test Second Assignment (%s)", meth))
 
-    .rxWithSink(t, {
+    suppressWarnings(.rxWithSink(t, {
       out$a <- out3$a
-    })
+    }))
     unlink(t)
 
     test_that("the out$a = time varying covariate works.", {
@@ -226,17 +223,13 @@ rxTest({
     # context(sprintf("Covariate solve with data frame event table (%s)", meth))
 
     ## Covariate solve for data frame
-    d3 <- structure(list(
+    d3 <- data.frame(
       TIME = c(0, 0, 2.99270072992701, 192, 336, 456),
       AMT = c(137L, 0L, -137L, 0L, 0L, 0L),
       V2I = c(909L, 909L, 909L, 909L, 909L, 909L),
       V1I = c(545L, 545L, 545L, 545L, 545L, 545L),
       CLI = c(471L, 471L, 471L, 471L, 471L, 471L),
       EVID = c(10101L, 0L, 10101L, 0L, 0L, 0L)
-    ),
-    class = "data.frame",
-    row.names = c(NA, -6L),
-    .Names = c("TIME", "AMT", "V2I", "V1I", "CLI", "EVID")
     )
 
     mod1 <- rxode2({
@@ -254,12 +247,16 @@ rxTest({
       A_tr3(0) <- exp(ETA[1] + THETA[1])
     })
 
-    tmp <- rxSolve(mod1, d3, structure(c(2.02103, 4.839305, 3.518676, -1.391113, 0.108127023, -0.064170725, 0.087765769),
-                                       .Names = c(sprintf("THETA[%d]", 1:4), sprintf("ETA[%d]", 1:3))
-                                       ),
-                   addCov = TRUE,
-                   method = meth
-                   )
+    tmp <-
+      rxSolve(
+        mod1, d3,
+        setNames(
+          c(2.02103, 4.839305, 3.518676, -1.391113, 0.108127023, -0.064170725, 0.087765769),
+          c(sprintf("THETA[%d]", 1:4), sprintf("ETA[%d]", 1:3))
+        ),
+        addCov = TRUE,
+        method = meth
+      )
 
     test_that("Data Frame single subject solve", {
       expect_equal(
@@ -271,7 +268,7 @@ rxTest({
       expect_equal(names(tmp$params), mod1$params[-(1:3)])
     })
 
-    d3 <- structure(list(
+    d3 <- data.frame(
       ID = c(1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L),
       TIME = c(0, 0, 2.99270072992701, 192, 336, 456, 0, 0, 3.07272727272727, 432),
       AMT = c(137L, 0L, -137L, 0L, 0L, 0L, 110L, 0L, -110L, 0L),
@@ -279,19 +276,17 @@ rxTest({
       V1I = c(545L, 545L, 545L, 545L, 545L, 545L, 306L, 306L, 306L, 306L),
       CLI = c(471L, 471L, 471L, 471L, 471L, 471L, 405L, 405L, 405L, 405L),
       EVID = c(10101L, 0L, 10101L, 0L, 0L, 0L, 10101L, 0L, 10101L, 0L)
-    ),
-    class = "data.frame", row.names = c(NA, -10L),
-    .Names = c("ID", "TIME", "AMT", "V2I", "V1I", "CLI", "EVID")
     )
 
-
-    par2 <- matrix(c(
-      2.02103, 4.839305, 3.518676, -1.391113, 0.108127023, -0.064170725, 0.087765769,
-      2.02103, 4.839305, 3.518676, -1.391113, -0.064170725, 0.087765769, 0.108127023
-    ),
-    nrow = 2, byrow = T,
-    dimnames = list(NULL, c(sprintf("THETA[%d]", 1:4), sprintf("ETA[%d]", 1:3)))
-    )
+    par2 <-
+      matrix(
+        c(
+          2.02103, 4.839305, 3.518676, -1.391113, 0.108127023, -0.064170725, 0.087765769,
+          2.02103, 4.839305, 3.518676, -1.391113, -0.064170725, 0.087765769, 0.108127023
+        ),
+        nrow = 2, byrow = T,
+        dimnames = list(NULL, c(sprintf("THETA[%d]", 1:4), sprintf("ETA[%d]", 1:3)))
+      )
 
     tmp <- rxSolve(mod1, d3, par2, addCov = TRUE, cores = 2, method = meth)
 
@@ -308,20 +303,21 @@ rxTest({
 
     ## Now check missing covariate values.
 
-    d3na <- structure(list(
-      ID = c(1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L),
-      TIME = c(0, 0, 2.99270072992701, 192, 336, 456, 0, 0, 3.07272727272727, 432),
-      AMT = c(137L, 0L, -137L, 0L, 0L, 0L, 110L, 0L, -110L, 0L),
-      V2I = c(909L, NA_integer_, 909L, 909L, 909L, 909L, 942L, 942L, 942L, 942L),
-      V1I = c(545L, 545L, 545L, 545L, 545L, 545L, 306L, 306L, 306L, NA_integer_),
-      CLI = c(471L, 471L, 471L, 471L, NA_integer_, 471L, 405L, 405L, 405L, 405L),
-      EVID = c(10101L, 0L, 10101L, 0L, 0L, 0L, 10101L, 0L, 10101L, 0L)
-    ),
-    class = "data.frame", row.names = c(NA, -10L),
-    .Names = c("ID", "TIME", "AMT", "V2I", "V1I", "CLI", "EVID")
-    )
+    d3na <-
+      data.frame(
+        ID = c(1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L),
+        TIME = c(0, 0, 2.99270072992701, 192, 336, 456, 0, 0, 3.07272727272727, 432),
+        AMT = c(137L, 0L, -137L, 0L, 0L, 0L, 110L, 0L, -110L, 0L),
+        V2I = c(909L, NA_integer_, 909L, 909L, 909L, 909L, 942L, 942L, 942L, 942L),
+        V1I = c(545L, 545L, 545L, 545L, 545L, 545L, 306L, 306L, 306L, NA_integer_),
+        CLI = c(471L, 471L, 471L, 471L, NA_integer_, 471L, 405L, 405L, 405L, 405L),
+        EVID = c(10101L, 0L, 10101L, 0L, 0L, 0L, 10101L, 0L, 10101L, 0L)
+      )
 
-    tmp <- rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth)
+    expect_warning(
+      tmp <- rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
+      regexp = "column 'V1I' has only 'NA' values for id '2'"
+    )
 
     tmp2 <- rxSolve(mod1, d3, par2, addCov = TRUE, cores = 2, method = meth)
 
@@ -332,7 +328,7 @@ rxTest({
       }
     })
 
-    d3na <- structure(list(
+    d3na <- data.frame(
       ID = c(1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L),
       TIME = c(0, 0, 2.99270072992701, 192, 336, 456, 0, 0, 3.07272727272727, 432),
       AMT = c(137L, 0L, -137L, 0L, 0L, 0L, 110L, 0L, -110L, 0L),
@@ -340,23 +336,22 @@ rxTest({
       V1I = c(545L, 545L, 545L, 545L, 545L, 545L, NA_integer_, NA_integer_, NA_integer_, NA_integer_),
       CLI = c(471L, 471L, 471L, 471L, NA_integer_, 471L, 405L, 405L, 405L, 405L),
       EVID = c(10101L, 0L, 10101L, 0L, 0L, 0L, 10101L, 0L, 10101L, 0L)
-    ),
-    class = "data.frame", row.names = c(NA, -10L),
-    .Names = c("ID", "TIME", "AMT", "V2I", "V1I", "CLI", "EVID")
     )
 
     test_that("All covariates are NA give a warning", {
-      expect_warning(
+      expect_warning(expect_warning(
         rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
-        "column 'V1I' has only 'NA' values for id '2'"
+        "column 'V1I' has only 'NA' values for id '2'"),
+        regexp = "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'",
+        fixed = TRUE
       )
     })
   }
 
-  # context("time-varying covariates work with ODEs")
+  # time-varying covariates work with ODEs
 
   test_that("time varying covariates lhs", {
-    dfadvan <- structure(list(
+    dfadvan <- data.frame(
       ID = c(
         1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
         1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
@@ -387,8 +382,6 @@ rxTest({
         120L, 120L, 120L, 120L, 120L, 120L, 120L, 120L, 120L, 120L, 120L,
         120L, 120L, 120L, 120L
       )
-    ),
-    row.names = c(NA, -52L), class = "data.frame"
     )
 
     mod <- rxode2({

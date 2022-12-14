@@ -1,6 +1,5 @@
 rxTest({
   test_that("ordinal simulation", {
-
     # large simulation model #1
     ord <- function() {
       ini({
@@ -62,10 +61,8 @@ rxTest({
       })
     }
 
-
     tmp <- ord()
     expect_error(tmp$simulationModel, NA)
-
 
     ord <- function() {
       ini({
@@ -157,15 +154,14 @@ rxTest({
       dplyr::as_tibble()
 
     rxWithSeed(42, {
-      
+
       s <- rxSolve(tmp, ev,
                    returnType="tibble", addCov=TRUE)
 
       s <- s %>% dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
-      
+
       expect_equal(sort(unique(s$sim)), c(1, 2))
-      
     })
 
     f <- function() {
@@ -195,22 +191,18 @@ rxTest({
       dplyr::as_tibble()
 
     rxWithSeed(42, {
-      
+
       s <- rxSolve(tmp, ev,
                    returnType="tibble", addCov=TRUE)
 
       s <- s %>% dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
-      
+
       expect_equal(sort(unique(s$sim)), c(0, 0.5))
-      
     })
-
-
   })
 
   test_that("logLik simulations", {
-
     f <- function() {
       ini({
         tkel <- 0.1
@@ -232,7 +224,8 @@ rxTest({
 
     expect_error(tmp$simulationModel, NA)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
+    ev <-
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
       et(id=1:20) %>%
@@ -242,21 +235,16 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
   test_that("normal simulations with dnorm()", {
-
     f <- function() {
       ini({
-        tcl <- log(0.008) # typical value of clearance
-        tv <-  log(0.6)   # typical value of volume
-        ## var(eta.cl)
+        tcl <- log(0.008)
+        tv <-  log(0.6)
         eta.cl + eta.v ~ c(1,
-                           0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
-        # interindividual variability on clearance and volume
-        add.err <- 0.1    # residual variability
+                           0.01, 1)
+        add.err <- 0.1
         lambda <- 0.5
       })
       model({
@@ -273,7 +261,8 @@ rxTest({
 
     expect_error(tmp$simulationModel, NA)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
+    ev <-
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
       et(id=1:20) %>%
@@ -283,21 +272,16 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
   test_that("normal simulations", {
-
     f <- function() {
       ini({
-        tcl <- log(0.008) # typical value of clearance
-        tv <-  log(0.6)   # typical value of volume
-        ## var(eta.cl)
+        tcl <- log(0.008)
+        tv <-  log(0.6)
         eta.cl + eta.v ~ c(1,
-                           0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
-        # interindividual variability on clearance and volume
-        add.err <- 0.1    # residual variability
+                           0.01, 1)
+        add.err <- 0.1
         lambda <- 0.5
       })
       model({
@@ -314,7 +298,8 @@ rxTest({
 
     expect_error(tmp$simulationModel, NA)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
+    ev <-
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
       et(id=1:20) %>%
@@ -324,20 +309,16 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
   test_that("t simulations", {
-
      f <- function() {
       ini({
-        tcl <- log(0.008) # typical value of clearance
-        tv <-  log(0.6)   # typical value of volume
-        ## var(eta.cl)
+        tcl <- log(0.008)
+        tv <-  log(0.6)
         eta.cl + eta.v ~ c(1,
-                           0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
-        # interindividual variability on clearance and volume
-        add.err <- 0.1    # residual variability
+                           0.01, 1)
+        add.err <- 0.1
         lambda <- 0.5
         nu <- 3
       })
@@ -357,7 +338,8 @@ rxTest({
 
     expect_true(regexpr("rxt[(]nu[)]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
+    ev <-
+      et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=2) %>%
       et(id=1:20) %>%
@@ -367,11 +349,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
   test_that("pois simulations", {
-
     f <- function() {
       ini({
         tlambda <- 0.5
@@ -397,11 +377,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
   test_that("binom simulations", {
-
     f <- function() {
       ini({
         tn <- 0.5
@@ -429,11 +407,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
   test_that("beta simulations", {
-
     f <- function() {
       ini({
         talpha <- 0.5
@@ -462,12 +438,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
   test_that("chisq simulations", {
-
     f <- function() {
       ini({
         tdf <- 0.5
@@ -493,12 +466,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
   test_that("dexp simulations", {
-
     f <- function() {
       ini({
         trate <- 0.5
@@ -524,7 +494,6 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
   ## Hyperbolic simulation not supported yet..
@@ -596,13 +565,10 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
   #  "weibull"="rweibull",
-
   test_that("rweibull simulations", {
-
     f <- function() {
       ini({
         ta <- 0.5
@@ -631,22 +597,16 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
-
   test_that("rcauchy simulations", {
-
     f <- function() {
       ini({
-        tcl <- log(0.008) # typical value of clearance
-        tv <-  log(0.6)   # typical value of volume
-        ## var(eta.cl)
+        tcl <- log(0.008)
+        tv <-  log(0.6)
         eta.cl + eta.v ~ c(1,
-                           0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
-        # interindividual variability on clearance and volume
-        add.err <- 10   # residual variability
+                           0.01, 1)
+        add.err <- 10
         lambda <- 0.5
       })
       model({
@@ -658,7 +618,7 @@ rxTest({
         cp ~ prop(add.err) + boxCox(lambda) + dcauchy()# define error model
       })
     }
-    
+
     tmp <- rxode2(f)
 
     expect_error(tmp$simulationModel, NA)
@@ -673,12 +633,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
   test_that("rgamma simulations", {
-
     f <- function() {
       ini({
         ta <- 0.5
@@ -707,12 +664,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
   test_that("rgeom simulations", {
-
     f <- function() {
       ini({
         ta <- logit(0.5)
@@ -738,22 +692,16 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-
   })
 
-
-
   test_that("omega/sigma=NA simulations", {
-
     f <- function() {
       ini({
-        tcl <- log(0.008) # typical value of clearance
-        tv <-  log(0.6)   # typical value of volume
-        ## var(eta.cl)
+        tcl <- log(0.008)
+        tv <-  log(0.6)
         eta.cl + eta.v ~ c(1,
-                           0.01, 1) ## cov(eta.cl, eta.v), var(eta.v)
-        # interindividual variability on clearance and volume
-        add.err <- 0.1    # residual variability
+                           0.01, 1)
+        add.err <- 0.1
         lambda <- 0.5
         nu <- 3
       })
@@ -780,13 +728,14 @@ rxTest({
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-
       .rx1 <- rxSolve(tmp, ev, addCov=TRUE)
       expect_true(all(.rx1$ipredSim != .rx1$sim))
       expect_true(all(.rx1$params$eta.cl != 0))
       expect_true(all(.rx1$params$eta.v != 0))
 
-      .rx2 <- rxSolve(tmp, ev, omega=NA, addCov=TRUE)
+      suppressWarnings(
+        .rx2 <- rxSolve(tmp, ev, omega=NA, addCov=TRUE)
+      )
       expect_true(all(.rx2$ipredSim != .rx2$sim))
       expect_true(all(.rx2$params$eta.cl == 0))
       expect_true(all(.rx2$params$eta.v == 0))
@@ -795,13 +744,10 @@ rxTest({
       expect_true(any(names(.rx3) == "pred"))
       expect_true(all(.rx3$params$eta.cl == 0))
       expect_true(all(.rx3$params$eta.v == 0))
-
     })
-
   })
 
   test_that("negative binomial simulation", {
-
     f <- function() {
       ini({
         tn <- 0.5
@@ -811,14 +757,13 @@ rxTest({
       model({
         n <- exp(tn + eta.n)
         p <- expit(prob)
-        err ~ dnbinom(n, p) 
+        err ~ dnbinom(n, p)
       })
     }
 
     tmp <- rxode2(f)
     expect_error(tmp$simulationModel, NA)
     expect_true(regexpr("rxnbinom[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
-
 
     ev <- et(seq(0.1, 24 * 8, by=12)) %>%
       et(id=1:20) %>%
@@ -828,11 +773,9 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-    
   })
 
   test_that("negative binomial simulation", {
-
     f <- function() {
       ini({
         tn <- 0.5
@@ -842,12 +785,12 @@ rxTest({
       model({
         n <- exp(tn + eta.n)
         p <- expit(prob)
-        err ~ dnbinomMu(n, p) 
+        err ~ dnbinomMu(n, p)
       })
     }
 
     tmp <- rxode2(f)
-    
+
     expect_error(tmp$simulationModel, NA)
     expect_true(regexpr("rxnbinomMu[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
 
@@ -860,8 +803,5 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
-    
   })
-
-
 })

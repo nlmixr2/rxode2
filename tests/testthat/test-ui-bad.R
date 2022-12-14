@@ -1,7 +1,7 @@
 rxTest({
 
   test_that("bad ui", {
-    
+
     f <- function() {
       ini({
         sd <- 1
@@ -11,7 +11,7 @@ rxTest({
       })
     }
     expect_error(f(), "model")
-    
+
   })
   test_that("issue nlmixr#501", {
 
@@ -96,9 +96,9 @@ rxTest({
 
     one.compartment <- function() {
       ini({
-        tka <- 0.45 # Log Ka
-        tcl <- 1 # Log Cl
-        tv <- 3.45    # Log V
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -119,21 +119,20 @@ rxTest({
 
     expect_warning(rxode2(one.compartment))
 
-
     one.compartment <- function() {
       ini({
-        tka <- 0.45 # Log Ka
-        tcl <- 1 # Log Cl
-        tv <- 3.45    # Log V
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
         add.sd <- 0.7
       })
       ini({
-        tka <- 0.45 # Log Ka
-        tcl <- 1 # Log Cl
-        tv <- 3.45    # Log V
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -154,7 +153,6 @@ rxTest({
 
     expect_error(rxode2(one.compartment), "ini")
 
-
     one.compartment <- function() {
       model({
         ka <- exp(tka + eta.ka)
@@ -170,14 +168,16 @@ rxTest({
       drop = "depot"
     }
 
-    expect_error(rxode2(one.compartment), NA)
-
+    expect_warning(
+      expect_error(rxode2(one.compartment), NA),
+      regexp = "function cannot be called directly to produce model object"
+    )
 
     one.compartment <- function() {
       ini({
-        tka <- 0.45 # Log Ka
-        tcl <- 1 # Log Cl
-        tv <- 3.45    # Log V
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -187,14 +187,18 @@ rxTest({
       drop = "depot"
     }
 
-    expect_error(rxode2(one.compartment), "model")
+    expect_error(
+      rxode2(one.compartment),
+      regexp = "rxode2 model function requires one 'model({})' block",
+      fixed = TRUE
+    )
 
 
     one.compartment <- function() {
       ini({
-        tka <- 0.45 # Log Ka
-        tcl <- 1 # Log Cl
-        tv <- 3.45    # Log V
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -222,10 +226,12 @@ rxTest({
       drop = "depot"
     }
 
-    expect_error(rxode2(one.compartment), "model")
-
+    expect_error(
+      rxode2(one.compartment),
+      regexp = "rxode2 model function requires one 'model({})' block",
+      fixed = TRUE
+    )
   })
-
 
   test_that("Duplicate parameters raise errors", {
 
@@ -332,8 +338,10 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(uif), rex::rex("the following parameter(s) were in the ini block but not in the model block: eta.v"))
-
+    expect_warning(
+      expect_error(rxode2(uif), rex::rex("the following parameter(s) were in the ini block but not in the model block: eta.v")),
+      regexp = "some etas defaulted to non-mu referenced"
+    )
   })
 
   test_that("Residuals are population parameters", {
@@ -525,15 +533,11 @@ rxTest({
 
 
   test_that("modeled endpoints", {
-
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        eta.v ~ 0.01 # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        eta.v ~ 0.01
         add.sd <- 0.7
         add.sd2 <- 0.7
         tprop <- 0.5
@@ -552,38 +556,14 @@ rxTest({
       })
     }
 
-
-    expect_error(ocmt())
-
-    ocmt <- function() {
-      ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        eta.v ~ 0.01 # log V
-        ## the label("Label name") works with all models
-        add.sd <- 0.7
-        add.sd2 <- 0.7
-        tprop <- 0.5
-        prop.eta ~ 0.01
-        df <- 3
-      })
-      model({
-        ka <- tka
-        cl <- tcl
-        v <- eta.v
-        d/dt(depot) = -ka * depot
-        d/dt(center) = ka * depot - cl / v * center
-        cp = center / v
-        prop.sd <- exp(tprop + prop.eta)
-        cp ~ add(add.sd)
-        cp2 ~ add(add.sd2) + dt(df)
-      })
-    }
-
+    expect_warning(
+      expect_error(
+        ocmt(),
+        regexp = "endpoint 'cp2' is not defined in the model"
+      ),
+      regexp = "some etas defaulted to non-mu referenced"
+    )
   })
-
 
   test_that("if/else in endpoints should error", {
     myModel_OS <- function(){           # TTE model for OS. Weibull baseline hazard.
@@ -670,10 +650,23 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(myModel_OS))
+    expect_output(
+      expect_message(
+        expect_error(
+          rxode2(myModel_OS),
+          regexp = "syntax errors"
+        ),
+        regexp = "parameter labels from comments will be replaced by"
+      ),
+      regexp = "rxode2 model syntax error"
+    )
 
-    expect_error(myModel_OS())
-
-
+    expect_output(
+      expect_error(
+        myModel_OS(),
+        regexp = "syntax errors"
+      ),
+      regexp = "rxode2 model syntax error"
+    )
   })
 })

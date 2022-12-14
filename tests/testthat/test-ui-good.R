@@ -1,11 +1,10 @@
 rxTest({
   test_that("model properties after are parsed OK", {
-
     one.compartment <- function() {
       ini({
-        tka <- 0.45 # Log Ka
-        tcl <- 1 # Log Cl
-        tv <- 3.45    # Log V
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
         eta.ka ~ 0.6
         eta.cl ~ 0.3
         eta.v ~ 0.1
@@ -29,11 +28,9 @@ rxTest({
     expect_s3_class(suppressWarnings(rxode2(one.compartment)), "rxUi")
 
     expect_true(inherits(one.compartment(), "character"))
-
   })
 
   test_that("This model parses k0 as a covariate", {
-
     one.compartment.saem <- function() {
       ini({
         tka <- .5 ; label("Log Ka")
@@ -59,11 +56,9 @@ rxTest({
 
     expect_equal(mod$covariates, "k0")
     expect_equal(mod$all.covs, "k0") # backward compatible
-
   })
 
   test_that("complex models that used to raise errors but should not", {
-
     two.cmt.pd <- function() {
       ini({
         tKa <- log(0.64)
@@ -156,20 +151,14 @@ rxTest({
     f <- rxode2(model1)
 
     expect_s3_class(f, "rxUi")
-
   })
 
-
   test_that("modeled expressions don't have to be in the model if non-normal", {
-
     ocmt <- function() {
       ini({
-        tka <- exp(0.45) # Ka
-        tcl <- exp(1) # Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        eta.v ~ 0.01 # log V
-        ## the label("Label name") works with all models
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        eta.v ~ 0.01
         lower <- 0.1
         upper <- 0.9
         prop.eta ~ 0.01
@@ -186,11 +175,13 @@ rxTest({
       })
     }
 
-    expect_error(ocmt(), NA)
+    expect_warning(
+      expect_error(ocmt(), NA),
+      regexp = "some etas defaulted to non-mu referenced"
+    )
   })
 
   test_that("only specifying residual error", {
-
     one.cmt <- function() {
       ini({
         add.sd <- 4
@@ -204,20 +195,14 @@ rxTest({
     }
 
     expect_error(one.cmt(), NA)
-
   })
 
   test_that("one cmt noeta", {
-    
     one.cmt.ll.noeta <- function() {
       ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
+        tka <- 0.45
+        tcl <- log(c(0, 2.7, 100))
+        tv <- 3.45
         add.sd <- 0.7
       })
       model({
@@ -228,8 +213,7 @@ rxTest({
         ll(err) ~ -log(add.sd) - 0.5*log(2*pi) - 0.5*((DV-cp)/add.sd)^2
       })
     }
-    
+
     expect_error(one.cmt.ll.noeta(), NA)
   })
-
 })
