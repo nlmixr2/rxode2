@@ -17,7 +17,7 @@
 <link href="../deps/bootstrap-5.1.3/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.1.3/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.js"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Speeding up rxode2">
+<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Speeding up rxode2">
 <meta property="og:description" content="rxode2">
 <meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
@@ -159,7 +159,7 @@
                         <h4 data-toc-skip class="author">Matthew
 Fidler</h4>
             
-            <h4 data-toc-skip class="date">2022-12-13</h4>
+            <h4 data-toc-skip class="date">2022-12-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-speed.Rmd" class="external-link"><code>vignettes/rxode2-speed.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-speed.Rmd</code></div>
@@ -268,11 +268,11 @@ you can see the options in <code><a href="../reference/rxSolve.html">rxControl()
 <code class="sourceCode R"><span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">runFor</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSapply</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSingleThread</span><span class="op">(</span><span class="op">)</span>,<span class="fu">run2Thread</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;               expr      min       lq      mean    median        uq      max</span></span>
-<span><span class="co">#&gt;           runFor() 433.0940 442.6217 446.85358 445.05555 447.89535 533.8636</span></span>
-<span><span class="co">#&gt;        runSapply() 432.8007 439.9503 447.89614 443.41220 447.04175 540.0365</span></span>
-<span><span class="co">#&gt;  runSingleThread()  35.4619  35.6798  36.09618  35.80910  36.02100  40.6310</span></span>
-<span><span class="co">#&gt;       run2Thread()  21.5300  21.7720  22.29223  21.99005  22.36755  28.9884</span></span>
+<span><span class="co">#&gt;               expr      min       lq     mean    median        uq      max</span></span>
+<span><span class="co">#&gt;           runFor() 630.7239 646.5576 658.0596 653.87485 660.88305 795.2527</span></span>
+<span><span class="co">#&gt;        runSapply() 630.7095 644.6905 655.5361 651.62860 657.78635 800.5328</span></span>
+<span><span class="co">#&gt;  runSingleThread()  47.4723  48.5818  49.8853  49.08440  50.05515  58.2915</span></span>
+<span><span class="co">#&gt;       run2Thread()  28.3604  29.2529  30.2142  29.78245  30.40010  40.4323</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span>
@@ -300,9 +300,9 @@ code:</p>
 <span>                                           collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;          expr     min       lq     mean   median      uq     max neval</span></span>
-<span><span class="co">#&gt;  runThread(1) 35.9267 36.18435 36.66316 36.34110 36.7896 41.2363   100</span></span>
-<span><span class="co">#&gt;  runThread(2) 22.0248 22.47155 22.93754 22.68995 22.9699 27.3001   100</span></span></code></pre></div>
+<span><span class="co">#&gt;          expr     min      lq     mean   median       uq     max neval</span></span>
+<span><span class="co">#&gt;  runThread(1) 47.5094 48.8839 50.16170 49.38800 50.72305 61.1920   100</span></span>
+<span><span class="co">#&gt;  runThread(2) 28.5156 29.6091 31.70179 30.20885 31.45240 51.5299   100</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Coordinate system already present. Adding new coordinate system, which will</span></span>
@@ -393,7 +393,7 @@ reduced to run faster automatic building of the pkgdown website.</p>
 <span><span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  </span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 9.077138 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 13.75272 secs</span></span></code></pre></div>
 <p>By applying some of the new parallel solving concepts you can simply
 run the same simulation both with less code and faster:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
@@ -433,7 +433,7 @@ run the same simulation both with less code and faster:</p>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span></span>
 <span><span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 0.1266696 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 0.1655612 secs</span></span></code></pre></div>
 <p>You can see a striking time difference between the two methods; A few
 things to keep in mind:</p>
 <ul>
@@ -502,24 +502,24 @@ simulation vignette</a>.</p>
 <span><span class="co">#&gt;  [7] R6_2.5.1                backports_1.4.1         sys_3.4.1              </span></span>
 <span><span class="co">#&gt; [10] evaluate_0.18           highr_0.9               pillar_1.8.1           </span></span>
 <span><span class="co">#&gt; [13] rlang_1.0.6             rxode2ll_2.0.9.9000     jquerylib_0.1.4        </span></span>
-<span><span class="co">#&gt; [16] checkmate_2.1.0         rmarkdown_2.18          pkgdown_2.0.6          </span></span>
+<span><span class="co">#&gt; [16] checkmate_2.1.0         rmarkdown_2.18          pkgdown_2.0.7          </span></span>
 <span><span class="co">#&gt; [19] qs_0.25.4               textshaping_0.3.6       desc_1.4.2             </span></span>
-<span><span class="co">#&gt; [22] labeling_0.4.2          dparser_1.3.1-9         stringr_1.5.0          </span></span>
-<span><span class="co">#&gt; [25] PreciseSums_0.5         munsell_0.5.0           compiler_4.2.2         </span></span>
-<span><span class="co">#&gt; [28] xfun_0.35               pkgconfig_2.0.3         systemfonts_1.0.4      </span></span>
-<span><span class="co">#&gt; [31] htmltools_0.5.4         tidyselect_1.2.0        tibble_3.1.8           </span></span>
-<span><span class="co">#&gt; [34] rxode2parse_2.0.13.9000 fansi_1.0.3             crayon_1.5.2           </span></span>
-<span><span class="co">#&gt; [37] dplyr_1.0.10            withr_2.5.0             grid_4.2.2             </span></span>
-<span><span class="co">#&gt; [40] nlme_3.1-160            jsonlite_1.8.4          gtable_0.3.1           </span></span>
-<span><span class="co">#&gt; [43] lifecycle_1.0.3         magrittr_2.0.3          units_0.8-1            </span></span>
-<span><span class="co">#&gt; [46] scales_1.2.1            RcppParallel_5.1.5      cli_3.4.1              </span></span>
-<span><span class="co">#&gt; [49] stringi_1.7.8           cachem_1.0.6            farver_2.1.1           </span></span>
-<span><span class="co">#&gt; [52] fs_1.5.2                bslib_0.4.1             ragg_1.2.4             </span></span>
-<span><span class="co">#&gt; [55] generics_0.1.3          vctrs_0.5.1             stringfish_0.15.7      </span></span>
-<span><span class="co">#&gt; [58] lotri_0.4.2             RApiSerialize_0.1.2     tools_4.2.2            </span></span>
-<span><span class="co">#&gt; [61] glue_1.6.2              purrr_0.3.5             rxode2et_2.0.9.9000    </span></span>
-<span><span class="co">#&gt; [64] fastmap_1.1.0           yaml_2.3.6              colorspace_2.0-3       </span></span>
-<span><span class="co">#&gt; [67] memoise_2.0.1           knitr_1.41              sass_0.4.4</span></span></code></pre></div>
+<span><span class="co">#&gt; [22] dparser_1.3.1-9         stringr_1.5.0           PreciseSums_0.5        </span></span>
+<span><span class="co">#&gt; [25] munsell_0.5.0           compiler_4.2.2          xfun_0.35              </span></span>
+<span><span class="co">#&gt; [28] pkgconfig_2.0.3         systemfonts_1.0.4       htmltools_0.5.4        </span></span>
+<span><span class="co">#&gt; [31] tidyselect_1.2.0        tibble_3.1.8            rxode2parse_2.0.13.9000</span></span>
+<span><span class="co">#&gt; [34] fansi_1.0.3             crayon_1.5.2            dplyr_1.0.10           </span></span>
+<span><span class="co">#&gt; [37] withr_2.5.0             grid_4.2.2              nlme_3.1-160           </span></span>
+<span><span class="co">#&gt; [40] jsonlite_1.8.4          gtable_0.3.1            lifecycle_1.0.3        </span></span>
+<span><span class="co">#&gt; [43] magrittr_2.0.3          units_0.8-1             scales_1.2.1           </span></span>
+<span><span class="co">#&gt; [46] RcppParallel_5.1.5      cli_3.4.1               stringi_1.7.8          </span></span>
+<span><span class="co">#&gt; [49] cachem_1.0.6            farver_2.1.1            fs_1.5.2               </span></span>
+<span><span class="co">#&gt; [52] bslib_0.4.1             ragg_1.2.4              generics_0.1.3         </span></span>
+<span><span class="co">#&gt; [55] vctrs_0.5.1             stringfish_0.15.7       lotri_0.4.2            </span></span>
+<span><span class="co">#&gt; [58] RApiSerialize_0.1.2     tools_4.2.2             glue_1.6.2             </span></span>
+<span><span class="co">#&gt; [61] purrr_0.3.5             rxode2et_2.0.9.9000     fastmap_1.1.0          </span></span>
+<span><span class="co">#&gt; [64] yaml_2.3.6              colorspace_2.0-3        memoise_2.0.1          </span></span>
+<span><span class="co">#&gt; [67] knitr_1.41              sass_0.4.4</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
@@ -535,7 +535,7 @@ simulation vignette</a>.</p>
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
     </footer>
