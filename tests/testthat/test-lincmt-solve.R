@@ -2022,7 +2022,7 @@ rxTest({
       expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
     })
 
-    test_that("Issue RxODE#258", {
+    test_that(paste("Issue RxODE#258, sens:", sens, "sensType:", sensType), {
       m258 <- rxode2(
       {
         ka <- 1
