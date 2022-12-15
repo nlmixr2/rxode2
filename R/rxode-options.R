@@ -18,7 +18,6 @@
 .hasUnits <- FALSE
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
 .rxode2parseMd5 <- rxode2parse::rxode2parseMd5()
-.rxode2randomVersion <- utils::packageVersion("rxode2random")
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
@@ -40,16 +39,9 @@
     requireNamespace("rxode2parse", quietly=TRUE)
   }
 
-  if (!identical(.rxode2randomVersion, utils::packageVersion("rxode2random"))) {
-    stop("rxode2 compiled with rxode2random '",
-         as.character(.rxode2randomVersion),
-         "' but rxode2random '", as.character(utils::packageVersion("rxode2random")),
-         "' is loaded\nRecompile rxode2 with the this version of rxode2random",
-         call. = FALSE)
-  } else {
-    requireNamespace("rxode2random", quietly=TRUE)
-    .Call(`_rxode2_assignSeedInfo`)
-  }
+  requireNamespace("rxode2random", quietly=TRUE)
+  .Call(`_rxode2_assignSeedInfo`)
+  
   rxode2et::.setRxode2()
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")
