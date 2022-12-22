@@ -33,3 +33,52 @@ test_that("piping with ini gives an error pointing the user to use label for cha
     fixed = TRUE
   )
 })
+
+test_that(".iniSimplifyFixUnfix", {
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("fix")),
+    as.name("fix")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("fixed")),
+    as.name("fix")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("FIX")),
+    as.name("fix")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("FIXED")),
+    as.name("fix")
+  )
+
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("unfix")),
+    as.name("unfix")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("unfixed")),
+    as.name("unfix")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("UNFIX")),
+    as.name("unfix")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("UNFIXED")),
+    as.name("unfix")
+  )
+
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("FIXED(a)")),
+    str2lang("fix(a)")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("c <- FIXED(a+b)")),
+    str2lang("c <- fix(a + b)")
+  )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("c <- UNFIXED(a+b)")),
+    str2lang("c <- unfix(a + b)")
+  )
+})

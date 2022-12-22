@@ -309,37 +309,14 @@
 #' @keywords internal
 #' @export
 .iniHandleLine <- function(expr, rxui, envir=parent.frame()) {
-  # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
-  if (.matchesLangTemplate(expr, str2lang("fix(.name)")) ||
-      .matchesLangTemplate(expr, str2lang("fixed(.name)")) ||
-      .matchesLangTemplate(expr, str2lang("FIX(.name)")) ||
-      .matchesLangTemplate(expr, str2lang("FIXED(.name)"))) {
-    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
-  } else if (.matchesLangTemplate(expr, str2lang("unfix(.name)")) ||
-             .matchesLangTemplate(expr, str2lang("unfixed(.name)")) ||
-             .matchesLangTemplate(expr, str2lang("UNFIX(.name)")) ||
-             .matchesLangTemplate(expr, str2lang("UNFIXED(.name)"))) {
-    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
-  }
-
   # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
   # UNFIXED to fix and unfix to simplify all downstream operations
-  if (.matchesLangTemplate(expr, str2lang(".name <- fixed")) ||
-      .matchesLangTemplate(expr, str2lang(".name <- FIX")) ||
-      .matchesLangTemplate(expr, str2lang(".name <- FIXED"))) {
-    expr[[3]] <- as.name("fix")
-  } else if (.matchesLangTemplate(expr, str2lang(".name <- unfixed")) ||
-             .matchesLangTemplate(expr, str2lang(".name <- UNFIX")) ||
-             .matchesLangTemplate(expr, str2lang(".name <- UNFIXED"))) {
-    expr[[3]] <- as.name("unfix")
-  } else   if (.matchesLangTemplate(expr, str2lang(".name <- fixed(.)")) ||
-               .matchesLangTemplate(expr, str2lang(".name <- FIX(.)")) ||
-               .matchesLangTemplate(expr, str2lang(".name <- FIXED(.)"))) {
-    expr[[3]][[1]] <- as.name("fix")
-  } else if (.matchesLangTemplate(expr, str2lang(".name <- unfixed(.)")) ||
-             .matchesLangTemplate(expr, str2lang(".name <- UNFIX(.)")) ||
-             .matchesLangTemplate(expr, str2lang(".name <- UNFIXED(.)"))) {
-    expr[[3]][[1]] <- as.name("unfix")
+  expr <- .iniSimplifyFixUnfix(expr)
+  # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
+  if (.matchesLangTemplate(expr, str2lang("fix(.name)"))) {
+    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
+  } else if (.matchesLangTemplate(expr, str2lang("unfix(.name)"))) {
+    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
   }
 
   if (.isAssignment(expr)) {
@@ -363,6 +340,31 @@
 # TODO: while nlmixr2est is changed
 #' @export
 .iniHandleFixOrUnfix <- .iniHandleLine
+
+#' Simplify variants of fix and unfix to just those two
+#'
+#' @param expr An R call or similar object
+#' @return \code{expr} where all variants of fix (fixed, FIX, FIXED) and unfix
+#'   (unfixed, UNFIX, and UNFIXED) are converted to fix and unfix
+#' @noRd
+.iniSimplifyFixUnfix <- function(expr) {
+  if (identical(expr, as.name("fixed")) ||
+      identical(expr, as.name("FIX")) ||
+      identical(expr, as.name("FIXED"))) {
+    expr <- as.name("fix")
+  } else if (identical(expr, as.name("unfixed")) ||
+             identical(expr, as.name("UNFIX")) ||
+             identical(expr, as.name("UNFIXED"))) {
+    expr <- as.name("unfix")
+  } else if (is.call(expr)) {
+    for (idx in seq_along(expr)) {
+      expr[[idx]] <- .iniSimplifyFixUnfix(expr[[idx]])
+    }
+  } else {
+    # do nothing
+  }
+  expr
+}
 
 #' @export
 #' @rdname ini
