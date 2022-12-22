@@ -33,3 +33,35 @@ test_that("piping with ini gives an error pointing the user to use label for cha
     fixed = TRUE
   )
 })
+
+test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      b ~ add(addSd)
+    })
+  }
+  ui <- rxode2(mod)
+  # No modification
+  expect_equal(ui$iniDf$name, c("a", "b", "c", "addSd"))
+  # b to the top
+  expect_equal(ini(ui, b <- after())$iniDf$name, c("b", "a", "c", "addSd"))
+  # b to the bottom by number
+  expect_equal(ini(ui, b <- after(Inf))$iniDf$name, c("a", "c", "addSd", "b"))
+  # b to the bottom by name
+  expect_equal(ini(ui, b <- after(addSd))$iniDf$name, c("a", "c", "addSd", "b"))
+  # b after c
+  expect_equal(ini(ui, b <- after(c))$iniDf$name, c("a", "c", "b", "addSd"))
+  # b to b, warn and no change
+  expect_warning(
+    expect_equal(ini(ui, b <- after(b))$iniDf$name, c("a", "b", "c", "addSd")),
+    regexp = "Parameter 'b' set to be moved after itself, no change made"
+  )
+})
+

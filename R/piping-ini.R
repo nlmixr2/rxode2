@@ -297,6 +297,74 @@
   .matchesLangTemplate(expr, str2lang(". ~ ."))
 }
 
+#' Modify the label in an iniDf
+#'
+#' @inheritParams .iniHandleLine
+#' @return Nothing, called for side effects
+#' @keywords internal
+.iniHandleLabel <- function(expr, rxui, envir) {
+  lhs <- as.character(expr[[2]])
+  newLabel <- expr[[3]][[2]]
+  ini <- rxui$ini
+  .w <- which(ini$name == lhs)
+  if (length(.w) != 1) {
+    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+  } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
+    stop("The new label for '", lhs, "' must be a character string")
+  }
+  ini$label[.w] <- newLabel
+  assign("iniDf", ini, envir=rxui)
+  invisible()
+}
+
+#' Reorder rows in iniDf
+#'
+#' @inheritParams .iniHandleLine
+#' @return Nothing, called for side effects
+#' @keywords internal
+.iniHandleAfter <- function(expr, rxui, envir) {
+  ini <- rxui$ini
+  lhs <- as.character(expr[[2]])
+  wLhs <- which(ini$name == lhs)
+  if (.matchesLangTemplate(expr[[3]], str2lang("after()"))) {
+    after <- "{nothing}"
+    wAfter <- 0
+  } else {
+    after <- expr[[3]][[2]]
+    if (is.name(after)) {
+      after <- as.character(after)
+      wAfter <- which(ini$name == after)
+    } else if (is.numeric(after)) {
+      # bound it within the data.frame length
+      wAfter <- max(min(after, nrow(ini)), 0)
+    }
+  }
+  if (length(wLhs) != 1) {
+    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+  } else if (length(wAfter) != 1) {
+    stop("Cannot find parameter '", after, "'", call.=FALSE)
+  } else if (wAfter == wLhs) {
+    warning("Parameter '", lhs, "' set to be moved after itself, no change made")
+    return()
+  }
+
+  # Do the movement
+  if (wAfter == 0) {
+    # put it at the top
+    ret <- rbind(ini[wLhs, ], ini[-wLhs, ])
+  } else if (wAfter == nrow(ini)) {
+    # put it at the bottom
+    ret <- rbind(ini[-wLhs, ], ini[wLhs, ])
+  } else {
+    # put it in the middle
+    rowsAbove <- setdiff(seq_len(wAfter), wLhs)
+    rowsBelow <- setdiff(seq(wAfter + 1, nrow(ini)), wLhs)
+    ret <- rbind(ini[rowsAbove, ], ini[wLhs, ], ini[rowsBelow, ])
+  }
+  assign("iniDf", ret, envir=rxui)
+  invisible()
+}
+
 #' Handle Fix or Unfix an expression
 #'
 #' It will update the iniDf data frame with fixed/unfixed value
@@ -342,7 +410,19 @@
     expr[[3]][[1]] <- as.name("unfix")
   }
 
-  if (.isAssignment(expr)) {
+  if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
+    .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
+  } else if (.matchesLangTemplate(expr, str2lang(".name <- after()")) ||
+             .matchesLangTemplate(expr, str2lang(".name <- after(.)"))) {
+    .iniHandleAfter(expr=expr, rxui=rxui, envir=envir)
+  } else if (.isAssignment(expr) && is.character(expr[[3]])) {
+    stop(
+      sprintf(
+        "To assign a new label, use '%s <- label(\"%s\")'",
+        as.character(expr[[2]]), expr[[3]]
+      )
+    )
+  } else if (.isAssignment(expr)) {
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir)
   } else if (.isLotriAssignment(expr)) {
     .rhs <- expr[[2]]

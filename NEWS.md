@@ -1,6 +1,8 @@
 # rxode2 (development version)
 
-- Parameter labels may now be modified via `ini(param = label("text")`
+- Parameter labels may now be modified via `ini(param = label("text"))`
+
+- Parameter order may be modified via `ini(param = after(param2))`
 
 # rxode2 2.0.11
 
