@@ -107,7 +107,7 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .iniHandleFixOrUnfixEqual <- function(expr, rxui, envir=parent.frame(), maxLen=3L) {
-  .tilde <- identical(expr[[1]], quote(`~`))
+  .tilde <- .isLotriAssignment(expr)
   .covs <- rxui$allCovs
   .lhs <- as.character(expr[[2]])
   .rhs <- expr[[3]]
@@ -303,8 +303,13 @@
   }
 }
 
+# Determine if the input is an endpoint by being 3 long and the call part being
+# a tilde
+.isLotriAssignment <- function(expr) {
+  .matchesLangTemplate(expr, str2lang(". ~ ."))
+}
 
-#'  Handle Fix or Unfix an expression
+#' Handle Fix or Unfix an expression
 #'
 #' It will update the iniDf data frame with fixed/unfixed value
 #'
@@ -316,20 +321,17 @@
 #' @keywords internal
 #' @export
 .iniHandleFixOrUnfix <- function(expr, rxui, envir=parent.frame()) {
- if (is.call(expr) && length(expr) == 2 && is.name(expr[[2]])) {
-    if (identical(expr[[1]], quote(`fix`)) ||
-          identical(expr[[1]], quote(`fixed`))) {
-      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
-    } else if (identical(expr[[1]], quote(`unfix`)) ||
-                 identical(expr[[1]], quote(`unfixed`))) {
-      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
-    }
+  if (.matchesLangTemplate(expr, str2lang("fix(.name)")) ||
+      .matchesLangTemplate(expr, str2lang("fixed(.name)"))) {
+    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
+  } else if (.matchesLangTemplate(expr, str2lang("unfix(.name)")) ||
+             .matchesLangTemplate(expr, str2lang("unfixed(.name)"))) {
+    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
   }
-  .assignOp <- expr[[1]]
-  if (identical(.assignOp, quote(`<-`)) ||
-        identical(.assignOp, quote(`=`))) {
+
+  if (.isAssignment(expr)) {
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir)
-  } else if (identical(.assignOp, quote(`~`))) {
+  } else if (.isLotriAssignment(expr)) {
     .rhs <- expr[[2]]
     if (length(.rhs) > 1) {
       if (identical(.rhs[[1]], quote(`+`))) {
@@ -385,7 +387,7 @@ ini.rxModelVars <- function(x, ..., envir=parent.frame()) {
 #'
 #' @param line Quoted line
 #' @param rxui rxode2 UI object
-#' @return boolean inticating if the line defines an `ini` change.
+#' @return Boolean indicating if the line defines an `ini` change.
 #' @author Matthew L. Fidler
 #' @noRd
 .isQuotedLineRhsModifiesEstimates <- function(line, rxui) {
