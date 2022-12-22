@@ -113,29 +113,17 @@
   .rhs <- expr[[3]]
   .doFix <- .doUnfix <- FALSE
   if (is.name(.rhs)) {
-    if (identical(.rhs, quote(`fix`)) ||
-          identical(.rhs, quote(`fixed`)) ||
-          identical(.rhs, quote(`FIX`)) ||
-          identical(.rhs, quote(`FIXED`))) {
+    if (identical(.rhs, quote(`fix`))) { # variations on fix are handled upstream
       .doFix <- TRUE
       .rhs <- NULL
-    } else if (identical(.rhs, quote(`unfix`)) ||
-                 identical(.rhs, quote(`unfixed`)) ||
-                 identical(.rhs, quote(`UNFIX`)) ||
-                 identical(.rhs, quote(`UNFIXED`))) {
+    } else if (identical(.rhs, quote(`unfix`))) { # variations on unfix are handled upstream
       .doUnfix <- TRUE
       .rhs <- NULL
     }
-  } else if (identical(.rhs[[1]], quote(`fix`)) ||
-               identical(.rhs[[1]], quote(`fixed`)) ||
-               identical(.rhs[[1]], quote(`FIX`)) ||
-               identical(.rhs[[1]], quote(`FIXED`))) {
+  } else if (identical(.rhs[[1]], quote(`fix`))) {
     .doFix <- TRUE
     .rhs[[1]] <- quote(`c`)
-  } else if (identical(.rhs[[1]], quote(`unfix`)) ||
-               identical(.rhs[[1]], quote(`unfixed`)) ||
-               identical(.rhs[[1]], quote(`UNFIX`)) ||
-               identical(.rhs[[1]], quote(`UNFIXED`))) {
+  } else if (identical(.rhs[[1]], quote(`unfix`))) {
     .doUnfix <- TRUE
     .rhs[[1]] <- quote(`c`)
   } else if (is.null(.rhs)) {
@@ -320,13 +308,38 @@
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
-.iniHandleFixOrUnfix <- function(expr, rxui, envir=parent.frame()) {
+.iniHandleLine <- function(expr, rxui, envir=parent.frame()) {
+  # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
   if (.matchesLangTemplate(expr, str2lang("fix(.name)")) ||
-      .matchesLangTemplate(expr, str2lang("fixed(.name)"))) {
+      .matchesLangTemplate(expr, str2lang("fixed(.name)")) ||
+      .matchesLangTemplate(expr, str2lang("FIX(.name)")) ||
+      .matchesLangTemplate(expr, str2lang("FIXED(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
   } else if (.matchesLangTemplate(expr, str2lang("unfix(.name)")) ||
-             .matchesLangTemplate(expr, str2lang("unfixed(.name)"))) {
+             .matchesLangTemplate(expr, str2lang("unfixed(.name)")) ||
+             .matchesLangTemplate(expr, str2lang("UNFIX(.name)")) ||
+             .matchesLangTemplate(expr, str2lang("UNFIXED(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
+  }
+
+  # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
+  # UNFIXED to fix and unfix to simplify all downstream operations
+  if (.matchesLangTemplate(expr, str2lang(".name <- fixed")) ||
+      .matchesLangTemplate(expr, str2lang(".name <- FIX")) ||
+      .matchesLangTemplate(expr, str2lang(".name <- FIXED"))) {
+    expr[[3]] <- as.name("fix")
+  } else if (.matchesLangTemplate(expr, str2lang(".name <- unfixed")) ||
+             .matchesLangTemplate(expr, str2lang(".name <- UNFIX")) ||
+             .matchesLangTemplate(expr, str2lang(".name <- UNFIXED"))) {
+    expr[[3]] <- as.name("unfix")
+  } else   if (.matchesLangTemplate(expr, str2lang(".name <- fixed(.)")) ||
+               .matchesLangTemplate(expr, str2lang(".name <- FIX(.)")) ||
+               .matchesLangTemplate(expr, str2lang(".name <- FIXED(.)"))) {
+    expr[[3]][[1]] <- as.name("fix")
+  } else if (.matchesLangTemplate(expr, str2lang(".name <- unfixed(.)")) ||
+             .matchesLangTemplate(expr, str2lang(".name <- UNFIX(.)")) ||
+             .matchesLangTemplate(expr, str2lang(".name <- UNFIXED(.)"))) {
+    expr[[3]][[1]] <- as.name("unfix")
   }
 
   if (.isAssignment(expr)) {
@@ -347,13 +360,17 @@
   }
 }
 
+# TODO: while nlmixr2est is changed
+#' @export
+.iniHandleFixOrUnfix <- .iniHandleLine
+
 #' @export
 #' @rdname ini
 ini.rxUi <- function(x, ..., envir=parent.frame()) {
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
-    .iniHandleFixOrUnfix(line, .ret, envir=envir)
+    .iniHandleLine(line, .ret, envir=envir)
   })
   rxUiCompress(.ret)
 }
@@ -364,7 +381,7 @@ ini.function <- function(x, ..., envir=parent.frame()) {
   .ret <- rxUiDecompress(rxode2(x))
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
-    .iniHandleFixOrUnfix(line, .ret, envir=envir)
+    .iniHandleLine(line, .ret, envir=envir)
   })
   rxUiCompress(.ret)
 }
