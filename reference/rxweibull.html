@@ -199,16 +199,16 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># with rxweibull you have to explicitly state n</span></span></span>
 <span class="r-in"><span><span class="fu">rxweibull</span><span class="op">(</span>shape <span class="op">=</span> <span class="fl">1</span>, scale <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2.16827285 2.61067676 8.20845110 3.27536365 1.04725669 0.37936695</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 0.05300219 0.85731411 3.50068520 3.11596154</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  2.3451691  2.7917113  3.1135083  0.2702878  0.7397876  3.3110563</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.2234942 10.6949504  4.5080398  1.1725534</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># You can parallelize the simulation using openMP</span></span></span>
 <span class="r-in"><span><span class="fu">rxweibull</span><span class="op">(</span>shape <span class="op">=</span> <span class="fl">1</span>, scale <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  5.4759094  1.5473697  1.2940426  3.5228332  0.5406197  0.5323066</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.4348173  2.3806307  7.5912528 11.8951073</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  1.12523488  0.74922531  2.56799487  0.07869017  3.63594504  1.36978536</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 21.59779001  8.23494696  2.01252859  6.30239690</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxweibull</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.8151307</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.269169</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxweibull` directly in the model</span></span></span>
