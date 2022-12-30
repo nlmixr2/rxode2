@@ -623,3 +623,7 @@ rxErf <- function(v) {
     .Call(`_rxode2_rxErf`, v)
 }
 
+rxIsSymPD <- function(m) {
+    .Call(`_rxode2_rxIsSymPD`, m)
+}
+

@@ -127,3 +127,8 @@ NumericVector rxErf(NumericVector v) {
   }
   return ret;
 }
+
+//[[Rcpp::export]]
+bool rxIsSymPD(arma::mat m) {
+  return m.is_sympd();
+}

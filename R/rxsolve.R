@@ -952,7 +952,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     nSub <- as.integer(nSub)
     checkmate::assertMatrix(thetaMat, col.names="strict", null.ok=TRUE, mode="numeric")
     checkmate::assertNumeric(thetaDf, any.missing=FALSE, lower=0, len=1, null.ok=TRUE)
-    checkmate::assertLogical(thetaIsChol,len=1, any.missing=FALSE,  null.ok=TRUE)
+    checkmate::assertLogical(thetaIsChol,len=1, any.missing=FALSE,  null.ok=FALSE)
     checkmate::assertIntegerish(nStud, len=1, any.missing=FALSE, lower=1)
     checkmate::assertNumeric(dfSub, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
     checkmate::assertNumeric(dfObs, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
@@ -989,6 +989,36 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
+    if (!is.null(thetaMat) && !thetaIsChol) {
+      if (!.Call(`_rxode2_rxIsSymPD`, thetaMat)) {
+        .minfo(" {.code thetaMat} is non-positive definite, correcting with Matrix::nearPD")
+        thetaMat1 <- as.matrix(Matrix::nearPD(thetaMat1)$mat)
+        dimnames(thetaMat1) <- dimnames(thetaMat)
+        thetaMat <- thetaMat1
+      }
+      thetaMat <- chol(thetaMat)
+      thetaIsChol <- TRUE
+    }
+    if (!is.null(omega) && !omegaIsChol) {
+      if (!.Call(`_rxode2_rxIsSymPD`, omega)) {
+        .minfo(" {.code omega} is non-positive definite, correcting with Matrix::nearPD")
+        omega1 <- as.matrix(Matrix::nearPD(omega1)$mat)
+        dimnames(omega1) <- dimnames(omega)
+        omega <- omega1
+      }
+      omega <- chol(omega)
+      omegaIsChol <- TRUE
+    }
+    if (!is.null(sigma) && !sigmaIsChol) {
+      if (!.Call(`_rxode2_rxIsSymPD`, sigma)) {
+        .minfo(" {.code sigma} is non-positive definite, correcting with Matrix::nearPD")
+        sigma1 <- as.matrix(Matrix::nearPD(sigma1)$mat)
+        dimnames(sigma1) <- dimnames(sigma)
+        sigma <- sigma1
+      }
+      sigma <- chol(sigma)
+      sigmaIsChol <- TRUE
+    }
     .ret <- list(
       scale = scale, #
       method = method, #
