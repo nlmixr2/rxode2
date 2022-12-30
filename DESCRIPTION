@@ -92,7 +92,8 @@ Imports:
     rxode2parse (>= 2.0.12),
     rxode2random (>= 2.0.9),
     data.table (>= 1.12.4),
-    qs
+    qs,
+    Matrix
 Description: Facilities for running simulations from ordinary
     differential equation ('ODE') models, such as pharmacometrics and other
     compartmental models.  A compilation manager translates the ODE model
