@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxcauchy you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.416715433  4.302116024  0.889996823  0.920487183 -2.165072472</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6]  0.574766423 -0.966662331  0.005829233 -1.249015985  0.515922797</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -1.5586234  0.6332982  0.3441002 -1.0131427  2.6922302  1.2051674</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -1.3896210  0.7010715  2.1960867 -0.1366995</span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  3.0959754  1.6207853  4.1209351 -2.2490083  2.3116770 -8.8948625</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.8988865  0.2478818  0.9650169  0.8037591</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.008756333  0.967450560  1.465387125  4.628606918 13.009601570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6]  6.099146131 -0.308817502  1.797244765  6.095562718  8.970936460</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3.409884</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4.318057</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxcauchy` directly in the model</span></span></span>
