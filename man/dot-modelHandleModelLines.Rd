@@ -23,8 +23,8 @@
 \item{append}{This is a boolean to determine if the lines are
 appended in piping.  The possible values for this is:
 \itemize{
-\item \code{TRUE} which is when the lines are appended to the model instead of replaced (default)
-\item \code{FALSE} when the lines are replaced in the model
+\item \code{TRUE} which is when the lines are appended to the model instead of replaced
+\item \code{FALSE} when the lines are replaced in the model (default)
 \item \code{NA} is when the lines are pre-pended to the model instead of replaced
 }}
 

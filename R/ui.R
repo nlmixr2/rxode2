@@ -209,8 +209,8 @@ ini.default <- function(x, ...) {
 #' @param append This is a boolean to determine if the lines are
 #'   appended in piping.  The possible values for this is:
 #'
-#'  - `TRUE` which is when the lines are appended to the model instead of replaced (default)
-#'  - `FALSE` when the lines are replaced in the model
+#'  - `TRUE` which is when the lines are appended to the model instead of replaced
+#'  - `FALSE` when the lines are replaced in the model (default)
 #'  - `NA` is when the lines are pre-pended to the model instead of replaced
 #'
 #' @param auto This boolean tells if piping automatically selects the
@@ -345,11 +345,11 @@ print.rxUi <-function(x, ...) {
 }
 #' Compress/Decompress `rxode2` ui
 #'
-#' 
+#'
 #' @param ui rxode2 ui object
 #' @return A compressed or decompressed rxui object
 #' @author Matthew L. Fidler
-#' @export 
+#' @export
 #' @examples
 #'   one.cmt <- function() {
 #'    ini({
@@ -376,7 +376,7 @@ print.rxUi <-function(x, ...) {
 #' f <- rxode2(one.cmt)
 #' print(class(f))
 #' print(is.environment(f))
-#' 
+#'
 #' f  <- rxUiDecompress(f)
 #' print(class(f))
 #' print(is.environment(f))
