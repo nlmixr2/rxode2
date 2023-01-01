@@ -992,27 +992,27 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     if (!is.null(thetaMat) && !thetaIsChol) {
       if (!.Call(`_rxode2_rxIsSymPD`, thetaMat)) {
         .minfo(" {.code thetaMat} is non-positive definite, correcting with Matrix::nearPD")
-        thetaMat1 <- as.matrix(Matrix::nearPD(thetaMat1)$mat)
+        thetaMat1 <- as.matrix(Matrix::nearPD(thetaMat)$mat)
         dimnames(thetaMat1) <- dimnames(thetaMat)
         thetaMat <- thetaMat1
       }
       thetaMat <- chol(thetaMat)
       thetaIsChol <- TRUE
     }
-    if (!is.null(omega) && !omegaIsChol) {
+    if (!is.null(omega) && !is.character(omega) && !omegaIsChol) {
       if (!.Call(`_rxode2_rxIsSymPD`, omega)) {
         .minfo(" {.code omega} is non-positive definite, correcting with Matrix::nearPD")
-        omega1 <- as.matrix(Matrix::nearPD(omega1)$mat)
+        omega1 <- as.matrix(Matrix::nearPD(omega)$mat)
         dimnames(omega1) <- dimnames(omega)
         omega <- omega1
       }
       omega <- chol(omega)
       omegaIsChol <- TRUE
     }
-    if (!is.null(sigma) && !sigmaIsChol) {
+    if (!is.character(sigma) && !is.null(sigma) && !sigmaIsChol) {
       if (!.Call(`_rxode2_rxIsSymPD`, sigma)) {
         .minfo(" {.code sigma} is non-positive definite, correcting with Matrix::nearPD")
-        sigma1 <- as.matrix(Matrix::nearPD(sigma1)$mat)
+        sigma1 <- as.matrix(Matrix::nearPD(sigma)$mat)
         dimnames(sigma1) <- dimnames(sigma)
         sigma <- sigma1
       }
