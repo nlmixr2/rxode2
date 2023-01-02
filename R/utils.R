@@ -1,3 +1,15 @@
+.isNumMatrix <- function(mat) {
+  if (is.matrix(mat)) {
+    .d <- dim(mat)
+    if (.d[1] > 0) {
+      if (is.numeric(mat)) {
+        return(TRUE)
+      }
+    }
+  }
+  FALSE
+}
+
 #' Internal messaging statements
 #'
 #' @param text Text

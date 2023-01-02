@@ -989,7 +989,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
-    if (!is.null(thetaMat) && !thetaIsChol) {
+    if (.isNumMatrix(thetaMat) && !thetaIsChol) {
       if (!.Call(`_rxode2_rxIsSymPD`, thetaMat)) {
         .minfo(" {.code thetaMat} is non-positive definite, correcting with Matrix::nearPD")
         thetaMat1 <- as.matrix(Matrix::nearPD(thetaMat)$mat)
@@ -999,7 +999,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       thetaMat <- chol(thetaMat)
       thetaIsChol <- TRUE
     }
-    if (!is.null(omega) && !is.character(omega) && !omegaIsChol) {
+    if (.isNumMatrix(omega) && !omegaIsChol) {
       if (!.Call(`_rxode2_rxIsSymPD`, omega)) {
         .minfo(" {.code omega} is non-positive definite, correcting with Matrix::nearPD")
         omega1 <- as.matrix(Matrix::nearPD(omega)$mat)
@@ -1009,7 +1009,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       omega <- chol(omega)
       omegaIsChol <- TRUE
     }
-    if (!is.character(sigma) && !is.null(sigma) && !sigmaIsChol) {
+    if (.isNumMatrix(sigma) && !sigmaIsChol) {
       if (!.Call(`_rxode2_rxIsSymPD`, sigma)) {
         .minfo(" {.code sigma} is non-positive definite, correcting with Matrix::nearPD")
         sigma1 <- as.matrix(Matrix::nearPD(sigma)$mat)
