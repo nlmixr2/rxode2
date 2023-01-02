@@ -627,7 +627,3 @@ rxIsSymPD <- function(m) {
     .Call(`_rxode2_rxIsSymPD`, m)
 }
 
-rxIsSym <- function(m) {
-    .Call(`_rxode2_rxIsSym`, m)
-}
-

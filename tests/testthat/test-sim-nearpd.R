@@ -46,7 +46,7 @@ rxTest({
       et(id=1:1000)
 
     expect_error(rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
-                    thetaMat=thetaMat,
+                    thetaMat=thetaMat1,
                     ## Match boundaries of problem
                     thetaLower=0, 
                     sigma=c("prop.sd", "add.sd"), ## Sigmas are standard deviations

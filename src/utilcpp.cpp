@@ -132,8 +132,3 @@ NumericVector rxErf(NumericVector v) {
 bool rxIsSymPD(arma::mat m) {
   return m.is_sympd();
 }
-
-//[[Rcpp::export]]
-bool rxIsSym(arma::mat m) {
-  return m.is_symmetric();
-}

@@ -2,12 +2,26 @@
 # - Numeric
 # - dimension > 0
 # - any diagonals are zero
-.isNumMatrix <- function(mat) {
+.isNumMatrix <- function(mat, what=NULL) {
   if (is.matrix(mat)) {
     .d <- dim(mat)
     if (.d[1] > 0) {
       if (is.numeric(mat)) {
-        if (any(diag(mat) == 0)) return(FALSE)
+        .w <- which(diag(mat) == 0)
+        if (length(.w) > 0) {
+          .dn <- dimnames(.w)
+          if (is.character(.dn[[1]])) {
+            .dn <- .dn[[1]]
+          } else if (is.character(.dn[[1]])) {
+            .dn <- .dn[[2]]
+          } else {
+            .dn <- paste0("dim",seq(1, .d[1]))
+          }
+          warning("the following diagonals ", ifelse(is.character(what),paste("for ", what, " "), ""),
+                  "were zero: ", paste(.dn[.w], collapse=", "),
+                  call.=FALSE)
+          return(FALSE)
+        }
         return(TRUE)
       }
     }

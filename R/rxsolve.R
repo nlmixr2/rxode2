@@ -990,7 +990,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     if (.isNumMatrix(thetaMat) && !thetaIsChol) {
-      if (!.Call(`_rxode2_rxIsSym`, thetaMat)) {
+      if (!isSymmetric(thetaMat)) {
         stop("'thetaMat' must be symmetric", call.=FALSE)
       } else if (!.Call(`_rxode2_rxIsSymPD`, thetaMat)) {
         .minfo(" {.code thetaMat} is non-positive definite, correcting with Matrix::nearPD")
@@ -1002,7 +1002,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       thetaIsChol <- TRUE
     }
     if (.isNumMatrix(omega) && !omegaIsChol) {
-      if (!.Call(`_rxode2_rxIsSym`, omega)) {
+      if (!isSymmetric(omega)) {
         stop("'omega' must be symmetric", call.=FALSE)
       } else if (!.Call(`_rxode2_rxIsSymPD`, omega)) {
         .minfo(" {.code omega} is non-positive definite, correcting with Matrix::nearPD")
@@ -1014,7 +1014,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       omegaIsChol <- TRUE
     }
     if (.isNumMatrix(sigma) && !sigmaIsChol) {
-      if (!.Call(`_rxode2_rxIsSym`, sigma)) {
+      if (!isSymmetric(sigma)) {
         stop("'sigma' must be symmetric", call.=FALSE)
       } else if (!.Call(`_rxode2_rxIsSymPD`, sigma)) {
         .minfo(" {.code sigma} is non-positive definite, correcting with Matrix::nearPD")

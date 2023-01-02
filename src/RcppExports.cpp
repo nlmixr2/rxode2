@@ -1888,40 +1888,6 @@ RcppExport SEXP _rxode2_rxIsSymPD(SEXP mSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
-// rxIsSym
-bool rxIsSym(arma::mat m);
-static SEXP _rxode2_rxIsSym_try(SEXP mSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type m(mSEXP);
-    rcpp_result_gen = Rcpp::wrap(rxIsSym(m));
-    return rcpp_result_gen;
-END_RCPP_RETURN_ERROR
-}
-RcppExport SEXP _rxode2_rxIsSym(SEXP mSEXP) {
-    SEXP rcpp_result_gen;
-    {
-        Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_rxIsSym_try(mSEXP));
-    }
-    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
-    if (rcpp_isInterrupt_gen) {
-        UNPROTECT(1);
-        Rf_onintr();
-    }
-    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
-    if (rcpp_isLongjump_gen) {
-        Rcpp::internal::resumeJump(rcpp_result_gen);
-    }
-    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
-    if (rcpp_isError_gen) {
-        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
-        UNPROTECT(1);
-        Rf_error(CHAR(rcpp_msgSEXP_gen));
-    }
-    UNPROTECT(1);
-    return rcpp_result_gen;
-}
 
 // validate (ensure exported C++ functions exist before calling them)
 static int _rxode2_RcppExport_validate(const char* sig) { 
@@ -1978,7 +1944,6 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
         signatures.insert("NumericVector(*rxErf)(NumericVector)");
         signatures.insert("bool(*rxIsSymPD)(arma::mat)");
-        signatures.insert("bool(*rxIsSym)(arma::mat)");
     }
     return signatures.find(sig) != signatures.end();
 }
@@ -2036,7 +2001,6 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_isNullZero", (DL_FUNC)_rxode2_isNullZero_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxErf", (DL_FUNC)_rxode2_rxErf_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxIsSymPD", (DL_FUNC)_rxode2_rxIsSymPD_try);
-    R_RegisterCCallable("rxode2", "_rxode2_rxIsSym", (DL_FUNC)_rxode2_rxIsSym_try);
     R_RegisterCCallable("rxode2", "_rxode2_RcppExport_validate", (DL_FUNC)_rxode2_RcppExport_validate);
     return R_NilValue;
 }
