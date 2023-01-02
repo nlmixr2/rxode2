@@ -1,8 +1,13 @@
+# This checks a matrix is:
+# - Numeric
+# - dimension > 0
+# - any diagonals are zero
 .isNumMatrix <- function(mat) {
   if (is.matrix(mat)) {
     .d <- dim(mat)
     if (.d[1] > 0) {
       if (is.numeric(mat)) {
+        if (any(diag(mat) == 0)) return(FALSE)
         return(TRUE)
       }
     }
