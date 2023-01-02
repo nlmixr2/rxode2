@@ -1094,6 +1094,27 @@ namespace rxode2 {
         return Rcpp::as<bool >(rcpp_result_gen);
     }
 
+    inline bool rxIsSym(arma::mat m) {
+        typedef SEXP(*Ptr_rxIsSym)(SEXP);
+        static Ptr_rxIsSym p_rxIsSym = NULL;
+        if (p_rxIsSym == NULL) {
+            validateSignature("bool(*rxIsSym)(arma::mat)");
+            p_rxIsSym = (Ptr_rxIsSym)R_GetCCallable("rxode2", "_rxode2_rxIsSym");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxIsSym(Shield<SEXP>(Rcpp::wrap(m)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<bool >(rcpp_result_gen);
+    }
+
 }
 
 #endif // RCPP_rxode2_RCPPEXPORTS_H_GEN_

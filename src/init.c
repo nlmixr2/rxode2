@@ -121,6 +121,7 @@ SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 SEXP _rxode2_rxordSelect(SEXP, SEXP);
 
 SEXP _rxode2_rxIsSymPD(SEXP);
+SEXP _rxode2_rxIsSym(SEXP);
 
 static R_NativePrimitiveArgType rxode2_Sum_t[] = {
   REALSXP, INTSXP
@@ -363,6 +364,7 @@ extern SEXP chin(SEXP x, SEXP table);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxIsSym", (DL_FUNC) &_rxode2_rxIsSym, 1},
     {"_rxode2_rxIsSymPD", (DL_FUNC) &_rxode2_rxIsSymPD, 1},
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
