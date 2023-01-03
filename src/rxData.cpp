@@ -452,23 +452,6 @@ SEXP rxRmvn0(NumericMatrix& A_, arma::rowvec mu, arma::mat sigma,
 }
 
 Function getRxFn(std::string name);
-
-bool rxNearPD(arma::mat &ret, arma::mat x) {
-  Function nearPD = getRxFn(".nearPD");
-  RObject ret0 = nearPD(wrap(x));
-  if (Rf_isNull(ret0)) return false;
-  ret = as<arma::mat>(ret0);
-  return true;
-}
-
-bool rxNearPD(arma::mat &ret, Nullable<NumericMatrix> &thetaMat) {
-  Function nearPD = getRxFn(".nearPD");
-  RObject ret0 = nearPD(thetaMat);
-  if (Rf_isNull(ret0)) return false;
-  ret = as<arma::mat>(ret0);
-  return true;
-}
-
 RObject rxSimSigma(const RObject &sigma,
                    const RObject &df,
                    int ncores,
@@ -1623,7 +1606,6 @@ void rxSimTheta(CharacterVector &thetaN,
   } else {
     simVar = simVariability[0];
   }
-  Nullable<NumericMatrix> thetaMatF = thetaMat;
   if (!thetaMat.isNull() && simVar){
     thetaM = as<NumericMatrix>(thetaMat);
     if (!thetaM.hasAttribute("dimnames")){
@@ -1635,17 +1617,12 @@ void rxSimTheta(CharacterVector &thetaN,
       if (tmpM.is_zero()) {
         setZeroMatrix(1);
       } else if (!tmpM.is_sympd()){
-        if (!rxNearPD(tmpM, thetaMatF)) {
-          rxSolveFree();
-          stop(_("'thetaMat' must be symmetric, positive definite"));
-        }
-        warning(_("'thetaMat' corrected to be symmetric, positive definite"));
-        Function lastNearPD = getRxFn(".nearPDl");
-        thetaMatF = as<Nullable<NumericMatrix>>(lastNearPD());
+        rxSolveFree();
+        stop(_("'thetaMat' must be symmetric"));
       }
     }
     
-    thetaM = as<NumericMatrix>(rxSimSigma(wrap(thetaMatF), wrap(thetaDf),
+    thetaM = as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf),
                                           nCoresRV, thetaIsChol, nStud, true,
                                           thetaLower, thetaUpper));
     thetaN = as<CharacterVector>((as<List>(thetaM.attr("dimnames")))[1]);
@@ -1730,15 +1707,10 @@ void rxSimOmega(bool &simOmega,
         if (tmpM.is_zero()){
           omegaMC = omegaM;
         } else if (!tmpM.is_sympd()){
-          if (!rxNearPD(tmpM, as<arma::mat>(omegaM))) {
-            rxSolveFree();
-            stop(_("'%s' must be symmetric, positive definite"),omegatxt.c_str());
-          }
-          warning(_("'%s' corrected to be symmetric, positive definite"),omegatxt.c_str());
-          omegaMC = wrap(arma::chol(tmpM));
-        } else {
-          omegaMC = wrap(arma::chol(tmpM));
           rxSolveFree();
+          stop(_("'%s' must be symmetric, positive definite"),omegatxt.c_str());
+        } else {
+          omegaMC = wrap(arma::chol(as<arma::mat>(omegaM)));
         }
       }
       omegaN = as<CharacterVector>((as<List>(omegaM.attr("dimnames")))[1]);
@@ -3036,8 +3008,6 @@ static inline void rxSolve_simulate(const RObject &obj,
   op->ncoresRV = nCoresRV;
   rx->nevid9 = 0;
 
-  
-
   if (!thetaMat.isNull() || !rxIsNull(omega) || !rxIsNull(sigma)){
     // Simulated Variable3
     bool cbindPar1 = false;
@@ -3117,13 +3087,8 @@ static inline void rxSolve_simulate(const RObject &obj,
         if (tmpM.is_zero()) {
           setZeroMatrix(1);
         } else if (!tmpM.is_sympd()){
-          if (!rxNearPD(tmpM, thetaMat)) {
-            rxSolveFree();
-            stop(_("'thetaMat' must be symmetric, positive definite"));
-          }
-          warning(_("'thetaMat' corrected to be symmetric, positive definite"));
-          Function lastNearPD = getRxFn(".nearPDl");
-          thetaMat = as<Nullable<NumericMatrix>>(lastNearPD());
+          rxSolveFree();
+          stop(_("'thetaMat' must be symmetric"));
         }
       }
     }
