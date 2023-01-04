@@ -80,26 +80,25 @@ rxTest({
     42,
     {
       test_that("non-symmetric omegas throw errors", {
-        expect_error(
+        expect_warning(
           rxSolve(mod, theta, et, omega = list(omega1, omega2, omega3, omega4)),
           "omega.*symmetric"
         )
       })
 
       test_that("non-symmetric sigmas throw errors", {
-        expect_error(
+        expect_warning(
           rxSolve(mod, theta, et,
                   omega = lotri(eta.Cli ~ 0.0854),
                   sigma = list(omega1, omega2, omega3)
                   ),
           "sigma.*symmetric"
         )
-        expect_error(
+        expect_warning(
           expect_warning(rxSolve(mod, theta, et,
                                  sigma = list(omega1, omega2, omega3, omega4)
-                                 )),
-          "sigma.*symmetric"
-        )
+                                 ),
+          "sigma.*symmetric"))
       })
 
       tMat <- mod$params
