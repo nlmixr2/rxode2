@@ -15,6 +15,7 @@
 
 #define NPARS 60
 #include <RcppArmadillo.h>
+#include "nearPD.h"
 #include <Rmath.h>
 #include <thread>
 #include <string>
@@ -2888,9 +2889,43 @@ static inline void rxSolve_simulate(const RObject &obj,
 
   LogicalVector simVariability = rxControl[Rxc_simVariability];
 
-  Nullable<NumericMatrix> thetaMat = as<Nullable<NumericMatrix>>(rxControl[Rxc_thetaMat]);
-  Nullable<NumericVector> thetaDf = asNNv(rxControl[Rxc_thetaDf], "thetaDf");
   bool thetaIsChol = asBool(rxControl[Rxc_thetaIsChol], "thetaIsChol");
+  RObject tmpRO = rxControl[Rxc_thetaMat];
+  Nullable<NumericMatrix> thetaMat;
+  if (!Rf_isNull(tmpRO)) {
+    NumericMatrix thetaMatIn = as<NumericMatrix>(tmpRO);
+    NumericMatrix thetaMatOut;
+    switch(rxNearPdChol(thetaMatOut, thetaMatIn, thetaIsChol)) {
+    case rxNearPdChol_not_named:
+      rxSolveFree();
+      stop(_("'thetaMat' must be a named matrix"));
+      break;
+    case rxNearPdChol_zero_size:
+    case rxNearPdChol_zero:
+    case rxNearPdChol_isChol:
+      break;
+    case rxNearPdChol_nearpd_bad_chol:
+    case rxNearPdChol_sympd_bad_chol:
+      rxSolveFree();
+      stop(_("error calculating 'chol(thetaMat)'"));
+      break;
+    case rxNearPdChol_bad_nearpd:
+      stop(_("error trying to correct 'thetaMat' to be a symmetric, positive definite matrix"));
+      break;
+    case rxNearPdChol_nearpd_chol:
+      warning(_("corrected 'thetaMat' to be a symmetric, positive definite matrix"));
+    case rxNearPdChol_sympd_chol:
+      break;
+    }
+    thetaMat = as<Nullable<NumericMatrix>>(wrap(thetaMatOut));
+    thetaIsChol=true;
+  } else {
+    thetaMat = as<Nullable<NumericMatrix>>(tmpRO);
+  }
+
+  Nullable<NumericVector> thetaDf = asNNv(rxControl[Rxc_thetaDf], "thetaDf");
+  
+  
 
   RObject sigma= rxControl[Rxc_sigma];
   Nullable<NumericVector> sigmaDf= asNNv(rxControl[Rxc_sigmaDf], "sigmaDf");
