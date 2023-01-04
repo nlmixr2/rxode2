@@ -61,9 +61,9 @@ model.rxModelVars <- model.rxode2
         .lhs <- unique(c(.getVariablesFromExpression(.getLhs(x)), .lhs))
       }
       .rhs <- setdiff(.rhs, c(.lhs, rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name))
-    }
-    for (v in .rhs) {
-      .addVariableToIniDf(v, rxui, promote=NA)
+      for (v in .rhs) {
+        .addVariableToIniDf(v, rxui, promote=ifelse(.isTilde,NA, TRUE))
+      }
     }
     return(rxUiCompress(rxui$fun()))
   }
