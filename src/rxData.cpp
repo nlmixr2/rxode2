@@ -593,7 +593,7 @@ Environment rxode2env(){
 }
 // Export for C.
 //[[Rcpp::export]]
-Function getRxFn(std::string name){
+Function getRxFn(std::string name) {
   Environment rx = rxode2env();
   return as<Function>(rx[name]);
 }

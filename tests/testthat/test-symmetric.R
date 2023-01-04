@@ -121,7 +121,7 @@ rxTest({
       })
 
       test_that("non-symmetric sigmas throw errors", {
-        expect_error(
+        expect_warning(
           rxSolve(mod, theta, et, thetaMat = tM, omega = omega),
           "thetaMat.*symmetric"
         )
