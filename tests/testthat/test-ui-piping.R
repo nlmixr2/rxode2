@@ -1628,3 +1628,40 @@ test_that("eff(0) piping should work", {
     )
   )
 })
+
+
+test_that("auto with studid==", {
+  
+  one.compartment <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- 1
+      tv <- 3.45
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv+eta.v)
+      cp <- linCmt()
+      cp ~ add(add.sd)
+    })
+  }
+
+
+  i <- rxode2(one.compartment)
+
+  j <- i %>%
+    model({
+      f(central)  <- 1 + f_study1*(STUDYID==1)
+    },
+    append=NA,
+    auto=FALSE)
+
+  expect_false(any(j$iniDf$name == "f_study1"))
+  expect_false(any(j$iniDf$name == "STUDYID"))
+  
+})
