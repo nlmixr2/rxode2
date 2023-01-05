@@ -1,5 +1,10 @@
 # rxode2 (development version)
 
+- Add the ability to append model statements with piping using `%>%
+  model(x=3, append=d/dt(depot))`, still supports appending with
+  `append=TRUE` and pre-pending with `append=NA` (the default is to
+  replace lines with `append=FALSE`)
+
 # rxode2 2.0.11
 
 - Give a more meaningful error for 'rxode2' ui models with only error expressions 

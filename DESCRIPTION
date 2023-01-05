@@ -110,7 +110,7 @@ NeedsCompilation: yes
 VignetteBuilder: knitr
 License: GPL (>= 3) 
 URL: https://nlmixr2.github.io/rxode2/, https://github.com/nlmixr2/rxode2/
-RoxygenNote: 7.2.2
+RoxygenNote: 7.2.3
 Biarch: true
 LinkingTo: 
     rxode2parse (>= 2.0.12),

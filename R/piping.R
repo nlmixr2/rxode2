@@ -116,7 +116,10 @@
   .expandedForm
 }
 
+.nsEnv <- new.env(parent=emptyenv())
 
+
+.nsEnv$.quoteCallInfoLinesAppend <- NULL
 #' Returns quoted call information
 #'
 #' @param callInfo Call information
@@ -134,10 +137,20 @@
 .quoteCallInfoLines <- function(callInfo, envir=parent.frame()) {
   .bracket <- rep(FALSE, length.out=length(callInfo))
   .env <- environment()
+  .nsEnv$.quoteCallInfoLinesAppend <- NULL
   .ret <- lapply(seq_along(callInfo), function(i) {
     .name <- names(callInfo)[i]
     if (!is.null(.name)) {
-      if (.name %in% c("envir", "append", "auto")) {
+      if (.name == "append") {
+        .append <- callInfo[[i]]
+        if (identical(.append, quote(TRUE)) ||
+              identical(.append, quote(FALSE)) ||
+              identical(.append, quote(NA))) {
+        } else {
+          .nsEnv$.quoteCallInfoLinesAppend <- eval(call("quote", .append))
+        }
+        return(NULL)
+      } else if (.name %in% c("envir",  "auto")) {
         return(NULL)
       } else if (.name != "") {
         # Changed named items to

@@ -39,14 +39,32 @@ model.rxModelVars <- model.rxode2
 #' @export
 .modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, auto=TRUE, envir) {
   checkmate::assertLogical(modifyIni, any.missing=FALSE, len=1)
-  checkmate::assertLogical(append, any.missing=TRUE, len=1)
+  ## checkmate::assertLogical(append, any.missing=TRUE, len=1)
   checkmate::assertLogical(auto, any.missing=TRUE, len=1)
   .doAppend <- FALSE
   rxui <- rxUiDecompress(rxui)
-  if (is.na(append)) {
+  if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
+    .ll <- length(rxui$lstExpr)
+    .w <- which(vapply(seq_len(.ll),
+                       function(i) {
+                         .lhs <- .getLhs(rxui$lstExpr[[i]])
+                         identical(.lhs, .nsEnv$.quoteCallInfoLinesAppend)
+                       }, logical(1), USE.NAMES=FALSE))
+    if (length(.w) == 0) stop("cannot find '",
+                              deparse1(.nsEnv$.quoteCallInfoLinesAppend),
+                              "' in lhs model, cannot append")
+    .w <- max(.w)
+    if (.w == .ll) {
+      assign("lstExpr", c(rxui$lstExpr, modelLines), envir=rxui)
+    } else {
+      assign("lstExpr", c(rxui$lstExpr[seq(1, .w)], modelLines, rxui$lstExpr[seq(.w+1, .ll)]),
+             envir=rxui)
+    }
+    .doAppend <- TRUE
+  } else if (is.logical(append) && length(append) == 1L && is.na(append)) {
     assign("lstExpr", c(modelLines, rxui$lstExpr), envir=rxui)
     .doAppend <- TRUE
-  } else if (append) {
+  } else if (isTRUE(append)) {
     assign("lstExpr", c(rxui$lstExpr, modelLines), envir=rxui)
     .doAppend <- TRUE
   }
