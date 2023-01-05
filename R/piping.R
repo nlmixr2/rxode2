@@ -137,6 +137,7 @@
 .quoteCallInfoLines <- function(callInfo, envir=parent.frame()) {
   .bracket <- rep(FALSE, length.out=length(callInfo))
   .env <- environment()
+  .nsEnv$.quoteCallInfoLinesAppend <- NULL
   .ret <- lapply(seq_along(callInfo), function(i) {
     .name <- names(callInfo)[i]
     if (!is.null(.name)) {
@@ -145,7 +146,6 @@
         if (identical(.append, quote(TRUE)) ||
               identical(.append, quote(FALSE)) ||
               identical(.append, quote(NA))) {
-          .nsEnv$.quoteCallInfoLinesAppend <- NULL
         } else {
           .nsEnv$.quoteCallInfoLinesAppend <- eval(call("quote", .append))
         }

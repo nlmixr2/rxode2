@@ -1686,5 +1686,5 @@ test_that("piping with append=lhs", {
 
   m3 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = cp)
 
-  expect_true(identical(m2$lstExpr[[4]], quote(cl <- tvcl * 2)))
+  expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
 })
