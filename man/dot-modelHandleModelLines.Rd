@@ -26,6 +26,7 @@ appended in piping.  The possible values for this is:
 \item \code{TRUE} which is when the lines are appended to the model instead of replaced
 \item \code{FALSE} when the lines are replaced in the model (default)
 \item \code{NA} is when the lines are pre-pended to the model instead of replaced
+\item \verb{lhs expression}, which will append the lines after the last observed line of the expression \code{lhs}
 }}
 
 \item{auto}{This boolean tells if piping automatically selects the

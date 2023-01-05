@@ -8,9 +8,9 @@
 \usage{
 rxRename(.data, ..., envir = parent.frame())
 
-\method{rename}{rxUi}(.data, ...)
+rename.rxUi(.data, ...)
 
-\method{rename}{`function`}(.data, ...)
+rename.function(.data, ...)
 }
 \arguments{
 \item{.data}{rxode2 ui function, named data to be consistent with \code{dplyr::rename()}}
