@@ -1667,7 +1667,8 @@ test_that("auto with studid==", {
 })
 
 test_that("piping with append=lhs", {
-  ocmt_rx2 <- rxode2( {
+
+  ocmt_rx0 <- rxode2( {
     d/dt(depot) = -ka * depot
     d/dt(center) = ka * depot - cl / v * center
     cp = center / v
