@@ -279,6 +279,78 @@ attr(rxUiGet.thetaUpper, "desc") -> "thetaUpper"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.varLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("etaLhsDf", .x)
+  .theta <- get("thetaLhsDf", .x)
+  .cov <- get("covLhsDf", .x)
+  setNames(c(.eta$eta, .theta$theta, .cov$cov),
+           c(.eta$lhs, .theta$lhs, .cov$lhs))
+}
+attr(rxUiGet.varLhs, "desc") -> "variable to lhs translation"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.etaLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("etaLhsDf", .x)
+  setNames(.eta$eta,.eta$lhs)
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.thetaLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("thetaLhsDf", .x)
+  setNames(.eta$theta, .eta$lhs)
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.covLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("covLhsDf", .x)
+  setNames(.eta$cov, .eta$lhs)
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.lhsVar <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("etaLhsDf", .x)
+  .theta <- get("thetaLhsDf", .x)
+  .cov <- get("covLhsDf", .x)
+  setNames(c(.eta$lhs, .theta$lhs, .cov$lhs),
+           c(.eta$eta, .theta$theta, .cov$cov))
+}
+attr(rxUiGet.lhsVar, "desc") -> "lhs to variable translation"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.etaLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("etaLhsDf", .x)
+  setNames(.eta$lhs, .eta$eta)
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.thetaLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .theta <- get("thetaLhsDf", .x)
+  setNames(.theta$lhs, .theta$theta)
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.covLhs <- function(x, ...) {
+  .x <- x[[1]]
+  .cov <- get("covLhsDf", .x)
+  setNames(.cov$lhs, .cov$cov)
+}
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.default <- function(x, ...) {
   .arg <- class(x)[1]
   if (!exists(.arg, envir=x[[1]])) return(NULL)

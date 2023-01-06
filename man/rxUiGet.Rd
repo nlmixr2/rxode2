@@ -23,6 +23,11 @@
 \alias{rxUiGet.modelDesc}
 \alias{rxUiGet.thetaLower}
 \alias{rxUiGet.thetaUpper}
+\alias{rxUiGet.varLhs}
+\alias{rxUiGet.etaLhs}
+\alias{rxUiGet.thetaLhs}
+\alias{rxUiGet.covLhs}
+\alias{rxUiGet.lhsVar}
 \alias{rxUiGet.default}
 \title{S3 for getting information from UI model}
 \usage{
@@ -69,6 +74,22 @@ rxUiGet(x, ...)
 \method{rxUiGet}{thetaLower}(x, ...)
 
 \method{rxUiGet}{thetaUpper}(x, ...)
+
+\method{rxUiGet}{varLhs}(x, ...)
+
+\method{rxUiGet}{etaLhs}(x, ...)
+
+\method{rxUiGet}{thetaLhs}(x, ...)
+
+\method{rxUiGet}{covLhs}(x, ...)
+
+\method{rxUiGet}{lhsVar}(x, ...)
+
+\method{rxUiGet}{etaLhs}(x, ...)
+
+\method{rxUiGet}{thetaLhs}(x, ...)
+
+\method{rxUiGet}{covLhs}(x, ...)
 
 \method{rxUiGet}{default}(x, ...)
 }
