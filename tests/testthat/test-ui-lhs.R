@@ -2,9 +2,12 @@ test_that("lhs ui accessors", {
   
   oneCmtAllo <- function() {
     ini({
-      lka <- log(0.1); label("Absorption rate (Ka)")
-      lcl <- log(0.2); label("Clearance (CL)")
-      lvc <- log(1); label("Central volume of distribution (V)")
+      lka <- log(0.1)
+      label("Absorption rate (Ka)")
+      lcl <- log(0.2)
+      label("Clearance (CL)")
+      lvc <- log(1)
+      label("Central volume of distribution (V)")
       cppropSd <- c(0, 0.5)
       allo_cl <- fix(0.75)
       allo_vc <- fix(1)
