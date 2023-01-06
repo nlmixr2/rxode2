@@ -279,7 +279,7 @@ attr(rxUiGet.thetaUpper, "desc") -> "thetaUpper"
 
 #' @export
 #' @rdname rxUiGet
-rxUiGet.varLhs <- function(x, ...) {
+rxUiGet.lhsVar <- function(x, ...) {
   .x <- x[[1]]
   .eta <- get("etaLhsDf", .x)
   .theta <- get("thetaLhsDf", .x)
@@ -287,35 +287,10 @@ rxUiGet.varLhs <- function(x, ...) {
   setNames(c(.eta$eta, .theta$theta, .cov$cov),
            c(.eta$lhs, .theta$lhs, .cov$lhs))
 }
-attr(rxUiGet.varLhs, "desc") -> "variable to lhs translation"
 
 #' @export
 #' @rdname rxUiGet
-rxUiGet.etaLhs <- function(x, ...) {
-  .x <- x[[1]]
-  .eta <- get("etaLhsDf", .x)
-  setNames(.eta$eta,.eta$lhs)
-}
-
-#' @export
-#' @rdname rxUiGet
-rxUiGet.thetaLhs <- function(x, ...) {
-  .x <- x[[1]]
-  .eta <- get("thetaLhsDf", .x)
-  setNames(.eta$theta, .eta$lhs)
-}
-
-#' @export
-#' @rdname rxUiGet
-rxUiGet.covLhs <- function(x, ...) {
-  .x <- x[[1]]
-  .eta <- get("covLhsDf", .x)
-  setNames(.eta$cov, .eta$lhs)
-}
-
-#' @export
-#' @rdname rxUiGet
-rxUiGet.lhsVar <- function(x, ...) {
+rxUiGet.varLhs <- function(x, ...) {
   .x <- x[[1]]
   .eta <- get("etaLhsDf", .x)
   .theta <- get("thetaLhsDf", .x)
@@ -323,7 +298,34 @@ rxUiGet.lhsVar <- function(x, ...) {
   setNames(c(.eta$lhs, .theta$lhs, .cov$lhs),
            c(.eta$eta, .theta$theta, .cov$cov))
 }
-attr(rxUiGet.lhsVar, "desc") -> "lhs to variable translation"
+attr(rxUiGet.varLhs, "desc") <- "var->lhs translation"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.lhsEta <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("etaLhsDf", .x)
+  setNames(.eta$eta,.eta$lhs)
+}
+attr(rxUiGet.lhsEta, "desc") <- "lhs->eta translation"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.lhsTheta <- function(x, ...) {
+  .x <- x[[1]]
+  .eta <- get("thetaLhsDf", .x)
+  setNames(.eta$theta, .eta$lhs)
+}
+attr(rxUiGet.lhsTheta, "desc") <- "lhs->theta translation"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.lhsCov <- function(x, ...) {
+  .x <- x[[1]]
+  .cov <- get("covLhsDf", .x)
+  setNames(.cov$cov, .cov$lhs)
+}
+attr(rxUiGet.lhsCov, "desc") <- "lhs->cov translation"
 
 #' @export
 #' @rdname rxUiGet
@@ -332,6 +334,7 @@ rxUiGet.etaLhs <- function(x, ...) {
   .eta <- get("etaLhsDf", .x)
   setNames(.eta$lhs, .eta$eta)
 }
+attr(rxUiGet.etaLhs, "desc") <- "eta->lhs translation"
 
 #' @export
 #' @rdname rxUiGet
@@ -340,6 +343,7 @@ rxUiGet.thetaLhs <- function(x, ...) {
   .theta <- get("thetaLhsDf", .x)
   setNames(.theta$lhs, .theta$theta)
 }
+attr(rxUiGet.thetaLhs, "desc") <- "theta->lhs translation"
 
 #' @export
 #' @rdname rxUiGet
@@ -348,6 +352,7 @@ rxUiGet.covLhs <- function(x, ...) {
   .cov <- get("covLhsDf", .x)
   setNames(.cov$lhs, .cov$cov)
 }
+attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
 
 #' @export
 #' @rdname rxUiGet
