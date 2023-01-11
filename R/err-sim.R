@@ -225,10 +225,7 @@ attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
 rxUiGet.simulationModel <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  if (!exists(".simulationModel", envir=.x)) {
-    assign(".simulationModel", eval(rxCombineErrorLines(.x)), envir=.x)
-  }
-  get(".simulationModel", envir=.x)
+  eval(getBaseSimModel(.x))
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 
