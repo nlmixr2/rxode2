@@ -1178,7 +1178,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                                    theta = NULL, eta = NULL) {
-  .lst <- .rxSolveFromUi(object$ui, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
+  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
   .env <- object$env
   # assign current control to object for expanded thetaMat
