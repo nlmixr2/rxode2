@@ -4,6 +4,9 @@
   model(x=3, append=d/dt(depot))`, still supports appending with
   `append=TRUE` and pre-pending with `append=NA` (the default is to
   replace lines with `append=FALSE`)
+  
+- rxSolve's keep argument will now maintain character and factor classes from
+  input data with the same class (#190)
 
 # rxode2 2.0.11
 
