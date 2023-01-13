@@ -1229,7 +1229,9 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
 #' Clean up rxSolve inputs of iCov, params, and events to merge iCov into params
 #' and events
+#'
 #' @inheritParams rxSolve
+#'
 #' @noRd
 .rxSolveParamsEvents <- function(iCov, params, events, keep, modelVars) {
   .tmp <- .rxSolveResolveParamsEvents(params, events)
@@ -1247,11 +1249,11 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
   if (!is.null(iCov)) {
     if (inherits(iCov, "data.frame")) {
       .icovId <- which(tolower(names(iCov)) == "id")
-      .eventId <- which(tolower(names(.events)) == "id")
+      .eventId <- which(tolower(names(events)) == "id")
       if (length(.eventId) != 1) {
         stop("to use 'iCov' you must have an id in your event table")
       }
-      .by <- names(.events)[.eventId]
+      .by <- names(events)[.eventId]
       if (length(.icovId) == 0) {
         .id <- unique(events[[.by]])
         if (length(iCov[, 1]) != length(.id)) {
@@ -1262,12 +1264,12 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
         stop("iCov has duplicate IDs, cannot continue")
       }
       names(iCov)[.icovId] <- .by
-      .lEvents <- length(.events[, 1])
-      .events <- merge(.events, iCov, by = .by)
-      if (.lEvents != length(.events[, 1])) {
+      .lEvents <- length(events[, 1])
+      events <- merge(events, iCov, by = .by)
+      if (.lEvents != length(events[, 1])) {
         warning("combining iCov and events dropped some event information")
       }
-      if (length(unique(.events[[.by]])) != length(iCov[, 1])) {
+      if (length(unique(events[[.by]])) != length(iCov[, 1])) {
         warning("combining iCov and events dropped some iCov information")
       }
     } else {
