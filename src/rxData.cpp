@@ -2583,7 +2583,6 @@ struct rxSolve_t {
   bool usePar1 = false;
   bool finalPar1 = false;
   bool par1Keep = false;
-  bool swappedEvents = false;
   RObject par1ini;
   NumericVector initsC;
   int nSize;
@@ -4122,21 +4121,12 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".args.object"] = object;
   e["dll"] = rxDll(object);
   e[".args.par0"] = rxSolveDat->par1ini;
-  if (!rxSolveDat->swappedEvents){
-    if (rxSolveDat->usePar1){
-      e[".args.params"] = rxSolveDat->par1;
-    } else {
-      e[".args.params"] = params;
-    }
-    e[".args.events"] = events;
+  if (rxSolveDat->usePar1){
+    e[".args.params"] = rxSolveDat->par1;
   } else {
-    if (rxSolveDat->usePar1){
-      e[".args.params"] = rxSolveDat->par1;
-    } else {
-      e[".args.params"] = events;
-    }
-    e[".args.events"] = params;
+    e[".args.params"] = events;
   }
+  e[".args.events"] = params;
   e[".args.inits"] = inits;
   e[".args"] = rxControl;
   e[".real.update"] = true;
@@ -4597,20 +4587,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   rxSolveDat->isEnvironment = rxIs(obj, "environment");
   rxSolveDat->idFactor= asBool(rxControl[Rxc_idFactor], "idFactor");
   rxSolveDat->warnIdSort = asBool(rxControl[Rxc_warnIdSort], "warnIdSort");
-  RObject trueParams;
-  RObject trueEvents;
-  bool swappedEvents=false;
-  if (rxIs(params, "rx.event")){
-    trueEvents = params;
-    trueParams = events;
-    swappedEvents=true;
-  } else if (rxIs(events, "rx.event")){
-    trueEvents = events;
-    trueParams = params;
-  } else {
-    rxSolveFree();
-    stop(_("cannot solve without event information\nthis can occur when the data frame you are providing does not have the column 'time'"));
-  }
+  // These may change
+  RObject trueEvents = events;
+  RObject trueParams = params;
   getRxModels();
   bool didNesting=false;
   if (rxSolveDat->updateObject && !rxSolveDat->isRxSolve && !rxSolveDat->isEnvironment){
@@ -4773,10 +4752,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RObject par0 = params;
     RObject ev0  = events;
     RObject ev1;
-    rxSolveDat->swappedEvents = false;
     rxSolveDat->nsvar = 0;
     rxSolveDat->labelID=false;
-    rxSolveDat->swappedEvents=swappedEvents;
     ev1 = trueEvents;
     rxSolveDat->par1 = trueParams;
     if (rxIsNull(rxSolveDat->par1)){

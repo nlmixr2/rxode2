@@ -1222,7 +1222,7 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
   } else if (rxIs(params, "event.data.frame")) {
     return(list(events=params, params=events))
   } else {
-    stop("cannot detect an event data frame to solve", call.=FALSE)
+    stop("cannot solve without event information\nthis can occur when the data frame you are providing does not have the column 'time'", call.=FALSE)
   }
 
 }
