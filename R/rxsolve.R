@@ -1798,6 +1798,10 @@ dimnames.rxSolve <- function(x) {
 }
 #' @export
 `$<-.rxSolve` <- function(x, name, value) {
+  if (is.null(value)) {
+    class(x) <- "data.frame"
+    return(`$<-.data.frame`(x, name, value))
+  }
   ret <- .Call(`_rxode2_rxSolveUpdate`, x, name, value)
   if (is.null(ret)) {
     class(x) <- "data.frame"
@@ -1808,6 +1812,14 @@ dimnames.rxSolve <- function(x) {
 }
 #' @export
 "[[<-.rxSolve" <- function(x, i, j, value) {
+  if (is.null(value)) {
+    class(x) <- "data.frame"
+    if (missing(j)) {
+      return("[[<-.data.frame"(x, i, value = value))
+    } else {
+      return("[[<-.data.frame"(x, i, j, value))
+    }
+  }
   if (missing(j) && rxIs(i, "character")) {
     ret <- .Call(`_rxode2_rxSolveUpdate`, x, i, value)
     if (!is.null(ret)) {
