@@ -1288,7 +1288,7 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
     params = params,
     events = events,
     keep = keepSimple,
-    keepFinal = c(keepFinal, keepSimple)
+    keepFinal = keepFinal
   )
 }
 
@@ -1653,12 +1653,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   }
   # Restore the keep columns, if applicable
   if (length(paramsEvents$keep) > 0) {
+    # Use a bespoke merge to do a quick, simple merge
     idxColumn <- .ret[[paramsEvents$keepFinal[1]]]
-    # Use a bespoke merge to prevent modifying the object
-    for (nm in paramsEvents$keep) {
-      .ret[[nm]] <- events[[nm]][idxColumn]
-    }
-    ret[[paramsEvents$keepFinal]] <- NULL
+    .ret <-
+      cbind(
+        .ret[, setdiff(names(.ret), paramsEvents$keepFinal), drop = FALSE],
+        events[idxColumn, paramsEvents$keep, drop=FALSE]
+      )
   }
   .ret
 }
