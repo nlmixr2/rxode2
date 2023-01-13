@@ -1208,11 +1208,33 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
+#' Resolve params and events correctly
+#'
+#' @param params Parameters or events but put into the params argument
+#' @param events Parameters or events but put into the events argument
+#'
+#' @return List with the correct events/parameters
+#' @noRd
+.rxSolveResolveParamsEvents <- function(params, events) {
+  .useEvents <- FALSE
+  if (rxIs(events, "event.data.frame")) {
+    return(list(events=events, params=params))
+  } else if (rxIs(params, "event.data.frame")) {
+    return(list(events=params, params=events))
+  } else {
+    stop("cannot detect an event data frame to solve", call.=FALSE)
+  }
+
+}
+
 #' Clean up rxSolve inputs of iCov, params, and events to merge iCov into params
 #' and events
 #' @inheritParams rxSolve
 #' @noRd
 .rxSolveParamsEvents <- function(iCov, params, events, keep, modelVars) {
+  .tmp <- .rxSolveResolveParamsEvents(params, events)
+  params <- .tmp$params
+  events <- .tmp$events
   .n1 <- setdiff(intersect(tolower(names(params)), tolower(names(iCov))), "id")
   .n2 <- c(.n1, setdiff(intersect(tolower(names(events)), tolower(names(iCov))), "id"))
   .n1 <- unique(c(.n1, .n2))
@@ -1225,15 +1247,6 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
   if (!is.null(iCov)) {
     if (inherits(iCov, "data.frame")) {
       .icovId <- which(tolower(names(iCov)) == "id")
-      .useEvents <- FALSE
-      if (rxIs(events, "event.data.frame")) {
-        .events <- events
-        .useEvents <- TRUE
-      } else if (rxIs(params, "event.data.frame")) {
-        .events <- params
-      } else {
-        stop("Cannot detect an event data frame to merge 'iCov'")
-      }
       .eventId <- which(tolower(names(.events)) == "id")
       if (length(.eventId) != 1) {
         stop("to use 'iCov' you must have an id in your event table")
@@ -1256,11 +1269,6 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
       }
       if (length(unique(.events[[.by]])) != length(iCov[, 1])) {
         warning("combining iCov and events dropped some iCov information")
-      }
-      if (.useEvents) {
-        events <- .events
-      } else {
-        params <- .events
       }
     } else {
       stop("'iCov' must be an input dataset")
@@ -1518,7 +1526,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
   }
   ## Prefers individual keep over keeping from the input data
-  paramsEvents <-
+  .paramsEvents <-
     .rxSolveParamsEvents(
       iCov=.ctl$iCov,
       params = params,
@@ -1526,8 +1534,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       keep = .ctl$keep,
       modelVars = rxModelVars(object)
     )
-  params <- paramsEvents$params
-  events <- paramsEvents$events
+  params <- .paramsEvents$params
+  events <- .paramsEvents$events
   .ctl$keepF <- paramsEvents$keepFinal
   if (rxode2.debug) {
     .rx <- rxNorm(object)
