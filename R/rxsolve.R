@@ -1208,6 +1208,90 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
 #' @export
 rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 
+#' Clean up rxSolve inputs of iCov, params, and events to merge iCov into params
+#' and events
+#' @inheritParams rxSolve
+#' @noRd
+.rxSolveParamsEvents <- function(iCov, params, events, keep, modelVars) {
+  .n1 <- setdiff(intersect(tolower(names(params)), tolower(names(iCov))), "id")
+  .n2 <- c(.n1, setdiff(intersect(tolower(names(events)), tolower(names(iCov))), "id"))
+  .n1 <- unique(c(.n1, .n2))
+  if (length(.n1) > 0) {
+    stop(sprintf(
+      gettext("'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"),
+      paste(.n1, collapse = "', '")
+    ), call. = FALSE)
+  }
+  if (!is.null(iCov)) {
+    if (inherits(iCov, "data.frame")) {
+      .icovId <- which(tolower(names(iCov)) == "id")
+      .useEvents <- FALSE
+      if (rxIs(events, "event.data.frame")) {
+        .events <- events
+        .useEvents <- TRUE
+      } else if (rxIs(params, "event.data.frame")) {
+        .events <- params
+      } else {
+        stop("Cannot detect an event data frame to merge 'iCov'")
+      }
+      .eventId <- which(tolower(names(.events)) == "id")
+      if (length(.eventId) != 1) {
+        stop("to use 'iCov' you must have an id in your event table")
+      }
+      .by <- names(.events)[.eventId]
+      if (length(.icovId) == 0) {
+        .id <- unique(events[[.by]])
+        if (length(iCov[, 1]) != length(.id)) {
+          stop("'iCov' and 'id' mismatch")
+        }
+        iCov$id <- .id
+      } else if (length(.icovId) > 1) {
+        stop("iCov has duplicate IDs, cannot continue")
+      }
+      names(iCov)[.icovId] <- .by
+      .lEvents <- length(.events[, 1])
+      .events <- merge(.events, iCov, by = .by)
+      if (.lEvents != length(.events[, 1])) {
+        warning("combining iCov and events dropped some event information")
+      }
+      if (length(unique(.events[[.by]])) != length(iCov[, 1])) {
+        warning("combining iCov and events dropped some iCov information")
+      }
+      if (.useEvents) {
+        events <- .events
+      } else {
+        params <- .events
+      }
+    } else {
+      stop("'iCov' must be an input dataset")
+    }
+  }
+
+  # Simplify the keep so that model assignments and states are kept over the
+  # input data
+  keepSimple <- character()
+  if (length(keep) > 0) {
+    keepSimple <- setdiff(keep, c(modelVars$lhs, modelVars$state))
+  }
+
+  keepFinal <- character()
+  if (length(keepSimple) > 0) {
+    # Use rxRowNum_ instead of the original keep variables to keep the original
+    # values that may be character factor, etc.
+    if ("rxRowNum_" %in% names(events)) {
+      cli::cli_abort("events data may not have a column named 'rxRowNum_'")
+    }
+    events$rxRowNum_ <- seq_len(nrow(events))
+    keepFinal <- "rxRowNum_"
+  }
+  list(
+    params = params,
+    events = events,
+    keep = keepSimple,
+    keepFinal = c(keepFinal, keepSimple)
+  )
+}
+
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -1320,15 +1404,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
 
     }
   }
-  .n1 <- setdiff(intersect(tolower(names(params)), tolower(names(.ctl$iCov))), "id")
-  .n2 <- c(.n1, setdiff(intersect(tolower(names(events)), tolower(names(.ctl$iCov))), "id"))
-  .n1 <- unique(c(.n1, .n2))
-  if (length(.n1) > 0) {
-    stop(sprintf(
-      gettext("'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"),
-      paste(.n1, collapse = "', '")
-    ), call. = FALSE)
-  }
   if (!is.null(rxode2et::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
     .ctl$thetaMat <- rxode2et::.pipeThetaMat(NA)
   }
@@ -1393,14 +1468,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
   }
 
-  ## Prefers individual keep over keeping from the input data
-  .keepF <- character(0)
-  if (!is.null(.ctl$keep)) {
-    .mv <- rxModelVars(object)
-    .vars <- c(.mv$lhs, .mv$state)
-    .keepF <- setdiff(.ctl$keep, .vars)
-  }
-  .ctl$keepF <- .keepF
   rxSolveFree()
 
   if (!is.null(theta) || !is.null(eta)) {
@@ -1450,50 +1517,18 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       )
     }
   }
-  if (!is.null(.ctl$iCov)) {
-    if (inherits(.ctl$iCov, "data.frame")) {
-      .icovId <- which(tolower(names(.ctl$iCov)) == "id")
-      .useEvents <- FALSE
-      if (rxIs(events, "event.data.frame")) {
-        .events <- events
-        .useEvents <- TRUE
-      } else if (rxIs(params, "event.data.frame")) {
-        .events <- params
-      } else {
-        stop("Cannot detect an event data frame to merge 'iCov'")
-      }
-      .eventId <- which(tolower(names(.events)) == "id")
-      if (length(.eventId) != 1) {
-        stop("to use 'iCov' you must have an id in your event table")
-      }
-      .by <- names(.events)[.eventId]
-      if (length(.icovId) == 0) {
-        .id <- unique(events[[.by]])
-        if (length(.ctl$iCov[, 1]) != length(.id)) {
-          stop("'iCov' and 'id' mismatch")
-        }
-        .ctl$iCov$id <- .id
-      } else if (length(.icovId) > 1) {
-        stop("iCov has duplicate IDs, cannot continue")
-      }
-      names(.ctl$iCov)[.icovId] <- .by
-      .lEvents <- length(.events[, 1])
-      .events <- merge(.events, .ctl$iCov, by = .by)
-      if (.lEvents != length(.events[, 1])) {
-        warning("combining iCov and events dropped some event information")
-      }
-      if (length(unique(.events[[.by]])) != length(.ctl$iCov[, 1])) {
-        warning("combining iCov and events dropped some iCov information")
-      }
-      if (.useEvents) {
-        events <- .events
-      } else {
-        params <- .events
-      }
-    } else {
-      stop("'iCov' must be an input dataset")
-    }
-  }
+  ## Prefers individual keep over keeping from the input data
+  paramsEvents <-
+    .rxSolveParamsEvents(
+      iCov=.ctl$iCov,
+      params = params,
+      events = events,
+      keep = .ctl$keep,
+      modelVars = rxModelVars(object)
+    )
+  params <- paramsEvents$params
+  events <- paramsEvents$events
+  .ctl$keepF <- paramsEvents$keepFinal
   if (rxode2.debug) {
     .rx <- rxNorm(object)
     qs::qsave(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs"))
@@ -1556,56 +1591,55 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .names <- c(.names, .col[.w])
   }
+
+  rxSetCovariateNamesForPiping(NULL)
   if (rxode2.debug) {
-    rxSetCovariateNamesForPiping(NULL)
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,
                                                   setupOnlyS = .setupOnly
                                                   ), lst = TRUE)
   } else {
-    rxSetCovariateNamesForPiping(NULL)
     while (.envReset$reset) {
-    .envReset$reset <- FALSE
-    tryCatch({
-      .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
-                                                    params, events, inits,
-                                                    setupOnlyS = .setupOnly
-                                                    ), lst = TRUE)
-    },
-    error=function(e) {
-      if (regexpr("not provided by package", e$message) != -1) {
-        if (.envReset$cacheReset) {
-          .malert("unsuccessful cache reset; try manual reset with 'rxClean()'")
-          stop(e)
+      .envReset$reset <- FALSE
+      tryCatch({
+        .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
+                                                      params, events, inits,
+                                                      setupOnlyS = .setupOnly
+        ), lst = TRUE)
+      },
+      error=function(e) {
+        if (regexpr("not provided by package", e$message) != -1) {
+          if (.envReset$cacheReset) {
+            .malert("unsuccessful cache reset; try manual reset with 'rxClean()'")
+            stop(e)
+          } else {
+            # reset
+            gc()
+            .minfo("try resetting cache")
+            rxode2::rxClean()
+            .envReset$cacheReset <- TRUE
+            .envReset$reset <- TRUE
+            .msuccess("done")
+          }
+        } else if (regexpr("maximal number of DLLs reached", e$message) != -1) {
+          if (.envReset$unload) {
+            .malert("Could not unload rxode2 models, try restarting R")
+            stop(e)
+          } else {
+            # reset
+            gc()
+            .minfo("try resetting cache and unloading all rxode2 models")
+            try(rxode2::rxUnloadAll())
+            rxode2::rxClean()
+            .envReset$unload <- TRUE
+            .envReset$reset <- TRUE
+            .msuccess("done")
+          }
         } else {
-          # reset
-          gc()
-          .minfo("try resetting cache")
-          rxode2::rxClean()
-          .envReset$cacheReset <- TRUE
-          .envReset$reset <- TRUE
-          .msuccess("done")
-        }
-      } else if (regexpr("maximal number of DLLs reached", e$message) != -1) {
-        if (.envReset$unload) {
-          .malert("Could not unload rxode2 models, try restarting R")
           stop(e)
-        } else {
-          # reset
-          gc()
-          .minfo("try resetting cache and unloading all rxode2 models")
-          try(rxode2::rxUnloadAll())
-          rxode2::rxClean()
-          .envReset$unload <- TRUE
-          .envReset$reset <- TRUE
-          .msuccess("done")
         }
-      } else {
-        stop(e)
-      }
-    })
-  }
-
+      })
+    }
   }
   .ret <- .envReset$ret
   .ws <- .ret[[2]]
@@ -1617,7 +1651,16 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   } else if (.ctl$returnType == 5L) {
     .ret <- tibble::as_tibble(.ret)
   }
-  return(.ret)
+  # Restore the keep columns, if applicable
+  if (length(paramsEvents$keep) > 0) {
+    idxColumn <- .ret[[paramsEvents$keepFinal[1]]]
+    # Use a bespoke merge to prevent modifying the object
+    for (nm in paramsEvents$keep) {
+      .ret[[nm]] <- events[[nm]][idxColumn]
+    }
+    ret[[paramsEvents$keepFinal]] <- NULL
+  }
+  .ret
 }
 
 #' @rdname rxSolve
