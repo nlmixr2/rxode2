@@ -1755,16 +1755,42 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int jj = idxOutput.size()-rmAmt;
   int kk;
   List inDataFK(keepCol.size());
+	List inDataFKL(keepCol.size());
   for (j = 0; j < (int)(keepCol.size()); j++){
     SEXP cur = inData[keepCol[j]];
+		RObject calc;
+		List curType(2);
     if (TYPEOF(cur) == STRSXP){
-      inDataFK[j] = convertId_(cur);
+			calc = convertId_(cur);
+			curType[0] = IntegerVector::create(1);
+			curType[1] = calc.attr("levels");
+			calc.attr("levels") = R_NilValue;
+			calc.attr("class") = R_NilValue;
+      inDataFK[j] = as<NumericVector>(calc);
+			inDataFKL[j] = curType;
     } else if (TYPEOF(cur) == INTSXP){
-      inDataFK[j] = as<NumericVector>(cur);
-    } else {
+			calc = cur;
+			calc.attr("levels") = R_NilValue;
+			calc.attr("class") = R_NilValue;
+      inDataFK[j] = as<NumericVector>(calc);
+			if (calc.hasAttribute("levels")) {
+				curType[0] = IntegerVector::create(2);
+				curType[1] = calc.attr("levels");
+			} else {
+				curType[0] = IntegerVector::create(3);
+				curType[1] = R_NilValue;
+			}
+			inDataFKL[j] = curType;
+    } else if (TYPEOF(cur) == REALSXP) {
+			curType[0] = IntegerVector::create(4);
+			curType[1] = R_NilValue;
       inDataFK[j] = cur;
-    }
+			inDataFKL[j] = curType;
+    } else {
+			stop("the columns that are kept must be either a string, a factor, an integer number, or a real number");
+		}
   }
+
   for (i =idxOutput.size(); i--;){
     if (idxOutput[i] != -1) {
       jj--;
@@ -1825,11 +1851,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           // These keep variables are added.
           SEXP cur = inDataFK[j];
-          if (TYPEOF(cur) == INTSXP) {
-            nvTmp[jj] = (double)(INTEGER(cur)[idxInput[idxOutput[i]]]);
-          } else {
-            nvTmp[jj] = REAL(cur)[idxInput[idxOutput[i]]];
-          }
+					nvTmp[jj] = REAL(cur)[idxInput[idxOutput[i]]];
         }
       }
       for (j = 0; j < (int)(covCol.size()); j++){
@@ -2025,7 +2047,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(keepL, R_RowNamesSymbol,
                IntegerVector::create(NA_INTEGER,-idxOutput.size()+rmAmt));
   Rf_setAttrib(keepL, Rf_install("keepCov"), wrap(keepLc));
-  e[RxTrans_keepL] = keepL;
+  e[RxTrans_keepL] = List::create(_["keepL"]=keepL, _["keepLtype"]=inDataFKL);
   Rf_setAttrib(e, R_ClassSymbol, wrap("rxHidden"));
   cls.attr(".rxode2.lst") = e;
   tmp = lstF[0];

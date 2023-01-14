@@ -2740,7 +2740,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
       rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
-      List keep = tmpL[RxTrans_keepL];
+      List keep0 = tmpL[RxTrans_keepL];
+      List keep = tmpL[0];
       keepFcov=keep;
       rx->nKeepF = keepFcov.size();
       int lenOut = 200;
@@ -2812,8 +2813,9 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");
     rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
-    List keep = tmpL[RxTrans_keepL];
-    _rxModels[".fkeep"] = keep;
+    List keep0 = tmpL[RxTrans_keepL];
+    List keep = keep0[0];
+    _rxModels[".fkeep"] = keep0;
     keepFcov=keep;
     rx->nKeepF = keepFcov.size();
     rxcEvid = 2;
