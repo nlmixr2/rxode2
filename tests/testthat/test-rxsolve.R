@@ -25,4 +25,5 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
   expect_type(sim$SEX, "character")
   expect_s3_class(sim$fSEX, "factor")
   expect_equal(levels(sim$fSEX), c("F", "M"))
+  expect_true(inherits(sim, "rxSolve"))
 })

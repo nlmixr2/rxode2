@@ -1283,7 +1283,6 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
   if (length(keep) > 0) {
     keepSimple <- setdiff(keep, c(modelVars$lhs, modelVars$state))
   }
-
   keepFinal <- character()
   if (length(keepSimple) > 0) {
     # Use rxRowNum_ instead of the original keep variables to keep the original
@@ -1538,7 +1537,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     )
   params <- .paramsEvents$params
   events <- .paramsEvents$events
-  .ctl$keepF <- paramsEvents$keepFinal
+  .ctl$keepF <- .paramsEvents$keepFinal
   if (rxode2.debug) {
     .rx <- rxNorm(object)
     qs::qsave(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs"))
@@ -1656,20 +1655,35 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .rxModels$.ws <- .ws
   lapply(.ws, function(x) warning(x, call. = FALSE))
   .ret <- .ret[[1]]
+  # Restore the keep columns, if applicable
+  if (length(.paramsEvents$keep) > 0) {
+    # Use a bespoke merge to do a quick, simple merge
+    if (.ctl$returnType == 1L) {
+      .ret <- as.data.frame(.ret)
+    }
+    .cls <- class(.ret)
+    if (.ctl$returnType == 0L) {
+      class(.ret) <- "data.frame"
+      }
+    .idxColumn <- .ret[[.paramsEvents$keepFinal[1]]]
+    .ret <-
+      cbind(
+        .ret[, setdiff(names(.ret), .paramsEvents$keepFinal), drop = FALSE],
+        events[.idxColumn, .paramsEvents$keep, drop=FALSE]
+      )
+    # Update rxSolve to reflect the new number of columns
+    if (.ctl$returnType == 0L) {
+      assign(".check.ncol", length(.ret), envir = attr(.cls, ".rxode2.env"))
+      assign(".check.names", names(.ret), envir = attr(.cls, ".rxode2.env"))
+      class(.ret) <- .cls
+    }  else if (.ctl$returnType == 1L) {
+      .ret <- as.matrix(.ret)
+    }
+  }
   if (.ctl$returnType == 4L) {
     data.table::setDT(.ret)
   } else if (.ctl$returnType == 5L) {
     .ret <- tibble::as_tibble(.ret)
-  }
-  # Restore the keep columns, if applicable
-  if (length(paramsEvents$keep) > 0) {
-    # Use a bespoke merge to do a quick, simple merge
-    idxColumn <- .ret[[paramsEvents$keepFinal[1]]]
-    .ret <-
-      cbind(
-        .ret[, setdiff(names(.ret), paramsEvents$keepFinal), drop = FALSE],
-        events[idxColumn, paramsEvents$keep, drop=FALSE]
-      )
   }
   .ret
 }
