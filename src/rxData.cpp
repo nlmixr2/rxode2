@@ -2520,9 +2520,11 @@ extern "C" void rxSolveFreeC() {
 
 
 List keepFcov;
+List keepFcovType;
 
 extern void resetFkeep() {
   keepFcov = List::create();
+  keepFcovType = List::create();
 }
 
 

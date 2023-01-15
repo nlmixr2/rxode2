@@ -273,10 +273,24 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     charItem = CHAR(STRING_ELT(fkeepNames, i));
     df[j++] = getDfLevels(charItem, rx);
   }
-  ncols+= ncols2;
-  for (i = ncols + doseCols + nidCols + 2*nmevid; i < ncols + doseCols + nidCols + doTBS*4 + nmevid*5; i++){
+  ncols += ncols2;
+  for (i = ncols + doseCols + nidCols + 2*nmevid;
+			 i < ncols + doseCols + nidCols + nmevid*5 - nkeep;
+			 i++){
     df[i] = NumericVector(rx->nr);
   }
+	// keep items
+	for (i = ncols + doseCols + nidCols + nmevid*5 - nkeep;
+			 i < ncols + doseCols + nidCols + nmevid*5;
+			 i++) {
+		df[i] = NumericVector(rx->nr);
+	}
+	// tbs items
+	for (i = ncols + doseCols + nidCols + nmevid*5;
+			 i < ncols + doseCols + nidCols + nmevid*5 + doTBS*4;
+			 i++) {
+		df[i] = NumericVector(rx->nr);
+	}
   // Now create the data frame
   int resetno = 0;
   for (int csim = 0; csim < nsim; csim++) {
