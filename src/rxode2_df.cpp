@@ -1,4 +1,4 @@
-// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
 #define USE_FC_LEN_T
 // [[Rcpp::interfaces(r,cpp)]]
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -123,7 +123,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx, rx_solving_options op);
 
 extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
-	_rxode2random_assignSolveOnly2(rx_global, op_global);
+  _rxode2random_assignSolveOnly2(rx_global, op_global);
   rx_solve *rx;
   rx = &rx_global;
   rx_solving_options *op = &op_global;
@@ -275,22 +275,36 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   }
   ncols += ncols2;
   for (i = ncols + doseCols + nidCols + 2*nmevid;
-			 i < ncols + doseCols + nidCols + nmevid*5 - nkeep;
-			 i++){
+       i < ncols + doseCols + nidCols + nmevid*5 - nkeep;
+       i++){
     df[i] = NumericVector(rx->nr);
   }
-	// keep items
-	for (i = ncols + doseCols + nidCols + nmevid*5 - nkeep;
-			 i < ncols + doseCols + nidCols + nmevid*5;
-			 i++) {
-		df[i] = NumericVector(rx->nr);
-	}
-	// tbs items
-	for (i = ncols + doseCols + nidCols + nmevid*5;
-			 i < ncols + doseCols + nidCols + nmevid*5 + doTBS*4;
-			 i++) {
-		df[i] = NumericVector(rx->nr);
-	}
+  // keep items
+  j = 0;
+  for (i = ncols + doseCols + nidCols + nmevid*5 - nkeep;
+       i < ncols + doseCols + nidCols + nmevid*5;
+       i++) {
+    int curType = get_fkeepType(j);
+    if (curType == 4) {
+      df[i] = NumericVector(rx->nr);
+    } else if (curType == 1) {
+      df[i] = StringVector(rx->nr);
+    } else {
+      IntegerVector cur(rx->nr);
+      if (curType == 2) {
+        cur.attr("levels") = get_fkeepLevels(j);
+        cur.attr("class") = "factor";
+      }
+      df[i] = cur;
+    }
+    j++;
+  }
+  // tbs items
+  for (i = ncols + doseCols + nidCols + nmevid*5;
+       i < ncols + doseCols + nidCols + nmevid*5 + doTBS*4;
+       i++) {
+    df[i] = NumericVector(rx->nr);
+  }
   // Now create the data frame
   int resetno = 0;
   for (int csim = 0; csim < nsim; csim++) {
@@ -690,6 +704,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               dfp = REAL(tmp);
               // is this ntimes = nAllTimes or nObs time for this subject...?
               dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind);
+            } else if (TYPEOF(tmp) == STRSXP){
+              SET_STRING_ELT(tmp, ii, get_fkeepChar(j, get_fkeep(j, curi + ind->ix[i], ind)));
             } else {
               dfi = INTEGER(tmp);
               /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */

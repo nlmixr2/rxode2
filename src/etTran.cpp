@@ -1770,15 +1770,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 			inDataFKL[j] = curType;
     } else if (TYPEOF(cur) == INTSXP){
 			calc = cur;
-			calc.attr("levels") = R_NilValue;
-			calc.attr("class") = R_NilValue;
-      inDataFK[j] = as<NumericVector>(calc);
 			if (calc.hasAttribute("levels")) {
 				curType[0] = IntegerVector::create(2);
 				curType[1] = calc.attr("levels");
+				calc.attr("levels") = R_NilValue;
+				calc.attr("class") = R_NilValue;
+				inDataFK[j] = as<NumericVector>(calc);
 			} else {
 				curType[0] = IntegerVector::create(3);
 				curType[1] = R_NilValue;
+				inDataFK[j] = as<NumericVector>(calc);
 			}
 			inDataFKL[j] = curType;
     } else if (TYPEOF(cur) == REALSXP) {

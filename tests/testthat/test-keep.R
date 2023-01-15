@@ -113,10 +113,12 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
     str2lang(e) 
   })
 
-  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX"))
+  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX"))
   
   expect_type(sim$SEX, "character")
   expect_s3_class(sim$fSEX, "factor")
   expect_equal(levels(sim$fSEX), c("F", "M"))
+  expect_type(sim$iSEX, "integer")
+  expect_type(sim$dSEX, "double")
   
 })

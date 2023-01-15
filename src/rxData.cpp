@@ -2535,6 +2535,23 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind) {
   return ind->par_ptr[idx-1];
 }
 
+extern "C" int get_fkeepType(int col) {
+  List cur = keepFcovType[col];
+  return as<int>(cur[0]);
+}
+
+extern "C" SEXP get_fkeepLevels(int col) {
+  List cur = keepFcovType[col];
+  return wrap(cur[1]);
+}
+
+extern "C" SEXP get_fkeepChar(int col, double val) {
+  List cur = keepFcovType[col];
+  StringVector levels = cur[1];
+  int i = (int)(val - 1.0);
+  return wrap(levels[i]);
+}
+
 extern "C" SEXP get_fkeepn() {
   return as<SEXP>(keepFcov.attr("names"));
 }
@@ -2745,6 +2762,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       List keep0 = tmpL[RxTrans_keepL];
       List keep = tmpL[0];
       keepFcov=keep;
+      keepFcovType = tmpL[1];
       rx->nKeepF = keepFcov.size();
       int lenOut = 200;
       double by = NA_REAL;
@@ -2819,6 +2837,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     List keep = keep0[0];
     _rxModels[".fkeep"] = keep0;
     keepFcov=keep;
+    keepFcovType = keep0[1];
     rx->nKeepF = keepFcov.size();
     rxcEvid = 2;
     rxcTime = 1;
@@ -3994,8 +4013,8 @@ List rxSolve_df(const RObject &obj,
   }
   if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1){
     IntegerVector did = as<IntegerVector>(dat["id"]);
-    did.attr("class") = "factor";
     did.attr("levels") = rxSolveDat->idLevels;
+    did.attr("class") = "factor";
   }
   if (rxSolveDat->convertInt && rx->nsub > 1){
     CharacterVector lvlC = rxSolveDat->idLevels;
