@@ -120,5 +120,7 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
   expect_equal(levels(sim$fSEX), c("F", "M"))
   expect_type(sim$iSEX, "integer")
   expect_type(sim$dSEX, "double")
+
+  expect_error(rxSolve(one.cmt, events = d, keep = c("eSEX")))
   
 })
