@@ -6028,7 +6028,12 @@ RObject rxUnlock(RObject obj){
   std::string file = rxDll(obj);
   int ret;
   if (_rxModels.exists(file)){
-    ret = asInt(_rxModels[file], "_rxModels[file]");
+    RObject tmp = _rxModels[file];
+    if (TYPEOF(tmp) != INTSXP) {
+      _rxModels[file] = 0;
+      return R_NilValue;
+    }
+    ret = asInt(tmp, "_rxModels[file]");
     ret = ret - 1;
     if (ret > 0) _rxModels[file] = ret;
     else  _rxModels[file] = 0;
@@ -6040,7 +6045,12 @@ bool rxCanUnload(RObject obj){
   getRxModels();
   std::string file = rxDll(obj);
   if(_rxModels.exists(file)){
-    int ret = asInt(_rxModels[file], "_rxModels[file]");
+    RObject tmp = _rxModels[file];
+    if (TYPEOF(tmp) != INTSXP) {
+      _rxModels[file] = 0;
+      return true;
+    }
+    int ret = asInt(tmp, "_rxModels[file]");
     return (ret == 0L);
   }
   return true;
