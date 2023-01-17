@@ -325,8 +325,6 @@ extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, 
   // int phiM=op->indLinPhiM;
   // double phiTol=op->indLinPhiTol;
   // double phiAnorm = op->indLinPhiAnorm;
-  std::ostream nullstream(0);
-  arma::arma_cerr_stream<char>(&nullstream);
   
   int locf=(op->is_locf!=2);
   double tcov = tf;
