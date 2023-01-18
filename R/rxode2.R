@@ -1499,7 +1499,7 @@ rxCompile.rxModelVars <- function(model, # Model
           .Call(
             `_rxode2_codegen`, .cFile, prefix, .libname,
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
-            .rxModelVarsLast
+            .rxModelVarsLast, .rxSupportedFuns()
           )
         } else {
           .libname <- gsub(.Platform$dynlib.ext, "", basename(.cDllFile))
@@ -1507,7 +1507,7 @@ rxCompile.rxModelVars <- function(model, # Model
           .Call(
             `_rxode2_codegen`, .cFile, prefix, .libname,
             .trans["parsed_md5"], paste(.rxTimeId(.trans["parsed_md5"])),
-            .rxModelVarsLast
+            .rxModelVarsLast, .rxSupportedFuns()
           )
         }
         .defs <- ""
