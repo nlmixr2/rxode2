@@ -95,5 +95,7 @@ close(md5file)
 l <- readLines(file.path(system.file(package="rxode2parse"), "include", "sbuf.c"))
 
 sbuf.c <- file("src/sbuf.c", "wb")
+.w <- which(regexpr(" *extern +SEXP +_goodFuns; *", l) != -1)
+l <- l[-seq(.w, length(l))]
 writeLines(l, sbuf.c)
 close(sbuf.c)
