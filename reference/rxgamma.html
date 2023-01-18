@@ -203,14 +203,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxgamma you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.907353e-02 3.126626e-02 3.003087e-03 2.119591e-05 1.145666e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 9.153109e-04 1.202315e+00 5.635605e-01 1.037613e-02 1.648996e+00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.74657571 2.07831403 0.01373923 0.00881290 1.02716628 0.25177959</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 0.44415881 0.11178431 1.89206753 0.10349750</span>
 <span class="r-in"><span><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 3.450524 6.097187 6.031560 7.403674 3.989918 5.067901 3.253712 2.013726</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 5.799752 6.061967</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 10.787765  2.041498  1.209882  1.021891  1.711238  3.928654  1.847068</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  5.053673  7.350839  3.813624</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxgamma</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.472784</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.237456</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxbeta` directly in the model</span></span></span>
