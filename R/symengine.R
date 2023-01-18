@@ -3068,6 +3068,9 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
       "dabs1", "abs1"
     ))
   }
+  # remove operators
+  .ret <- setdiff(.ret,
+                  c("==", "!=", ">=", "<=", "<", ">", "&&", "||", "&", "|", "!", "+", "-", "*", "**", "^", "/"))
   .ret
 }
 
