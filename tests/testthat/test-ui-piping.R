@@ -1687,4 +1687,73 @@ test_that("piping with append=lhs", {
   m3 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = cp)
 
   expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
+
+  test_that("piping", {
+
+      one.cmt <- function() {
+        ini({
+          ## You may label each parameter with a comment
+          tka <- 0.45 # Ka
+          tcl <- log(c(0, 2.7, 100)) # Log Cl
+          ## This works with interactive models
+          ## You may also label the preceding line with label("label text")
+          tv <- 3.45; label("log V")
+          ## the label("Label name") works with all models
+          eta.ka ~ 0.6
+          eta.cl ~ 0.3
+          eta.v ~ 0.1
+          add.sd <- 0.7
+        })
+        model({
+          ka <- exp(tka + eta.ka)
+          cl <- exp(tcl + eta.cl)
+          v <- exp(tv + eta.v)
+          linCmt() ~ add(add.sd)
+        })
+      }
+
+      one.cmt <- one.cmt()
+      m1 <- function() {
+        ini({
+          tka <- 0.463613555325211
+          label("Ka")
+          tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+          label("Log Cl")
+          tv <- 3.46039743010498
+          label("log V")
+          add.sd <- c(0, 0.694761430696633)
+          eta.ka ~ 0.400673718508127
+          eta.cl ~ 0.069154564934726
+          eta.v ~ 0.0191298379535425
+        })
+        model({
+          ka <- exp(tka + eta.ka)
+          cl <- exp(tcl + eta.cl)
+          v <- exp(tv + eta.v)
+          linCmt() ~ add(add.sd)
+        })
+      }
+
+      m1 <- m1()
+
+      m2 <- function() {
+        ini({
+          tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+          label("Log Cl")
+          tv <- 3.46039743010498
+          label("log V")
+          add.sd <- c(0, 0.694761430696633)
+          eta.cl ~ 0.069154564934726
+          eta.v ~ 0.0191298379535425
+        })
+        model({
+          cl <- exp(tcl + eta.cl)
+          v <- exp(tv + eta.v)
+          linCmt() ~ add(add.sd)
+        })
+      }
+
+      m2 <- m2()
+
+  })
 })
