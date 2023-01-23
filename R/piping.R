@@ -98,6 +98,55 @@
           .unlistedBrackets[[1]] <- quote(`<-`)
         }
         .unlistedBrackets <- list(.unlistedBrackets)
+      } else if (inherits(.cur, "rxUi") || inherits(.cur, "function") ||
+                   inherits(.cur, "rxode2") || inheirits(.cur, "nlmixr2FitCore")) {
+        # FIXME for ini only
+        if (inherits(.cur, "rxode2")) {
+          .cur <- as.function(.cur)
+        }
+        if (inherits(.cur, "nlmixr2FitCore")) {
+          .cur <- .cur$ui
+        }
+        if (inherits(.cur, "function")){
+          .cur <- .cur()
+        }
+        .ini <- lotri::lotriDataFrameToLotriExpression(.cur$iniDf, useIni = TRUE)
+        .ini <- .ini[[2]]
+        .ini <- as.list(.ini)[-1]
+        .env <- new.env(parent=emptyenv())
+        .env$labels <- NULL
+        .env$lastlhs <- NULL
+        .env$lhsvars <- NULL
+        .ini <- lapply(seq_along(.ini), function(i) {
+          .cur <- .ini[[i]]
+          if (is.call(.cur) && identical(.cur[[1]], quote(`label`))) {
+            if (is.null(.env$lastlhs)) {
+              stop("do not know where to put label", call.=FALSE) # should not get here
+            }
+            .env$labels <- c(.env$labels, i)
+            return(as.call(list(quote(`<-`), str2lang(.env$lastlhs), .cur)))
+          }
+          if (is.call(.cur) && (identical(.cur[[1]], quote(`<-`)) ||
+                                  identical(.cur[[1]], quote(`~`)))) {
+            if (is.call(.cur[[2]])) {
+              if (identical(.cur[[2]], quote(`+`))) {
+                .env$lhsvars <- c(.env$lhsvars, vapply(as.list(.cur)[-1], function(x) {
+                  as.character(x)
+                }, character(1), USE.NAMES=FALSE))
+              }
+            } else {
+              .char <- as.character(.cur[[2]])
+              .env$lastlhs <- .cur
+              .env$lhsvars <- c(.env$lhsvars, .char)
+            }
+          }
+          .cur
+        })
+        if (!is.null(.env$labels)) {
+          # FIXME include labels (by option) once Bill is done 
+          .ini <- .ini[-.env$labels]
+        }
+        .expandedForm <- c(.expandedForm, .ini)
       } else {
         stop("vectors and list need to named numeric expression", call.=FALSE)
       }
