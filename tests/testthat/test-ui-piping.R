@@ -1,6 +1,7 @@
 rxTest({
-  testPipeQuote <- function(..., envir=parent.frame()) {
-    .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir)
+
+  testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
+    .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir, iniDf=iniDf)
   }
 
   test_that("test of standard quoting of piping arguments", {

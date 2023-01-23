@@ -349,7 +349,7 @@
 #' @rdname ini
 ini.rxUi <- function(x, ..., envir=parent.frame()) {
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
-  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
+  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf=.ret$iniDf)
   lapply(.iniLines, function(line) {
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
   })
@@ -358,27 +358,13 @@ ini.rxUi <- function(x, ..., envir=parent.frame()) {
 
 #' @export
 #' @rdname ini
-ini.function <- function(x, ..., envir=parent.frame()) {
-  .ret <- rxUiDecompress(rxode2(x))
-  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
+ini.default <- function(x, ..., envir=parent.frame()) {
+  .ret <- rxUiDecompress(as.rxUi(x))
+  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .ret$iniDf)
   lapply(.iniLines, function(line) {
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
   })
   rxUiCompress(.ret)
-}
-
-#' @export
-#' @rdname ini
-ini.rxode2 <- function(x, ..., envir=parent.frame()) {
-  .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir)
-}
-
-#' @export
-#' @rdname ini
-ini.rxModelVars <- function(x, ..., envir=parent.frame()) {
-  .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir)
 }
 
 #' This tells if the line is modifying an estimate instead of a line of the model

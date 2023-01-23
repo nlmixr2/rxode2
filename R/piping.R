@@ -19,13 +19,18 @@
 #' This expands a list of expressions
 #'
 #' @param lines These are the expressions as a list
+#' 
 #' @param bracketsOrCs This is the indicator of the bracket lines ie
 #'   `{}` or concatenations ie `c()`, that are expanded
+#' 
+#' @param iniDf initial conditions from the previous/parent rxUi
+#' 
 #' @return Single list of expressions; `a=b` becomes `a<-b` in this
 #'   expression
+#' 
 #' @author Matthew L. Fidler
 #' @noRd
-.quoteExpandBracketsOrCs <- function(lines, bracketsOrCs, envir=envir) {
+.quoteExpandBracketsOrCs <- function(lines, bracketsOrCs, envir=envir, iniDf=NULL) {
   if (length(bracketsOrCs) == 0) return(lines)
   .expandedForm <- NULL
   .currentLine <- 1
@@ -51,7 +56,7 @@
                                         .c[[1]] <- quote(`<-`)
                                       }
                                       .c
-                                     })
+                                    })
       }
     }
     if (is.null(.unlistedBrackets)) {
@@ -98,57 +103,83 @@
           .unlistedBrackets[[1]] <- quote(`<-`)
         }
         .unlistedBrackets <- list(.unlistedBrackets)
-      } else if (inherits(.cur, "rxUi") || inherits(.cur, "function") ||
-                   inherits(.cur, "rxode2") || inheirits(.cur, "nlmixr2FitCore")) {
-        # FIXME for ini only
-        if (inherits(.cur, "rxode2")) {
-          .cur <- as.function(.cur)
-        }
-        if (inherits(.cur, "nlmixr2FitCore")) {
-          .cur <- .cur$ui
-        }
-        if (inherits(.cur, "function")){
-          .cur <- .cur()
-        }
-        .ini <- lotri::lotriDataFrameToLotriExpression(.cur$iniDf, useIni = TRUE)
-        .ini <- .ini[[2]]
-        .ini <- as.list(.ini)[-1]
-        .env <- new.env(parent=emptyenv())
-        .env$labels <- NULL
-        .env$lastlhs <- NULL
-        .env$lhsvars <- NULL
-        .ini <- lapply(seq_along(.ini), function(i) {
-          .cur <- .ini[[i]]
-          if (is.call(.cur) && identical(.cur[[1]], quote(`label`))) {
-            if (is.null(.env$lastlhs)) {
-              stop("do not know where to put label", call.=FALSE) # should not get here
-            }
-            .env$labels <- c(.env$labels, i)
-            return(as.call(list(quote(`<-`), str2lang(.env$lastlhs), .cur)))
-          }
-          if (is.call(.cur) && (identical(.cur[[1]], quote(`<-`)) ||
-                                  identical(.cur[[1]], quote(`~`)))) {
-            if (is.call(.cur[[2]])) {
-              if (identical(.cur[[2]], quote(`+`))) {
-                .env$lhsvars <- c(.env$lhsvars, vapply(as.list(.cur)[-1], function(x) {
-                  as.character(x)
-                }, character(1), USE.NAMES=FALSE))
-              }
-            } else {
-              .char <- as.character(.cur[[2]])
-              .env$lastlhs <- .cur
-              .env$lhsvars <- c(.env$lhsvars, .char)
-            }
-          }
-          .cur
-        })
-        if (!is.null(.env$labels)) {
-          # FIXME include labels (by option) once Bill is done 
-          .ini <- .ini[-.env$labels]
-        }
-        .expandedForm <- c(.expandedForm, .ini)
       } else {
-        stop("vectors and list need to named numeric expression", call.=FALSE)
+        .stop <- TRUE
+        if (!is.null(iniDf)) {
+          .cur <- try(as.rxUi(.cur), silent=TRUE)
+          if (inherits(.cur, "rxUi")) {
+            .curLotri <- lotri::as.lotri(.cur$iniDf)
+            .lotriEst <- lotri::lotriEst(.curLotri)
+            attr(.curLotri, "lotriEst") <- NULL
+            .ini1 <- NULL
+            if (!is.null(.lotriEst)) {
+              .w <- which(.lotriEst$name %in% iniDf$name)
+              .drop <- NULL
+              if (length(.w) > 0L) {
+                .drop <- .lotriEst$name[-.w]
+                .lotriEst <- .lotriEst[.w, ]
+              }
+              .ret <- list()
+              attr(.ret, "lotriEst") <- .lotriEst
+              class(.ret) <- "lotriFix"
+              .ini1 <- as.data.frame(.ret)
+            }
+            .dn <- dimnames(.curLotri)
+            .ini2 <- NULL
+            if (!is.null(.dn)) {
+              .dn <- .dn[[1]]
+              .w <- which(.dn %in% iniDf$name)
+              if (length(.w) > 0L) {
+                .drop <- c(.drop, .dn[-.w])
+                .curLotri <- .curLotri[.w, .w]
+                class(.curLotri) <- c("lotriFix", "matrix", "array")
+                .ini2 <- as.data.frame(.curLotri)
+              } else {
+                stop("dropped all etas", call. = FALSE)
+              }
+            }
+            .iniDf <- rbind(.ini1, .ini2)
+            .ini <- lotri::lotriDataFrameToLotriExpression(.iniDf, useIni = TRUE)
+            .ini <- .ini[[2]]
+            .ini <- as.list(.ini)[-1]
+            .env <- new.env(parent=emptyenv())
+            .env$labels <- NULL
+            .env$lastlhs <- NULL
+            .env$lhsvars <- NULL
+            .ini <- lapply(seq_along(.ini), function(i) {
+              .cur <- .ini[[i]]
+              if (is.call(.cur) && identical(.cur[[1]], quote(`label`))) {
+                if (is.null(.env$lastlhs)) {
+                  stop("do not know where to put label", call.=FALSE) # should not get here
+                }
+                .env$labels <- c(.env$labels, i)
+                return(as.call(list(quote(`<-`), str2lang(.env$lastlhs), .cur)))
+              }
+              if (is.call(.cur) && (identical(.cur[[1]], quote(`<-`)) ||
+                                      identical(.cur[[1]], quote(`~`)))) {
+                if (is.call(.cur[[2]])) {
+                  if (identical(.cur[[2]], quote(`+`))) {
+                    .env$lhsvars <- c(.env$lhsvars, vapply(as.list(.cur)[-1], function(x) {
+                      as.character(x)
+                    }, character(1), USE.NAMES=FALSE))
+                  }
+                } else {
+                  .char <- as.character(.cur[[2]])
+                  .env$lastlhs <- .char
+                  .env$lhsvars <- c(.env$lhsvars, .char)
+                }
+              }
+              .cur
+            })
+            if (!is.null(.env$labels)) {
+              # FIXME include labels (by option) once Bill is done 
+              .ini <- .ini[-.env$labels]
+            }
+            .expandedForm <- c(.expandedForm, .ini)
+            .stop <- FALSE
+          }
+        }
+        if (.stop) stop("vectors and list need to named numeric expression", call.=FALSE)
       }
     }
     if (.currentLine == .b) {
@@ -174,6 +205,8 @@
 #' @param callInfo Call information
 #'
 #' @param envir Environment for evaluation (if needed)
+#' 
+#' @param iniDf The parent model `iniDf` when piping in a `ini` block (`NULL` otherwise)
 #'
 #' @return Quote call information.  for `name=expression`, change to
 #'   `name<-expression` in quoted call list. For expressions that are
@@ -183,7 +216,7 @@
 #' @author Matthew L. Fidler
 #'
 #' @export
-.quoteCallInfoLines <- function(callInfo, envir=parent.frame()) {
+.quoteCallInfoLines <- function(callInfo, envir=parent.frame(), iniDf=NULL) {
   .bracket <- rep(FALSE, length.out=length(callInfo))
   .env <- environment()
   .nsEnv$.quoteCallInfoLinesAppend <- NULL
@@ -199,7 +232,7 @@
           .nsEnv$.quoteCallInfoLinesAppend <- eval(call("quote", .append))
         }
         return(NULL)
-      } else if (.name %in% c("envir",  "auto")) {
+      } else if (.name %in% c("envir",  "auto", "iniDf")) {
         return(NULL)
       } else if (.name != "") {
         # Changed named items to
@@ -220,7 +253,7 @@
     .quoted
   })
   .w <- which(.bracket)
-  .ret <- .quoteExpandBracketsOrCs(.ret, .w, envir=envir)
+  .ret <- .quoteExpandBracketsOrCs(.ret, .w, envir=envir, iniDf=iniDf)
   .ret[vapply(seq_along(.ret), function(i) {
     !is.null(.ret[[i]])
   }, logical(1), USE.NAMES=FALSE)]
