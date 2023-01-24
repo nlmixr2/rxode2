@@ -8,11 +8,9 @@
 \usage{
 \method{ini}{rxUi}(x, ..., envir = parent.frame())
 
-\method{ini}{default}(x, ...)
+\method{ini}{default}(x, ..., envir = parent.frame())
 
 ini(x, ..., envir = parent.frame())
-
-\method{ini}{default}(x, ...)
 }
 \arguments{
 \item{x}{expression}
