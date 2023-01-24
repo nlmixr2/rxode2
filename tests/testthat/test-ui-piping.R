@@ -1690,30 +1690,6 @@ test_that("piping with append=lhs", {
   expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
 
   test_that("piping ui functions", {
-
-    one.cmt <- function() {
-      ini({
-        ## You may label each parameter with a comment
-        tka <- 0.45 # Ka
-        tcl <- log(c(0, 2.7, 100)) # Log Cl
-        ## This works with interactive models
-        ## You may also label the preceding line with label("label text")
-        tv <- 3.45; label("log V")
-        ## the label("Label name") works with all models
-        eta.ka ~ 0.6
-        eta.cl ~ 0.3
-        eta.v ~ 0.1
-        add.sd <- 0.7
-      })
-      model({
-        ka <- exp(tka + eta.ka)
-        cl <- exp(tcl + eta.cl)
-        v <- exp(tv + eta.v)
-        linCmt() ~ add(add.sd)
-      })
-    }
-
-    one.cmt <- one.cmt()
     
     m1 <- function() {
       ini({
@@ -1757,5 +1733,106 @@ test_that("piping with append=lhs", {
 
     m2 <- m2()
 
+    expect_equal(testPipeQuote(m1, iniDf=m2$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633)),
+                      quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+    expect_equal(testPipeQuote(m2, iniDf=m1$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633)),
+                      quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+    m4 <- function() {
+      ini({
+        tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        tv <- 3.46039743010498
+        label("log V")
+        add.sd <- c(0, 0.694761430696633)
+        eta..cl ~ 0.069154564934726
+        eta..v ~ 0.0191298379535425
+      })
+      model({
+        cl <- exp(tcl + eta..cl)
+        v <- exp(tv + eta..v)
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    # no etas
+
+    m4 <- m4()
+
+    expect_equal(testPipeQuote(m4, iniDf=m1$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633))))
+
+    expect_equal(testPipeQuote(m1, iniDf=m4$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633))))
+
+    # no thetas
+
+    m5 <- function() {
+      ini({
+        t.cl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        t.v <- 3.46039743010498
+        label("log V")
+        add..sd <- c(0, 0.694761430696633)
+        eta.cl ~ 0.069154564934726
+        eta.v ~ 0.0191298379535425
+      })
+      model({
+        cl <- exp(t.cl + eta.cl)
+        v <- exp(t.v + eta.v)
+        linCmt() ~ add(add..sd)
+      })
+    }
+
+    m5 <- m5()
+
+    expect_equal(testPipeQuote(m5, iniDf=m1$iniDf),
+                 list(quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+    expect_equal(testPipeQuote(m1, iniDf=m5$iniDf),
+                 list(quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+
+    m6 <- function() {
+      ini({
+        t.cl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        t.v <- 3.46039743010498
+        label("log V")
+        add..sd <- c(0, 0.694761430696633)
+        eta..cl ~ 0.069154564934726
+        eta..v ~ 0.0191298379535425
+      })
+      model({
+        cl <- exp(t.cl + eta..cl)
+        v <- exp(t.v + eta..v)
+        linCmt() ~ add(add..sd)
+      })
+    }
+
+    m6 <- m6()
+
+    expect_equal(testPipeQuote(m6, iniDf=m1$iniDf),
+                 list())
+
+    expect_equal(testPipeQuote(m1, iniDf=m6$iniDf),
+                 list())
+
+    
   })
 })

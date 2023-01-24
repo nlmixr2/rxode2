@@ -41,32 +41,40 @@
   if (!is.null(.lotriEst)) {
     .w <- which(.lotriEst$name %in% iniDf$name)
     .drop <- NULL
-    if (length(.w) > 0L) {
+    if (length(.w) == 0L) {
+     .drop <- .lotriEst$name
+    } else {
       .drop <- .lotriEst$name[-.w]
       .lotriEst <- .lotriEst[.w, ]
+      .ret <- list()
+      attr(.ret, "lotriEst") <- .lotriEst
+      class(.ret) <- "lotriFix"
+      .ini1 <- as.data.frame(.ret)
     }
-    .ret <- list()
-    attr(.ret, "lotriEst") <- .lotriEst
-    class(.ret) <- "lotriFix"
-    .ini1 <- as.data.frame(.ret)
   }
   .dn <- dimnames(.curLotri)
   .ini2 <- NULL
   if (!is.null(.dn)) {
     .dn <- .dn[[1]]
     .w <- which(.dn %in% iniDf$name)
-    if (length(.w) > 0L) {
+    if (length(.w) == 0L) {
+      .drop <- c(.drop, .dn)
+    } else  {
       .drop <- c(.drop, .dn[-.w])
       .curLotri <- .curLotri[.w, .w]
       class(.curLotri) <- c("lotriFix", "matrix", "array")
       .ini2 <- as.data.frame(.curLotri)
     }
   }
+  .iniDf <- rbind(.ini1, .ini2)
+  if (is.null(.iniDf)) {
+    cli::cli_alert_info(paste0("piping '", charExpression, "' has no parameters in common with model and does nothing"))
+    return(list())
+  }
   if (length(.drop) > 0) {
     cli::cli_alert_info(paste0("ignoring following estimates in '", charExpression, "': ",
                                paste(.drop, collapse=", ")))
   }
-  .iniDf <- rbind(.ini1, .ini2)
   .ini <- lotri::lotriDataFrameToLotriExpression(.iniDf, useIni = TRUE)
   .ini <- .ini[[2]]
   .ini <- as.list(.ini)[-1]
