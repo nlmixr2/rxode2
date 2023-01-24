@@ -162,7 +162,6 @@
         ## evalute to vector and then put it in place
         .cur <- eval(.bracketExpression, envir=envir)
       }
-      .charExpression <- deparse1(.bracketExpression)
       if (inherits(.cur, "<-") || inherits(.cur, "call")) {
         .unlistedBrackets <- .cur
       } else if (inherits(.cur, "numeric")) {
@@ -203,7 +202,7 @@
         }
         .unlistedBrackets <- list(.unlistedBrackets)
       } else {
-        .ini <- .quoteExpandRxUi(.cur, iniDf=iniDf, charExpression=.charExpression)
+        .ini <- .quoteExpandRxUi(.cur, iniDf=iniDf, charExpression=deparse1(.bracketExpression))
         if (is.null(.ini)) stop("vectors and list need to named numeric expression", call.=FALSE)
         .expandedForm <- c(.expandedForm, .ini)
       }
