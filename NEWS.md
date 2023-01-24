@@ -8,6 +8,9 @@
 - `assertRxUi(x)` now uses `as.rxUi()` so that it can be extended
   outside of `rxode2`/`nlmixr2`.
 
+- Add the ability to pipe model estimates from another model by
+  `parentModel %>% ini(modelWithNewEsts)`
+
 - Add the ability to append model statements with piping using `%>%
   model(x=3, append=d/dt(depot))`, still supports appending with
   `append=TRUE` and pre-pending with `append=NA` (the default is to

@@ -194,12 +194,6 @@ ini <- function(x, ..., envir = parent.frame()) {
   UseMethod("ini")
 }
 
-#' @export
-#' @rdname ini
-ini.default <- function(x, ...) {
-  stop("cannot figure out what to do with the ini({}) function", call.=FALSE)
-}
-
 #' Model block for rxode2/nlmixr models
 #'
 #' @param x model expression

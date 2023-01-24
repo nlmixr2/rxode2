@@ -203,7 +203,7 @@
         }
         .unlistedBrackets <- list(.unlistedBrackets)
       } else {
-        .ini <- .quoteExpandRxUi(.cur, iniDf, charExpression=.charExpression)
+        .ini <- .quoteExpandRxUi(.cur, iniDf=iniDf, charExpression=.charExpression)
         if (is.null(.ini)) stop("vectors and list need to named numeric expression", call.=FALSE)
         .expandedForm <- c(.expandedForm, .ini)
       }
