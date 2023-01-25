@@ -52,7 +52,7 @@ as.rxUi.rxModelVars <- function(x) {
 as.rxUi.function <- function(x) {
   model <- try(rxode2(x), silent=TRUE)
   if (inherits(model, "try-error")) {
-    stop("cannot convert to rxUi object", extra, call.=FALSE)
+    stop("cannot convert to rxUi object", call.=FALSE)
   }
   model
 }
