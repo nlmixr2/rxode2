@@ -359,14 +359,36 @@ ini.rxUi <- function(x, ..., envir=parent.frame()) {
 
 #' @export
 #' @rdname ini
-ini.default <- function(x, ..., envir=parent.frame()) {
-  .ret <- rxUiDecompress(as.rxUi(x))
+ini.function <- function(x, ..., envir=parent.frame()) {
+  .ret <- rxUiDecompress(rxode2(x))
   .iniDf <- .ret$iniDf
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
   lapply(.iniLines, function(line) {
     .iniHandleFixOrUnfix(line, .ret, envir=envir)
   })
   rxUiCompress(.ret)
+}
+
+#' @export
+#' @rdname ini
+ini.rxode2 <- function(x, ..., envir=parent.frame()) {
+  .ret <- rxUiDecompress(rxode2(as.function(x)))
+  .iniDf <- .ret$iniDf
+  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
+  lapply(.iniLines, function(line) {
+    .iniHandleFixOrUnfix(line, .ret, envir=envir)
+  })
+  rxUiCompress(.ret)
+}
+
+#' @rdname ini
+#' @export
+ini.rxModelVars <- ini.rxode2
+
+#' @rdname ini
+#' @export
+ini.default <- function(x, ...) {
+  stop("cannot figure out what to do with the ini({}) function", call.=FALSE)
 }
 
 #' This tells if the line is modifying an estimate instead of a line of the model
