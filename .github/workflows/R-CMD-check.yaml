@@ -50,7 +50,6 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          pak-version: devel
           extra-packages: |
             any::rcmdcheck
             nlmixr2/lotri
