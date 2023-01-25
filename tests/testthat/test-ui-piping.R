@@ -1,6 +1,8 @@
 rxTest({
 
   testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
+    rxUnloadAll()
+    gc()
     .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir, iniDf=iniDf)
   }
 
