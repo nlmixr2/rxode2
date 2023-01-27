@@ -378,6 +378,9 @@
   # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
   # UNFIXED to fix and unfix to simplify all downstream operations
   expr <- .iniSimplifyFixUnfix(expr)
+  # Convert assignment equal ("=") to left arrows ("<-") to simplify all
+  # downstream operations
+  expr <- .iniSimplifyAssignArrow(expr)
   # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
   if (.matchesLangTemplate(expr, str2lang("fix(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
@@ -385,8 +388,7 @@
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
   }
 
-  if (.matchesLangTemplate(expr, str2lang(".name <- NULL")) |
-      .matchesLangTemplate(expr, str2lang(".name = NULL"))) {
+  if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
     stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense")
   } else if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
@@ -443,6 +445,23 @@
       if (!is.null(expr[[idx]])) {
         expr[[idx]] <- .iniSimplifyFixUnfix(expr[[idx]])
       }
+    }
+  } else {
+    # do nothing
+  }
+  expr
+}
+
+#' Simplify all assignments to be left arrows (and not equal signs)
+#'
+#' @param expr An R call or similar object
+#' @return \code{expr} where all variants assignment equal signs are converted
+#'   to \code{<-}
+#' @noRd
+.iniSimplifyAssignArrow <- function(expr) {
+  if (is.call(expr) && length(expr) == 3) {
+    if (expr[[1]] == as.name("=")) {
+      expr[[1]] <- as.name("<-")
     }
   } else {
     # do nothing

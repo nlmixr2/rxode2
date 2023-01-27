@@ -124,6 +124,22 @@ test_that(".iniSimplifyFixUnfix", {
   )
 })
 
+test_that(".iniSimplifyAssignArrow", {
+  expect_equal(
+    .iniSimplifyAssignArrow(str2lang("a <- b")),
+    str2lang("a <- b")
+  )
+  expect_equal(
+    .iniSimplifyAssignArrow(str2lang("a = b")),
+    str2lang("a <- b")
+  )
+  # non-assignment equal signs are not modified
+  expect_equal(
+    .iniSimplifyAssignArrow(str2lang("a = b(c=d)")),
+    str2lang("a <- b(c=d)")
+  )
+})
+
 test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
   mod <- function() {
     ini({
