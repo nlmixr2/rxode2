@@ -2,9 +2,9 @@
 % Please edit documentation in R/piping-ini.R
 \name{.iniHandleLine}
 \alias{.iniHandleLine}
-\title{Handle Fix or Unfix an expression}
+\title{Update the iniDf of a model}
 \usage{
-.iniHandleLine(expr, rxui, envir = parent.frame())
+.iniHandleLine(expr, rxui, envir = parent.frame(), append = NULL)
 }
 \arguments{
 \item{expr}{Expression for parsing}
@@ -12,12 +12,19 @@
 \item{rxui}{User interface function}
 
 \item{envir}{Environment for parsing}
+
+\item{append}{Reorder theta parameters.  \code{NULL} means no change to
+parameter order.  A parameter name (as a character string) means to put the
+new parameter after the named parameter.  A number less than or equal to
+zero means to put the parameter at the beginning of the list.  A number
+greater than the last parameter number means to put the parameter at the
+end of the list.}
 }
 \value{
 Nothing, called for side effects
 }
 \description{
-It will update the iniDf data frame with fixed/unfixed value
+Update the iniDf of a model
 }
 \author{
 Matthew L. Fidler

@@ -318,69 +318,96 @@
 #' Reorder rows in iniDf
 #'
 #' @inheritParams .iniHandleLine
+#' @param append Reorder theta parameters.  \code{NULL} means no change to
+#'   parameter order.  A parameter name (as a character string) means to put the
+#'   new parameter after the named parameter.  A number less than or equal to
+#'   zero means to put the parameter at the beginning of the list.  A number
+#'   greater than the last parameter number means to put the parameter at the
+#'   end of the list.
 #' @return Nothing, called for side effects
 #' @keywords internal
-.iniHandleAfter <- function(expr, rxui, envir) {
+.iniHandleAppend <- function(expr, rxui, envir, append) {
   ini <- rxui$ini
+
+  if (is.null(append)) {
+    # Do nothing
+    return()
+  } else if (is.logical(append)) {
+    checkmate::assert_logical(append, any.missing = FALSE, len = 1)
+    if (isTRUE(append)) {
+      appendClean <- Inf
+    } else if (isFALSE(append)) {
+      appendClean <- 0
+    }
+  } else if (is.numeric(append)) {
+    checkmate::assert_number(append, null.ok = FALSE, na.ok = FALSE)
+    appendClean <- append
+  } else if (is.character(append)) {
+    checkmate::assert_character(append, any.missing = FALSE, len = 1, null.ok = FALSE)
+    checkmate::assert_choice(append, choices = ini$name)
+    appendClean <- which(ini$name == append)
+  } else {
+    cli::cli_abort("'append' must be NULL, logical, numeric, or character")
+  }
+
   lhs <- as.character(expr[[2]])
   wLhs <- which(ini$name == lhs)
-  if (.matchesLangTemplate(expr[[3]], str2lang("after()"))) {
-    after <- "{nothing}"
-    wAfter <- 0
-  } else {
-    after <- expr[[3]][[2]]
-    if (is.name(after)) {
-      after <- as.character(after)
-      wAfter <- which(ini$name == after)
-    } else if (is.numeric(after)) {
-      # bound it within the data.frame length
-      wAfter <- max(min(after, nrow(ini)), 0)
-    }
-  }
   if (length(wLhs) != 1) {
     stop("Cannot find parameter '", lhs, "'", call.=FALSE)
-  } else if (length(wAfter) != 1) {
+  } else if (length(appendClean) != 1) {
     stop("Cannot find parameter '", after, "'", call.=FALSE)
-  } else if (wAfter == wLhs) {
-    warning("Parameter '", lhs, "' set to be moved after itself, no change made")
+  } else if (appendClean == wLhs) {
+    warning("Parameter '", lhs, "' set to be moved after itself, no change in order made")
     return()
+  } else if (is.na(ini$ntheta[wLhs])) {
+    stop("Only theta parameter can be moved.  '", lhs, "' is not a theta parameter.")
   }
 
   # Do the movement
-  if (wAfter == 0) {
+  if (appendClean <= 0) {
     # put it at the top
     ret <- rbind(ini[wLhs, ], ini[-wLhs, ])
-  } else if (wAfter == nrow(ini)) {
+  } else if (appendClean >= nrow(ini)) {
     # put it at the bottom
     ret <- rbind(ini[-wLhs, ], ini[wLhs, ])
   } else {
     # put it in the middle
-    rowsAbove <- setdiff(seq_len(wAfter), wLhs)
-    rowsBelow <- setdiff(seq(wAfter + 1, nrow(ini)), wLhs)
+    rowsAbove <- setdiff(seq_len(appendClean), wLhs)
+    rowsBelow <- setdiff(seq(appendClean + 1, nrow(ini)), wLhs)
     ret <- rbind(ini[rowsAbove, ], ini[wLhs, ], ini[rowsBelow, ])
   }
+  # Ensure that ntheta stays in order
+  ini$ntheta[!is.na(ini$ntheta)] <- seq_len(sum(!is.na(ini$ntheta)))
   assign("iniDf", ret, envir=rxui)
   invisible()
 }
 
-#' Handle Fix or Unfix an expression
-#'
-#' It will update the iniDf data frame with fixed/unfixed value
+#' Update the iniDf of a model
 #'
 #' @param expr Expression for parsing
 #' @param rxui User interface function
 #' @param envir Environment for parsing
+#' @inheritParams .iniHandleAppend
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
-.iniHandleLine <- function(expr, rxui, envir=parent.frame()) {
+.iniHandleLine <- function(expr, rxui, envir=parent.frame(), append = NULL) {
   # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
   # UNFIXED to fix and unfix to simplify all downstream operations
   expr <- .iniSimplifyFixUnfix(expr)
   # Convert assignment equal ("=") to left arrows ("<-") to simplify all
   # downstream operations
   expr <- .iniSimplifyAssignArrow(expr)
+
+  # Capture errors
+  if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
+    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense")
+  }
+
+  # (Maybe) update parameter order
+  .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
+
   # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
   if (.matchesLangTemplate(expr, str2lang("fix(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
@@ -388,13 +415,8 @@
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
   }
 
-  if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
-    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense")
-  } else if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
+  if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
-  } else if (.matchesLangTemplate(expr, str2lang(".name <- after()")) ||
-             .matchesLangTemplate(expr, str2lang(".name <- after(.)"))) {
-    .iniHandleAfter(expr=expr, rxui=rxui, envir=envir)
   } else if (.isAssignment(expr) && is.character(expr[[3]])) {
     stop(
       sprintf(
@@ -471,38 +493,38 @@
 
 #' @export
 #' @rdname ini
-ini.rxUi <- function(x, ..., envir=parent.frame()) {
+ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
-    .iniHandleLine(line, .ret, envir=envir)
+    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
   rxUiCompress(.ret)
 }
 
 #' @export
 #' @rdname ini
-ini.function <- function(x, ..., envir=parent.frame()) {
+ini.function <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- rxUiDecompress(rxode2(x))
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
-    .iniHandleLine(line, .ret, envir=envir)
+    .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
   })
   rxUiCompress(.ret)
 }
 
 #' @export
 #' @rdname ini
-ini.rxode2 <- function(x, ..., envir=parent.frame()) {
+ini.rxode2 <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir)
+  ini.function(.ret, ..., envir=envir, append = append)
 }
 
 #' @export
 #' @rdname ini
-ini.rxModelVars <- function(x, ..., envir=parent.frame()) {
+ini.rxModelVars <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir)
+  ini.function(.ret, ..., envir=envir, append = append)
 }
 
 #' This tells if the line is modifying an estimate instead of a line of the model

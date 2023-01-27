@@ -9,15 +9,15 @@
 \alias{ini.default}
 \title{Ini block for rxode2/nlmixr models}
 \usage{
-\method{ini}{rxUi}(x, ..., envir = parent.frame())
+\method{ini}{rxUi}(x, ..., envir = parent.frame(), append = NULL)
 
-\method{ini}{`function`}(x, ..., envir = parent.frame())
+\method{ini}{`function`}(x, ..., envir = parent.frame(), append = NULL)
 
-\method{ini}{rxode2}(x, ..., envir = parent.frame())
+\method{ini}{rxode2}(x, ..., envir = parent.frame(), append = NULL)
 
-\method{ini}{rxModelVars}(x, ..., envir = parent.frame())
+\method{ini}{rxModelVars}(x, ..., envir = parent.frame(), append = NULL)
 
-ini(x, ..., envir = parent.frame())
+ini(x, ..., envir = parent.frame(), append = NULL)
 
 \method{ini}{default}(x, ...)
 }
@@ -29,9 +29,16 @@ ini(x, ..., envir = parent.frame())
 \item{envir}{the \code{environment} in which unevaluated model
 expressions is to be evaluated.  May also be \code{NULL}, a list, a
 data frame, a pairlist or an integer as specified to \code{sys.call}.}
+
+\item{append}{Reorder theta parameters.  \code{NULL} means no change to
+parameter order.  A parameter name (as a character string) means to put the
+new parameter after the named parameter.  A number less than or equal to
+zero means to put the parameter at the beginning of the list.  A number
+greater than the last parameter number means to put the parameter at the
+end of the list.}
 }
 \value{
-Ini block
+ini block
 }
 \description{
 The ini block controls initial conditions for 'theta' (fixed effects),

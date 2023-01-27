@@ -156,17 +156,27 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
   ui <- rxode2(mod)
   # No modification
   expect_equal(ui$iniDf$name, c("a", "b", "c", "addSd"))
-  # b to the top
-  expect_equal(ini(ui, b <- after())$iniDf$name, c("b", "a", "c", "addSd"))
+  # b to the top by number
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = 0))$iniDf$name, c("b", "a", "c", "addSd"))
+  # b to the top by logical
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = FALSE))$iniDf$name, c("b", "a", "c", "addSd"))
   # b to the bottom by number
-  expect_equal(ini(ui, b <- after(Inf))$iniDf$name, c("a", "c", "addSd", "b"))
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = Inf))$iniDf$name, c("a", "c", "addSd", "b"))
+  # b to the bottom by logical
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = TRUE))$iniDf$name, c("a", "c", "addSd", "b"))
   # b to the bottom by name
-  expect_equal(ini(ui, b <- after(addSd))$iniDf$name, c("a", "c", "addSd", "b"))
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = "addSd"))$iniDf$name, c("a", "c", "addSd", "b"))
   # b after c
-  expect_equal(ini(ui, b <- after(c))$iniDf$name, c("a", "c", "b", "addSd"))
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = "c"))$iniDf$name, c("a", "c", "b", "addSd"))
   # b to b, warn and no change
   expect_warning(
-    expect_equal(ini(ui, b <- after(b))$iniDf$name, c("a", "b", "c", "addSd")),
-    regexp = "Parameter 'b' set to be moved after itself, no change made"
+    expect_equal(suppressMessages(ini(ui, b <- 1, append = "b"))$iniDf$name, c("a", "b", "c", "addSd")),
+    regexp = "Parameter 'b' set to be moved after itself, no change in order made"
+  )
+
+  # Invalid parameter is correctly caught
+  expect_error(
+    ini(ui, b <- 1, append = "foo"),
+    "append"
   )
 })
