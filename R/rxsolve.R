@@ -1178,7 +1178,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                                    theta = NULL, eta = NULL) {
-  .lst <- .rxSolveFromUi(object$ui, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
+  .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
   .env <- object$env
   # assign current control to object for expanded thetaMat
@@ -1798,6 +1798,10 @@ dimnames.rxSolve <- function(x) {
 }
 #' @export
 `$<-.rxSolve` <- function(x, name, value) {
+  if (is.null(value)) {
+    class(x) <- "data.frame"
+    return(`$<-.data.frame`(x, name, value))
+  }
   ret <- .Call(`_rxode2_rxSolveUpdate`, x, name, value)
   if (is.null(ret)) {
     class(x) <- "data.frame"
@@ -1808,6 +1812,14 @@ dimnames.rxSolve <- function(x) {
 }
 #' @export
 "[[<-.rxSolve" <- function(x, i, j, value) {
+  if (is.null(value)) {
+    class(x) <- "data.frame"
+    if (missing(j)) {
+      return("[[<-.data.frame"(x, i, value = value))
+    } else {
+      return("[[<-.data.frame"(x, i, j, value))
+    }
+  }
   if (missing(j) && rxIs(i, "character")) {
     ret <- .Call(`_rxode2_rxSolveUpdate`, x, i, value)
     if (!is.null(ret)) {

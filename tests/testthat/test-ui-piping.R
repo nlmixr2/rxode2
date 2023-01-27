@@ -1628,3 +1628,63 @@ test_that("eff(0) piping should work", {
     )
   )
 })
+
+
+test_that("auto with studid==", {
+  
+  one.compartment <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- 1
+      tv <- 3.45
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv+eta.v)
+      cp <- linCmt()
+      cp ~ add(add.sd)
+    })
+  }
+
+
+  i <- rxode2(one.compartment)
+
+  j <- i %>%
+    model({
+      f(central)  <- 1 + f_study1*(STUDYID==1)
+    },
+    append=NA,
+    auto=FALSE)
+
+  expect_false(any(j$iniDf$name == "f_study1"))
+  expect_false(any(j$iniDf$name == "STUDYID"))
+  
+})
+
+test_that("piping with append=lhs", {
+
+  ocmt_rx0 <- rxode2( {
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+  })
+
+  m1 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = NA)
+
+  expect_true(identical(m1$lstExpr[[1]], quote(cl <- tvcl * 2)))
+
+  m2 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = d/dt(depot))
+
+  expect_true(identical(m2$lstExpr[[2]], quote(cl <- tvcl * 2)))
+
+  expect_error(ocmt_rx0 %>% model( cl <- tvcl*2, append = notFound))
+
+  m3 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = cp)
+
+  expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
+})

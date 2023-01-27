@@ -5,6 +5,9 @@
 extern "C" {
 #endif
   double get_fkeep(int col, int id, rx_solving_options_ind *ind);
+  int get_fkeepType(int col);
+  SEXP get_fkeepLevels(int col);
+  SEXP get_fkeepChar(int col, double val);
   double *getLlikSave(void);
   SEXP get_fkeepn(void);
   void cliAlert(const char *format, ...);

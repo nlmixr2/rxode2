@@ -15,6 +15,7 @@
 
 #define NPARS 60
 #include <RcppArmadillo.h>
+#include "nearPD.h"
 #include <Rmath.h>
 #include <thread>
 #include <string>
@@ -592,7 +593,7 @@ Environment rxode2env(){
 }
 // Export for C.
 //[[Rcpp::export]]
-Function getRxFn(std::string name){
+Function getRxFn(std::string name) {
   Environment rx = rxode2env();
   return as<Function>(rx[name]);
 }
@@ -1707,8 +1708,30 @@ void rxSimOmega(bool &simOmega,
         if (tmpM.is_zero()){
           omegaMC = omegaM;
         } else if (!tmpM.is_sympd()){
-          rxSolveFree();
-          stop(_("'%s' must be symmetric, positive definite"),omegatxt.c_str());
+          switch(rxNearPdChol(omegaMC, omegaM, omegaIsChol)) {
+          case rxNearPdChol_not_named:
+            rxSolveFree();
+            stop(_("'%s' must be a named matrix"), omegatxt.c_str());
+            break;
+          case rxNearPdChol_zero_size:
+          case rxNearPdChol_zero:
+          case rxNearPdChol_isChol:
+            break;
+          case rxNearPdChol_nearpd_bad_chol:
+          case rxNearPdChol_sympd_bad_chol:
+            rxSolveFree();
+            stop(_("error calculating 'chol(%s)'"), omegatxt.c_str());
+            break;
+          case rxNearPdChol_bad_nearpd:
+            stop(_("error trying to correct '%s' to be a symmetric, positive definite matrix"),
+                 omegatxt.c_str());
+            break;
+          case rxNearPdChol_nearpd_chol:
+            warning(_("corrected '%s' to be a symmetric, positive definite matrix"),
+                    omegatxt.c_str());
+          case rxNearPdChol_sympd_chol:
+            break;
+          }
         } else {
           omegaMC = wrap(arma::chol(as<arma::mat>(omegaM)));
         }
@@ -2497,9 +2520,11 @@ extern "C" void rxSolveFreeC() {
 
 
 List keepFcov;
+List keepFcovType;
 
 extern void resetFkeep() {
   keepFcov = List::create();
+  keepFcovType = List::create();
 }
 
 
@@ -2508,6 +2533,23 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind) {
   int idx = keepFcovI[col];
   if (idx == 0) return REAL(keepFcov[col])[id];
   return ind->par_ptr[idx-1];
+}
+
+extern "C" int get_fkeepType(int col) {
+  List cur = keepFcovType[col];
+  return as<int>(cur[0]);
+}
+
+extern "C" SEXP get_fkeepLevels(int col) {
+  List cur = keepFcovType[col];
+  return wrap(cur[1]);
+}
+
+extern "C" SEXP get_fkeepChar(int col, double val) {
+  List cur = keepFcovType[col];
+  StringVector levels = cur[1];
+  int i = (int)(val - 1.0);
+  return wrap(levels[i]);
 }
 
 extern "C" SEXP get_fkeepn() {
@@ -2717,8 +2759,10 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
       rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
-      List keep = tmpL[RxTrans_keepL];
+      List keep0 = tmpL[RxTrans_keepL];
+      List keep = tmpL[0];
       keepFcov=keep;
+      keepFcovType = tmpL[1];
       rx->nKeepF = keepFcov.size();
       int lenOut = 200;
       double by = NA_REAL;
@@ -2789,9 +2833,11 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");
     rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
-    List keep = tmpL[RxTrans_keepL];
-    _rxModels[".fkeep"] = keep;
+    List keep0 = tmpL[RxTrans_keepL];
+    List keep = keep0[0];
+    _rxModels[".fkeep"] = keep0;
     keepFcov=keep;
+    keepFcovType = keep0[1];
     rx->nKeepF = keepFcov.size();
     rxcEvid = 2;
     rxcTime = 1;
@@ -2888,9 +2934,43 @@ static inline void rxSolve_simulate(const RObject &obj,
 
   LogicalVector simVariability = rxControl[Rxc_simVariability];
 
-  Nullable<NumericMatrix> thetaMat = as<Nullable<NumericMatrix>>(rxControl[Rxc_thetaMat]);
-  Nullable<NumericVector> thetaDf = asNNv(rxControl[Rxc_thetaDf], "thetaDf");
   bool thetaIsChol = asBool(rxControl[Rxc_thetaIsChol], "thetaIsChol");
+  RObject tmpRO = rxControl[Rxc_thetaMat];
+  Nullable<NumericMatrix> thetaMat;
+  if (!Rf_isNull(tmpRO)) {
+    NumericMatrix thetaMatIn = as<NumericMatrix>(tmpRO);
+    NumericMatrix thetaMatOut;
+    switch(rxNearPdChol(thetaMatOut, thetaMatIn, thetaIsChol)) {
+    case rxNearPdChol_not_named:
+      rxSolveFree();
+      stop(_("'thetaMat' must be a named matrix"));
+      break;
+    case rxNearPdChol_zero_size:
+    case rxNearPdChol_zero:
+    case rxNearPdChol_isChol:
+      break;
+    case rxNearPdChol_nearpd_bad_chol:
+    case rxNearPdChol_sympd_bad_chol:
+      rxSolveFree();
+      stop(_("error calculating 'chol(thetaMat)'"));
+      break;
+    case rxNearPdChol_bad_nearpd:
+      stop(_("error trying to correct 'thetaMat' to be a symmetric, positive definite matrix"));
+      break;
+    case rxNearPdChol_nearpd_chol:
+      warning(_("corrected 'thetaMat' to be a symmetric, positive definite matrix"));
+    case rxNearPdChol_sympd_chol:
+      break;
+    }
+    thetaMat = as<Nullable<NumericMatrix>>(wrap(thetaMatOut));
+    thetaIsChol=true;
+  } else {
+    thetaMat = as<Nullable<NumericMatrix>>(tmpRO);
+  }
+
+  Nullable<NumericVector> thetaDf = asNNv(rxControl[Rxc_thetaDf], "thetaDf");
+  
+  
 
   RObject sigma= rxControl[Rxc_sigma];
   Nullable<NumericVector> sigmaDf= asNNv(rxControl[Rxc_sigmaDf], "sigmaDf");
@@ -3933,8 +4013,8 @@ List rxSolve_df(const RObject &obj,
   }
   if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1){
     IntegerVector did = as<IntegerVector>(dat["id"]);
-    did.attr("class") = "factor";
     did.attr("levels") = rxSolveDat->idLevels;
+    did.attr("class") = "factor";
   }
   if (rxSolveDat->convertInt && rx->nsub > 1){
     CharacterVector lvlC = rxSolveDat->idLevels;
@@ -5948,7 +6028,12 @@ RObject rxUnlock(RObject obj){
   std::string file = rxDll(obj);
   int ret;
   if (_rxModels.exists(file)){
-    ret = asInt(_rxModels[file], "_rxModels[file]");
+    RObject tmp = _rxModels[file];
+    if (TYPEOF(tmp) != INTSXP) {
+      _rxModels[file] = 0;
+      return R_NilValue;
+    }
+    ret = asInt(tmp, "_rxModels[file]");
     ret = ret - 1;
     if (ret > 0) _rxModels[file] = ret;
     else  _rxModels[file] = 0;
@@ -5960,7 +6045,12 @@ bool rxCanUnload(RObject obj){
   getRxModels();
   std::string file = rxDll(obj);
   if(_rxModels.exists(file)){
-    int ret = asInt(_rxModels[file], "_rxModels[file]");
+    RObject tmp = _rxModels[file];
+    if (TYPEOF(tmp) != INTSXP) {
+      _rxModels[file] = 0;
+      return true;
+    }
+    int ret = asInt(tmp, "_rxModels[file]");
     return (ret == 0L);
   }
   return true;

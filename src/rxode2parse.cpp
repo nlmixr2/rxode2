@@ -27,14 +27,14 @@ extern "C" SEXP _rxode2_codeLoaded(void) {
   return fun();
 }
 
-extern "C" SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv) {
+extern "C" SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns) {
   BEGIN_RCPP
   if (!rxode2parse_loaded) {
     rxode2parse_loaded = true;
     rxode2parse = loadNamespace("rxode2parse");
   }
   Function fun = as<Function>(rxode2parse[".codegen"]);
-  return fun(c_file, prefix, libname, pMd5, timeId, lastMv);
+  return fun(c_file, prefix, libname, pMd5, timeId, lastMv, goodFuns);
   END_RCPP
 }
 

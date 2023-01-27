@@ -212,6 +212,7 @@ ini.default <- function(x, ...) {
 #'  - `TRUE` which is when the lines are appended to the model instead of replaced
 #'  - `FALSE` when the lines are replaced in the model (default)
 #'  - `NA` is when the lines are pre-pended to the model instead of replaced
+#'  - `lhs expression`, which will append the lines after the last observed line of the expression `lhs`
 #'
 #' @param auto This boolean tells if piping automatically selects the
 #'   parameters should be characterized as a population parameter,

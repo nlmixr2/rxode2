@@ -1,5 +1,13 @@
 # rxode2 (development version)
 
+- Add the ability to append model statements with piping using `%>%
+  model(x=3, append=d/dt(depot))`, still supports appending with
+  `append=TRUE` and pre-pending with `append=NA` (the default is to
+  replace lines with `append=FALSE`)
+  
+- rxSolve's keep argument will now maintain character and factor classes from
+  input data with the same class (#190)
+
 - Parameter labels may now be modified via `ini(param = label("text"))`
 
 - Parameter order may be modified via `ini(param = after(param2))`
