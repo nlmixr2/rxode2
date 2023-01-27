@@ -126,8 +126,6 @@
   } else if (identical(.rhs[[1]], quote(`unfix`))) {
     .doUnfix <- TRUE
     .rhs[[1]] <- quote(`c`)
-  } else if (is.null(.rhs)) {
-    stop("a NULL value for '", .lhs, "' piping does not make sense")
   }
 
   if (!is.null(.rhs)) {
@@ -387,7 +385,10 @@
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
   }
 
-  if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
+  if (.matchesLangTemplate(expr, str2lang(".name <- NULL")) |
+      .matchesLangTemplate(expr, str2lang(".name = NULL"))) {
+    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense")
+  } else if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
   } else if (.matchesLangTemplate(expr, str2lang(".name <- after()")) ||
              .matchesLangTemplate(expr, str2lang(".name <- after(.)"))) {
@@ -438,7 +439,10 @@
     expr <- as.name("unfix")
   } else if (is.call(expr)) {
     for (idx in seq_along(expr)) {
-      expr[[idx]] <- .iniSimplifyFixUnfix(expr[[idx]])
+      # Do not perform a NULL assignment so that NULL comes out of the result
+      if (!is.null(expr[[idx]])) {
+        expr[[idx]] <- .iniSimplifyFixUnfix(expr[[idx]])
+      }
     }
   } else {
     # do nothing

@@ -118,6 +118,10 @@ test_that(".iniSimplifyFixUnfix", {
     .iniSimplifyFixUnfix(str2lang("c <- UNFIXED(a+b)")),
     str2lang("c <- unfix(a + b)")
   )
+  expect_equal(
+    .iniSimplifyFixUnfix(str2lang("c <- NULL")),
+    str2lang("c <- NULL")
+  )
 })
 
 test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
