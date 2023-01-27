@@ -168,6 +168,8 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
   expect_equal(suppressMessages(ini(ui, b <- 1, append = "addSd"))$iniDf$name, c("a", "c", "addSd", "b"))
   # b after c
   expect_equal(suppressMessages(ini(ui, b <- 1, append = "c"))$iniDf$name, c("a", "c", "b", "addSd"))
+  # a and b after c; counter-intuitive: the order of a and b are reversed
+  expect_equal(suppressMessages(ini(ui, a <- 1, b <- 1, append = "c"))$iniDf$name, c("c", "b", "a", "addSd"))
   # b to b, warn and no change
   expect_warning(
     expect_equal(suppressMessages(ini(ui, b <- 1, append = "b"))$iniDf$name, c("a", "b", "c", "addSd")),
