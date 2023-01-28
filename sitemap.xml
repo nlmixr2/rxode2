@@ -103,7 +103,13 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-handleSingleErrTypeNormOrTFoceiBase.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleFixOrUnfix.html</loc>
+    <loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleAppend.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleLabel.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleLine.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-minfo.html</loc>
