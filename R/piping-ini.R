@@ -107,39 +107,25 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .iniHandleFixOrUnfixEqual <- function(expr, rxui, envir=parent.frame(), maxLen=3L) {
-  .tilde <- identical(expr[[1]], quote(`~`))
+  .tilde <- .isLotriAssignment(expr)
   .covs <- rxui$allCovs
   .lhs <- as.character(expr[[2]])
   .rhs <- expr[[3]]
   .doFix <- .doUnfix <- FALSE
   if (is.name(.rhs)) {
-    if (identical(.rhs, quote(`fix`)) ||
-          identical(.rhs, quote(`fixed`)) ||
-          identical(.rhs, quote(`FIX`)) ||
-          identical(.rhs, quote(`FIXED`))) {
+    if (identical(.rhs, quote(`fix`))) { # variations on fix are handled upstream
       .doFix <- TRUE
       .rhs <- NULL
-    } else if (identical(.rhs, quote(`unfix`)) ||
-                 identical(.rhs, quote(`unfixed`)) ||
-                 identical(.rhs, quote(`UNFIX`)) ||
-                 identical(.rhs, quote(`UNFIXED`))) {
+    } else if (identical(.rhs, quote(`unfix`))) { # variations on unfix are handled upstream
       .doUnfix <- TRUE
       .rhs <- NULL
     }
-  } else if (identical(.rhs[[1]], quote(`fix`)) ||
-               identical(.rhs[[1]], quote(`fixed`)) ||
-               identical(.rhs[[1]], quote(`FIX`)) ||
-               identical(.rhs[[1]], quote(`FIXED`))) {
+  } else if (identical(.rhs[[1]], quote(`fix`))) {
     .doFix <- TRUE
     .rhs[[1]] <- quote(`c`)
-  } else if (identical(.rhs[[1]], quote(`unfix`)) ||
-               identical(.rhs[[1]], quote(`unfixed`)) ||
-               identical(.rhs[[1]], quote(`UNFIX`)) ||
-               identical(.rhs[[1]], quote(`UNFIXED`))) {
+  } else if (identical(.rhs[[1]], quote(`unfix`))) {
     .doUnfix <- TRUE
     .rhs[[1]] <- quote(`c`)
-  } else if (is.null(.rhs)) {
-    stop("a NULL value for '", .lhs, "' piping does not make sense")
   }
 
   if (!is.null(.rhs)) {
@@ -303,33 +289,144 @@
   }
 }
 
+# Determine if the input is an endpoint by being 3 long and the call part being
+# a tilde
+.isLotriAssignment <- function(expr) {
+  .matchesLangTemplate(expr, str2lang(". ~ ."))
+}
 
-#'  Handle Fix or Unfix an expression
+#' Modify the label in an iniDf
 #'
-#' It will update the iniDf data frame with fixed/unfixed value
+#' @inheritParams .iniHandleLine
+#' @return Nothing, called for side effects
+#' @keywords internal
+.iniHandleLabel <- function(expr, rxui, envir) {
+  lhs <- as.character(expr[[2]])
+  newLabel <- expr[[3]][[2]]
+  ini <- rxui$ini
+  .w <- which(ini$name == lhs)
+  if (length(.w) != 1) {
+    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+  } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
+    stop("The new label for '", lhs, "' must be a character string")
+  }
+  ini$label[.w] <- newLabel
+  assign("iniDf", ini, envir=rxui)
+  invisible()
+}
+
+#' Reorder rows in iniDf
+#'
+#' @inheritParams .iniHandleLine
+#' @param append Reorder theta parameters.  \code{NULL} means no change to
+#'   parameter order.  A parameter name (as a character string) means to put the
+#'   new parameter after the named parameter.  A number less than or equal to
+#'   zero means to put the parameter at the beginning of the list.  A number
+#'   greater than the last parameter number means to put the parameter at the
+#'   end of the list.
+#' @return Nothing, called for side effects
+#' @keywords internal
+.iniHandleAppend <- function(expr, rxui, envir, append) {
+  ini <- rxui$ini
+
+  if (is.null(append)) {
+    # Do nothing
+    return()
+  } else if (is.logical(append)) {
+    checkmate::assert_logical(append, any.missing = FALSE, len = 1)
+    if (isTRUE(append)) {
+      appendClean <- Inf
+    } else if (isFALSE(append)) {
+      appendClean <- 0
+    }
+  } else if (is.numeric(append)) {
+    checkmate::assert_number(append, null.ok = FALSE, na.ok = FALSE)
+    appendClean <- append
+  } else if (is.character(append)) {
+    checkmate::assert_character(append, any.missing = FALSE, len = 1, null.ok = FALSE)
+    checkmate::assert_choice(append, choices = ini$name)
+    appendClean <- which(ini$name == append)
+  } else {
+    cli::cli_abort("'append' must be NULL, logical, numeric, or character")
+  }
+
+  lhs <- as.character(expr[[2]])
+  wLhs <- which(ini$name == lhs)
+  if (length(wLhs) != 1) {
+    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+  } else if (length(appendClean) != 1) {
+    stop("Cannot find parameter '", after, "'", call.=FALSE)
+  } else if (appendClean == wLhs) {
+    warning("Parameter '", lhs, "' set to be moved after itself, no change in order made")
+    return()
+  } else if (is.na(ini$ntheta[wLhs])) {
+    stop("Only theta parameter can be moved.  '", lhs, "' is not a theta parameter.")
+  }
+
+  # Do the movement
+  if (appendClean <= 0) {
+    # put it at the top
+    ret <- rbind(ini[wLhs, ], ini[-wLhs, ])
+  } else if (appendClean >= nrow(ini)) {
+    # put it at the bottom
+    ret <- rbind(ini[-wLhs, ], ini[wLhs, ])
+  } else {
+    # put it in the middle
+    rowsAbove <- setdiff(seq_len(appendClean), wLhs)
+    rowsBelow <- setdiff(seq(appendClean + 1, nrow(ini)), wLhs)
+    ret <- rbind(ini[rowsAbove, ], ini[wLhs, ], ini[rowsBelow, ])
+  }
+  # Ensure that ntheta stays in order
+  ini$ntheta[!is.na(ini$ntheta)] <- seq_len(sum(!is.na(ini$ntheta)))
+  assign("iniDf", ret, envir=rxui)
+  invisible()
+}
+
+#' Update the iniDf of a model
 #'
 #' @param expr Expression for parsing
 #' @param rxui User interface function
 #' @param envir Environment for parsing
+#' @inheritParams .iniHandleAppend
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
-.iniHandleFixOrUnfix <- function(expr, rxui, envir=parent.frame()) {
- if (is.call(expr) && length(expr) == 2 && is.name(expr[[2]])) {
-    if (identical(expr[[1]], quote(`fix`)) ||
-          identical(expr[[1]], quote(`fixed`))) {
-      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
-    } else if (identical(expr[[1]], quote(`unfix`)) ||
-                 identical(expr[[1]], quote(`unfixed`))) {
-      expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
-    }
+.iniHandleLine <- function(expr, rxui, envir=parent.frame(), append = NULL) {
+  # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
+  # UNFIXED to fix and unfix to simplify all downstream operations
+  expr <- .iniSimplifyFixUnfix(expr)
+  # Convert assignment equal ("=") to left arrows ("<-") to simplify all
+  # downstream operations
+  expr <- .iniSimplifyAssignArrow(expr)
+
+  # Capture errors
+  if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
+    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense")
   }
-  .assignOp <- expr[[1]]
-  if (identical(.assignOp, quote(`<-`)) ||
-        identical(.assignOp, quote(`=`))) {
+
+  # (Maybe) update parameter order
+  .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
+
+  # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
+  if (.matchesLangTemplate(expr, str2lang("fix(.name)"))) {
+    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
+  } else if (.matchesLangTemplate(expr, str2lang("unfix(.name)"))) {
+    expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
+  }
+
+  if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
+    .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
+  } else if (.isAssignment(expr) && is.character(expr[[3]])) {
+    stop(
+      sprintf(
+        "To assign a new label, use '%s <- label(\"%s\")'",
+        as.character(expr[[2]]), expr[[3]]
+      )
+    )
+  } else if (.isAssignment(expr)) {
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir)
-  } else if (identical(.assignOp, quote(`~`))) {
+  } else if (.isLotriAssignment(expr)) {
     .rhs <- expr[[2]]
     if (length(.rhs) > 1) {
       if (identical(.rhs[[1]], quote(`+`))) {
@@ -345,47 +442,96 @@
   }
 }
 
+# TODO: while nlmixr2est is changed
+#' @export
+.iniHandleFixOrUnfix <- .iniHandleLine
+
+#' Simplify variants of fix and unfix to just those two
+#'
+#' @param expr An R call or similar object
+#' @return \code{expr} where all variants of fix (fixed, FIX, FIXED) and unfix
+#'   (unfixed, UNFIX, and UNFIXED) are converted to fix and unfix
+#' @noRd
+.iniSimplifyFixUnfix <- function(expr) {
+  if (identical(expr, as.name("fixed")) ||
+      identical(expr, as.name("FIX")) ||
+      identical(expr, as.name("FIXED"))) {
+    expr <- as.name("fix")
+  } else if (identical(expr, as.name("unfixed")) ||
+             identical(expr, as.name("UNFIX")) ||
+             identical(expr, as.name("UNFIXED"))) {
+    expr <- as.name("unfix")
+  } else if (is.call(expr)) {
+    for (idx in seq_along(expr)) {
+      # Do not perform a NULL assignment so that NULL comes out of the result
+      if (!is.null(expr[[idx]])) {
+        expr[[idx]] <- .iniSimplifyFixUnfix(expr[[idx]])
+      }
+    }
+  } else {
+    # do nothing
+  }
+  expr
+}
+
+#' Simplify all assignments to be left arrows (and not equal signs)
+#'
+#' @param expr An R call or similar object
+#' @return \code{expr} where all variants assignment equal signs are converted
+#'   to \code{<-}
+#' @noRd
+.iniSimplifyAssignArrow <- function(expr) {
+  if (is.call(expr) && length(expr) == 3) {
+    if (expr[[1]] == as.name("=")) {
+      expr[[1]] <- as.name("<-")
+    }
+  } else {
+    # do nothing
+  }
+  expr
+}
+
 #' @export
 #' @rdname ini
-ini.rxUi <- function(x, ..., envir=parent.frame()) {
+ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
-    .iniHandleFixOrUnfix(line, .ret, envir=envir)
+    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
   rxUiCompress(.ret)
 }
 
 #' @export
 #' @rdname ini
-ini.function <- function(x, ..., envir=parent.frame()) {
+ini.function <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- rxUiDecompress(rxode2(x))
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   lapply(.iniLines, function(line) {
-    .iniHandleFixOrUnfix(line, .ret, envir=envir)
+    .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
   })
   rxUiCompress(.ret)
 }
 
 #' @export
 #' @rdname ini
-ini.rxode2 <- function(x, ..., envir=parent.frame()) {
+ini.rxode2 <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir)
+  ini.function(.ret, ..., envir=envir, append = append)
 }
 
 #' @export
 #' @rdname ini
-ini.rxModelVars <- function(x, ..., envir=parent.frame()) {
+ini.rxModelVars <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir)
+  ini.function(.ret, ..., envir=envir, append = append)
 }
 
 #' This tells if the line is modifying an estimate instead of a line of the model
 #'
 #' @param line Quoted line
 #' @param rxui rxode2 UI object
-#' @return boolean inticating if the line defines an `ini` change.
+#' @return Boolean indicating if the line defines an `ini` change.
 #' @author Matthew L. Fidler
 #' @noRd
 .isQuotedLineRhsModifiesEstimates <- function(line, rxui) {

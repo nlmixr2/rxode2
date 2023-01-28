@@ -181,10 +181,11 @@
 #' @param envir the `environment` in which unevaluated model
 #'   expressions is to be evaluated.  May also be `NULL`, a list, a
 #'   data frame, a pairlist or an integer as specified to `sys.call`.
-#' @return Ini block
+#' @inheritParams .iniHandleAppend
+#' @return ini block
 #' @author Matthew Fidler
 #' @export
-ini <- function(x, ..., envir = parent.frame()) {
+ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {
     .ini <- eval(bquote(lotri(.(substitute(x)))), envir=envir)
     assignInMyNamespace(".lastIni", .ini)
