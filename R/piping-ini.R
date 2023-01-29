@@ -328,7 +328,6 @@
 #' @keywords internal
 .iniHandleAppend <- function(expr, rxui, envir, append) {
   ini <- rxui$ini
-
   if (is.null(append)) {
     # Do nothing
     return()
@@ -347,20 +346,22 @@
     checkmate::assert_choice(append, choices = ini$name)
     appendClean <- which(ini$name == append)
   } else {
-    cli::cli_abort("'append' must be NULL, logical, numeric, or character")
+    stop("'append' must be NULL, logical, numeric, or character", call. = FALSE)
   }
 
   lhs <- as.character(expr[[2]])
   wLhs <- which(ini$name == lhs)
   if (length(wLhs) != 1) {
-    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (length(appendClean) != 1) {
-    stop("Cannot find parameter '", after, "'", call.=FALSE)
+    stop("cannot find parameter '", append, "'", call.=FALSE)
   } else if (appendClean == wLhs) {
-    warning("Parameter '", lhs, "' set to be moved after itself, no change in order made")
+    warning("parameter '", lhs, "' set to be moved after itself, no change in order made",
+            call. = FALSE)
     return()
   } else if (is.na(ini$ntheta[wLhs])) {
-    stop("Only theta parameter can be moved.  '", lhs, "' is not a theta parameter.")
+    stop("only theta parameter can be moved.  '", lhs, "' is not a theta parameter",
+         call. = FALSE)
   }
 
   # Do the movement
@@ -402,7 +403,8 @@
 
   # Capture errors
   if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
-    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense")
+    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense",
+         call. = FALSE)
   }
 
   # (Maybe) update parameter order
