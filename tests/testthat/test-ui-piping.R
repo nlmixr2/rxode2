@@ -1634,7 +1634,7 @@ test_that("eff(0) piping should work", {
 
 
 test_that("auto with studid==", {
-  
+
   one.compartment <- function() {
     ini({
       tka <- 0.45
@@ -1666,7 +1666,7 @@ test_that("auto with studid==", {
 
   expect_false(any(j$iniDf$name == "f_study1"))
   expect_false(any(j$iniDf$name == "STUDYID"))
-  
+
 })
 
 test_that("piping with append=lhs", {
