@@ -108,8 +108,12 @@
     .cur
   })
   if (!is.null(.env$labels)) {
-    # FIXME include labels (by option) once Bill is done 
-    .ini <- .ini[-.env$labels]
+    if (getOption("rxode2.ignoreLabels", TRUE)) {
+      .ini <- .ini[-.env$labels]
+      .minfo("the labels from the piped model do not overwrite old labels\nto change use 'options(rxode2.ignoreLabels=FALSE)'")
+    } else {
+      .minfo("the labels from the piped model overwrite old labels\nto change use 'options(rxode2.ignoreLabels=TRUE)'")
+    }
   }
   return(.ini)
 }
