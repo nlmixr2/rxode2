@@ -173,7 +173,7 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
   # b to b, warn and no change
   expect_warning(
     expect_equal(suppressMessages(ini(ui, b <- 1, append = "b"))$iniDf$name, c("a", "b", "c", "addSd")),
-    regexp = "Parameter 'b' set to be moved after itself, no change in order made"
+    regexp = "parameter 'b' set to be moved after itself, no change in order made"
   )
 
   # Invalid parameter is correctly caught
