@@ -1821,7 +1821,7 @@ rxModels_ <- # nolint
 #' These items are only calculated after compilation; they are
 #' built-into the rxode2 compiled DLL.
 #'
-#' To allow extensible a s3 hook is added in the function `rxModelVarsS3`
+#' To allow extension, an s3 hook is added in the function `rxModelVarsS3`.
 #'
 #' @param obj rxode2 family of objects
 #'
