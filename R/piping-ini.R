@@ -300,6 +300,7 @@
 #' @inheritParams .iniHandleLine
 #' @return Nothing, called for side effects
 #' @keywords internal
+#' @noRd
 .iniHandleLabel <- function(expr, rxui, envir) {
   lhs <- as.character(expr[[2]])
   newLabel <- expr[[3]][[2]]
@@ -505,38 +506,20 @@ ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
   rxUiCompress(.ret)
 }
 
-#' @export
 #' @rdname ini
-ini.function <- function(x, ..., envir=parent.frame(), append = NULL) {
-  .ret <- rxUiDecompress(rxode2(x))
+#' @export
+ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
+  .ret <- try(as.rxUi(x), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    stop("cannot figure out what to do with the ini({}) function", call.=FALSE)
+  }
+  .ret <- rxUiDecompress(.ret)
   .iniDf <- .ret$iniDf
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
   })
   rxUiCompress(.ret)
-}
-
-#' @export
-#' @rdname ini
-ini.rxode2 <- function(x, ..., envir=parent.frame(), append = NULL) {
-  .ret <- rxUiDecompress(rxode2(as.function(x)))
-  .iniDf <- .ret$iniDf
-  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
-  lapply(.iniLines, function(line) {
-    .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
-  })
-  rxUiCompress(.ret)
-}
-
-#' @rdname ini
-#' @export
-ini.rxModelVars <- ini.rxode2
-
-#' @rdname ini
-#' @export
-ini.default <- function(x, ...) {
-  stop("cannot figure out what to do with the ini({}) function", call.=FALSE)
 }
 
 #' This tells if the line is modifying an estimate instead of a line of the model
