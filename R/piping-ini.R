@@ -48,7 +48,7 @@
 .iniModifyThetaOrSingleEtaDf <- function(ini, lhs, rhs, doFix, doUnfix, maxLen) {
   .w <- which(ini$name == lhs)
   if (length(.w) != 1) {
-    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call.=FALSE)
   }
   .curFix <- ini$fix[.w]
   if (doFix) {
@@ -170,8 +170,8 @@
   }
   .w1 <- which(ini$name == neta1)
   .w2 <- which(ini$name == neta2)
-  if (length(.w1) != 1) stop("Cannot find parameter '", neta1, "'", call.=FALSE)
-  if (length(.w2) != 1) stop("Cannot find parameter '", neta2, "'", call.=FALSE)
+  if (length(.w1) != 1) stop("cannot find parameter '", neta1, "'", call.=FALSE)
+  if (length(.w2) != 1) stop("cannot find parameter '", neta2, "'", call.=FALSE)
   if (ini$neta1[.w1] < ini$neta1[.w2]) {
     .tmp <- .w1
     .w1 <- .w2
@@ -306,9 +306,9 @@
   ini <- rxui$ini
   .w <- which(ini$name == lhs)
   if (length(.w) != 1) {
-    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
-    stop("The new label for '", lhs, "' must be a character string")
+    stop("the new label for '", lhs, "' must be a character string")
   }
   ini$label[.w] <- newLabel
   assign("iniDf", ini, envir=rxui)
@@ -422,9 +422,9 @@
   } else if (.isAssignment(expr) && is.character(expr[[3]])) {
     stop(
       sprintf(
-        "To assign a new label, use '%s <- label(\"%s\")'",
-        as.character(expr[[2]]), expr[[3]]
-      )
+        "to assign a new label, use '%s <- label(\"%s\")'",
+        as.character(expr[[2]]), expr[[3]],
+      ), call.=FALSE
     )
   } else if (.isAssignment(expr)) {
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir)
