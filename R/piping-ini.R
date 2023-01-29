@@ -355,12 +355,14 @@
   if (length(wLhs) != 1) {
     stop("Cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (length(appendClean) != 1) {
-    stop("Cannot find parameter '", after, "'", call.=FALSE)
+    # This likely cannot be reached because all scenarios should be handled
+    # above in the input checking.  The line remains in the code defensively.
+    stop("Cannot find parameter '", after, "'", call.=FALSE) # nocov
   } else if (appendClean == wLhs) {
     warning("Parameter '", lhs, "' set to be moved after itself, no change in order made")
     return()
   } else if (is.na(ini$ntheta[wLhs])) {
-    stop("Only theta parameter can be moved.  '", lhs, "' is not a theta parameter.")
+    stop("Only theta parameters can be moved.  '", lhs, "' is not a theta parameter.")
   }
 
   # Do the movement

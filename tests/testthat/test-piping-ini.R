@@ -253,3 +253,35 @@ test_that(".iniHandleLabel", {
     regexp = "The new label for 'a' must be a character string"
   )
 })
+
+test_that(".iniHandleAppend", {
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      d ~ 1
+      h ~ 2
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      f <- a + d + e
+      i <- j + h
+      b ~ add(addSd)
+    })
+  }
+  expect_error(
+    ini(mod, a <- 1, append=factor("A")),
+    regexp = "'append' must be NULL, logical, numeric, or character"
+  )
+  expect_error(
+    ini(mod, q <- 1, append=0),
+    regexp = "Cannot find parameter 'q'"
+  )
+  # Non-theta parameters cannot be moved
+  expect_error(
+    ini(mod, h ~ 1, append=0),
+    regexp = "Only theta parameters can be moved"
+  )
+})
