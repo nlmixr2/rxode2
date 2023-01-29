@@ -182,3 +182,44 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
     "append"
   )
 })
+
+test_that(".iniAddCovarianceBetweenTwoEtaValues", {
+  # Promote a covariate to a correlated eta
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      d ~ 1
+      h ~ 2
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      f <- a + d + e
+      i <- j + h
+      b ~ add(addSd)
+    })
+  }
+  suppressMessages(
+    expect_message(
+      ini(mod, d + e ~ c(1, 0.5, 3)),
+      regexp = "promote `e` to between subject variability"
+    )
+  )
+
+  # Non-existent correlated eta
+  suppressMessages(
+    expect_error(
+      ini(mod, d + g ~ c(1, 0.5, 3)),
+      regexp = "Cannot find parameter 'g'"
+    )
+  )
+  # Update eta order
+  suppressMessages(
+    expect_equal(
+      ini(mod, h + d ~ c(1, 0.5, 3))$iniDf$name,
+      c("a", "b", "c", "addSd", "h", "d", "(h,d)")
+    )
+  )
+})
