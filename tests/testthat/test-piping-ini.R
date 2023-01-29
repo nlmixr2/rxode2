@@ -1,7 +1,8 @@
 test_that("piping with ini can update labels (rxode2/issues#351)", {
   mod <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1
+      label("foo")
       addSd <- 2
     })
     model({
@@ -18,7 +19,8 @@ test_that("piping with ini can update labels (rxode2/issues#351)", {
 test_that("piping with ini gives an error pointing the user to use label for character rhs (rxode2/issues#351)", {
   mod <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1
+      label("foo")
       addSd <- 2
     })
     model({
@@ -37,7 +39,8 @@ test_that("piping with ini gives an error pointing the user to use label for cha
 test_that("piping with ini can update labels (rxode2/issues#351)", {
   mod <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1
+      label("foo")
       addSd <- 2
     })
     model({
@@ -54,7 +57,8 @@ test_that("piping with ini can update labels (rxode2/issues#351)", {
 test_that("piping with ini gives an error pointing the user to use label for character rhs (rxode2/issues#351)", {
   mod <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1
+      label("foo")
       addSd <- 2
     })
     model({
