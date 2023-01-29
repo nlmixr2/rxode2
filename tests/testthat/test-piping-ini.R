@@ -223,3 +223,33 @@ test_that(".iniAddCovarianceBetweenTwoEtaValues", {
     )
   )
 })
+
+test_that(".iniHandleLabel", {
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      d ~ 1
+      h ~ 2
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      f <- a + d + e
+      i <- j + h
+      b ~ add(addSd)
+    })
+  }
+
+  # non-existent parameter
+  expect_error(
+    ini(mod, q = label("foo")),
+    regexp = "Cannot find parameter 'q'"
+  )
+  # invalid label value
+  expect_error(
+    ini(mod, a = label(5)),
+    regexp = "The new label for 'a' must be a character string"
+  )
+})
