@@ -41,7 +41,7 @@ Return all the known model variables for a specified rxode2 object
 These items are only calculated after compilation; they are
 built-into the rxode2 compiled DLL.
 
-To allow extensible a s3 hook is added in the function \code{rxModelVarsS3}
+To allow extension, an s3 hook is added in the function \code{rxModelVarsS3}.
 }
 \seealso{
 Other Query model information: 
