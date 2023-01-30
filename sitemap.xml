@@ -88,6 +88,9 @@
     <loc>https://nlmixr2.github.io/rxode2/news/index.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/as.rxUi.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/assertRxUi.html</loc>
   </url>
   <url>
@@ -104,9 +107,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleAppend.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleLabel.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-iniHandleLine.html</loc>
