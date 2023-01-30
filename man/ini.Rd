@@ -2,24 +2,15 @@
 % Please edit documentation in R/piping-ini.R, R/ui.R
 \name{ini.rxUi}
 \alias{ini.rxUi}
-\alias{ini.function}
-\alias{ini.rxode2}
-\alias{ini.rxModelVars}
-\alias{ini}
 \alias{ini.default}
+\alias{ini}
 \title{Ini block for rxode2/nlmixr models}
 \usage{
 \method{ini}{rxUi}(x, ..., envir = parent.frame(), append = NULL)
 
-\method{ini}{`function`}(x, ..., envir = parent.frame(), append = NULL)
-
-\method{ini}{rxode2}(x, ..., envir = parent.frame(), append = NULL)
-
-\method{ini}{rxModelVars}(x, ..., envir = parent.frame(), append = NULL)
+\method{ini}{default}(x, ..., envir = parent.frame(), append = NULL)
 
 ini(x, ..., envir = parent.frame(), append = NULL)
-
-\method{ini}{default}(x, ...)
 }
 \arguments{
 \item{x}{expression}

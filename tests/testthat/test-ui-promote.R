@@ -1,5 +1,6 @@
 rxTest({
   test_that("rxode2 to ui promotion", {
+    
     mod1 <- rxode2({
       C2 <- centr/V2
       C3 <- peri/V3

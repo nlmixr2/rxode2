@@ -35,6 +35,7 @@ reference:
   - rxAppendModel
   - rxRename
   - update.rxUi
+  - as.rxUi
   - rxSetCovariateNamesForPiping
   - rxUiDecompress
   - rxUiCompress
