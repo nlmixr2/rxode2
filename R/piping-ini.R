@@ -355,7 +355,10 @@
   if (length(wLhs) != 1) {
     stop("cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (length(appendClean) != 1) {
-    stop("cannot find parameter '", append, "'", call.=FALSE)
+    # This likely cannot be reached because all scenarios should be handled
+    # above in the input checking.  The line remains in the code defensively.
+    stop("Cannot find parameter '", append, "'", call.=FALSE) # nocov
+
   } else if (appendClean == wLhs) {
     warning("parameter '", lhs, "' set to be moved after itself, no change in order made",
             call. = FALSE)

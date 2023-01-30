@@ -186,3 +186,106 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
     "append"
   )
 })
+
+test_that(".iniAddCovarianceBetweenTwoEtaValues", {
+  # Promote a covariate to a correlated eta
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      d ~ 1
+      h ~ 2
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      f <- a + d + e
+      i <- j + h
+      b ~ add(addSd)
+    })
+  }
+  suppressMessages(
+    expect_message(
+      ini(mod, d + e ~ c(1, 0.5, 3)),
+      regexp = "promote `e` to between subject variability"
+    )
+  )
+
+  # Non-existent correlated eta
+  suppressMessages(
+    expect_error(
+      ini(mod, d + g ~ c(1, 0.5, 3)),
+      regexp = "Cannot find parameter 'g'"
+    )
+  )
+  # Update eta order
+  suppressMessages(
+    expect_equal(
+      ini(mod, h + d ~ c(1, 0.5, 3))$iniDf$name,
+      c("a", "b", "c", "addSd", "h", "d", "(h,d)")
+    )
+  )
+})
+
+test_that(".iniHandleLabel", {
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      d ~ 1
+      h ~ 2
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      f <- a + d + e
+      i <- j + h
+      b ~ add(addSd)
+    })
+  }
+
+  # non-existent parameter
+  expect_error(
+    ini(mod, q = label("foo")),
+    regexp = "Cannot find parameter 'q'"
+  )
+  # invalid label value
+  expect_error(
+    ini(mod, a = label(5)),
+    regexp = "The new label for 'a' must be a character string"
+  )
+})
+
+test_that(".iniHandleAppend", {
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      d ~ 1
+      h ~ 2
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      f <- a + d + e
+      i <- j + h
+      b ~ add(addSd)
+    })
+  }
+  expect_error(
+    ini(mod, a <- 1, append=factor("A")),
+    regexp = "'append' must be NULL, logical, numeric, or character"
+  )
+  expect_error(
+    ini(mod, q <- 1, append=0),
+    regexp = "Cannot find parameter 'q'"
+  )
+  # Non-theta parameters cannot be moved
+  expect_error(
+    ini(mod, h ~ 1, append=0),
+    regexp = "Only theta parameters can be moved"
+  )
+})

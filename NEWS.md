@@ -19,9 +19,11 @@
 - rxSolve's keep argument will now maintain character and factor classes from
   input data with the same class (#190)
 
-- Parameter labels may now be modified via `ini(param = label("text"))`
+- Parameter labels may now be modified via `ini(param = label("text"))` (#351).
 
-- Parameter order may be modified via `ini(param = after(param2))`
+- Parameter order may be modified via the `append` argument to `ini()` when
+  piping a model.  For example, `ini(param = 1, append = 0)` or
+  `ini(param = label("text"), append = "param2")` (#352).
 
 # rxode2 2.0.11
 
