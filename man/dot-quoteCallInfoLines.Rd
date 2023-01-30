@@ -4,12 +4,14 @@
 \alias{.quoteCallInfoLines}
 \title{Returns quoted call information}
 \usage{
-.quoteCallInfoLines(callInfo, envir = parent.frame())
+.quoteCallInfoLines(callInfo, envir = parent.frame(), iniDf = NULL)
 }
 \arguments{
 \item{callInfo}{Call information}
 
 \item{envir}{Environment for evaluation (if needed)}
+
+\item{iniDf}{The parent model \code{iniDf} when piping in a \code{ini} block (\code{NULL} otherwise)}
 }
 \value{
 Quote call information.  for \code{name=expression}, change to

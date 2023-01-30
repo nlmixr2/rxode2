@@ -29,6 +29,7 @@ jobs:
           cache-version: 2
           extra-packages: |
             any::covr
+            nlmixr2/dparser-R
             nlmixr2/lotri
             nlmixr2/rxode2ll
             nlmixr2/rxode2parse

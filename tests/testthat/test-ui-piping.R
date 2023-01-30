@@ -1,6 +1,9 @@
 rxTest({
-  testPipeQuote <- function(..., envir=parent.frame()) {
-    .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir)
+
+  testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
+    rxUnloadAll()
+    gc()
+    .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir, iniDf=iniDf)
   }
 
   test_that("test of standard quoting of piping arguments", {
@@ -1687,4 +1690,151 @@ test_that("piping with append=lhs", {
   m3 <- ocmt_rx0 %>% model( cl <- tvcl*2, append = cp)
 
   expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
+
+  test_that("piping ui functions", {
+    
+    m1 <- function() {
+      ini({
+        tka <- 0.463613555325211
+        label("Ka")
+        tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        tv <- 3.46039743010498
+        label("log V")
+        add.sd <- c(0, 0.694761430696633)
+        eta.ka ~ 0.400673718508127
+        eta.cl ~ 0.069154564934726
+        eta.v ~ 0.0191298379535425
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    m1 <- m1()
+
+    m2 <- function() {
+      ini({
+        tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        tv <- 3.46039743010498
+        label("log V")
+        add.sd <- c(0, 0.694761430696633)
+        eta.cl ~ 0.069154564934726
+        eta.v ~ 0.0191298379535425
+      })
+      model({
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    m2 <- m2()
+
+    expect_equal(testPipeQuote(m1, iniDf=m2$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633)),
+                      quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+    expect_equal(testPipeQuote(m2, iniDf=m1$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633)),
+                      quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+    m4 <- function() {
+      ini({
+        tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        tv <- 3.46039743010498
+        label("log V")
+        add.sd <- c(0, 0.694761430696633)
+        eta..cl ~ 0.069154564934726
+        eta..v ~ 0.0191298379535425
+      })
+      model({
+        cl <- exp(tcl + eta..cl)
+        v <- exp(tv + eta..v)
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    # no etas
+
+    m4 <- m4()
+
+    expect_equal(testPipeQuote(m4, iniDf=m1$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633))))
+
+    expect_equal(testPipeQuote(m1, iniDf=m4$iniDf),
+                 list(quote(tcl <- c(-Inf, 1.01211464338867, 4.60517018598809)),
+                      quote(tv <- 3.46039743010498),
+                      quote(add.sd <- c(0, 0.694761430696633))))
+
+    # no thetas
+
+    m5 <- function() {
+      ini({
+        t.cl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        t.v <- 3.46039743010498
+        label("log V")
+        add..sd <- c(0, 0.694761430696633)
+        eta.cl ~ 0.069154564934726
+        eta.v ~ 0.0191298379535425
+      })
+      model({
+        cl <- exp(t.cl + eta.cl)
+        v <- exp(t.v + eta.v)
+        linCmt() ~ add(add..sd)
+      })
+    }
+
+    m5 <- m5()
+
+    expect_equal(testPipeQuote(m5, iniDf=m1$iniDf),
+                 list(quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+    expect_equal(testPipeQuote(m1, iniDf=m5$iniDf),
+                 list(quote(eta.cl ~ 0.069154564934726),
+                      quote(eta.v ~ 0.0191298379535425)))
+
+
+    m6 <- function() {
+      ini({
+        t.cl <- c(-Inf, 1.01211464338867, 4.60517018598809)
+        label("Log Cl")
+        t.v <- 3.46039743010498
+        label("log V")
+        add..sd <- c(0, 0.694761430696633)
+        eta..cl ~ 0.069154564934726
+        eta..v ~ 0.0191298379535425
+      })
+      model({
+        cl <- exp(t.cl + eta..cl)
+        v <- exp(t.v + eta..v)
+        linCmt() ~ add(add..sd)
+      })
+    }
+
+    m6 <- m6()
+
+    expect_equal(testPipeQuote(m6, iniDf=m1$iniDf),
+                 list())
+
+    expect_equal(testPipeQuote(m1, iniDf=m6$iniDf),
+                 list())
+
+    
+  })
 })

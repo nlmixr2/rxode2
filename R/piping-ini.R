@@ -48,7 +48,7 @@
 .iniModifyThetaOrSingleEtaDf <- function(ini, lhs, rhs, doFix, doUnfix, maxLen) {
   .w <- which(ini$name == lhs)
   if (length(.w) != 1) {
-    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call.=FALSE)
   }
   .curFix <- ini$fix[.w]
   if (doFix) {
@@ -170,8 +170,8 @@
   }
   .w1 <- which(ini$name == neta1)
   .w2 <- which(ini$name == neta2)
-  if (length(.w1) != 1) stop("Cannot find parameter '", neta1, "'", call.=FALSE)
-  if (length(.w2) != 1) stop("Cannot find parameter '", neta2, "'", call.=FALSE)
+  if (length(.w1) != 1) stop("cannot find parameter '", neta1, "'", call.=FALSE)
+  if (length(.w2) != 1) stop("cannot find parameter '", neta2, "'", call.=FALSE)
   if (ini$neta1[.w1] < ini$neta1[.w2]) {
     .tmp <- .w1
     .w1 <- .w2
@@ -300,15 +300,16 @@
 #' @inheritParams .iniHandleLine
 #' @return Nothing, called for side effects
 #' @keywords internal
+#' @noRd
 .iniHandleLabel <- function(expr, rxui, envir) {
   lhs <- as.character(expr[[2]])
   newLabel <- expr[[3]][[2]]
   ini <- rxui$ini
   .w <- which(ini$name == lhs)
   if (length(.w) != 1) {
-    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
-    stop("The new label for '", lhs, "' must be a character string")
+    stop("the new label for '", lhs, "' must be a character string")
   }
   ini$label[.w] <- newLabel
   assign("iniDf", ini, envir=rxui)
@@ -328,7 +329,6 @@
 #' @keywords internal
 .iniHandleAppend <- function(expr, rxui, envir, append) {
   ini <- rxui$ini
-
   if (is.null(append)) {
     # Do nothing
     return()
@@ -347,20 +347,25 @@
     checkmate::assert_choice(append, choices = ini$name)
     appendClean <- which(ini$name == append)
   } else {
-    cli::cli_abort("'append' must be NULL, logical, numeric, or character")
+    stop("'append' must be NULL, logical, numeric, or character", call. = FALSE)
   }
 
   lhs <- as.character(expr[[2]])
   wLhs <- which(ini$name == lhs)
   if (length(wLhs) != 1) {
-    stop("Cannot find parameter '", lhs, "'", call.=FALSE)
+    stop("cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (length(appendClean) != 1) {
-    stop("Cannot find parameter '", after, "'", call.=FALSE)
+    # This likely cannot be reached because all scenarios should be handled
+    # above in the input checking.  The line remains in the code defensively.
+    stop("Cannot find parameter '", append, "'", call.=FALSE) # nocov
+
   } else if (appendClean == wLhs) {
-    warning("Parameter '", lhs, "' set to be moved after itself, no change in order made")
+    warning("parameter '", lhs, "' set to be moved after itself, no change in order made",
+            call. = FALSE)
     return()
   } else if (is.na(ini$ntheta[wLhs])) {
-    stop("Only theta parameter can be moved.  '", lhs, "' is not a theta parameter.")
+    stop("only theta parameters can be moved.  '", lhs, "' is not a theta parameter",
+         call. = FALSE)
   }
 
   # Do the movement
@@ -402,7 +407,8 @@
 
   # Capture errors
   if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
-    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense")
+    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense",
+         call. = FALSE)
   }
 
   # (Maybe) update parameter order
@@ -420,9 +426,9 @@
   } else if (.isAssignment(expr) && is.character(expr[[3]])) {
     stop(
       sprintf(
-        "To assign a new label, use '%s <- label(\"%s\")'",
+        "to assign a new label, use '%s <- label(\"%s\")'",
         as.character(expr[[2]]), expr[[3]]
-      )
+      ), call.=FALSE
     )
   } else if (.isAssignment(expr)) {
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir)
@@ -495,36 +501,28 @@
 #' @rdname ini
 ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
-  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
+  .iniDf <- .ret$iniDf
+  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf= .iniDf)
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
   rxUiCompress(.ret)
 }
 
-#' @export
 #' @rdname ini
-ini.function <- function(x, ..., envir=parent.frame(), append = NULL) {
-  .ret <- rxUiDecompress(rxode2(x))
-  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
+#' @export
+ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
+  .ret <- try(as.rxUi(x), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    stop("cannot figure out what to do with the ini({}) function", call.=FALSE)
+  }
+  .ret <- rxUiDecompress(.ret)
+  .iniDf <- .ret$iniDf
+  .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
   })
   rxUiCompress(.ret)
-}
-
-#' @export
-#' @rdname ini
-ini.rxode2 <- function(x, ..., envir=parent.frame(), append = NULL) {
-  .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir, append = append)
-}
-
-#' @export
-#' @rdname ini
-ini.rxModelVars <- function(x, ..., envir=parent.frame(), append = NULL) {
-  .ret <- as.function(x)
-  ini.function(.ret, ..., envir=envir, append = append)
 }
 
 #' This tells if the line is modifying an estimate instead of a line of the model
