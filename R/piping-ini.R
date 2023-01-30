@@ -364,7 +364,7 @@
             call. = FALSE)
     return()
   } else if (is.na(ini$ntheta[wLhs])) {
-    stop("only theta parameter can be moved.  '", lhs, "' is not a theta parameter",
+    stop("only theta parameters can be moved.  '", lhs, "' is not a theta parameter",
          call. = FALSE)
   }
 
