@@ -31,7 +31,7 @@ test_that("piping with ini gives an error pointing the user to use label for cha
   ui <- rxode2(mod)
   expect_error(
     ini(ui, a = "bar"),
-    regexp = "To assign a new label, use 'a <- label(\"bar\")'",
+    regexp = "to assign a new label, use 'a <- label(\"bar\")'",
     fixed = TRUE
   )
 })
@@ -69,7 +69,7 @@ test_that("piping with ini gives an error pointing the user to use label for cha
   ui <- rxode2(mod)
   expect_error(
     ini(ui, a = "bar"),
-    regexp = "To assign a new label, use 'a <- label(\"bar\")'",
+    regexp = "to assign a new label, use 'a <- label(\"bar\")'",
     fixed = TRUE
   )
 })

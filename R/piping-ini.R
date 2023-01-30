@@ -424,7 +424,7 @@
     stop(
       sprintf(
         "to assign a new label, use '%s <- label(\"%s\")'",
-        as.character(expr[[2]]), expr[[3]],
+        as.character(expr[[2]]), expr[[3]]
       ), call.=FALSE
     )
   } else if (.isAssignment(expr)) {
