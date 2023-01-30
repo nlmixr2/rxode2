@@ -216,7 +216,7 @@ test_that(".iniAddCovarianceBetweenTwoEtaValues", {
   suppressMessages(
     expect_error(
       ini(mod, d + g ~ c(1, 0.5, 3)),
-      regexp = "Cannot find parameter 'g'"
+      regexp = "cannot find parameter 'g'"
     )
   )
   # Update eta order
@@ -249,12 +249,12 @@ test_that(".iniHandleLabel", {
   # non-existent parameter
   expect_error(
     ini(mod, q = label("foo")),
-    regexp = "Cannot find parameter 'q'"
+    regexp = "cannot find parameter 'q'"
   )
   # invalid label value
   expect_error(
     ini(mod, a = label(5)),
-    regexp = "The new label for 'a' must be a character string"
+    regexp = "the new label for 'a' must be a character string"
   )
 })
 
@@ -281,11 +281,11 @@ test_that(".iniHandleAppend", {
   )
   expect_error(
     ini(mod, q <- 1, append=0),
-    regexp = "Cannot find parameter 'q'"
+    regexp = "cannot find parameter 'q'"
   )
   # Non-theta parameters cannot be moved
   expect_error(
     ini(mod, h ~ 1, append=0),
-    regexp = "Only theta parameters can be moved"
+    regexp = "only theta parameters can be moved"
   )
 })
