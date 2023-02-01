@@ -60,13 +60,13 @@ normal residual distribution
 \item \code{assertRxUiNormal} -- This needs to be a normal residual distribution
 \item \code{assertRxUiEstimatedResiduals} -- This makes sure that the
 residual error parameter are estimated (not modeled).
-\item \code{assertRxUiPopulationOnly} -- This makes sure the model is the
-population only model (no mixed effects)
-\item \code{assertRxUiMixedOnly} -- This makes sure the model is a mixed
-effect model (not a population effect)
-\item \code{assertRxUiPrediction} -- This makes sure the model has predictions
-\item \code{assertRxUiMuRefOnly} -- This make sure that all the parameters are mu-referenced
-\item \code{assertRxUiRandomOnIdOnly} -- This makes sure there is only random effects at the ID level
+\item \code{assertRxUiPopulationOnly} -- Make sure the model is the population only
+model (no mixed effects)
+\item \code{assertRxUiMixedOnly} -- Make sure the model is a mixed effect model (not a
+population effect, only)
+\item \code{assertRxUiPrediction} -- Make sure the model has predictions
+\item \code{assertRxUiMuRefOnly} -- Make sure that all the parameters are mu-referenced
+\item \code{assertRxUiRandomOnIdOnly} -- Makes sure there are only random effects at the ID level
 }
 }
 \examples{
@@ -74,13 +74,9 @@ effect model (not a population effect)
 \donttest{
 one.cmt <- function() {
  ini({
-   ## You may label each parameter with a comment
-   tka <- 0.45 # Ka
-   tcl <- log(c(0, 2.7, 100)) # Log Cl
-   ## This works with interactive models
-   ## You may also label the preceding line with label("label text")
-   tv <- 3.45; label("log V")
-   ## the label("Label name") works with all models
+   tka <- 0.45; label("Ka")
+   tcl <- log(c(0, 2.7, 100)); label("Cl")
+   tv <- 3.45; label("V")
    eta.ka ~ 0.6
    eta.cl ~ 0.3
    eta.v ~ 0.1
