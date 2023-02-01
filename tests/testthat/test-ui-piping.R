@@ -1833,8 +1833,21 @@ test_that("piping with append=lhs", {
                  list())
 
     expect_equal(testPipeQuote(m1, iniDf=m6$iniDf),
-                 list())
+                 list())    
+  })
+  test_that("model piping that shares err parameter#427", {
+    u <- function() {
+      ini({
+        b <- 3
+        err.sd <- 2
+      })
+      model({
+        a <- x + err.sd
+        c <- 1+b
+        c ~ add(err.sd)
+      })
+    }
 
-    
+    expect_error(u %>% model(-a), NA)
   })
 })

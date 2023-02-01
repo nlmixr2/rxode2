@@ -444,7 +444,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
       .iniHandleFixOrUnfix(line, rxui, envir=envir)
     } else {
-      .isErr <- .isErrorExpression(line)
+      .isErr  <- .isErrorExpression(line)
       .isDrop <- .isDropExpression(line)
       if (.isDrop && .isErr) {
         .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, FALSE)
@@ -468,7 +468,6 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
           assign(".err",
                  c(.err, paste0("the lhs expression '", deparse1(line[[2]]), "' is not in the model and cannot be modified by piping")),
                  envir=.env)
-
       } else if (all(.ret > 0)) {
         if (.isDrop) {
           .lstExpr <- get("lstExpr", rxui)
@@ -585,7 +584,11 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   .new <- c(.new1, .new2)
   .new <- setdiff(.new, rxui$mv0$lhs)
 
-  list(rm=c(.rm1, .rm2), new=.new, err=.err)
+  .rm <- c(.rm1, .rm2)
+
+  .rm <- setdiff(.rm, .err)
+
+  list(rm=.rm, new=.new, err=.err)
 }
 
 #' Remove a single variable from the initialization data frame
