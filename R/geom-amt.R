@@ -1,20 +1,16 @@
 .amtTrans <- function(data) {
   if (!any(names(data) == "amt")) {
     stop("need 'amt' aesthetic")
+  } else if (!any(names(data) == "x") & any(names(data) == "time")) {
+    data$x <- data$time
+  } else {
+    stop("need 'x' aesthetic")
   }
-  if (!any(names(data) == "x")) {
-    if (any(names(data) == "time")) {
-      data$x <- data$time
-    } else {
-      stop("need 'x' aesthetic")
-    }
-  }
-  # .range <- range(data$y,na.rm=TRUE)
-  .dat <- data
-  .dat <- data[, c("x", "amt")]
-  .dat <- data[!is.na(.dat$amt), ]
-  ret <- data.frame(x = .dat$x, xend = .dat$x, y = -Inf, yend = Inf, amt = .dat$amt)
-  return(ret)
+  ret <- data[!is.na(data$amt), c("x", "amt")]
+  ret$xend <- ret$x
+  ret$y <- -Inf
+  ret$yend <- Inf
+  ret
 }
 
 GeomAmt <- NULL
@@ -41,8 +37,8 @@ StatAmt <- ggplot2::ggproto("StatAmt", ggplot2::Stat,
 #' @return This returns a stat_amt in context of a ggplot2 plot
 #'
 #' @examples
-#' 
-#' \donttest{ 
+#'
+#' \donttest{
 #' library(rxode2)
 #' library(units)
 #'
