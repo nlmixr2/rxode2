@@ -1,7 +1,7 @@
 .amtTrans <- function(data) {
   if (!any(names(data) == "amt")) {
     stop("need 'amt' aesthetic")
-  } else if (!any(names(data) == "x") & any(names(data) == "time")) {
+  } else if (!any(names(data) == "x") && any(names(data) == "time")) {
     data$x <- data$time
   } else {
     stop("need 'x' aesthetic")
