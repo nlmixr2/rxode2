@@ -6,7 +6,7 @@ rxTest({
       v <- tv * WT * exp(eta.v)
       ka <- tka * exp(eta.ka)
       ipred <- linCmt()
-      obs <- ipred * (1 + prop.sd) + add.sd 
+      obs <- ipred * (1 + prop.sd) + add.sd
     })
 
     theta <- c(tcl=2.63E+01, tv=1.35E+00, tka=4.20E+00, tlag=2.08E-01,
@@ -48,7 +48,7 @@ rxTest({
     expect_error(rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
                     thetaMat=thetaMat1,
                     ## Match boundaries of problem
-                    thetaLower=0, 
+                    thetaLower=0,
                     sigma=c("prop.sd", "add.sd"), ## Sigmas are standard deviations
                     sigmaXform="identity", # default sigma xform="identity"
                     omega=c("eta.cl", "eta.v", "eta.ka"), ## etas are variances
@@ -57,4 +57,8 @@ rxTest({
                     dfSub=74, dfObs=476),
                  NA)
   })
+})
+
+test_that(".nearPD expected null for matrix that cannot become positive definite", {
+  expect_null(.nearPD(matrix(Inf)))
 })
