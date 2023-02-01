@@ -22,25 +22,25 @@
 #' - `assertRxUiSingleEndpoint` -- Make sure the rxode2 model is only
 #'    a single endpoint model (if not throw error)
 #'
-#' - `assertRxUiTransformNormal` -- This needs to be a normal or transformably
-#'    normal residual distribution
+#' - `assertRxUiTransformNormal` -- Make sure that the model residual
+#'    distribution is normal or transformably normal
 #'
-#' - `assertRxUiNormal` -- This needs to be a normal residual distribution
+#' - `assertRxUiNormal` -- Make sure that the model residual distribution is normal
 #'
-#' - `assertRxUiEstimatedResiduals` -- This makes sure that the
-#'    residual error parameter are estimated (not modeled).
+#' - `assertRxUiEstimatedResiduals` -- Make sure that the residual error
+#'    parameters are estimated (not modeled).
 #'
-#' - `assertRxUiPopulationOnly` -- This makes sure the model is the
-#'    population only model (no mixed effects)
+#' - `assertRxUiPopulationOnly` -- Make sure the model is the population only
+#'    model (no mixed effects)
 #'
-#' - `assertRxUiMixedOnly` -- This makes sure the model is a mixed
-#'   effect model (not a population effect)
+#' - `assertRxUiMixedOnly` -- Make sure the model is a mixed effect model (not a
+#'    population effect, only)
 #'
-#' - `assertRxUiPrediction` -- This makes sure the model has predictions
+#' - `assertRxUiPrediction` -- Make sure the model has predictions
 #'
-#' - `assertRxUiMuRefOnly` -- This make sure that all the parameters are mu-referenced
+#' - `assertRxUiMuRefOnly` -- Make sure that all the parameters are mu-referenced
 #'
-#' - `assertRxUiRandomOnIdOnly` -- This makes sure there is only random effects at the ID level
+#' - `assertRxUiRandomOnIdOnly` -- Make sure there are only random effects at the ID level
 #'
 #' @return the rxUi model
 #'
@@ -55,13 +55,9 @@
 #' \donttest{
 #' one.cmt <- function() {
 #'  ini({
-#'    ## You may label each parameter with a comment
-#'    tka <- 0.45 # Ka
-#'    tcl <- log(c(0, 2.7, 100)) # Log Cl
-#'    ## This works with interactive models
-#'    ## You may also label the preceding line with label("label text")
-#'    tv <- 3.45; label("log V")
-#'    ## the label("Label name") works with all models
+#'    tka <- 0.45; label("Ka")
+#'    tcl <- log(c(0, 2.7, 100)); label("Cl")
+#'    tv <- 3.45; label("V")
 #'    eta.ka ~ 0.6
 #'    eta.cl ~ 0.3
 #'    eta.v ~ 0.1
