@@ -22,13 +22,13 @@
 #' - `assertRxUiSingleEndpoint` -- Make sure the rxode2 model is only
 #'    a single endpoint model (if not throw error)
 #'
-#' - `assertRxUiTransformNormal` -- This needs to be a normal or transformably
-#'    normal residual distribution
+#' - `assertRxUiTransformNormal` -- Make sure that the model residual
+#'    distribution is normal or transformably normal
 #'
-#' - `assertRxUiNormal` -- This needs to be a normal residual distribution
+#' - `assertRxUiNormal` -- Make sure that the model residual distribution is normal
 #'
-#' - `assertRxUiEstimatedResiduals` -- This makes sure that the
-#'    residual error parameter are estimated (not modeled).
+#' - `assertRxUiEstimatedResiduals` -- Make sure that the residual error
+#'    parameters are estimated (not modeled).
 #'
 #' - `assertRxUiPopulationOnly` -- Make sure the model is the population only
 #'    model (no mixed effects)
@@ -40,7 +40,7 @@
 #'
 #' - `assertRxUiMuRefOnly` -- Make sure that all the parameters are mu-referenced
 #'
-#' - `assertRxUiRandomOnIdOnly` -- Makes sure there are only random effects at the ID level
+#' - `assertRxUiRandomOnIdOnly` -- Make sure there are only random effects at the ID level
 #'
 #' @return the rxUi model
 #'

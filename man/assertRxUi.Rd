@@ -55,18 +55,18 @@ These functions have different types of assertions
 \item \code{assertRxUi} -- Make sure this is a proper rxode2 model (if not throw error)
 \item \code{assertRxUiSingleEndpoint} -- Make sure the rxode2 model is only
 a single endpoint model (if not throw error)
-\item \code{assertRxUiTransformNormal} -- This needs to be a normal or transformably
-normal residual distribution
-\item \code{assertRxUiNormal} -- This needs to be a normal residual distribution
-\item \code{assertRxUiEstimatedResiduals} -- This makes sure that the
-residual error parameter are estimated (not modeled).
+\item \code{assertRxUiTransformNormal} -- Make sure that the model residual
+distribution is normal or transformably normal
+\item \code{assertRxUiNormal} -- Make sure that the model residual distribution is normal
+\item \code{assertRxUiEstimatedResiduals} -- Make sure that the residual error
+parameters are estimated (not modeled).
 \item \code{assertRxUiPopulationOnly} -- Make sure the model is the population only
 model (no mixed effects)
 \item \code{assertRxUiMixedOnly} -- Make sure the model is a mixed effect model (not a
 population effect, only)
 \item \code{assertRxUiPrediction} -- Make sure the model has predictions
 \item \code{assertRxUiMuRefOnly} -- Make sure that all the parameters are mu-referenced
-\item \code{assertRxUiRandomOnIdOnly} -- Makes sure there are only random effects at the ID level
+\item \code{assertRxUiRandomOnIdOnly} -- Make sure there are only random effects at the ID level
 }
 }
 \examples{
