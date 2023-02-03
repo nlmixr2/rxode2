@@ -216,4 +216,39 @@ rxTest({
 
     expect_error(one.cmt.ll.noeta(), NA)
   })
+
+  test_that("no theta, but eta (rxode2#433)", {
+    fun <- function() {
+      ini({
+        eta1 ~ 0.2
+        eta2 ~ 0.2
+        eta3 ~ 0.2
+      })
+      model({
+        IETA1 <- 0 
+        IETA2 <- 0
+        IETA3 <- 0
+        ETCL <- eta1 + IETA1
+        ETVC <- eta2 + IETA2
+        ETKA <- eta3 + IETA3
+        TVCL <- 4.0
+        TVVC <- 70.0
+        TVKA <- 1.0
+        CL <- TVCL * exp(ETCL)
+        VC <- TVVC * exp(ETVC)
+        KA <- TVKA * exp(ETKA)
+        K20 <- CL / VC
+        scale2 <- VC
+        d/dt(rxddta1) <-  - KA * rxddta1
+        d/dt(rxddta2) <- KA * rxddta1 - K20 * rxddta2
+        DEL <- 0
+        if (F == 0) DEL <- 1
+        W <- F + DEL
+        Y <- F + W * eps1
+        IPRED <- F
+        IRES <- DV - IPRED
+        IWRES <- IRES / W
+      })}
+    expect_error(fun(), NA)
+  })
 })
