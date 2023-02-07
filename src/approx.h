@@ -38,9 +38,8 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
           i++; ret = y[ind->ix[i]];
         }
       }
-
     }
   }
   return ret;
 }
-#endif 
+#endif
