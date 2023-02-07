@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxunif</span><span class="op">(</span>min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxunif you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.9103969 1.9733170 1.7041958 1.7802464 3.6470035 0.5545102 0.1800647</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 0.2854074 1.2403056 1.0126093</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.5634419 3.3560057 3.4989001 2.4356702 0.2414763 1.5619109 3.1039193</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 0.7610092 2.8513456 1.8433756</span>
 <span class="r-in"><span><span class="fu">rxunif</span><span class="op">(</span>min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 3.0657317 0.2219369 2.6918946 3.8518420 2.4956076 1.3767708 3.1913399</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 2.8972204 1.7927152 3.7582576</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.6082129 1.2970754 1.5462384 1.6789871 1.9971073 3.5072716 2.7175043</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 3.8520711 3.4001381 2.1525642</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxunif</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.1474148</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3278626</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxunif` directly in the model</span></span></span>
