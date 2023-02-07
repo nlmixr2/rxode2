@@ -10,6 +10,7 @@
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
 #include "seed.h"
+#include "approx.h"
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)
 #define _as_dbleps(a) (fabs(a) < sqrt(DBL_EPSILON) ? ((a) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : a)
@@ -64,48 +65,6 @@ extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   return i;
 }
 
-/* Authors: Robert Gentleman and Ross Ihaka and The R Core Team */
-/* Taken directly from https://github.com/wch/r-source/blob/922777f2a0363fd6fe07e926971547dd8315fc24/src/library/stats/src/approx.c*/
-/* Changed as follows:
-   - Different Name
-   - Use rxode2 structure
-   - Use getTime(to allow model-based changes to dose timing
-   - Use getValue to ignore NA values for time-varying covariates
-*/
-static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, rx_solving_options *op){
-  int i = idx;
-  double ret = y[ind->ix[idx]];
-  if (ISNA(ret)){
-    if (op->f2 == 1.0 && op->f1 == 0.0) {
-      // use nocb
-      // Go forward
-      while (ISNA(ret) && i != ind->n_all_times){
-        i++; ret = y[ind->ix[i]];
-      }
-      if (ISNA(ret)){
-        // Still not found go backward
-        i = idx;
-        while (ISNA(ret) && i != 0){
-          i--; ret = y[ind->ix[i]];
-        }
-      }
-    } else {
-      // Go backward.
-      while (ISNA(ret) && i != 0){
-        i--; ret = y[ind->ix[i]];
-      }
-      if (ISNA(ret)){
-        // Still not found go forward.
-        i = idx;
-        while (ISNA(ret) && i != ind->n_all_times){
-          i++; ret = y[ind->ix[i]];
-        }
-      }
-
-    }
-  }
-  return ret;
-}
 #define T(i) getTime(id->ix[i], id)
 #define V(i) getValue(i, y, id, Meth)
 double rx_approxP(double v, double *y, int n,
