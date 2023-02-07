@@ -1090,6 +1090,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env <- new.env(parent=emptyenv())
   .env$eta <- dimnames(ini)[[1]]
   .env$top <- TRUE
+  if (!inherits(ini, "lotriFix") && inherits(ini, "matrix")) {
+    class(ini) <- c("lotriFix", class(ini))
+  }
   .env$df <- as.data.frame(ini)
   .env$dupErr <- NULL
   .env$err <- NULL
