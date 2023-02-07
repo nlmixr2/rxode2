@@ -183,18 +183,18 @@ the heuristic implemented in <code><a href="https://mllg.github.io/checkmate/ref
     <p>These functions have different types of assertions</p><ul><li><p><code>assertRxUi</code> -- Make sure this is a proper rxode2 model (if not throw error)</p></li>
 <li><p><code>assertRxUiSingleEndpoint</code> -- Make sure the rxode2 model is only
 a single endpoint model (if not throw error)</p></li>
-<li><p><code>assertRxUiTransformNormal</code> -- This needs to be a normal or transformably
-normal residual distribution</p></li>
-<li><p><code>assertRxUiNormal</code> -- This needs to be a normal residual distribution</p></li>
-<li><p><code>assertRxUiEstimatedResiduals</code> -- This makes sure that the
-residual error parameter are estimated (not modeled).</p></li>
-<li><p><code>assertRxUiPopulationOnly</code> -- This makes sure the model is the
-population only model (no mixed effects)</p></li>
-<li><p><code>assertRxUiMixedOnly</code> -- This makes sure the model is a mixed
-effect model (not a population effect)</p></li>
-<li><p><code>assertRxUiPrediction</code> -- This makes sure the model has predictions</p></li>
-<li><p><code>assertRxUiMuRefOnly</code> -- This make sure that all the parameters are mu-referenced</p></li>
-<li><p><code>assertRxUiRandomOnIdOnly</code> -- This makes sure there is only random effects at the ID level</p></li>
+<li><p><code>assertRxUiTransformNormal</code> -- Make sure that the model residual
+distribution is normal or transformably normal</p></li>
+<li><p><code>assertRxUiNormal</code> -- Make sure that the model residual distribution is normal</p></li>
+<li><p><code>assertRxUiEstimatedResiduals</code> -- Make sure that the residual error
+parameters are estimated (not modeled).</p></li>
+<li><p><code>assertRxUiPopulationOnly</code> -- Make sure the model is the population only
+model (no mixed effects)</p></li>
+<li><p><code>assertRxUiMixedOnly</code> -- Make sure the model is a mixed effect model (not a
+population effect, only)</p></li>
+<li><p><code>assertRxUiPrediction</code> -- Make sure the model has predictions</p></li>
+<li><p><code>assertRxUiMuRefOnly</code> -- Make sure that all the parameters are mu-referenced</p></li>
+<li><p><code>assertRxUiRandomOnIdOnly</code> -- Make sure there are only random effects at the ID level</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
@@ -207,13 +207,9 @@ effect model (not a population effect)</p></li>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="va">one.cmt</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span> <span class="fu"><a href="ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span></span>
-<span class="r-in"><span>   <span class="co">## You may label each parameter with a comment</span></span></span>
-<span class="r-in"><span>   <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span> <span class="co"># Ka</span></span></span>
-<span class="r-in"><span>   <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2.7</span>, <span class="fl">100</span><span class="op">)</span><span class="op">)</span> <span class="co"># Log Cl</span></span></span>
-<span class="r-in"><span>   <span class="co">## This works with interactive models</span></span></span>
-<span class="r-in"><span>   <span class="co">## You may also label the preceding line with label("label text")</span></span></span>
-<span class="r-in"><span>   <span class="va">tv</span> <span class="op">&lt;-</span> <span class="fl">3.45</span>; <span class="fu">label</span><span class="op">(</span><span class="st">"log V"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="co">## the label("Label name") works with all models</span></span></span>
+<span class="r-in"><span>   <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span>; <span class="fu">label</span><span class="op">(</span><span class="st">"Ka"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>   <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2.7</span>, <span class="fl">100</span><span class="op">)</span><span class="op">)</span>; <span class="fu">label</span><span class="op">(</span><span class="st">"Cl"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>   <span class="va">tv</span> <span class="op">&lt;-</span> <span class="fl">3.45</span>; <span class="fu">label</span><span class="op">(</span><span class="st">"V"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>   <span class="va">eta.ka</span> <span class="op">~</span> <span class="fl">0.6</span></span></span>
 <span class="r-in"><span>   <span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">0.3</span></span></span>
 <span class="r-in"><span>   <span class="va">eta.v</span> <span class="op">~</span> <span class="fl">0.1</span></span></span>
@@ -230,13 +226,11 @@ effect model (not a population effect)</p></li>
 <span class="r-in"><span><span class="fu">assertRxUi</span><span class="op">(</span><span class="va">one.cmt</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span>
 <span class="r-in"><span><span class="co"># assertRxUi(rnorm) # will fail</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">assertRxUiSingleEndpoint</span><span class="op">(</span><span class="va">one.cmt</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
