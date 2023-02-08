@@ -1924,7 +1924,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   RSprintf("  Time11: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
-
+	DataFrame linCmtData;
+	IntegerVector linCmtCount;
 	if (extraCmt) {
 		// linCmt() reserves
 		std::vector<double> lcDose;
@@ -1938,6 +1939,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
 		std::vector<int> lcCmt;
 		lcCmt.reserve(resSize);
+
+		std::vector<int> evidF;
+		evidF.reserve(resSize);
+		
+		std::vector<int> evid0;
+		evid0.reserve(resSize);
 
 		std::vector<int> lcCount;
 		lcCount.reserve(resSize);
@@ -1958,6 +1965,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 			}
 			if (!isDose(finalEvid[0])) continue;
 			getWh(finalEvid[i], &wh, &cmt, &wh100, &whI, &wh0);
+			if (wh0 == EVID0_OFF || wh0 == EVID0_PHANTOM) {
+				stop(_("turning off compartments or phantom doses in 'linCmt()' models are not supported"));
+			}
+			// cmt starts at 0 for cmt 1 and cmt 1 for cmt 2
 			if (extraCmt == 2) {
 				// depot and central are OK
 				if (cmt > 1) continue;
@@ -1965,54 +1976,71 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 				// central only
 				if (cmt != 0) continue;
 			}
-			switch(wh0) {
-			case EVID0_REGULAR:
-				break;
-			case EVID0_SS:
-				break;
-			case EVID0_SS2:
-				break;
-			case EVID0_SSINF:
-				break;
-			case EVID0_OFF:
-			case EVID0_PHANTOM:
-				// unsupported for linCmt()
-				break;
-			}
 			switch (whI) {
-			case EVIDF_NORMAL: // bolus dose
-				lcDose.push_back(finalAmt[i]);
-				lcTime.push_back(finalTime[i]);
-				lcTinf.push_back(0.0);
-				lcCmt.push_back(cmt);
-				ndose++;
-				break;
-			case EVIDF_INF_RATE: // infusions
-			case EVIDF_INF_DUR:
-				lcDose.push_back(finalAmt[i]);
-				lcTime.push_back(finalTime[i]);
-				lcTinf.push_back(-100);
-				lcCmt.push_back(cmt);
-				ndose++;
-				break;
-			case EVIDF_MODEL_DUR_ON:
-			case EVIDF_MODEL_RATE_ON:
-				lcDose.push_back(finalAmt[i]);
-				lcTime.push_back(finalTime[i]);
-				lcTinf.push_back(-100);
-				lcCmt.push_back(cmt);
-				ndose++;
-				break;
-			case EVIDF_REPLACE:
-				break;
-			case EVIDF_MULT:
-				break;
-			case EVIDF_MODEL_DUR_OFF:
-			case EVIDF_MODEL_RATE_OFF:
-				continue;
-				break;
+				case EVIDF_NORMAL: // bolus dose
+					lcDose.push_back(finalAmt[i]);
+					lcTime.push_back(finalTime[i]);
+					lcTinf.push_back(0.0);
+					lcCmt.push_back(cmt);
+					evidF.push_back(whI);
+					evid0.push_back(wh0);
+					ndose++;
+					break;
+				case EVIDF_INF_RATE: // infusions
+				case EVIDF_INF_DUR:
+					if (finalAmt[i] > 0) {
+						double tinf = 0.0;
+						for (int j = i; j < finalId.size(); j++) {
+							if (lastId == finalId[j] &&
+									finalEvid[i] == finalEvid[j] &&
+									finalAmt[i] == -finalAmt[j]) {
+								tinf = finalTime[j] - finalTime[i];
+								break;
+							}
+						}
+						if (tinf == 0.0) {
+							stop(_("could not find an end to a linCmt() infusion"));
+						}
+						lcDose.push_back(finalAmt[i]);
+						lcTime.push_back(finalTime[i]);
+						lcTinf.push_back(tinf);
+						lcCmt.push_back(cmt);
+						evidF.push_back(whI);
+						evid0.push_back(wh0);
+						ndose++;
+					} else {
+						continue;
+					}
+					break;
+				case EVIDF_MODEL_DUR_ON:
+				case EVIDF_MODEL_RATE_ON:
+					lcDose.push_back(finalAmt[i]);
+					lcTime.push_back(finalTime[i]);
+					lcTinf.push_back(-100);
+					lcCmt.push_back(cmt);
+					evidF.push_back(whI);
+					evid0.push_back(wh0);
+					ndose++;
+					break;
+				case EVIDF_REPLACE:
+					stop(_("replacement dosing not currently supported with linCmt() infusion compartments"));
+					break;
+				case EVIDF_MULT:
+					stop(_("multiplication dosing not currently supported with linCmt() infusion compartments"));
+					break;
+				case EVIDF_MODEL_DUR_OFF:
+				case EVIDF_MODEL_RATE_OFF:
+					continue;
+					break;
 			}
 		}
+		linCmtData = DataFrame::create(_["time"] = lcTime,
+																	 _["dose"] = lcDose,
+																	 _["tinf"] = lcTinf,
+																	 _["cmt"] = lcCmt,
+																	 _["evidF"] = evidF,
+																	 _["evid0"] = evid0);
+		linCmtCount= lcCount;
 	}
   
   if (!dropUnits && addTimeUnits){
@@ -2082,7 +2110,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(lst1F, R_ClassSymbol, wrap("data.frame"));
   Rf_setAttrib(lst1F, R_RowNamesSymbol,
                IntegerVector::create(NA_INTEGER, -nid));
-  List e(29);
+  List e(31);
   RxTransNames;
   e[RxTrans_ndose] = IntegerVector::create(ndose);
   e[RxTrans_nobs]  = IntegerVector::create(nobs);
@@ -2134,6 +2162,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   e[RxTrans_levelInfo] = inDataLvl;
   e[RxTrans_idInfo] = idInt;
   e[RxTrans_maxShift] = maxShift;
+	e[RxTrans_linCmtData] = linCmtData;
+	e[RxTrans_linCmtCount] = linCmtCount;
   Rf_setAttrib(keepL, R_NamesSymbol, keepN);
   Rf_setAttrib(keepL, R_ClassSymbol, wrap("data.frame"));
   Rf_setAttrib(keepL, R_RowNamesSymbol,
