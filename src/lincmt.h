@@ -2,7 +2,7 @@
 #define __LINCMT_H__
 #include <math.h>
 
-static inline int parTrans(int *trans,
+static inline int parTrans(int *trans, 
                            double *p1, double *v1,
                            double *p2, double *p3,
                            double *p4, double *p5,
@@ -246,8 +246,12 @@ static inline int parTransMacro(int *trans, double *ka,
 // 1. Dose amount (bioavailability applied)
 // 2. Dose time
 // 3. Infusion time (if any; bioavailability applied)
+// 4. Steady state dosing (tau)
 //
 // Integer:
 // 4. Compartment where the dose has been applied (ie depot or central)
+//
+
+
 
 #endif // __LINCMT_H__

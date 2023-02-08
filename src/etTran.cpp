@@ -8,6 +8,7 @@
 #include "../inst/include/rxode2.h"
 #include "timsort.h"
 #include "needSortDefines.h"
+#include <rxode2parseHandleEvid.h>
 #define SORT gfx::timsort
 
 #ifdef ENABLE_NLS
@@ -1923,6 +1924,96 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   RSprintf("  Time11: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+
+	if (extraCmt) {
+		// linCmt() reserves
+		std::vector<double> lcDose;
+		lcDose.reserve(resSize);
+
+		std::vector<double> lcTime;
+		lcTime.reserve(resSize);
+
+		std::vector<double> lcTinf;
+		lcTinf.reserve(resSize);
+
+		std::vector<int> lcCmt;
+		lcCmt.reserve(resSize);
+
+		std::vector<int> lcCount;
+		lcCount.reserve(resSize);
+
+		IntegerVector finalId   = lst[0]; // id
+		NumericVector finalTime = lst[1]; // time
+		IntegerVector finalEvid = lst[2]; // evid
+		NumericVector finalAmt  = lst[3]; // amt
+		NumericVector finalIi   = lst[4]; // ii
+		int lastId = finalId[0];
+		int ndose = 0;
+		int wh, cmt, wh100, whI, wh0;
+		for (int i = 0; i < finalId.size(); i++) {
+			if (lastId != finalId[i]) {
+				lcCount.push_back(ndose);
+				lastId = finalId[i];
+				ndose = 0;
+			}
+			if (!isDose(finalEvid[0])) continue;
+			getWh(finalEvid[i], &wh, &cmt, &wh100, &whI, &wh0);
+			if (extraCmt == 2) {
+				// depot and central are OK
+				if (cmt > 1) continue;
+			} else {
+				// central only
+				if (cmt != 0) continue;
+			}
+			switch(wh0) {
+			case EVID0_REGULAR:
+				break;
+			case EVID0_SS:
+				break;
+			case EVID0_SS2:
+				break;
+			case EVID0_SSINF:
+				break;
+			case EVID0_OFF:
+			case EVID0_PHANTOM:
+				// unsupported for linCmt()
+				break;
+			}
+			switch (whI) {
+			case EVIDF_NORMAL: // bolus dose
+				lcDose.push_back(finalAmt[i]);
+				lcTime.push_back(finalTime[i]);
+				lcTinf.push_back(0.0);
+				lcCmt.push_back(cmt);
+				ndose++;
+				break;
+			case EVIDF_INF_RATE: // infusions
+			case EVIDF_INF_DUR:
+				lcDose.push_back(finalAmt[i]);
+				lcTime.push_back(finalTime[i]);
+				lcTinf.push_back(-100);
+				lcCmt.push_back(cmt);
+				ndose++;
+				break;
+			case EVIDF_MODEL_DUR_ON:
+			case EVIDF_MODEL_RATE_ON:
+				lcDose.push_back(finalAmt[i]);
+				lcTime.push_back(finalTime[i]);
+				lcTinf.push_back(-100);
+				lcCmt.push_back(cmt);
+				ndose++;
+				break;
+			case EVIDF_REPLACE:
+				break;
+			case EVIDF_MULT:
+				break;
+			case EVIDF_MODEL_DUR_OFF:
+			case EVIDF_MODEL_RATE_OFF:
+				continue;
+				break;
+			}
+		}
+	}
   
   if (!dropUnits && addTimeUnits){
     NumericVector tmpN = as<NumericVector>(lst[1]);
