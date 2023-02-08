@@ -1,4 +1,4 @@
-// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
 //#undef NDEBUG
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
@@ -295,7 +295,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
             } else {
               List tmpList(extraCmt.size()+1);
               for (int i = extraCmt.size(); i--;) tmpList[i] = extraCmt[i];
-              extraCmt = tmpList;	    
+              extraCmt = tmpList;
               newCmt.push_back(state.size()+k+1);
               extraCmt[k++] = strCmt;
             }
@@ -1963,7 +1963,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 				lastId = finalId[i];
 				ndose = 0;
 			}
-			if (!isDose(finalEvid[0])) continue;
+			if (!isDose(finalEvid[i])) continue;
 			getWh(finalEvid[i], &wh, &cmt, &wh100, &whI, &wh0);
 			if (wh0 == EVID0_OFF || wh0 == EVID0_PHANTOM) {
 				stop(_("turning off compartments or phantom doses in 'linCmt()' models are not supported"));
@@ -2034,6 +2034,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 					break;
 			}
 		}
+    if (ndose) lcCount.push_back(ndose);
 		linCmtData = DataFrame::create(_["time"] = lcTime,
 																	 _["dose"] = lcDose,
 																	 _["tinf"] = lcTinf,

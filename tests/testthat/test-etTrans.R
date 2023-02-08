@@ -1,14 +1,46 @@
 rxTest({ # mostly tested in 'rxode2et'
 
   for (radi in 1:2) {
+
     rxode2et::forderForceBase(switch(radi,
                                      TRUE,
                                      FALSE
     ))
     radix <- switch(radi,
                     "base::order",
-                    "data.table::forder"
-    )
+                    "data.table::forder")
+
+    test_that("linCmt() etTrans", {
+      rxWithSeed(1, {
+
+        pk <- c(cl=0.2,v2=3.5,q=.4,v3=3.5,ka=.2,f=.7)
+        nn <- 100
+        rands <- matrix(runif(4*nn),nn)
+        pdpars <- dplyr::tibble(ec50=(300/28*pk["f"]/pk["cl"])*(0.1+0.9*rands[,1]),emax=-0.9+10.9*rands[,2],
+                                gamma=1+3*rands[,3],ke0=log(2)/(5+45*rands[,4]))
+        rxmod1 <- RxODE({
+          Cp       <- linCmt(ka,cl,v2,v3,q)
+          d/dt(Ce) <- (Cp-Ce)*ke0
+          eff      <- 1*(1+emax*Ce**gamma/(ec50**gamma+Ce**gamma))
+        })
+
+        et1 <- et() %>%
+          et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) %>% ## sampling
+          add.dosing(dose=300*pk["f"],dosing.to=1,nbr.dose=13,dosing.interval=28,start.time=0) %>% ## dosing
+          et(id=1:10)
+
+        tmp <- etTrans(et1, rxmod1)
+
+        expect_true(inherits(attr(class(tmp), ".rxode2.lst")$linCmtData, "data.frame"))
+        expect_length(attr(class(tmp), ".rxode2.lst")$linCmtCount, 10)
+        expect_true(all(attr(class(tmp), ".rxode2.lst")$linCmtCount == 13))
+        expect_equal(sum(attr(class(tmp), ".rxode2.lst")$linCmtData$time == 0), 10L)
+        expect_equal(sum(attr(class(tmp), ".rxode2.lst")$linCmtData$time == 0), 10L)
+        expect_equal(sum(attr(class(tmp), ".rxode2.lst")$linCmtData$time == 336), 10L)
+      })
+
+
+    })
     # context(sprintf("etTrans checks (radix: %s)", radix))
     rxSetIni0(FALSE)
 
@@ -39,6 +71,10 @@ d/dt(blood)     = a*intestine - b*blood
     })
 
     ett1 <- etTrans(et, mod, keepDosingOnly = TRUE)
+
+    expect_length(names(attr(class(ett1), ".rxode2.lst")$linCmtData), 0L)
+    expect_length(attr(class(ett1), ".rxode2.lst")$linCmtCount, 0L)
+
     tmp1 <- sort(unique(ett1$EVID))
 
     et$cmt <- factor(et$cmt)
