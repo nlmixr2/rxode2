@@ -1937,6 +1937,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     std::vector<double> lcTinf;
     lcTinf.reserve(resSize);
 
+    std::vector<double> lcIi;
+    lcIi.reserve(resSize);
+    
     std::vector<int> lcCmt;
     lcCmt.reserve(resSize);
 
@@ -1981,6 +1984,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           lcDose.push_back(finalAmt[i]);
           lcTime.push_back(finalTime[i]);
           lcTinf.push_back(0.0);
+          lcIi.push_back(finalIi[i]);
           lcCmt.push_back(cmt);
           evidF.push_back(whI);
           evid0.push_back(wh0);
@@ -2007,6 +2011,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             lcDose.push_back(finalAmt[i]);
             lcTime.push_back(finalTime[i]);
             lcTinf.push_back(tinf);
+            lcIi.push_back(finalIi[i]);
             lcCmt.push_back(cmt);
             evidF.push_back(whI);
             evid0.push_back(wh0);
@@ -2023,6 +2028,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           lcDose.push_back(finalAmt[i]);
           lcTime.push_back(finalTime[i]);
           lcTinf.push_back(-100);
+          lcIi.push_back(finalIi[i]);
           lcCmt.push_back(cmt);
           evidF.push_back(whI);
           evid0.push_back(wh0);
@@ -2044,6 +2050,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     linCmtData = DataFrame::create(_["time"] = lcTime,
                                    _["dose"] = lcDose,
                                    _["tinf"] = lcTinf,
+                                   _["ii"]   = lcIi,
                                    _["cmt"] = lcCmt,
                                    _["evidF"] = evidF,
                                    _["evid0"] = evid0);

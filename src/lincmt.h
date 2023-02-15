@@ -250,6 +250,8 @@ static inline int parTransMacro(int *trans, double *ka,
 //
 // Integer:
 // 4. Compartment where the dose has been applied (ie depot or central)
+// 5. evid0 is the wh0 of the evid component (EVID0_REGULAR, EVID0_SS, EVID0_SS2, EVID0_OFF etc)
+// 6. evidF is the type of event flag (whI; EVIDF_NORMAL; EVIDF_INF_RATE, etc)
 //
 
 

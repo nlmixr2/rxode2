@@ -20,7 +20,7 @@ rxTest({ # mostly tested in 'rxode2et'
                                 gamma=1+3*rands[,3],ke0=log(2)/(5+45*rands[,4]))
         rxmod1 <- RxODE({
           Cp       <- linCmt(ka,cl,v2,v3,q)
-          d/dt(Ce) <- (Cp-Ce)*ke0
+           d/dt(Ce) <- (Cp-Ce)*ke0
           eff      <- 1*(1+emax*Ce**gamma/(ec50**gamma+Ce**gamma))
         })
 
