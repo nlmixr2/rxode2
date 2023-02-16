@@ -462,7 +462,7 @@ RObject rxSimSigma(const RObject &sigma,
                    NumericVector lowerIn =NumericVector::create(R_NegInf),
                    NumericVector upperIn = NumericVector::create(R_PosInf),
                    double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100){
-  
+
   if (nObs < 1){
     rxSolveFree();
     stop(_("refusing to simulate %d items"),nObs);
@@ -481,7 +481,7 @@ RObject rxSimSigma(const RObject &sigma,
       stop(_("'sigma' is not a matrix"));
     }
   } else {
-    rxSolveFree(); 
+    rxSolveFree();
     stop(_("'sigma' is not a matrix"));
   }
   if (sigmaM.nrow() != sigmaM.ncol()){
@@ -1357,6 +1357,17 @@ struct rx_globals {
   bool zeroOmega = false;
   bool zeroSigma = false;
   int *gindLin = NULL;
+  // The linear compartment globals
+  double *glinDouble = NULL;
+  double *glinTime = NULL;
+  double *glinDose = NULL;
+  double *glinTinf = NULL;
+  double *glinIi   = NULL;
+  int *glinInt = NULL;
+  int *glinCmtCmt = NULL;
+  int *glinEvidF = NULL;
+  int *glinEvid0 = NULL;
+  int *glinCount = NULL; // The number of linear compartment doses per id
 };
 
 
@@ -1410,7 +1421,6 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->cDur = getDurThread();
     ind->cF = getFThread();
     ind->InfusionRate = getInfusionRateThread();
-    ind->linCmtRate = ind->InfusionRate + op->neq;
     ind->tlastS = getTlastSThread();
     ind->tfirstS = getTfirstSThread();
     ind->curDoseS = getCurDoseSThread();
@@ -1424,7 +1434,6 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->cDur = NULL;
     ind->cF   =  NULL;
     ind->InfusionRate = NULL;
-    ind->linCmtRate = NULL;
     ind->tlastS = NULL;
     ind->tfirstS = NULL;
     ind->curDoseS = NULL;
@@ -1527,6 +1536,11 @@ extern "C" void gFree(){
   _globals.gcov=NULL;
   if (_rxGetErrs != NULL) free(_rxGetErrs);
   _rxGetErrs=NULL;
+  if (_globals.glinDouble != NULL) free(_globals.glinDouble);
+  _globals.glinDouble = NULL;
+  if (_globals.glinInt != NULL) free(_globals.glinDouble);
+  _globals.glinInt = NULL;
+
 }
 
 extern "C" double *rxGetErrs(){
@@ -1622,7 +1636,7 @@ void rxSimTheta(CharacterVector &thetaN,
         stop(_("'thetaMat' must be symmetric"));
       }
     }
-    
+
     thetaM = as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf),
                                           nCoresRV, thetaIsChol, nStud, true,
                                           thetaLower, thetaUpper));
@@ -2625,6 +2639,7 @@ struct rxSolve_t {
   CharacterVector idLevels;
   bool convertInt = false;
   bool throttle = false;
+  List linCmtData;
 };
 
 SEXP rxSolve_(const RObject &obj, const List &rxControl, const Nullable<CharacterVector> &specParams,
@@ -2825,7 +2840,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       ev1 = et_(List::create(newObs), as<List>(ev1));
     }
   }
-  if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")){
+  if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTran")){
     ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                            false, false, true, R_NilValue,
                            rxControl[Rxc_keepF]));
@@ -2909,6 +2924,50 @@ static inline void rxSolve_ev1Update(const RObject &obj,
         }
       }
     }
+    // Get linear compartment information
+    List linCmtData = tmpL[RxTrans_linCmtData];
+    if (linCmtData.size() != 0) {
+      NumericVector curNV = linCmtData[0];
+      int nDoses = curNV.size();
+
+      if (_globals.glinDouble != NULL) free(_globals.glinDouble);
+      if (_globals.glinInt != NULL) free(_globals.glinDouble);
+
+      _globals.glinDouble  = (double*)calloc(nDoses*4, sizeof(double));
+
+      _globals.glinTime = _globals.glinDouble; // nDoses
+      std::copy(curNV.begin(), curNV.end(), _globals.glinTime);
+
+      curNV = linCmtData[1];
+      _globals.glinDose = _globals.glinTime + nDoses;
+      std::copy(curNV.begin(), curNV.end(), _globals.glinDose);
+
+      curNV = linCmtData[2];
+      _globals.glinTinf = _globals.glinDose + nDoses;
+      std::copy(curNV.begin(), curNV.end(), _globals.glinTinf);
+
+      curNV = linCmtData[3];
+      _globals.glinIi   = _globals.glinTinf + nDoses;
+      std::copy(curNV.begin(), curNV.end(), _globals.glinIi);
+
+      // get the counts for each subject's number of doses
+      IntegerVector curIV = tmpL[RxTrans_linCmtCount];
+      _globals.glinInt  = (int*)calloc(nDoses*3+ curIV.size(), sizeof(int));
+      _globals.glinCount = _globals.glinInt;
+      std::copy(curIV.begin(), curIV.end(), _globals.glinCount);
+
+      _globals.glinCmtCmt = _globals.glinInt + curIV.size();
+      curIV = linCmtData[4];
+      std::copy(curIV.begin(), curIV.end(), _globals.glinCmtCmt);
+
+      curIV = linCmtData[5];
+      _globals.glinEvidF = _globals.glinCmtCmt + nDoses;
+      std::copy(curIV.begin(), curIV.end(), _globals.glinEvidF);
+
+      curIV = linCmtData[6];
+      _globals.glinEvid0 = _globals.glinEvidF  + nDoses;
+      std::copy(curIV.begin(), curIV.end(), _globals.glinEvid0);
+    }
   }
   _rxModels[".lastEv1"] = ev1;
 }
@@ -2969,8 +3028,8 @@ static inline void rxSolve_simulate(const RObject &obj,
   }
 
   Nullable<NumericVector> thetaDf = asNNv(rxControl[Rxc_thetaDf], "thetaDf");
-  
-  
+
+
 
   RObject sigma= rxControl[Rxc_sigma];
   Nullable<NumericVector> sigmaDf= asNNv(rxControl[Rxc_sigmaDf], "sigmaDf");
@@ -3871,7 +3930,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
         for (unsigned int id = rx->nsub; id--;){
           unsigned int cid = id+simNum*rx->nsub;
           ind = &(rx->subjects[cid]);
-          ind->linCmt = linCmt;
           setupRxInd(ind, 1);
           ind->par_ptr = &_globals.gpars[cid*rxSolveDat->npars];
           ind->mtime   = &_globals.gmtime[rx->nMtime*cid];
@@ -3906,7 +3964,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->solve = &_globals.gsolve[curSolve];
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
-          curSolve += (op->neq + op->nlin)*ind->n_all_times;
+          curSolve += (op->neq)*ind->n_all_times;
           ind->ix = &_globals.gix[curIdx];
           std::iota(ind->ix,ind->ix+ind->n_all_times,0);
           curEvent += eLen;
@@ -4476,8 +4534,6 @@ static inline void iniRx(rx_solve* rx) {
   rx->sample = false;
   rx->par_sample = NULL;
   rx->maxShift = 0.0;
-  rx->linKa  = 0;
-  rx->linNcmt = 0;
   rx->maxwhile = 100000;
   rx->whileexit= 0;
 
@@ -4530,10 +4586,6 @@ static inline void iniRx(rx_solve* rx) {
   op->ncoresRV = 1;
   op->mxhnil = 0;
   op->hmxi = 0.0;
-  op->nlin = 0;
-  op->nlin2 = 0;
-  op->nlinR = 0;
-  op->linBflag = 0;
   op->cTlag = false;
   op->hTlag = 0;
   op->cF = false;
@@ -5022,83 +5074,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (rxSolveDat->nPopPar % rx->nsub == 0) rx->nsim = rxSolveDat->nPopPar / rx->nsub;
     else rx->nsim=1;
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
-    int linNcmt = linCmtI[RxMvFlag_ncmt];
-    int linKa = linCmtI[RxMvFlag_ka];
-    int linB = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linB];
-    op->linBflag=0;
-    rx->linKa = linKa;
-    rx->linNcmt = linNcmt;
-    if (linB) {
-      int linBflag = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtFlg];
-      if (rx->sensType == 4) {
-        // This is the ADVAN senstivities
-        if (linKa) {
-          switch (linNcmt) {
-          case 1:
-            op->nlin = 8;
-            break;
-          case 2:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          case 3:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          }
-        } else {
-          switch (linNcmt) {
-          case 1:
-            op->nlin = 3;
-            break;
-          case 2:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          case 3:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          }
-        }
-        op->nlin2 = op->nlin;
-        op->linBflag = linBflag;
-        // Add the other components
-        if (linBflag & 64){ // tlag 64= bitwShiftL(1, 7-1)
-          op->nlin++;
-        }
-        if (linBflag & 128){ // f 128 = 1 << 8-1
-          op->nlin++;
-        }
-        if (linBflag & 256){ // rate 256 = 1 << 9-1
-          op->nlin++;
-        }
-        if (linBflag & 512){ // dur 512 = 1 << 10-1
-          op->nlin++;
-        }
-        if (linBflag & 2048) { // tlag2 2048 = 1 << 12 - 1
-          op->nlin++;
-        }
-        if (linBflag & 4096) { // f2 4096 = 1 << 13 - 1
-          op->nlin++;
-        }
-        if (linBflag & 8192) { // rate2 8192 = 1 << 14 - 1
-          op->nlin++;
-        }
-        if (linBflag & 16384) { // dur2 16384 = 1 << 15 - 1
-          op->nlin++;
-        }
-      } else {
-        op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;//(4+linNcmt+linKa)*linNcmt+(2+linNcmt+linKa)*linKa+1;
-        // ncmt + oral0 + (2*ncmt+oral)*(ncmt+oral0+1) + 2*ncmt
-      }
-    } else {
-      op->nlin = linNcmt+linKa;
-    }
-    op->nlinR = 0;
+    rx->linNcmt = linCmtI[RxMvFlag_ncmt];
+    rx->linKa = (rx->linNcmt == 0 ? 0 :linCmtI[RxMvFlag_ka]);
+    rx->linB = (rx->linNcmt == 0 ? 0 : INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linB]);
     int n0 = rx->nall*state.size()*rx->nsim;
     int nsave = op->neq*op->cores;
-    int nLin = op->nlin;
-    if (nLin != 0) {
-      op->nlinR = 1+linKa;
-      nLin = rx->nall*nLin*rx->nsim;// Number of linear compartments * number of solved points
-    }
     int n2  = rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
     int n3  = op->neq*rxSolveDat->nSize;
     int n3a_c = (op->neq + op->extraCmt)*op->cores;
@@ -5107,9 +5087,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    
+
     rxSolveDat->initsC = rxInits(object, inits, state, 0.0);
-    
+
 #ifdef rxSolveT
     RSprintf("Time12b: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -5125,18 +5105,18 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int nIndSim = rx->nIndSim;
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(n0+nLin+3*nsave+n2+ n4+n5_c+n6+ n7 +
+    _globals.gsolve = (double*)calloc(n0+3*nsave+n2+ n4+n5_c+n6+ n7 +
                                       5*op->neq + 8*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
-    RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
+    RSprintf("Time12c (double alloc %d): %f\n",n0+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gsolve == NULL){
       rxSolveFree();
       stop(_("could not allocate enough memory for solving"));
     }
-    _globals.gLlikSave = _globals.gsolve + n0+ nLin; // [nllik_c]
+    _globals.gLlikSave = _globals.gsolve + n0; // [nllik_c]
     _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
     _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
@@ -6001,9 +5981,9 @@ bool rxDynLoad(RObject obj){
 //' Lock/unlocking of rxode2 dll file
 //'
 //' @param obj A rxode2 family of objects
-//' 
+//'
 //' @return nothing; called for side effects
-//' 
+//'
 //' @export
 //[[Rcpp::export]]
 RObject rxLock(RObject obj){

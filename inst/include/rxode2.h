@@ -39,8 +39,7 @@
 
 #include "rxode2_control.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
-#define getAdvan(idx) ind->solve + (op->neq + op->nlin)*(idx) + op->neq
-#define getSolve(idx) ind->solve + (op->neq + op->nlin)*(idx)
+#define getSolve(idx) ind->solve + (op->neq)*(idx)
 
 #ifdef _isrxode2_
 
