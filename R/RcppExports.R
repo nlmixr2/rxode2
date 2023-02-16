@@ -459,9 +459,9 @@ rxDynLoad <- function(obj) {
 #' Lock/unlocking of rxode2 dll file
 #'
 #' @param obj A rxode2 family of objects
-#' 
+#'
 #' @return nothing; called for side effects
-#' 
+#'
 #' @export
 rxLock <- function(obj) {
     .Call(`_rxode2_rxLock`, obj)

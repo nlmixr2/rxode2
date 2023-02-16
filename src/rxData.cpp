@@ -3975,6 +3975,58 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           }
         }
       }
+      // setup lincmt
+      if (rx->linNcmt) {
+        double *linTime = _globals.glinTime;
+        double *linDose = _globals.glinDose;
+        double *linTinf = _globals.glinTinf;
+        double *linIi  = _globals.glinIi;
+        int *linCmtCmt = _globals.glinCmtCmt;
+        int *linEvidF = _globals.glinEvidF;
+        int *linEvid0 = _globals.glinEvid0;
+        int *linCount = _globals.glinCount; // The number of linear compartment doses per id
+        for (int simNum = 0; simNum < rx->nsim; ++simNum){
+          for (int id = 0; id < rx->nsub; ++id){
+            int cid = id+simNum*rx->nsub;
+            ind = &(rx->subjects[cid]);
+            if (simNum) {
+              indS = rx->subjects[id];
+              ind->linCmtNdose = indS.linCmtNdose;
+              ind->linTime = indS.linTime;
+              ind->linDose = indS.linDose;
+              ind->linTinf = indS.linTinf;
+              ind->linIi = indS.linIi;
+              ind->linCmtCmt = indS.linCmtCmt;
+              ind->linEvidF = indS.linEvidF;
+              ind->linEvid0 = indS.linEvid0;
+            } else {
+              ind->linCmtNdose = linCount[0]; // number of linCmt() doses in subject
+              linCount++;
+
+              ind->linTime = linTime;
+              linTime += ind->linCmtNdose;
+
+              ind->linDose = linDose;
+              linDose += ind->linCmtNdose;
+
+              ind->linTinf = linTinf;
+              linTinf += ind->linCmtNdose;
+
+              ind->linIi = linIi;
+              linIi += ind->linCmtNdose;
+
+              ind->linCmtCmt = linCmtCmt;
+              linCmtCmt += ind->linCmtNdose;
+
+              ind->linEvidF = linEvidF;
+              linEvidF += ind->linCmtNdose;
+
+              ind->linEvid0 = linEvid0;
+              linEvid0 += ind->linCmtNdose;
+            }
+          }
+        }
+      }
     }
     break;
   default:
