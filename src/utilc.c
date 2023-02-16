@@ -19,6 +19,7 @@
 #define _(String) (String)
 #endif
 #include "../inst/include/rxode2.h"
+#include <rxode2parseHandleEvid.h>
 
 int _setSilentErr=0, _isRstudio2=0;
 extern void setSilentErr(int silent){
@@ -789,5 +790,27 @@ SEXP _expit(SEXP xS, SEXP lowS, SEXP highS) {
     }
   }
   UNPROTECT(1);
+  return ret;
+}
+
+
+SEXP _rxode2_getWh(SEXP in) {
+  int wh, cmt, wh100, whI, wh0;
+  getWh(INTEGER(in)[0], &wh, &cmt, &wh100, &whI, &wh0);
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 5));
+  int *retI = INTEGER(ret);
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 5));
+  retI[0] = wh;
+  SET_STRING_ELT(retN, 0,Rf_mkChar("wh"));
+  retI[1] = cmt;
+  SET_STRING_ELT(retN, 1,Rf_mkChar("cmt"));
+  retI[2] = wh100;
+  SET_STRING_ELT(retN, 2,Rf_mkChar("wh100"));
+  retI[3] = whI;
+  SET_STRING_ELT(retN, 3,Rf_mkChar("whI"));
+  retI[4] = wh0;
+  SET_STRING_ELT(retN, 4,Rf_mkChar("wh0"));
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
+  UNPROTECT(2);
   return ret;
 }

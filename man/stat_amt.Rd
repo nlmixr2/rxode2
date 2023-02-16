@@ -81,7 +81,7 @@ Requires the following aesthetics:
 }
 \examples{
 
-\donttest{ 
+\donttest{
 library(rxode2)
 library(units)
 
