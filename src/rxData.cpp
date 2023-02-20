@@ -1368,6 +1368,11 @@ struct rx_globals {
   int *glinEvidF = NULL;
   int *glinEvid0 = NULL;
   int *glinCount = NULL; // The number of linear compartment doses per id
+
+  double *glinCmtTlag = NULL;
+  double *glinCmtF = NULL;
+  double *glinCmtRate = NULL;
+
 };
 
 
@@ -1444,6 +1449,9 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
   }
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
   ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
+  ind->linCmtTlag = _globals.glinCmtTlag + rx->maxLinCmtDose*omp_get_thread_num();
+  ind->linCmtF = _globals.glinCmtF + rx->maxLinCmtDose*omp_get_thread_num();
+  ind->linCmtRate= _globals.glinCmtRate + rx->maxLinCmtDose*omp_get_thread_num();
 }
 
 extern "C" void setZeroMatrix(int which) {
@@ -1522,6 +1530,8 @@ extern "C" void gFree(){
   _globals.gSampleCov=NULL;
   if (_globals.gsolve != NULL) free(_globals.gsolve);
   _globals.gsolve=NULL;
+  if (_globals.glinCmtTlag != NULL) free(_globals.glinCmtTlag);
+  _globals.glinCmtTlag = NULL;
   if (_globals.gon != NULL) free(_globals.gon);
   _globals.gon=NULL;
   if (_globals.gpars != NULL) free(_globals.gpars);
@@ -3930,6 +3940,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
         for (unsigned int id = rx->nsub; id--;){
           unsigned int cid = id+simNum*rx->nsub;
           ind = &(rx->subjects[cid]);
+          ind->linCmt=linCmt;
           setupRxInd(ind, 1);
           ind->par_ptr = &_globals.gpars[cid*rxSolveDat->npars];
           ind->mtime   = &_globals.gmtime[rx->nMtime*cid];
@@ -3975,6 +3986,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           }
         }
       }
+      int maxLinCmtDose=0;
       // setup lincmt
       if (rx->linNcmt) {
         double *linTime = _globals.glinTime;
@@ -4000,6 +4012,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->linEvidF = indS.linEvidF;
               ind->linEvid0 = indS.linEvid0;
             } else {
+              maxLinCmtDose = max2(maxLinCmtDose, linCount[0]);
               ind->linCmtNdose = linCount[0]; // number of linCmt() doses in subject
               linCount++;
 
@@ -4026,7 +4039,17 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             }
           }
         }
+        if (_globals.glinCmtTlag != NULL) free(_globals.glinCmtTlag);
+        _globals.glinCmtTlag = (double*)calloc(op->cores*rx->maxLinCmtDose*3,
+                                               sizeof(double));// [n0]
+        if (_globals.glinCmtTlag == NULL){
+          rxSolveFree();
+          stop(_("could not allocate enough memory for solving (linCmt)"));
+        }
+        _globals.glinCmtF = _globals.glinCmtTlag + op->cores*rx->maxLinCmtDose;
+        _globals.glinCmtRate = _globals.glinCmtF + op->cores*rx->maxLinCmtDose;
       }
+      rx->maxLinCmtDose = maxLinCmtDose;
     }
     break;
   default:
