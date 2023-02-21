@@ -559,6 +559,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                     if (getDoseNumber(ind, jjj) == -curAmt){
                       int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
                       getWh(ind->evid[ind->idose[jjj]], &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
+                      dullRate = 0;
                       if (nWhI == whI && nCmt == cmt){
                         curDur = getTime_(ind->idose[jjj], ind) -
                           getTime_(ind->ix[i], ind);
@@ -597,6 +598,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                     if (getDoseNumber(ind, jjj) == -curAmt){
                       int nWh = 0, nCmt = 0, nWh100 = 0, nWhI = 0, nWh0 = 0;
                       getWh(ind->evid[ind->idose[jjj]], &nWh, &nCmt, &nWh100, &nWhI, &nWh0);
+                      dullRate = 0;
                       if (nWhI == whI && nCmt == cmt){
                         curDur = getTime_(ind->idose[jjj], ind) -
                           getTime_(ind->ix[i], ind);

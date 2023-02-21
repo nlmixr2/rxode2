@@ -99,6 +99,8 @@ rxTest({
       expect_equal(o1$C2, s1$C2, tolerance = tol)
     })
 
+    o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI, addDosing = TRUE)
+    expect_true("rate" %in% names(o1))
     o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI)
     s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsI, sensType = sensType)
     test_that(sprintf("one compartment infusion tau steady state (%s)", .txt), {
