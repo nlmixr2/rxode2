@@ -466,6 +466,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                   dullSS=0;
                   dfi[ii] = 1;
                   break;
+                case 40:
+                  dullRate=0;
+                  dullSS=0;
+                  dullIi=0;
+                  dfi[ii] = 1;
+                  break;
                 default:
                   dfi[ii] = 0;
                   break;

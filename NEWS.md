@@ -25,8 +25,8 @@
   piping a model.  For example, `ini(param = 1, append = 0)` or
   `ini(param = label("text"), append = "param2")` (#352).
 
-- Fixed a bug for certain infusions where the `rate` data item was
-  dropped from the output when `addDosing=TRUE`
+- Fixed a bug for certain infusions where the `rate`, `ii` and/or `ss`
+  data items were dropped from the output when `addDosing=TRUE`
 
 # rxode2 2.0.11
 
