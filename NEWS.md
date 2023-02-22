@@ -24,6 +24,10 @@
 - Parameter order may be modified via the `append` argument to `ini()` when
   piping a model.  For example, `ini(param = 1, append = 0)` or
   `ini(param = label("text"), append = "param2")` (#352).
+  
+- Internal handling of `ini()` piping handles more input types including
+  character strings and formula, and it gives a clear error if no change is made
+  (#439)
 
 # rxode2 2.0.11
 

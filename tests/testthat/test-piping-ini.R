@@ -289,3 +289,44 @@ test_that(".iniHandleAppend", {
     regexp = "only theta parameters can be moved"
   )
 })
+
+test_that(".iniHandleLineCleanup", {
+  expect_equal(
+    .iniHandleLineCleanup(str2lang("A")),
+    str2lang("A")
+  )
+  expect_equal(
+    .iniHandleLineCleanup(str2lang("A <- B")),
+    str2lang("A <- B")
+  )
+  expect_equal(
+    .iniHandleLineCleanup("A <- B"),
+    str2lang("A <- B")
+  )
+  expect_equal(
+    .iniHandleLineCleanup("A = B"),
+    str2lang("A <- B")
+  )
+  # formula are converted to language objects
+  expect_equal(
+    .iniHandleLineCleanup(a~b),
+    str2lang("a~b")
+  )
+
+  # Multi-line parsing does not work (str2lang fails)
+  expect_error(
+    .iniHandleLineCleanup("A <- B; C <- D"),
+    regexp = "cannot convert to a usable expression: 'A <- B; C <- D'; Error",
+    fixed = TRUE
+  )
+  # vectorized input does not work
+  expect_error(
+    .iniHandleLineCleanup(c("A <- B", "C <- D"))
+  )
+  # Unsupported inputs do not work
+  expect_error(
+    .iniHandleLineCleanup(factor("A")),
+    regexp = "invalid expr for ini() modification",
+    fixed = TRUE
+  )
+})

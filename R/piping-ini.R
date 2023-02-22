@@ -387,17 +387,44 @@
   invisible()
 }
 
-#' Update the iniDf of a model
+#' Simplify and clean inputs to .iniHandleLine
 #'
-#' @param expr Expression for parsing
-#' @param rxui User interface function
-#' @param envir Environment for parsing
-#' @inheritParams .iniHandleAppend
-#' @return Nothing, called for side effects
-#' @author Matthew L. Fidler
-#' @keywords internal
-#' @export
-.iniHandleLine <- function(expr, rxui, envir=parent.frame(), append = NULL) {
+#' @param expr An R call or object coercible into an R call
+#' @return \code{expr} cleaned and ready for subsequent processing
+#' @noRd
+.iniHandleLineCleanup <- function(expr) {
+  # First, coerce expr into a call or name
+  if (inherits(expr, "formula")) {
+    # Test for formula first because a formula is also considered a call.
+
+    # Convert a formula to a call
+    expr <- unclass(expr)
+    # Remove the environment (and anything else)
+    attributes(expr) <- NULL
+  } else if (is.call(expr) || is.name(expr)) {
+    # do nothing, no modification is required
+  } else if (is.character(expr)) {
+    # This does not allow vector character inputs for more than one change at a time.
+    checkmate::assert_character(expr, min.chars = 1, any.missing = FALSE, len = 1, null.ok = FALSE)
+    # Convert to a language object
+    exprOrig <- expr
+    expr <- try(base::str2lang(expr), silent = TRUE)
+    if (inherits(expr, "try-error")) {
+      cli::cli_abort(paste0(
+        "cannot convert to a usable expression: '",
+        exprOrig, "'; Error: ",
+        attr(expr, "condition")$message
+      ))
+    }
+  } else {
+    # Can this error be improved to clarify what is the expression causing the
+    # issue?  It needs a single character string representation of something
+    # that is not a character string.
+    cli::cli_abort("invalid expr for ini() modification")
+  }
+
+  # Second, clean up syntax variations to simplify downstream processing
+
   # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
   # UNFIXED to fix and unfix to simplify all downstream operations
   expr <- .iniSimplifyFixUnfix(expr)
@@ -410,6 +437,23 @@
     stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense",
          call. = FALSE)
   }
+
+  expr
+}
+
+#' Update the iniDf of a model
+#'
+#' @param expr Expression for parsing
+#' @param rxui User interface function
+#' @param envir Environment for parsing
+#' @inheritParams .iniHandleAppend
+#' @return Nothing, called for side effects
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
+.iniHandleLine <- function(expr, rxui, envir=parent.frame(), append = NULL) {
+  # Clean up the expr for subsequent use
+  expr <- .iniHandleLineCleanup(expr)
 
   # (Maybe) update parameter order
   .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
