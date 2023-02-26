@@ -289,3 +289,30 @@ test_that(".iniHandleAppend", {
     regexp = "only theta parameters can be moved"
   )
 })
+
+test_that("ini tests for different types of expressions", {
+
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      c <- 3
+      d ~ 1
+      h ~ 2
+      addSd <- 2
+    })
+    model({
+      b <- a + b*log(c)
+      f <- a + d + e
+      i <- j + h
+      b ~ add(addSd)
+    })
+  }
+
+  expect_error(mod %>% ini("h~3"), NA)
+
+  expect_error(mod %>% ini("h~3;4*"))
+
+  expect_error(mod %>% ini(factor("A")))
+
+})
