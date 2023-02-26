@@ -449,7 +449,7 @@
     # Can this error be improved to clarify what is the expression causing the
     # issue?  It needs a single character string representation of something
     # that is not a character string.
-    cli::cli_abort("invalid expr for ini() modification")
+    stop("invalid expr for ini() modification", call.=FALSE)
   }
 }
 
