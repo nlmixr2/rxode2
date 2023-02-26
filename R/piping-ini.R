@@ -445,6 +445,11 @@
     expr[[3]] <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
                       envir=envir)[1, 1]
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
+  } else {
+    # Can this error be improved to clarify what is the expression causing the
+    # issue?  It needs a single character string representation of something
+    # that is not a character string.
+    cli::cli_abort("invalid expr for ini() modification")
   }
 }
 
