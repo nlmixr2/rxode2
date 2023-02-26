@@ -278,6 +278,8 @@
           identical(.quoted[[1]], quote(`list`))) {
       .bracket[i] <- TRUE
       assign(".bracket", .bracket, envir=.env)
+    } else if (identical(.quoted[[1]], quote(`as.formula`))) {
+      .quoted <- .quoted[[2]]
     }
     .quoted
   })
