@@ -2,15 +2,27 @@
 % Please edit documentation in R/ui-rename.R
 \name{rxRename}
 \alias{rxRename}
+\alias{.rxRename}
 \alias{rename.rxUi}
 \alias{rename.function}
+\alias{rxRename.rxUi}
+\alias{rxRename.function}
+\alias{rxRename.default}
 \title{Rename items inside of a \code{rxode2} ui model}
 \usage{
 rxRename(.data, ..., envir = parent.frame())
 
+.rxRename(.data, ..., envir = parent.frame())
+
 rename.rxUi(.data, ...)
 
 rename.function(.data, ...)
+
+\method{rxRename}{rxUi}(.data, ...)
+
+\method{rxRename}{`function`}(.data, ...)
+
+\method{rxRename}{default}(.data, ...)
 }
 \arguments{
 \item{.data}{rxode2 ui function, named data to be consistent with \code{dplyr::rename()}}
@@ -25,6 +37,14 @@ New model with items renamed
 \description{
 \code{rxRename()} changes the names of individual variables, lhs, and ode states using
 \code{new_name = old_name} syntax
+}
+\details{
+This is similar to \code{dplyr}'s \code{rename()} function.  When \code{dplyr} is
+loaded, the \code{s3} methods work for the ui objects.
+
+Note that the \code{.rxRename()} is the internal function that is called
+when renaming and is likely not what you need to call unless you
+are writing your own extension of the function
 }
 \examples{
 

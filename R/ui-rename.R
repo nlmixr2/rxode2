@@ -3,14 +3,15 @@
 #' It returns the new expression, old expression, new variable and old
 #' variable
 #'
-#' @param line
+#' @param line quoted call information line
 #'
-#' @param vars
+#' @param vars Variables contained within the mdel
 #'
 #' @return list(new, old, newChar, oldChar)
 #'
 #' @author Matthew L. Fidler
-#' @noRd
+#' @export
+#' @keywords internal
 .assertRenameErrorModelLine <- function(line, vars) {
   .var.name <- NULL
   if (is.name(line[[2]])) {
@@ -116,6 +117,15 @@
 #'
 #' @author Matthew L. Fidler
 #'
+#' @details
+#'
+#' This is similar to `dplyr`'s `rename()` function.  When `dplyr` is
+#' loaded, the `s3` methods work for the ui objects.
+#'
+#' Note that the `.rxRename()` is the internal function that is called
+#' when renaming and is likely not what you need to call unless you
+#' are writing your own extension of the function
+#'
 #' @export
 #'
 #' @examples
@@ -144,6 +154,12 @@
 #' ocmt %>% rxRename(cpParent=cp)
 #'
 rxRename <- function(.data, ..., envir=parent.frame()) {
+  UseMethod("rxRename")
+}
+
+#' @rdname rxRename
+#' @export
+.rxRename <- function(.data, ..., envir=parent.frame()) {
   rxui <- assertRxUi(.data)
   .vars <- unique(c(rxui$mv0$state, rxui$mv0$params, rxui$mv0$lhs, rxui$predDf$var, rxui$predDf$cond, rxui$iniDf$name))
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
@@ -156,16 +172,36 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   })
   rxui$fun()
 }
-
 #' @rdname rxRename
 rename.rxUi <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
-  do.call(rxRename, c(.lst, list(envir=parent.frame(2))))
+  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
 }
 #' @rdname rxRename
 rename.function <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
-  do.call(rxRename, c(.lst, list(envir=parent.frame(2))))
+  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
 }
+#' @export
+#' @rdname rxRename
+rxRename.rxUi <- function(.data, ...) {
+  .lst <- as.list(match.call()[-1])
+  .lst$.data <- .data
+  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+}
+#' @export
+#' @rdname rxRename
+rxRename.function <- function(.data, ...) {
+  .lst <- as.list(match.call()[-1])
+  .lst$.data <- .data
+  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+}
+#' @export
+#' @rdname rxRename
+rxRename.default <- function(.data, ...) {
+  .lst <- as.list(match.call()[-1])
+  .lst$.data <- .data
+  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+} 
