@@ -8,7 +8,7 @@ rxTest({
 
   test_that("test as formula", {
     expect_equal(testPipeQuote(as.formula(a~b)),
-                 quote(a~b))
+                 list(quote(a~b)))
   })
 
   test_that("test of standard quoting of piping arguments", {
