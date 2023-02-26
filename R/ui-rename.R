@@ -3,14 +3,15 @@
 #' It returns the new expression, old expression, new variable and old
 #' variable
 #'
-#' @param line
+#' @param line quoted call information line
 #'
-#' @param vars
+#' @param vars Variables contained within the mdel
 #'
 #' @return list(new, old, newChar, oldChar)
 #'
 #' @author Matthew L. Fidler
-#' @noRd
+#' @export
+#' @keywords internal
 .assertRenameErrorModelLine <- function(line, vars) {
   .var.name <- NULL
   if (is.name(line[[2]])) {
