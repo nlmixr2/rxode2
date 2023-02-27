@@ -14,28 +14,28 @@ rxTest({
         d/dt(Ce) <- (Cp-Ce)*ke0
         eff      <- 1*(1+emax*Ce**gamma/(ec50**gamma+Ce**gamma))
       })
-      
+
       et1 <- et() %>%
-        et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) %>% ## sampling  
+        et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) %>% ## sampling
         add.dosing(dose=300*pk["f"],dosing.to=1,nbr.dose=13,dosing.interval=28,start.time=0)  ## dosing
 
         res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
-        
+
         ### Note 1: bug occurs when including several sets of parameters
         res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
 
         expect_length(res1 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time),0)
-        
+
         ### Note 2: Bug also occurs when simulating one set of parameters at a time
         res2 <- do.call("rbind", lapply(1:nn, function(x) {
           rxSolve(rxmod1,unlist(c(pk,as.data.frame(pdpars[x,]))),et1)
         }))
-        
+
         expect_length(res2 %>% dplyr::filter(time>0 & Cp==0) %>% dplyr::pull(time), 0)
-        
+
     })
   })
-  
+
 })
 
 rxTest({
@@ -99,11 +99,22 @@ rxTest({
       expect_equal(o1$C2, s1$C2, tolerance = tol)
     })
 
+    o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI, addDosing = TRUE, returnType="data.frame")
+
+    expect_true("rate" %in% names(o1))
+
     o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI)
     s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsI, sensType = sensType)
     test_that(sprintf("one compartment infusion tau steady state (%s)", .txt), {
       expect_equal(o1$C2, s1$C2, tolerance = tol)
     })
+
+    o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR,
+                  addDosing = TRUE, returnType = "data.frame")
+
+    expect_true("rate" %in% names(o1))
+    expect_true("ss" %in% names(o1))
+    expect_true("ii" %in% names(o1))
 
     o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR)
     s1 <- rxSolve(sol.1c, params = c(V = 20, CL = 25), events = etSsR, sensType = sensType)
