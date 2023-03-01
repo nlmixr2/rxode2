@@ -4,10 +4,6 @@ test_that("infusion + bolus works correctly", {
   skip_if_not(file.exists(d))
   dataset <- qs::qread(d)
 
-
-  library(rxode2)
-  dataset <- qs::qread("/home/matt/src/rxode2/tests/testthat/test-infusion-bolus.qs")
-
   base_model <- function() {
     ini({
       POP_CL <- c(0.0, 3.84718, Inf)

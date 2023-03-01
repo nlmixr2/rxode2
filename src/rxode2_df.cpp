@@ -101,7 +101,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
         if (evid == 9) continue; // not output in NONMEM
         if (isDose(evid)) {
           getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-          if (whI == 7  || whI == 6){
+          if (whI == EVIDF_MODEL_RATE_OFF  || whI == EVIDF_MODEL_DUR_OFF){
             di++;
             continue;
           }
@@ -328,6 +328,18 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         if (evid == 9) continue;
         if (isDose(evid)){
           getWh(ind->evid[ind->ix[i]], &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
+          switch (ind->whI) {
+          case EVIDF_INF_RATE:
+          case EVIDF_MODEL_DUR_ON:
+          case EVIDF_MODEL_DUR_OFF:
+          case EVIDF_MODEL_RATE_ON:
+          case EVIDF_MODEL_RATE_OFF:
+            dullRate=0;
+            break;
+          case EVIDF_INF_DUR:
+            dullDur=0;
+            break;
+          }
           handleTlastInline(&curT, ind);
         }
         if (updateErr){
@@ -353,11 +365,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               dullRate=0;
               di++;
               continue;
-            }
-            if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_RATE_ON) {
+            } else if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
               dullRate = 0;
-            }
-            if (whI == EVIDF_MODEL_DUR_ON || whI == EVIDF_INF_DUR){
+            } else if (whI == EVIDF_INF_DUR) {
               dullDur = 0;
             }
             if (getDoseNumber(ind, di) <= 0){
@@ -435,6 +445,11 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                       dfi[ii] = 6;
                     } else {
                       dfi[ii] = 1; // evid
+                      if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_DUR_ON || whI == EVIDF_MODEL_RATE_ON) {
+                        dullRate = 0;
+                      } else if (whI == EVIDF_INF_DUR) {
+                        dullDur = 0;
+                      }
                     }
                   } else {
                     if (whI == EVIDF_INF_RATE){
@@ -449,6 +464,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                       dfi[ii] = 6;
                     } else {
                       dfi[ii] = 1;
+                      if (whI == EVIDF_INF_DUR) {
+                        dullDur = 0;
+                      }
                     }
                   }
                 }
