@@ -865,7 +865,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       jj++;kk++;
     }
     if (ms) {
-      SET_STRING_ELT(sexp_colnames, jj, Rf_mkChar("resetno"));
+      SET_STRING_ELT(sexp_colnames2, jj, Rf_mkChar("resetno"));
       SET_VECTOR_ELT(df2, jj, VECTOR_ELT(df, kk));
       jj++; kk++;
     }
