@@ -27,7 +27,7 @@ test_that("infusion + bolus works correctly", {
       V2 <- VP1
       d/dt(A_CENTRAL) = Q*A_PERIPHERAL/V2 + (-CL/V1 - Q/V1)*A_CENTRAL 
       d/dt(A_PERIPHERAL) = -Q*A_PERIPHERAL/V2 + Q*A_CENTRAL/V1
-      F <- A_CENTRAL
+      Fv <- A_CENTRAL
       IPRED <- A_CENTRAL/VC
       if (IPRED == 0) {
         IPREDADJ <- 2.22500000000000E-16
