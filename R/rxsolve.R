@@ -1005,7 +1005,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         if (length(.w) == length(.dimnames)) {
           .omega <- NULL
         } else {
-          .omega <- .omega[-.w, -.w]
+          .omega <- .omega[-.w, -.w, drop=FALSE]
         }
       }
     }
@@ -1015,7 +1015,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         # name boundaries if they are not named
         .dimnames <- dimnames(.sigma)[[2]]
         if (length(sigmaLower) == length(.dimnames) && is.null(names(sigmaLower))) {
-          names(sigmaLower) <- length(.dimnames)
+          names(sigmaLower) <- .dimnames
         }
         if (length(sigmaUpper) == length(.dimnames) && is.null(names(sigmaUpper))) {
           names(sigmaUpper) <- .dimnames
@@ -1024,7 +1024,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
         if (length(.w) == length(.dimnames)) {
           .sigma <- NULL
         } else {
-          .sigma <- .omega[-.w, -.w]
+          .sigma <- .sigma[-.w, -.w, drop=FALSE]
         }
       }
     }
