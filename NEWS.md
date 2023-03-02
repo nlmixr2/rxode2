@@ -1,5 +1,11 @@
 # rxode2 (development version)
 
+- Diagonal zeros in the `omega` and `sigma` matrices are treated as
+  zeros in the model. The corresponding `omega` and `sigma` matrices
+  drop columns/rows where the diagonals are zero to create a new
+  `omega` and `sigma` matrix for simulation.  This is the same idiom
+  that NONMEM uses for simulation from these matrices.
+
 - Added `as.rxUi()` function to convert the following objects to
   `rxUi` objects: `rxode2`, `rxModelVars`, `function`.  Converting
   nlmixr2 fits to `rxUi` will be placed in the `s3` method in the
