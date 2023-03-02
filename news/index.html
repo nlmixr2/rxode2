@@ -129,7 +129,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
-<ul><li><p>Added <code><a href="../reference/as.rxUi.html">as.rxUi()</a></code> function to convert the following objects to <code>rxUi</code> objects: <code>rxode2</code>, <code>rxModelVars</code>, <code>function</code>. Converting nlmixr2 fits to <code>rxUi</code> will be placed in the <code>s3</code> method in the corresponding package.</p></li>
+<ul><li><p>Diagonal zeros in the <code>omega</code> and <code>sigma</code> matrices are treated as zeros in the model. The corresponding <code>omega</code> and <code>sigma</code> matrices drop columns/rows where the diagonals are zero to create a new <code>omega</code> and <code>sigma</code> matrix for simulation. This is the same idiom that NONMEM uses for simulation from these matrices.</p></li>
+<li><p>Added <code><a href="../reference/as.rxUi.html">as.rxUi()</a></code> function to convert the following objects to <code>rxUi</code> objects: <code>rxode2</code>, <code>rxModelVars</code>, <code>function</code>. Converting nlmixr2 fits to <code>rxUi</code> will be placed in the <code>s3</code> method in the corresponding package.</p></li>
 <li><p><code>assertRxUi(x)</code> now uses <code><a href="../reference/as.rxUi.html">as.rxUi()</a></code> so that it can be extended outside of <code>rxode2</code>/<code>nlmixr2</code>.</p></li>
 <li><p>Add the ability to pipe model estimates from another model by <code>parentModel %&gt;% ini(modelWithNewEsts)</code></p></li>
 <li><p>Add the ability to append model statements with piping using <code>%&gt;%   model(x=3, append=d/dt(depot))</code>, still supports appending with <code>append=TRUE</code> and pre-pending with <code>append=NA</code> (the default is to replace lines with <code>append=FALSE</code>)</p></li>
