@@ -87,8 +87,7 @@ rxTest({
         if (nn >= 0.558) {
           l <- log(2.5066) + (nn + 0.5) * log(nn) - nn + log(1 + 
                                                                1/(12 * nn))
-        }
-        else {
+        } else {
           l <- -0.1171157 + 0.569 * ((0.558 - nn)^2) - 0.1122 * 
             (0.558 - nn)
         }
@@ -111,8 +110,7 @@ rxTest({
           d/dt(cent) <- bio * pd * ktr * exp(nn * log(ktr * 
                                                         (t - tdos) + X) - ktr * (t - tdos) - l) - k10 * 
                                          cent - k12 * cent - k13 * cent + k31 * peri
-        }
-        else {
+        } else {
           d/dt(cent) <- -k12 * cent - k13 * cent + k31 * peri
         }
         d/dt(centmet) <- k12 * cent - k20 * centmet - k24 * centmet + 
@@ -126,8 +124,7 @@ rxTest({
           ipred <- cent/scale1
           w <- sqrt((theta5 * ipred)^2 + theta13^2)
           y <- ipred + w * eps1
-        }
-        else {
+        } else {
           ipred <- centmet/scale2
           w <- sqrt((theta12 * ipred)^2 + theta14^2)
           y <- ipred + w * eps1
