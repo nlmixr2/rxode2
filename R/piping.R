@@ -235,7 +235,8 @@
 #'
 #' @param envir Environment for evaluation (if needed)
 #' 
-#' @param iniDf The parent model `iniDf` when piping in a `ini` block (`NULL` otherwise)
+#' @param iniDf The parent model `iniDf` when piping in a `ini` block
+#'   (`NULL` otherwise)
 #'
 #' @return Quote call information.  for `name=expression`, change to
 #'   `name<-expression` in quoted call list. For expressions that are
@@ -280,6 +281,12 @@
       assign(".bracket", .bracket, envir=.env)
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
+    } else if (identical(.quoted[[1]], quote(`~`))) {
+      .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
+      if (identical(.quoted[[3]], quote(`fix`)) ||
+            identical(.quoted[[3]], quote(`unfix`))) {
+        .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
+      }
     }
     .quoted
   })
