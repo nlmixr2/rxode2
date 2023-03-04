@@ -745,7 +745,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .bad <- .nxtra
     }
-    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF"))]
+    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros"))]
     if (length(.bad) > 0) {
       if ("transitAbs" %in% .bad) {
         stop("'transitAbs' is no longer supported, use 'evid=7' instead",
@@ -989,6 +989,45 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     }
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
+    .zeros <- .xtra$.zeros
+    if (inherits(.omega, "matrix")) {
+      .w <-which(diag(.omega) == 0.0)
+      if (length(.w) > 0) {
+        # name boundaries if they are not named
+        .dimnames <- dimnames(.omega)[[2]]
+        if (length(omegaLower) == length(.dimnames) && is.null(names(omegaLower))) {
+          names(omegaLower) <- .dimnames
+        }
+        if (length(omegaUpper) == length(.dimnames) && is.null(names(omegaUpper))) {
+          names(omegaUpper) <- .dimnames
+        }
+        .zeros <- c(.zeros, .dimnames[.w])
+        if (length(.w) == length(.dimnames)) {
+          .omega <- NULL
+        } else {
+          .omega <- .omega[-.w, -.w, drop=FALSE]
+        }
+      }
+    }
+    if (inherits(.sigma, "matrix")) {
+      .w <-which(diag(.sigma) == 0.0)
+      if (length(.w) > 0) {
+        # name boundaries if they are not named
+        .dimnames <- dimnames(.sigma)[[2]]
+        if (length(sigmaLower) == length(.dimnames) && is.null(names(sigmaLower))) {
+          names(sigmaLower) <- .dimnames
+        }
+        if (length(sigmaUpper) == length(.dimnames) && is.null(names(sigmaUpper))) {
+          names(sigmaUpper) <- .dimnames
+        }
+        .zeros <- c(.zeros, .dimnames[.w])
+        if (length(.w) == length(.dimnames)) {
+          .sigma <- NULL
+        } else {
+          .sigma <- .sigma[-.w, -.w, drop=FALSE]
+        }
+      }
+    }
     .ret <- list(
       scale = scale, #
       method = method, #
@@ -1077,7 +1116,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ssRtolSens=ssRtolSens,
       simVariability=simVariability,
       nLlikAlloc=nLlikAlloc,
-      useStdPow=useStdPow
+      useStdPow=useStdPow,
+      .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -1556,55 +1596,70 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .names <- c(.names, .col[.w])
   }
+  rxSetCovariateNamesForPiping(NULL)
+  if (length(.ctl$.zeros) > 0) {
+    if (rxIs(params, "rx.event")) {
+      .tmp <- events
+      events <- params
+      params <- .tmp
+    }
+    if (inherits(params, "data.frame")) {
+      for (v in .ctl$.zeros) {
+        params[[v]] <- 0.0
+      }
+    } else if (inherits(params, "numeric") ||
+                 inherits(params, "integer")) {
+      params <- c(params, setNames(rep(0.0, length(.ctl$.zeros)), .ctl$.zeros))
+    }
+    .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
+  }
   if (rxode2.debug) {
-    rxSetCovariateNamesForPiping(NULL)
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,
                                                   setupOnlyS = .setupOnly
                                                   ), lst = TRUE)
   } else {
-    rxSetCovariateNamesForPiping(NULL)
     while (.envReset$reset) {
-    .envReset$reset <- FALSE
-    tryCatch({
-      .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
-                                                    params, events, inits,
-                                                    setupOnlyS = .setupOnly
-                                                    ), lst = TRUE)
-    },
-    error=function(e) {
-      if (regexpr("not provided by package", e$message) != -1) {
-        if (.envReset$cacheReset) {
-          .malert("unsuccessful cache reset; try manual reset with 'rxClean()'")
-          stop(e)
+      .envReset$reset <- FALSE
+      tryCatch({
+        .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
+                                                      params, events, inits,
+                                                      setupOnlyS = .setupOnly
+                                                      ), lst = TRUE)
+      },
+      error=function(e) {
+        if (regexpr("not provided by package", e$message) != -1) {
+          if (.envReset$cacheReset) {
+            .malert("unsuccessful cache reset; try manual reset with 'rxClean()'")
+            stop(e)
+          } else {
+            # reset
+            gc()
+            .minfo("try resetting cache")
+            rxode2::rxClean()
+            .envReset$cacheReset <- TRUE
+            .envReset$reset <- TRUE
+            .msuccess("done")
+          }
+        } else if (regexpr("maximal number of DLLs reached", e$message) != -1) {
+          if (.envReset$unload) {
+            .malert("Could not unload rxode2 models, try restarting R")
+            stop(e)
+          } else {
+            # reset
+            gc()
+            .minfo("try resetting cache and unloading all rxode2 models")
+            try(rxode2::rxUnloadAll())
+            rxode2::rxClean()
+            .envReset$unload <- TRUE
+            .envReset$reset <- TRUE
+            .msuccess("done")
+          }
         } else {
-          # reset
-          gc()
-          .minfo("try resetting cache")
-          rxode2::rxClean()
-          .envReset$cacheReset <- TRUE
-          .envReset$reset <- TRUE
-          .msuccess("done")
-        }
-      } else if (regexpr("maximal number of DLLs reached", e$message) != -1) {
-        if (.envReset$unload) {
-          .malert("Could not unload rxode2 models, try restarting R")
           stop(e)
-        } else {
-          # reset
-          gc()
-          .minfo("try resetting cache and unloading all rxode2 models")
-          try(rxode2::rxUnloadAll())
-          rxode2::rxClean()
-          .envReset$unload <- TRUE
-          .envReset$reset <- TRUE
-          .msuccess("done")
         }
-      } else {
-        stop(e)
-      }
-    })
-  }
+      })
+    }
 
   }
   .ret <- .envReset$ret

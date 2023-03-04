@@ -6,6 +6,18 @@ rxTest({
     .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir, iniDf=iniDf)
   }
 
+  test_that("test fix/unfix for eta", {
+    expect_equal(testPipeQuote(a~fix),
+                 list(quote(a<-fix)))
+    expect_equal(testPipeQuote(a~unfix),
+                 list(quote(a<-unfix)))
+  })
+
+  test_that("test as formula", {
+    expect_equal(testPipeQuote(as.formula(a~b)),
+                 list(quote(a~b)))
+  })
+
   test_that("test of standard quoting of piping arguments", {
     expect_equal(testPipeQuote(-ka, tka=0.5, {
       tv = 3
