@@ -41,6 +41,9 @@
 - Breaking change/bug fix `evid=2` are considered observations when
   translating data to internal `rxode2` event structure
 
+- Fix edge case to find infusion duration when it is the first item of
+  the dosing record at time 0.
+
 # rxode2 2.0.11
 
 - Give a more meaningful error for 'rxode2' ui models with only error expressions

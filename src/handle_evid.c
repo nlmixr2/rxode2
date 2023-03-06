@@ -39,16 +39,16 @@ void handleTlast(double *time, rx_solving_options_ind *ind) {
 // Linear compartment models/functions
 double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p) {
   double dose = getDoseNumber(ind, l);
-  if (backward==1){
+  if (backward==1 && l != 0){
     if (l <= 0) {
-      Rf_errorcall(R_NilValue, _("could not find a start to the infusion"));
+      Rf_errorcall(R_NilValue, _("could not find a start to the infusion #1"));
     }
     p[0] = l-1;
     while (p[0] > 0 && getDoseNumber(ind, p[0]) != -dose){
       p[0]--;
     }
     if (getDoseNumber(ind, p[0]) != -dose){
-      Rf_errorcall(R_NilValue, _("could not find a start to the infusion"));
+      Rf_errorcall(R_NilValue, _("could not find a start to the infusion #2"));
     }
     return ind->all_times[ind->idose[l]] - ind->all_times[ind->idose[p[0]]];
   } else {
