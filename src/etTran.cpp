@@ -1047,7 +1047,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         if (mdvCol != -1 && inMdv[i] == 1){
           cevid=2;
         }
-        if (cevid != 2 && std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+        if (std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
           obsId.push_back(cid);
         }
       } else {
@@ -1086,7 +1086,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cevid=2;
         }
       }
-      if (cevid != 2 && std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+      if (std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
         obsId.push_back(cid);
       }
       if (caddl > 0){
@@ -1224,6 +1224,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       break;
     case 2:
       cevid = 2;
+      if (std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+        obsId.push_back(cid);
+      }
       if (flg == 30){
         rateI = 0;
         cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
@@ -1628,12 +1631,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (lastId != id[idxOutput[j]]){
         // New id
         lastId = id[idxOutput[j]];
-        while (isDose(evid[idxOutput[j]]) && j--){
-          if (amt[idxOutput[j]] >= 0) {
-            // keep negative doses or turning infusion off
-            idxOutput[j+1] = -1;
-            rmAmt++;
-          }
+        while (isDose(evid[idxOutput[j]]) && amt[idxOutput[j]] > 0 && j--){
+          // keep negative doses or turning infusion off
+          idxOutput[j+1] = -1;
+          rmAmt++;
         }
         if (j <= 0) break;
       }
