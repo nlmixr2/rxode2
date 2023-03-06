@@ -751,4 +751,29 @@ d/dt(blood)     = a*intestine - b*blood
 
     })
   }
+
+  test_that("test etTran on addl ss items", {
+
+    rx <- rxode2({
+      cp <- linCmt(ka, cl, v)
+    })
+
+    e <- et(amt=100, rate=10, ii=24, ss=1, cmt=2, addl=3) %>%
+      et(0, 80, by=1)
+
+    # should not drop the off infusion record
+    t <- etTrans(e, rx)
+
+    expect_equal(t$TIME[length(t$TIME)], 82)
+    expect_equal(t$AMT[length(t$AMT)], -10)
+    expect_equal(t$EVID[length(t$EVID)], 10210L)
+    expect_equal(t$II[length(t$II)], 0)
+
+    t2 <- t %>% dplyr::filter(AMT>0)
+
+    expect_equal(t2$TIME, c(0, 24, 48, 72))
+    expect_true(all(t2$AMT == 10))
+    expect_true(all(t2$EVID == 10210L))
+
+  })
 })

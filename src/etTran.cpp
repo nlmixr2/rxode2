@@ -1458,11 +1458,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             cmtF.push_back(cmt);
             time.push_back(ctime);
             amt.push_back(camt);
-            if (keepIIadl) {
-              ii.push_back(cii);
-            } else {
-              ii.push_back(0.0);
-            }
+            ii.push_back(0.0);
             idxInput.push_back(-1);
             dv.push_back(NA_REAL);
             limit.push_back(NA_REAL);
@@ -1477,11 +1473,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             cmtF.push_back(cmt);
             time.push_back(ctime+dur);
             amt.push_back(-rate);
-            if (keepIIadl) {
-              ii.push_back(cii);
-            } else {
-              ii.push_back(0.0);
-            }
+            ii.push_back(0.0);
             idxInput.push_back(-1);
             dv.push_back(NA_REAL);
             limit.push_back(NA_REAL);
@@ -1637,8 +1629,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         // New id
         lastId = id[idxOutput[j]];
         while (isDose(evid[idxOutput[j]]) && j--){
-          idxOutput[j+1] = -1;
-          rmAmt++;
+          if (amt[idxOutput[j]] >= 0) {
+            // keep negative doses or turning infusion off
+            idxOutput[j+1] = -1;
+            rmAmt++;
+          }
         }
         if (j <= 0) break;
       }

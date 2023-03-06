@@ -36,30 +36,30 @@ rxSetIni0 <- function(ini0 = TRUE) {
 #' Event translation for rxode2
 #'
 #' @param inData Data frame to translate
-#' 
+#'
 #' @param obj Model to translate data
-#' 
+#'
 #' @param addCmt Add compartment to data frame (default `FALSE`).
-#' 
+#'
 #' @param dropUnits Boolean to drop the units (default `FALSE`).
-#' 
+#'
 #' @param allTimeVar Treat all covariates as if they were time-varying
-#' 
+#'
 #' @param keepDosingOnly keep the individuals who only have dosing records and any
 #'   trailing dosing records after the last observation.
-#' 
+#'
 #' @param combineDvid is a boolean indicating if rxode2 will use `DVID` on observation
 #'     records to change the `cmt` value; Useful for multiple-endpoint nlmixr models.  By default
 #'     this is determined by `option("rxode2.combine.dvid")` and if the option has not been set,
 #'     this is `TRUE`. This typically does not affect rxode2 simulations.
-#' 
+#'
 #' @param keepF This is a named vector of items you want to keep in the final rxode2 dataset.
 #'     For added rxode2 event records (if seen), last observation carried forward will be used.
-#' 
+#'
 #' @return Object for solving in rxode2
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 #' @export
 etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0)) {
     .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep)
