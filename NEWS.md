@@ -38,6 +38,9 @@
   observation the time when the infusion stopped would be dropped.
   This interferes with `linCmt()` models.
 
+- Breaking change/bug fix `evid=2` are considered observations when
+  translating data to internal `rxode2` event structure
+
 # rxode2 2.0.11
 
 - Give a more meaningful error for 'rxode2' ui models with only error expressions
