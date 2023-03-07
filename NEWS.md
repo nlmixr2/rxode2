@@ -34,6 +34,19 @@
   piping a model.  For example, `ini(param = 1, append = 0)` or
   `ini(param = label("text"), append = "param2")` (#352).
 
+- `rxode2` now supports `addl` with `ss` doses
+
+- The internal translation (`etTrans()`) will not drop times when
+  infusions stop. Before, if the infusion stopped after the last
+  observation the time when the infusion stopped would be dropped.
+  This interferes with `linCmt()` models.
+
+- Breaking change/bug fix `evid=2` are considered observations when
+  translating data to internal `rxode2` event structure
+
+- Fix edge case to find infusion duration when it is the first item of
+  the dosing record at time 0.
+
 - Fixed a bug for certain infusions where the `rate`, `ii` and/or `ss`
   data items were dropped from the output when `addDosing=TRUE`
 
