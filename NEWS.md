@@ -1,5 +1,8 @@
 # rxode2 (development version)
 
+- A new function `zeroRe()` allows simple setting of omega and/or sigma values
+  to zero for a model (#456)
+
 - Diagonal zeros in the `omega` and `sigma` matrices are treated as
   zeros in the model. The corresponding `omega` and `sigma` matrices
   drop columns/rows where the diagonals are zero to create a new

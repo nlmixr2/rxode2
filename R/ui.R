@@ -190,6 +190,7 @@
 #' @inheritParams .iniHandleAppend
 #' @return ini block
 #' @author Matthew Fidler
+#' @family Initial conditions
 #' @examples
 #' # Set the ini() block in a model
 #' one.compartment <- function() {
