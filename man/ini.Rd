@@ -141,6 +141,11 @@ one.compartment \%>\% ini(tka <- label("Absorption rate, Ka (1/hr)"), append = "
 # to modify the ini
 one.compartment \%>\% ini("tka <- log(2)")
 }
+\seealso{
+Other Initial conditions: 
+\code{\link{zeroRe}()}
+}
 \author{
 Matthew Fidler
 }
+\concept{Initial conditions}

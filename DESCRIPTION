@@ -30,7 +30,8 @@ Authors@R: c(
    person("Nicholas J.", "Higham",role="ctb"),
    person("Roger B.", "Sidje", role="ctb"),
    person("Simon", "Frost", role="ctb"),
-   person("Yu", "Feng", role="ctb")
+   person("Yu", "Feng", role="ctb"),
+   person("Bill", "Denney", email="wdenney@humanpredictions.com", role="ctb", comment=c(ORCID="0000-0002-5759-428X"))
    )
 Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
 Depends:

@@ -549,3 +549,88 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
   if (any(rxui$iniDf$name == .c)) return(TRUE)
   return(FALSE)
 }
+
+#' Set random effects and residual error to zero
+#'
+#' @param object The model to modify
+#' @param which The types of parameters to set to zero
+#' @param fix Should the parameters be fixed to the zero value?
+#' @return The `object` with some parameters set to zero
+#' @family Initial conditions
+#' @author Bill Denney
+#' @examples
+#' one.compartment <- function() {
+#'   ini({
+#'     tka <- log(1.57); label("Ka")
+#'     tcl <- log(2.72); label("Cl")
+#'     tv <- log(31.5); label("V")
+#'     eta.ka ~ 0.6
+#'     eta.cl ~ 0.3
+#'     eta.v ~ 0.1
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka + eta.ka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv + eta.v)
+#'     d/dt(depot) = -ka * depot
+#'     d/dt(center) = ka * depot - cl / v * center
+#'     cp = center / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#' zeroRe(one.compartment)
+#' @export
+zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
+  object <- assertRxUi(object)
+  which <- match.arg(which, several.ok = TRUE)
+  .ret <- rxUiDecompress(.copyUi(object)) # copy so (as expected) old UI isn't affected by the call
+  iniCommand <- character()
+  # In the code below there is no test for bounds since the bounds are typically (0, Inf).
+  if ("omega" %in% which) {
+    if (fix) {
+      fmtOmega <- "%s ~ fix(0)"
+    } else {
+      fmtOmega <- "%s ~ 0"
+    }
+    omegaNames <- .ret$iniDf$name[!is.na(.ret$iniDf$neta1)]
+    if (length(omegaNames) == 0) {
+      cli::cli_warn("No omega parameters in the model")
+    } else {
+      iniCommand <- c(iniCommand, sprintf(fmtOmega, omegaNames))
+    }
+  }
+  if ("sigma" %in% which) {
+    sigmaNames <- .ret$iniDf$name[!is.na(.ret$iniDf$err)]
+    if (length(sigmaNames) == 0) {
+      cli::cli_warn("No sigma parameters in the model")
+    } else {
+      for (currentSigma in sigmaNames) {
+        currentSigmaIdx <- which(.ret$iniDf$name %in% currentSigma)
+        if (.ret$iniDf$lower[currentSigmaIdx] > 0) {
+          # Change the lower bound to zero
+          fmtBounds <- "c(0, 0)"
+        } else {
+          fmtBounds <- "0"
+        }
+        # It is an error when creating the model for the upper bound to be <0,
+        # so no upper bound test is performed.
+        if (fix) {
+          fmtSigma <- paste0("%s <- fix(", fmtBounds, ")")
+        } else {
+          fmtSigma <- paste0("%s <- c(", fmtBounds, ")")
+        }
+        iniCommand <- c(iniCommand, sprintf(fmtSigma, currentSigma))
+      }
+    }
+  }
+  if (length(iniCommand) > 0) {
+    envir <- parent.frame()
+    .iniLines <- .quoteCallInfoLines(iniCommand, envir = envir, iniDf = .ret$iniDf)
+    lapply(.iniLines, function(line) {
+      .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = NULL)
+    })
+    rxUiCompress(.ret)
+  }
+  .ret
+}

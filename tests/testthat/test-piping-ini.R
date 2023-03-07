@@ -316,3 +316,168 @@ test_that("ini tests for different types of expressions", {
   expect_error(mod %>% ini(factor("A")))
 
 })
+
+test_that("zeroRe", {
+  modOmegaSigma <- function() {
+    ini({
+      a <- 1; label("foo") #nolint
+      iiva ~ 3
+      addSd <- 2
+    })
+    model({
+      b <- a + iiva
+      b ~ add(addSd)
+    })
+  }
+  modOmega <- function() {
+    ini({
+      a <- 1; label("foo") # nolint
+      iiva ~ 3
+    })
+    model({
+      b <- a + iiva
+    })
+  }
+  modSigma <- function() {
+    ini({
+      a <- 1; label("foo") # nolint
+      addSd <- 2
+    })
+    model({
+      b <- a
+      b ~ add(addSd)
+    })
+  }
+  modSigmaBound <- function() {
+    ini({
+      a <- 1; label("foo") # nolint
+      addSd <- c(1, 2)
+    })
+    model({
+      b <- a
+      b ~ add(addSd)
+    })
+  }
+  modNone <- function() {
+    ini({
+      a <- 1; label("foo") # nolint
+    })
+    model({
+      b <- a
+    })
+  }
+  uiOmegaSigma <- rxode2(modOmegaSigma)
+  uiOmega <- rxode2(modOmega)
+  uiSigma <- rxode2(modSigma)
+  uiSigmaBound <- rxode2(modSigmaBound)
+  uiNone <- rxode2(modNone)
+
+  expect_silent(
+    suppressMessages(
+      newMod <- zeroRe(modOmegaSigma, which = c("omega", "sigma"))
+    )
+  )
+  expect_silent(
+    suppressMessages(
+      newUi <- zeroRe(uiOmegaSigma, which = c("omega", "sigma"))
+    )
+  )
+  expect_equal(newMod$iniDf, newUi$iniDf)
+  # detect change
+  expect_equal(uiOmegaSigma$iniDf$est, c(1, 2, 3))
+  expect_equal(newMod$iniDf$est, c(1, 0, 0))
+
+  # Confirm that you can simulate from the model
+  expect_equal(
+    rxSolve(newMod, events = data.frame(TIME = 0:2))$b,
+    rep(1, 3)
+  )
+
+  # Confirm that the `fix` flag is respected
+  expect_silent(
+    suppressMessages(
+      newUiNoFix <- zeroRe(uiOmegaSigma, which = c("omega", "sigma"), fix = FALSE)
+    )
+  )
+  # detect change
+  expect_equal(uiOmegaSigma$iniDf$fix, rep(FALSE, 3))
+  expect_equal(newUi$iniDf$fix, c(FALSE, TRUE, FALSE))
+  expect_equal(newUiNoFix$iniDf$fix, rep(FALSE, 3))
+
+  suppressMessages(
+    expect_warning(
+      newMod <- zeroRe(modOmega, which = c("omega", "sigma")),
+      regexp = "No sigma parameters in the model"
+    )
+  )
+  suppressMessages(
+    expect_warning(
+      newUi <- zeroRe(uiOmega, which = c("omega", "sigma")),
+      regexp = "No sigma parameters in the model"
+    )
+  )
+  expect_equal(newMod$iniDf, newUi$iniDf)
+  # detect change
+  expect_equal(uiOmega$iniDf$est, c(1, 3))
+  expect_equal(newMod$iniDf$est, c(1, 0))
+
+  suppressMessages(
+    expect_warning(
+      newMod <- zeroRe(modSigmaBound, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"
+    )
+  )
+  suppressMessages(
+    expect_warning(
+      newUi <- zeroRe(uiSigmaBound, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"
+    )
+  )
+  expect_equal(newMod$iniDf, newUi$iniDf)
+  # detect change
+  expect_equal(uiSigmaBound$iniDf$est, c(1, 2))
+  expect_equal(newMod$iniDf$est, c(1, 0))
+  # confirm lower bound change
+  expect_equal(uiSigmaBound$iniDf$lower, c(-Inf, 1))
+  expect_equal(newMod$iniDf$lower, c(-Inf, 0))
+
+  suppressMessages(
+    expect_warning(
+      newMod <- zeroRe(modSigma, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"
+    )
+  )
+  suppressMessages(
+    expect_warning(
+      newUi <- zeroRe(uiSigma, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"
+    )
+  )
+  expect_equal(newMod$iniDf, newUi$iniDf)
+  # detect change
+  expect_equal(uiSigma$iniDf$est, c(1, 2))
+  expect_equal(newMod$iniDf$est, c(1, 0))
+
+  suppressMessages(
+    expect_warning(expect_warning(
+      newMod <- zeroRe(modNone, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"),
+      regexp = "No sigma parameters in the model"
+    )
+  )
+  suppressMessages(
+    expect_warning(expect_warning(
+      newUi <- zeroRe(uiNone, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"),
+      regexp = "No sigma parameters in the model"
+    )
+  )
+  expect_equal(newMod$iniDf, newUi$iniDf)
+  # detect no change
+  expect_equal(uiNone$iniDf$est, 1)
+  expect_equal(newMod$iniDf$est, 1)
+
+  # expected errors
+  expect_error(zeroRe("A"), regexp = "'object' needs to be a rxUi model")
+  expect_error(zeroRe(modOmegaSigma, which = "foo"), regexp = "should be one of")
+})

@@ -239,9 +239,9 @@ Assignment statements can be:
 \itemize{
 \item \strong{simple} assignments, where the left hand is an identifier (i.e.,
 variable)
-\item special \strong{time-derivative} assignments, where the left hand
-specifies the change of the amount in the corresponding state
-variable (compartment) with respect to time e.g., \code{d/dt(depot)}:
+\item special \strong{time-derivative} assignments, where the left hand specifies
+the change of the amount in the corresponding state variable
+(compartment) with respect to time e.g., \code{d/dt(depot)}:
 \item special \strong{initial-condition} assignments where the left hand
 specifies the compartment of the initial condition being specified,
 e.g. \code{depot(0) = 0}
@@ -250,15 +250,15 @@ e.g. \code{depot(0) = 0}
 (\code{rate(depot)=2}) and \strong{modeled duration} (\code{dur(depot)=2}). An
 example of these model features and the event specification for the
 modeled infusions the rxode2 data specification is found in \href{https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html}{rxode2 events vignette}.
-\item special \strong{change point syntax, or model times}. These model times
-are specified by \code{mtime(var)=time}
+\item special \strong{change point syntax, or model times}. These model times are
+specified by \code{mtime(var)=time}
 \item special \strong{Jacobian-derivative} assignments, where the left hand
 specifies the change in the compartment ode with respect to a
 variable. For example, if \code{d/dt(y) = dy}, then a Jacobian for this
-compartment can be specified as \code{df(y)/dy(dy) = 1}. There may be
-some advantage to obtaining the solution or specifying the Jacobian
-for very stiff ODE systems. However, for the few stiff systems we
-tried with LSODA, this actually slightly slowed down the solving.
+compartment can be specified as \code{df(y)/dy(dy) = 1}. There may be some
+advantage to obtaining the solution or specifying the Jacobian for
+very stiff ODE systems. However, for the few stiff systems we tried
+with LSODA, this actually slightly slowed down the solving.
 }
 
 Note that assignment can be done by \code{=}, \verb{<-} or \code{~}.
@@ -274,9 +274,9 @@ add extra compartment names at the end (useful for multiple-endpoint
 nlmixr models); These are specified by \code{cmt(compartmentName)}
 \item \strong{Parameter declaration statements}, which can make sure the input
 parameters are in a certain order instead of ordering the parameters
-by the order they are parsed. This is useful for keeping the
-parameter order the same when using 2 different ODE models. These
-are specified by \code{param(par1, par2,...)}
+by the order they are parsed. This is useful for keeping the parameter
+order the same when using 2 different ODE models. These are specified
+by \code{param(par1, par2,...)}
 }
 
 An example model is shown below:
@@ -290,8 +290,9 @@ An example model is shown below:
 
 Expressions in assignment and \code{if} statements can be numeric or logical.
 
-Numeric expressions can include the following numeric operators \verb{+, -, *, /, ^} and those mathematical functions defined in the C or the R math
-libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
+Numeric expressions can include the following numeric operators
+\verb{+, -, *, /, ^} and those mathematical functions defined in the C or the
+R math libraries (e.g., \code{fabs}, \code{exp}, \code{log}, \code{sin}, \code{abs}).
 
 You may also access the R’s functions in the \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines}{R math libraries},
 like \code{lgammafn} for the log gamma function.
@@ -312,11 +313,9 @@ pharmacokinetics model).
 \code{podo} (oral dose, in the undocumented case of absorption transit
 models).
 \item Special constants like \code{pi} or \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Mathematical-constants}{R’s predefined constants}.
-\item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance,
-etc.)
-\item Others, as created by assignments as part of the model
-specification; these are referred as \emph{LHS} (left-hand side)
-variable.
+\item Model parameters (e.g., \code{ka} rate of absorption, \code{CL} clearance, etc.)
+\item Others, as created by assignments as part of the model specification;
+these are referred as \emph{LHS} (left-hand side) variable.
 }
 
 Currently, the \code{rxode2} modeling language only recognizes system state
