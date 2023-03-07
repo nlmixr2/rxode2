@@ -502,9 +502,5 @@ test_that("Piping outside the boundaries", {
     expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
     f2 <- m1 %>% ini(x3=c(0,3))
     expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
-
   })
-
-
-
 })
