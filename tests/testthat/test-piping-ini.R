@@ -320,7 +320,7 @@ test_that("ini tests for different types of expressions", {
 test_that("zeroRe", {
   modOmegaSigma <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1; label("foo") #nolint
       iiva ~ 3
       addSd <- 2
     })
@@ -331,7 +331,7 @@ test_that("zeroRe", {
   }
   modOmega <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1; label("foo") # nolint
       iiva ~ 3
     })
     model({
@@ -340,7 +340,7 @@ test_that("zeroRe", {
   }
   modSigma <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1; label("foo") # nolint
       addSd <- 2
     })
     model({
@@ -350,7 +350,7 @@ test_that("zeroRe", {
   }
   modSigmaBound <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1; label("foo") # nolint
       addSd <- c(1, 2)
     })
     model({
@@ -360,7 +360,7 @@ test_that("zeroRe", {
   }
   modNone <- function() {
     ini({
-      a <- 1; label("foo")
+      a <- 1; label("foo") # nolint
     })
     model({
       b <- a
