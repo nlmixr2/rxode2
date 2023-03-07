@@ -137,6 +137,8 @@
 <li><p>rxSolve’s keep argument will now maintain character and factor classes from input data with the same class (<a href="https://github.com/nlmixr2/rxode2/issues/190" class="external-link">#190</a>)</p></li>
 <li><p>Parameter labels may now be modified via <code>ini(param = label("text"))</code> (<a href="https://github.com/nlmixr2/rxode2/issues/351" class="external-link">#351</a>).</p></li>
 <li><p>Parameter order may be modified via the <code>append</code> argument to <code><a href="../reference/ini.html">ini()</a></code> when piping a model. For example, <code>ini(param = 1, append = 0)</code> or <code>ini(param = label("text"), append = "param2")</code> (<a href="https://github.com/nlmixr2/rxode2/issues/352" class="external-link">#352</a>).</p></li>
+<li><p>Fixed a bug for certain infusions where the <code>rate</code>, <code>ii</code> and/or <code>ss</code> data items were dropped from the output when <code>addDosing=TRUE</code></p></li>
+<li><p>Moved <code>rxDerived</code> to <code>rxode2parse</code> (and re-exported it here).</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.11" id="rxode2-2011">rxode2 2.0.11<a class="anchor" aria-label="anchor" href="#rxode2-2011"></a></h2><p class="text-muted">CRAN release: 2022-11-01</p>
