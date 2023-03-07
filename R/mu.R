@@ -850,11 +850,11 @@
       .est <- .iniDf$est[.err]
       .lower <- .iniDf$lower[.err]
       .name <- .iniDf$name[.err]
-      if (is.finite(.lower)) {
+      if (is.finite(.lower) && rxode2.verbose.pipe) {
         .minfo(paste0("'", .name, "' lower bound set to ", .lower))
       }
       .upper <- .iniDf$upper[.err]
-      if (is.finite(.upper)) {
+      if (is.finite(.upper) && rxode2.verbose.pipe) {
         .minfo(paste0("'", .name, "' upper bound set to ", .upper))
       }
       if (.range[1] > .est) {
