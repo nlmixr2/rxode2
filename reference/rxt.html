@@ -199,14 +199,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxt you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.3115433 -1.9145717 -2.8934241  0.7213931  0.9647932 -0.3234616</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.2048639  1.3528547  0.3305578 -2.9220582</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.1893479  1.4580008  3.7154672  1.1992919 -3.5324412 -0.4811547</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -0.6906182  4.4770987 -1.0187524 -0.3455260</span>
 <span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -3.5898342 -0.9457192  0.8579383 -0.1867083 -1.6107360  0.3491217</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.7158012 -1.2980333  2.1460412  0.6764014</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.93946997 -0.60579901 -0.66669621 -2.19142620 -0.72547985  0.09535398</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.64175511  0.75151129  0.72704836 -0.03547931</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span> <span class="co">## The first argument is the df parameter</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3523931</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3.383501</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxt` directly in the model</span></span></span>

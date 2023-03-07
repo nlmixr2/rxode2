@@ -138,6 +138,10 @@
 <li><p>rxSolve’s keep argument will now maintain character and factor classes from input data with the same class (<a href="https://github.com/nlmixr2/rxode2/issues/190" class="external-link">#190</a>)</p></li>
 <li><p>Parameter labels may now be modified via <code>ini(param = label("text"))</code> (<a href="https://github.com/nlmixr2/rxode2/issues/351" class="external-link">#351</a>).</p></li>
 <li><p>Parameter order may be modified via the <code>append</code> argument to <code><a href="../reference/ini.html">ini()</a></code> when piping a model. For example, <code>ini(param = 1, append = 0)</code> or <code>ini(param = label("text"), append = "param2")</code> (<a href="https://github.com/nlmixr2/rxode2/issues/352" class="external-link">#352</a>).</p></li>
+<li><p><code>rxode2</code> now supports <code>addl</code> with <code>ss</code> doses</p></li>
+<li><p>The internal translation (<code><a href="../reference/etTrans.html">etTrans()</a></code>) will not drop times when infusions stop. Before, if the infusion stopped after the last observation the time when the infusion stopped would be dropped. This interferes with <code>linCmt()</code> models.</p></li>
+<li><p>Breaking change/bug fix <code>evid=2</code> are considered observations when translating data to internal <code>rxode2</code> event structure</p></li>
+<li><p>Fix edge case to find infusion duration when it is the first item of the dosing record at time 0.</p></li>
 <li><p>Fixed a bug for certain infusions where the <code>rate</code>, <code>ii</code> and/or <code>ss</code> data items were dropped from the output when <code>addDosing=TRUE</code></p></li>
 <li><p>Moved <code>rxDerived</code> to <code>rxode2parse</code> (and re-exported it here).</p></li>
 </ul></div>
