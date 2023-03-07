@@ -850,13 +850,7 @@
       .est <- .iniDf$est[.err]
       .lower <- .iniDf$lower[.err]
       .name <- .iniDf$name[.err]
-      if (is.finite(.lower) && rxode2.verbose.pipe) {
-        .minfo(paste0("'", .name, "' lower bound set to ", .lower))
-      }
       .upper <- .iniDf$upper[.err]
-      if (is.finite(.upper) && rxode2.verbose.pipe) {
-        .minfo(paste0("'", .name, "' upper bound set to ", .upper))
-      }
       if (.range[1] > .est) {
         env$err <- c(env$err,
                      paste0("'", .name, "' estimate (", .est, ") needs to be above ", .range[1]))
@@ -866,13 +860,15 @@
                      paste0("'", .name, "' estimate (", .est, ") needs to be below ", .range[2]))
       }
       if (.lower < .range[1]) {
-        ## warning("'", .name, "' lower bound (", .lower, ") needs to be equal or above ", .range[1], "; adjusting",
-        ##         call.=FALSE)
+        if (rxode2.verbose.pipe) {
+          .minfo(paste0("'", .name, "' lower bound (", .lower, ") needs to be equal or above ", .range[1], "; adjusting"))
+        }
         .lower <- .range[1]
       }
       if (.upper > .range[2]) {
-        ## warning("'", .name, "' upper bound (", .upper, ") needs to be equal or below ", .range[2],"; adjusting",
-        ##         call.=FALSE)
+        if (rxode2.verbose.pipe) {
+          .minfo(paste0("'", .name, "' upper bound (", .upper, ") needs to be equal or below ", .range[2],"; adjusting"))
+        }
         .upper <- .range[2]
       }
       .iniDf$lower[.err] <- .lower
