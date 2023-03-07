@@ -74,13 +74,13 @@
       .minfo(paste0("change initial estimate of {.code ", ini$name[.w], "} to {.code ", ini$est[.w], "}"))
     }
     .lower <- ini$lower[.w]
-    if (.lower > rhs) {
+    if (.lower >= rhs) {
       .ini$lower[.w] <- -Inf
       if (rxode2.verbose.pipe) {
         .minfo(paste0("lower bound of  {.code ", ini$name[.w], "} reset to {.code -Inf}"))
       }
     }
-    if (.upper < rhs) {
+    if (.upper <= rhs) {
       .ini$upper[.w] <- Inf
       if (rxode2.verbose.pipe) {
         .minfo(paste0("upper bound of  {.code ", ini$name[.w], "} reset to {.code Inf}"))
@@ -98,7 +98,7 @@
       }
       # now check/change upper if needed
       .upper <- ini$upper[.w]
-      if (.upper < rhs[1] || .upper < rhs[2]) {
+      if (.upper <= rhs[1] || .upper <= rhs[2]) {
         .ini$upper[.w] <- Inf
         if (rxode2.verbose.pipe) {
           .minfo(paste0("upper bound for initial estimate (", ini$est[.w], ") reset to Inf"))
