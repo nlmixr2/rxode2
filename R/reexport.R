@@ -252,3 +252,7 @@ rxode2et::rxCbindStudyIndividual
 #' @importFrom rxode2et rxStack
 #' @export
 rxode2et::rxStack
+
+#' @importFrom rxode2parse rxDerived
+#' @export
+rxode2parse::rxDerived
