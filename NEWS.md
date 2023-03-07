@@ -44,6 +44,11 @@
 - Fix edge case to find infusion duration when it is the first item of
   the dosing record at time 0.
 
+- Fixed a bug for certain infusions where the `rate`, `ii` and/or `ss`
+  data items were dropped from the output when `addDosing=TRUE`
+
+- Moved `rxDerived` to `rxode2parse` (and re-exported it here).
+
 # rxode2 2.0.11
 
 - Give a more meaningful error for 'rxode2' ui models with only error expressions
