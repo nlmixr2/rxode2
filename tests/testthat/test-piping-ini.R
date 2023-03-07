@@ -481,3 +481,30 @@ test_that("zeroRe", {
   expect_error(zeroRe("A"), regexp = "'object' needs to be a rxUi model")
   expect_error(zeroRe(modOmegaSigma, which = "foo"), regexp = "should be one of")
 })
+
+
+test_that("Piping outside the boundaries", {
+
+  m1 <- function() {
+    ini({
+      x2 <- c(0, 1)
+      x3 <- c(0, 1, 2)
+    })
+    model({
+      f <- x2+x3*4
+    })
+  }
+
+  suppressMessages({
+    f2 <- m1 %>% ini(x2=-1)
+    expect_equal(f2$iniDf[f2$iniDf$name == "x2","lower"], -Inf)
+    f3 <- m1 %>% ini(x3=4)
+    expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
+    f2 <- m1 %>% ini(x3=c(0,3))
+    expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
+
+  })
+
+
+
+})
