@@ -336,6 +336,14 @@ extern "C" SEXP _rxode2_convertId_(SEXP id);
 #define convertId_ _rxode2_convertId_
 
 bool warnedNeg=false;
+bool evid2isObs=true;
+
+//[[Rcpp::export]]
+RObject etTransEvidIsObs(SEXP isObsSexp) {
+  evid2isObs=INTEGER(isObsSexp)[0];
+  return R_NilValue;
+}
+
 //' Event translation for rxode2
 //'
 //' @param inData Data frame to translate
@@ -356,9 +364,10 @@ bool warnedNeg=false;
 //'     this is determined by `option("rxode2.combine.dvid")` and if the option has not been set,
 //'     this is `TRUE`. This typically does not affect rxode2 simulations.
 //'
-//' @param keepF This is a named vector of items you want to keep in the final rxode2 dataset.
+//' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
 //'     For added rxode2 event records (if seen), last observation carried forward will be used.
 //'
+//' 
 //' @return Object for solving in rxode2
 //'
 //' @keywords internal
@@ -1047,7 +1056,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         if (mdvCol != -1 && inMdv[i] == 1){
           cevid=2;
         }
-        if (std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+        if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
+            std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
           obsId.push_back(cid);
         }
       } else {
@@ -1086,7 +1096,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cevid=2;
         }
       }
-      if (std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+      if ((cevid == 0 || (cevid == 2 && evid2isObs)) &&
+          std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
         obsId.push_back(cid);
       }
       if (caddl > 0){
@@ -1224,7 +1235,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       break;
     case 2:
       cevid = 2;
-      if (std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
+      if ((cevid == 0 || (cevid == 2 && evid2isObs)) && std::find(obsId.begin(), obsId.end(), cid) == obsId.end()){
         obsId.push_back(cid);
       }
       if (flg == 30){

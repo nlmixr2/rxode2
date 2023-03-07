@@ -1,14 +1,16 @@
 rxTest({ # mostly tested in 'rxode2et'
 
+  .Call(`_rxode2_etTransEvidIsObs`, FALSE)
   for (radi in 1:2) {
+
     rxode2et::forderForceBase(switch(radi,
                                      TRUE,
-                                     FALSE
-    ))
+                                     FALSE))
+
     radix <- switch(radi,
                     "base::order",
-                    "data.table::forder"
-    )
+                    "data.table::forder")
+
     # context(sprintf("etTrans checks (radix: %s)", radix))
     rxSetIni0(FALSE)
 
@@ -24,6 +26,7 @@ d/dt(blood)     = a*intestine - b*blood
       dose = 2 / 24, rate = 2, start.time = 0,
       nbr.doses = 10, dosing.interval = 1
     )
+
     et <- et %>%
       et(0.05, evid = 2) %>%
       et(amt = 3, time = 0.5, cmt = out) %>%
@@ -751,6 +754,8 @@ d/dt(blood)     = a*intestine - b*blood
 
     })
   }
+
+  .Call(`_rxode2_etTransEvidIsObs`, TRUE)
 
   test_that("test etTran on addl ss items", {
 

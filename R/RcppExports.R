@@ -33,6 +33,10 @@ rxSetIni0 <- function(ini0 = TRUE) {
     .Call(`_rxode2_rxSetIni0`, ini0)
 }
 
+etTransEvidIsObs <- function(isObsSexp) {
+    .Call(`_rxode2_etTransEvidIsObs`, isObsSexp)
+}
+
 #' Event translation for rxode2
 #'
 #' @param inData Data frame to translate
@@ -53,9 +57,10 @@ rxSetIni0 <- function(ini0 = TRUE) {
 #'     this is determined by `option("rxode2.combine.dvid")` and if the option has not been set,
 #'     this is `TRUE`. This typically does not affect rxode2 simulations.
 #'
-#' @param keepF This is a named vector of items you want to keep in the final rxode2 dataset.
+#' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
 #'     For added rxode2 event records (if seen), last observation carried forward will be used.
 #'
+#' 
 #' @return Object for solving in rxode2
 #'
 #' @keywords internal

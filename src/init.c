@@ -356,10 +356,12 @@ extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
 SEXP _rxode2_getEtRxsolve(SEXP e);
 extern SEXP chin(SEXP x, SEXP table);
+extern SEXP _rxode2_etTransEvidIsObs(SEXP);
 
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},

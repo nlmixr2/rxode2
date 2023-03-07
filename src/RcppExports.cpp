@@ -37,6 +37,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// etTransEvidIsObs
+RObject etTransEvidIsObs(SEXP isObsSexp);
+RcppExport SEXP _rxode2_etTransEvidIsObs(SEXP isObsSexpSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type isObsSexp(isObsSexpSEXP);
+    rcpp_result_gen = Rcpp::wrap(etTransEvidIsObs(isObsSexp));
+    return rcpp_result_gen;
+END_RCPP
+}
 // etTrans
 List etTrans(List inData, const RObject& obj, bool addCmt, bool dropUnits, bool allTimeVar, bool keepDosingOnly, Nullable<LogicalVector> combineDvid, CharacterVector keep);
 RcppExport SEXP _rxode2_etTrans(SEXP inDataSEXP, SEXP objSEXP, SEXP addCmtSEXP, SEXP dropUnitsSEXP, SEXP allTimeVarSEXP, SEXP keepDosingOnlySEXP, SEXP combineDvidSEXP, SEXP keepSEXP) {
