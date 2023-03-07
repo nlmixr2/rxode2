@@ -1,5 +1,8 @@
 # rxode2 (development version)
 
+- If lower/upper bounds are outside the required bounds, the
+  adjustment is displayed.
+
 - A new function `zeroRe()` allows simple setting of omega and/or sigma values
   to zero for a model (#456)
 
