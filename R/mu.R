@@ -849,8 +849,14 @@
       .range <- .errDistArgRanges[[.curErr]]
       .est <- .iniDf$est[.err]
       .lower <- .iniDf$lower[.err]
-      .upper <- .iniDf$upper[.err]
       .name <- .iniDf$name[.err]
+      if (is.finite(.lower)) {
+        .minfo(paste0("'", .name, "' lower bound set to ", .lower))
+      }
+      .upper <- .iniDf$upper[.err]
+      if (is.finite(.upper)) {
+        .minfo(paste0("'", .name, "' upper bound set to ", .upper))
+      }
       if (.range[1] > .est) {
         env$err <- c(env$err,
                      paste0("'", .name, "' estimate (", .est, ") needs to be above ", .range[1]))
