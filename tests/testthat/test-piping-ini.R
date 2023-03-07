@@ -498,8 +498,12 @@ test_that("Piping outside the boundaries", {
   suppressMessages({
     f2 <- m1 %>% ini(x2=-1)
     expect_equal(f2$iniDf[f2$iniDf$name == "x2","lower"], -Inf)
-    f3 <- m1 %>% ini(x3=4)
+  })
+  suppressMessages({
+    f2 <- m1 %>% ini(x3=4)
     expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
+  })
+  suppressMessages({
     f2 <- m1 %>% ini(x3=c(0,3))
     expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
   })

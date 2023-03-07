@@ -102,7 +102,7 @@
       if (.upper <= rhs[1] || .upper <= rhs[2]) {
         ini$upper[.w] <- Inf
         if (rxode2.verbose.pipe) {
-          .minfo(paste0("upper bound for initial estimate (", ini$est[.w], ") reset to Inf"))
+          .minfo(paste0("upper bound for initial estimate (", ini$name[.w], ") reset to Inf"))
         }
       }
     } else if (length(rhs) == 3) {
