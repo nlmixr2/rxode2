@@ -348,6 +348,16 @@ test_that("zeroRe", {
       b ~ add(addSd)
     })
   }
+  modSigmaBound <- function() {
+    ini({
+      a <- 1; label("foo")
+      addSd <- c(1, 2)
+    })
+    model({
+      b <- a
+      b ~ add(addSd)
+    })
+  }
   modNone <- function() {
     ini({
       a <- 1; label("foo")
@@ -359,6 +369,7 @@ test_that("zeroRe", {
   uiOmegaSigma <- rxode2(modOmegaSigma)
   uiOmega <- rxode2(modOmega)
   uiSigma <- rxode2(modSigma)
+  uiSigmaBound <- rxode2(modSigmaBound)
   uiNone <- rxode2(modNone)
 
   expect_silent(
@@ -376,6 +387,23 @@ test_that("zeroRe", {
   expect_equal(uiOmegaSigma$iniDf$est, c(1, 2, 3))
   expect_equal(newMod$iniDf$est, c(1, 0, 0))
 
+  # Confirm that you can simulate from the model
+  expect_equal(
+    rxSolve(newMod, events = data.frame(TIME = 0:2))$b,
+    rep(1, 3)
+  )
+
+  # Confirm that the `fix` flag is respected
+  expect_silent(
+    suppressMessages(
+      newUiNoFix <- zeroRe(uiOmegaSigma, which = c("omega", "sigma"), fix = FALSE)
+    )
+  )
+  # detect change
+  expect_equal(uiOmegaSigma$iniDf$fix, rep(FALSE, 3))
+  expect_equal(newUi$iniDf$fix, c(FALSE, TRUE, FALSE))
+  expect_equal(newUiNoFix$iniDf$fix, rep(FALSE, 3))
+
   suppressMessages(
     expect_warning(
       newMod <- zeroRe(modOmega, which = c("omega", "sigma")),
@@ -392,6 +420,26 @@ test_that("zeroRe", {
   # detect change
   expect_equal(uiOmega$iniDf$est, c(1, 3))
   expect_equal(newMod$iniDf$est, c(1, 0))
+
+  suppressMessages(
+    expect_warning(
+      newMod <- zeroRe(modSigmaBound, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"
+    )
+  )
+  suppressMessages(
+    expect_warning(
+      newUi <- zeroRe(uiSigmaBound, which = c("omega", "sigma")),
+      regexp = "No omega parameters in the model"
+    )
+  )
+  expect_equal(newMod$iniDf, newUi$iniDf)
+  # detect change
+  expect_equal(uiSigmaBound$iniDf$est, c(1, 2))
+  expect_equal(newMod$iniDf$est, c(1, 0))
+  # confirm lower bound change
+  expect_equal(uiSigmaBound$iniDf$lower, c(-Inf, 1))
+  expect_equal(newMod$iniDf$lower, c(-Inf, 0))
 
   suppressMessages(
     expect_warning(

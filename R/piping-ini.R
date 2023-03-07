@@ -554,8 +554,10 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
 #'
 #' @param object The model to modify
 #' @param which The types of parameters to set to zero
+#' @param fix Should the parameters be fixed to the zero value?
 #' @return The `object` with some parameters set to zero
 #' @family Initial conditions
+#' @author Bill Denney
 #' @examples
 #' one.compartment <- function() {
 #'   ini({
@@ -579,18 +581,23 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
 #' }
 #' zeroRe(one.compartment)
 #' @export
-zeroRe <- function(object, which = c("omega", "sigma")) {
+zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   object <- assertRxUi(object)
   which <- match.arg(which, several.ok = TRUE)
   .ret <- rxUiDecompress(.copyUi(object)) # copy so (as expected) old UI isn't affected by the call
   iniCommand <- character()
   # In the code below there is no test for bounds since the bounds are typically (0, Inf).
   if ("omega" %in% which) {
+    if (fix) {
+      fmtOmega <- "%s ~ fix(0)"
+    } else {
+      fmtOmega <- "%s ~ 0"
+    }
     omegaNames <- .ret$iniDf$name[!is.na(.ret$iniDf$neta1)]
     if (length(omegaNames) == 0) {
       cli::cli_warn("No omega parameters in the model")
     } else {
-      iniCommand <- c(iniCommand, paste0(omegaNames, "~0"))
+      iniCommand <- c(iniCommand, sprintf(fmtOmega, omegaNames))
     }
   }
   if ("sigma" %in% which) {
@@ -598,7 +605,23 @@ zeroRe <- function(object, which = c("omega", "sigma")) {
     if (length(sigmaNames) == 0) {
       cli::cli_warn("No sigma parameters in the model")
     } else {
-      iniCommand <- c(iniCommand, paste0(sigmaNames, "<-0"))
+      for (currentSigma in sigmaNames) {
+        currentSigmaIdx <- which(.ret$iniDf$name %in% currentSigma)
+        if (.ret$iniDf$lower[currentSigmaIdx] > 0) {
+          # Change the lower bound to zero
+          fmtBounds <- "c(0, 0)"
+        } else {
+          fmtBounds <- "0"
+        }
+        # It is an error when creating the model for the upper bound to be <0,
+        # so no upper bound test is performed.
+        if (fix) {
+          fmtSigma <- paste0("%s <- fix(", fmtBounds, ")")
+        } else {
+          fmtSigma <- paste0("%s <- c(", fmtBounds, ")")
+        }
+        iniCommand <- c(iniCommand, sprintf(fmtSigma, currentSigma))
+      }
     }
   }
   if (length(iniCommand) > 0) {
