@@ -134,6 +134,14 @@ d/dt(depot) = transit(n, mtt)-ka*depot
 d/dt(cen) = ka*depot-k*cen
 ")
 
+  # test dosing to central compartment
+  etC <- eventTable()
+  etC$add.sampling(seq(0, 10, length.out = 200))
+  etC$add.dosing(20, start.time = 0, evid=1, cmt="cen")
+
+  tmp <- rxSolve(mod, etC)
+  expect_false(any(is.na(etC$cen)))
+
   test_that("Transit absorption is function that can take 2 arguments", {
     transit2 <- rxSolve(mod, et)
     expect_equal(
