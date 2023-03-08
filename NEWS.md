@@ -1,5 +1,8 @@
 # rxode2 (development version)
 
+- If lower/upper bounds are outside the required bounds, the
+  adjustment is displayed.
+
 - When initial values are piped that break the model's boundary
   condition reset the boundary to unbounded and message which boundary
   was reset.
