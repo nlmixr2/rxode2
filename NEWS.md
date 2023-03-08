@@ -59,6 +59,9 @@
 
 - Moved `rxDerived` to `rxode2parse` (and re-exported it here).
 
+- Added test for transit compartment solving in absence of dosing to the
+  transit compartment (fixed in `rxode2parse` but solving tested
+  here).
 
 # rxode2 2.0.11
 
