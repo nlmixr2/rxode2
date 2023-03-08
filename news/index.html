@@ -129,7 +129,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
-<ul><li><p>When initial values are piped that break the model’s boundary condition reset the boundary to unbounded and message which boundary was reset.</p></li>
+<ul><li><p>If lower/upper bounds are outside the required bounds, the adjustment is displayed.</p></li>
+<li><p>When initial values are piped that break the model’s boundary condition reset the boundary to unbounded and message which boundary was reset.</p></li>
 <li><p>A new function <code><a href="../reference/zeroRe.html">zeroRe()</a></code> allows simple setting of omega and/or sigma values to zero for a model (<a href="https://github.com/nlmixr2/rxode2/issues/456" class="external-link">#456</a>)</p></li>
 <li><p>Diagonal zeros in the <code>omega</code> and <code>sigma</code> matrices are treated as zeros in the model. The corresponding <code>omega</code> and <code>sigma</code> matrices drop columns/rows where the diagonals are zero to create a new <code>omega</code> and <code>sigma</code> matrix for simulation. This is the same idiom that NONMEM uses for simulation from these matrices.</p></li>
 <li><p>Added <code><a href="../reference/as.rxUi.html">as.rxUi()</a></code> function to convert the following objects to <code>rxUi</code> objects: <code>rxode2</code>, <code>rxModelVars</code>, <code>function</code>. Converting nlmixr2 fits to <code>rxUi</code> will be placed in the <code>s3</code> method in the corresponding package.</p></li>
