@@ -1,117 +1,117 @@
-#define _getRxSolve_ _rxmod1_9264fb129b3889a84bd7865e2df0beab0
-#define _solveData _rxmod1_9264fb129b3889a84bd7865e2df0beab1
-#define _assign_ptr _rxmod1_9264fb129b3889a84bd7865e2df0beab2
-#define _rxRmModelLib _rxmod1_9264fb129b3889a84bd7865e2df0beab3
-#define _rxGetModelLib _rxmod1_9264fb129b3889a84bd7865e2df0beab4
-#define _old_c _rxmod1_9264fb129b3889a84bd7865e2df0beab5
-#define _ptrid _rxmod1_9264fb129b3889a84bd7865e2df0beab6
-#define _rxIsCurrentC _rxmod1_9264fb129b3889a84bd7865e2df0beab7
-#define _sumPS _rxmod1_9264fb129b3889a84bd7865e2df0beab8
-#define _prodPS _rxmod1_9264fb129b3889a84bd7865e2df0beab9
-#define _prodType _rxmod1_9264fb129b3889a84bd7865e2df0beab10
-#define _sumType _rxmod1_9264fb129b3889a84bd7865e2df0beab11
-#define _update_par_ptr _rxmod1_9264fb129b3889a84bd7865e2df0beab12
-#define _getParCov _rxmod1_9264fb129b3889a84bd7865e2df0beab13
-#define _rxode2_rxAssignPtr _rxmod1_9264fb129b3889a84bd7865e2df0beab14
-#define _rxQr _rxmod1_9264fb129b3889a84bd7865e2df0beab15
-#define _compareFactorVal _rxmod1_9264fb129b3889a84bd7865e2df0beab16
-#define _sum _rxmod1_9264fb129b3889a84bd7865e2df0beab17
-#define _sign _rxmod1_9264fb129b3889a84bd7865e2df0beab18
-#define _prod _rxmod1_9264fb129b3889a84bd7865e2df0beab19
-#define _max _rxmod1_9264fb129b3889a84bd7865e2df0beab20
-#define _min _rxmod1_9264fb129b3889a84bd7865e2df0beab21
-#define _transit4P _rxmod1_9264fb129b3889a84bd7865e2df0beab22
-#define _transit3P _rxmod1_9264fb129b3889a84bd7865e2df0beab23
-#define _assignFuns0 _rxmod1_9264fb129b3889a84bd7865e2df0beab24
-#define _assignFuns _rxmod1_9264fb129b3889a84bd7865e2df0beab25
-#define _rxord _rxmod1_9264fb129b3889a84bd7865e2df0beab26
-#define __assignFuns2 _rxmod1_9264fb129b3889a84bd7865e2df0beab27
-#define _llikCauchyDscale _rxmod1_9264fb129b3889a84bd7865e2df0beab28
-#define _llikCauchyDlocation _rxmod1_9264fb129b3889a84bd7865e2df0beab29
-#define _llikCauchy _rxmod1_9264fb129b3889a84bd7865e2df0beab30
-#define _llikGammaDrate _rxmod1_9264fb129b3889a84bd7865e2df0beab31
-#define _llikGammaDshape _rxmod1_9264fb129b3889a84bd7865e2df0beab32
-#define _llikGamma _rxmod1_9264fb129b3889a84bd7865e2df0beab33
-#define _llikWeibullDscale _rxmod1_9264fb129b3889a84bd7865e2df0beab34
-#define _llikWeibullDshape _rxmod1_9264fb129b3889a84bd7865e2df0beab35
-#define _llikWeibull _rxmod1_9264fb129b3889a84bd7865e2df0beab36
-#define _llikUnifDbeta _rxmod1_9264fb129b3889a84bd7865e2df0beab37
-#define _llikUnifDalpha _rxmod1_9264fb129b3889a84bd7865e2df0beab38
-#define _llikUnif _rxmod1_9264fb129b3889a84bd7865e2df0beab39
-#define _llikGeomDp _rxmod1_9264fb129b3889a84bd7865e2df0beab40
-#define _llikGeom _rxmod1_9264fb129b3889a84bd7865e2df0beab41
-#define _llikFDdf2 _rxmod1_9264fb129b3889a84bd7865e2df0beab42
-#define _llikFDdf1 _rxmod1_9264fb129b3889a84bd7865e2df0beab43
-#define _llikF _rxmod1_9264fb129b3889a84bd7865e2df0beab44
-#define _llikExpDrate _rxmod1_9264fb129b3889a84bd7865e2df0beab45
-#define _llikExp _rxmod1_9264fb129b3889a84bd7865e2df0beab46
-#define _llikChisqDdf _rxmod1_9264fb129b3889a84bd7865e2df0beab47
-#define _llikChisq _rxmod1_9264fb129b3889a84bd7865e2df0beab48
-#define _llikTDsd _rxmod1_9264fb129b3889a84bd7865e2df0beab49
-#define _llikTDmean _rxmod1_9264fb129b3889a84bd7865e2df0beab50
-#define _llikTDdf _rxmod1_9264fb129b3889a84bd7865e2df0beab51
-#define _llikT _rxmod1_9264fb129b3889a84bd7865e2df0beab52
-#define _llikBetaDshape2 _rxmod1_9264fb129b3889a84bd7865e2df0beab53
-#define _llikBetaDshape1 _rxmod1_9264fb129b3889a84bd7865e2df0beab54
-#define _llikBeta _rxmod1_9264fb129b3889a84bd7865e2df0beab55
-#define _llikNbinomMuDmu _rxmod1_9264fb129b3889a84bd7865e2df0beab56
-#define _llikNbinomMu _rxmod1_9264fb129b3889a84bd7865e2df0beab57
-#define _llikNbinomDprob _rxmod1_9264fb129b3889a84bd7865e2df0beab58
-#define _llikNbinom _rxmod1_9264fb129b3889a84bd7865e2df0beab59
-#define _llikBinomDprob _rxmod1_9264fb129b3889a84bd7865e2df0beab60
-#define _llikBinom _rxmod1_9264fb129b3889a84bd7865e2df0beab61
-#define _llikPoisDlambda _rxmod1_9264fb129b3889a84bd7865e2df0beab62
-#define _llikPois _rxmod1_9264fb129b3889a84bd7865e2df0beab63
-#define _llikNormDsd _rxmod1_9264fb129b3889a84bd7865e2df0beab64
-#define _llikNormDmean _rxmod1_9264fb129b3889a84bd7865e2df0beab65
-#define _llikNorm _rxmod1_9264fb129b3889a84bd7865e2df0beab66
-#define simeps _rxmod1_9264fb129b3889a84bd7865e2df0beab67
-#define simeta _rxmod1_9264fb129b3889a84bd7865e2df0beab68
-#define expit _rxmod1_9264fb129b3889a84bd7865e2df0beab69
-#define logit _rxmod1_9264fb129b3889a84bd7865e2df0beab70
-#define gammapDer _rxmod1_9264fb129b3889a84bd7865e2df0beab71
-#define lowergamma _rxmod1_9264fb129b3889a84bd7865e2df0beab72
-#define uppergamma _rxmod1_9264fb129b3889a84bd7865e2df0beab73
-#define gammaqInva _rxmod1_9264fb129b3889a84bd7865e2df0beab74
-#define gammaqInv _rxmod1_9264fb129b3889a84bd7865e2df0beab75
-#define gammapInva _rxmod1_9264fb129b3889a84bd7865e2df0beab76
-#define gammapInv _rxmod1_9264fb129b3889a84bd7865e2df0beab77
-#define gammaq _rxmod1_9264fb129b3889a84bd7865e2df0beab78
-#define gammap _rxmod1_9264fb129b3889a84bd7865e2df0beab79
-#define phi _rxmod1_9264fb129b3889a84bd7865e2df0beab80
-#define riweibull _rxmod1_9264fb129b3889a84bd7865e2df0beab81
-#define riunif _rxmod1_9264fb129b3889a84bd7865e2df0beab82
-#define rit_ _rxmod1_9264fb129b3889a84bd7865e2df0beab83
-#define ripois _rxmod1_9264fb129b3889a84bd7865e2df0beab84
-#define ribeta _rxmod1_9264fb129b3889a84bd7865e2df0beab85
-#define rigamma _rxmod1_9264fb129b3889a84bd7865e2df0beab86
-#define rigeom _rxmod1_9264fb129b3889a84bd7865e2df0beab87
-#define rif _rxmod1_9264fb129b3889a84bd7865e2df0beab88
-#define riexp _rxmod1_9264fb129b3889a84bd7865e2df0beab89
-#define richisq _rxmod1_9264fb129b3889a84bd7865e2df0beab90
-#define ricauchy _rxmod1_9264fb129b3889a84bd7865e2df0beab91
-#define rinbinomMu _rxmod1_9264fb129b3889a84bd7865e2df0beab92
-#define rinbinom _rxmod1_9264fb129b3889a84bd7865e2df0beab93
-#define ribinom _rxmod1_9264fb129b3889a84bd7865e2df0beab94
-#define rinorm _rxmod1_9264fb129b3889a84bd7865e2df0beab95
-#define rxweibull _rxmod1_9264fb129b3889a84bd7865e2df0beab96
-#define rxunif _rxmod1_9264fb129b3889a84bd7865e2df0beab97
-#define rxt_ _rxmod1_9264fb129b3889a84bd7865e2df0beab98
-#define rxpois _rxmod1_9264fb129b3889a84bd7865e2df0beab99
-#define rxbeta _rxmod1_9264fb129b3889a84bd7865e2df0beab100
-#define rxgamma _rxmod1_9264fb129b3889a84bd7865e2df0beab101
-#define rxgeom _rxmod1_9264fb129b3889a84bd7865e2df0beab102
-#define rxf _rxmod1_9264fb129b3889a84bd7865e2df0beab103
-#define rxexp _rxmod1_9264fb129b3889a84bd7865e2df0beab104
-#define rxchisq _rxmod1_9264fb129b3889a84bd7865e2df0beab105
-#define rxcauchy _rxmod1_9264fb129b3889a84bd7865e2df0beab106
-#define rxnbinomMu _rxmod1_9264fb129b3889a84bd7865e2df0beab107
-#define rxnbinom _rxmod1_9264fb129b3889a84bd7865e2df0beab108
-#define rxbinom _rxmod1_9264fb129b3889a84bd7865e2df0beab109
-#define rxnorm _rxmod1_9264fb129b3889a84bd7865e2df0beab110
-#define linCmtC _rxmod1_9264fb129b3889a84bd7865e2df0beab111
-#define linCmtB _rxmod1_9264fb129b3889a84bd7865e2df0beab112
-#define linCmtA _rxmod1_9264fb129b3889a84bd7865e2df0beab113
+#define _getRxSolve_ _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b0
+#define _solveData _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b1
+#define _assign_ptr _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b2
+#define _rxRmModelLib _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b3
+#define _rxGetModelLib _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b4
+#define _old_c _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b5
+#define _ptrid _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b6
+#define _rxIsCurrentC _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b7
+#define _sumPS _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b8
+#define _prodPS _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b9
+#define _prodType _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b10
+#define _sumType _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b11
+#define _update_par_ptr _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b12
+#define _getParCov _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b13
+#define _rxode2_rxAssignPtr _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b14
+#define _rxQr _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b15
+#define _compareFactorVal _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b16
+#define _sum _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b17
+#define _sign _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b18
+#define _prod _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b19
+#define _max _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b20
+#define _min _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b21
+#define _transit4P _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b22
+#define _transit3P _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b23
+#define _assignFuns0 _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b24
+#define _assignFuns _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b25
+#define _rxord _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b26
+#define __assignFuns2 _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b27
+#define _llikCauchyDscale _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b28
+#define _llikCauchyDlocation _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b29
+#define _llikCauchy _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b30
+#define _llikGammaDrate _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b31
+#define _llikGammaDshape _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b32
+#define _llikGamma _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b33
+#define _llikWeibullDscale _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b34
+#define _llikWeibullDshape _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b35
+#define _llikWeibull _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b36
+#define _llikUnifDbeta _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b37
+#define _llikUnifDalpha _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b38
+#define _llikUnif _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b39
+#define _llikGeomDp _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b40
+#define _llikGeom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b41
+#define _llikFDdf2 _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b42
+#define _llikFDdf1 _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b43
+#define _llikF _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b44
+#define _llikExpDrate _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b45
+#define _llikExp _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b46
+#define _llikChisqDdf _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b47
+#define _llikChisq _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b48
+#define _llikTDsd _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b49
+#define _llikTDmean _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b50
+#define _llikTDdf _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b51
+#define _llikT _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b52
+#define _llikBetaDshape2 _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b53
+#define _llikBetaDshape1 _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b54
+#define _llikBeta _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b55
+#define _llikNbinomMuDmu _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b56
+#define _llikNbinomMu _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b57
+#define _llikNbinomDprob _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b58
+#define _llikNbinom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b59
+#define _llikBinomDprob _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b60
+#define _llikBinom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b61
+#define _llikPoisDlambda _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b62
+#define _llikPois _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b63
+#define _llikNormDsd _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b64
+#define _llikNormDmean _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b65
+#define _llikNorm _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b66
+#define simeps _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b67
+#define simeta _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b68
+#define expit _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b69
+#define logit _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b70
+#define gammapDer _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b71
+#define lowergamma _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b72
+#define uppergamma _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b73
+#define gammaqInva _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b74
+#define gammaqInv _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b75
+#define gammapInva _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b76
+#define gammapInv _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b77
+#define gammaq _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b78
+#define gammap _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b79
+#define phi _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b80
+#define riweibull _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b81
+#define riunif _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b82
+#define rit_ _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b83
+#define ripois _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b84
+#define ribeta _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b85
+#define rigamma _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b86
+#define rigeom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b87
+#define rif _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b88
+#define riexp _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b89
+#define richisq _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b90
+#define ricauchy _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b91
+#define rinbinomMu _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b92
+#define rinbinom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b93
+#define ribinom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b94
+#define rinorm _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b95
+#define rxweibull _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b96
+#define rxunif _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b97
+#define rxt_ _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b98
+#define rxpois _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b99
+#define rxbeta _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b100
+#define rxgamma _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b101
+#define rxgeom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b102
+#define rxf _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b103
+#define rxexp _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b104
+#define rxchisq _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b105
+#define rxcauchy _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b106
+#define rxnbinomMu _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b107
+#define rxnbinom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b108
+#define rxbinom _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b109
+#define rxnorm _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b110
+#define linCmtC _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b111
+#define linCmtB _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b112
+#define linCmtA _rxmod1_84fc2c8925fd0c38265efa3b89d97d9b113
 #include <rxode2_model_shared.h>
 #define __MAX_PROD__ 0
 #define _CMT CMT
@@ -317,9 +317,11 @@ double _transit4P(int cmt, double t, unsigned int id, double n, double mtt, doub
   double ktr = (nd+1)/mtt;
   double lktr = _safe_log(nd+1)-_safe_log(mtt);
   double tlast = _solveData->subjects[id].tlastS[cmt];
+  double dose = _solveData->subjects[id].curDoseS[cmt];
+  if (ISNA(dose)) dose = 0.0;
   if (ISNA(tlast)) tlast = 0.0;
   double tad = (t-tlast);
-  return exp(_safe_log(bio*(_solveData->subjects[id].curDoseS[cmt]))+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
+  return exp(_safe_log(bio*dose)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
   double nd = (double) n;
@@ -329,6 +331,7 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
   if (ISNA(tlast)) tlast = 0.0;
   double tad = t-tlast;
   double podo = _solveData->subjects[id].curDoseS[cmt];
+  if (ISNA(podo)) podo = 0.0;
   return exp(_safe_log(podo)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 void _assignFuns0(void) {
@@ -668,9 +671,9 @@ extern SEXP mod1__model_vars(void){
   SEXP _mv = PROTECT(_rxGetModelLib("mod1__model_vars"));pro++;
   if (!_rxIsCurrentC(_mv)){
     SEXP hash    = PROTECT(allocVector(STRSXP, 1));pro++;
-#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA@QzAAAv7#aT),Xy6MA~/wagtVwYBxt<`BAuWx#xB`4SBBAd=blL*Kwy+HDC1`McQ5l*%%#~cI2=mmYrj}qP6^F7vuIYZ^C!\?X(lEHx(RA(A~nbw:ao)>4M^nw`U];5g&X=h*o\"({^_<_48=\?~kt<mc~X/j|G|VBBl\"vXW$p#`+,|>s9(v,VU.DX79G\?dy#Vo<>(Ls3j}Z8XrF^kU!i)Pz;r}@ju*=k}$6`FH|MH~nHYoyaj4n;y*XFUR^uCyw1[nra\"R+>.w/QZ2d/LhVmb>IUEy.n78!nfC<6EWv9YQiPvv)*H`Ql3C%%\"5yc&X*]{E1WL,>j/wYM2NE3#f3a+U+/3z&Q:*\?pNMw+a5<M|%%l\?x/9%%NtTwceU^^$aL.qz/|\?e\"[`J5Z@44Gx>5:aEoy%%4L^X[;;WlDPDJHV1jD$5[Mz6%%hWO@=5F==@8y\"\"#\?6|Z1P~IUJ#I5A;L9<{E\"k0pF|Fu;:=O<N|dPIJ9D^<V\?x1g1<La7e>$=cPpE;/Q$e0C=N,:y_Z9:8^DKmGuLCYx8kDXPoxtq%%z92u}}kjqb0}nq9BY^5<Nb`i##h6sNE9Iz+dTl+\?n}KTUJ+rz4L|N5}Z#Hje>U9EniwXl_krp%%uZ5*n]VoVcvL/0f(q0:rq)dYf,1gTkA($up0()p_g=yIBE!>!{U*G\"ELCrJ1Hl%%b9[E=m.BWRS)u=crnz>[vECVe.;&3R,2cWM@3oH4*9:0QCxNI&1TSW1c@Y3vU\?[$>)zx|QfV%%BV\"QxEv1=gycmP<Y7*tx#c5XFa<dFSPDx1^d,KtB<c^68yLb,O^is)A$vTXUB\?z8R<./2@7A^|+E{UA2`xA}Ry#c>{M:I6%%Vtc@=5&2}gl#J[9([tXG:w8cG,:({%%K>KZW(#xvCgIj)>pIH7%%zcet8y)V*YcsE%%z!yh@(9v=bB%%3;@:3`e>B|rU3B5kI\"[]i}[AAn0.0DD#v}%%_[%%J!z*\?\?DrNkN`xYSQ:\?wHL~i4Pt/Y4h0eUd::tJw0uDN#R0#IT]t!E>+y0>");
-    char buf[1057];
-#define __doBufN__ 1057
+#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAA@QzAAAv7#aT),Xy6MA~/x,ftVwYBaiiqdLBtHjm+>){(oBP!3:UwTGIzhwG1^yJyhW6B{4!nsgDISj[WAN}<#`bbEM6pBfN/Y${C}YDHx(i$91=BDmz!~t7It!i3n{gu]:n$Dt\?ao,CT>fkuR/4^anOJ7l@KQ\"${51EShkVWLU5rDIn/&v9Ixv}]T/55h_4{qnZ2l<\"ckyiu\?1z8HR$M|K)qy3nT4~tOG^Bh,BT>w/L@~;Jnuc|NdNl3*WpL@Q@Kpn<XA[6125BT|C\?z{(qNEt~+M39E0I`^{0x)n*pN})Wu&\"hL.U_nfUS5pvN;]J.yU0b8tH1YPbrV!R>0xpPdKNqhUa=.;tF5SP9M)3ax)Zp0KB0Zx73jY*0L<P@ZT2xCC*tNNY.F\"$OOSY3K^5kFwWjthE.06yt5]!#ZKK@Oukn~hk[;P\"}<}cyIf(H95hCOU\?@kYMuCC\"$kCK}c48I_\?@;bn7f3pd9gg$K!R\"}0P%%V#Apb9%%nNSv:+d)~,gZKj3$cP)I%%Z#8Pm!VEuIBR64LCr+LCO{392u`}cjqb0}oq9BI^+1%%Pzou<xik9q;y+O=\?1p|IWQ24x[&)bzrF/~M6sRPo3fvw9WVUnw`>x.AiTDO#OQiUO0uATZ0u:0Kh)b9W}&s\?dE^;rTQ=~Md;k6(qvB\?dN|;Go!CI]z6(u~V1^+P*o[iy1yDS9e=EbC\?VTG;W][5Tlo4@)7L!S,o+\?7xkN:j9U]XBx|>~nq!e[+[uK<x\"0^EBz%%{poJQG@ig7SHR`jxx\"Imc86o2eZU)b7Y{|L6yTVWt}kWcWJ+H|9P&B.{Bpim*Yy8OYFY4r<F%%<1\?>*5~]FJon\"Pedr=<F<;_;a(85L%%D\".X\"Hm0QivyK6/#.`>{Q}.7ZUQ<8K@~9(uW!1q!\?hdI,NMu[j51lt.M>rF@oK5`sQt{r(@O1[$[CGU(*ZUJ4ZHAf7a!cYpV9=aZ.=h1|HCf*RORknM4a1_e8}*J`i<vI\"ndf[TbWDiMYGO0++W:i<zD)SscH(pE");
+    char buf[1048];
+#define __doBufN__ 1048
     __doBuf__
 #undef __doBuf__
 #undef __doBufN__

@@ -146,6 +146,7 @@
 <li><p>Fix edge case to find infusion duration when it is the first item of the dosing record at time 0.</p></li>
 <li><p>Fixed a bug for certain infusions where the <code>rate</code>, <code>ii</code> and/or <code>ss</code> data items were dropped from the output when <code>addDosing=TRUE</code></p></li>
 <li><p>Moved <code>rxDerived</code> to <code>rxode2parse</code> (and re-exported it here).</p></li>
+<li><p>Added test for transit compartment solving in absence of dosing to the transit compartment (fixed in <code>rxode2parse</code> but solving tested here).</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.11" id="rxode2-2011">rxode2 2.0.11<a class="anchor" aria-label="anchor" href="#rxode2-2011"></a></h2><p class="text-muted">CRAN release: 2022-11-01</p>
