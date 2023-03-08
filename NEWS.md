@@ -1,5 +1,9 @@
 # rxode2 (development version)
 
+- When initial values are piped that break the model's boundary
+  condition reset the boundary to unbounded and message which boundary
+  was reset.
+
 - A new function `zeroRe()` allows simple setting of omega and/or sigma values
   to zero for a model (#456)
 
@@ -51,6 +55,7 @@
   data items were dropped from the output when `addDosing=TRUE`
 
 - Moved `rxDerived` to `rxode2parse` (and re-exported it here).
+
 
 # rxode2 2.0.11
 

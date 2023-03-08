@@ -73,6 +73,20 @@
     if (rxode2.verbose.pipe) {
       .minfo(paste0("change initial estimate of {.code ", ini$name[.w], "} to {.code ", ini$est[.w], "}"))
     }
+    .lower <- ini$lower[.w]
+    .upper <- ini$upper[.w]
+    if (.lower >= rhs) {
+      ini$lower[.w] <- -Inf
+      if (rxode2.verbose.pipe) {
+        .minfo(paste0("lower bound of  {.code ", ini$name[.w], "} reset to {.code -Inf}"))
+      }
+    }
+    if (.upper <= rhs) {
+      ini$upper[.w] <- Inf
+      if (rxode2.verbose.pipe) {
+        .minfo(paste0("upper bound of  {.code ", ini$name[.w], "} reset to {.code Inf}"))
+      }
+    }
   } else {
     if (maxLen == 1) {
       stop("piping for '", lhs, "' failed, the estimate should only be 1 value",
@@ -82,6 +96,14 @@
       ini$est[.w] <- rhs[2]
       if (rxode2.verbose.pipe) {
         .minfo(paste0("change initial estimate (", ini$est[.w], ") and lower bound (", ini$lower[.w], ") of {.code ", ini$name[.w], "}"))
+      }
+      # now check/change upper if needed
+      .upper <- ini$upper[.w]
+      if (.upper <= rhs[1] || .upper <= rhs[2]) {
+        ini$upper[.w] <- Inf
+        if (rxode2.verbose.pipe) {
+          .minfo(paste0("upper bound for initial estimate (", ini$name[.w], ") reset to Inf"))
+        }
       }
     } else if (length(rhs) == 3) {
       ini$lower[.w] <- rhs[1]
