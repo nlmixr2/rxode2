@@ -197,6 +197,7 @@
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.v` to `0`</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> fix `add.sd` to `0.7`</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> change initial estimate of `add.sd` to `0`</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> lower bound of  `add.sd` reset to `-Inf`</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  ── <span style="font-weight: bold;">Initalization:</span> ──  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span>
@@ -228,7 +229,7 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span>         label("Cl")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         tv &lt;- 3.44998754583159</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         label("V")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         add.sd &lt;- fix(0, 0)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         add.sd &lt;- fix(0)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         eta.ka ~ 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         eta.cl ~ 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         eta.v ~ 0</span>
