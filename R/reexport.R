@@ -268,3 +268,7 @@ rxode2parse::rxSetIni0
 #' @importFrom rxode2parse .getLastIdLvl
 #' @export
 rxode2parse::.getLastIdLvl
+
+#' @importFrom rxode2random .expandPars
+#' @export
+rxode2random::.expandPars

@@ -11,10 +11,10 @@ rxTest({
       C3 <- peri / V3
       CL <- TCl * exp(eta.Cl + iov.Cl)
       KA <- TKA * exp(eta.Ka + iov.Ka)
-      d / dt(depot) <- -KA * depot
-      d / dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
-      d / dt(peri) <- Q * C2 - Q * C3
-      d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
+      d/dt(peri) <- Q * C2 - Q * C3
+      d/dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
     })
 
     mod.eta <- rxode2({
