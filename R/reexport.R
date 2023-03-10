@@ -264,3 +264,7 @@ rxode2parse::forderForceBase
 #' @importFrom rxode2parse rxSetIni0
 #' @export
 rxode2parse::rxSetIni0
+
+#' @importFrom rxode2parse .getLastIdLvl
+#' @export
+rxode2parse::.getLastIdLvl
