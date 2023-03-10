@@ -71,7 +71,6 @@ SEXP _rxode2_dynLoad(SEXP dllSEXP);
 SEXP _rxode2_rxOptRep_(SEXP);
 SEXP _rxode2_rxIndLin_(SEXP);
 SEXP _rxParProgress(SEXP);
-SEXP _rxode2_forderForceBase(SEXP);
 SEXP _rxode2_rxRmvn_(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxCholperm(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxGradpsi(SEXP, SEXP, SEXP, SEXP);
@@ -159,7 +158,6 @@ SEXP _rxode2_rinvchisq(SEXP, SEXP, SEXP);
 SEXP _rxode2_getRxFn(SEXP);
 SEXP _rxode2_setProgSupported(SEXP);
 SEXP _rxode2_getProgSupported(void);
-SEXP _rxode2_rxSetIni0(SEXP);
 SEXP _rxode2_rxSetSilentErr(SEXP silentSEXP);
 SEXP _rxode2_rxUnloadAll_(void);
 SEXP _rxode2_rxLock(SEXP);
@@ -208,8 +206,6 @@ SEXP _rxode2_convertId_(SEXP);
 
 SEXP _rxode2_rpp_(SEXP nS, SEXP lambdaS, SEXP gammaS, SEXP probS, SEXP t0S,
 		 SEXP tmaxS, SEXP randomOrderS);
-
-SEXP _rxode2_rxEtTransAsDataFrame_(SEXP);
 
 extern int rxIsCurrentC(SEXP obj);
 
@@ -356,13 +352,10 @@ extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
 SEXP _rxode2_getEtRxsolve(SEXP e);
 extern SEXP chin(SEXP x, SEXP table);
-extern SEXP _rxode2_etTransEvidIsObs(SEXP);
 
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
-    {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
-    {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
@@ -432,7 +425,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxUnlock", (DL_FUNC) &_rxode2_rxUnlock, 1},
     {"_rxode2_rxAllowUnload", (DL_FUNC) &_rxode2_rxAllowUnload, 1},
     {"_rxParProgress", (DL_FUNC) &_rxParProgress, 1},
-    {"_rxode2_forderForceBase", (DL_FUNC) &_rxode2_forderForceBase, 1},
     {"_rxode2_rLKJ1", (DL_FUNC) &_rxode2_rLKJ1, 3},
     {"_rxode2_rLKJcv1", (DL_FUNC) &_rxode2_rLKJcv1, 2},
     {"_rxode2_rLKJcvLsd1", (DL_FUNC) &_rxode2_rLKJcvLsd1, 3},
@@ -491,7 +483,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxHasOpenMp", (DL_FUNC) _rxHasOpenMp, 0},
     {"_probit", (DL_FUNC) _probit, 3},
     {"_probitInv", (DL_FUNC) _probitInv, 3},
-    {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) _rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},

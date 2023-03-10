@@ -34,7 +34,7 @@ records to change the \code{cmt} value; Useful for multiple-endpoint nlmixr mode
 this is determined by \code{option("rxode2.combine.dvid")} and if the option has not been set,
 this is \code{TRUE}. This typically does not affect rxode2 simulations.}
 
-\item{keepF}{This is a named vector of items you want to keep in the final rxode2 dataset.
+\item{keep}{This is a named vector of items you want to keep in the final rxode2 dataset.
 For added rxode2 event records (if seen), last observation carried forward will be used.}
 }
 \value{
