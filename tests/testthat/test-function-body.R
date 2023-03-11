@@ -1,9 +1,9 @@
 test_that("body<-, rxUi method", {
   one.compartment <- function() {
     ini({
-      tka <- log(1.57); label("Ka")
-      tcl <- log(2.72); label("Cl")
-      tv <- log(31.5); label("V")
+      tka <- log(1.57)
+      tcl <- log(2.72)
+      tv <- log(31.5)
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -21,12 +21,12 @@ test_that("body<-, rxUi method", {
   }
   two.compartment <- function() {
     ini({
-      lka <- 0.45 ; label("Absorption rate (Ka)")
-      lcl <- 1 ; label("Clearance (CL)")
-      lvc  <- 3 ; label("Central volume of distribution (V)")
-      lvp  <- 5 ; label("Peripheral volume of distribution (Vp)")
-      lq  <- 0.1 ; label("Intercompartmental clearance (Q)")
-      propSd <- 0.5 ; label("Proportional residual error (fraction)")
+      lka <- 0.45
+      lcl <- 1
+      lvc  <- 3
+      lvp  <- 5
+      lq  <- 0.1
+      propSd <- 0.5
     })
     model({
       ka <- exp(lka)
