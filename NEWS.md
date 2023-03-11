@@ -53,6 +53,10 @@
   transit compartment (fixed in `rxode2parse` but solving tested
   here)
 
+- A `body<-` method has been added to allow replacing the function body of an
+  rxUi object with a new function body, while retaining other parts of the
+  object.
+
 # rxode2 2.0.11
 
 - Give a more meaningful error for 'rxode2' ui models with only error expressions
