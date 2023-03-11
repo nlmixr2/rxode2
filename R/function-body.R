@@ -17,7 +17,7 @@ bodySetRxUi <- function(fun, envir = environment(fun), value) {
 
   # Get the function from the model, replace its body, and create a new rxUi
   # object from it
-  modelFun <- as.function(model)
+  modelFun <- as.function(model, envir = emptyenv())
   body(modelFun) <- value
   ret <- rxode2(modelFun)
 
