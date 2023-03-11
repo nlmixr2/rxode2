@@ -236,7 +236,6 @@ to make other types of estimation methods (if needed)</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> 'add.sd' lower bound (-Inf) needs to be equal or above 0; adjusting</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># You can get the simulation model easily by</span></span></span>
 <span class="r-in"><span><span class="fu">rxCombineErrorLines</span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></span>
@@ -323,9 +322,6 @@ to make other types of estimation methods (if needed)</p>
 <span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">pk.turnover.emax</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> 'prop.err' lower bound (-Inf) needs to be equal or above 0; adjusting</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> 'pkadd.err' lower bound (-Inf) needs to be equal or above 0; adjusting</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> 'pdadd.err' lower bound (-Inf) needs to be equal or above 0; adjusting</span>
 <span class="r-in"><span><span class="fu">rxCombineErrorLines</span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> rxode2({</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     params(tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50, </span>
@@ -384,7 +380,7 @@ to make other types of estimation methods (if needed)</p>
 <span class="r-in"><span><span class="va">f</span><span class="op">$</span><span class="va">simulationModel</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_9abf29e50ea23e53cf2b4c478cfa3061</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_4133e3da755ba21eabc614147b098e7f</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, gut, center, effect</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: cp</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: tktr, tka, tcl, tv, prop.err, pkadd.err, temax, tec50, tkout, te0, pdadd.err, eta.ktr, eta.ka, eta.cl, eta.v, eta.emax, eta.ec50, eta.kout, eta.e0, CMT, err.cp, err.effect</span>

@@ -391,9 +391,9 @@ are delimited by <code>#</code> and an end-of-line).</p>
 printing statements (for debugging/testing)</p>
 <p>Assignment statements can be:</p><ul><li><p><strong>simple</strong> assignments, where the left hand is an identifier (i.e.,
 variable)</p></li>
-<li><p>special <strong>time-derivative</strong> assignments, where the left hand specifies
-the change of the amount in the corresponding state variable
-(compartment) with respect to time e.g., <code>d/dt(depot)</code>:</p></li>
+<li><p>special <strong>time-derivative</strong> assignments, where the left hand
+specifies the change of the amount in the corresponding state
+variable (compartment) with respect to time e.g., <code>d/dt(depot)</code>:</p></li>
 <li><p>special <strong>initial-condition</strong> assignments where the left hand
 specifies the compartment of the initial condition being specified,
 e.g. <code>depot(0) = 0</code></p></li>
@@ -402,15 +402,15 @@ e.g. <code>depot(0) = 0</code></p></li>
 (<code>rate(depot)=2</code>) and <strong>modeled duration</strong> (<code>dur(depot)=2</code>). An
 example of these model features and the event specification for the
 modeled infusions the rxode2 data specification is found in <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html">rxode2 events vignette</a>.</p></li>
-<li><p>special <strong>change point syntax, or model times</strong>. These model times are
-specified by <code>mtime(var)=time</code></p></li>
+<li><p>special <strong>change point syntax, or model times</strong>. These model times
+are specified by <code>mtime(var)=time</code></p></li>
 <li><p>special <strong>Jacobian-derivative</strong> assignments, where the left hand
 specifies the change in the compartment ode with respect to a
 variable. For example, if <code>d/dt(y) = dy</code>, then a Jacobian for this
-compartment can be specified as <code>df(y)/dy(dy) = 1</code>. There may be some
-advantage to obtaining the solution or specifying the Jacobian for
-very stiff ODE systems. However, for the few stiff systems we tried
-with LSODA, this actually slightly slowed down the solving.</p></li>
+compartment can be specified as <code>df(y)/dy(dy) = 1</code>. There may be
+some advantage to obtaining the solution or specifying the Jacobian
+for very stiff ODE systems. However, for the few stiff systems we
+tried with LSODA, this actually slightly slowed down the solving.</p></li>
 </ul><p>Note that assignment can be done by <code>=</code>, <code>&lt;-</code> or <code>~</code>.</p>
 <p>When assigning with the <code>~</code> operator, the <strong>simple assignments</strong> and
 <strong>time-derivative</strong> assignments will not be output.</p>
@@ -420,9 +420,9 @@ add extra compartment names at the end (useful for multiple-endpoint
 nlmixr models); These are specified by <code>cmt(compartmentName)</code></p></li>
 <li><p><strong>Parameter declaration statements</strong>, which can make sure the input
 parameters are in a certain order instead of ordering the parameters
-by the order they are parsed. This is useful for keeping the parameter
-order the same when using 2 different ODE models. These are specified
-by <code>param(par1, par2,...)</code></p></li>
+by the order they are parsed. This is useful for keeping the
+parameter order the same when using 2 different ODE models. These
+are specified by <code>param(par1, par2,...)</code></p></li>
 </ul><p>An example model is shown below:</p>
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>   <span class="co"># simple assignment</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>   C2 <span class="ot">=</span> centr<span class="sc">/</span>V2;</span>
@@ -430,9 +430,8 @@ by <code>param(par1, par2,...)</code></p></li>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>   <span class="co"># time-derivative assignment</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>   d<span class="sc">/</span><span class="fu">dt</span>(centr) <span class="ot">=</span> F<span class="sc">*</span>KA<span class="sc">*</span>depot <span class="sc">-</span> CL<span class="sc">*</span>C2 <span class="sc">-</span> Q<span class="sc">*</span>C2 <span class="sc">+</span> Q<span class="sc">*</span>C3; </span></code></pre><p></p></div>
 <p>Expressions in assignment and <code>if</code> statements can be numeric or logical.</p>
-<p>Numeric expressions can include the following numeric operators
-<code>+, -, *, /, ^</code> and those mathematical functions defined in the C or the
-R math libraries (e.g., <code>fabs</code>, <code>exp</code>, <code>log</code>, <code>sin</code>, <code>abs</code>).</p>
+<p>Numeric expressions can include the following numeric operators <code>+, -, *, /, ^</code> and those mathematical functions defined in the C or the R math
+libraries (e.g., <code>fabs</code>, <code>exp</code>, <code>log</code>, <code>sin</code>, <code>abs</code>).</p>
 <p>You may also access the R’s functions in the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Numerical-analysis-subroutines" class="external-link">R math libraries</a>,
 like <code>lgammafn</code> for the log gamma function.</p>
 <p>The <code>rxode2</code> syntax is case-sensitive, i.e., <code>ABC</code> is different than
@@ -449,9 +448,11 @@ pharmacokinetics model).</p></li>
 <code>podo</code> (oral dose, in the undocumented case of absorption transit
 models).</p></li>
 <li><p>Special constants like <code>pi</code> or <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Mathematical-constants" class="external-link">R’s predefined constants</a>.</p></li>
-<li><p>Model parameters (e.g., <code>ka</code> rate of absorption, <code>CL</code> clearance, etc.)</p></li>
-<li><p>Others, as created by assignments as part of the model specification;
-these are referred as <em>LHS</em> (left-hand side) variable.</p></li>
+<li><p>Model parameters (e.g., <code>ka</code> rate of absorption, <code>CL</code> clearance,
+etc.)</p></li>
+<li><p>Others, as created by assignments as part of the model
+specification; these are referred as <em>LHS</em> (left-hand side)
+variable.</p></li>
 </ul><p>Currently, the <code>rxode2</code> modeling language only recognizes system state
 variables and “parameters”, thus, any values that need to be passed from
 R to the ODE model (e.g., <code>age</code>) should be either passed in the <code>params</code>
@@ -542,7 +543,7 @@ Springer-Verlag (1993).</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_7b2a415d3c56576c831fb54eb25e6419</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_1750a7a186cb29b7c590cf291ad50e45</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: V2, V3, KA, CL, Q, Kin, Kout, EC50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$lhs</span>: C2, C3</span>
@@ -646,7 +647,7 @@ Springer-Verlag (1993).</p>
 <span class="r-in"><span> <span class="va">u</span><span class="op">$</span><span class="va">simulationModel</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_1c1c2557e7e7de330bc277cc30fc7253</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_352d8527c5dd1f4d02d21759ed76ff8f</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$params</span>: KA, CL, V2, Q, V3, Kin, Kout, EC50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB; font-weight: bold;">$lhs</span>: C2, C3</span>

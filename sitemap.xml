@@ -103,9 +103,6 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-copyUi.html</loc>
   </url>
   <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/dot-getLastIdLvl.html</loc>
-  </url>
-  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-handleSingleErrTypeNormOrTFoceiBase.html</loc>
   </url>
   <url>
@@ -179,9 +176,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/findLhs.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/forderForceBase.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/gammap.html</loc>
@@ -503,9 +497,6 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxSetCovariateNamesForPiping.html</loc>
-  </url>
-  <url>
-    <loc>https://nlmixr2.github.io/rxode2/reference/rxSetIni0.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxSetProd.html</loc>
