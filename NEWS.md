@@ -1,11 +1,6 @@
-# rxode2 (development version)
+# rxode2 2.0.12
 
-- If lower/upper bounds are outside the required bounds, the
-  adjustment is displayed.
-
-- When initial values are piped that break the model's boundary
-  condition reset the boundary to unbounded and message which boundary
-  was reset.
+## New features
 
 - A new function `zeroRe()` allows simple setting of omega and/or sigma values
   to zero for a model (#456)
@@ -15,6 +10,32 @@
   drop columns/rows where the diagonals are zero to create a new
   `omega` and `sigma` matrix for simulation.  This is the same idiom
   that NONMEM uses for simulation from these matrices.
+  
+- Add the ability to pipe model estimates from another model by
+  `parentModel %>% ini(modelWithNewEsts)`
+  
+- Add the ability to append model statements with piping using `%>%
+  model(x=3, append=d/dt(depot))`, still supports appending with
+  `append=TRUE` and pre-pending with `append=NA` (the default is to
+  replace lines with `append=FALSE`)
+  
+- rxSolve's keep argument will now maintain character and factor classes from
+  input data with the same class (#190)
+
+- Parameter labels may now be modified via `ini(param = label("text"))` (#351).
+
+- Parameter order may be modified via the `append` argument to `ini()`
+  when piping a model.  For example, `ini(param = 1, append = 0)` or
+  `ini(param = label("text"), append = "param2")` (#352).
+
+## Internal changes
+
+- If lower/upper bounds are outside the required bounds, the
+  adjustment is displayed.
+
+- When initial values are piped that break the model's boundary
+  condition reset the boundary to unbounded and message which boundary
+  was reset.
 
 - Added `as.rxUi()` function to convert the following objects to
   `rxUi` objects: `rxode2`, `rxModelVars`, `function`.  Converting
@@ -24,44 +45,13 @@
 - `assertRxUi(x)` now uses `as.rxUi()` so that it can be extended
   outside of `rxode2`/`nlmixr2`.
 
-- Add the ability to pipe model estimates from another model by
-  `parentModel %>% ini(modelWithNewEsts)`
-
-- Add the ability to append model statements with piping using `%>%
-  model(x=3, append=d/dt(depot))`, still supports appending with
-  `append=TRUE` and pre-pending with `append=NA` (the default is to
-  replace lines with `append=FALSE`)
-
-- rxSolve's keep argument will now maintain character and factor classes from
-  input data with the same class (#190)
-
-- Parameter labels may now be modified via `ini(param = label("text"))` (#351).
-
-- Parameter order may be modified via the `append` argument to `ini()` when
-  piping a model.  For example, `ini(param = 1, append = 0)` or
-  `ini(param = label("text"), append = "param2")` (#352).
-
 - `rxode2` now supports `addl` with `ss` doses
-
-- The internal translation (`etTrans()`) will not drop times when
-  infusions stop. Before, if the infusion stopped after the last
-  observation the time when the infusion stopped would be dropped.
-  This interferes with `linCmt()` models.
-
-- Breaking change/bug fix `evid=2` are considered observations when
-  translating data to internal `rxode2` event structure
-
-- Fix edge case to find infusion duration when it is the first item of
-  the dosing record at time 0.
-
-- Fixed a bug for certain infusions where the `rate`, `ii` and/or `ss`
-  data items were dropped from the output when `addDosing=TRUE`
 
 - Moved `rxDerived` to `rxode2parse` (and re-exported it here).
 
 - Added test for transit compartment solving in absence of dosing to the
   transit compartment (fixed in `rxode2parse` but solving tested
-  here).
+  here)
 
 # rxode2 2.0.11
 
