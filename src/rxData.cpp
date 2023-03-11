@@ -68,9 +68,13 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
 
-bool useForder();
-Function getForder();
+extern "C" {
 
+  typedef SEXP (*_rxode2parse_getForder_type)(void);
+  extern _rxode2parse_getForder_type getForder;
+  typedef int (*_rxode2parse_useForder_type)(void);
+  extern _rxode2parse_useForder_type useForder;
+}
 
 // https://github.com/Rdatatable/data.table/blob/588e0725320eacc5d8fc296ee9da4967cee198af/src/forder.c#L193-L211
 // range_d is modified because it DOES NOT count na/inf because rxode2 assumes times cannot be NA, NaN, -Inf, Inf
@@ -462,7 +466,7 @@ RObject rxSimSigma(const RObject &sigma,
                    NumericVector lowerIn =NumericVector::create(R_NegInf),
                    NumericVector upperIn = NumericVector::create(R_PosInf),
                    double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100){
-  
+
   if (nObs < 1){
     rxSolveFree();
     stop(_("refusing to simulate %d items"),nObs);
@@ -481,7 +485,7 @@ RObject rxSimSigma(const RObject &sigma,
       stop(_("'sigma' is not a matrix"));
     }
   } else {
-    rxSolveFree(); 
+    rxSolveFree();
     stop(_("'sigma' is not a matrix"));
   }
   if (sigmaM.nrow() != sigmaM.ncol()){
@@ -1622,7 +1626,7 @@ void rxSimTheta(CharacterVector &thetaN,
         stop(_("'thetaMat' must be symmetric"));
       }
     }
-    
+
     thetaM = as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf),
                                           nCoresRV, thetaIsChol, nStud, true,
                                           thetaLower, thetaUpper));
@@ -2574,7 +2578,7 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
       ind = &(rx->subjects[i]);
       solveTime[i] = ind->solveTime;
     }
-    Function order = getForder();
+    Function order = as<Function>(getForder());
     if (useForder()) {
       ord = order(solveTime, _["na.last"] = LogicalVector::create(NA_LOGICAL),
                   _["decreasing"] = LogicalVector::create(true));
@@ -2969,8 +2973,8 @@ static inline void rxSolve_simulate(const RObject &obj,
   }
 
   Nullable<NumericVector> thetaDf = asNNv(rxControl[Rxc_thetaDf], "thetaDf");
-  
-  
+
+
 
   RObject sigma= rxControl[Rxc_sigma];
   Nullable<NumericVector> sigmaDf= asNNv(rxControl[Rxc_sigmaDf], "sigmaDf");
@@ -5107,9 +5111,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    
+
     rxSolveDat->initsC = rxInits(object, inits, state, 0.0);
-    
+
 #ifdef rxSolveT
     RSprintf("Time12b: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -6001,9 +6005,9 @@ bool rxDynLoad(RObject obj){
 //' Lock/unlocking of rxode2 dll file
 //'
 //' @param obj A rxode2 family of objects
-//' 
+//'
 //' @return nothing; called for side effects
-//' 
+//'
 //' @export
 //[[Rcpp::export]]
 RObject rxLock(RObject obj){

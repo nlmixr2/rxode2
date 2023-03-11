@@ -91,17 +91,6 @@ extern "C" SEXP qassertS(SEXP in, const char *test, const char *what) {
   END_RCPP
 }
 
-extern "C" SEXP _rxode2_convertId_(SEXP id) {
-  BEGIN_RCPP
-  if (!rxode2random_loaded) {
-    rxode2random_loaded = true;
-    rxode2random = loadNamespace("rxode2random");
-  }
-  Function fun = as<Function>(rxode2random[".convertId"]);
-  return(fun(id));
-  END_RCPP
-}
-
 extern "C" SEXP _rxode2_expandPars_(SEXP objectSSEXP, SEXP paramsSSEXP, SEXP eventsSSEXP, SEXP controlSSEXP) {
   BEGIN_RCPP
   if (!rxode2random_loaded) {

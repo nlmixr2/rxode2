@@ -256,3 +256,19 @@ rxode2et::rxStack
 #' @importFrom rxode2parse rxDerived
 #' @export
 rxode2parse::rxDerived
+
+#' @importFrom rxode2parse forderForceBase
+#' @export
+rxode2parse::forderForceBase
+
+#' @importFrom rxode2parse rxSetIni0
+#' @export
+rxode2parse::rxSetIni0
+
+#' @importFrom rxode2parse .getLastIdLvl
+#' @export
+rxode2parse::.getLastIdLvl
+
+#' @importFrom rxode2random .expandPars
+#' @export
+rxode2random::.expandPars

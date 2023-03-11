@@ -860,13 +860,13 @@
                      paste0("'", .name, "' estimate (", .est, ") needs to be below ", .range[2]))
       }
       if (.lower < .range[1]) {
-        if (rxode2.verbose.pipe) {
+        if (rxode2.verbose.pipe && is.finite(.lower)) {
           .minfo(paste0("'", .name, "' lower bound (", .lower, ") needs to be equal or above ", .range[1], "; adjusting"))
         }
         .lower <- .range[1]
       }
       if (.upper > .range[2]) {
-        if (rxode2.verbose.pipe) {
+        if (rxode2.verbose.pipe && is.finite(.upper)) {
           .minfo(paste0("'", .name, "' upper bound (", .upper, ") needs to be equal or below ", .range[2],"; adjusting"))
         }
         .upper <- .range[2]
