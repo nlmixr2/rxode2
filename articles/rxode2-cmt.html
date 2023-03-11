@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.12</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -173,7 +173,7 @@ example, with the Mavoglurant PBPK model the following model may be
 used:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; rxode2 2.0.11.9000 using 1 threads (see ?getRxThreads)</span></span>
+<pre><code><span><span class="co">#&gt; rxode2 2.0.12 using 1 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -268,8 +268,8 @@ used:</p>
 compartment number(s)</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_d5bcb17ed69aefec783f9f4ce72b1dee</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpPgUj9G/rxode2/rx_d5bcb17ed69aefec783f9f4ce72b1dee__.rxd/rx_d5bcb17ed69aefec783f9f4ce72b1dee_.so</span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.12 model named <span style="color: #BBBB00; font-weight: bold;">rx_9dc529bbd17cac421077b2c11de62062</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmputR3Mi/rxode2/rx_9dc529bbd17cac421077b2c11de62062__.rxd/rx_9dc529bbd17cac421077b2c11de62062_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -469,7 +469,7 @@ simple:</p>
 <p>You can see this change in the simple printout</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk2</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_3ba44816aa9a7279f89850e18e182e0d</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.12 model named <span style="color: #BBBB00; font-weight: bold;">rx_9036ac1a1b0b1b0f82783a510c44cb59</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: Venous_Blood, Skin, Lungs, Heart, Brain, Muscles, Adipose, Spleen, Pancreas, Liver, Stomach, Gut, Bones, Kidneys, Arterial_Blood, Rest_of_Body</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: lKbBR, lKbMU, lKbAD, lCLint, eta.LClint, lKbBO, lKbRB, WT, BP, fup</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$lhs</span>: KbBR, KbMU, KbAD, CLint, KbBO, KbRB, CO, QHT, QBR, QMU, QAD, QSK, QSP, QPA, QLI, QST, QGU, QHA, QBO, QKI, QRB, QLU, VLU, VHT, VBR, VMU, VAD, VSK, VSP, VPA, VLI, VST, VGU, VBO, VKI, VAB, VVB, VRB, fub, KbLU, KbHT, KbSK, KbSP, KbPA, KbLI, KbST, KbGU, KbKI, S15, C15</span></span></code></pre>
@@ -491,7 +491,7 @@ after all the differential equations are defined.</p>
 <span>    <span class="fu">cmt</span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>;</span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">ode.1c.ka</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.11.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_473c201a6adc8e32d9289822428bba94</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.12 model named <span style="color: #BBBB00; font-weight: bold;">rx_e60f72974c6050f65f53ceb0d415567a</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
 <span><span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: eff</span></span>
 <span><span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">$params</span>: V, KA, CL</span></span>

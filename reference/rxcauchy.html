@@ -20,7 +20,7 @@ engine threefry and then run the code."><meta property="og:image" content="https
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.12</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxcauchy you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  -0.063448099 -87.578284611   0.008392335  -0.404195536  -0.545839505</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6]   0.856368496  -1.058706923  -7.123544303   0.305587992   0.806600815</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.5761453  0.8689345 -0.7750011  3.8463292 -0.3478154 -1.0290278</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -2.5793805  1.0413928 -0.8689011 -3.3159472</span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -1.2274299  1.4584996  0.2881705 -0.1455450 -1.8603127 -3.8165570</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -6.3090843  3.2234430  1.3325006  0.1057484</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.41890961  0.69242813  6.30903395  0.07546715 -4.47632757  0.98544481</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.24536430  0.93684010  1.80601414 -2.46468394</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2.915726</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2.30025</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxcauchy` directly in the model</span></span></span>
