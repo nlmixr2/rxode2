@@ -4,4 +4,5 @@
     "extraDvid", "hasErrors", "iniDf", "lstExpr", "meta", "modelName", 
     "muRefCovariateDataFrame", "muRefCovariateEmpty", "muRefCurEval", 
     "muRefDataFrame", "muRefDropParameters", "muRefExtra", "muRefExtraEmpty", 
-    "mv0", "mvL", "nonMuEtas", "predDf", "sticky", "thetaLhsDf")
+    "mv0", "mvL", "nonMuEtas", "oneTheta", "predDf", "sticky", 
+    "thetaLhsDf")
