@@ -1,5 +1,45 @@
 setOldClass("rxUi")
+## nocov start
+#' This creates the list of "blessed" rxode2 items
+#'  
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.createRxUiBlessedList <- function() {
+  message("querying default rxode2 object contents")
+  .f <- function() {
+    ini({
+      tka <- log(1.57); label("Ka")
+      tcl <- log(2.72); label("Cl")
+      tv <- log(31.5); label("V")
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+  .f <- .f()
+  .f <- rxUiDecompress(.f)
+  .blessed <- ls(.f, all=TRUE)
+  .blessed <- deparse(str2lang(paste0(".rxUiBlessed <- ",
+                      paste(deparse(.blessed), collapse="\n"))))
+  writeLines(c("## created by .createRxUiBlessedList() in function-body.R edit there",
+               .blessed), devtools::package_file("R/rxUiBlessed.R"))
+  message("saved!")
+  invisible("")
+}
+## nocov end
 
+setOldClass("rxUi")
 .bodySetRxUi <- function(fun, envir = parent.frame(), value) {
   if (is.function(value)) {
     value <- body(value)
@@ -21,7 +61,7 @@ setOldClass("rxUi")
   body(modelFun) <- value
   ret <- rxode2(modelFun)
 
-  ret <- rxode2::rxUiDecompress(ret)
+  ret <- rxUiDecompress(ret)
   lsRet <- ls(ret)
   trackKeptIgnore <- new.env(parent=emptyenv())
   trackKeptIgnore$ignore <- NULL
@@ -55,6 +95,7 @@ setOldClass("rxUi")
 #'
 #' @param fun The rxUi object
 #' @return The function body (see `base::body`)
+#' @eval .createRxUiBlessedList()
 #' @examples
 #' 
 #' one.compartment <- function() {
