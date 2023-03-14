@@ -1,8 +1,10 @@
+
 #' @export
 #' @rdname model
 model.function <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(rxode2(x))
+  if (length(.modelLines) == 0) return(.ret$modelFun)
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
 }
 
@@ -11,6 +13,7 @@ model.function <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()
 model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
+  if (length(.modelLines) == 0) return(.ret$modelFun)
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
 }
 
@@ -20,6 +23,7 @@ model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) 
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   x <- as.function(x)
   .ret <- rxUiDecompress(rxode2(x))
+  if (length(.modelLines) == 0) return(.ret$modelFun)
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
 }
 

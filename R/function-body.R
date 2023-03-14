@@ -40,57 +40,57 @@
 }
 ## nocov end
 
-setOldClass("rxUi")
-.bodySetRxUi <- function(fun, envir = parent.frame(), value) {
-  if (is.function(value)) {
-    value <- body(value)
-  }
-  .model <- rxode2::rxUiDecompress(fun)
-  .lsModel <- ls(envir=model, all=TRUE)
-  
-  dropEnv <-
-    c(
-      "nonmemData", "etaData", "ipredAtol", "ipredRtol",
-      "ipredCompare", "predAtol", "predRtol", "predCompare",
-      "thetaMat", "dfSub", "dfObs"
-    )
-
-  clsModel <- class(model)
-
-  # Get the function from the model, replace its body, and create a new rxUi
-  # object from it
-  modelFun <- as.function(model, envir = emptyenv())
-  body(modelFun) <- value
-  ret <- rxode2(modelFun)
-
-  ret <- rxUiDecompress(ret)
-  lsRet <- ls(ret)
-  trackKeptIgnore <- new.env(parent=emptyenv())
-  trackKeptIgnore$ignore <- NULL
-  trackKeptIgnore$keep <- NULL
-  lapply(setdiff(lsModel, lsRet), function(v) {
-    if (v %in% dropEnv) {
-      trackKeptIgnore$ignore <- c(trackKeptIgnore$ignore, v)
-      return(NULL)
-    }
-    trackKeptIgnore$keep <- c(trackKeptIgnore$keep, v)
-    assign(v, get(v, envir=model), envir=ret)
-    NULL
-  })
-  if (length(trackKeptIgnore$keep) > 0) {
-    cli::cli_alert(sprintf("kept in model: '%s'",
-                           paste(paste0("$",trackKeptIgnore$keep), collapse="', '")))
-  }
-  if (length(trackKeptIgnore$ignore) > 0) {
-    cli::cli_alert(sprintf("removed from model: '%s'",
-                           paste(paste0("$", trackKeptIgnore$ignore), collapse="', '")))
-  }
-  if (inherits(model, "raw")) {
-    ret <- rxode2::rxUiCompress(ret)
-  }
-  class(ret) <- clsModel
-  ret
+#setOldClass("rxUi")
+#' This gets the dropped items if a significant item changed
+#'  
+#' @param model uncompressed model to check
+#' @return Character vector of items to be dropped
+#' @noRd
+#' @author Matthew L. Fidler
+.getDropEnv <- function(model) {
+  .lsModel <- ls(envir=model)
+  setdiff(.lsModel, c(.rxUiBlessed, model$sticky))
 }
+#' This gets the additional items kept if a significant item changed
+#'  
+#' @param model uncompressed model to check
+#' @return Character vector of additional items to be kept
+#' @noRd
+#' @author Matthew L. Fidler
+.getKeepEnv <- function(model) {
+  .lsModel <- ls(envir=model)
+  .ret <- setdiff(.lsModel, .rxUiBlessed)
+  .ret[.ret %in% model$sticky]
+}
+
+## .bodySetRxUi <- function(fun, envir = parent.frame(), value) {
+##   if (is.function(value)) {
+##     value <- body(value)
+##   }
+##   .model <- rxode2::rxUiDecompress(fun)
+##   .clsModel <- class(.model)
+##   .modelFun <- .model$fun # don't use as-function to avoid environ issues
+##   body(.modelFun) <- value
+##   .ret <- rxUiDecompress(rxode2(.modelFun))
+##   .drop <- .getDropEnv(.model)
+##   .keep <- .getKeepEnv(.model)
+##   lapply(.keep, function(v) {
+##     assign(v, get(v, envir=.model), envir=.ret)
+##   })
+##   if (length(.keep) > 0) {
+##     cli::cli_alert(sprintf("kept in model: '%s'",
+##                            paste(paste0("$", .keep), collapse="', '")))
+##   }  
+##   if (length(.drop) > 0) {
+##     cli::cli_alert(sprintf("removed from model: '%s'",
+##                            paste(paste0("$", .drop), collapse="', '")))
+##   }
+##   if (inherits(.model, "raw")) {
+##     .ret <- rxode2::rxUiCompress(.ret)
+##   }
+##   class(.ret) <- .clsModel
+##   .ret
+## }
 
 #' Set the function body of an rxUi object while retaining other object
 #' information (like data)
@@ -151,4 +151,4 @@ setOldClass("rxUi")
 #' 
 #' body(ui) <- two.compartment
 #' 
-setMethod("body<-", "rxUi", .bodySetRxUi)
+
