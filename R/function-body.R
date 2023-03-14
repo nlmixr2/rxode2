@@ -76,11 +76,11 @@ setOldClass("rxUi")
     NULL
   })
   if (length(trackKeptIgnore$keep) > 0) {
-    cli::cli_alert(sprintf("Kept in model: '%s'",
+    cli::cli_alert(sprintf("kept in model: '%s'",
                            paste(paste0("$",trackKeptIgnore$keep), collapse="', '")))
   }
   if (length(trackKeptIgnore$ignore) > 0) {
-    cli::cli_alert(sprintf("Removed from model: '%s'",
+    cli::cli_alert(sprintf("removed from model: '%s'",
                            paste(paste0("$", trackKeptIgnore$ignore), collapse="', '")))
   }
   if (inherits(model, "raw")) {
