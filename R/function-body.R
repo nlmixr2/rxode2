@@ -1,4 +1,3 @@
-setOldClass("rxUi")
 ## nocov start
 #' This creates the list of "blessed" rxode2 items
 #'  
