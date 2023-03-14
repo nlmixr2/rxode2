@@ -1,6 +1,6 @@
 setOldClass("rxUi")
 
-bodySetRxUi <- function(fun, envir = environment(fun), value) {
+.bodySetRxUi <- function(fun, envir = parent.frame(), value) {
   if (is.function(value)) {
     value <- body(value)
   }
@@ -56,6 +56,7 @@ bodySetRxUi <- function(fun, envir = environment(fun), value) {
 #' @param fun The rxUi object
 #' @return The function body (see `base::body`)
 #' @examples
+#' 
 #' one.compartment <- function() {
 #'   ini({
 #'     tka <- log(1.57); label("Ka")
@@ -76,6 +77,7 @@ bodySetRxUi <- function(fun, envir = environment(fun), value) {
 #'     cp ~ add(add.sd)
 #'   })
 #' }
+#' 
 #' two.compartment <- function() {
 #'   ini({
 #'     lka <- 0.45 ; label("Absorption rate (Ka)")
@@ -91,19 +93,19 @@ bodySetRxUi <- function(fun, envir = environment(fun), value) {
 #'     vc <- exp(lvc)
 #'     vp <- exp(lvp)
 #'     q  <- exp(lq)
-#'
 #'     kel <- cl/vc
 #'     k12 <- q/vc
 #'     k21 <- q/vp
-#'
 #'     d/dt(depot) <- -ka*depot
 #'     d/dt(central) <-  ka*depot - kel*central - k12*central + k21*peripheral1
 #'     d/dt(peripheral1) <- k12*central - k21*peripheral1
 #'     cp <- central / vc
-#'
 #'     cp ~ prop(propSd)
 #'   })
 #' }
+#' 
 #' ui <- rxode2(one.compartment)
+#' 
 #' body(ui) <- two.compartment
-setMethod("body<-", "rxUi", bodySetRxUi)
+#' 
+setMethod("body<-", "rxUi", .bodySetRxUi)
