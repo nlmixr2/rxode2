@@ -534,6 +534,13 @@ ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
+  if (inherits(x, "rxUi")) {
+    .cls <- class(x)
+    .cls <- .cls[.cls != "raw"]
+    .x <- rxUiDecompress(x)
+    .ret <- .newModelAdjust(.ret, .x)
+    class(.ret) <- .cls
+  }
   rxUiCompress(.ret)
 }
 
@@ -551,6 +558,13 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
   })
+  if (inherits(x, "rxUi")) {
+    .cls <- class(x)
+    .cls <- .cls[.cls != "raw"]
+    .x <- rxUiDecompress(x)
+    .ret <- .newModelAdjust(.ret, .x)
+    class(.ret) <- .cls
+  }
   rxUiCompress(.ret)
 }
 

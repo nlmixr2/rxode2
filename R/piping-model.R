@@ -14,7 +14,15 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   if (length(.modelLines) == 0) return(.ret$modelFun)
-  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
+  .ret <- .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
+  # need to adjust since the model function was from a rxui object
+  .cls <- class(x)
+  .cls <- .cls[.cls != "raw"]
+  .x <- rxUiDecompress(x)
+  .ret <- rxUiDecompress(.ret)
+  .ret <- .newModelAdjust(.ret, .x)
+  class(.ret) <- .cls
+  rxUiCompress(.ret)
 }
 
 #' @export
