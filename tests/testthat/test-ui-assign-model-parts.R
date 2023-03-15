@@ -110,7 +110,7 @@ test_that("rxode2<- and other rxUi methods", {
         eta.cl ~ 0.3
         eta.v ~ 0.1
     }))
-  
+
   ini(uiOne) <-  iniNew
 
   expect_equal(ini(uiOne), iniNew)
@@ -128,7 +128,7 @@ test_that("rxode2<- and other rxUi methods", {
     eta.v ~ 0.1
     eta.cl ~ 0.3
   }))
-  
+
   ini(uiOne) <-  iniNew
   expect_equal(ini(uiOne), iniNew)
   expect_equal(uiOne$matt, "f")
@@ -145,7 +145,7 @@ test_that("rxode2<- and other rxUi methods", {
     eta.cl ~ 0.3
     eta.v ~ 1
   }))
-  
+
   ini(uiOne) <-  iniNew
 
   expect_equal(ini(uiOne), iniNew)
@@ -180,17 +180,31 @@ test_that("rxode2<- and other rxUi methods", {
   # now a significant change
   uiTwo <- uiOne %>%
     ini(tcl=77)
-  
+
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, NULL)
 
   # nothing change in input ui
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, "matt")
-  
+
   uiTwo <- uiOne %>%
     model(ka <- tka * exp(eta.ka))
 
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, NULL)
+
+  # rename something in the model block, insignificant
+  uiTwo <- uiOne %>%
+    rxRename(isKa=ka)
+
+  expect_equal(uiTwo$matt, "f")
+  expect_equal(uiTwo$f, "matt")
+
+  # rename something in the ini block is also an insignificant change
+  uiTwo <- uiOne %>%
+    rxRename(isKa=tka)
+
+  expect_equal(uiTwo$matt, "f")
+  expect_equal(uiTwo$f, "matt")
 })

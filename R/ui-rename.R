@@ -177,7 +177,7 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
     .x <- rxUiDecompress(.data)
     .ret <- .newModelAdjust(.ret, .x, rename=TRUE)
     class(.ret) <- .cls
-    if (inherits(.data), "raw") {
+    if (inherits(.data, "raw")) {
       .ret <- rxUiCompress(.ret)
     }
   }
