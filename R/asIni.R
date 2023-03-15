@@ -2,10 +2,89 @@
 #'
 #' @param x Item to convert to a rxode2/nlmixr2 ui ini exression
 #' @return rxode2 ini expression
-#' @export 
+#' @export
 #' @author Matthew L. Fidler
 #' @examples
-#' 
+#'
+#' ini <- quote(ini({
+#'    tka <- log(1.57)
+#'    tcl <- log(2.72)
+#'    tv <- log(31.5)
+#'    eta.ka ~ 0.6
+#'    eta.cl ~ 0.3
+#'    eta.v ~ 0.1
+#'    add.sd <- 0.7
+#'  }))
+#'
+#' as.ini(ini)
+#'
+#' l <- quote(lotri({
+#'    tka <- log(1.57)
+#'    tcl <- log(2.72)
+#'    tv <- log(31.5)
+#'    eta.ka ~ 0.6
+#'    eta.cl ~ 0.3
+#'    eta.v ~ 0.1
+#'    add.sd <- 0.7
+#'  }))
+#'
+#' as.ini(l)
+#'
+#' m <- lotri({
+#'    eta.ka ~ 0.6
+#'    eta.cl ~ 0.3
+#'    eta.v ~ 0.1
+#' })
+#'
+#' as.ini(m)
+#'
+#' one.compartment <- function() {
+#'   ini({
+#'      tka <- log(1.57)
+#'      tcl <- log(2.72)
+#'      tv <- log(31.5)
+#'      eta.ka ~ 0.6
+#'      eta.cl ~ 0.3
+#'      eta.v ~ 0.1
+#'      add.sd <- 0.7
+#'    })
+#'    model({
+#'      ka <- exp(tka + eta.ka)
+#'      cl <- exp(tcl + eta.cl)
+#'      v <- exp(tv + eta.v)
+#'      d/dt(depot) = -ka * depot
+#'      d/dt(center) = ka * depot - cl / v * center
+#'      cp = center / v
+#'      cp ~ add(add.sd)
+#'    })
+#' }
+#'
+#' as.ini(one.compartment)
+#'
+#' ui <- one.compartment()
+#'
+#' as.ini(ui)
+#'
+#' ui$iniDf
+#'
+#' as.ini(ui$iniDf)
+#'
+#' ini <- c("ini({",
+#'           "tka <- log(1.57)",
+#'           "tcl <- log(2.72)",
+#'           "tv <- log(31.5)",
+#'           "eta.ka ~ 0.6",
+#'           "eta.cl ~ 0.3",
+#'           "eta.v ~ 0.1",
+#'           "add.sd <- 0.7",
+#'           "})")
+#'
+#' as.ini(ini)
+#'
+#' ini <- paste(ini, collapse="\n")
+#'
+#' as.ini(ini)
+#'
 as.ini <- function(x) {
   UseMethod("as.ini")
 }
@@ -19,7 +98,7 @@ as.ini.character <- function(x) {
 #' @rdname as.ini
 #' @export
 as.ini.data.frame <- function(x) {
- lotri::lotriDataFrameToLotriExpression(x, useIni = TRUE) 
+ lotri::lotriDataFrameToLotriExpression(x, useIni = TRUE)
 }
 
 #' @rdname as.ini
