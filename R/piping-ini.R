@@ -535,13 +535,17 @@ ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
     .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
   if (inherits(x, "rxUi")) {
-    .cls <- class(x)
-    .cls <- .cls[.cls != "raw"]
     .x <- rxUiDecompress(x)
     .ret <- .newModelAdjust(.ret, .x)
-    class(.ret) <- .cls
   }
-  rxUiCompress(.ret)
+  .ret <- rxUiCompress(.ret)
+  if (inherits(x, "rxUi")) {
+    .cls <- setdiff(class(x), class(.ret))
+    if (length(.cls) > 0) {
+      class(.ret) <- c(.cls, class(.ret))
+    }
+  }
+  .ret
 }
 
 #' @rdname ini

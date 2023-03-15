@@ -172,13 +172,12 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   })
   .ret <- rxui$fun()
   if (inherits(.data, "rxUi")) {
-    .cls <- class(.data)
-    .cls <- .cls[.cls != "raw"]
     .x <- rxUiDecompress(.data)
     .ret <- .newModelAdjust(.ret, .x, rename=TRUE)
-    class(.ret) <- .cls
-    if (inherits(.data, "raw")) {
-      .ret <- rxUiCompress(.ret)
+    .ret <- rxUiCompress(.ret)
+    .cls <- setdiff(class(.data), class(.ret))
+    if (length(.cls) > 0) {
+      class(.ret) <- c(.cls, class(.ret))
     }
   }
   .ret

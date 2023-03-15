@@ -170,10 +170,10 @@ test_that("rxode2<- and other rxUi methods", {
 
   # now test piping
   uiOne <- rxUiDecompress(rxode2(one.compartment))
-
   uiOne$sticky <- "matt"
   uiOne$matt <- "f"
   uiOne$f <- "matt"
+  class(uiOne) <- c("uiOne", class(uiOne))
 
   uiTwo <- uiOne %>%
     ini(tka=fix)

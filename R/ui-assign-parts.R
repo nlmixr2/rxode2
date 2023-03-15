@@ -307,12 +307,16 @@
   }
   .ret <- .bodySetRxUi(x, envir = parent.frame(), value)
   if (inherits(x, "rxUi")) {
-    .cls <- class(x)
-    .cls <- .cls[.cls != "raw"]
     .ret <- .newModelAdjust(.ret, x)
-    class(.ret) <- .cls
   }
-  rxUiCompress(.ret)
+  .ret <- rxUiCompress(.ret)
+  if (inherits(x, "rxUi")) {
+    .cls <- setdiff(class(x), class(.ret))
+    if (length(.cls) > 0) {
+      class(.ret) <- c(.cls, class(.ret))
+    }
+  }
+  .ret
 }
 
 #'@rdname rxode2-set

@@ -16,13 +16,15 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
   if (length(.modelLines) == 0) return(.ret$modelFun)
   .ret <- .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
   # need to adjust since the model function was from a rxui object
-  .cls <- class(x)
-  .cls <- .cls[.cls != "raw"]
   .x <- rxUiDecompress(x)
   .ret <- rxUiDecompress(.ret)
   .ret <- .newModelAdjust(.ret, .x)
-  class(.ret) <- .cls
-  rxUiCompress(.ret)
+  .ret <- rxUiCompress(.ret)
+  .cls <- setdiff(class(x), class(.ret))
+  if (length(.cls) > 0) {
+    class(.ret) <- c(.cls, class(.ret))
+  }
+  .ret
 }
 
 #' @export
