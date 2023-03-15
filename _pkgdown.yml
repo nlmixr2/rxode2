@@ -37,9 +37,9 @@ reference:
   - rxRename
   - update.rxUi
   - as.rxUi
-  - ini<-.rxUi
-  - model<-.rxUi
-  - rxode2<-.rxUi
+  - ini-set
+  - model-set
+  - rxode2-set
   - rxSetCovariateNamesForPiping
   - rxUiDecompress
   - rxUiCompress
