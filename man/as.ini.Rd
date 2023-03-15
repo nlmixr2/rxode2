@@ -25,7 +25,7 @@ as.ini(x)
 \method{as.ini}{default}(x)
 }
 \arguments{
-\item{x}{Item to convert to a rxode2/nlmixr2 ui ini exression}
+\item{x}{Item to convert to a rxode2/nlmixr2 ui ini expression}
 }
 \value{
 rxode2 ini expression
@@ -89,7 +89,7 @@ one.compartment <- function() {
 }
 
 as.ini(one.compartment)
- 
+
 ui <- one.compartment()
 
 as.ini(ui)

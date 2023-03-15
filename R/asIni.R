@@ -1,6 +1,6 @@
 #' Turn into an ini block for initialization
 #'
-#' @param x Item to convert to a rxode2/nlmixr2 ui ini exression
+#' @param x Item to convert to a rxode2/nlmixr2 ui ini expression
 #' @return rxode2 ini expression
 #' @export
 #' @author Matthew L. Fidler
