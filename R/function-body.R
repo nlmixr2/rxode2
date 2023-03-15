@@ -152,6 +152,8 @@
     names(.pre)[2] <- "estPre"
     .post <- newModel$iniDf[,c("name", "est")]
     .both <- merge(.pre, .post, all.x=TRUE, all.y=TRUE, by="name")
+    if (any(is.na(.both$est))) return(FALSE)
+    if (any(is.na(.both$estPre))) return(FALSE)
     if (all(.both$est == .both$estPre)) {
       return(TRUE)
     }
