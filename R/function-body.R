@@ -70,7 +70,8 @@
   .ini <- .ret$iniFun
   .fun <- function() {} # nolint
   body(.fun) <- as.call(list(quote(`{`), .ini, .model))
-  rxode2(.model) <- .fun
+  rxode2(x) <- .fun
+  x
 }
 
 #' Assign the ini block in the rxode2 related object
@@ -94,7 +95,8 @@
   .model <- .ret$modelFun
   .fun <- function() {} # nolint
   body(.fun) <- as.call(list(quote(`{`), .ini, .model))
-  rxode2(.model) <- .fun
+  rxode2(x) <- .fun
+  x
 }
 #' This gets all the significant items in the model
 #'
@@ -163,6 +165,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .newModelAdjust <- function(newModel, oldModel) {
+  newModel <- rxUiDecompress(newModel)
+  oldModel <- rxUiDecompress(oldModel)
   lapply(c("meta", "sticky"), function(x) {
     assign(x, get(x, envir=oldModel), envir=newModel)
   })
@@ -206,15 +210,11 @@
     value <- body(value)
   }
   .clsModel <- class(x)
-  .model <- rxode2::rxUiDecompress(x)
+  .model <- rxUiDecompress(x)
   .modelFun <- .model$fun # don't use as-function to avoid environment issues
+  if (!inherits(.modelFun, "function")) stop("wrong input for 'x' in .bodySetRxUi", call.=FALSE)
   body(.modelFun) <- value
-  .ret <- .newModelAdjust(rxUiDecompress(rxode2(.modelFun)), .model)
-  if (inherits(x, "raw")) {
-    .ret <- rxode2::rxUiCompress(.ret)
-  }
-  class(.ret) <- .clsModel
-  .ret
+  .modelFun()
 }
 
 #' Set the function body of an rxUi object while retaining other object
@@ -287,6 +287,7 @@
 #' @export
 `rxode2<-.default` <- function(x, envir=environment(x), value) {
   force(value)
+  .v <- value
   if (inherits(value, "function")) {
     value <- body(value)
   } else if (inherits(value, "rxUi")) {
@@ -294,7 +295,14 @@
   } else if (!inherits(value, "{")) {
     stop("do not know how to assign this", call.=FALSE)
   }
-  .bodySetRxUi(x, envir = parent.frame(), value)
+  .ret <- .bodySetRxUi(x, envir = parent.frame(), value)
+  if (inherits(x, "rxUi")){
+    .cls <- class(x)
+    .cls <- .cls[.cls != "raw"]
+    .ret <- .newModelAdjust(.ret, x)
+    class(.ret) <- .cls
+  }
+  rxUiCompress(.ret)
 }
 
 #'@rdname rxode2-set

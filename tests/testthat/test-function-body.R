@@ -1,4 +1,4 @@
-test_that("rxode2<-, rxUi method", {
+test_that("rxode2<- and other rxUi methods", {
 
   one.compartment <- function() {
     ini({
@@ -14,6 +14,27 @@ test_that("rxode2<-, rxUi method", {
       ka <- exp(tka + eta.ka)
       cl <- exp(tcl + eta.cl)
       v <- exp(tv + eta.v)
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  one.compartment2 <- function() {
+    ini({
+      tka <- 1.57
+      tcl <- 2.72
+      tv <- 31.5
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- tka * exp(eta.ka)
+      cl <- tcl *exp(eta.cl)
+      v <- tv*exp(eta.v)
       d/dt(depot) = -ka * depot
       d/dt(center) = ka * depot - cl / v * center
       cp = center / v
@@ -46,6 +67,7 @@ test_that("rxode2<-, rxUi method", {
       cp ~ prop(propSd)
     })
   }
+  
   uiOne <- rxode2(one.compartment)
   uiTwo <- uiOne
   rxode2(uiTwo) <- body(two.compartment)
@@ -58,5 +80,11 @@ test_that("rxode2<-, rxUi method", {
 
   expect_equal(body(uiOne$fun), body(rxode2(one.compartment)$fun))
   expect_equal(body(uiTwo$fun), body(rxode2(two.compartment)$fun))
+
+  uiOne <- rxode2(one.compartment)
+  model(uiOne) <-  model(one.compartment2)
+  expect_equal(model(uiOne), model(one.compartment2))
+  expect_false(identical(uiOne$iniDf, rxode2(one.compartment2)$iniDf))
+  
 
 })
