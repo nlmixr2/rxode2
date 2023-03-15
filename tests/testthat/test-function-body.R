@@ -91,4 +91,65 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(model(uiOne), model(one.compartment))
   expect_equal(ini(uiOne), ini(one.compartment2))
 
+  # now lets add something to the model that should be kept and dropped
+  uiOne <- rxUiDecompress(rxode2(one.compartment))
+
+  uiOne$sticky <- "matt"
+
+  uiOne$matt <- "f"
+  uiOne$f <- "matt"
+
+  # this makes "insignificant" changes
+  iniNew <- quote(ini({
+        tka <- c(-Inf, 0.451075619360217, 2.99573227355399)
+        tcl <- fix(1.00063188030791)
+        tv <- 3.44998754583159
+        label("tv")
+        add.sd <- c(0, 0.7)
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+    }))
+  
+  ini(uiOne) <-  iniNew
+
+  expect_equal(ini(uiOne), iniNew)
+  expect_equal(uiOne$matt, "f")
+  expect_equal(uiOne$f, "matt")
+
+  # order is also an insignificant change
+  iniNew <- quote(ini({
+    tcl <- fix(1.00063188030791)
+    tka <- c(-Inf, 0.451075619360217, 2.99573227355399)
+    tv <- 3.44998754583159
+    label("tv")
+    add.sd <- c(0, 0.7)
+    eta.ka ~ 0.6
+    eta.v ~ 0.1
+    eta.cl ~ 0.3
+  }))
+  
+  ini(uiOne) <-  iniNew
+  expect_equal(ini(uiOne), iniNew)
+  expect_equal(uiOne$matt, "f")
+  expect_equal(uiOne$f, "matt")
+
+  ## changing an estimate is a significant change
+  iniNew <- quote(ini({
+    tka <- c(-Inf, 0.451075619360217, 2.99573227355399)
+    tcl <- fix(1.00063188030791)
+    tv <- 3.44998754583159
+    label("tv")
+    add.sd <- c(0, 0.7)
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 1
+  }))
+  
+  ini(uiOne) <-  iniNew
+
+  expect_equal(ini(uiOne), iniNew)
+  expect_equal(uiOne$matt, "f")
+  expect_equal(uiOne$f, NULL)
+  
 })

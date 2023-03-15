@@ -41,7 +41,7 @@
   }
   .f <- .f()
   .f <- rxUiDecompress(.f)
-  .blessed <- ls(.f, all.names=TRUE)
+  .blessed <- sort(unique(c("model", "modelName", ls(.f, all.names=TRUE))))
   .blessed <- deparse(str2lang(paste0(".rxUiBlessed <- ",
                       paste(deparse(.blessed), collapse="\n"))))
   writeLines(c("## created by .createRxUiBlessedList() in function-body.R edit there",
@@ -154,7 +154,7 @@
     .both <- merge(.pre, .post, all.x=TRUE, all.y=TRUE, by="name")
     if (any(is.na(.both$est))) return(FALSE)
     if (any(is.na(.both$estPre))) return(FALSE)
-    if (all(.both$est == .both$estPre)) {
+    if (all(abs(.both$est - .both$estPre) < 1e-10)) {
       return(TRUE)
     }
   }
@@ -171,8 +171,8 @@
 .newModelAdjust <- function(newModel, oldModel) {
   newModel <- rxUiDecompress(newModel)
   oldModel <- rxUiDecompress(oldModel)
-  lapply(c("meta", "sticky"), function(x) {
-    assign(x, get(x, envir=oldModel), envir=newModel)
+  lapply(c("meta", "sticky", "model", "modelName"), function(x) {
+    if (exists(x, envir=oldModel)) assign(x, get(x, envir=oldModel), envir=newModel)
   })
   if (.modelsNearlySame(newModel, oldModel)) {
     lapply(.getAllSigEnv(oldModel),
@@ -182,15 +182,16 @@
     return(newModel)
   }
   .drop <- .getDropEnv(oldModel)
-  .keep <- .getKeepEnv(newModel)
+  .keep <- .getKeepEnv(oldModel)
   lapply(.keep, function(v) {
     assign(v, get(v, envir=oldModel), envir=newModel)
   })
-  if (length(.keep) > 0) {
-    cli::cli_alert(sprintf("kept in model: '%s'",
-                           paste(paste0("$", .keep), collapse="', '")))
-  }
-  if (length(.drop) > 0) {
+  if ( length(.drop) > 0 ) {
+    cli::cli_alert("significant model change detected")
+    if (length(.keep) > 0) {
+      cli::cli_alert(sprintf("kept in model: '%s'",
+                             paste(paste0("$", .keep), collapse="', '")))
+    }
     cli::cli_alert(sprintf("removed from model: '%s'",
                            paste(paste0("$", .drop), collapse="', '")))
   }
