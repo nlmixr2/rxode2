@@ -78,6 +78,11 @@
   of the estimates.  Estimate bounds, weather an estimate is fixed or
   estimate label changes are not considered significant.
 
+- Added `as.ini()` method to convert various formats to an ini
+  expression.  It is used internally with `ini(mod)`.  If you want to
+  assign something new that you can convert to an ini expression, add
+  a method for `as.ini()`
+
 # rxode2 2.0.11
 
 - Give a more meaningful error for 'rxode2' ui models with only error
