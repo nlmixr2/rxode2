@@ -164,17 +164,19 @@
 #'
 #' @param newModel new model to adjust (uncompressed)
 #' @param oldModel old model to get information from (uncompressed)
+#' @param rename if this operation is a rename operation, it is
+#'   considered an insignificant operation
 #' @return new model adjusted to match oldModel as much as reasonable.
 #'   The class needs to be adjusted and needs to be compressed
 #' @noRd
 #' @author Matthew L. Fidler
-.newModelAdjust <- function(newModel, oldModel) {
+.newModelAdjust <- function(newModel, oldModel, rename=FALSE) {
   newModel <- rxUiDecompress(newModel)
   oldModel <- rxUiDecompress(oldModel)
   lapply(c("meta", "sticky", "model", "modelName"), function(x) {
     if (exists(x, envir=oldModel)) assign(x, get(x, envir=oldModel), envir=newModel)
   })
-  if (.modelsNearlySame(newModel, oldModel)) {
+  if (rename || .modelsNearlySame(newModel, oldModel)) {
     lapply(.getAllSigEnv(oldModel),
            function(x) {
              assign(x, get(x, envir=oldModel), envir=newModel)
