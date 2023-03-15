@@ -151,5 +151,46 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(ini(uiOne), iniNew)
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, NULL)
+
+  # now test changing model() should be a significant change
+  uiOne <- rxUiDecompress(rxode2(one.compartment))
+  uiOne$sticky <- "matt"
+  uiOne$matt <- "f"
+  uiOne$f <- "matt"
+
+  model(uiOne) <-  model(one.compartment2)
+
+  expect_equal(model(uiOne), model(one.compartment2))
+  expect_equal(uiOne$matt, "f")
+  expect_equal(uiOne$f, NULL)
+
+  # now test piping
+  uiOne <- rxUiDecompress(rxode2(one.compartment))
+
+  uiOne$sticky <- "matt"
+  uiOne$matt <- "f"
+  uiOne$f <- "matt"
+
+  uiTwo <- uiOne %>%
+    ini(tka=fix)
+
+  expect_equal(uiTwo$matt, "f")
+  expect_equal(uiTwo$f, "matt")
+
+  # now a significant change
+  uiTwo <- uiOne %>%
+    ini(tcl=77)
   
+  expect_equal(uiTwo$matt, "f")
+  expect_equal(uiTwo$f, NULL)
+
+  # nothing change in input ui
+  expect_equal(uiOne$matt, "f")
+  expect_equal(uiOne$f, "matt")
+  
+  uiTwo <- uiOne %>%
+    model({ka <- tka * exp(eta.ka)})
+
+  expect_equal(uiTwo$matt, "f")
+  expect_equal(uiTwo$f, NULL)
 })

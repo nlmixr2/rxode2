@@ -186,6 +186,9 @@
   lapply(.keep, function(v) {
     assign(v, get(v, envir=oldModel), envir=newModel)
   })
+  lapply(.drop, function(v) {
+    if (exists(v, envir=newModel)) rm(list=v, envir=newModel)
+  })
   if ( length(.drop) > 0 ) {
     cli::cli_alert("significant model change detected")
     if (length(.keep) > 0) {
