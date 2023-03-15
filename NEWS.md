@@ -54,7 +54,9 @@
   here)
 
 - Using `ini()` without any arguments on a `rxode2` type function will
-  return the `ini()` block.  Also added a method `ini(mod) <- iniBlock`
+  return the `ini()` block.  Also added a method `ini(mod) <-
+  iniBlock` to modify the `ini` block is you wish.  `iniBlock` should
+  be an expression.
 
 - Using `model()` without any arguments on a `rxode2` type function
   will return the `model()` block.  Also added a new method
@@ -63,11 +65,23 @@
 - Added a new method `rxode2(mod) <- modFunction` which allows
   replacing the function with a new function while maintaining the
   meta information about the ui (like information that comes from
-  `nonmem2rx` models)
+  `nonmem2rx` models).  The `modFunction` should be the body of the
+  new function, the new function, or a new `rxode2` ui.
+
+- `rxode2` ui objects now have a `$sticky` item inside the internal
+  (compressed) environment.  This `$sticky` tells what variables to
+  keep if there is a "significant" change in the ui during piping or
+  other sort of model change.  This is respected during model piping,
+  or modifying the model with `ini(mod)<-`, `model(mod)<-`,
+  `rxode2(mod)<-`.  A significant change is a change in the model
+  block, a change in the number of estimates, or a change to the value
+  of the estimates.  Estimate bounds, weather an estimate is fixed or
+  estimate label changes are not considered significant.
 
 # rxode2 2.0.11
 
-- Give a more meaningful error for 'rxode2' ui models with only error expressions
+- Give a more meaningful error for 'rxode2' ui models with only error
+  expressions
 
 - Break the ABI requirement between `roxde2()` and `rxode2parse()`
 
