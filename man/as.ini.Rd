@@ -2,6 +2,7 @@
 % Please edit documentation in R/asIni.R
 \name{as.ini}
 \alias{as.ini}
+\alias{as.ini.character}
 \alias{as.ini.data.frame}
 \alias{as.ini.call}
 \alias{as.ini.lotriFix}
@@ -10,6 +11,8 @@
 \title{Turn into an ini block for initialization}
 \usage{
 as.ini(x)
+
+\method{as.ini}{character}(x)
 
 \method{as.ini}{data.frame}(x)
 

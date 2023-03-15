@@ -65,6 +65,22 @@ test_that("as.ini ini expression", {
   is.ini(as.ini(ui))
 
   is.ini(as.ini(ui$iniDf))
+
+  ini <- c("ini({",
+           "tka <- log(1.57)",
+           "tcl <- log(2.72)",
+           "tv <- log(31.5)",
+           "eta.ka ~ 0.6",
+           "eta.cl ~ 0.3",
+           "eta.v ~ 0.1",
+           "add.sd <- 0.7",
+           "})")
+
+  is.ini(as.ini(ini))
+
+  ini <- paste(ini, collapse="\n")
+
+  is.ini(as.ini(ini))
   
 
 })

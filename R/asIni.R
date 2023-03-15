@@ -12,6 +12,12 @@ as.ini <- function(x) {
 
 #' @rdname as.ini
 #' @export
+as.ini.character <- function(x) {
+  as.ini(str2lang(paste(x, collapse="\n")))
+}
+
+#' @rdname as.ini
+#' @export
 as.ini.data.frame <- function(x) {
  lotri::lotriDataFrameToLotriExpression(x, useIni = TRUE) 
 }
