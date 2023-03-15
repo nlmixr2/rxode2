@@ -189,7 +189,7 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(uiOne$f, "matt")
   
   uiTwo <- uiOne %>%
-    model({ka <- tka * exp(eta.ka)})
+    model(ka <- tka * exp(eta.ka))
 
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, NULL)
