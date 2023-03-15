@@ -17,10 +17,14 @@ rxode(x, envir = environment(x)) <- value
 RxODE(x, envir = environment(x)) <- value
 }
 \arguments{
-\item{fun}{The rxUi object}
+\item{x}{The rxUi object}
+
+\item{envir}{environment where the assignment ocurs}
+
+\item{value}{the value that will be assigned}
 }
 \value{
-The function body (see \code{base::body})
+The rxode2 ui/function
 }
 \description{
 Set the function body of an rxUi object while retaining other object

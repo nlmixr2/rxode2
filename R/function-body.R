@@ -130,11 +130,11 @@
 #'
 #' @noRd
 #' @author Matthew L. Fidler & Bill Denney
-.bodySetRxUi <- function(fun, envir = parent.frame(), value) {
+.bodySetRxUi <- function(x, envir = parent.frame(), value) {
   if (is.function(value)) {
     value <- body(value)
   }
-  .model <- rxode2::rxUiDecompress(fun)
+  .model <- rxode2::rxUiDecompress(x)
   .clsModel <- class(.model)
   .modelFun <- .model$fun # don't use as-function to avoid environment issues
   body(.modelFun) <- value
@@ -163,8 +163,10 @@
 #' Set the function body of an rxUi object while retaining other object
 #' information (like data)
 #'
-#' @param fun The rxUi object
-#' @return The function body (see `base::body`)
+#' @param x The rxUi object
+#' @param envir environment where the assignment ocurs
+#' @param value the value that will be assigned
+#' @return The rxode2 ui/function
 #' @eval .createRxUiBlessedList()
 #' @export
 #' @examples
