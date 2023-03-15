@@ -2,10 +2,19 @@
 % Please edit documentation in R/function-body.R
 \name{rxode2<-}
 \alias{rxode2<-}
+\alias{rxode2<-.default}
+\alias{rxode<-}
+\alias{RxODE<-}
 \title{Set the function body of an rxUi object while retaining other object
 information (like data)}
 \usage{
 rxode2(x, envir = environment(x)) <- value
+
+\method{rxode2}{default}(x, envir = environment(x)) <- value
+
+rxode(x, envir = environment(x)) <- value
+
+RxODE(x, envir = environment(x)) <- value
 }
 \arguments{
 \item{fun}{The rxUi object}

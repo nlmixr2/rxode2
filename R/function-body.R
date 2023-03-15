@@ -1,6 +1,6 @@
 ## nocov start
 #' This creates the list of "blessed" rxode2 items
-#'  
+#'
 #' @return nothing, called for side effects
 #' @noRd
 #' @author Matthew L. Fidler
@@ -8,9 +8,9 @@
   message("querying default rxode2 object contents")
   .f <- function() {
     ini({
-      tka <- log(1.57); label("Ka")
-      tcl <- log(2.72); label("Cl")
-      tv <- log(31.5); label("V")
+      tka <- log(1.57)
+      tcl <- log(2.72)
+      tv <- log(31.5)
       tv2 <- 3
       eta.ka ~ 0.6
       eta.cl ~ 0.3
@@ -40,13 +40,13 @@
 }
 ## nocov end
 
-#' Assign the model block in the rxode2 related object  
-#'  
+#' Assign the model block in the rxode2 related object
+#'
 #' @param x rxode2 related object
 #' @param envir Environment where assignment occurs
 #' @param value Value of the object
 #' @return rxode2 related object
-#' @export 
+#' @export
 #' @author Matthew L. Fidler
 `model<-` <- function(x, envir=environment(x), value) {
   UseMethod("model<-")
@@ -67,7 +67,7 @@
 
 #setOldClass("rxUi")
 #' This gets the dropped items if a significant item changed
-#'  
+#'
 #' @param model uncompressed model to check
 #' @return Character vector of items to be dropped
 #' @noRd
@@ -77,7 +77,7 @@
   setdiff(.lsModel, c(.rxUiBlessed, model$sticky))
 }
 #' This gets the additional items kept if a significant item changed
-#'  
+#'
 #' @param model uncompressed model to check
 #' @return Character vector of additional items to be kept
 #' @noRd
@@ -105,7 +105,7 @@
   if (length(.keep) > 0) {
     cli::cli_alert(sprintf("kept in model: '%s'",
                            paste(paste0("$", .keep), collapse="', '")))
-  }  
+  }
   if (length(.drop) > 0) {
     cli::cli_alert(sprintf("removed from model: '%s'",
                            paste(paste0("$", .drop), collapse="', '")))
@@ -125,7 +125,7 @@
 #' @eval .createRxUiBlessedList()
 #' @export
 #' @examples
-#' 
+#'
 #' one.compartment <- function() {
 #'   ini({
 #'     tka <- log(1.57); label("Ka")
@@ -146,7 +146,7 @@
 #'     cp ~ add(add.sd)
 #'   })
 #' }
-#' 
+#'
 #' two.compartment <- function() {
 #'   ini({
 #'     lka <- 0.45 ; label("Absorption rate (Ka)")
@@ -172,15 +172,16 @@
 #'     cp ~ prop(propSd)
 #'   })
 #' }
-#' 
+#'
 #' ui <- rxode2(one.compartment)
-#' 
+#'
 #' rxode2(ui) <- two.compartment
-#' 
+#'
 `rxode2<-` <- function(x, envir=environment(x), value) {
   UseMethod("rxode2<-")
 }
 
+#' @rdname rxode2-set
 #' @export
 `rxode2<-.default` <- function(x, envir=environment(x), value) {
   force(value)
@@ -194,3 +195,14 @@
   .bodySetRxUi(x, envir = parent.frame(), value)
 }
 
+#'@rdname rxode2-set
+#'@export
+`rxode<-` <- function(x, envir=environment(x), value) {
+  UseMethod("rxode2<-")
+}
+
+#'@rdname rxode2-set
+#'@export
+`RxODE<-` <- function(x, envir=environment(x), value) {
+  UseMethod("rxode2<-")
+}
