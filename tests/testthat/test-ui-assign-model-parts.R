@@ -93,11 +93,10 @@ test_that("rxode2<- and other rxUi methods", {
 
   # now lets add something to the model that should be kept and dropped
   uiOne <- rxUiDecompress(rxode2(one.compartment))
-
   uiOne$sticky <- "matt"
-
   uiOne$matt <- "f"
   uiOne$f <- "matt"
+  class(uiOne) <- c("uiOne", class(uiOne))
 
   # this makes "insignificant" changes
   iniNew <- quote(ini({
@@ -112,10 +111,10 @@ test_that("rxode2<- and other rxUi methods", {
     }))
 
   ini(uiOne) <-  iniNew
-
   expect_equal(ini(uiOne), iniNew)
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, "matt")
+  expect_true(inherits(uiOne, "uiOne"))
 
   # order is also an insignificant change
   iniNew <- quote(ini({
@@ -130,9 +129,11 @@ test_that("rxode2<- and other rxUi methods", {
   }))
 
   ini(uiOne) <-  iniNew
+  
   expect_equal(ini(uiOne), iniNew)
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, "matt")
+  expect_true(inherits(uiOne, "uiOne"))
 
   ## changing an estimate is a significant change
   iniNew <- quote(ini({
@@ -151,18 +152,21 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(ini(uiOne), iniNew)
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, NULL)
+  expect_true(inherits(uiOne, "uiOne"))
 
   # now test changing model() should be a significant change
   uiOne <- rxUiDecompress(rxode2(one.compartment))
   uiOne$sticky <- "matt"
   uiOne$matt <- "f"
   uiOne$f <- "matt"
+  class(uiOne) <- c("uiOne", class(uiOne))
 
   model(uiOne) <-  model(one.compartment2)
 
   expect_equal(model(uiOne), model(one.compartment2))
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, NULL)
+  expect_true(inherits(uiOne, "uiOne"))
 
   # now test piping
   uiOne <- rxUiDecompress(rxode2(one.compartment))
@@ -176,6 +180,7 @@ test_that("rxode2<- and other rxUi methods", {
 
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, "matt")
+  expect_true(inherits(uiTwo, "uiOne"))
 
   # now a significant change
   uiTwo <- uiOne %>%
@@ -183,16 +188,19 @@ test_that("rxode2<- and other rxUi methods", {
 
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, NULL)
+  expect_true(inherits(uiTwo, "uiOne"))
 
   # nothing change in input ui
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, "matt")
-
+  expect_true(inherits(uiOne, "uiOne"))
+    
   uiTwo <- uiOne %>%
     model(ka <- tka * exp(eta.ka))
 
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, NULL)
+  expect_true(inherits(uiTwo, "uiOne"))
 
   # rename something in the model block, insignificant
   uiTwo <- uiOne %>%
@@ -200,6 +208,8 @@ test_that("rxode2<- and other rxUi methods", {
 
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, "matt")
+  expect_true(inherits(uiTwo, "uiOne"))
+    
 
   # rename something in the ini block is also an insignificant change
   uiTwo <- uiOne %>%
@@ -207,4 +217,6 @@ test_that("rxode2<- and other rxUi methods", {
 
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, "matt")
+  expect_true(inherits(uiTwo, "uiOne"))
+
 })
