@@ -10,15 +10,15 @@
   drop columns/rows where the diagonals are zero to create a new
   `omega` and `sigma` matrix for simulation.  This is the same idiom
   that NONMEM uses for simulation from these matrices.
-  
+
 - Add the ability to pipe model estimates from another model by
   `parentModel %>% ini(modelWithNewEsts)`
-  
+
 - Add the ability to append model statements with piping using `%>%
   model(x=3, append=d/dt(depot))`, still supports appending with
   `append=TRUE` and pre-pending with `append=NA` (the default is to
   replace lines with `append=FALSE`)
-  
+
 - rxSolve's keep argument will now maintain character and factor classes from
   input data with the same class (#190)
 
@@ -52,12 +52,18 @@
 - Added test for transit compartment solving in absence of dosing to the
   transit compartment (fixed in `rxode2parse` but solving tested
   here)
-  
+
 - Using `ini()` without any arguments on a `rxode2` type function will
-  return the `ini()` block.
-  
+  return the `ini()` block.  Also added a method `ini(mod) <- iniBlock`
+
 - Using `model()` without any arguments on a `rxode2` type function
-  will return the `model()` block.
+  will return the `model()` block.  Also added a new method
+  `model(mod) <- modelBlock`
+
+- Added a new method `rxode2(mod) <- modFunction` which allows
+  replacing the function with a new function while maintaining the
+  meta information about the ui (like information that comes from
+  `nonmem2rx` models)
 
 # rxode2 2.0.11
 

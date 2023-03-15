@@ -61,11 +61,33 @@
   .ini <- .ret$iniFun
   .fun <- function() {} # nolint
   body(.fun) <- as.call(list(quote(`{`), .ini, .model))
-  .model <- rxode2(.fun)
-  .model
+  rxode2(.model) <- .fun
 }
 
-#setOldClass("rxUi")
+#' Assign the ini block in the rxode2 related object
+#'
+#' @param x rxode2 related object
+#' @param envir Environment where assignment occurs
+#' @param value Value of the object
+#' @return rxode2 related object
+#' @export
+#' @author Matthew L. Fidler
+`ini<-` <- function(x, envir=environment(x), value) {
+  UseMethod("ini<-")
+}
+#' @export
+`ini<-.default` <- function(x, envir=environment(x), value) {
+  .ret <- try(as.rxUi(x), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    stop("cannot figure out what to do with ini assignment", call.=FALSE)
+  }
+  .ini <- force(value)
+  .model <- .ret$modelFun
+  .fun <- function() {} # nolint
+  body(.fun) <- as.call(list(quote(`{`), .ini, .model))
+  rxode2(.model) <- .fun
+}
+
 #' This gets the dropped items if a significant item changed
 #'
 #' @param model uncompressed model to check
@@ -87,18 +109,30 @@
   .ret <- setdiff(.lsModel, .rxUiBlessed)
   .ret[.ret %in% model$sticky]
 }
-
+#' Set the body of the
+#'
+#' @param fun function for setting the body
+#'
+#' @param envir environment where this is assigned
+#'
+#' @param value value that will be assigned
+#'
+#' @return new rxode2 function with meta information retained
+#'
+#' @noRd
+#' @author Matthew L. Fidler & Bill Denney
 .bodySetRxUi <- function(fun, envir = parent.frame(), value) {
   if (is.function(value)) {
     value <- body(value)
   }
   .model <- rxode2::rxUiDecompress(fun)
   .clsModel <- class(.model)
-  .modelFun <- .model$fun # don't use as-function to avoid environ issues
+  .modelFun <- .model$fun # don't use as-function to avoid environment issues
   body(.modelFun) <- value
   .ret <- rxUiDecompress(rxode2(.modelFun))
   .drop <- .getDropEnv(.model)
   .keep <- .getKeepEnv(.model)
+  assign("meta", get("meta", envir=.model), envir=.ret)
   lapply(.keep, function(v) {
     assign(v, get(v, envir=.model), envir=.ret)
   })
