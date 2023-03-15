@@ -67,7 +67,7 @@ test_that("rxode2<- and other rxUi methods", {
       cp ~ prop(propSd)
     })
   }
-  
+
   uiOne <- rxode2(one.compartment)
   uiTwo <- uiOne
   rxode2(uiTwo) <- body(two.compartment)
@@ -84,7 +84,11 @@ test_that("rxode2<- and other rxUi methods", {
   uiOne <- rxode2(one.compartment)
   model(uiOne) <-  model(one.compartment2)
   expect_equal(model(uiOne), model(one.compartment2))
-  expect_false(identical(uiOne$iniDf, rxode2(one.compartment2)$iniDf))
-  
+  expect_equal(ini(uiOne), ini(one.compartment))
+
+  uiOne <- rxode2(one.compartment)
+  ini(uiOne) <-  ini(one.compartment2)
+  expect_equal(model(uiOne), model(one.compartment))
+  expect_equal(ini(uiOne), ini(one.compartment2))
 
 })
