@@ -114,7 +114,6 @@ Biarch: true
 LinkingTo: 
     rxode2parse (>= 2.0.12),
     rxode2random,
-    rxode2et,
     PreciseSums (>= 0.3),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),
