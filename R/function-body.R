@@ -59,7 +59,7 @@
   }
   .model <- force(value)
   .ini <- .ret$iniFun
-  .fun <- function() {}
+  .fun <- function() {} # nolint
   body(.fun) <- as.call(list(quote(`{`), .ini, .model))
   .model <- rxode2(.fun)
   .model
