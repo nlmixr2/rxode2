@@ -93,7 +93,7 @@
   if (inherits(.ret, "try-error")) {
     stop("cannot figure out what to do with ini assignment", call.=FALSE)
   }
-  .ini <- force(value)
+  .ini <- as.ini(force(value))
   .model <- .ret$modelFun
   .fun <- function() {} # nolint
   body(.fun) <- as.call(list(quote(`{`), .ini, .model))

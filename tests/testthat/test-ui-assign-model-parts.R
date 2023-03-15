@@ -82,6 +82,7 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(body(uiTwo$fun), body(rxode2(two.compartment)$fun))
 
   uiOne <- rxode2(one.compartment)
+
   model(uiOne) <-  model(one.compartment2)
   expect_equal(model(uiOne), model(one.compartment2))
   expect_equal(ini(uiOne), ini(one.compartment))
