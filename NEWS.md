@@ -79,9 +79,14 @@
   estimate label changes are not considered significant.
 
 - Added `as.ini()` method to convert various formats to an ini
-  expression.  It is used internally with `ini(mod)`.  If you want to
+  expression.  It is used internally with `ini(mod)<-`.  If you want to
   assign something new that you can convert to an ini expression, add
-  a method for `as.ini()`
+  a method for `as.ini()`.
+
+- Added `as.model()` method to convert various formats to a model
+  expression.  It is used internally with `model(mod)<-`.  If you want to
+  assign something new that you can convert to a model expression, add
+  a method for `as.model()`.
 
 # rxode2 2.0.11
 
