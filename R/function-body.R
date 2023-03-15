@@ -296,7 +296,7 @@
     stop("do not know how to assign this", call.=FALSE)
   }
   .ret <- .bodySetRxUi(x, envir = parent.frame(), value)
-  if (inherits(x, "rxUi")){
+  if (inherits(x, "rxUi")) {
     .cls <- class(x)
     .cls <- .cls[.cls != "raw"]
     .ret <- .newModelAdjust(.ret, x)
