@@ -14,6 +14,8 @@
   eta.cl <- 0.3
   eta.v <- 0.1
   add.sd <- 0.7
+  depot <- central <- NULL
+  `/<-`() <- function(...) {} # nolint
   dt <- function(...) {} #nolint
   .f <- function() {
     ini({
