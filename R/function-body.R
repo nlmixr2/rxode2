@@ -96,6 +96,16 @@
   body(.fun) <- as.call(list(quote(`{`), .ini, .model))
   rxode2(.model) <- .fun
 }
+#' This gets all the significant items in the model
+#'
+#' @param model uncompresseg model to check
+#' @return all significant items to assign
+#' @noRd
+#' @author Matthew L. Fidler
+.getAllSigEnv <- function(model) {
+  .lsModel <- ls(envir=model)
+  setdiff(.lsModel, .rxUiBlessed)
+}
 
 #' This gets the dropped items if a significant item changed
 #'
@@ -118,7 +128,68 @@
   .ret <- setdiff(.lsModel, .rxUiBlessed)
   .ret[.ret %in% model$sticky]
 }
-#' Set the body of the
+#' Checks to see if the models are nearly the same
+#'
+#' @param newModel New rxode2 model
+#' @param oldModel old rxode2 model
+#' @return boolean to say if the models are nearly the same
+#' @noRd
+#' @details
+#'
+#' Nearly the same models has the same model block, the same
+#' estimates, but can change in fixed/unfixed, upper/lower limits and
+#' labels.
+#'
+#' @author Matthew L. Fidler
+.modelsNearlySame <- function(newModel, oldModel) {
+  # first check to see if this is a "significant" change.
+  if (identical(newModel$modelFun, oldModel$modelFun)) {
+    .pre <- oldModel$iniDf[,c("name", "est")]
+    names(.pre)[2] <- "estPre"
+    .post <- newModel$iniDf[,c("name", "est")]
+    .both <- merge(.pre, .post, all.x=TRUE, all.y=TRUE, by="name")
+    if (all(.both$est == .both$estPre)) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+#' Adjust new and old model
+#'
+#' @param newModel new model to adjust (uncompressed)
+#' @param oldModel old model to get information from (uncompressed)
+#' @return new model adjusted to match oldModel as much as reasonable.
+#'   The class needs to be adjusted and needs to be compressed
+#' @noRd
+#' @author Matthew L. Fidler
+.newModelAdjust <- function(newModel, oldModel) {
+  lapply(c("meta", "sticky"), function(x) {
+    assign(x, get(x, envir=oldModel), envir=newModel)
+  })
+  if (.modelsNearlySame(newModel, oldModel)) {
+    lapply(.getAllSigEnv(oldModel),
+           function(x) {
+             assign(x, get(x, envir=oldModel), envir=newModel)
+           })
+    return(newModel)
+  }
+  .drop <- .getDropEnv(oldModel)
+  .keep <- .getKeepEnv(newModel)
+  lapply(.keep, function(v) {
+    assign(v, get(v, envir=oldModel), envir=newModel)
+  })
+  if (length(.keep) > 0) {
+    cli::cli_alert(sprintf("kept in model: '%s'",
+                           paste(paste0("$", .keep), collapse="', '")))
+  }
+  if (length(.drop) > 0) {
+    cli::cli_alert(sprintf("removed from model: '%s'",
+                           paste(paste0("$", .drop), collapse="', '")))
+  }
+  newModel
+}
+
+#' Set the body of the rxode2 related function
 #'
 #' @param fun function for setting the body
 #'
@@ -134,26 +205,12 @@
   if (is.function(value)) {
     value <- body(value)
   }
+  .clsModel <- class(x)
   .model <- rxode2::rxUiDecompress(x)
-  .clsModel <- class(.model)
   .modelFun <- .model$fun # don't use as-function to avoid environment issues
   body(.modelFun) <- value
-  .ret <- rxUiDecompress(rxode2(.modelFun))
-  .drop <- .getDropEnv(.model)
-  .keep <- .getKeepEnv(.model)
-  assign("meta", get("meta", envir=.model), envir=.ret)
-  lapply(.keep, function(v) {
-    assign(v, get(v, envir=.model), envir=.ret)
-  })
-  if (length(.keep) > 0) {
-    cli::cli_alert(sprintf("kept in model: '%s'",
-                           paste(paste0("$", .keep), collapse="', '")))
-  }
-  if (length(.drop) > 0) {
-    cli::cli_alert(sprintf("removed from model: '%s'",
-                           paste(paste0("$", .drop), collapse="', '")))
-  }
-  if (inherits(.model, "raw")) {
+  .ret <- .newModelAdjust(rxUiDecompress(rxode2(.modelFun)), .model)
+  if (inherits(x, "raw")) {
     .ret <- rxode2::rxUiCompress(.ret)
   }
   class(.ret) <- .clsModel
