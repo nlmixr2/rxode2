@@ -52,10 +52,12 @@
 - Added test for transit compartment solving in absence of dosing to the
   transit compartment (fixed in `rxode2parse` but solving tested
   here)
-
-- A `body<-` method has been added to allow replacing the function body of an
-  rxUi object with a new function body, while retaining other parts of the
-  object.
+  
+- Using `ini()` without any arguments on a `rxode2` type function will
+  return the `ini()` block.
+  
+- Using `model()` without any arguments on a `rxode2` type function
+  will return the `model()` block.
 
 # rxode2 2.0.11
 

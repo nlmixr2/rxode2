@@ -40,6 +40,31 @@
 }
 ## nocov end
 
+#' Assign the model block in the rxode2 related object  
+#'  
+#' @param x rxode2 related object
+#' @param envir Environment where assignment occurs
+#' @param value Value of the object
+#' @return rxode2 related object
+#' @export 
+#' @author Matthew L. Fidler
+`model<-` <- function(x, envir=environment(x), value) {
+  UseMethod("model<-")
+}
+#' @export
+`model<-.default` <- function(x, envir=environment(x), value) {
+  .ret <- try(as.rxUi(x), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    stop("cannot figure out what to do with model assignment", call.=FALSE)
+  }
+  .model <- force(value)
+  .ini <- .ret$iniFun
+  .fun <- function() {}
+  body(.fun) <- as.call(list(quote(`{`), .ini, .model))
+  .model <- rxode2(.fun)
+  .model
+}
+
 #setOldClass("rxUi")
 #' This gets the dropped items if a significant item changed
 #'  
@@ -63,34 +88,34 @@
   .ret[.ret %in% model$sticky]
 }
 
-## .bodySetRxUi <- function(fun, envir = parent.frame(), value) {
-##   if (is.function(value)) {
-##     value <- body(value)
-##   }
-##   .model <- rxode2::rxUiDecompress(fun)
-##   .clsModel <- class(.model)
-##   .modelFun <- .model$fun # don't use as-function to avoid environ issues
-##   body(.modelFun) <- value
-##   .ret <- rxUiDecompress(rxode2(.modelFun))
-##   .drop <- .getDropEnv(.model)
-##   .keep <- .getKeepEnv(.model)
-##   lapply(.keep, function(v) {
-##     assign(v, get(v, envir=.model), envir=.ret)
-##   })
-##   if (length(.keep) > 0) {
-##     cli::cli_alert(sprintf("kept in model: '%s'",
-##                            paste(paste0("$", .keep), collapse="', '")))
-##   }  
-##   if (length(.drop) > 0) {
-##     cli::cli_alert(sprintf("removed from model: '%s'",
-##                            paste(paste0("$", .drop), collapse="', '")))
-##   }
-##   if (inherits(.model, "raw")) {
-##     .ret <- rxode2::rxUiCompress(.ret)
-##   }
-##   class(.ret) <- .clsModel
-##   .ret
-## }
+.bodySetRxUi <- function(fun, envir = parent.frame(), value) {
+  if (is.function(value)) {
+    value <- body(value)
+  }
+  .model <- rxode2::rxUiDecompress(fun)
+  .clsModel <- class(.model)
+  .modelFun <- .model$fun # don't use as-function to avoid environ issues
+  body(.modelFun) <- value
+  .ret <- rxUiDecompress(rxode2(.modelFun))
+  .drop <- .getDropEnv(.model)
+  .keep <- .getKeepEnv(.model)
+  lapply(.keep, function(v) {
+    assign(v, get(v, envir=.model), envir=.ret)
+  })
+  if (length(.keep) > 0) {
+    cli::cli_alert(sprintf("kept in model: '%s'",
+                           paste(paste0("$", .keep), collapse="', '")))
+  }  
+  if (length(.drop) > 0) {
+    cli::cli_alert(sprintf("removed from model: '%s'",
+                           paste(paste0("$", .drop), collapse="', '")))
+  }
+  if (inherits(.model, "raw")) {
+    .ret <- rxode2::rxUiCompress(.ret)
+  }
+  class(.ret) <- .clsModel
+  .ret
+}
 
 #' Set the function body of an rxUi object while retaining other object
 #' information (like data)
@@ -98,6 +123,7 @@
 #' @param fun The rxUi object
 #' @return The function body (see `base::body`)
 #' @eval .createRxUiBlessedList()
+#' @export
 #' @examples
 #' 
 #' one.compartment <- function() {
@@ -149,6 +175,22 @@
 #' 
 #' ui <- rxode2(one.compartment)
 #' 
-#' body(ui) <- two.compartment
+#' rxode2(ui) <- two.compartment
 #' 
+`rxode2<-` <- function(x, envir=environment(x), value) {
+  UseMethod("rxode2<-")
+}
+
+#' @export
+`rxode2<-.default` <- function(x, envir=environment(x), value) {
+  force(value)
+  if (inherits(value, "function")) {
+    value <- body(value)
+  } else if (inherits(value, "rxUi")) {
+    value <- body(as.function(value))
+  } else if (!inherits(value, "{")) {
+    stop("do not know how to assign this", call.=FALSES)
+  }
+  .bodySetRxUi(x, envir = parent.frame(), value)
+}
 

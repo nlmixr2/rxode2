@@ -1,4 +1,5 @@
-test_that("body<-, rxUi method", {
+test_that("rxode2<-, rxUi method", {
+
   one.compartment <- function() {
     ini({
       tka <- log(1.57)
@@ -19,6 +20,7 @@ test_that("body<-, rxUi method", {
       cp ~ add(add.sd)
     })
   }
+
   two.compartment <- function() {
     ini({
       lka <- 0.45
@@ -34,24 +36,27 @@ test_that("body<-, rxUi method", {
       vc <- exp(lvc)
       vp <- exp(lvp)
       q  <- exp(lq)
-
       kel <- cl/vc
       k12 <- q/vc
       k21 <- q/vp
-
       d/dt(depot) <- -ka*depot
       d/dt(central) <-  ka*depot - kel*central - k12*central + k21*peripheral1
       d/dt(peripheral1) <- k12*central - k21*peripheral1
       cp <- central / vc
-
       cp ~ prop(propSd)
     })
   }
   uiOne <- rxode2(one.compartment)
   uiTwo <- uiOne
-  suppressMessages(
-    body(uiTwo) <- two.compartment
-  )
+  rxode2(uiTwo) <- body(two.compartment)
   expect_equal(body(uiOne$fun), body(rxode2(one.compartment)$fun))
   expect_equal(body(uiTwo$fun), body(rxode2(two.compartment)$fun))
+
+  uiOne <- rxode2(one.compartment)
+  uiTwo <- uiOne
+  rxode2(uiTwo) <- two.compartment
+
+  expect_equal(body(uiOne$fun), body(rxode2(one.compartment)$fun))
+  expect_equal(body(uiTwo$fun), body(rxode2(two.compartment)$fun))
+
 })
