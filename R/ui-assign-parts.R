@@ -292,6 +292,11 @@
 `rxode2<-` <- function(x, envir=environment(x), value) {
   UseMethod("rxode2<-")
 }
+#' @rdname rxode2-set
+#' @export
+`rxode2<-.function` <- function(x, envir=environment(x), value) {
+  return(force(value))
+}
 
 #' @rdname rxode2-set
 #' @export

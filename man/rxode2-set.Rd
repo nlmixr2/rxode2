@@ -2,6 +2,7 @@
 % Please edit documentation in R/ui-assign-parts.R
 \name{rxode2<-}
 \alias{rxode2<-}
+\alias{rxode2<-.function}
 \alias{rxode2<-.default}
 \alias{rxode<-}
 \alias{RxODE<-}
@@ -9,6 +10,8 @@
 information (like data)}
 \usage{
 rxode2(x, envir = environment(x)) <- value
+
+\method{rxode2}{`function`}(x, envir = environment(x)) <- value
 
 \method{rxode2}{default}(x, envir = environment(x)) <- value
 
