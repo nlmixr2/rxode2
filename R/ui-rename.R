@@ -170,7 +170,17 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   lapply(seq_along(.lst), function(i) {
     .rxRename1(rxui, .lst[[i]])
   })
-  rxui$fun()
+  .ret <- rxui$fun()
+  if (inherits(.data, "rxUi")) {
+    .x <- rxUiDecompress(.data)
+    .ret <- .newModelAdjust(.ret, .x, rename=TRUE)
+    .ret <- rxUiCompress(.ret)
+    .cls <- setdiff(class(.data), class(.ret))
+    if (length(.cls) > 0) {
+      class(.ret) <- c(.cls, class(.ret))
+    }
+  }
+  .ret
 }
 #' @rdname rxRename
 rename.rxUi <- function(.data, ...) {

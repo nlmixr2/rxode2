@@ -1,7 +1,5 @@
 # -*- mode: makefile-gmake -*-
 BH=@BH@
-CXX_STD = CXX14
-CXX14STD = @CXX14STD@
 
 ################################################################################
 ## Package library flags.

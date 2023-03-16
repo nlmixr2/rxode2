@@ -10,15 +10,15 @@
   drop columns/rows where the diagonals are zero to create a new
   `omega` and `sigma` matrix for simulation.  This is the same idiom
   that NONMEM uses for simulation from these matrices.
-  
+
 - Add the ability to pipe model estimates from another model by
   `parentModel %>% ini(modelWithNewEsts)`
-  
+
 - Add the ability to append model statements with piping using `%>%
   model(x=3, append=d/dt(depot))`, still supports appending with
   `append=TRUE` and pre-pending with `append=NA` (the default is to
   replace lines with `append=FALSE`)
-  
+
 - rxSolve's keep argument will now maintain character and factor classes from
   input data with the same class (#190)
 
@@ -53,9 +53,45 @@
   transit compartment (fixed in `rxode2parse` but solving tested
   here)
 
+- Using `ini()` without any arguments on a `rxode2` type function will
+  return the `ini()` block.  Also added a method `ini(mod) <-
+  iniBlock` to modify the `ini` block is you wish.  `iniBlock` should
+  be an expression.
+
+- Using `model()` without any arguments on a `rxode2` type function
+  will return the `model()` block.  Also added a new method
+  `model(mod) <- modelBlock`
+
+- Added a new method `rxode2(mod) <- modFunction` which allows
+  replacing the function with a new function while maintaining the
+  meta information about the ui (like information that comes from
+  `nonmem2rx` models).  The `modFunction` should be the body of the
+  new function, the new function, or a new `rxode2` ui.
+
+- `rxode2` ui objects now have a `$sticky` item inside the internal
+  (compressed) environment.  This `$sticky` tells what variables to
+  keep if there is a "significant" change in the ui during piping or
+  other sort of model change.  This is respected during model piping,
+  or modifying the model with `ini(mod)<-`, `model(mod)<-`,
+  `rxode2(mod)<-`.  A significant change is a change in the model
+  block, a change in the number of estimates, or a change to the value
+  of the estimates.  Estimate bounds, weather an estimate is fixed or
+  estimate label changes are not considered significant.
+
+- Added `as.ini()` method to convert various formats to an ini
+  expression.  It is used internally with `ini(mod)<-`.  If you want to
+  assign something new that you can convert to an ini expression, add
+  a method for `as.ini()`.
+
+- Added `as.model()` method to convert various formats to a model
+  expression.  It is used internally with `model(mod)<-`.  If you want to
+  assign something new that you can convert to a model expression, add
+  a method for `as.model()`.
+
 # rxode2 2.0.11
 
-- Give a more meaningful error for 'rxode2' ui models with only error expressions
+- Give a more meaningful error for 'rxode2' ui models with only error
+  expressions
 
 - Break the ABI requirement between `roxde2()` and `rxode2parse()`
 

@@ -37,9 +37,14 @@ reference:
   - rxRename
   - update.rxUi
   - as.rxUi
+  - ini<-
+  - model<-
+  - rxode2<-
   - rxSetCovariateNamesForPiping
   - rxUiDecompress
   - rxUiCompress
+  - as.ini
+  - as.model
 - title: ggplot2/plot support functions
   contents:
   - stat_cens

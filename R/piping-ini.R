@@ -530,10 +530,22 @@ ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniDf <- .ret$iniDf
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf= .iniDf)
+  if (length(.iniLines) == 0L) return(.ret$iniFun)
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
   })
-  rxUiCompress(.ret)
+  if (inherits(x, "rxUi")) {
+    .x <- rxUiDecompress(x)
+    .ret <- .newModelAdjust(.ret, .x)
+  }
+  .ret <- rxUiCompress(.ret)
+  if (inherits(x, "rxUi")) {
+    .cls <- setdiff(class(x), class(.ret))
+    if (length(.cls) > 0) {
+      class(.ret) <- c(.cls, class(.ret))
+    }
+  }
+  .ret
 }
 
 #' @rdname ini
@@ -546,6 +558,7 @@ ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
   .ret <- rxUiDecompress(.ret)
   .iniDf <- .ret$iniDf
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf = .iniDf)
+  if (length(.iniLines) == 0L) return(.ret$iniFun)
   lapply(.iniLines, function(line) {
     .iniHandleLine(expr = line, rxui = .ret, envir=envir, append = append)
   })

@@ -300,6 +300,7 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
       }
     }
     .mod$meta <- .meta
+    .mod$sticky <- character(0)
     .w <- which(!is.na(.mod$iniDf$err) & !is.na(.mod$iniDf$neta1))
     if (length(.w) > 0) {
       stop("the parameter(s) '", paste(.mod$iniDf$name[.w], collapse="', '"), "' cannot be an error and between subject variability",
