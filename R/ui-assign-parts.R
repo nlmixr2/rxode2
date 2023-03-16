@@ -295,6 +295,15 @@
 #' @rdname rxode2-set
 #' @export
 `rxode2<-.function` <- function(x, envir=environment(x), value) {
+  .val <- force(value)
+  if (inherits(.val, "{")) {
+    .fun <- function() {} #nolint
+    body(.fun) <- .val
+    return(.fun)
+  } else if (!inherits(value, "function")) {
+    stop("cannot figure out how to assign this to the with rxode()<-",
+         call.=FALSE)
+  }
   return(force(value))
 }
 
