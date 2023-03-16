@@ -43,6 +43,8 @@ reference:
   - rxSetCovariateNamesForPiping
   - rxUiDecompress
   - rxUiCompress
+  - as.ini
+  - as.model
 - title: ggplot2/plot support functions
   contents:
   - stat_cens
