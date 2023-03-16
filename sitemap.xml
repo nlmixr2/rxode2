@@ -88,6 +88,12 @@
     <loc>https://nlmixr2.github.io/rxode2/news/index.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/as.ini.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/as.model.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/as.rxUi.html</loc>
   </url>
   <url>
@@ -208,6 +214,9 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/index.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/ini-set.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/ini.html</loc>
   </url>
   <url>
@@ -263,6 +272,9 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/lowergamma.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/model-set.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/model.html</loc>
@@ -617,6 +629,9 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxnormV.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/rxode2-set.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxode2.html</loc>
