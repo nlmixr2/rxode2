@@ -1,4 +1,4 @@
-## created by .createRxUiBlessedList() in function-body.R edit there
+## created by .createRxUiBlessedList() in ui-assign-parts.R edit there
 .rxUiBlessed <- c("covLhsDf", "covariates", "curHi", "curLow", 
     "errParams0", "estNotAllowed", "eta", "etaLhsDf", "extraCmt", 
     "extraDvid", "hasErrors", "iniDf", "lstExpr", "meta", "model", 

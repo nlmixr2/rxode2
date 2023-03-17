@@ -44,7 +44,7 @@
   .blessed <- sort(unique(c("model", "modelName", ls(.f, all.names=TRUE))))
   .blessed <- deparse(str2lang(paste0(".rxUiBlessed <- ",
                       paste(deparse(.blessed), collapse="\n"))))
-  writeLines(c("## created by .createRxUiBlessedList() in function-body.R edit there",
+  writeLines(c("## created by .createRxUiBlessedList() in ui-assign-parts.R edit there",
                .blessed), devtools::package_file("R/rxUiBlessed.R"))
   message("saved!")
   invisible("")

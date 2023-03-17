@@ -1,11 +1,11 @@
+testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
+  rxUnloadAll()
+  gc()
+  .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir, iniDf=iniDf)
+}
+
+
 rxTest({
-
-  testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
-    rxUnloadAll()
-    gc()
-    .quoteCallInfoLines(match.call(expand.dots = TRUE)[-1], envir=envir, iniDf=iniDf)
-  }
-
   test_that("test fix/unfix for eta", {
     expect_equal(testPipeQuote(a~fix),
                  list(quote(a<-fix)))
@@ -30,17 +30,17 @@ rxTest({
       tcl = 10
       eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
     }, "tv10=3"), list(quote(-ka),
-             quote(tka <- 0.5),
-             quote(tv <- 3),
-             quote(tcl <- 10),
-             quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
-             quote(cl <- exp(tcl + eta.cl)),
-             quote(eta.ka ~ 3),
-             quote(eta.ka ~ 3),
-             quote(tv <- 3),
-             quote(tcl <- 10),
-             quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
-             quote(tv10 <- 3)))
+                       quote(tka <- 0.5),
+                       quote(tv <- 3),
+                       quote(tcl <- 10),
+                       quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+                       quote(cl <- exp(tcl + eta.cl)),
+                       quote(eta.ka ~ 3),
+                       quote(eta.ka ~ 3),
+                       quote(tv <- 3),
+                       quote(tcl <- 10),
+                       quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+                       quote(tv10 <- 3)))
 
     expect_equal(testPipeQuote(tka=0.5, {
       tv = 3
@@ -766,11 +766,11 @@ rxTest({
     expect_warning(expect_warning(
       testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.cl", -Inf, 0.3 * 0.3, Inf, FALSE),
       regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
-    )
+      )
     expect_warning(expect_warning(
       testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "eta.v", -Inf, 0.1 * 0.1, Inf, FALSE),
       regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
-    )
+      )
     expect_warning(expect_warning(
       testEst(f %>% ini(eta.cl+eta.v~unfix(cor(sd(0.3,0.02,0.1)))), "(eta.cl,eta.v)", -Inf, 0.1 * 0.3 * 0.02, Inf, FALSE),
       regexp="unfix.*eta.cl"), regexp="unfix.*eta.v"
@@ -1131,7 +1131,7 @@ rxTest({
         f %>%
           ini(eta.ka + eta.matt ~ c(0.2,
                                     0.01, 0.2)
-          )
+              )
       )
     )
   })
@@ -1156,7 +1156,7 @@ rxTest({
         f %>%
           update(eta.ka + eta.matt ~ c(0.2,
                                        0.01, 0.2)
-          )
+                 )
       )
     )
   })
