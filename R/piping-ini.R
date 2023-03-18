@@ -476,6 +476,7 @@
 }
 
 # TODO: while nlmixr2est is changed
+#' @rdname dot-iniHandleLine
 #' @export
 .iniHandleFixOrUnfix <- .iniHandleLine
 
