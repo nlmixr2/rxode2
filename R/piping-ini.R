@@ -433,9 +433,6 @@
          call. = FALSE)
   }
 
-  # (Maybe) update parameter order
-  .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
-
   # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
   if (.matchesLangTemplate(expr, str2lang("fix(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
@@ -473,6 +470,10 @@
     # that is not a character string.
     stop("invalid expr for ini() modification", call.=FALSE)
   }
+
+  # (Maybe) update parameter order; this must be at the end so that the
+  # parameter exists in case it is promoted from a covariate
+  .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
 }
 
 # TODO: while nlmixr2est is changed
