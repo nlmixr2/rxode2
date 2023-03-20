@@ -625,15 +625,23 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   # In the code below there is no test for bounds since the bounds are typically (0, Inf).
   if ("omega" %in% which) {
     if (fix) {
-      fmtOmega <- "%s ~ fix(0)"
+      fmtOmega <- "%s ~ fix(%s)"
     } else {
-      fmtOmega <- "%s ~ 0"
+      fmtOmega <- "%s ~ c(%s)"
     }
-    omegaNames <- .ret$iniDf$name[!is.na(.ret$iniDf$neta1)]
+    # Do not include off-diagonal omegas since they will be automatically
+    # removed by `.iniHandleLine()`
+    maskOmega <-
+      !is.na(.ret$iniDf$neta1) &
+      .ret$iniDf$neta1 == .ret$iniDf$neta2
+    omegaNames <- .ret$iniDf$name[maskOmega]
     if (length(omegaNames) == 0) {
       cli::cli_warn("No omega parameters in the model")
     } else {
-      iniCommand <- c(iniCommand, sprintf(fmtOmega, omegaNames))
+      # Pretend that all diagonals exist and sort it out with the call to
+      # `.iniHandleLine()` below
+      newCommand <- sprintf(fmtOmega, paste(omegaNames, collapse = "+"), paste(rep(0, length(omegaNames) * (length(omegaNames) + 1)/2), collapse = ","))
+      iniCommand <- c(iniCommand, newCommand)
     }
   }
   if ("sigma" %in% which) {
