@@ -9,12 +9,12 @@ Classically, RxODE supported event coding in a single event id `evid` described 
 | 100+ cmt | Infusion/Event Flag           | <99 Cmt  | SS flag & Turning of Compartment                          |
 |----------|-------------------------------|----------|-----------------------------------------------------------|
 | 100+ cmt | 0 = bolus dose                | < 99 cmt | 1 = dose                                                  |
-|          | 1 = infusion (rate)           |          | 10 = Steady state 1 (equivalent to SS=1)                  |
-|          | 2 = infusion (dur)            |          | 20 = Steady state 2 (equivalent to SS=2)                  |
-|          | 6 = turn off modeled duration |          | 30 = Turn off a compartment (equivalent to -CMT w/EVID=2) |
-|          | 7 = turn off modeled rate     |          |                                                           |
-|          | 8 = turn on modeled duration  |          |                                                           |
-|          | 9 = turn on modeled rate      |          |                                                           |
+|          | 1 = infusion (rate)           |          | 10 = Steady state 1 (equivalent to SS=1) without alag()   |
+|          | 2 = infusion (dur)            |          | 11 = Steady state 1 at dose time with alag (SS=1)         |
+|          | 6 = turn off modeled duration |          | 12 = Steady state 1/2 at dose+ alag()                     |
+|          | 7 = turn off modeled rate     |          | 20 = Steady state 2 (equivalent to SS=2)                  |
+|          | 8 = turn on modeled duration  |          | 21 = Steady state 2 at dose time with alag (SS=2)         |
+|          | 9 = turn on modeled rate      |          | 30 = Turn off a compartment (equivalent to -CMT w/EVID=2) |
 |          | 4 = replace event             |          |                                                           |
 |          | 5 = multiply event            |          |                                                           |
 
