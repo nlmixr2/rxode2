@@ -192,8 +192,11 @@
 <span class="r-in"><span><span class="fu">zeroRe</span><span class="op">(</span><span class="va">one.compartment</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> fix `eta.ka` to `0.6`</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.ka` to `0`</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> fix `eta.cl` to `0.3`</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.cl` to `0`</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> fix `eta.v` to `0.1`</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.v` to `0`</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> fix `add.sd` to `0.7`</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> change initial estimate of `add.sd` to `0`</span>
@@ -209,6 +212,11 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> eta.ka      0      0     0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> eta.cl      0      0     0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> eta.v       0      0     0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"lotriFix")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        eta.ka eta.cl eta.v</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> eta.ka   TRUE  FALSE FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> eta.cl  FALSE   TRUE FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> eta.v   FALSE  FALSE  TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">States</span> (<span style="color: #0000BB; font-weight: bold;">$state</span> or <span style="color: #0000BB; font-weight: bold;">$stateDf</span>): </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Compartment Number Compartment Name</span>
@@ -230,9 +238,9 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span>         tv &lt;- 3.44998754583159</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         label("V")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         add.sd &lt;- fix(0)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         eta.ka ~ 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         eta.cl ~ 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         eta.v ~ 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         eta.ka ~ fix(0)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         eta.cl ~ fix(0)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         eta.v ~ fix(0)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     model({</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         ka &lt;- exp(tka + eta.ka)</span>
