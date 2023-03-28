@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Jacobian specification and Stiff Systems</h1>
             
-            <h4 data-toc-skip class="date">2023-03-21</h4>
+            <h4 data-toc-skip class="date">2023-03-28</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-stiff.Rmd" class="external-link"><code>vignettes/rxode2-stiff.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-stiff.Rmd</code></div>
@@ -222,7 +222,7 @@ der Pol</a> differential equations.</p>
 <span><span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
-<span><span class="co">## <span style="color: #949494;"># ... with 194 more rows</span></span></span></code></pre>
+<span><span class="co">## <span style="color: #949494;"># i 194 more rows</span></span></span></code></pre>
 <p>While this is not stiff at mu=1, mu=1000 is a stiff system</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mu<span class="op">=</span><span class="fl">1000</span><span class="op">)</span>, <span class="va">et</span><span class="op">)</span></span>
@@ -244,7 +244,7 @@ der Pol</a> differential equations.</p>
 <span><span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
-<span><span class="co">## <span style="color: #949494;"># ... with 194 more rows</span></span></span></code></pre>
+<span><span class="co">## <span style="color: #949494;"># i 194 more rows</span></span></span></code></pre>
 <p>While this is easy enough to do, it is a bit tedious. If you have
 rxode2 setup appropriately, you can use the computer algebra system
 sympy to calculate the Jacobian automatically.</p>
