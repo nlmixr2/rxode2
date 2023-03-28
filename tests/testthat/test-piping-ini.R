@@ -483,6 +483,29 @@ test_that("zeroRe", {
 })
 
 
+test_that("zeroRe works with correlated etas (#480)", {
+  mod <- function() {
+    ini({
+      lka <- 0.45
+      lcl <- 1
+      lvc <- 3.45
+      propSd <- c(0, 0.5)
+      etalka + etalcl + etalvc ~ c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
+    })
+    model({
+      ka <- exp(lka + etalka)
+      cl <- exp(lcl + etalcl)
+      vc <- exp(lvc + etalvc)
+      cp <- linCmt()
+      cp ~ prop(propSd)
+    })
+  }
+  ui <- rxode2(mod)
+  expect_equal(ui$iniDf$est[!is.na(ui$iniDf$neta1)], (1:6)/10)
+  suppressMessages(zeroUi <- zeroRe(mod))
+  expect_equal(zeroUi$iniDf$est[!is.na(zeroUi$iniDf$neta1)], c(0, 0, 0))
+})
+
 test_that("Piping outside the boundaries", {
 
   m1 <- function() {
