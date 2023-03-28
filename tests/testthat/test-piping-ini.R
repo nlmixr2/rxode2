@@ -483,6 +483,29 @@ test_that("zeroRe", {
 })
 
 
+test_that("zeroRe works with correlated etas (#480)", {
+  mod <- function() {
+    ini({
+      lka <- 0.45
+      lcl <- 1
+      lvc <- 3.45
+      propSd <- c(0, 0.5)
+      etalka + etalcl + etalvc ~ c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
+    })
+    model({
+      ka <- exp(lka + etalka)
+      cl <- exp(lcl + etalcl)
+      vc <- exp(lvc + etalvc)
+      cp <- linCmt()
+      cp ~ prop(propSd)
+    })
+  }
+  ui <- rxode2(mod)
+  expect_equal(ui$iniDf$est[!is.na(ui$iniDf$neta1)], (1:6)/10)
+  suppressMessages(zeroUi <- zeroRe(mod))
+  expect_equal(zeroUi$iniDf$est[!is.na(zeroUi$iniDf$neta1)], c(0, 0, 0))
+})
+
 test_that("Piping outside the boundaries", {
 
   m1 <- function() {
@@ -507,4 +530,41 @@ test_that("Piping outside the boundaries", {
     f2 <- m1 %>% ini(x3=c(0,3))
     expect_equal(f2$iniDf[f2$iniDf$name == "x3","upper"], Inf)
   })
+})
+
+test_that("append allows promoting from covariate (#472)", {
+  mod <- function() {
+    ini({
+      lka <- 0.45
+      lcl <- 1
+      lvc  <- 3.45
+      propSd <- 0.5
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+
+      kel <- cl / vc
+
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+
+      cp <- central / vc
+      cp ~ prop(propSd)
+    })
+  }
+  suppressMessages(
+    newmod <-
+      mod %>%
+      model(
+        ka <- exp(lka + ka_dose*DOSE),
+        auto = FALSE
+      ) %>%
+      ini(
+        ka_dose <- 1,
+        append = "lka"
+      )
+  )
+  expect_equal(newmod$iniDf$name, c("lka", "ka_dose", "lcl", "lvc", "propSd"))
 })
