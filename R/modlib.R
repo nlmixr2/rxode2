@@ -14,7 +14,7 @@
 }
 
 .isWritable <- function(path) {
-  if (checkmate::checkString(path, length=1)) {
+  if (checkmate::checkString(path)) {
     if (file.exists(path)) {
       return(file.access(path, mode = 2)[[1]] == 0)
     }
