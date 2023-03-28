@@ -20,7 +20,7 @@ engine threefry and then run the code."><meta property="og:image" content="https
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.12</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.12.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxchisq you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.966836e-05 4.552440e-06 1.837543e-05 1.504220e-07 4.341000e-02</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 7.868295e-02 3.707475e-03 2.536650e-01 8.571099e-05 1.455704e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.0411484018 0.9170640253 0.0002895232 0.7208873702 5.3596806899</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 2.2402510726 0.0003947150 0.0102417385 0.0003244065 0.0296199564</span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  9.9123216  0.6751668  3.6960448  6.8074178  4.6159274  5.1001017</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  3.5245157  9.5546867  5.5008624 10.0341737</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 15.139447  2.435919  4.729106  6.127560  3.055194  5.092111  5.345437</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 14.722668 10.786536  1.103619</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2.550731</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.006754256</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxchisq` directly in the model</span></span></span>
