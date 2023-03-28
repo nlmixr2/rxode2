@@ -4,8 +4,8 @@ rxTest({
   mod <- rxode2({
     a <- 6
     b <- 0.6
-    d / dt(intestine) <- -a * intestine
-    d / dt(blood) <- a * intestine - b * blood
+    d/dt(intestine) <- -a * intestine
+    d/dt(blood) <- a * intestine - b * blood
   })
 
   mod2 <- rxode2({
