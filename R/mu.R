@@ -212,8 +212,9 @@
     if(is.name(y)) {
       env$found <- TRUE
       .th <- as.character(y)
-      if (.th %in% env$info$theta) {
-        env$singleTheta <- unique(c(env$singleTheta, .th))
+      if (.th %in% env$info$theta &&
+            !(.th %in% env$singleTheta)) {
+        env$singleTheta <- c(env$singleTheta, .th)
       }
       return(as.character(y))
     }
