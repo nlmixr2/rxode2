@@ -1327,6 +1327,7 @@ struct rx_globals {
   int *gcens;
   double *gamt;
   double *gii;
+  double *gtinf;
   double *glhs;
   double *gcov;
   double *ginits;
@@ -3393,13 +3394,14 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     }
     rxOptionsIniEnsure(ntot);
     if (_globals.gall_times != NULL) free(_globals.gall_times);
-    _globals.gall_times = (double*)calloc(6*time0.size(), sizeof(double));
+    _globals.gall_times = (double*)calloc(7*time0.size(), sizeof(double));
     std::copy(time0.begin(), time0.end(), &_globals.gall_times[0]);
     _globals.gall_times2 = _globals.gall_times + time0.size();
     _globals.gdv = _globals.gall_times2 + time0.size(); // Perhaps allocate zero size if missing?
     _globals.gamt = _globals.gdv + time0.size();
     _globals.gii = _globals.gamt + time0.size();
-    _globals.glimit=_globals.gii + time0.size();
+    _globals.gtinf = _globals.gii + time0.size();
+    _globals.glimit=_globals.gtinf + time0.size();
     NumericVector dv;
     if (rxcDv > -1){
       dv = as<NumericVector>(dataf[rxcDv]);
@@ -3426,6 +3428,13 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     } else {
       std::fill_n(datIi.begin(), datIi.size(), 0.0);
     }
+    NumericVector datTinf(amt.size());
+    if (rxcDur > -1){
+      datTinf = as<NumericVector>(dataf[rxcDur]);
+    } else {
+      std::fill_n(datTinf.begin(), datTinf.size(), 0.0);
+    }
+
     ncov = 0;
     std::vector<int> covPos(dfN);
     curcovi=0;
@@ -3497,6 +3506,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         ind->idose          = &_globals.gidose[i];
         ind->dose           = &_globals.gamt[i];
         ind->ii             = &_globals.gii[i];
+        ind->tinf           = &_globals.gtinf[i];
         lasti = i;
 
         hmax1m=0.0;
@@ -3513,6 +3523,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       }
       // Create index
       _globals.gii[i] = datIi[i];
+      _globals.gtinf[i] = datTinf[i];
       _globals.gamt[i] = amt[i];
 
       if (isDose(_globals.gevid[i])){
@@ -3904,12 +3915,13 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->n_all_times =indS.n_all_times;
             if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
             ind->HMAX = indS.HMAX;
-            ind->idose = &(indS.idose[0]);
-            ind->ndoses = indS.ndoses;
-            ind->nevid2 = indS.nevid2;
-            ind->dose = &(indS.dose[0]);
-            ind->ii   = &(indS.ii[0]);
-            ind->evid =&(indS.evid[0]);
+            ind->idose     = &(indS.idose[0]);
+            ind->ndoses    = indS.ndoses;
+            ind->nevid2    = indS.nevid2;
+            ind->dose      = &(indS.dose[0]);
+            ind->ii        = &(indS.ii[0]);
+            ind->tinf      = &(indS.tinf[0]);
+            ind->evid      = &(indS.evid[0]);
             ind->all_times = &(indS.all_times[0]);
             ind->id=id+1;
             ind->idReal = indS.idReal;
