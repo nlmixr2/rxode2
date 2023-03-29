@@ -211,6 +211,10 @@
   c(names, do.call(`c`, lapply(x, function(y) {
     if(is.name(y)) {
       env$found <- TRUE
+      .th <- as.character(y)
+      if (.th %in% env$info$theta) {
+        env$singleTheta <- unique(c(env$singleTheta, .th))
+      }
       return(as.character(y))
     }
     return(NULL)
@@ -781,6 +785,7 @@
                 cov=setdiff(.params, c(.theta, .eta, names(rxInits(.mv)))))
 
   .env$param <- list()
+  .env$singleTheta <- NULL
   .env$body <- list()
   .env$info <- .info
   .env$top <- TRUE
