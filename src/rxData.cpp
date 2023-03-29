@@ -129,7 +129,6 @@ int rxcLimit = -1;
 int rxcCens  = -1;
 int rxcLen   = -1;
 int rxcIi    = -1;
-int rxcDur   = -1;
 bool resetCache = true;
 bool rxHasEventNames(CharacterVector &nm){
   int len = nm.size();
@@ -142,7 +141,6 @@ bool rxHasEventNames(CharacterVector &nm){
     rxcId    = -1;
     rxcDv    = -1;
     rxcIi    = -1;
-    rxcDur   = -1;
     rxcLimit = -1;
     rxcCens  = -1;
     rxcLen   = len;
@@ -171,10 +169,6 @@ bool rxHasEventNames(CharacterVector &nm){
                  as<std::string>(nm[i]) == "II" ||
                  as<std::string>(nm[i]) == "Ii"){
         rxcIi = i;
-      } else if (as<std::string>(nm[i]) == "dur" ||
-                 as<std::string>(nm[i]) == "Dur" ||
-                 as<std::string>(nm[i]) == "DUR"){
-        rxcDur = i;
       } else if (as<std::string>(nm[i]) == "cens" ||
                  as<std::string>(nm[i]) == "CENS" ||
                  as<std::string>(nm[i]) == "Cens"){
@@ -258,9 +252,8 @@ bool rxIs_list(const RObject &obj, std::string cls){
         rxcTime = 1;
         rxcAmt  = 3;
         rxcId   = 0;
+        rxcDv   = 5;
         rxcIi   = 4;
-        rxcDur  = 5;
-        rxcDv   = 6;
         List e = as<List>(classattr.attr(".rxode2.lst"));
         int censAdd = asInt(e[RxTrans_censAdd], "censAdd");
         int limitAdd = asInt(e[RxTrans_limitAdd], "limitAdd");
@@ -2854,9 +2847,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     rxcTime = 1;
     rxcAmt  = 3;
     rxcId   = 0;
+    rxcDv   = 5;
     rxcIi   = 4;
-    rxcDur  = 5;
-    rxcDv   = 6;
     int censAdd = as<int>(tmpL["censAdd"]);
     int limitAdd = as<int>(tmpL["limitAdd"]);
     if (censAdd == 1 && limitAdd == 1) {
