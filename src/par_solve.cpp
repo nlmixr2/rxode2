@@ -909,11 +909,12 @@ void handleSS(int *neq,
   int doSS2=0;
   int doSSinf=0;
   /* Rprintf("evid: %d\n", ind->evid[ind->ixds-1]); */
-  if (((ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS) &&
+  if (((ind->wh0 == EVID0_SS2  || ind->wh0 == EVID0_SS20 ||
+        ind->wh0 == EVID0_SS || ind->wh0 == EVID0_SS0) &&
        getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
     ind->doSS=1;
     ind->ixds--; // This dose stays in place; Reverse dose
-    if (ind->wh0 == EVID0_SS2){
+    if (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20){
       doSS2=1;
     } else if (ind->wh0 == EVID0_SSINF){
       doSSinf=1;
@@ -948,7 +949,10 @@ void handleSS(int *neq,
     }
     /* bi = *i; */
     if (ind->wh0 == EVID0_SSINF){
-    } else if (ind->whI == EVIDF_INF_RATE || ind->whI == EVIDF_INF_DUR || ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
+    } else if (ind->whI == EVIDF_INF_RATE ||
+               ind->whI == EVIDF_INF_DUR ||
+               ind->whI == EVIDF_MODEL_DUR_ON ||
+               ind->whI == EVIDF_MODEL_RATE_ON) {
       ei = *i;
       while(ind->ix[ei] != ind->idose[infEixds] && ei < ind->n_all_times){
         ei++;
@@ -1025,9 +1029,10 @@ void handleSS(int *neq,
         xp2=xout;
         *istate=1;
       }
-    } else if (dur == 0){
+    } else if (dur == 0) {
       // Oral or Steady State Infusion
-      for (j = 0; j < op->maxSS; j++){
+      int wh0 = ind->wh0;
+      for (j = 0; j < op->maxSS; j++) {
         ind->idx=*i;
         xout2 = xp2+ind->ii[ind->idx];
         // Use "real" xout for handle_evid functions.
@@ -1068,6 +1073,9 @@ void handleSS(int *neq,
         }
         *istate=1;
         xp2 = xout2;
+      }
+      ind->wh0 = wh0;
+      if (ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0) {
       }
     } else {
       if (dur >= getIiNumber(ind, ind->ixds)){
@@ -1170,7 +1178,6 @@ void handleSS(int *neq,
         ind->ixds = infBixds;
       }
     }
-
     if (doSS2){
       // Add at the end
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
