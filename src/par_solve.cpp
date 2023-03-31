@@ -618,7 +618,7 @@ void rxUpdateFuns(SEXP trans){
      AMT,
      LAG,
      RATE,
-     DUR, 
+     DUR,
      calc_mtime,
      ME,
      IndF,
@@ -1030,8 +1030,7 @@ void handleSS(int *neq,
         *istate=1;
       }
     } else if (dur == 0) {
-      // Oral or Steady State Infusion
-      int wh0 = ind->wh0;
+      // Bolus
       for (j = 0; j < op->maxSS; j++) {
         ind->idx=*i;
         xout2 = xp2+ind->ii[ind->idx];
@@ -1040,7 +1039,7 @@ void handleSS(int *neq,
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
         // yp is last solve or y0
-        solveSS_1(neq, BadDose, InfusionRate, dose, yp, 
+        solveSS_1(neq, BadDose, InfusionRate, dose, yp,
                   xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
         ind->ixds--; // This dose stays in place
         canBreak=1;
@@ -1074,8 +1073,19 @@ void handleSS(int *neq,
         *istate=1;
         xp2 = xout2;
       }
-      ind->wh0 = wh0;
       if (ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0) {
+        //advance the lag time
+        ind->idx=*i;
+        int wh0 = ind->wh0;
+        ind->wh0 = 1; // reset to calc lag
+        xout2 = getLag(ind, neq[1], ind->cmt, xp2);
+        ind->wh0 = wh0;
+        // yp is last solve or y0
+        solveSS_1(neq, BadDose, InfusionRate, dose, yp,
+                  xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        *istate=1;
+        xp2 = xout2;
+        ind->ixds--; // This dose stays in place
       }
     } else {
       if (dur >= getIiNumber(ind, ind->ixds)){
@@ -1099,7 +1109,7 @@ void handleSS(int *neq,
           // yp is last solve or y0
           *istate=1;
           // yp is last solve or y0
-          solveSS_1(neq, BadDose, InfusionRate, dose, yp, 
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp,
                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
           xp2 = xout2;
           // Turn off Infusion, solve (dur-ii)
@@ -1138,7 +1148,7 @@ void handleSS(int *neq,
           }
           // yp is last solve or y0
           *istate=1;
-          solveSS_1(neq, BadDose, InfusionRate, dose, yp, 
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp,
                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
           if (j <= op->minSS -1){
             if (ind->rc[0]== -2019){
@@ -1493,7 +1503,7 @@ extern "C" void par_liblsodaR(rx_solve *rx) {
                 if (checkInterrupt()) abort =1;
               }
             }
-        }  
+        }
       }
     }
   }
@@ -1592,7 +1602,7 @@ int *global_iwork(unsigned int mx){
     bool first = (global_iworki == 0);
     global_iworki = mx+1024;
     if (first) {
-      global_iworkp = R_Calloc(global_iworki, int);      
+      global_iworkp = R_Calloc(global_iworki, int);
     } else {
       global_iworkp = R_Realloc(global_iworkp, global_iworki, int);
     }
@@ -2066,7 +2076,3 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
   }
   return 0;
 }
-
-
-
-
