@@ -1076,16 +1076,22 @@ void handleSS(int *neq,
       if (ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0) {
         //advance the lag time
         ind->idx=*i;
-        int wh0 = ind->wh0;
-        ind->wh0 = 1; // reset to calc lag
-        xout2 = getLag(ind, neq[1], ind->cmt, xp2);
+        int wh0 = ind->wh0; ind->wh0=1;
+        xout2 = xp2 + ind->ii[ind->idx] - getLag(ind, neq[1], ind->cmt, 0.0);
         ind->wh0 = wh0;
+        // Use "real" xout for handle_evid functions.
+        *istate=1;
+        handle_evid(ind->evid[ind->ix[*i]], neq[0],
+                    BadDose, InfusionRate, dose, yp,
+                    xout, neq[1], ind);
         // yp is last solve or y0
         solveSS_1(neq, BadDose, InfusionRate, dose, yp,
                   xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-        *istate=1;
-        xp2 = xout2;
+        for (k = neq[0]; k--;){
+          ind->solveLast[k] = yp[k];
+        }
         ind->ixds--; // This dose stays in place
+        xp2 = xout2;
       }
     } else {
       if (dur >= getIiNumber(ind, ind->ixds)){
@@ -1193,7 +1199,7 @@ void handleSS(int *neq,
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
     }
     ind->idx=*i;
-    if (!doSSinf){
+    if (!doSSinf && ind->wh0 != EVID0_SS20 && ind->wh0 != EVID0_SS0){
       handle_evid(ind->evid[ind->ix[*i]], neq[0],
                   BadDose, InfusionRate, dose, yp,
                   xout, neq[1], ind);
