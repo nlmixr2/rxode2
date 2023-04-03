@@ -27,6 +27,7 @@ static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind
 	for (int j = (op->neq + op->extraCmt); j--;) {
 		ind->InfusionRate[j] = 0;
 		ind->on[j] = 1;
+		ind->skipDose[j] = 0;
 		ind->tlastS[j] = NA_REAL;
 		ind->tfirstS[j] = NA_REAL;
 		ind->curDoseS[j] = NA_REAL;

@@ -1332,6 +1332,7 @@ struct rx_globals {
   //ints
   int *gevid;
   int *gBadDose;
+  int *gSkipDose;
   int *grc;
   int *gidose;
   int *gpar_cov;
@@ -1419,6 +1420,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->tfirstS = getTfirstSThread();
     ind->curDoseS = getCurDoseSThread();
     ind->on = _globals.gon + ncmt*omp_get_thread_num();
+    ind->skipDose = _globals.gSkipDose + ncmt*omp_get_thread_num();
     ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
     ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
     ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
@@ -5191,7 +5193,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gon != NULL) free(_globals.gon);
-    _globals.gon = (int*)calloc(n3a_c +n3 + 4*rxSolveDat->nSize + 2*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
+    _globals.gon = (int*)calloc(n3a_c*2 +n3 + 4*rxSolveDat->nSize + 2*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
 #ifdef rxSolveT
     RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -5203,7 +5205,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
     _globals.jac_counter = _globals.dadt_counter + rxSolveDat->nSize; // [nSize]
     _globals.gix=_globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
-
+    _globals.gSkipDose = _globals.gix + rx->nall*rx->nsim; //n3a_c;
 #ifdef rxSolveT
     RSprintf("Time13: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();

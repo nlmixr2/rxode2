@@ -908,10 +908,16 @@ void handleSS(int *neq,
   int j;
   int doSS2=0;
   int doSSinf=0;
+  int maxSS = op->maxSS;
+  int minSS = op->minSS;
+  int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
   /* Rprintf("evid: %d\n", ind->evid[ind->ixds-1]); */
-  if (((ind->wh0 == EVID0_SS2  || ind->wh0 == EVID0_SS20 ||
-        ind->wh0 == EVID0_SS || ind->wh0 == EVID0_SS0) &&
+  if (((ind->wh0 == EVID0_SS2  || isSsLag ||
+        ind->wh0 == EVID0_SS) &&
        getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
+    if (isSsLag) {
+      maxSS--; minSS--;
+    }
     ind->doSS=1;
     ind->ixds--; // This dose stays in place; Reverse dose
     if (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20){
@@ -926,19 +932,36 @@ void handleSS(int *neq,
       oldI = ind->whI;
       infBixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
-      for (j = ind->ixds+1; j < ind->ndoses; j++){
-        if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds)){
-          getWh(ind->evid[ind->idose[j]], &wh, &cmt, &wh100, &whI, &wh0);
-          if (whI == oldI && cmt == ind->cmt){
-            dur = getTime_(ind->idose[j], ind) -
-              getTime_(ind->ix[*i], ind);
-            dur2 = getIiNumber(ind, ind->ixds) - dur;
-            /* Rprintf("000; dur: %f; dur2: %f; ii: %f;\n", dur, dur2, getIiNumber(ind, ind->ixds)); */
-            infEixds = j;
-            break;
+      if (isSsLag) {
+        for (j = ind->ixds+3; j < ind->ndoses; j++) {
+          if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds+2)) {
+            getWh(ind->evid[ind->idose[j]], &wh, &cmt, &wh100, &whI, &wh0);
+            if (whI == oldI && cmt == ind->cmt) {
+              dur = getTime_(ind->idose[j], ind) -
+                getTime_(ind->idose[ind->ixds+2], ind);
+              dur2 = getIiNumber(ind, ind->ixds) - dur;
+              /* Rprintf("000; dur: %f; dur2: %f; ii: %f;\n", dur, dur2, getIiNumber(ind, ind->ixds)); */
+              infEixds = j;
+              break;
+            }
           }
         }
+      } else {
+        for (j = ind->ixds+1; j < ind->ndoses; j++){
+          if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds)){
+            getWh(ind->evid[ind->idose[j]], &wh, &cmt, &wh100, &whI, &wh0);
+            if (whI == oldI && cmt == ind->cmt){
+              dur = getTime_(ind->idose[j], ind) -
+                getTime_(ind->ix[*i], ind);
+              dur2 = getIiNumber(ind, ind->ixds) - dur;
+              /* Rprintf("000; dur: %f; dur2: %f; ii: %f;\n", dur, dur2, getIiNumber(ind, ind->ixds)); */
+              infEixds = j;
+              break;
+            }
+          }
+        }        
       }
+
     } else if (ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
       // These are right next to another.
       infBixds = ind->ixds;
@@ -1029,6 +1052,7 @@ void handleSS(int *neq,
         xp2=xout;
         *istate=1;
       }
+
     } else if (dur == 0) {
       // Bolus
       for (j = 0; j < op->maxSS; j++) {
@@ -1073,7 +1097,7 @@ void handleSS(int *neq,
         *istate=1;
         xp2 = xout2;
       }
-      if (ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0) {
+      if (isSsLag) {
         //advance the lag time
         ind->idx=*i;
         int wh0 = ind->wh0; ind->wh0=1;
@@ -1103,7 +1127,7 @@ void handleSS(int *neq,
         badSolveExit(*i);
       } else {
         // Infusion
-        for (j = 0; j < op->maxSS; j++){
+        for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
           xout2 = xp2+dur;
@@ -1192,6 +1216,55 @@ void handleSS(int *neq,
         *istate=1;
         ind->idx=*i;
         ind->ixds = infBixds;
+        for (k = neq[0]; k--;){
+          ind->solveLast[k] = yp[k];
+        }
+        xp2 = xout2;
+        if (isSsLag) {
+          int wh0 = ind->wh0; ind->wh0=1;
+          double curLag = getLag(ind, neq[1], ind->cmt, 0.0);
+          double totTime = xp2 + dur + dur2 - curLag;
+          ind->wh0 = wh0;
+          if (xp2 + dur < totTime) {
+            xout2 = xp2 + dur;
+          } else {
+            xout2 = totTime;
+          }
+          ind->idx=*i;
+          ind->ixds = infBixds;
+          handle_evid(ind->evid[ind->idose[infBixds]], neq[0],
+                      BadDose, InfusionRate, dose, yp,
+                      xout, neq[1], ind);
+          // yp is last solve or y0
+          *istate=1;
+          // yp is last solve or y0
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp,
+                    xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+          if (xout2 != totTime) {
+            // don't give the infusion off dose
+            xp2 = xout2;
+            // Turn off Infusion, solve (dur-ii)
+            xout2 = totTime;
+            ind->ixds = infEixds;
+            ind->idx=ei;
+            handle_evid(ind->evid[ind->idose[infEixds]], neq[0],
+                        BadDose, InfusionRate, dose, yp,
+                        xout+dur, neq[1], ind);
+            // yp is last solve or y0
+            *istate=1;
+            solveSS_1(neq, BadDose, InfusionRate, dose, yp,
+                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            // don't give the next off dose (already turned off)
+            ind->skipDose[ind->cmt] = 1;
+          }
+          *istate=1;
+          ind->idx=*i;
+          ind->ixds = infBixds;
+          for (k = neq[0]; k--;){
+            ind->solveLast[k] = yp[k];
+          }
+          xp2 = xout2;
+        }
       }
     }
     if (doSS2){
@@ -1199,7 +1272,7 @@ void handleSS(int *neq,
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
     }
     ind->idx=*i;
-    if (!doSSinf && ind->wh0 != EVID0_SS20 && ind->wh0 != EVID0_SS0){
+    if (!doSSinf && !isSsLag){
       handle_evid(ind->evid[ind->ix[*i]], neq[0],
                   BadDose, InfusionRate, dose, yp,
                   xout, neq[1], ind);
