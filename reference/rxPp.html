@@ -205,14 +205,14 @@ dropout is equal to or after tmax.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample homogenous Poisson process of rate 1/10</span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.06639272 31.88512759 41.29172853 43.09789347 59.90080199 65.64180504</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 68.57428403 68.61389161 71.22533667 82.90403233</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  16.82434  20.16464  36.46036  61.29927  64.97062  82.76025  83.44351</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  85.26553  98.60462 112.17225</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample inhomogenous Poisson rate of 1/10</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  22.33461  22.87141  42.54532  50.07974  54.40756  56.34652  62.04769</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  73.64890  88.36974 100.00000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 31.00672 53.78147 64.98492 71.90340 76.63650 80.59823 81.10408 82.48225</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 91.96662 94.20431</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Typically the Poisson process times are in a sequential order,</span></span></span>
 <span class="r-in"><span><span class="co">## using randomOrder gives the Poisson process in random order</span></span></span>
