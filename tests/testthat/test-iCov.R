@@ -1,7 +1,7 @@
 rxTest({
   test_that("proper errors from event tables with single id", {
 
-    m <- function () {
+    m <- function() {
       ini({
         tCL20 <-  c(10)
         tV1 <- 20
