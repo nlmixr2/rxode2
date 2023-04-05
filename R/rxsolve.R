@@ -1502,6 +1502,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       } else {
         stop("Cannot detect an event data frame to merge 'iCov'")
       }
+      .events <- as.data.frame(.events)
       .eventId <- which(tolower(names(.events)) == "id")
       if (length(.eventId) != 1) {
         stop("to use 'iCov' you must have an id in your event table")
