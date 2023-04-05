@@ -1737,6 +1737,10 @@ solve.rxUi <- solve.rxSolve
 
 #' @rdname rxSolve
 #' @export
+solve.function <- solve.rxSolve
+
+#' @rdname rxSolve
+#' @export
 solve.rxode2 <- solve.rxSolve
 
 #' @rdname rxSolve
