@@ -258,6 +258,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
         int censAdd = asInt(e[RxTrans_censAdd], "censAdd");
         int limitAdd = asInt(e[RxTrans_limitAdd], "limitAdd");
         rx->maxShift = asDouble(e[RxTrans_maxShift],"maxShift");
+        rx->op->nCalcInf = asInt(e[RxTrans_maxInfDurPerId], "maxInfDurPerId");
         if (censAdd == 1 && limitAdd == 1) {
           rxcCens = 6;
           rxcLimit = 7;
@@ -1409,6 +1410,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   int ncmt = (op->neq + op->extraCmt);
+  int nCalcInf = op->nCalcInf;
   if (ncmt) {
     ind->alag = getAlagThread();
     ind->cRate = getRateThread();
@@ -4500,6 +4502,7 @@ static inline void iniRx(rx_solve* rx) {
   //
   op->nlhs = 0;
   op->neq = 0;
+  op->nCalcInf = 0;
   op->stiff = 0;
   op->ncov = 0;
   op->par_cov = NULL;
