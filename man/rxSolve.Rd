@@ -17,6 +17,7 @@
 \alias{simulate.rxParams}
 \alias{solve.rxSolve}
 \alias{solve.rxUi}
+\alias{solve.function}
 \alias{solve.rxode2}
 \alias{solve.rxParams}
 \alias{solve.rxEt}
@@ -196,6 +197,8 @@ rxSolve(
 \method{solve}{rxSolve}(a, b, ...)
 
 \method{solve}{rxUi}(a, b, ...)
+
+\method{solve}{`function`}(a, b, ...)
 
 \method{solve}{rxode2}(a, b, ...)
 
