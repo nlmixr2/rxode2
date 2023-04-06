@@ -68,6 +68,10 @@
       if (is.call(.num)) .num <- as.call(lapply(.num, .rxRenameRecursive, new=new, old=old, isLhs=TRUE))
       if (is.call(.denom)) .denom <- as.call(lapply(.denom, .rxRenameRecursive, new=new, old=old, isLhs=TRUE))
       return(as.call(c(list(item[[1]]), .num, .denom)))
+    } else if (isLhs && identical(item[[1]], old) && length(item) == 2L &&
+                 is.numeric(item[[2]])) {
+      # handle x(0) = items
+      return(as.call(c(new, lapply(item[-1], .rxRenameRecursive, new=new, old=old, isLhs=isLhs))))
     }
     if (identical(item[[1]], quote(`=`)) ||
           identical(item[[1]], quote(`<-`)) ||
