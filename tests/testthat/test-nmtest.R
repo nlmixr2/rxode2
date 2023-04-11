@@ -33,10 +33,12 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   library(ggplot2)
 
-  solveEqual <- function(id, plot = FALSE) {
+  p <- TRUE
+
+  solveEqual <- function(id, plot = p) {
     noLag <-  d[d$id == id & d$evid != 0,]$lagt == 0
     if (plot) {
-      print(etTrans(d[d$id == id,], fl))
+      d <- d[d$id == id,]
       s1 <- rxSolve(fl, d[d$id == id,])
       print(plot(s1, cp) +
               geom_point(data=d[d$id == id, ], aes(x=time, y=cp), col="red"))
@@ -46,7 +48,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
           s1 <- rxSolve(f, d[d$id == id,])
           expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.01)
         })
-      }
+       }
       test_that(paste0("nmtest id:", id, " alag"), {
         s1 <- rxSolve(fl, d[d$id == id,])
         expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.01)
