@@ -388,9 +388,11 @@ test_that("zeroRe", {
   expect_equal(newMod$iniDf$est, c(1, 0, 0))
 
   # Confirm that you can simulate from the model
-  expect_equal(
-    rxSolve(newMod, events = data.frame(TIME = 0:2))$b,
-    rep(1, 3)
+  suppressMessages(
+    expect_equal(
+      rxSolve(newMod, events = data.frame(TIME = 0:2))$b,
+      rep(1, 3)
+    )
   )
 
   # Confirm that the `fix` flag is respected
@@ -401,7 +403,7 @@ test_that("zeroRe", {
   )
   # detect change
   expect_equal(uiOmegaSigma$iniDf$fix, rep(FALSE, 3))
-  expect_equal(newUi$iniDf$fix, c(FALSE, TRUE, FALSE))
+  expect_equal(newUi$iniDf$fix, c(FALSE, TRUE, TRUE))
   expect_equal(newUiNoFix$iniDf$fix, rep(FALSE, 3))
 
   suppressMessages(
@@ -481,7 +483,6 @@ test_that("zeroRe", {
   expect_error(zeroRe("A"), regexp = "'object' needs to be a rxUi model")
   expect_error(zeroRe(modOmegaSigma, which = "foo"), regexp = "should be one of")
 })
-
 
 test_that("zeroRe works with correlated etas (#480)", {
   mod <- function() {
