@@ -3,6 +3,9 @@
 - A bug was fixed so that the `zeroRe()` function works with correlated omega
   values.
 
+- A bug was fixed so that the `rename()` function works with initial
+  conditions for compartments (`cmt(0)`)
+
 # rxode2 2.0.12
 
 ## New features
