@@ -1314,9 +1314,7 @@ struct rx_globals {
   double *gDur;
   double *gall_times;
   double *gall_times2;
-  //int *gix;
-  int **gixThread = NULL;
-  int gixThreadN;
+  int *gix;
   double *gdv;
   double *glimit;
   int *gcens;
@@ -1411,8 +1409,6 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   int ncmt = (op->neq + op->extraCmt);
-  ind->ix = _globals.gixThread[omp_get_thread_num()];
-  std::iota(ind->ix,ind->ix+ind->n_all_times,0);
   if (ncmt) {
     ind->alag = getAlagThread();
     ind->cRate = getRateThread();
@@ -2474,16 +2470,6 @@ LogicalVector rxSolveFree(){
   if (_globals.gsigma != NULL) free(_globals.gsigma);
   _globals.gsigma = NULL;
   // Free the allocated keys
-  if (_globals.gixThread != NULL) {
-    int j = 0;
-    while(_globals.gixThread[j] != NULL) {
-      free(_globals.gixThread[j]);
-      _globals.gixThread[j] = NULL;
-      j++;
-    }
-    free(_globals.gixThread);
-    _globals.gixThread = NULL;
-  }
   if (_globals.keys != NULL) {
     int i=0;
     while (_globals.keys[i] != NULL){
@@ -2778,7 +2764,6 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
-      _globals.gixThreadN=tmpL[RxTrans_maxItemsPerId];
       rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
       List keep0 = tmpL[RxTrans_keepL];
       List keep = tmpL[0];
@@ -2853,7 +2838,6 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");
-    _globals.gixThreadN=tmpL[RxTrans_maxItemsPerId];
     rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
     List keep0 = tmpL[RxTrans_keepL];
     List keep = keep0[0];
@@ -2887,7 +2871,6 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   if (rxIs(ev1, "rxEtTran")){
     CharacterVector cls = ev1.attr("class");
     List tmpL = cls.attr(".rxode2.lst");
-    _globals.gixThreadN=tmpL[RxTrans_maxItemsPerId];
     rx->nobs2 = asInt(tmpL[RxTrans_nobs], "nobs");
     rxSolveDat->convertInt = (asInt(tmpL[RxTrans_idInfo], "idInfo")==1);
     CharacterVector clsEt = Rf_getAttrib(ev1, R_ClassSymbol);
@@ -3930,8 +3913,8 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
           curSolve += (op->neq + op->nlin)*ind->n_all_times;
-          // ind->ix = &_globals.gix[curIdx];
-          // std::iota(ind->ix,ind->ix+ind->n_all_times,0);
+          ind->ix = &_globals.gix[curIdx];
+          std::iota(ind->ix,ind->ix+ind->n_all_times,0);
           curEvent += eLen;
           curIdx += ind->n_all_times;
           if (rx->sample) {
@@ -5221,26 +5204,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.slvr_counter = _globals.grc + rxSolveDat->nSize; //[nSize]
     _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
     _globals.jac_counter = _globals.dadt_counter + rxSolveDat->nSize; // [nSize]
-    _globals.gSkipDose = _globals.jac_counter + rxSolveDat->nSize; //n3a_c;
-    if (_globals.gixThread != NULL) {
-      int j = 0;
-      while (_globals.gixThread[j] != NULL) {
-        free(_globals.gixThread[j]);
-        _globals.gixThread[j] = NULL;
-        j++;
-      }
-      free(_globals.gixThread);
-      _globals.gixThread=NULL;
-    }
-    _globals.gixThread = (int**)calloc(op->cores+1, sizeof(int*));
-    for (unsigned int i = 0; i < op->cores; i++) {
-      _globals.gixThread[i] = (int*)calloc(_globals.gixThreadN, sizeof(int));
-    }
-    // last is NULL as a maker for freeing
-    _globals.gixThread[op->cores] = NULL;
-
-    // _globals.gix=_globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
-    // _globals.gSkipDose = _globals.gix + rx->nall*rx->nsim; //n3a_c;
+    _globals.gix=_globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
+    _globals.gSkipDose = _globals.gix + rx->nall*rx->nsim; //n3a_c;
 #ifdef rxSolveT
     RSprintf("Time13: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
