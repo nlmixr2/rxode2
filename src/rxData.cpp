@@ -2631,6 +2631,7 @@ struct rxSolve_t {
   CharacterVector idLevels;
   bool convertInt = false;
   bool throttle = false;
+  int maxItemsPerId = 0;
 };
 
 SEXP rxSolve_(const RObject &obj, const List &rxControl, const Nullable<CharacterVector> &specParams,
@@ -4935,6 +4936,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       List evT = cls.attr(".rxode2.lst");
       evT.attr("class") = R_NilValue;
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
+      rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
+    } else {
+      stop("need rxEtTran!");
     }
     rxSolveDat->par1ini = rxSolveDat->par1;
     // This will update par1 with simulated values
