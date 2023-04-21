@@ -24,10 +24,6 @@ linked to `PreciseSums`.  This means while both `PreciseSums` and
 `rxode2` are being submitted the most stable version of `rxode2` comes
 from the `r-universe`:
 
-For many people this is the fastest way to install the development
-version of `nlmixr2` since it provides binaries for mac, windows for
-the latest and last version of R (no need to wait for a compile).
-
 ```r
 install.packages(c("dparser", "nlmixr2data", "lotri", "rxode2ll",
                    "rxode2parse", "rxode2random", "rxode2et",
