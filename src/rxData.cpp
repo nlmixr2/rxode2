@@ -1314,7 +1314,7 @@ struct rx_globals {
   double *gDur;
   double *gall_times;
   double *gall_times2;
-  int *gix;
+  int **gixGlobal = NULL;
   double *gdv;
   double *glimit;
   int *gcens;
@@ -2513,6 +2513,16 @@ LogicalVector rxSolveFree(){
     rxSolveFreeObj=R_NilValue;
   }
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
+  if (_globals.gixGlobal != NULL) {
+    unsigned int _freeGlobalIdx = 0;
+    while (_globals.gixGlobal[_freeGlobalIdx] != NULL) {
+      free(_globals.gixGlobal[_freeGlobalIdx]);
+      _globals.gixGlobal[_freeGlobalIdx] = NULL;
+      _freeGlobalIdx++;
+    }
+    free(_globals.gixGlobal);
+    _globals.gixGlobal = NULL;
+  }
   rxOptionsFree(); // f77 losda free
   rxOptionsIni();// realloc f77 lsoda cache
   rxClearFuns(); // Assign all the global ODE solving functions to NULL pointers
@@ -3914,7 +3924,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
           curSolve += (op->neq + op->nlin)*ind->n_all_times;
-          ind->ix = &_globals.gix[curIdx];
+          ind->ix = _globals.gixGlobal[cid] = (int*)malloc(ind->n_all_times*sizeof(int));
           std::iota(ind->ix,ind->ix+ind->n_all_times,0);
           curEvent += eLen;
           curIdx += ind->n_all_times;
@@ -5197,7 +5207,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gon != NULL) free(_globals.gon);
-    _globals.gon = (int*)calloc(n3a_c*2 +n3 + 4*rxSolveDat->nSize + 2*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
+    _globals.gon = (int*)calloc(n3a_c*2 +n3 + 4*rxSolveDat->nSize + 1*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
 #ifdef rxSolveT
     RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -5208,8 +5218,22 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.slvr_counter = _globals.grc + rxSolveDat->nSize; //[nSize]
     _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
     _globals.jac_counter = _globals.dadt_counter + rxSolveDat->nSize; // [nSize]
-    _globals.gix=_globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
-    _globals.gSkipDose = _globals.gix + rx->nall*rx->nsim; //n3a_c;
+    _globals.gSkipDose = _globals.jac_counter + rxSolveDat->nSize;
+    // _globals.gix=_globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
+    // _globals.gSkipDose = _globals.gix + rx->nall*rx->nsim; //n3a_c;
+    if (_globals.gixGlobal != NULL) {
+      unsigned int _freeGlobalIdx = 0;
+      while (_globals.gixGlobal[_freeGlobalIdx] != NULL) {
+        free(_globals.gixGlobal[_freeGlobalIdx]);
+        _globals.gixGlobal[_freeGlobalIdx] = NULL;
+        _freeGlobalIdx++;
+      }
+      free(_globals.gixGlobal);
+      _globals.gixGlobal = NULL;
+    }
+    _globals.gixGlobal = (int**)malloc((rx->nsim*rx->nsub+1)*sizeof(int*));
+    for (int ctr=0; ctr < rx->nsim*rx->nsub+1; ctr++) _globals.gixGlobal[ctr] = NULL;
+
 #ifdef rxSolveT
     RSprintf("Time13: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
