@@ -8,19 +8,21 @@
 [![CRAN-status](https://img.shields.io/badge/CRAN-Updating-red)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
 
 Currently we are updating `PreciseSums` on CRAN; `rxode2` has a binary
-linked to `PreciseSums`. This means while both `PreciseSums` and
-`rxode2` are being submitted the most stable version of `rxode2` comes
-from the `r-universe`:
+linkage to `PreciseSums`. While both `PreciseSums` and `rxode2` are
+being submitted, the most stable version of `rxode2` comes from the
+`r-universe`:
 
 ``` r
-install.packages(c("dparser", "nlmixr2data", "lotri", "rxode2ll",
-                   "rxode2parse", "rxode2random", "rxode2et",
+install.packages(c("PreciseSums", "dparser", "nlmixr2data", "lotri",
+                   "rxode2ll", "rxode2parse", "rxode2random", "rxode2et",
                    "rxode2"),
                  repos = c('https://nlmixr2.r-universe.dev',
                            'https://cloud.r-project.org'))
 ```
 
 This is temporary and should resolve itself in a couple of weeks.
+
+You could also compile from source to work around the issue.
 
 <!-- badges: start -->
 
@@ -281,90 +283,6 @@ The ODE can now be solved using `rxSolve`:
 
 ``` r
 x <- mod1 %>% rxSolve(ev)
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:78:18: warning: redefinition of typedef ‘t_F’ [-Wpedantic]
-#>    78 | typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-#>       |                  ^~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2parse.h:52,
-#>                  from /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:13,
-#>                  from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /usr/lib/R/site-library/rxode2parse/include/rxode2parseStruct.h:271:18: note: previous declaration of ‘t_F’ with type ‘t_F’ {aka ‘double (*)(int,  int,  double,  double,  double *)’}
-#>   271 | typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-#>       |                  ^~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:79:18: warning: redefinition of typedef ‘t_LAG’ [-Wpedantic]
-#>    79 | typedef double (*t_LAG)(int _cSub,  int _cmt, double t);
-#>       |                  ^~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2parse.h:52,
-#>                  from /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:13,
-#>                  from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /usr/lib/R/site-library/rxode2parse/include/rxode2parseStruct.h:272:18: note: previous declaration of ‘t_LAG’ with type ‘t_LAG’ {aka ‘double (*)(int,  int,  double)’}
-#>   272 | typedef double (*t_LAG)(int _cSub,  int _cmt, double t);
-#>       |                  ^~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:80:18: warning: redefinition of typedef ‘t_RATE’ [-Wpedantic]
-#>    80 | typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t);
-#>       |                  ^~~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2parse.h:52,
-#>                  from /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:13,
-#>                  from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /usr/lib/R/site-library/rxode2parse/include/rxode2parseStruct.h:273:18: note: previous declaration of ‘t_RATE’ with type ‘t_RATE’ {aka ‘double (*)(int,  int,  double,  double)’}
-#>   273 | typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t);
-#>       |                  ^~~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:81:18: warning: redefinition of typedef ‘t_DUR’ [-Wpedantic]
-#>    81 | typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t);
-#>       |                  ^~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2parse.h:52,
-#>                  from /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:13,
-#>                  from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /usr/lib/R/site-library/rxode2parse/include/rxode2parseStruct.h:274:18: note: previous declaration of ‘t_DUR’ with type ‘t_DUR’ {aka ‘double (*)(int,  int,  double,  double)’}
-#>   274 | typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t);
-#>       |                  ^~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:83:16: warning: redefinition of typedef ‘t_calc_mtime’ [-Wpedantic]
-#>    83 | typedef void (*t_calc_mtime)(int cSub, double *mtime);
-#>       |                ^~~~~~~~~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2parse.h:52,
-#>                  from /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:13,
-#>                  from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /usr/lib/R/site-library/rxode2parse/include/rxode2parseStruct.h:276:16: note: previous declaration of ‘t_calc_mtime’ with type ‘t_calc_mtime’ {aka ‘void (*)(int,  double *)’}
-#>   276 | typedef void (*t_calc_mtime)(int cSub, double *mtime);
-#>       |                ^~~~~~~~~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:85:16: warning: redefinition of typedef ‘t_ME’ [-Wpedantic]
-#>    85 | typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
-#>       |                ^~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2parse.h:52,
-#>                  from /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:13,
-#>                  from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /usr/lib/R/site-library/rxode2parse/include/rxode2parseStruct.h:278:16: note: previous declaration of ‘t_ME’ with type ‘t_ME’ {aka ‘void (*)(int,  double,  double,  double *, const double *)’}
-#>   278 | typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
-#>       |                ^~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:86:16: warning: redefinition of typedef ‘t_IndF’ [-Wpedantic]
-#>    86 | typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
-#>       |                ^~~~~~
-#> In file included from /usr/lib/R/site-library/rxode2parse/include/rxode2parse.h:52,
-#>                  from /tmp/Rtmpexn36i/temp_libpatha9a97985945a/rxode2/include/rxode2.h:13,
-#>                  from /usr/lib/R/site-library/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_84cde67b74c2be7e2256cba59697e62d_.c:115:
-#> /usr/lib/R/site-library/rxode2parse/include/rxode2parseStruct.h:279:16: note: previous declaration of ‘t_IndF’ with type ‘t_IndF’ {aka ‘void (*)(int,  double,  double,  double *)’}
-#>   279 | typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
-#>       |                ^~~~~~
 x
 #> ── Solved rxode2 object ──
 #> ── Parameters (x$params): ──
