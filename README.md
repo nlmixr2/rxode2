@@ -3,27 +3,6 @@
 
 # rxode2
 
-## CRAN updating
-
-[![CRAN-status](https://img.shields.io/badge/CRAN-Updating-red)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
-
-Currently we are updating `PreciseSums` on CRAN; `rxode2` has a binary
-linkage to `PreciseSums`. While both `PreciseSums` and `rxode2` are
-being submitted, the most stable version of `rxode2` comes from the
-`r-universe`:
-
-``` r
-install.packages(c("PreciseSums", "dparser", "nlmixr2data", "lotri",
-                   "rxode2ll", "rxode2parse", "rxode2random", "rxode2et",
-                   "rxode2"),
-                 repos = c('https://nlmixr2.r-universe.dev',
-                           'https://cloud.r-project.org'))
-```
-
-This is temporary and should resolve itself in a couple of weeks.
-
-You could also compile from source to work around the issue.
-
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
@@ -204,7 +183,7 @@ To load `rxode2` package and compile the model:
 
 ``` r
 library(rxode2)
-#> rxode2 2.0.12.9000 using 8 threads (see ?getRxThreads)
+#> rxode2 2.0.13 using 8 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 
 mod1 <- function() {
