@@ -5,6 +5,8 @@
 
 <!-- badges: start -->
 
+[Cran updating
+status](https://img.shields.io/badge/CRAN-Not%20Updating-green)
 [![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
 coverage](https://codecov.io/gh/nlmixr2/rxode2/branch/main/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2?branch=main)
@@ -183,7 +185,7 @@ To load `rxode2` package and compile the model:
 
 ``` r
 library(rxode2)
-#> rxode2 2.0.13 using 8 threads (see ?getRxThreads)
+#> rxode2 2.0.13.9000 using 8 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 
 mod1 <- function() {
