@@ -5,7 +5,7 @@
 
 <!-- badges: start -->
 
-[Cran updating
+![Cran updating
 status](https://img.shields.io/badge/CRAN-Not%20Updating-green)
 [![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
