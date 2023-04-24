@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.13.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Jacobian specification and Stiff Systems</h1>
             
-            <h4 data-toc-skip class="date">2023-04-18</h4>
+            <h4 data-toc-skip class="date">2023-04-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-stiff.Rmd" class="external-link"><code>vignettes/rxode2-stiff.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-stiff.Rmd</code></div>
@@ -182,7 +182,7 @@ der Pol</a> differential equations.</p>
 <p>In rxode2 these can be specified by the following:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## rxode2 2.0.12.9000 using 1 threads (see ?getRxThreads)</span></span>
+<pre><code><span><span class="co">## rxode2 2.0.13.9000 using 1 threads (see ?getRxThreads)</span></span>
 <span><span class="co">##   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Vtpol2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -197,9 +197,10 @@ der Pol</a> differential equations.</p>
 <span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">0</span></span>
 <span>    <span class="co">## mu</span></span>
 <span>    <span class="va">mu</span> <span class="op">=</span> <span class="fl">1</span> <span class="co">## nonstiff; 10 moderately stiff; 1000 stiff</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span></span></code></pre>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
 <span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>;</span>
 <span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span><span class="op">)</span>;</span>
 <span></span>
@@ -224,7 +225,7 @@ der Pol</a> differential equations.</p>
 <span><span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
 <span><span class="co">## <span style="color: #949494;"># i 194 more rows</span></span></span></code></pre>
 <p>While this is not stiff at mu=1, mu=1000 is a stiff system</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mu<span class="op">=</span><span class="fl">1000</span><span class="op">)</span>, <span class="va">et</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>

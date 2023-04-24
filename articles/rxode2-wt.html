@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.13.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Weight Based Dosing in rxode2</h1>
             
-            <h4 data-toc-skip class="date">2023-04-18</h4>
+            <h4 data-toc-skip class="date">2023-04-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-wt.Rmd" class="external-link"><code>vignettes/rxode2-wt.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-wt.Rmd</code></div>
@@ -176,7 +176,7 @@ weight-based dosing (merged back to covariates)</p>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; rxode2 2.0.12.9000 using 1 threads (see ?getRxThreads)</span></span>
+<pre><code><span><span class="co">#&gt; rxode2 2.0.13.9000 using 1 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## Note the time covariate is not included in the simulation</span></span>
@@ -191,13 +191,14 @@ weight-based dosing (merged back to covariates)</p>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span> <span class="op">~</span> <span class="va">A1</span><span class="op">*</span><span class="va">Q</span><span class="op">/</span><span class="va">V1</span> <span class="op">-</span> <span class="va">A2</span><span class="op">*</span><span class="va">Q</span><span class="op">/</span><span class="va">V2</span>;</span>
 <span>  <span class="va">DV</span> <span class="op">=</span> <span class="va">centr</span> <span class="op">/</span> <span class="va">V1</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">prop.err</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="simulating-covariates">Simulating Covariates<a class="anchor" aria-label="anchor" href="#simulating-covariates"></a>
 </h2>
 <p>This simulation correlates age, sex, and weight. Since we will be
 using weight based dosing, this needs to be simulated first</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://nlmixr2.github.io/rxode2random/reference/rxSetSeed.html">rxSetSeed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></code></pre></div>
@@ -209,7 +210,7 @@ using weight based dosing, this needs to be simulated first</p>
 <pre><code><span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span></code></pre>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nsub</span><span class="op">=</span><span class="fl">30</span></span>
 <span><span class="co"># Simulate Weight based on age and gender</span></span>
 <span><span class="va">AGE</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">nsub</span>,min<span class="op">=</span><span class="fl">18</span>,max<span class="op">=</span><span class="fl">70</span><span class="op">)</span><span class="op">)</span></span>
@@ -241,7 +242,7 @@ using weight based dosing, this needs to be simulated first</p>
 <div class="section level2">
 <h2 id="creating-weight-based-event-table">Creating weight based event table<a class="anchor" aria-label="anchor" href="#creating-weight-based-event-table"></a>
 </h2>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">s</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0.25</span>,<span class="fl">0.5</span>,<span class="fl">0.75</span>,<span class="fl">1</span>,<span class="fl">1.5</span>,<span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">24</span>,by<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">s</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="va">.x</span> <span class="op">&lt;-</span> <span class="fl">0.1</span> <span class="op">*</span> <span class="va">x</span>; <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">.x</span>, <span class="va">x</span> <span class="op">+</span> <span class="va">.x</span><span class="op">)</span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
@@ -276,7 +277,7 @@ using weight based dosing, this needs to be simulated first</p>
 <div class="section level2">
 <h2 id="solving-daptomycin-simulation">Solving Daptomycin simulation<a class="anchor" aria-label="anchor" href="#solving-daptomycin-simulation"></a>
 </h2>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m1</span>, <span class="va">e</span>,</span>
 <span>             <span class="co">## Lotri uses lower-triangular matrix rep. for named matrix</span></span>
 <span>             omega<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">.306</span>, </span>
@@ -317,7 +318,7 @@ using weight based dosing, this needs to be simulated first</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1     0    <span style="color: #BB0000;">NA</span>   <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span>  0.729 17.5      1  49.4    83</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1     0    <span style="color: #BB0000;">NA</span>   <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span>  0.921  3.46     1  49.4    83</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># i 894 more rows</span></span></span></code></pre>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">data</span>, log<span class="op">=</span><span class="st">"y"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; Warning: Transformation introduced infinite values in continuous y-axis</span></span></code></pre>
 <p><img src="rxode2-wt_files/figure-html/unnamed-chunk-6-1.png" width="700"></p>

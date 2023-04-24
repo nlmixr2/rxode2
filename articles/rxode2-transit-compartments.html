@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.13.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Transit Compartment Models</h1>
             
-            <h4 data-toc-skip class="date">2023-04-18</h4>
+            <h4 data-toc-skip class="date">2023-04-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-transit-compartments.Rmd" class="external-link"><code>vignettes/rxode2-transit-compartments.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-transit-compartments.Rmd</code></div>
@@ -171,7 +171,7 @@ special handling of these models:</p>
 <p>You can specify this in a similar manner as the original paper:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## rxode2 2.0.12.9000 using 1 threads (see ?getRxThreads)</span></span>
+<pre><code><span><span class="co">## rxode2 2.0.13.9000 using 1 threads (see ?getRxThreads)</span></span>
 <span><span class="co">##   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -188,9 +188,10 @@ special handling of these models:</p>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">bio</span><span class="op">*</span><span class="fu">podo</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">)</span><span class="op">+</span><span class="va">n</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">-</span></span>
 <span>                        <span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">-</span><span class="fu">lgammafn</span><span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span></span></code></pre>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span></span>
 <span></span>
@@ -203,7 +204,7 @@ special handling of these models:</p>
 <code>transit(number of transit compartments, mean transit time, bioavailability)</code>.
 The bioavailability term is optional.</p>
 <p>The same model can be specified by:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="co">## Table 3 from Savic 2007</span></span>
 <span>    <span class="va">cl</span> <span class="op">=</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span></span>
@@ -216,9 +217,10 @@ The bioavailability term is optional.</p>
 <span>    <span class="va">ktr</span> <span class="op">=</span> <span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">/</span><span class="va">mtt</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu">transit</span><span class="op">(</span><span class="va">n</span>,<span class="va">mtt</span>,<span class="va">bio</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span></span></code></pre>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
 <span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>;</span>
 <span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span>;</span>
 <span></span>
