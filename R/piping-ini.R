@@ -622,60 +622,35 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   object <- assertRxUi(object)
   which <- match.arg(which, several.ok = TRUE)
   .ret <- rxUiDecompress(.copyUi(object)) # copy so (as expected) old UI isn't affected by the call
-  iniCommand <- character()
+  iniDf <- .ret$iniDf
   # In the code below there is no test for bounds since the bounds are typically (0, Inf).
   if ("omega" %in% which) {
-    if (fix) {
-      fmtOmega <- "%s ~ fix(%s)"
-    } else {
-      fmtOmega <- "%s ~ c(%s)"
-    }
-    # Do not include off-diagonal omegas since they will be automatically
-    # removed by `.iniHandleLine()`
-    maskOmega <-
-      !is.na(.ret$iniDf$neta1) &
-      .ret$iniDf$neta1 == .ret$iniDf$neta2
-    omegaNames <- .ret$iniDf$name[maskOmega]
-    if (length(omegaNames) == 0) {
+    maskOmega <- !is.na(iniDf$neta1)
+    if (sum(maskOmega) == 0) {
       cli::cli_warn("No omega parameters in the model")
     } else {
-      # Pretend that all diagonals exist and sort it out with the call to
-      # `.iniHandleLine()` below
-      newCommand <- sprintf(fmtOmega, paste(omegaNames, collapse = "+"), paste(rep(0, length(omegaNames) * (length(omegaNames) + 1)/2), collapse = ","))
-      iniCommand <- c(iniCommand, newCommand)
-    }
-  }
-  if ("sigma" %in% which) {
-    sigmaNames <- .ret$iniDf$name[!is.na(.ret$iniDf$err)]
-    if (length(sigmaNames) == 0) {
-      cli::cli_warn("No sigma parameters in the model")
-    } else {
-      for (currentSigma in sigmaNames) {
-        currentSigmaIdx <- which(.ret$iniDf$name %in% currentSigma)
-        if (.ret$iniDf$lower[currentSigmaIdx] > 0) {
-          # Change the lower bound to zero
-          fmtBounds <- "c(0, 0)"
-        } else {
-          fmtBounds <- "0"
-        }
-        # It is an error when creating the model for the upper bound to be <0,
-        # so no upper bound test is performed.
-        if (fix) {
-          fmtSigma <- paste0("%s <- fix(", fmtBounds, ")")
-        } else {
-          fmtSigma <- paste0("%s <- c(", fmtBounds, ")")
-        }
-        iniCommand <- c(iniCommand, sprintf(fmtSigma, currentSigma))
+      iniDf$est[maskOmega] <- 0
+      if (fix) {
+        iniDf$fix[maskOmega] <- TRUE
       }
     }
   }
-  if (length(iniCommand) > 0) {
-    envir <- parent.frame()
-    .iniLines <- .quoteCallInfoLines(iniCommand, envir = envir, iniDf = .ret$iniDf)
-    lapply(.iniLines, function(line) {
-      .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = NULL)
-    })
-    rxUiCompress(.ret)
+  if ("sigma" %in% which) {
+    maskSigma <- !is.na(iniDf$err)
+    if (sum(maskSigma) == 0) {
+      cli::cli_warn("No sigma parameters in the model")
+    } else {
+      iniDf$est[maskSigma] <- 0
+      maskLowerBound <- maskSigma & iniDf$lower > 0
+      if (any(maskLowerBound)) {
+        iniDf$lower[maskLowerBound] <- 0
+      }
+      if (fix) {
+        iniDf$fix[maskSigma] <- TRUE
+      }
+
+    }
   }
+  ini(.ret) <- iniDf
   .ret
 }

@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 2.0.12.9000
+Version: 2.0.13.9000
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler",

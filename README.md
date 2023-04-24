@@ -5,6 +5,8 @@
 
 <!-- badges: start -->
 
+![Cran updating
+status](https://img.shields.io/badge/CRAN-Not%20Updating-green)
 [![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
 [![Codecov test
 coverage](https://codecov.io/gh/nlmixr2/rxode2/branch/main/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2?branch=main)
@@ -183,102 +185,61 @@ To load `rxode2` package and compile the model:
 
 ``` r
 library(rxode2)
-#> rxode2 2.0.11.9000 using 4 threads (see ?getRxThreads)
+#> rxode2 2.0.13.9000 using 8 threads (see ?getRxThreads)
+#>   no cache: create with `rxCreateCache()`
 
-mod1 <- rxode2({
-  C2 <- centr/V2;
-  C3 <- peri/V3;
-  d/dt(depot) <- -KA*depot;
-  d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3;
-  d/dt(peri)  <- Q*C2 - Q*C3;
-  d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff;
-})
+mod1 <- function() {
+  ini({
+    # central 
+    KA=2.94E-01
+    CL=1.86E+01
+    V2=4.02E+01
+    # peripheral
+    Q=1.05E+01
+    V3=2.97E+02
+    # effects
+    Kin=1
+    Kout=1
+    EC50=200 
+  })
+  model({
+    C2 <- centr/V2
+    C3 <- peri/V3
+    d/dt(depot) <- -KA*depot
+    d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)  <- Q*C2 - Q*C3
+    eff(0) <- 1
+    d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+  })
+}
 ```
 
-## Specify ODE parameters and initial conditions
+Model parameters may be specified in the `ini({})` model block, initial
+conditions can be specified within the model with the `cmt(0)= X`, like
+in this model `eff(0) <- 1`.
 
-Model parameters can be defined as named vectors. Names of parameters in
-the vector must be a superset of parameters in the ODE model, and the
-order of parameters within the vector is not important.
+You may also specify between subject variability initial conditions and
+residual error components just like nlmixr2. This allows a single
+interface for `nlmixr2`/`rxode2` models. Also note, the classic `rxode2`
+interface still works just like it did in the past (so don’t worry about
+breaking code at this time).
+
+In fact, you can get the classic `rxode2` model `$simulationModel` in
+the ui object:
 
 ``` r
-theta <- 
-   c(KA=2.94E-01, CL=1.86E+01, V2=4.02E+01, # central 
-     Q=1.05E+01,  V3=2.97E+02,              # peripheral
-     Kin=1, Kout=1, EC50=200)               # effects
+mod1 <- mod1() # create the ui object (can also use `rxode2(mod1)`)
+mod1
+
+summary(mod1$simulationModel)
 ```
-
-Initial conditions (ICs) can be defined through a vector as well. If the
-elements are not specified, the initial condition for the compartment is
-assumed to be zero.
-
-``` r
-inits <- c(eff=1)
-```
-
-If you want to specify the initial conditions in the model you can add:
-
-    eff(0) = 1
 
 ## Specify Dosing and sampling in rxode2
 
 `rxode2` provides a simple and very flexible way to specify dosing and
 sampling through functions that generate an event table. First, an empty
-event table is generated through the “eventTable()” function:
-
-``` r
-ev <- eventTable(amount.units='mg', time.units='hours')
-```
-
-Next, use the `add.dosing()` and `add.sampling()` functions of the
-`EventTable` object to specify the dosing (amounts, frequency and/or
-times, etc.) and observation times at which to sample the state of the
-system. These functions can be called multiple times to specify more
-complex dosing or sampling regiments. Here, these functions are used to
-specify 10mg BID dosing for 5 days, followed by 20mg QD dosing for 5
-days:
-
-``` r
-ev$add.dosing(dose=10000, nbr.doses=10, dosing.interval=12)
-ev$add.dosing(dose=20000, nbr.doses=5, start.time=120,
-              dosing.interval=24)
-ev$add.sampling(0:240)
-```
-
-If you wish you can also do this with the `mattigr` pipe operator `%>%`
-
-``` r
-ev <- eventTable(amount.units="mg", time.units="hours") %>%
-  add.dosing(dose=10000, nbr.doses=10, dosing.interval=12) %>%
-  add.dosing(dose=20000, nbr.doses=5, start.time=120,
-             dosing.interval=24) %>%
-  add.sampling(0:240)
-```
-
-The functions `get.dosing()` and `get.sampling()` can be used to
-retrieve information from the event table.
-
-``` r
-head(ev$get.dosing())
-#>   id low time high       cmt   amt rate ii addl evid ss dur
-#> 1  1  NA    0   NA (default) 10000    0 12    9    1  0   0
-#> 2  1  NA  120   NA (default) 20000    0 24    4    1  0   0
-```
-
-``` r
-head(ev$get.sampling())
-#>   id low time high   cmt amt rate ii addl evid ss dur
-#> 1  1  NA    0   NA (obs)  NA   NA NA   NA    0 NA  NA
-#> 2  1  NA    1   NA (obs)  NA   NA NA   NA    0 NA  NA
-#> 3  1  NA    2   NA (obs)  NA   NA NA   NA    0 NA  NA
-#> 4  1  NA    3   NA (obs)  NA   NA NA   NA    0 NA  NA
-#> 5  1  NA    4   NA (obs)  NA   NA NA   NA    0 NA  NA
-#> 6  1  NA    5   NA (obs)  NA   NA NA   NA    0 NA  NA
-```
-
-You may notice that these are similar to NONMEM event tables; If you are
-more familiar with NONMEM data and events you could use them directly
-with the event table function `et`
+event table is generated through the “et()” function. This has an
+interface that is similar to NONMEM event tables:
 
 ``` r
 ev  <- et(amountUnits="mg", timeUnits="hours") %>%
@@ -299,33 +260,15 @@ vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 
 ## Solving ODEs
 
-The ODE can now be solved by calling the model object’s `run` or `solve`
-function. Simulation results for all variables in the model are stored
-in the output matrix x.
+The ODE can now be solved using `rxSolve`:
 
 ``` r
-x <- mod1$solve(theta, ev, inits);
-knitr::kable(head(x))
-```
-
-| time |       C2 |        C3 |     depot |    centr |      peri |      eff |
-| ---: | -------: | --------: | --------: | -------: | --------: | -------: |
-|    0 |  0.00000 | 0.0000000 | 10000.000 |    0.000 |    0.0000 | 1.000000 |
-|    1 | 44.37555 | 0.9198298 |  7452.765 | 1783.897 |  273.1895 | 1.084664 |
-|    2 | 54.88296 | 2.6729825 |  5554.370 | 2206.295 |  793.8758 | 1.180825 |
-|    3 | 51.90343 | 4.4564927 |  4139.542 | 2086.518 | 1323.5783 | 1.228914 |
-|    4 | 44.49738 | 5.9807076 |  3085.103 | 1788.795 | 1776.2702 | 1.234610 |
-|    5 | 36.48434 | 7.1774981 |  2299.255 | 1466.670 | 2131.7169 | 1.214742 |
-
-You can also solve this and create a rxode2 data frame:
-
-``` r
-x <- mod1 %>% rxSolve(theta, ev, inits);
+x <- mod1 %>% rxSolve(ev)
 x
 #> ── Solved rxode2 object ──
 #> ── Parameters (x$params): ──
-#>      V2      V3      KA      CL       Q     Kin    Kout    EC50 
-#>  40.200 297.000   0.294  18.600  10.500   1.000   1.000 200.000 
+#>      KA      CL      V2       Q      V3     Kin    Kout    EC50 
+#>   0.294  18.600  40.200  10.500 297.000   1.000   1.000 200.000 
 #> ── Initial Conditions (x$inits): ──
 #> depot centr  peri   eff 
 #>     0     0     0     1 
@@ -339,7 +282,7 @@ x
 #> 4    3  51.9 4.46   4140. 2087. 1324.  1.23
 #> 5    4  44.5 5.98   3085. 1789. 1776.  1.23
 #> 6    5  36.5 7.18   2299. 1467. 2132.  1.21
-#> # … with 235 more rows
+#> # ℹ 235 more rows
 ```
 
 This returns a modified data frame. You can see the compartment values

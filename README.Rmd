@@ -16,6 +16,7 @@ knitr::opts_chunk$set(
 # rxode2
 
 <!-- badges: start -->
+![Cran updating status](https://img.shields.io/badge/CRAN-Not%20Updating-green)
 [![R-CMD-check](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nlmixr2/rxode2/actions/workflows/R-CMD-check.yaml)
 [![Codecov test coverage](https://codecov.io/gh/nlmixr2/rxode2/branch/main/graph/badge.svg)](https://app.codecov.io/gh/nlmixr2/rxode2?branch=main)
 [![CRAN version](http://www.r-pkg.org/badges/version/rxode2)](https://cran.r-project.org/package=rxode2)
