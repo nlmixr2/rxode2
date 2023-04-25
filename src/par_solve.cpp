@@ -688,11 +688,11 @@ extern "C" void sortRadix(rx_solving_options_ind *ind){
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->ix[i] = i;
     ind->idx = i;
-    if (!isObs(ind->evid[i])) {
+    if (!isObs(getEvid(ind, i))) {
       time[i] = getTime__(ind->ix[i], ind, 1);
       ind->ixds++;
     } else {
-      if (ind->evid[i] == 3) {
+      if (getEvid(ind, i) == 3) {
         ind->curShift -= rx->maxShift;
       }
       time[i] = getTime__(ind->ix[i], ind, 1);
@@ -911,7 +911,6 @@ void handleSS(int *neq,
   int maxSS = op->maxSS;
   int minSS = op->minSS;
   int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
-  /* Rprintf("evid: %d\n", ind->evid[ind->ixds-1]); */
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
        getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
@@ -935,7 +934,7 @@ void handleSS(int *neq,
       if (isSsLag) {
         for (j = ind->ixds+3; j < ind->ndoses; j++) {
           if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds+2)) {
-            getWh(ind->evid[ind->idose[j]], &wh, &cmt, &wh100, &whI, &wh0);
+            getWh(getEvid(ind, ind->idose[j]), &wh, &cmt, &wh100, &whI, &wh0);
             if (whI == oldI && cmt == ind->cmt) {
               dur = getTime_(ind->idose[j], ind) -
                 getTime_(ind->idose[ind->ixds+2], ind);
@@ -949,7 +948,7 @@ void handleSS(int *neq,
       } else {
         for (j = ind->ixds+1; j < ind->ndoses; j++){
           if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds)){
-            getWh(ind->evid[ind->idose[j]], &wh, &cmt, &wh100, &whI, &wh0);
+            getWh(getEvid(ind, ind->idose[j]), &wh, &cmt, &wh100, &whI, &wh0);
             if (whI == oldI && cmt == ind->cmt){
               dur = getTime_(ind->idose[j], ind) -
                 getTime_(ind->ix[*i], ind);
@@ -1059,7 +1058,7 @@ void handleSS(int *neq,
         ind->idx=*i;
         xout2 = xp2+ind->ii[ind->idx];
         // Use "real" xout for handle_evid functions.
-        handle_evid(ind->evid[ind->ix[*i]], neq[0],
+        handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
         // yp is last solve or y0
@@ -1105,7 +1104,7 @@ void handleSS(int *neq,
         ind->wh0 = wh0;
         // Use "real" xout for handle_evid functions.
         *istate=1;
-        handle_evid(ind->evid[ind->ix[*i]], neq[0],
+        handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
         // yp is last solve or y0
@@ -1133,7 +1132,7 @@ void handleSS(int *neq,
           xout2 = xp2+dur;
           ind->idx=*i;
           ind->ixds = infBixds;
-          handle_evid(ind->evid[ind->idose[infBixds]], neq[0],
+          handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
           // yp is last solve or y0
@@ -1146,7 +1145,7 @@ void handleSS(int *neq,
           xout2 = xp2+dur2;
           ind->ixds = infEixds;
           ind->idx=ei;
-          handle_evid(ind->evid[ind->idose[infEixds]], neq[0],
+          handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
                       BadDose, InfusionRate, dose, yp,
                       xout+dur, neq[1], ind);
           if (j <= op->minSS -1){
@@ -1232,7 +1231,7 @@ void handleSS(int *neq,
           }
           ind->idx=*i;
           ind->ixds = infBixds;
-          handle_evid(ind->evid[ind->idose[infBixds]], neq[0],
+          handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
           // yp is last solve or y0
@@ -1247,7 +1246,7 @@ void handleSS(int *neq,
             xout2 = totTime;
             ind->ixds = infEixds;
             ind->idx=ei;
-            handle_evid(ind->evid[ind->idose[infEixds]], neq[0],
+            handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
                         BadDose, InfusionRate, dose, yp,
                         xout+dur, neq[1], ind);
             // yp is last solve or y0
@@ -1273,7 +1272,7 @@ void handleSS(int *neq,
     }
     ind->idx=*i;
     if (!doSSinf && !isSsLag){
-      handle_evid(ind->evid[ind->ix[*i]], neq[0],
+      handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
                   BadDose, InfusionRate, dose, yp,
                   xout, neq[1], ind);
     }
@@ -1318,7 +1317,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     ind->idx=i;
     xout = getTime_(ind->ix[i], ind);
     yp = getSolve(i);
-    if(ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
+    if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         *rc = -1000;
         // Bad Solve => NA
@@ -1333,7 +1332,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      if (ind->evid[ind->ix[i]] == 3){
+      if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
           ind->InfusionRate[j] = 0;
@@ -1453,7 +1452,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ind->idx=i;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
-    if(ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
+    if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         *rc = -1000;
         // Bad Solve => NA
@@ -1466,7 +1465,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      if (ind->evid[ind->ix[i]] == 3){
+      if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
           ind->InfusionRate[j] = 0;
@@ -1806,7 +1805,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->idx=i;
     yp   = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
-    if (ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
+    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         ind->rc[0] = -1000;
         // Bad Solve => NA
@@ -1821,7 +1820,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      if (ind->evid[ind->ix[i]] == 3){
+      if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
           ind->InfusionRate[j] = 0;
@@ -1953,7 +1952,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     if (global_debug){
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
-    if (ind->evid[ind->ix[i]] != 3 && !isSameTime(xout, xp)) {
+    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         printErr(ind->err, ind->id);
         *rc = idid;
@@ -1992,7 +1991,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     if (!op->badSolve){
       ind->idx = i;
-      if (ind->evid[ind->ix[i]] == 3){
+      if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
           ind->InfusionRate[j] = 0;

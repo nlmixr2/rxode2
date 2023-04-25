@@ -157,7 +157,7 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   int idx=0;
   if (idx0 == NA_INTEGER){
     idx=0;
-    if (ind->evid[ind->ix[idx]] == 9) idx++;
+    if (getEvid(ind, ind->ix[idx]) == 9) idx++;
   } else if (idx0 >= ind->n_all_times) {
     return NA_REAL;
   } else {
