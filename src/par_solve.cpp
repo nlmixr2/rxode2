@@ -1056,7 +1056,7 @@ void handleSS(int *neq,
       // Bolus
       for (j = 0; j < op->maxSS; j++) {
         ind->idx=*i;
-        xout2 = xp2+ind->ii[ind->idx];
+        xout2 = xp2+getIi(ind, ind->idx);
         // Use "real" xout for handle_evid functions.
         handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
                     BadDose, InfusionRate, dose, yp,
@@ -1100,7 +1100,7 @@ void handleSS(int *neq,
         //advance the lag time
         ind->idx=*i;
         int wh0 = ind->wh0; ind->wh0=1;
-        xout2 = xp2 + ind->ii[ind->idx] - getLag(ind, neq[1], ind->cmt, 0.0);
+        xout2 = xp2 + getIi(ind, ind->idx) - getLag(ind, neq[1], ind->cmt, 0.0);
         ind->wh0 = wh0;
         // Use "real" xout for handle_evid functions.
         *istate=1;
