@@ -1010,7 +1010,7 @@ void handleSS(int *neq,
       // Rate is fixed, so modifying bio-availability doesn't change duration.
       if (ind->whI == EVIDF_MODEL_RATE_ON){
         rate  = getRate(ind, ind->id, ind->cmt, 0.0,
-                        ind->all_times[ind->idose[ind->ixds]]);
+                        getAllTimes(ind, ind->idose[ind->ixds]));
       } else {
         rate = getDoseNumber(ind, ind->ixds);
       }
@@ -1796,7 +1796,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   iwork[7] = op->MXORDN; // MXORDN
   iwork[8] = op->MXORDS;  // MXORDS
 
-  double xp = ind->all_times[0];
+  double xp = getAllTimes(ind, 0);
   double xout;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;

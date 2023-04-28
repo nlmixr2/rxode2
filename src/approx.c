@@ -231,12 +231,13 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
             idxSample = idx;
           }
           double *par_ptr = ind->par_ptr;
-          double *all_times = indSample->all_times;
+          //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
-          if (idxSample == 0 && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+          if (idxSample == 0 && fabs(t- getAllTimes(indSample, idxSample)) < DBL_EPSILON) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
-          } else if (idxSample > 0 && idxSample < indSample->n_all_times && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+          } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
+                     fabs(t- getAllTimes(indSample, idxSample)) < DBL_EPSILON) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
             if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
               ind->cacheME=0;
