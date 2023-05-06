@@ -145,6 +145,7 @@ reference:
   contents:
   - .copyUi
   - .handleSingleErrTypeNormOrTFoceiBase
+  - .matchesLangTemplate
   - .modelHandleModelLines
   - .quoteCallInfoLines
   - .rxLinCmtGen
