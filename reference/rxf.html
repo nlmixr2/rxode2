@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxf you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2.707284e-02 7.077543e-02 2.135691e+01 6.295353e+05 1.353644e+00</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 4.572637e-02 2.203819e+00 5.559859e-01 5.190160e+00 6.027824e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.384961e+03 3.534563e+01 2.524771e-03 1.281332e-02 6.508424e-04</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 1.671529e-09 1.648626e+00 1.465412e+02 1.426185e+02 1.609493e+04</span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">5</span>, <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  7.8534863  0.4821844  1.2318652  0.1350342 31.0480548 58.8406655</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.5884721 12.6853246  0.9317418  0.5992391</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]   15.334769    5.170086  219.023170    2.624694 1107.597040   45.919536</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]    1.124099    7.127862    3.951467    9.135076</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3.044989</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4.537616</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxf` directly in the model</span></span></span>

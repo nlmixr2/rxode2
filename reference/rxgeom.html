@@ -198,9 +198,9 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxgeom</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxgeom you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1 1 0 0 0 3 0 2 0 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2 1 0 1 3 0 0 2 1 3</span>
 <span class="r-in"><span><span class="fu">rxgeom</span><span class="op">(</span><span class="fl">0.25</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2 5 3 6 3 3 0 4 1 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 8 0 0 1 1 2 2 5 2 3</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxgeom</span><span class="op">(</span><span class="fl">0.75</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
