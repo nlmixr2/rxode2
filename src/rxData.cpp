@@ -1313,7 +1313,6 @@ struct rx_globals {
   double *gRate;
   double *gDur;
   double *gall_times;
-  double *gall_times2;
   int **gixGlobal = NULL;
   double *gdv;
   double *glimit;
@@ -3398,10 +3397,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     }
     rxOptionsIniEnsure(ntot);
     if (_globals.gall_times != NULL) free(_globals.gall_times);
-    _globals.gall_times = (double*)calloc(6*time0.size(), sizeof(double));
+    _globals.gall_times = (double*)calloc(5*time0.size(), sizeof(double));
     std::copy(time0.begin(), time0.end(), &_globals.gall_times[0]);
-    _globals.gall_times2 = _globals.gall_times + time0.size();
-    _globals.gdv = _globals.gall_times2 + time0.size(); // Perhaps allocate zero size if missing?
+    _globals.gdv = _globals.gall_times + time0.size(); // Perhaps allocate zero size if missing?
     _globals.gamt = _globals.gdv + time0.size();
     _globals.gii = _globals.gamt + time0.size();
     _globals.glimit=_globals.gii + time0.size();
