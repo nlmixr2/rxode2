@@ -3493,13 +3493,18 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         ind->id             = nsub+1;
         ind->idReal         = id[i];
         ind->all_times   = &_globals.gall_times[i];
+        ind->all_timesExtra = NULL;
         ind->dv = &_globals.gdv[i];
         ind->limit = &_globals.glimit[i];
         ind->cens = &_globals.gcens[i];
         ind->evid           = &_globals.gevid[i];
+        ind->evidExtra      = NULL;
         ind->idose          = &_globals.gidose[i];
+        ind->idoseExtra     = NULL;
         ind->dose           = &_globals.gamt[i];
+        ind->doseExtra      = NULL;
         ind->ii             = &_globals.gii[i];
+        ind->iiExtra        = NULL;
         lasti = i;
 
         hmax1m=0.0;
