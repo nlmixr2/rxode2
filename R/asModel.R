@@ -82,6 +82,18 @@ as.model.call <- function(x) {
 
 #' @rdname as.model
 #' @export
+as.model.list <- function(x) {
+  .lst <- lapply(seq_along(x), function(i) {
+    if (is.language(x[[i]])) return(x[[i]])
+    if (is.character(x[[i]])) return(str2lang(x[[i]]))
+    stop("unsupported expression of model({}) block",
+         call.=FALSE)
+  })
+  as.call(c(quote(`model`), as.call(c(quote(`{`), .lst))))
+}
+
+#' @rdname as.model
+#' @export
 as.model.default <- function(x) {
   .model <- try(as.rxUi(x), silent=TRUE)
   if (inherits(.model, "try-error")) {

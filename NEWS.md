@@ -1,5 +1,10 @@
 # rxode2 (development version)
 
+## Internal new features
+
+- Add `as.model()` for list expressions, which implies `model(ui) <-
+  ui$lstExpr` will assign model components
+
 # rxode2 development version
 
 - A bug was fixed so that the `zeroRe()` function works with correlated omega
