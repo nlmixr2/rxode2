@@ -290,7 +290,6 @@
           env$.found <- TRUE
           env$mu2RefCovariateReplaceDataFrame <- rbind(env$mu2RefCovariateReplaceDataFrame, data.frame(covariate=deparse1(.extra),  covariateParameter=.thetas,  modelExpression=deparse1(y)))
           return(setNames(list(.thetas), deparse1(.extra)))
-         
         }
       }
       return(NULL)
@@ -1003,7 +1002,9 @@
              }
            })
   }
-  .env$mu2RefCovariateReplaceDataFrame <- .env$mu2RefCovariateReplaceDataFrame[,c("theta", "covariate", "covariateParameter", "modelExpression")]  
+  .env$mu2RefCovariateReplaceDataFrame <- .env$mu2RefCovariateReplaceDataFrame[,c("theta", "covariate", "covariateParameter", "modelExpression")]
+  row.names(.env$muRefCovariateDataFrame) <- NULL
+  row.names(.env$mu2RefCovariateReplaceDataFrame) <- NULL
 }
 
 #' Get mu-referencing model from model variables
