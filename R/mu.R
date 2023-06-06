@@ -196,6 +196,21 @@
   x
 }
 
+.muRefExtractTheta <- function(x, env) {
+  if (is.name(x)) {
+    .n <- as.character(x)
+    .lhs <- deparse1(env$curLhs)
+    if (any(.n == env$info$theta)) {
+      return(.n)
+    } 
+    return(NULL)
+  } else if (is.call(x)) {
+    return(do.call(`c`, lapply(x[-1], .muRefExtractTheta, env=env)))
+  } else {
+    return(NULL)
+  }
+}
+
 #' Extract single variable names from a expression
 #'
 #' @param x Expression
@@ -235,6 +250,7 @@
 #' @return A list of covariates with estimates attached
 #'
 #' @author Matthew Fidler
+#' 
 #' @noRd
 .muRefExtractMultiplyMuCovariates <- function(x, doubleNames, env) {
   c(doubleNames, do.call(`c`, lapply(x, function(y) {
@@ -262,6 +278,19 @@
             env$.found <- TRUE
             return(setNames(list(.y2[1]), .y2[2]))
           }
+        }
+      }
+      .thetas <- .muRefExtractTheta(y, env)
+      if (length(.thetas) == 1L) {
+        .d <- symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas)
+        .extra <- str2lang(rxFromSE(.d))
+        .thetaD <- .muRefExtractTheta(.extra, env)
+        if (is.null(.thetaD)) {
+          # mu2 expression
+          env$.found <- TRUE
+          env$mu2RefCovariateReplaceDataFrame <- rbind(env$mu2RefCovariateReplaceDataFrame, data.frame(covariate=deparse1(.extra),  covariateParameter=.thetas,  modelExpression=deparse1(y)))
+          return(setNames(list(.thetas), deparse1(.extra)))
+         
         }
       }
       return(NULL)
@@ -330,7 +359,9 @@
       # variables, could be an error in coding, perhaps a warning
       # should be issued?
       env$muRefDropParameters <- rbind(env$muRefDropParameters,
-                                       data.frame(parameter=.names[.wt], term=with(env$muRefCovariateDataFrame[.w, ], paste0(covariate, "*", covariateParameter))))
+                                       data.frame(parameter=.names[.wt],
+                                                  term=with(env$muRefCovariateDataFrame[.w, ],
+                                                            paste0(covariate, "*", covariateParameter))))
       env$muRefCovariateDataFrame <- env$muRefCovariateDataFrame[-.w, ]
       .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
     }
@@ -826,6 +857,7 @@
   .env$muRefExtra <- data.frame(parameter=character(0), extra=character(0))
   .env$muRefExtraEmpty <- NULL
   .env$muRefCovariateDataFrame <- data.frame(theta=character(0), covariate=character(0), covariateParameter=character(0))
+  .env$mu2RefCovariateReplaceDataFrame <- data.frame(covariate=character(0), covariateParameter=character(0), modelExpression=character(0))
   .env$muRefDropParameters <- data.frame(parameter=character(0), term=character(0))
   .env$muRefCovariateEmpty <- NULL
   .env$nonMuEtas <- NULL
@@ -1003,6 +1035,20 @@
   .checkForInfiniteOrNaParameters(.env)
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
   .muRefDowngrade(.env)
+  .env$mu2RefCovariateReplaceDataFrame$theta <- NA_character_
+  lapply(seq_along(.env$mu2RefCovariateReplaceDataFrame$covariate),
+         function(i) {
+           .cov <- .env$mu2RefCovariateReplaceDataFrame$covariate[i]
+           .covPar <- .env$mu2RefCovariateReplaceDataFrame$covariateParameter[i]
+           .wmu <- which(.env$muRefCovariateDataFrame$covariate == .cov &
+                           .env$mu2RefCovariateReplaceDataFrame$covariateParameter[i] == .covPar)
+           if (length(.wmu) == 1L) {
+             .theta <- .env$muRefCovariateDataFrame$theta[.wmu]
+             .env$muRefCovariateDataFrame <- .env$muRefCovariateDataFrame[-.wmu,]
+             .env$mu2RefCovariateReplaceDataFrame$theta[i] <- .theta
+           }
+         })
+  .env$mu2RefCovariateReplaceDataFrame <- .env$mu2RefCovariateReplaceDataFrame[,c("theta", "covariate", "covariateParameter", "modelExpression")]
   if (.env$hasErrors) {
     .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
                       paste(vapply(seq_along(.env$lstExpr),
