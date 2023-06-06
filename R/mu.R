@@ -984,6 +984,28 @@
   })
 }
 
+
+.muRefSeparateCalculatedMuRefCovs <- function(.env) {
+  if (length(.env$mu2RefCovariateReplaceDataFrame$covariate) == 0L) {
+    .env$mu2RefCovariateReplaceDataFrame$theta <- character(0)
+  } else {
+    .env$mu2RefCovariateReplaceDataFrame$theta <- NA_character_
+    lapply(seq_along(.env$mu2RefCovariateReplaceDataFrame$covariate),
+           function(i) {
+             .cov <- .env$mu2RefCovariateReplaceDataFrame$covariate[i]
+             .covPar <- .env$mu2RefCovariateReplaceDataFrame$covariateParameter[i]
+             .wmu <- which(.env$muRefCovariateDataFrame$covariate == .cov &
+                             .env$mu2RefCovariateReplaceDataFrame$covariateParameter[i] == .covPar)
+             if (length(.wmu) == 1L) {
+               .theta <- .env$muRefCovariateDataFrame$theta[.wmu]
+               .env$muRefCovariateDataFrame <- .env$muRefCovariateDataFrame[-.wmu,]
+               .env$mu2RefCovariateReplaceDataFrame$theta[i] <- .theta
+             }
+           })
+  }
+  .env$mu2RefCovariateReplaceDataFrame <- .env$mu2RefCovariateReplaceDataFrame[,c("theta", "covariate", "covariateParameter", "modelExpression")]  
+}
+
 #' Get mu-referencing model from model variables
 #'
 #' The rxMuRef is the core of the nlmixr ui functions
@@ -1035,20 +1057,7 @@
   .checkForInfiniteOrNaParameters(.env)
   .checkForAtLeastOneEstimatedOrModeledParameterPerEndpoint(.env)
   .muRefDowngrade(.env)
-  .env$mu2RefCovariateReplaceDataFrame$theta <- NA_character_
-  lapply(seq_along(.env$mu2RefCovariateReplaceDataFrame$covariate),
-         function(i) {
-           .cov <- .env$mu2RefCovariateReplaceDataFrame$covariate[i]
-           .covPar <- .env$mu2RefCovariateReplaceDataFrame$covariateParameter[i]
-           .wmu <- which(.env$muRefCovariateDataFrame$covariate == .cov &
-                           .env$mu2RefCovariateReplaceDataFrame$covariateParameter[i] == .covPar)
-           if (length(.wmu) == 1L) {
-             .theta <- .env$muRefCovariateDataFrame$theta[.wmu]
-             .env$muRefCovariateDataFrame <- .env$muRefCovariateDataFrame[-.wmu,]
-             .env$mu2RefCovariateReplaceDataFrame$theta[i] <- .theta
-           }
-         })
-  .env$mu2RefCovariateReplaceDataFrame <- .env$mu2RefCovariateReplaceDataFrame[,c("theta", "covariate", "covariateParameter", "modelExpression")]
+  .muRefSeparateCalculatedMuRefCovs(.env)
   if (.env$hasErrors) {
     .errMsg <- paste0(crayon::bold$blue("\nmodel"), "({}) errors:\n",
                       paste(vapply(seq_along(.env$lstExpr),
