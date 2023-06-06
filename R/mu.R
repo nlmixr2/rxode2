@@ -164,13 +164,17 @@
     if (is.numeric(x[[3]])) {
       assign("curLow", as.numeric(x[[3]]), envir=env)
     } else {
-      assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric"))))
+      assign("err", unique(c(env$err,
+                             paste0("syntax error '", deparse1(x),
+                                    "': limits must be numeric"))))
       assign("curLow", -Inf, envir=env)
     }
     if (is.numeric(x[[4]])) {
       assign("curHi", as.numeric(x[[4]]), envir=env)
     } else {
-      env$err <- unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric")))
+      env$err <- unique(c(env$err,
+                          paste0("syntax error '", deparse1(x),
+                                 "': limits must be numeric")))
       assign("curHi", Inf, envir=env)
     }
     x <- x[1:2]
@@ -179,7 +183,10 @@
     if (is.numeric(x[[3]])) {
       assign("curLow", as.numeric(x[[3]]), envir=env)
     } else {
-      assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be numeric"))),
+      assign("err",
+             unique(c(env$err,
+                      paste0("syntax error '", deparse1(x),
+                             "': limits must be numeric"))),
              envir=env)
       assign("curLow", -Inf, envir=env)
     }
@@ -190,7 +197,10 @@
     assign("curHi", 1, envir=env)
   }
   if (env$curLow >= env$curHi) {
-    assign("err", unique(c(env$err, paste0("syntax error '", deparse1(x), "': limits must be lower, higher"))),
+    assign("err",
+           unique(c(env$err,
+                    paste0("syntax error '", deparse1(x),
+                           "': limits must be lower, higher"))),
            envir=env)
   }
   x
@@ -262,18 +272,20 @@
           if (any(.y2[1] == env$info$cov) &&
                 any(.y2[2] == env$info$theta)) {
             if (any(.y2[1] == names(doubleNames))) {
-              env$err <- unique(c(env$err, paste0("syntax error: covariate '", .y2[1],
-                                                  "' is duplicated in mu-referenced expression for '",
-                                                  .y2[2], "' and '", doubleNames[[.y2[1]]], "'")))
+              env$err <- unique(c(env$err,
+                                  paste0("syntax error: covariate '", .y2[1],
+                                         "' is duplicated in mu-referenced expression for '",
+                                         .y2[2], "' and '", doubleNames[[.y2[1]]], "'")))
             }
             env$.found <- TRUE
             return(setNames(list(.y2[2]), .y2[1]))
           } else if (any(.y2[2] == env$info$cov) &&
                        any(.y2[1] == env$info$theta)) {
             if (any(.y2[2] == names(doubleNames))) {
-              env$err <- unique(c(env$err, paste0("syntax error: covariate '", .y2[2],
-                                                  "' is duplicated in mu-referenced expression for '",
-                                                  .y2[1], "' and '", doubleNames[[.y2[2]]], "'")))
+              env$err <- unique(c(env$err,
+                                  paste0("syntax error: covariate '", .y2[2],
+                                         "' is duplicated in mu-referenced expression for '",
+                                         .y2[1], "' and '", doubleNames[[.y2[2]]], "'")))
             }
             env$.found <- TRUE
             return(setNames(list(.y2[1]), .y2[2]))
@@ -288,7 +300,11 @@
         if (is.null(.thetaD)) {
           # mu2 expression
           env$.found <- TRUE
-          env$mu2RefCovariateReplaceDataFrame <- rbind(env$mu2RefCovariateReplaceDataFrame, data.frame(covariate=deparse1(.extra),  covariateParameter=.thetas,  modelExpression=deparse1(y)))
+          env$mu2RefCovariateReplaceDataFrame <-
+            rbind(env$mu2RefCovariateReplaceDataFrame,
+                  data.frame(covariate=deparse1(.extra),
+                             covariateParameter=.thetas,
+                             modelExpression=deparse1(y)))
           return(setNames(list(.thetas), deparse1(.extra)))
         }
       }
@@ -399,16 +415,19 @@
         .w2 <- .w[which(!(.multPrior %in% .multBoth))]
         if (length(.w2) > 0) {
           # Maybe warn that these are dropped
-          env$muRefDropParameters <- rbind(env$muRefDropParameters,
-                                           data.frame(parameter=.names[.wt],
-                                                      term=with(env$muRefCovariateDataFrame[.w2, ],
-                                                                paste0(covariate, "*", covariateParameter))))
+          env$muRefDropParameters <-
+            rbind(env$muRefDropParameters,
+                  data.frame(parameter=.names[.wt],
+                             term=with(env$muRefCovariateDataFrame[.w2, ],
+                                       paste0(covariate, "*", covariateParameter))))
           env$muRefCovariateDataFrame <- env$muRefCovariateDataFrame[-.w2,, drop = FALSE]
           .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
         }
       }
     } else {
-      .df <- data.frame(theta=.names[.wt], covariate=.covariate, covariateParameter=.covariateParameter)
+      .df <- data.frame(theta=.names[.wt],
+                        covariate=.covariate,
+                        covariateParameter=.covariateParameter)
       env$muRefCovariateDataFrame <- rbind(env$muRefCovariateDataFrame, .df)
     }
   }
@@ -439,8 +458,10 @@
       # Previously, this was thought to have mu referenced
       # variables, could be an error in coding, perhaps a warning
       # should be issued?
-      .extraDrop <- data.frame(parameter=.names[.wcur], term=env$muRefExtra$extra[.w])
-      env$muRefDropParameters <- rbind(env$muRefDropParameters, .extraDrop)
+      .extraDrop <- data.frame(parameter=.names[.wcur],
+                               term=env$muRefExtra$extra[.w])
+      env$muRefDropParameters <- rbind(env$muRefDropParameters,
+                                       .extraDrop)
       env$muRefExtra <- env$muRefExtra[-.w, ]
       .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
     }
@@ -449,7 +470,8 @@
     # as not having double names.  Perhaps a warning should be
     # issued for this condition
     env$muRefDropParameters <- rbind(env$muRefDropParameters,
-                                     data.frame(parameter=.names[.wcur], term=.extraItems))
+                                     data.frame(parameter=.names[.wcur],
+                                                term=.extraItems))
     .muRefDowngradeEvalToAdditive(.we, .wt, .names, env)
   } else {
     if (length(.w) > 0) {
@@ -479,7 +501,8 @@
         }
       }
     } else {
-      .df <- data.frame(parameter=.names[.wcur], extra=.extraItems)
+      .df <- data.frame(parameter=.names[.wcur],
+                        extra=.extraItems)
       env$muRefExtra <- rbind(env$muRefExtra, .df)
     }
   }
@@ -517,10 +540,10 @@
     }
   }
 }
-
 # This function handles the extra information in a theta based mu referenced
 
-#' This handles the case where there is a mu referenced single theta with a reference population eta
+#' This handles the case where there is a mu referenced single theta
+#' with a reference population eta
 #'
 #' @param .we this represents the item number in `.names` that is the
 #'   mu-referenced population eta
@@ -577,7 +600,11 @@
           .muRefSetNonMuEta(.curEta, env)
         }
       } else {
-        env$muRefDataFrame <- rbind(env$muRefDataFrame, data.frame(theta=.names[.wt], eta=.names[.we], level="id"))
+        env$muRefDataFrame <-
+          rbind(env$muRefDataFrame,
+                data.frame(theta=.names[.wt],
+                           eta=.names[.we],
+                           level="id"))
       }
     }
   } else if (length(.we) != 0) {
@@ -637,7 +664,8 @@
   if (length(.wt) >= 2) {
     env$err <- unique(c(env$err,
                         paste0("syntax error: 2+ single population parameters in a single mu-referenced expression: '",
-                               paste(env$info$theta[.wt], collapse="', '"), "'\nthis could occur when a between subject variability parameter is not initialized with a '~'")))
+                               paste(env$info$theta[.wt], collapse="', '"),
+                               "'\nthis could occur when a between subject variability parameter is not initialized with a '~'")))
   } else if (length(.wt) == 1) {
     if (!is.null(.extraItems)) {
       .ord <- order(vapply(.extraItems, nchar, integer(1)))
@@ -762,7 +790,9 @@
   .blankEval <- ""
   if (inherits(set, "character")) {
     if (length(.w) == 0L) {
-      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=set, low=env$curLow, hi=env$curHi))
+      env$muRefCurEval <-
+        rbind(env$muRefCurEval,
+              data.frame(parameter=parameter, curEval=set, low=env$curLow, hi=env$curHi))
     } else {
       env$muRefCurEval$curEval[.w] <- set
     }
@@ -774,7 +804,9 @@
       if (is.null(env$curHi)) {
         env$curHi <- NA_real_
       }
-      env$muRefCurEval <- rbind(env$muRefCurEval, data.frame(parameter=parameter, curEval=.curEval, low=env$curLow, hi=env$curHi))
+      env$muRefCurEval <-
+        rbind(env$muRefCurEval,
+              data.frame(parameter=parameter, curEval=.curEval, low=env$curLow, hi=env$curHi))
     } else if (env$muRefCurEval$curEval[.w] != env$.curEval) {
       env$muRefCurEval$curEval[.w] <- .blankEval
     }
@@ -890,21 +922,27 @@
       .upper <- .iniDf$upper[.err]
       if (.range[1] > .est) {
         env$err <- c(env$err,
-                     paste0("'", .name, "' estimate (", .est, ") needs to be above ", .range[1]))
+                     paste0("'", .name, "' estimate (",
+                            .est, ") needs to be above ", .range[1]))
       }
       if (.range[2] < .est) {
         env$err <- c(env$err,
-                     paste0("'", .name, "' estimate (", .est, ") needs to be below ", .range[2]))
+                     paste0("'", .name, "' estimate (",
+                            .est, ") needs to be below ", .range[2]))
       }
       if (.lower < .range[1]) {
         if (rxode2.verbose.pipe && is.finite(.lower)) {
-          .minfo(paste0("'", .name, "' lower bound (", .lower, ") needs to be equal or above ", .range[1], "; adjusting"))
+          .minfo(paste0("'", .name, "' lower bound (",
+                        .lower, ") needs to be equal or above ", .range[1],
+                        "; adjusting"))
         }
         .lower <- .range[1]
       }
       if (.upper > .range[2]) {
         if (rxode2.verbose.pipe && is.finite(.upper)) {
-          .minfo(paste0("'", .name, "' upper bound (", .upper, ") needs to be equal or below ", .range[2],"; adjusting"))
+          .minfo(paste0("'", .name, "' upper bound (", .upper,
+                        ") needs to be equal or below ", .range[2],
+                        "; adjusting"))
         }
         .upper <- .range[2]
       }
@@ -930,12 +968,15 @@
   } else {
     .errEsts <- .iniDf[.iniDf$condition %in% ui$predDf$cond, "name"]
   }
-  .estName <- .iniDf$name[!is.na(.iniDf$ntheta) | (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
+  .estName <- .iniDf$name[!is.na(.iniDf$ntheta) |
+                            (!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)]
   .estName <- c(.estName, .errEsts)
   .missingPars <- setdiff(.estName, c(.mv$params, .errEsts))
   if (length(.missingPars) > 0) {
-    ui$err <- c(ui$err, paste0("the following parameter(s) were in the ini block but not in the model block: ",
-                               paste(.missingPars, collapse=", ")))
+    ui$err <-
+      c(ui$err,
+        paste0("the following parameter(s) were in the ini block but not in the model block: ",
+               paste(.missingPars, collapse=", ")))
   }
   invisible()
 }
@@ -950,7 +991,9 @@
   .iniDf <- ui$iniDf
   .bad <- .iniDf$name[is.infinite(.iniDf$est) | is.na(.iniDf$est)]
   if (length(.bad) > 0) {
-    ui$err <- c(ui$err, paste0("infinite/NA initial parameters: ", paste(.bad, collapse=", ")))
+    ui$err <-
+      c(ui$err,
+        paste0("infinite/NA initial parameters: ", paste(.bad, collapse=", ")))
   }
   invisible()
 }
