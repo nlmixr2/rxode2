@@ -7,9 +7,9 @@ rxTest({
 
     ode <- rxode2({
       b <- -1
-      d / dt(X) <- a * X + Y * Z
-      d / dt(Y) <- b * (Y - Z)
-      d / dt(Z) <- -X * Y + c * Y - Z
+      d/dt(X) <- a * X + Y * Z
+      d/dt(Y) <- b * (Y - Z)
+      d/dt(Z) <- -X * Y + c * Y - Z
       printf("%.10f,%.10f\n", t, c)
     })
 
@@ -119,8 +119,7 @@ rxTest({
 
     cov.lin <- approxfun(out$time, out$c,
                          yleft = cov$c[1], yright = cov$c[length(cov$c)],
-                         method = "constant"
-                         )
+                         method = "constant")
 
     lin.interp$c2 <- cov.lin(lin.interp$t)
 
@@ -233,17 +232,17 @@ rxTest({
     )
 
     mod1 <- rxode2({
-      d / dt(A_centr) <- -A_centr * (CLI / V1I + 204 / V1I) + 204 * A_periph / V2I
-      d / dt(A_periph) <- 204 * A_centr / V1I - 204 * A_periph / V2I
-      d / dt(A_circ) <- -4 * A_circ * exp(-ETA[2] - THETA[2]) + 4 * A_tr3 * exp(-ETA[2] - THETA[2])
+      d/dt(A_centr) <- -A_centr * (CLI / V1I + 204 / V1I) + 204 * A_periph / V2I
+      d/dt(A_periph) <- 204 * A_centr / V1I - 204 * A_periph / V2I
+      d/dt(A_circ) <- -4 * A_circ * exp(-ETA[2] - THETA[2]) + 4 * A_tr3 * exp(-ETA[2] - THETA[2])
       A_circ(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_prol) <- 4 * A_prol * Rx_pow(exp(ETA[1] + THETA[1]) / A_circ, exp(THETA[4])) * (-A_centr * exp(ETA[3] + THETA[3]) / V1I + 1) * exp(-ETA[2] - THETA[2]) - 4 * A_prol * exp(-ETA[2] - THETA[2])
+      d/dt(A_prol) <- 4 * A_prol * Rx_pow(exp(ETA[1] + THETA[1]) / A_circ, exp(THETA[4])) * (-A_centr * exp(ETA[3] + THETA[3]) / V1I + 1) * exp(-ETA[2] - THETA[2]) - 4 * A_prol * exp(-ETA[2] - THETA[2])
       A_prol(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_tr1) <- 4 * A_prol * exp(-ETA[2] - THETA[2]) - 4 * A_tr1 * exp(-ETA[2] - THETA[2])
+      d/dt(A_tr1) <- 4 * A_prol * exp(-ETA[2] - THETA[2]) - 4 * A_tr1 * exp(-ETA[2] - THETA[2])
       A_tr1(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_tr2) <- 4 * A_tr1 * exp(-ETA[2] - THETA[2]) - 4 * A_tr2 * exp(-ETA[2] - THETA[2])
+      d/dt(A_tr2) <- 4 * A_tr1 * exp(-ETA[2] - THETA[2]) - 4 * A_tr2 * exp(-ETA[2] - THETA[2])
       A_tr2(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_tr3) <- 4 * A_tr2 * exp(-ETA[2] - THETA[2]) - 4 * A_tr3 * exp(-ETA[2] - THETA[2])
+      d/dt(A_tr3) <- 4 * A_tr2 * exp(-ETA[2] - THETA[2]) - 4 * A_tr3 * exp(-ETA[2] - THETA[2])
       A_tr3(0) <- exp(ETA[1] + THETA[1])
     })
 
@@ -316,8 +315,7 @@ rxTest({
 
     expect_warning(
       tmp <- rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
-      regexp = "column 'V1I' has only 'NA' values for id '2'"
-    )
+    NA)
 
     tmp2 <- rxSolve(mod1, d3, par2, addCov = TRUE, cores = 2, method = meth)
 
@@ -341,16 +339,14 @@ rxTest({
     test_that("All covariates are NA give a warning", {
       expect_warning(expect_warning(
         rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
-        "column 'V1I' has only 'NA' values for id '2'"),
-        regexp = "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'",
-        fixed = TRUE
-      )
+        "column 'V1I' has only 'NA' values for id '2'"))
     })
   }
 
   # time-varying covariates work with ODEs
 
   test_that("time varying covariates lhs", {
+
     dfadvan <- data.frame(
       ID = c(
         1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,

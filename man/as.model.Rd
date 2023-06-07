@@ -4,6 +4,7 @@
 \alias{as.model}
 \alias{as.model.character}
 \alias{as.model.call}
+\alias{as.model.list}
 \alias{as.model.default}
 \title{Turn into a model expression}
 \usage{
@@ -12,6 +13,8 @@ as.model(x)
 \method{as.model}{character}(x)
 
 \method{as.model}{call}(x)
+
+\method{as.model}{list}(x)
 
 \method{as.model}{default}(x)
 }
