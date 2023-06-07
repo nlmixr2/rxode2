@@ -174,14 +174,14 @@ an alias of <code>rxnorm</code>. It is no longer supported in <code>rxode2({})</
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxnorm you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -1.6642794  0.1611377 -1.5905201 -0.4095621 -1.8224662  0.3343011</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -0.9903332 -1.4328168 -0.3163052 -0.7239952</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.5269783 -0.5225997  1.9165060  0.9208077  0.7823896 -1.2084785</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -0.5820402 -1.4248673 -0.2166073  0.4622949</span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  1.4316677 -1.8974199 -0.3531399 -1.2905279 -0.5365832 -2.5424437</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.6096063  1.1238025  0.4842799  0.9256677</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.12312002  1.57063071 -0.95537945 -0.61076373 -0.34929291 -0.03185261</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -1.26750925 -1.37469812  0.90465746 -1.55951500</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span> <span class="co">## The first 2 arguments are the mean and standard deviation</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4.719251</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3.330593</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxnorm` directly in the model</span></span></span>
@@ -191,7 +191,7 @@ an alias of <code>rxnorm</code>. It is no longer supported in <code>rxode2({})</
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>

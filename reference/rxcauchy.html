@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxcauchy you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -29.744001219   0.005070221  -1.470709167  -1.344572496  13.596302317</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6]   0.368166527   0.155882064  -0.949781788  -0.589202994   0.952014622</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.2099138 -0.6661291  0.2055728 -0.5002501  4.6912520  0.4624401</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -0.1591553  0.3304177  2.4259517  7.9088319</span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  2.41689379 -2.05193072  1.17584825 41.20746403 -0.51352617 -0.22143021</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  2.04553729  0.07175798  0.10597520  0.22292884</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.51036793  0.07883822 -1.59409895  0.40429809  0.63958351 -0.10827155</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.68044791 12.68933475  1.49019182  0.62992964</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.449341</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 6.160383</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxcauchy` directly in the model</span></span></span>
@@ -215,7 +215,7 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
