@@ -159,7 +159,7 @@
                         <h4 data-toc-skip class="author">Matthew
 Fidler</h4>
             
-            <h4 data-toc-skip class="date">2023-06-07</h4>
+            <h4 data-toc-skip class="date">2023-06-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-speed.Rmd" class="external-link"><code>vignettes/rxode2-speed.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-speed.Rmd</code></div>
@@ -269,11 +269,11 @@ you can see the options in <code><a href="../reference/rxSolve.html">rxControl()
 <code class="sourceCode R"><span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">runFor</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSapply</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSingleThread</span><span class="op">(</span><span class="op">)</span>,<span class="fu">run2Thread</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;               expr      min       lq      mean    median       uq      max</span></span>
-<span><span class="co">#&gt;           runFor() 337.9779 345.0750 350.17420 347.95880 349.8300 443.7881</span></span>
-<span><span class="co">#&gt;        runSapply() 337.1620 344.2726 347.77102 347.76325 349.5439 442.1126</span></span>
-<span><span class="co">#&gt;  runSingleThread()  34.4662  34.9273  35.66898  35.60200  35.9473  40.8228</span></span>
-<span><span class="co">#&gt;       run2Thread()  20.7267  21.2334  21.60160  21.43495  21.6954  25.5193</span></span>
+<span><span class="co">#&gt;               expr      min        lq      mean    median       uq      max</span></span>
+<span><span class="co">#&gt;           runFor() 369.3806 378.55200 382.92841 382.29550 385.4522 500.6860</span></span>
+<span><span class="co">#&gt;        runSapply() 363.9178 374.40900 382.22278 379.43180 382.4923 511.6045</span></span>
+<span><span class="co">#&gt;  runSingleThread()  35.9246  36.18615  36.83020  36.46735  36.9322  44.2569</span></span>
+<span><span class="co">#&gt;       run2Thread()  21.3901  22.07575  22.90983  22.55330  23.1543  29.2636</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span>
@@ -299,9 +299,9 @@ code:</p>
 <span>                                           collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;          expr     min       lq     mean   median       uq     max neval</span></span>
-<span><span class="co">#&gt;  runThread(1) 34.6455 35.64175 36.19440 36.09955 36.61665 40.3208   100</span></span>
-<span><span class="co">#&gt;  runThread(2) 21.2108 21.61815 21.95576 21.81395 22.15810 26.4067   100</span></span></code></pre></div>
+<span><span class="co">#&gt;          expr     min       lq     mean  median       uq     max neval</span></span>
+<span><span class="co">#&gt;  runThread(1) 36.8452 37.06930 37.61223 37.2458 37.68105 44.5207   100</span></span>
+<span><span class="co">#&gt;  runThread(2) 22.4093 23.01325 23.85277 23.4160 23.96650 31.9253   100</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-11-1.png" width="700"></p>
@@ -391,7 +391,7 @@ reduced to run faster automatic building of the pkgdown website.</p>
 <span><span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  </span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 6.124326 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 6.815439 secs</span></span></code></pre></div>
 <p>By applying some of the new parallel solving concepts you can simply
 run the same simulation both with less code and faster:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
@@ -432,7 +432,7 @@ run the same simulation both with less code and faster:</p>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span></span>
 <span><span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 0.1240995 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 0.1335208 secs</span></span></code></pre></div>
 <p>You can see a striking time difference between the two methods; A few
 things to keep in mind:</p>
 <ul>

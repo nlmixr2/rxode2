@@ -130,38 +130,24 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
 <div class="section level3">
+<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<ul><li>Add Algebraic mu-referencing detection (mu2) that allows you to express mu-referenced covariates as:</li>
+</ul><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">wt_cl</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">WT</span><span class="op">/</span><span class="fl">70.5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Instead of the</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">wt_cl</span> <span class="op">*</span> <span class="va">log.WT.div.70.5</span><span class="op">)</span></span></code></pre></div>
+<p>That was previously required (where <code>log.WT.div.70.5</code> was calculated in the data) for mu expressions. The <code>ui</code> now has more information to allow transformation of data internally and transformation to the old mu-referencing style to run the optimization.</p>
+</div>
+<div class="section level3">
 <h3 id="internal-new-features-development-version">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-development-version"></a></h3>
 <ul><li>Add <code><a href="../reference/as.model.html">as.model()</a></code> for list expressions, which implies <code>model(ui) &lt;-   ui$lstExpr</code> will assign model components</li>
 </ul></div>
 </div>
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2.0.12" id="rxode2-2012">rxode2 2.0.12<a class="anchor" aria-label="anchor" href="#rxode2-2012"></a></h2><p class="text-muted">CRAN release: 2023-03-28</p>
-<div class="section level3">
-<h3 id="new-features-2-0-12">New features<a class="anchor" aria-label="anchor" href="#new-features-2-0-12"></a></h3>
-<ul><li><p>A new function <code><a href="../reference/zeroRe.html">zeroRe()</a></code> allows simple setting of omega and/or sigma values to zero for a model (<a href="https://github.com/nlmixr2/rxode2/issues/456" class="external-link">#456</a>)</p></li>
-<li><p>Diagonal zeros in the <code>omega</code> and <code>sigma</code> matrices are treated as zeros in the model. The corresponding <code>omega</code> and <code>sigma</code> matrices drop columns/rows where the diagonals are zero to create a new <code>omega</code> and <code>sigma</code> matrix for simulation. This is the same idiom that NONMEM uses for simulation from these matrices.</p></li>
-<li><p>Add the ability to pipe model estimates from another model by <code>parentModel %&gt;% ini(modelWithNewEsts)</code></p></li>
-<li><p>Add the ability to append model statements with piping using <code>%&gt;%   model(x=3, append=d/dt(depot))</code>, still supports appending with <code>append=TRUE</code> and pre-pending with <code>append=NA</code> (the default is to replace lines with <code>append=FALSE</code>)</p></li>
-<li><p>rxSolve’s keep argument will now maintain character and factor classes from input data with the same class (<a href="https://github.com/nlmixr2/rxode2/issues/190" class="external-link">#190</a>)</p></li>
-<li><p>Parameter labels may now be modified via <code>ini(param = label("text"))</code> (<a href="https://github.com/nlmixr2/rxode2/issues/351" class="external-link">#351</a>).</p></li>
-<li><p>Parameter order may be modified via the <code>append</code> argument to <code><a href="../reference/ini.html">ini()</a></code> when piping a model. For example, <code>ini(param = 1, append = 0)</code> or <code>ini(param = label("text"), append = "param2")</code> (<a href="https://github.com/nlmixr2/rxode2/issues/352" class="external-link">#352</a>).</p></li>
-</ul></div>
-<div class="section level3">
-<h3 id="internal-changes-2-0-12">Internal changes<a class="anchor" aria-label="anchor" href="#internal-changes-2-0-12"></a></h3>
-<ul><li><p>If lower/upper bounds are outside the required bounds, the adjustment is displayed.</p></li>
-<li><p>When initial values are piped that break the model’s boundary condition reset the boundary to unbounded and message which boundary was reset.</p></li>
-<li><p>Added <code><a href="../reference/as.rxUi.html">as.rxUi()</a></code> function to convert the following objects to <code>rxUi</code> objects: <code>rxode2</code>, <code>rxModelVars</code>, <code>function</code>. Converting nlmixr2 fits to <code>rxUi</code> will be placed in the <code>s3</code> method in the corresponding package.</p></li>
-<li><p><code>assertRxUi(x)</code> now uses <code><a href="../reference/as.rxUi.html">as.rxUi()</a></code> so that it can be extended outside of <code>rxode2</code>/<code>nlmixr2</code>.</p></li>
-<li><p><code>rxode2</code> now supports <code>addl</code> with <code>ss</code> doses</p></li>
-<li><p>Moved <code>rxDerived</code> to <code>rxode2parse</code> (and re-exported it here).</p></li>
-<li><p>Added test for transit compartment solving in absence of dosing to the transit compartment (fixed in <code>rxode2parse</code> but solving tested here)</p></li>
-<li><p>Using <code><a href="../reference/ini.html">ini()</a></code> without any arguments on a <code>rxode2</code> type function will return the <code><a href="../reference/ini.html">ini()</a></code> block. Also added a method <code>ini(mod) &lt;-   iniBlock</code> to modify the <code>ini</code> block is you wish. <code>iniBlock</code> should be an expression.</p></li>
-<li><p>Using <code><a href="../reference/model.html">model()</a></code> without any arguments on a <code>rxode2</code> type function will return the <code><a href="../reference/model.html">model()</a></code> block. Also added a new method <code>model(mod) &lt;- modelBlock</code></p></li>
-<li><p>Added a new method <code>rxode2(mod) &lt;- modFunction</code> which allows replacing the function with a new function while maintaining the meta information about the ui (like information that comes from <code>nonmem2rx</code> models). The <code>modFunction</code> should be the body of the new function, the new function, or a new <code>rxode2</code> ui.</p></li>
-<li><p><code>rxode2</code> ui objects now have a <code>$sticky</code> item inside the internal (compressed) environment. This <code>$sticky</code> tells what variables to keep if there is a “significant” change in the ui during piping or other sort of model change. This is respected during model piping, or modifying the model with <code>ini(mod)&lt;-</code>, <code>model(mod)&lt;-</code>, <code>rxode2(mod)&lt;-</code>. A significant change is a change in the model block, a change in the number of estimates, or a change to the value of the estimates. Estimate bounds, weather an estimate is fixed or estimate label changes are not considered significant.</p></li>
-<li><p>Added <code><a href="../reference/as.ini.html">as.ini()</a></code> method to convert various formats to an ini expression. It is used internally with <code>ini(mod)&lt;-</code>. If you want to assign something new that you can convert to an ini expression, add a method for <code><a href="../reference/as.ini.html">as.ini()</a></code>.</p></li>
-<li><p>Added <code><a href="../reference/as.model.html">as.model()</a></code> method to convert various formats to a model expression. It is used internally with <code>model(mod)&lt;-</code>. If you want to assign something new that you can convert to a model expression, add a method for <code><a href="../reference/as.model.html">as.model()</a></code>.</p></li>
-</ul></div>
+<h2 class="pkg-version" data-toc-text="2.0.13" id="rxode2-2013">rxode2 2.0.13<a class="anchor" aria-label="anchor" href="#rxode2-2013"></a></h2><p class="text-muted">CRAN release: 2023-04-22</p>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.11" id="rxode2-2011">rxode2 2.0.11<a class="anchor" aria-label="anchor" href="#rxode2-2011"></a></h2><p class="text-muted">CRAN release: 2022-11-01</p>
