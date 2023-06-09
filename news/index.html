@@ -131,7 +131,8 @@
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
 <div class="section level3">
 <h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
-<ul><li>Add Algebraic mu-referencing detection (mu2) that allows you to express mu-referenced covariates as:</li>
+<ul><li><p>Allow <code>ini(model) &lt;- NULL</code> to drop ini block and <code>as.ini(NULL)</code> gives <code>ini({})</code> (Issue <a href="https://github.com/nlmixr2/rxode2/issues/523" class="external-link">#523</a>)</p></li>
+<li><p>Add Algebraic mu-referencing detection (mu2) that allows you to express mu-referenced covariates as:</p></li>
 </ul><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">wt_cl</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">WT</span><span class="op">/</span><span class="fl">70.5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>

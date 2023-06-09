@@ -159,7 +159,7 @@
                         <h4 data-toc-skip class="author">Matthew
 Fidler</h4>
             
-            <h4 data-toc-skip class="date">2023-06-08</h4>
+            <h4 data-toc-skip class="date">2023-06-09</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-plot.Rmd" class="external-link"><code>vignettes/rxode2-plot.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-plot.Rmd</code></div>
@@ -306,7 +306,7 @@ between subjects;</p>
 <span>  <span class="va">d</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">C2</span> <span class="op">/</span> <span class="op">(</span><span class="va">EC50</span> <span class="op">+</span> <span class="va">C2</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="va">eff</span></span>
 <span>  <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span></span></code></pre>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span></span></code></pre>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Add the between subject variability:</span></span>
 <span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.Cl</span> <span class="op">~</span> <span class="fl">0.4</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
