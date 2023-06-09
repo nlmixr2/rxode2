@@ -2,6 +2,9 @@
 
 ## New features
 
+- Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
+  gives `ini({})` (Issue #523)
+
 - Add Algebraic mu-referencing detection (mu2) that allows you to
   express mu-referenced covariates as:
 
