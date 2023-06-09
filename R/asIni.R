@@ -141,6 +141,9 @@ as.ini.matrix <- function(x) {
 #' @rdname as.ini
 #' @export
 as.ini.default <- function(x) {
+  if (is.null(x)) {
+    return(quote(ini({})))
+  }
   .ini <- try(as.rxUi(x), silent=TRUE)
   if (inherits(.ini, "try-error")) {
     stop("do not know how to convert this to an `ini` expression",
