@@ -261,6 +261,6 @@ test_that("ini(model) <- NULL drops", {
   uiOne <- one.compartment()
   ini(uiOne) <- NULL
   expect_length(uiOne$iniDf$ntheta, 0L)
-  expect_equal(as.ini(NULL), quote(ini({})))
+  expect_equal(as.ini(NULL), quote(ini({}))) #nolint
 })
 

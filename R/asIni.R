@@ -142,7 +142,7 @@ as.ini.matrix <- function(x) {
 #' @export
 as.ini.default <- function(x) {
   if (is.null(x)) {
-    return(quote(ini({})))
+    return(quote(ini({}))) # nolint
   }
   .ini <- try(as.rxUi(x), silent=TRUE)
   if (inherits(.ini, "try-error")) {
