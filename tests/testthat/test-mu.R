@@ -376,13 +376,13 @@ rxTest({
                                                           covariate = character(0), covariateParameter = character(0)), class = "data.frame", row.names = integer(0)),
                  muRefCovariateEmpty = "tcl", muRefCurEval = structure(list(
                    parameter = c("tka", "eta.cl", "tcl", "tv", "eta.v"),
-                   curEval = c("exp", "exp", "exp", "*", "exp"), low = c(NA_real_,
-                                                                         NA_real_, NA_real_, NA_real_, NA_real_), hi = c(NA_real_,
-                                                                                                                         NA_real_, NA_real_, NA_real_, NA_real_)), row.names = c(NA,
-                                                                                                                                                                                 -5L), class = "data.frame"), muRefDataFrame = structure(list(
-                                                                                                                                                                                   theta = "tcl", eta = "eta.cl", level = "id"), row.names = c(NA,
-                                                                                                                                                                                                                                               -1L), class = "data.frame"), muRefDropParameters = structure(list(
-                                                                                                                                                                                                                                                 parameter = character(0), term = character(0)), class = "data.frame", row.names = integer(0)),
+                   curEval = c("exp", "exp", "exp", "*", "exp"),
+                   low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_),
+                   hi = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_)),
+                   row.names = c(NA, -5L), class = "data.frame"),
+                 muRefDataFrame = structure(list(theta = "tcl", eta = "eta.cl", level = "id"),
+                                            row.names = c(NA, -1L), class = "data.frame"), muRefDropParameters = structure(list(parameter = character(0), term = character(0)),
+                                                                                                                           class = "data.frame", row.names = integer(0)),
                  muRefExtra = structure(list(parameter = character(0), extra = character(0)), class = "data.frame", row.names = integer(0)),
                  muRefExtraEmpty = "tcl", nonMuEtas = "eta.v"))
 
@@ -422,26 +422,32 @@ rxTest({
     }), lmat)
 
     testEnv(env,
-            list(muRefCovariateDataFrame = structure(list(theta = c("tcl",
-                                                                    "tcl", "tv", "tv", "tv", "tvp", "tvp", "tvp"), covariate = c("age",
-                                                                                                                                 "sex", "age", "sex", "wt", "age", "sex", "wt"), covariateParameter = c("cl.age",
-                                                                                                                                                                                                        "cl.sex", "v.age", "v.sex", "v.wt", "vp.age", "vp.sex", "vp.wt"
-                                                                                                                                                                                                        )), row.names = c(NA, -8L), class = "data.frame"), muRefCovariateEmpty = "tka",
-                 muRefCurEval = structure(list(parameter = c("eta.ka", "tka",
-                                                             "eta.cl", "tcl", "eta.v", "tv", "tvp"), curEval = c("exp",
-                                                                                                                 "exp", "exp", "exp", "exp", "exp", "exp"), low = c(NA_real_,
-                                                                                                                                                                    NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_
-                                                                                                                                                                    ), hi = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_,
-                                                                                                                                                                              NA_real_, NA_real_)), row.names = c(NA, -7L), class = "data.frame"),
-                 muRefDataFrame = structure(list(theta = c("tka", "tcl", "tv"
-                                                           ), eta = c("eta.ka", "eta.cl", "eta.v"), level = c("id",
-                                                                                                              "id", "id")), row.names = c(NA, -3L), class = "data.frame"),
+            list(muRefCovariateDataFrame =
+                   structure(list(theta = c("tcl", "tcl", "tv", "tv", "tv", "tvp", "tvp", "tvp"),
+                                  covariate = c("age", "sex", "age", "sex", "wt", "age", "sex", "wt"),
+                                  covariateParameter = c("cl.age", "cl.sex", "v.age", "v.sex", "v.wt", "vp.age", "vp.sex", "vp.wt")),
+                             row.names = c(NA, -8L),
+                             class = "data.frame"),
+                 muRefCovariateEmpty = "tka",
+                 muRefCurEval = structure(list(parameter = c("eta.ka", "tka", "eta.cl", "tcl", "eta.v", "tv", "tvp"),
+                                               curEval = c("exp", "exp", "exp", "exp", "exp", "exp", "exp"),
+                                               low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_),
+                                               hi = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_)),
+                                          row.names = c(NA, -7L),
+                                          class = "data.frame"),
+                 muRefDataFrame = structure(list(theta = c("tka", "tcl", "tv"),
+                                                 eta = c("eta.ka", "eta.cl", "eta.v"),
+                                                 level = c("id", "id", "id")),
+                                            row.names = c(NA, -3L),
+                                            class = "data.frame"),
                  muRefDropParameters = structure(list(parameter = character(0),
-                                                      term = character(0)), class = "data.frame", row.names = integer(0)),
-                 muRefExtra = structure(list(parameter = c("tcl", "tcl", "tv"
-                                                           ), extra = c("3", "log(wt2/70) * cl.wt", "2")), row.names = c(NA,
-                                                                                                                        -3L), class = "data.frame"), muRefExtraEmpty = c("tka", "tvp"
-                                                                                                                                                                         ), nonMuEtas = NULL))
+                                                      term = character(0)),
+                                                 class = "data.frame",
+                                                 row.names = integer(0)),
+                 muRefExtra = structure(list(parameter = c("tcl", "tv"),
+                                             extra = c("3", "2")),
+                                        row.names = c(NA, -2L), class = "data.frame"),
+                 muRefExtraEmpty = c("tka", "tvp"), nonMuEtas = NULL))
 
 
     # This one tv is used in 2 covariate references
@@ -456,23 +462,33 @@ rxTest({
       ## cp ~ add(add.sd)
     }), lmat)
 
-    testEnv(env, list(muRefCovariateDataFrame = structure(list(theta = c("tcl",
-                                                                         "tcl"), covariate = c("age", "sex"), covariateParameter = c("cl.age",
-                                                                                                                                     "cl.sex")), row.names = 1:2, class = "data.frame"), muRefCovariateEmpty = c("tka",
-                                                                                                                                                                                                                 "tv"), muRefCurEval = structure(list(parameter = c("eta.ka",
-                                                                                                                                                                                                                                                                    "tka", "eta.cl", "tcl", "eta.v", "tv"), curEval = c("exp", "exp",
-                                                                                                                                                                                                                                                                                                                        "exp", "exp", "", ""), low = c(NA_real_, NA_real_, NA_real_,
-                                                                                                                                                                                                                                                                                                                                                       NA_real_, NA_real_, NA_real_), hi = c(NA_real_, NA_real_, NA_real_,
-                                                                                                                                                                                                                                                                                                                                                                                             NA_real_, NA_real_, NA_real_)), row.names = c(NA, -6L), class = "data.frame"),
-                      muRefDataFrame = structure(list(theta = c("tka", "tcl"),
-                                                      eta = c("eta.ka", "eta.cl"), level = c("id", "id")), row.names = 1:2, class = "data.frame"),
-                      muRefDropParameters = structure(list(parameter = c("tv",
-                                                                         "tv", "tv", "tv", "tv", "tv", "tv"), term = c("age*vp.age",
-                                                                                                                       "sex*vp.sex", "wt*vp.wt", "age*v.age", "sex*v.sex", "wt*v.wt",
-                                                                                                                       "2")), row.names = c(NA, -7L), class = "data.frame"), muRefExtra = structure(list(
-                                                                                                                         parameter = c("tcl", "tcl"), extra = c("3", "log(wt2/70) * cl.wt"
-                                                                                                                                                                )), row.names = 1:2, class = "data.frame"), muRefExtraEmpty = c("tka",
-                                                                                                                                                                                                                                "tv"), nonMuEtas = "eta.v"))
+    testEnv(env, list(muRefCovariateDataFrame =
+                        structure(list(theta = c("tcl", "tcl"),
+                                       covariate = c("age", "sex"),
+                                       covariateParameter = c("cl.age", "cl.sex")),
+                                  row.names = c(NA_integer_, -2L), class = "data.frame"),
+                      muRefCovariateEmpty = c("tka", "tv"),
+                      muRefCurEval =
+                        structure(list(parameter = c("eta.ka","tka", "eta.cl", "tcl", "eta.v", "tv"),
+                                       curEval = c("exp", "exp", "exp", "exp", "", ""),
+                                       low = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_), hi = c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_)),
+                                  row.names = c(NA, -6L), class = "data.frame"),
+                      muRefDataFrame =
+                        structure(list(theta = c("tka", "tcl"),
+                                       eta = c("eta.ka", "eta.cl"),
+                                       level = c("id", "id")),
+                                  row.names = c(NA, -2L), class = "data.frame"),
+                      muRefDropParameters =
+                        structure(list(parameter = c("tv", "tv", "tv", "tv", "tv", "tv", "tv"),
+                                       term = c("age*vp.age", "sex*vp.sex", "wt*vp.wt", "age*v.age", "sex*v.sex", "wt*v.wt", "2")),
+                                  row.names = c(NA, -7L), class = "data.frame"),
+                      muRefExtra = structure(list(parameter = "tcl",
+                                                  extra = "3"),
+                                             row.names = c(NA_integer_, -1L),
+                                             class = "data.frame"),
+                      muRefExtraEmpty =
+                        c("tka", "tv"),
+                      nonMuEtas = "eta.v"))
 
     #env$nonMuEtas
 

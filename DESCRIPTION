@@ -108,7 +108,8 @@ BugReports: https://github.com/nlmixr2/rxode2/issues/
 NeedsCompilation: yes
 VignetteBuilder: knitr
 License: GPL (>= 3) 
-URL: https://nlmixr2.github.io/rxode2/, https://github.com/nlmixr2/rxode2/
+URL: https://nlmixr2.github.io/rxode2/,
+    https://github.com/nlmixr2/rxode2/
 RoxygenNote: 7.2.3
 Biarch: true
 LinkingTo: 

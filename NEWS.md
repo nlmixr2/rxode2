@@ -1,14 +1,42 @@
 # rxode2 (development version)
 
-# rxode2 development version
+## New features
+
+- Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
+  gives `ini({})` (Issue #523)
+
+- Add Algebraic mu-referencing detection (mu2) that allows you to
+  express mu-referenced covariates as:
+
+``` r
+cl <- exp(tcl + eta.cl + wt_cl * log(WT/70.5))
+```
+
+Instead of the
+
+``` r
+cl <- exp(tcl + eta.cl + wt_cl * log.WT.div.70.5)
+```
+
+That was previously required (where `log.WT.div.70.5` was calculated
+in the data) for mu expressions.  The `ui` now has more information to
+allow transformation of data internally and transformation to the old
+mu-referencing style to run the optimization.
+
+## Internal new features
+
+- Add `as.model()` for list expressions, which implies `model(ui) <-
+  ui$lstExpr` will assign model components
+
+# rxode2 2.0.13
+
+# Bug fixes
 
 - A bug was fixed so that the `zeroRe()` function works with correlated omega
   values.
 
 - A bug was fixed so that the `rename()` function works with initial
   conditions for compartments (`cmt(0)`)
-
-# rxode2 2.0.12
 
 ## New features
 

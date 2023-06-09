@@ -1,4 +1,4 @@
-url: https://nlmixr2.github.io/rxode2
+url: https://nlmixr2.github.io/rxode2/
 template:
   bootstrap: 5
   params:
@@ -145,6 +145,7 @@ reference:
   contents:
   - .copyUi
   - .handleSingleErrTypeNormOrTFoceiBase
+  - .matchesLangTemplate
   - .modelHandleModelLines
   - .quoteCallInfoLines
   - .rxLinCmtGen

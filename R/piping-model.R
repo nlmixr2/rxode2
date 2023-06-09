@@ -836,9 +836,15 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         .minfo(paste0("add residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       } else if (promote) {
         .minfo(paste0("promote {.code ", var, "} to population parameter with initial estimate {.number ", value, "}"))
-        .cov <- get("covariates", envir=rxui)
-        .cov <- .cov[.cov != var]
-        assign("covariates", .cov, envir=rxui)
+        # need to reassess model for mu2 enhancement
+        assign("iniDf", rbind(.iniDf, .extra), envir=rxui)
+        rxui2 <- rxui
+        model(rxui2) <- rxui$lstExpr
+        rxui2 <- rxUiDecompress(rxui2)
+        for (i in ls(envir=rxui2, all=TRUE)) {
+          assign(i, get(i, envir=rxui2), envir=rxui)
+        }
+        return(invisible())
       } else {
         .minfo(paste0("add population parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       }

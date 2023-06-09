@@ -714,7 +714,7 @@ is.latex <- function() {
 #' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/dt(.name)"))
 #' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/foo(.name)"))
 #' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/."))
-#' @noRd
+#' @export
 .matchesLangTemplate <- function(x, template) {
   if (identical(template, as.name("."))) {
     ret <- TRUE
