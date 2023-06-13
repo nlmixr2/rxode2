@@ -292,11 +292,15 @@
           }
         }
       }
-      .thetas <- .muRefExtractTheta(y, env)
+      .thetas <- try(.muRefExtractTheta(y, env), silent=TRUE)
+      if (inherits(.thetas, "try-error")) .thetas <- NULL
       if (length(.thetas) == 1L) {
-        .d <- symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas)
-        .extra <- str2lang(rxFromSE(.d))
-        .thetaD <- .muRefExtractTheta(.extra, env)
+        .d <- try(symengine::D(get("rxdummyLhs", rxS(paste0("rxdummyLhs=", deparse1(y)))), .thetas),
+                  silent=TRUE)
+        .extra <- try(str2lang(rxFromSE(.d)),
+                      silent=TRUE)
+        .thetaD <- try(.muRefExtractTheta(.extra, env), silent=TRUE)
+        if (inherits(.thetaD, "try-error")) .thetaD <- NULL
         if (is.null(.thetaD)) {
           # mu2 expression
           env$.found <- TRUE
