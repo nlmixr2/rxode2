@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxchisq you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2.872084999 0.258335966 0.250992197 1.701417346 1.460671353 0.136321094</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 0.005084376 0.151043087 0.210131395 0.214548621</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.486565e-01 4.135481e-07 1.174339e-02 1.449616e+00 5.848332e-04</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 2.914877e-02 4.317456e-02 1.228018e-02 2.521372e-03 7.157760e-02</span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.583796 1.092593 2.994988 3.798969 1.458977 5.915254 1.844437 2.378136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 8.244188 5.757948</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  4.722207 12.764702  4.441431  5.868596  8.481127 14.183205  2.721856</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  7.015130  1.834172  5.687035</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2.127596</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.223646</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxchisq` directly in the model</span></span></span>
@@ -215,7 +215,7 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>  </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0’</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">1</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
