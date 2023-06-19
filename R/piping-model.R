@@ -841,7 +841,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         rxui2 <- rxui
         model(rxui2) <- rxui$lstExpr
         rxui2 <- rxUiDecompress(rxui2)
-        for (i in ls(envir=rxui2, all=TRUE)) {
+        for (i in ls(envir=rxui2, all.names=TRUE)) {
           assign(i, get(i, envir=rxui2), envir=rxui)
         }
         return(invisible())
