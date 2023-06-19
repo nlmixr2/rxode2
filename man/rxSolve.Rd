@@ -125,7 +125,8 @@ rxSolve(
   ssRtolSens = 1e-06,
   simVariability = NA,
   nLlikAlloc = NULL,
-  useStdPow = FALSE
+  useStdPow = FALSE,
+  naTimeHandle = c("ignore", "warn", "error")
 )
 
 \method{rxSolve}{`function`}(
@@ -753,6 +754,16 @@ memory for larger allocations).}
 
 \item{useStdPow}{This uses C's \code{pow} for exponentiation instead of
 R's \code{R_pow} or \code{R_pow_di}.  By default this is \code{FALSE}}
+
+\item{naTimeHandle}{Determines what time of handling happens when
+the time becomes \code{NA}: current options are:
+\itemize{
+\item \code{ignore} this ignores the \code{NA} time input and passes it through.
+\item \code{warn} (default) this will produce a warning at the end of the
+solve, but continues solving passing through the \code{NA} time
+\item \code{error} this will stop this solve if this is not a parallel
+solved ODE (otherwise stopping can crash R)
+}}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in
