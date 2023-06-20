@@ -813,6 +813,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
     }
+    if (missing(naTimeHandle) && !is.null(getOption("rxode2.naTimeHandle", NULL))) {
+      naTimeHandle <- getOption("rxode2.naTimeHandle")
+    }
     if (checkmate::testIntegerish(naTimeHandle, len=1, lower=1, upper=3, any.missing=FALSE)) {
       naTimeHandle <- as.integer(naTimeHandle)
     } else {
