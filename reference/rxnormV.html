@@ -174,14 +174,14 @@ an alias of <code>rxnorm</code>. It is no longer supported in <code>rxode2({})</
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxnorm you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -1.26851744 -0.08088114 -0.60384224 -0.62456569 -0.48807143 -0.43581152</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.10188595  1.31884861  1.56234779  1.02747150</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.04001145  0.38979275 -2.62031225 -0.61160679 -0.95790245 -0.71592417</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -1.26364732  0.33274242  0.74536121 -0.02689659</span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.08483963  1.34861052  2.05479376  0.66948943 -0.32621557  0.69241780</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.63160090  0.41016125 -1.28023954 -0.49304478</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.4947431 -0.7193519  0.0449811  0.2158983 -0.8170768 -0.6253343</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.0587452  0.9882158 -0.2005475  1.5236873</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span> <span class="co">## The first 2 arguments are the mean and standard deviation</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2.547439</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] -0.4727922</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxnorm` directly in the model</span></span></span>
