@@ -1135,7 +1135,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       nLlikAlloc=nLlikAlloc,
       useStdPow=useStdPow,
       naTimeHandle=naTimeHandle,
-      .zeros=unique(.zeros),
+      .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
     return(.ret)
