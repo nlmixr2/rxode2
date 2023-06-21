@@ -199,7 +199,7 @@
       } else if (inherits(.cur, "character") && length(.cur) == 1) {
         .unlistedBrackets <- try(str2lang(.cur), silent=TRUE)
         if (inherits(.unlistedBrackets, "try-error")) {
-          stop("vectors and list need to named numeric expression", call.=FALSE)
+          stop("vectors and list need to be named numeric expression", call.=FALSE)
         }
         if (identical(.unlistedBrackets[[1]], quote(`=`))) {
           .unlistedBrackets[[1]] <- quote(`<-`)
@@ -207,7 +207,7 @@
         .unlistedBrackets <- list(.unlistedBrackets)
       } else {
         .ini <- .quoteExpandRxUi(.cur, iniDf=iniDf, charExpression=deparse1(.bracketExpression))
-        if (is.null(.ini)) stop("vectors and list need to named numeric expression", call.=FALSE)
+        if (is.null(.ini)) stop("vectors and list need to be named numeric expression", call.=FALSE)
         .expandedForm <- c(.expandedForm, .ini)
       }
     }
