@@ -1,4 +1,5 @@
 test_that("modelExtract and related functions", {
+
   one.compartment <- function() {
     ini({
       tka <- 0.45 # Log Ka
@@ -22,7 +23,19 @@ test_that("modelExtract and related functions", {
 
   f <- one.compartment()
 
-  expect_equal(modelExtract(f, cl),
+  expect_equal(modelExtract(f, cl, expression=TRUE),
                list(quote(cl <- exp(tcl + eta.cl))))
+
+  expect_equal(modelExtract(f, cl, expression=FALSE),
+               "cl <- exp(tcl + eta.cl)")
+
+  expect_equal(modelExtract(f, "cp", expression=FALSE, endpoint=NA),
+               c("cp = center/v", "cp ~ add(add.sd)"))
+
+  expect_equal(modelExtract(f, "cp", expression=FALSE, endpoint=TRUE),
+               "cp ~ add(add.sd)")
+
+  expect_equal(modelExtract(f, "cp", expression=FALSE, endpoint=FALSE),
+               "cp = center/v")
 
 })
