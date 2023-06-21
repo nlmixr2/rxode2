@@ -67,7 +67,7 @@ as.model <- function(x) {
 #' @rdname as.model
 #' @export
 as.model.character <- function(x) {
-  as.model(str2lang(paste(x, collapse="\n")))
+  as.model(lapply(x, function(i) {str2lang(i)}))
 }
 
 #' @rdname as.model
