@@ -1,13 +1,49 @@
 #' Extract model lines from a rxui model
 #'
 #' @param x model to extract lines from
-#' @param ... 
-#' @param expression
-#' @param endpoint 
-#' @return 
-#' @export 
+#' 
+#' @param ... variables to extract
+#' 
+#' @param expression return expressions (if `TRUE`) or strings (if
+#'   `FALSE`)
+#' 
+#' @param endpoint include endpoint
+#' 
+#' @param envir Environment for evaluating
+#' 
+#' @return expressions or strings of extracted lines
+#' 
+#' @export
 #' @author Matthew L. Fidler
-#' @examples 
+#' @examples
+#'
+#'   one.compartment <- function() {
+#'    ini({
+#'      tka <- 0.45 # Log Ka
+#'      tcl <- 1 # Log Cl
+#'      tv <- 3.45    # Log V
+#'      eta.ka ~ 0.6
+#'      eta.cl ~ 0.3
+#'      eta.v ~ 0.1
+#'      add.sd <- 0.7
+#'    })
+#'    model({
+#'      ka <- exp(tka + eta.ka)
+#'      cl <- exp(tcl + eta.cl)
+#'      v <- exp(tv + eta.v)
+#'      d/dt(depot) = -ka * depot
+#'      d/dt(center) = ka * depot - cl / v * center
+#'      cp = center / v
+#'      cp ~ add(add.sd)
+#'    })
+#'  }
+#'
+#'  f <- one.compartment()
+#'
+#'  modelExtract(f, cp)
+#'
+#'  modelExtract(one.compartment, d/dt(depot))
+#' 
 modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.frame()) {
   UseMethod("modelExtract")
 }
@@ -39,9 +75,8 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.
 #'  
 #' @param callInfo Call information
 #' @return list of expressions
-#' @export 
+#' @noRd 
 #' @author Matthew L. Fidler
-#' @examples 
 .quoteCallVars <- function(callInfo) {
   lapply(seq_along(callInfo),
          function(i) {
