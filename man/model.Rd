@@ -17,6 +17,7 @@
   ...,
   expression = FALSE,
   endpoint = FALSE,
+  lines = FALSE,
   envir = parent.frame()
 )
 
@@ -25,6 +26,7 @@
   ...,
   expression = FALSE,
   endpoint = FALSE,
+  lines = FALSE,
   envir = parent.frame()
 )
 
@@ -33,6 +35,7 @@
   ...,
   expression = FALSE,
   endpoint = FALSE,
+  lines = FALSE,
   envir = parent.frame()
 )
 

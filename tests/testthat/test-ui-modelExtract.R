@@ -22,6 +22,9 @@ test_that("modelExtract and related functions", {
   }
 
   f <- one.compartment()
+  
+  expect_equal(modelExtract(f, "ka", expression=FALSE, endpoint=FALSE, lines=TRUE),
+               structure("ka <- exp(tka + eta.ka)", lines = 1L))
 
   expect_equal(modelExtract(f, cl, expression=TRUE),
                list(quote(cl <- exp(tcl + eta.cl))))
@@ -62,5 +65,20 @@ test_that("modelExtract and related functions", {
   
   expect_equal(modelExtract(one.compartment, "cl", expression=FALSE, endpoint=FALSE),
                c("cl <- tcl", "cl <- cl * exp(eta.cl)"))
+
+  mod <- rxode2({
+    ka <- exp(tka + eta.ka)
+    cl <- tcl
+    cl <- cl*exp(eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+  })
+
+  expect_equal(modelExtract(mod, "v", expression=FALSE, endpoint=FALSE),
+               "v = exp(tv + eta.v)")
+
+  
 
 })

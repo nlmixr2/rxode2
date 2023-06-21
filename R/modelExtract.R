@@ -15,6 +15,9 @@
 #'
 #'  - `FALSE` -- Only include non-endpoint lines
 #'
+#' @param lines is a boolean.  When `TRUE` this will add the lines as
+#'   an attribute to the output value ie `attr(, "lines")`
+#'
 #' @param envir Environment for evaluating variables
 #'
 #' @return expressions or strings of extracted lines
@@ -52,8 +55,9 @@
 #'
 #'  modelExtract(one.compartment, d/dt(depot))
 #'
-modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.frame()) {
+modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   checkmate::assertLogical(expression, any.missing=FALSE, len=1)
+  checkmate::assertLogical(lines, any.missing=FALSE, len=1)
   checkmate::assertLogical(endpoint, any.missing=TRUE, len=1)
   UseMethod("modelExtract")
 }
@@ -63,10 +67,9 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.
 #' @param rxui rxode2 parsed ui
 #' @param expression Should an expression list be returned
 #' @param endpoint Should this be an endpoint (yes: TRUE, no: FALSE, both: TRUE)
-#' @return 
 #' @noRd
 #' @author Matthew L. Fidler
-.modelExtractCommon <- function(modelLines, rxui, expression=FALSE, endpoint=FALSE) {
+.modelExtractCommon <- function(modelLines, rxui, expression=FALSE, endpoint=FALSE, lines=FALSE) {
   .ret <- do.call(`c`, lapply(seq_along(modelLines),
                  function(i) {
                    .w <- .getModelLineFromExpression(modelLines[[i]], rxui, errorLine=FALSE,
@@ -86,6 +89,7 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.
       .ret <- .ret[!(.ret %in% .endPointLines)]
     }
   }
+  .lines <- .ret
   .lstExpr <- rxui$lstExpr
   .ret <- lapply(.ret,
                  function(i) {
@@ -96,6 +100,9 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.
                    function(i) {
                      deparse1(.ret[[i]])
                    }, character(1))
+  }
+  if (lines) {
+    attr(.ret, "lines") <- .lines
   }
   .ret
 }
@@ -114,7 +121,7 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.
              .cur <- str2lang(.cur)
            }
            if (is.null(.name)) {
-           } else if (.name %in% c("expression",  "endpoint", "envir")) {
+           } else if (.name %in% c("expression",  "endpoint", "envir", "lines")) {
              return(NULL)
            }
            if (is.name(.cur)) {
@@ -130,30 +137,30 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.
 
 #' @export
 #' @rdname modelExtract
-modelExtract.function <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.frame()) {
+modelExtract.function <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
   .ret <- rxode2(x)
-  .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint)
+  .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
 #' @rdname model
-modelExtract.rxUi <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.frame()) {
+modelExtract.rxUi <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
-  .modelExtractCommon(.modelLines, x, expression=expression, endpoint=endpoint)
+  .modelExtractCommon(.modelLines, x, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
 #' @rdname model
-modelExtract.rxode2 <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.frame()) {
+modelExtract.rxode2 <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
   x <- as.function(x)
   .ret <- rxode2(x)
-  .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint)
+  .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
 #' @rdname model
 modelExtract.rxModelVars <- modelExtract.rxode2
 
-modelExtract.default <- function(x, ..., expression=FALSE, endpoint=FALSE, envir=parent.frame()) {
+modelExtract.default <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   stop("rxode2 does not know how to handle this modelExtract object",
        call.=FALSE)
 }

@@ -10,6 +10,7 @@ modelExtract(
   ...,
   expression = FALSE,
   endpoint = FALSE,
+  lines = FALSE,
   envir = parent.frame()
 )
 
@@ -18,6 +19,7 @@ modelExtract(
   ...,
   expression = FALSE,
   endpoint = FALSE,
+  lines = FALSE,
   envir = parent.frame()
 )
 }
@@ -29,9 +31,17 @@ modelExtract(
 \item{expression}{return expressions (if \code{TRUE}) or strings (if
 \code{FALSE})}
 
-\item{endpoint}{include endpoint}
+\item{endpoint}{include endpoint.  This can be:
+\itemize{
+\item \code{NA}    -- Missing means include both the endpoint and non-endpoint lines
+\item \code{TRUE}  -- Only include endpoint lines
+\item \code{FALSE} -- Only include non-endpoint lines
+}}
 
-\item{envir}{Environment for evaluating}
+\item{lines}{is a boolean.  When \code{TRUE} this will add the lines as
+an attribute to the output value ie \code{attr(, "lines")}}
+
+\item{envir}{Environment for evaluating variables}
 }
 \value{
 expressions or strings of extracted lines
@@ -41,7 +51,7 @@ Extract model lines from a rxui model
 }
 \examples{
 
-  one.compartment <- function() {
+one.compartment <- function() {
    ini({
      tka <- 0.45 # Log Ka
      tcl <- 1 # Log Cl
