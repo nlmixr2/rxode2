@@ -244,7 +244,8 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  ssRtolSens <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  simVariability <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  nLlikAlloc <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  useStdPow <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  useStdPow <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  naTimeHandle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ignore"</span>, <span class="st">"warn"</span>, <span class="st">"error"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for `function`</span></span>
@@ -1051,6 +1052,16 @@ memory for larger allocations).</p></dd>
 <dt>useStdPow</dt>
 <dd><p>This uses C's <code>pow</code> for exponentiation instead of
 R's <code>R_pow</code> or <code>R_pow_di</code>.  By default this is <code>FALSE</code></p></dd>
+
+
+<dt>naTimeHandle</dt>
+<dd><p>Determines what time of handling happens when
+the time becomes <code>NA</code>: current options are:</p><ul><li><p><code>ignore</code> this ignores the <code>NA</code> time input and passes it through.</p></li>
+<li><p><code>warn</code> (default) this will produce a warning at the end of the
+solve, but continues solving passing through the <code>NA</code> time</p></li>
+<li><p><code>error</code> this will stop this solve if this is not a parallel
+solved ODE (otherwise stopping can crash R)</p></li>
+</ul></dd>
 
 
 <dt>a</dt>
