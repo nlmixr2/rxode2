@@ -2,7 +2,9 @@
 #'
 #' @param x model to extract lines from
 #'
-#' @param ... variables to extract
+#' @param ... variables to extract. When it is missing, it will
+#'   extract the entire model (conditioned on the endpoint option
+#'   below)
 #'
 #' @param expression return expressions (if `TRUE`) or strings (if
 #'   `FALSE`)
@@ -20,7 +22,9 @@
 #'
 #' @param envir Environment for evaluating variables
 #'
-#' @return expressions or strings of extracted lines
+#' @return expressions or strings of extracted lines. Note if there is
+#'   a duplicated lhs expression in the line, it will return both
+#'   lines
 #'
 #' @export
 #' 
@@ -55,6 +59,8 @@
 #'
 #'  modelExtract(one.compartment, d/dt(depot))
 #'
+#' modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
+#'
 modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   checkmate::assertLogical(expression, any.missing=FALSE, len=1)
   checkmate::assertLogical(lines, any.missing=FALSE, len=1)
@@ -70,13 +76,24 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @noRd
 #' @author Matthew L. Fidler
 .modelExtractCommon <- function(modelLines, rxui, expression=FALSE, endpoint=FALSE, lines=FALSE) {
-  .ret <- do.call(`c`, lapply(seq_along(modelLines),
-                 function(i) {
-                   .w <- .getModelLineFromExpression(modelLines[[i]], rxui, errorLine=FALSE,
-                                                     returnAllLines=TRUE)
-                   .w <- .w[.w>0]
-                   .w
-                 }))
+  .lstExpr <- rxui$lstExpr
+  .isNull <- length(modelLines) == 0L ||
+    all(vapply(seq_along(modelLines),
+               function(i) {
+                 is.null(modelLines[[i]])
+               }, logical(1)))
+  if (.isNull) {
+    .ret <- seq_along(.lstExpr)
+  } else {
+    .ret <- do.call(`c`, lapply(seq_along(modelLines),
+                                function(i) {
+                                  .w <- .getModelLineFromExpression(modelLines[[i]], rxui, errorLine=FALSE,
+                                                                    returnAllLines=TRUE)
+                                  .w <- .w[.w>0]
+                                  .w
+                                }))
+    
+  }
   .ret <- sort(unique(.ret))
   .endPointLines <- rxui$predDf
   if (!is.null(.endPointLines)) {
@@ -90,7 +107,6 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
     }
   }
   .lines <- .ret
-  .lstExpr <- rxui$lstExpr
   .ret <- lapply(.ret,
                  function(i) {
                    .lstExpr[[i]]
@@ -113,6 +129,7 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @noRd
 #' @author Matthew L. Fidler
 .quoteCallVars <- function(callInfo) {
+  if (length(callInfo) == 0L) return(NULL)
   lapply(seq_along(callInfo),
          function(i) {
            .name <- names(callInfo)[i]
@@ -164,3 +181,4 @@ modelExtract.default <- function(x, ..., expression=FALSE, endpoint=FALSE, lines
   stop("rxode2 does not know how to handle this modelExtract object",
        call.=FALSE)
 }
+

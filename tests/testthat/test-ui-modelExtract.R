@@ -22,6 +22,16 @@ test_that("modelExtract and related functions", {
   }
 
   f <- one.compartment()
+
+  expect_equal(modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE),
+               structure(list(quote(ka <- exp(tka + eta.ka)),
+                              quote(cl <- exp(tcl + eta.cl)),
+                              quote(v <- exp(tv + eta.v)),
+                              str2lang("d/dt(depot) = -ka * depot"),
+                              str2lang("d/dt(center) = ka * depot - cl/v * center"),
+                              str2lang("cp = center/v"),
+                              quote(cp ~ add(add.sd))),
+                         lines = 1:7))
   
   expect_equal(modelExtract(f, "ka", expression=FALSE, endpoint=FALSE, lines=TRUE),
                structure("ka <- exp(tka + eta.ka)", lines = 1L))
