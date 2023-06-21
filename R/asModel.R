@@ -67,9 +67,17 @@ as.model <- function(x) {
 #' @rdname as.model
 #' @export
 as.model.character <- function(x) {
-  as.model(lapply(x, function(i) {
+  .ret <- try(as.model(lapply(x, function(i) {
     str2lang(i)
-  }))
+  })), silent=TRUE)
+  if (inherits(.ret, "try-error")) {
+    .ret <- try(as.model(str2lang(paste(x, collapse="\n"))), silent=TRUE)
+    if (inherits(.ret, "try-error")) {
+      stop("error converting character vector to model({}) expression",
+           call.=FALSE)
+    }
+  }
+  .ret
 }
 
 #' @rdname as.model
