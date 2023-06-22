@@ -3,6 +3,10 @@
 \name{modelExtract}
 \alias{modelExtract}
 \alias{modelExtract.function}
+\alias{modelExtract.rxUi}
+\alias{modelExtract.rxode2}
+\alias{modelExtract.rxModelVars}
+\alias{modelExtract.default}
 \title{Extract model lines from a rxui model}
 \usage{
 modelExtract(
@@ -22,11 +26,49 @@ modelExtract(
   lines = FALSE,
   envir = parent.frame()
 )
+
+\method{modelExtract}{rxUi}(
+  x,
+  ...,
+  expression = FALSE,
+  endpoint = FALSE,
+  lines = FALSE,
+  envir = parent.frame()
+)
+
+\method{modelExtract}{rxode2}(
+  x,
+  ...,
+  expression = FALSE,
+  endpoint = FALSE,
+  lines = FALSE,
+  envir = parent.frame()
+)
+
+\method{modelExtract}{rxModelVars}(
+  x,
+  ...,
+  expression = FALSE,
+  endpoint = FALSE,
+  lines = FALSE,
+  envir = parent.frame()
+)
+
+\method{modelExtract}{default}(
+  x,
+  ...,
+  expression = FALSE,
+  endpoint = FALSE,
+  lines = FALSE,
+  envir = parent.frame()
+)
 }
 \arguments{
 \item{x}{model to extract lines from}
 
-\item{...}{variables to extract}
+\item{...}{variables to extract. When it is missing, it will
+extract the entire model (conditioned on the endpoint option
+below)}
 
 \item{expression}{return expressions (if \code{TRUE}) or strings (if
 \code{FALSE})}
@@ -44,7 +86,9 @@ an attribute to the output value ie \code{attr(, "lines")}}
 \item{envir}{Environment for evaluating variables}
 }
 \value{
-expressions or strings of extracted lines
+expressions or strings of extracted lines. Note if there is
+a duplicated lhs expression in the line, it will return both
+lines
 }
 \description{
 Extract model lines from a rxui model
@@ -77,6 +121,8 @@ one.compartment <- function() {
  modelExtract(f, cp)
 
  modelExtract(one.compartment, d/dt(depot))
+
+modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
 
 }
 \author{

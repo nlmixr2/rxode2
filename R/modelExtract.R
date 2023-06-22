@@ -160,13 +160,13 @@ modelExtract.function <- function(x, ..., expression=FALSE, endpoint=FALSE, line
   .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
-#' @rdname model
+#' @rdname modelExtract
 modelExtract.rxUi <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
   .modelExtractCommon(.modelLines, x, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
-#' @rdname model
+#' @rdname modelExtract
 modelExtract.rxode2 <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
   x <- as.function(x)
@@ -174,9 +174,11 @@ modelExtract.rxode2 <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=
   .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
-#' @rdname model
+#' @rdname modelExtract
 modelExtract.rxModelVars <- modelExtract.rxode2
 
+#' @export
+#' @rdname modelExtract
 modelExtract.default <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   stop("rxode2 does not know how to handle this modelExtract object",
        call.=FALSE)
