@@ -262,13 +262,15 @@
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">as.model</span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> model({</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     ka &lt;- exp(tka + eta.ka)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     cl &lt;- exp(tcl + eta.cl)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     v &lt;- exp(tv + eta.v)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     d/dt(depot) = -ka * depot</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     d/dt(center) = ka * depot - cl/v * center</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     cp = center/v</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     cp ~ add(add.sd)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     model({</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         ka &lt;- exp(tka + eta.ka)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         cl &lt;- exp(tcl + eta.cl)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         v &lt;- exp(tv + eta.v)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(depot) = -ka * depot</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         d/dt(center) = ka * depot - cl/v * center</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         cp = center/v</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         cp ~ add(add.sd)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     })</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> })</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
