@@ -30,6 +30,7 @@ reference:
 - title: Functions for working with nlmixr2/rxode2 functions
   contents:
   - model
+  - modelExtract
   - ini
   - zeroRe
   - assertRxUi
