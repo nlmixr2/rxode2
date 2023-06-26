@@ -5,6 +5,10 @@
 - Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
   gives `ini({})` (Issue #523)
 
+- Add a function `modelExtract()` to extract model lines to allow
+  modifying them and then changing the model by piping or simply
+  assigning the modified lines with `model(ui) <- newModifiedLines`
+
 - Add Algebraic mu-referencing detection (mu2) that allows you to
   express mu-referenced covariates as:
 
@@ -26,7 +30,8 @@ mu-referencing style to run the optimization.
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
-  ui$lstExpr` will assign model components
+  ui$lstExpr` will assign model components.  It will also more
+  robustly work with character vectors
 
 # rxode2 2.0.13
 

@@ -4731,6 +4731,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->sensType = asInt(rxControl[Rxc_sensType], "sensType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx_solving_options* op = rx->op;
+    op->naTimeInputWarn = 0;
+    op->naTimeInput = asInt(rxControl[Rxc_naTimeHandle], "naTimeHandle");
 #ifdef rxSolveT
     RSprintf("Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -4811,6 +4813,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
     }
     if (op->cores == 0) op->cores = 1;
+    if (op->cores != 1 && op->naTimeInput == rxode2naTimeInputError) {
+      warning(_("since throwing warning with NA time, change to single threaded"));
+      op->cores=1;
+    }
     seedEng(op->cores);
     // Now set up events and parameters
     RObject par0 = params;

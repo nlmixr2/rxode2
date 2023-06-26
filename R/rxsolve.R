@@ -623,6 +623,17 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
+#' @param naTimeHandle Determines what time of handling happens when
+#'   the time becomes `NA`: current options are:
+#'
+#'  - `ignore` this ignores the `NA` time input and passes it through.
+#'
+#'  - `warn` (default) this will produce a warning at the end of the
+#'     solve, but continues solving passing through the `NA` time
+#'
+#'  - `error` this will stop this solve if this is not a parallel
+#'     solved ODE (otherwise stopping can crash R)
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -732,7 +743,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssRtolSens=1.0e-6,
                     simVariability=NA,
                     nLlikAlloc=NULL,
-                    useStdPow=FALSE) {
+                    useStdPow=FALSE,
+                    naTimeHandle=c("ignore", "warn", "error")) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -800,6 +812,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       covsInterpolation <- as.integer(covsInterpolation)
     } else {
       covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
+    }
+    if (missing(naTimeHandle) && !is.null(getOption("rxode2.naTimeHandle", NULL))) {
+      naTimeHandle <- getOption("rxode2.naTimeHandle")
+    }
+    if (checkmate::testIntegerish(naTimeHandle, len=1, lower=1, upper=3, any.missing=FALSE)) {
+      naTimeHandle <- as.integer(naTimeHandle)
+    } else {
+      naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)[match.arg(naTimeHandle)]
     }
     if (any(names(.xtra) == "covs")) {
       stop("covariates can no longer be specified by 'covs' include them in the event dataset",
@@ -1117,6 +1137,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       simVariability=simVariability,
       nLlikAlloc=nLlikAlloc,
       useStdPow=useStdPow,
+      naTimeHandle=naTimeHandle,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

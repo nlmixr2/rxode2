@@ -331,7 +331,7 @@ model.rxModelVars <- model.rxode2
 #'
 #' @param rxui rxode2 UI
 #'
-#' @param errorLine When TRUE,Should the error line be considered, or
+#' @param errorLine When TRUE, Should the error line be considered, or
 #'   consider the non-error line
 #'
 #' @param returnAllLines A boolean to determine if all line numbers
