@@ -1,12 +1,12 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the RxODE package.
+# This file is distributed under the same license as the Rxode2 package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: RxODE 1.1.0\n"
+"Project-Id-Version: Rxode2 1.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-05-26 10:39-0500\n"
 "PO-Revision-Date: 2023-07-03 00:00\n"
@@ -242,8 +242,8 @@ msgid "replacement/multiplication events cannot be combined with infusions"
 msgstr "\"替换(replacement)\"/\"倍数(multiplication)\"事件不能与输注联合使用"
 
 #: et.cpp:1168
-msgid "old RxODE 'evid' values are not supported with string compartments"
-msgstr "文本型房室不支持旧版 RxODE的“evid”值"
+msgid "old Rxode2 'evid' values are not supported with string compartments"
+msgstr "文本型房室不支持旧版 Rxode2的“evid”值"
 
 #: et.cpp:1381
 msgid "'amt'/'time' needs units to convert the rate to the right units to import the data"
@@ -695,12 +695,12 @@ msgid "cannot have an infusion event with a multiplication event (id: %s row: %d
 msgstr "\"倍数(multiplication)\"事件不能具有输注事件（id： %s, row： %d）"
 
 #: etTran.cpp:1328
-msgid "'rate' or 'dur' is ignored with classic RxODE 'EVID's"
-msgstr "“rate”或“dur”在经典RxODE 'EVID'中被忽略"
+msgid "'rate' or 'dur' is ignored with classic Rxode2 'EVID's"
+msgstr "“rate”或“dur”在经典Rxode2 'EVID'中被忽略"
 
 #: etTran.cpp:1332
-msgid "'ss' is ignored with classic RxODE 'EVID's"
-msgstr "“ss”在经典RxODE 'EVID'中被忽略"
+msgid "'ss' is ignored with classic Rxode2 'EVID's"
+msgstr "“ss”在经典Rxode2 'EVID'中被忽略"
 
 #: etTran.cpp:1353
 #, c-format
@@ -714,8 +714,8 @@ msgstr "给药事件的“amt”值为NA或为0（id： %s, row： %d）"
 
 #: etTran.cpp:1402
 #, c-format
-msgid "'amt' value NA for dose event; (id: %s, amt: %f, evid: %d RxODE evid: %d, row: %d)"
-msgstr "给药事件的“amt”值为NA;(id: %s, amt: %f, evid: %d RxODE evid: %d, row: %d)"
+msgid "'amt' value NA for dose event; (id: %s, amt: %f, evid: %d Rxode2 evid: %d, row: %d)"
+msgstr "给药事件的“amt”值为NA;(id: %s, amt: %f, evid: %d Rxode2 evid: %d, row: %d)"
 
 #: etTran.cpp:1480
 msgid "there are evid=3/4 records in an incorrectly sorted dataset, system is reset, but time is not reset"
@@ -779,17 +779,17 @@ msgstr "不支持的indLin代码： %d"
 msgid "ignoring invalid %s==\"%s\"\n"
 " not an integer >= 1\n"
 "remove any characters that are not a digit [0-9]\n"
-" See ?RxODE::setDTthreads"
+" See ?Rxode2::setDTthreads"
 msgstr "忽略无效的 %s==“%s”\n"
 "不是一个整数 >= 1\n"
 "删除任何不是数字[0-9]的字符\n"
-"请参阅?RxODE::setDTthreads"
+"请参阅?Rxode2::setDTthreads"
 
 #: forder.cpp:88
 #, c-format
-msgid "ignoring invalid RXODE_NUM_PROCS_PERCENT==%d.\n"
+msgid "ignoring invalid RXODE2_NUM_PROCS_PERCENT==%d.\n"
 "If used it must be an integer between 2 and 100. Default is 50. See ?rxSetThreads"
-msgstr "忽略无效的RXODE_NUM_PROCS_PERCENT==%d。\n"
+msgstr "忽略无效的RXODE2_NUM_PROCS_PERCENT==%d。\n"
 "如果使用，它必须是介于 2 和 100 之间的整数。默认值为 50。请参阅?rxSetThreads"
 
 #: forder.cpp:124
@@ -807,18 +807,18 @@ msgstr "  omp_get_num_procs() %d\n"
 
 #: forder.cpp:133
 #, c-format
-msgid "  RXODE_NUM_PROCS_PERCENT  %s\n"
-msgstr "  RXODE_NUM_PROCS_PERCENT %s\n"
+msgid "  RXODE2_NUM_PROCS_PERCENT  %s\n"
+msgstr "  RXODE2_NUM_PROCS_PERCENT %s\n"
 
 #: forder.cpp:134
 #, c-format
-msgid "  RXODE_NUM_THREADS        %s\n"
-msgstr "  RXODE_NUM_THREADS %s\n"
+msgid "  RXODE2_NUM_THREADS        %s\n"
+msgstr "  RXODE2_NUM_THREADS %s\n"
 
 #: forder.cpp:135
 #, c-format
-msgid "  RXODE_THROTTLE           %s\n"
-msgstr "  RXODE_THROTTLE %s\n"
+msgid "  RXODE2_THROTTLE           %s\n"
+msgstr "  RXODE2_THROTTLE %s\n"
 
 #: forder.cpp:136
 #, c-format
@@ -842,8 +842,8 @@ msgstr "  OMP_NUM_THREADS %s\n"
 
 #: forder.cpp:141
 #, c-format
-msgid "  RxODE is using %d threads with throttle==%d. See ?setRxthreads.\n"
-msgstr "  RxODE 正在使用%d个线程和throttle==%d。请参阅?setRxthreads。\n"
+msgid "  Rxode2 is using %d threads with throttle==%d. See ?setRxthreads.\n"
+msgstr "  Rxode2 正在使用%d个线程和throttle==%d。请参阅?setRxthreads。\n"
 
 #: forder.cpp:149
 msgid "'throttle' must be a single number, non-NA, and >=1"
@@ -1049,12 +1049,12 @@ msgid "class:\t"
 msgstr "class:\t"
 
 #: rxData.cpp:843 rxData.cpp:861
-msgid "need an RxODE-type object to extract model variables"
-msgstr "需要一个 RxODE 类型的对象来提取模型变量"
+msgid "need an Rxode2-type object to extract model variables"
+msgstr "需要一个 Rxode2 类型的对象来提取模型变量"
 
 #: rxData.cpp:851
-msgid "a NULL object does not have any RxODE model variables"
-msgstr "一个NULL对象没有任何 RxODE 模型变量"
+msgid "a NULL object does not have any Rxode2 model variables"
+msgstr "一个NULL对象没有任何 Rxode2 模型变量"
 
 #: rxData.cpp:896
 msgid "can only lookup one state at a time"
@@ -1088,8 +1088,8 @@ msgid "trying to scale the same compartment by 'scale=c(%s=%f,...)' and 's%d=%f'
 msgstr "尝试\"缩放(scale)\"相同房室通过“scale=c（%s=%f,...）”和“s%d=%f”选择一个"
 
 #: rxData.cpp:1245
-msgid "scaled a compartment that is not defined by the RxODE model"
-msgstr "\"缩放(scale)\"了未由 RxODE 模型定义的房室"
+msgid "scaled a compartment that is not defined by the Rxode2 model"
+msgstr "\"缩放(scale)\"了未由 Rxode2 模型定义的房室"
 
 #: rxData.cpp:1374
 msgid "could not allocate memory for solving parameters"
@@ -1171,12 +1171,12 @@ msgid "'length.out' must be of length 1"
 msgstr "“length.out”的长度必须为 1"
 
 #: rxData.cpp:2557
-msgid "cannot use both 'by' and 'length.out' for RxODE simulations"
-msgstr "不能同时使用“by”和“length.out”进行RxODE模拟"
+msgid "cannot use both 'by' and 'length.out' for Rxode2 simulations"
+msgstr "不能同时使用“by”和“length.out”进行Rxode2模拟"
 
 #: rxData.cpp:2654
-msgid "RxODE only supports 500 factors"
-msgstr "RxODE 仅支持 500 个因子"
+msgid "Rxode2 only supports 500 factors"
+msgstr "Rxode2 仅支持 500 个因子"
 
 #: rxData.cpp:2797
 msgid "when specifying 'thetaMat', 'omega', or 'sigma' the parameters cannot be a 'data.frame'/'matrix'."
@@ -1256,8 +1256,8 @@ msgid "cannot update this object"
 msgstr "无法更新此对象"
 
 #: rxData.cpp:4414
-msgid "cannot load RxODE dlls for this model"
-msgstr "无法加载此模型的 RxODE dll"
+msgid "cannot load Rxode2 dlls for this model"
+msgstr "无法加载此模型的 Rxode2 dll"
 
 #: rxData.cpp:4467
 msgid "thread safe method, but results may depend on system/load, using 1 core (can change with `cores=`)"
@@ -1285,8 +1285,8 @@ msgstr "未知的协变量插值指定"
 
 #: rxData.cpp:4726
 #, c-format
-msgid "number of parameters (%d) solved by RxODE for multi-subject data needs to be a multiple of the number of subjects (%d)"
-msgstr "用于多个体数据通过RxODE已求解的参数数量（%d），应是多个体量的倍数"
+msgid "number of parameters (%d) solved by Rxode2 for multi-subject data needs to be a multiple of the number of subjects (%d)"
+msgstr "用于多个体数据通过Rxode2已求解的参数数量（%d），应是多个体量的倍数"
 
 #: rxData.cpp:4844
 msgid "could not allocate enough memory for solving"
@@ -1297,8 +1297,8 @@ msgid "cannot update nonexistent parameters"
 msgstr "无法更新不存在的参数"
 
 #: rxData.cpp:5492
-msgid "Can not figure out the RxODE object"
-msgstr "无法找出 RxODE 对象"
+msgid "Can not figure out the Rxode2 object"
+msgstr "无法找出 Rxode2 对象"
 
 #: rxData.cpp:5597 rxData.cpp:5640
 msgid "can not figure out the DLL for this object"
