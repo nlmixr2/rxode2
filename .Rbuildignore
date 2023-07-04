@@ -128,7 +128,6 @@ authors.md
 ^cran-comments\.md$
 ^authors\.md$
 tests/testthat/test-lincmt-parse.R
-^/?po/.*$
 ^/?build/buildRxODE.R$
 ^/?build/depends.R$
 ^/?build/dual.R$
