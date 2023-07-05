@@ -33,12 +33,12 @@
 #' @param sigdig Specifies the "significant digits" that the ode
 #'   solving requests.  When specified this controls the relative and
 #'   absolute tolerances of the ODE solvers.  By default the tolerance
-#'   is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
-#'   sensitivity equations the default is \code{0.5*10^(-sigdig-1.5)}
+#'   is `0.5*10^(-sigdig-2)` for regular ODEs. For the
+#'   sensitivity equations the default is `0.5*10\^(-sigdig-1.5)`
 #'   (sensitivity changes only applicable for liblsoda).  This also
 #'   controls the `atol`/`rtol` of the steady state solutions. The
-#'   `ssAtol`/`ssRtol` is `0.5*10^(-sigdig)` and for the sensitivities
-#'   `0.5*10^(-sigdig+0.625)`.  By default
+#'   `ssAtol`/`ssRtol` is `0.5*10\^(-sigdig)` and for the sensitivities
+#'   `0.5*10\^(-sigdig+0.625)`.  By default
 #'   this is unspecified (`NULL`) and uses the standard `atol`/`rtol`.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
@@ -317,12 +317,12 @@
 #'
 #'   - `nlmixrSqrt` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'     with the `x^2` modeled along the diagonal.  This only works
+#'     with the `x\^2` modeled along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrLog` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'      with the `exp(x^2)` along the diagonal.  This only works
+#'      with the `exp(x\^2)` along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrIdentity` This is when the `params` and
@@ -372,12 +372,12 @@
 #'
 #'   - `nlmixrSqrt` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'     with the `x^2` modeled along the diagonal.  This only works
+#'     with the `x\^2` modeled along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrLog` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'      with the `exp(x^2)` along the diagonal.  This only works
+#'      with the `exp(x\^2)` along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrIdentity` This is when the `params` and
