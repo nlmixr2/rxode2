@@ -212,7 +212,7 @@
 <p>You can install the released version of rxode2 from <a href="https://CRAN.R-project.org" class="external-link">CRAN</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"rxode2"</span><span class="op">)</span></span></code></pre></div>
-<p>The fastest way to install the development version of <code>rxode2</code> is to use the <code>r-universe</code> service. This service compiles binares of the development version for MacOS and for Windows so you don’t have to wait for package compilation:</p>
+<p>The fastest way to install the development version of <code>rxode2</code> is to use the <code>r-universe</code> service. This service compiles binaries of the development version for MacOS and for Windows so you don’t have to wait for package compilation:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dparser"</span>, <span class="st">"rxode2ll"</span>, <span class="st">"rxode2parse"</span>,</span>
 <span>                   <span class="st">"rxode2random"</span>, <span class="st">"rxode2et"</span>, <span class="st">"rxode2"</span><span class="op">)</span>,</span>
@@ -244,14 +244,14 @@
 <div class="section level3">
 <h3 id="mac-osx">Mac OSX<a class="anchor" aria-label="anchor" href="#mac-osx"></a>
 </h3>
-<p>To get the most speed you need OpenMP enabled and compile rxode2 with that compiler. There are various options and the most up to date discussion about this is likely the <a href="https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac" class="external-link">data.table installation faq for MacOS</a>. The last thing to keep in mind is that <code>rxode2</code> uses the code very similar to the original <code>lsoda</code> which requires the <code>gfortran</code> compiler to be setup as well as the <code>OpenMP</code> compilers.</p>
+<p>To get the most speed you need OpenMP enabled and compile rxode2 with that compiler. There are various options and the most up to date discussion about this is likely the <a href="https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac" class="external-link">data.table installation FAQ for MacOS</a>. The last thing to keep in mind is that <code>rxode2</code> uses the code very similar to the original <code>lsoda</code> which requires the <code>gfortran</code> compiler to be setup as well as the <code>OpenMP</code> compilers.</p>
 <p>If you are going to be using <code>rxode2</code> and <code>nlmixr</code> together and have an older mac computer, I would suggest trying the following:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/symengine/symengine.R" class="external-link">symengine</a></span><span class="op">)</span></span></code></pre></div>
 <p>If this crashes your R session then the binary does not work with your Mac machine. To be able to run nlmixr, you will need to compile this package manually. I will proceed assuming you have <code>homebrew</code> installed on your system.</p>
 <p>On your system terminal you will need to install the dependencies to compile <code>symengine</code>:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">brew</span> install cmake gmp mpfr libmpc</span></code></pre></div>
-<p>After installing the dependencies, you need to reinstall <code>symengine</code>:</p>
+<p>After installing the dependencies, you need to re-install <code>symengine</code>:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"symengine"</span>, type<span class="op">=</span><span class="st">"source"</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/symengine/symengine.R" class="external-link">symengine</a></span><span class="op">)</span></span></code></pre></div>
@@ -261,9 +261,14 @@
 </h3>
 <p>To install on linux make sure you install <code>gcc</code> (with openmp support) and <code>gfortran</code> using your distribution’s package manager.</p>
 </div>
+<div class="section level3">
+<h3 id="r-versions-40-and-41">R versions 4.0 and 4.1<a class="anchor" aria-label="anchor" href="#r-versions-40-and-41"></a>
+</h3>
+<p>For installation on R versions 4.0.x and 4.1.x, please see the instructions on how to install <code>symengine</code> in the <code>nlmixr2</code> installation instructions: <a href="https://github.com/nlmixr2/nlmixr2#r-package-installation" class="external-link uri">https://github.com/nlmixr2/nlmixr2#r-package-installation</a></p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="development-version">Development Version<a class="anchor" aria-label="anchor" href="#development-version"></a>
+<h2 id="development-version">Development version<a class="anchor" aria-label="anchor" href="#development-version"></a>
 </h2>
 <p>Since the development version of rxode2 uses StanHeaders, you will need to make sure your compiler is setup to support C++14, as described in the <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started#configuration-of-the-c-toolchain" class="external-link">rstan setup page</a>. For R 4.0, I do not believe this requires modifying the windows toolchain any longer (so it is much easier to setup).</p>
 <p>Once the C++ toolchain is setup appropriately, you can install the development version from <a href="https://github.com/nlmixr2/rxode2" class="external-link">GitHub</a> with:</p>
