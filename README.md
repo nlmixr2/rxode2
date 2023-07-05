@@ -18,7 +18,7 @@ downloads](https://cranlogs.r-pkg.org/badges/grand-total/rxode2)](https://cran.r
 downloads](https://cranlogs.r-pkg.org/badges/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CodeFactor](https://www.codefactor.io/repository/github/nlmixr2/rxode2/badge)](https://www.codefactor.io/repository/github/nlmixr2/rxode2)
 ![r-universe](https://nlmixr2.r-universe.dev/badges/rxode2)
-<!-- badges: end -->
+<!-- badges: end  -->
 
 ## Overview
 
@@ -27,30 +27,30 @@ models. These models are convert the rxode2 mini-language to C and
 create a compiled dll for fast solving. ODE solving using rxode2 has a
 few key parts:
 
-  - `rxode2()` which creates the C code for fast ODE solving based on a
-    [simple
-    syntax](https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html)
-    related to Leibnitz notation.
-  - The event data, which can be:
-      - a `NONMEM` or `deSolve` [compatible data
-        frame](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html),
-        or
-      - created with `et()` or `eventTable()` for [easy simulation of
-        events](https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html)
-      - The data frame can be augmented by adding
-        [time-varying](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#time-varying-covariates)
-        or adding [individual
-        covariates](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#individual-covariates)
-        (`iCov=` as needed)
-  - `rxSolve()` which solves the system of equations using initial
-    conditions and parameters to make predictions
-      - With multiple subject data, [this may be
-        parallelized](https://nlmixr2.github.io/rxode2/articles/rxode2-speed.html).
-      - With single subject the [output data frame is
-        adaptive](https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html)
-      - Covariances and other metrics of uncertanty can be used to
-        [simulate while
-        solving](https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html)
+- `rxode2()` which creates the C code for fast ODE solving based on a
+  [simple
+  syntax](https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html)
+  related to Leibnitz notation.
+- The event data, which can be:
+  - a `NONMEM` or `deSolve` [compatible data
+    frame](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html),
+    or
+  - created with `et()` or `eventTable()` for [easy simulation of
+    events](https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html)
+  - The data frame can be augmented by adding
+    [time-varying](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#time-varying-covariates)
+    or adding [individual
+    covariates](https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html#individual-covariates)
+    (`iCov=` as needed)
+- `rxSolve()` which solves the system of equations using initial
+  conditions and parameters to make predictions
+  - With multiple subject data, [this may be
+    parallelized](https://nlmixr2.github.io/rxode2/articles/rxode2-speed.html).
+  - With single subject the [output data frame is
+    adaptive](https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html)
+  - Covariances and other metrics of uncertanty can be used to [simulate
+    while
+    solving](https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html)
 
 ## Installation
 
@@ -62,7 +62,7 @@ install.packages("rxode2")
 ```
 
 The fastest way to install the development version of `rxode2` is to use
-the `r-universe` service. This service compiles binares of the
+the `r-universe` service. This service compiles binaries of the
 development version for MacOS and for Windows so you don’t have to wait
 for package compilation:
 
@@ -115,7 +115,7 @@ rtools directly.
 
 To get the most speed you need OpenMP enabled and compile rxode2 with
 that compiler. There are various options and the most up to date
-discussion about this is likely the [data.table installation faq for
+discussion about this is likely the [data.table installation FAQ for
 MacOS](https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac).
 The last thing to keep in mind is that `rxode2` uses the code very
 similar to the original `lsoda` which requires the `gfortran` compiler
@@ -140,7 +140,7 @@ compile `symengine`:
 brew install cmake gmp mpfr libmpc
 ```
 
-After installing the dependencies, you need to reinstall `symengine`:
+After installing the dependencies, you need to re-install `symengine`:
 
 ``` r
 install.packages("symengine", type="source")
@@ -152,7 +152,14 @@ library(symengine)
 To install on linux make sure you install `gcc` (with openmp support)
 and `gfortran` using your distribution’s package manager.
 
-## Development Version
+### R versions 4.0 and 4.1
+
+For installation on R versions 4.0.x and 4.1.x, please see the
+instructions on how to install `symengine` in the `nlmixr2` installation
+instructions:
+<https://github.com/nlmixr2/nlmixr2#r-package-installation>
+
+## Development version
 
 Since the development version of rxode2 uses StanHeaders, you will need
 to make sure your compiler is setup to support C++14, as described in
@@ -322,43 +329,43 @@ However for pharmacometrics-specific ODE solving, there are only 2
 packages other than [rxode2](https://cran.r-project.org/package=rxode2)
 released on CRAN. Each uses compiled code to have faster ODE solving.
 
-  - [mrgsolve](https://cran.r-project.org/package=mrgsolve), which uses
-    C++ lsoda solver to solve ODE systems. The user is required to write
-    hybrid R/C++ code to create a mrgsolve model which is translated to
-    C++ for solving.
-    
-    In contrast, `rxode2` has a R-like mini-language that is parsed into
-    C code that solves the ODE system.
-    
-    Unlike `rxode2`, `mrgsolve` does not currently support symbolic
-    manipulation of ODE systems, like automatic Jacobian calculation or
-    forward sensitivity calculation (`rxode2` currently supports this
-    and this is the basis of
-    [nlmixr2](https://CRAN.R-project.org/package=nlmixr2)’s FOCEi
-    algorithm)
+- [mrgsolve](https://cran.r-project.org/package=mrgsolve), which uses
+  C++ lsoda solver to solve ODE systems. The user is required to write
+  hybrid R/C++ code to create a mrgsolve model which is translated to
+  C++ for solving.
 
-  - [dMod](https://CRAN.R-project.org/package=dMod), which uses a unique
-    syntax to create “reactions”. These reactions create the underlying
-    ODEs and then created c code for a compiled deSolve model.
-    
-    In contrast `rxode2` defines ODE systems at a lower level.
-    `rxode2`’s parsing of the mini-language comes from C, whereas
-    `dMod`’s parsing comes from R.
-    
-    Like `rxode2`, `dMod` supports symbolic manipulation of ODE systems
-    and calculates forward sensitivities and adjoint sensitivities of
-    systems.
-    
-    Unlike `rxode2`, `dMod` is not thread-safe since `deSolve` is not
-    yet thread-safe.
+  In contrast, `rxode2` has a R-like mini-language that is parsed into C
+  code that solves the ODE system.
 
-  - [PKPDsim](https://github.com/InsightRX/PKPDsim) which defines models
-    in an R-like syntax and converts the system to compiled code.
-    
-    Like `mrgsolve`, `PKPDsim` does not currently support symbolic
-    manipulation of ODE systems.
-    
-    `PKPDsim` is not thread-safe.
+  Unlike `rxode2`, `mrgsolve` does not currently support symbolic
+  manipulation of ODE systems, like automatic Jacobian calculation or
+  forward sensitivity calculation (`rxode2` currently supports this and
+  this is the basis of
+  [nlmixr2](https://CRAN.R-project.org/package=nlmixr2)’s FOCEi
+  algorithm)
+
+- [dMod](https://CRAN.R-project.org/package=dMod), which uses a unique
+  syntax to create “reactions”. These reactions create the underlying
+  ODEs and then created c code for a compiled deSolve model.
+
+  In contrast `rxode2` defines ODE systems at a lower level. `rxode2`’s
+  parsing of the mini-language comes from C, whereas `dMod`’s parsing
+  comes from R.
+
+  Like `rxode2`, `dMod` supports symbolic manipulation of ODE systems
+  and calculates forward sensitivities and adjoint sensitivities of
+  systems.
+
+  Unlike `rxode2`, `dMod` is not thread-safe since `deSolve` is not yet
+  thread-safe.
+
+- [PKPDsim](https://github.com/InsightRX/PKPDsim) which defines models
+  in an R-like syntax and converts the system to compiled code.
+
+  Like `mrgsolve`, `PKPDsim` does not currently support symbolic
+  manipulation of ODE systems.
+
+  `PKPDsim` is not thread-safe.
 
 The open pharmacometrics open source community is fairly friendly, and
 the rxode2 maintainers has had positive interactions with all of the
@@ -367,29 +374,29 @@ ODE-solving pharmacometric projects listed.
 ## PK Solved systems
 
 `rxode2` supports 1-3 compartment models with gradients (using stan
-math’s auto-differentiation). This currently uses the same equations
-as `PKADVAN` to allow time-varying covariates.
+math’s auto-differentiation). This currently uses the same equations as
+`PKADVAN` to allow time-varying covariates.
 
 `rxode2` can mix ODEs and solved systems.
 
 ### The following packages for solved PK systems are on CRAN
 
-  - [mrgsolve](https://cran.r-project.org/package=mrgsolve) currently
-    has 1-2 compartment (poly-exponential models) models built-in. The
-    solved systems and ODEs cannot currently be mixed.
+- [mrgsolve](https://cran.r-project.org/package=mrgsolve) currently has
+  1-2 compartment (poly-exponential models) models built-in. The solved
+  systems and ODEs cannot currently be mixed.
 
-  - [pmxTools](https://github.com/kestrel99/pmxTools) currently have 1-3
-    compartment (super-positioning) models built-in. This is a R-only
-    implementation.
+- [pmxTools](https://github.com/kestrel99/pmxTools) currently have 1-3
+  compartment (super-positioning) models built-in. This is a R-only
+  implementation.
 
-  - [PKPDsim](https://github.com/InsightRX/PKPDsim) uses 1-3 “ADVAN”
-    solutions using non-superpositioning.
+- [PKPDsim](https://github.com/InsightRX/PKPDsim) uses 1-3 “ADVAN”
+  solutions using non-superpositioning.
 
-  - [PKPDmodels](https://CRAN.R-project.org/package=PKPDmodels) has a
-    one-compartment model with gradients.
+- [PKPDmodels](https://CRAN.R-project.org/package=PKPDmodels) has a
+  one-compartment model with gradients.
 
 ### Non-CRAN libraries:
 
-  - [PKADVAN](https://github.com/abuhelwa/PKADVAN_Rpackage) Provides 1-3
-    compartment models using non-superpositioning. This allows
-    time-varying covariates.
+- [PKADVAN](https://github.com/abuhelwa/PKADVAN_Rpackage) Provides 1-3
+  compartment models using non-superpositioning. This allows
+  time-varying covariates.
