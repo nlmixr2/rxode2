@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 [![CRAN total downloads](https://cranlogs.r-pkg.org/badges/rxode2)](https://cran.r-project.org/package=rxode2)
 [![CodeFactor](https://www.codefactor.io/repository/github/nlmixr2/rxode2/badge)](https://www.codefactor.io/repository/github/nlmixr2/rxode2)
 ![r-universe](https://nlmixr2.r-universe.dev/badges/rxode2)
-<!-- badges: end -->
+<!-- badges: end  -->
 
 ## Overview
 
