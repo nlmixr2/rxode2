@@ -12,7 +12,7 @@ install.packages("rxode2")
 ``` 
 
 The fastest way to install the development version of `rxode2` is to
-use the `r-universe` service.  This service compiles binares of the
+use the `r-universe` service.  This service compiles binaries of the
 development version for MacOS and for Windows so you don't have to
 wait for package compilation:
 
@@ -65,7 +65,7 @@ rtools directly.
 
 To get the most speed you need OpenMP enabled and compile rxode2 with
 that compiler. There are various options and the most up to date
-discussion about this is likely the [data.table installation faq for
+discussion about this is likely the [data.table installation FAQ for
 MacOS](https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac).
 The last thing to keep in mind is that `rxode2` uses the code very
 similar to the original `lsoda` which requires the `gfortran` compiler
@@ -74,7 +74,7 @@ to be setup as well as the `OpenMP` compilers.
 If you are going to be using `rxode2` and `nlmixr` together and have an
 older mac computer, I would suggest trying the following:
 
-```r
+``` {.r}
 library(symengine)
 ```
 
@@ -86,13 +86,13 @@ installed on your system.
 On your system terminal you will need to install the dependencies to
 compile `symengine`:
 
-```sh
+``` {.sh}
 brew install cmake gmp mpfr libmpc
 ```
 
-After installing the dependencies, you need to reinstall `symengine`:
+After installing the dependencies, you need to re-install `symengine`:
 
-```r
+``` {.r}
 install.packages("symengine", type="source")
 library(symengine)
 ```
@@ -102,7 +102,13 @@ library(symengine)
 To install on linux make sure you install `gcc` (with openmp support)
 and `gfortran` using your distribution's package manager.
 
-## Development Version
+### R versions 4.0 and 4.1
+
+For installation on R versions 4.0.x and 4.1.x, please see the instructions on
+how to install `symengine` in the `nlmixr2` installation instructions:
+https://github.com/nlmixr2/nlmixr2#r-package-installation
+
+## Development version
 
 Since the development version of rxode2 uses StanHeaders, you will need
 to make sure your compiler is setup to support C++14, as described in

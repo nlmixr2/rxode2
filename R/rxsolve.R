@@ -1,48 +1,3 @@
-#' This updates the tolerances based on the sensitivity equations
-#'
-#' This assumes the normal ODE equations are the first equations and
-#' the ODE is expanded by the forward sensitivities or other type of
-#' sensitivity (like adjoint)
-#'
-#' @param rxControl Input list or rxControl type of list
-#' @param sensCmt Number of sensitivity compartments
-#' @param ncmt Number of compartments
-#' @return Updated rxControl where `$atol`, `$rtol`, `$ssAtol`
-#'   `$ssRtol` are updated with different sensitivities for the normal
-#'   ODEs (first) and a different sensitivity for the larger
-#'   compartments (sensitivities).
-#' @author Matthew L. Fidler
-#' @export
-#' @examples
-#'
-#' tmp <- rxControl()
-#'
-#' tmp2 <- rxControlUpdateSens(tmp, 3, 6)
-#'
-#' tmp2$atol
-#' tmp2$rtol
-#' tmp2$ssAtol
-#' tmp2$ssRtol
-rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
-  checkmate::assertIntegerish(sensCmt, lower=1, len=1)
-  checkmate::assertIntegerish(ncmt, lower=2, len=1)
-  if (sensCmt >= ncmt) {
-    stop("'sensCmt' must be lower than the number of compartments 'ncmt'",
-         call.=FALSE)
-  }
-  if (is.list(rxControl) && !inherits(rxControl, "rxControl")) {
-    rxControl <- do.call(rxode2::rxControl, rxControl)
-  }
-  if (!inherits(rxControl, "rxControl")) {
-    stop("'rxControl' must be a rxode2 control options list",
-         call.=FALSE)
-  }
-  rxControl$atol <- c(rep(rxControl$atol[1], ncmt - sensCmt), rep(rxControl$atolSens, sensCmt))
-  rxControl$rtol <- c(rep(rxControl$rtol[1], ncmt - sensCmt), rep(rxControl$rtolSens, sensCmt))
-  rxControl$ssAtol <- c(rep(rxControl$ssAtol[1], ncmt - sensCmt), rep(rxControl$ssAtolSens, sensCmt))
-  rxControl$ssRtol <- c(rep(rxControl$ssRtol[1], ncmt - sensCmt), rep(rxControl$ssRtolSens, sensCmt))
-  rxControl
-}
 #' Solving & Simulation of a ODE/solved system (a options) equation
 #'
 #' This uses rxode2 family of objects, file, or model specification to
@@ -78,12 +33,12 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #' @param sigdig Specifies the "significant digits" that the ode
 #'   solving requests.  When specified this controls the relative and
 #'   absolute tolerances of the ODE solvers.  By default the tolerance
-#'   is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
-#'   sensitivity equations the default is \code{0.5*10^(-sigdig-1.5)}
+#'   is `0.5*10^(-sigdig-2)` for regular ODEs. For the
+#'   sensitivity equations the default is `0.5*10\^(-sigdig-1.5)`
 #'   (sensitivity changes only applicable for liblsoda).  This also
 #'   controls the `atol`/`rtol` of the steady state solutions. The
-#'   `ssAtol`/`ssRtol` is `0.5*10^(-sigdig)` and for the sensitivities
-#'   `0.5*10^(-sigdig+0.625)`.  By default
+#'   `ssAtol`/`ssRtol` is `0.5*10\^(-sigdig)` and for the sensitivities
+#'   `0.5*10\^(-sigdig+0.625)`.  By default
 #'   this is unspecified (`NULL`) and uses the standard `atol`/`rtol`.
 #'
 #' @param atol a numeric absolute tolerance (1e-8 by default) used
@@ -362,12 +317,12 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'
 #'   - `nlmixrSqrt` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'     with the `x^2` modeled along the diagonal.  This only works
+#'     with the `x\^2` modeled along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrLog` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'      with the `exp(x^2)` along the diagonal.  This only works
+#'      with the `exp(x\^2)` along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrIdentity` This is when the `params` and
@@ -417,12 +372,12 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'
 #'   - `nlmixrSqrt` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'     with the `x^2` modeled along the diagonal.  This only works
+#'     with the `x\^2` modeled along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrLog` This is when the `params` and
 #'     `thetaMat` simulates the inverse cholesky decomposed matrix
-#'      with the `exp(x^2)` along the diagonal.  This only works
+#'      with the `exp(x\^2)` along the diagonal.  This only works
 #'      with a diagonal matrix.
 #'
 #'   - `nlmixrIdentity` This is when the `params` and
@@ -2001,4 +1956,51 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) 
     method <- .methodIdx[match.arg(method)]
   }
   method
+}
+
+
+#' This updates the tolerances based on the sensitivity equations
+#'
+#' This assumes the normal ODE equations are the first equations and
+#' the ODE is expanded by the forward sensitivities or other type of
+#' sensitivity (like adjoint)
+#'
+#' @param rxControl Input list or rxControl type of list
+#' @param sensCmt Number of sensitivity compartments
+#' @param ncmt Number of compartments
+#' @return Updated rxControl where `$atol`, `$rtol`, `$ssAtol`
+#'   `$ssRtol` are updated with different sensitivities for the normal
+#'   ODEs (first) and a different sensitivity for the larger
+#'   compartments (sensitivities).
+#' @author Matthew L. Fidler
+#' @export
+#' @examples
+#'
+#' tmp <- rxControl()
+#'
+#' tmp2 <- rxControlUpdateSens(tmp, 3, 6)
+#'
+#' tmp2$atol
+#' tmp2$rtol
+#' tmp2$ssAtol
+#' tmp2$ssRtol
+rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
+  checkmate::assertIntegerish(sensCmt, lower=1, len=1)
+  checkmate::assertIntegerish(ncmt, lower=2, len=1)
+  if (sensCmt >= ncmt) {
+    stop("'sensCmt' must be lower than the number of compartments 'ncmt'",
+         call.=FALSE)
+  }
+  if (is.list(rxControl) && !inherits(rxControl, "rxControl")) {
+    rxControl <- do.call(rxode2::rxControl, rxControl)
+  }
+  if (!inherits(rxControl, "rxControl")) {
+    stop("'rxControl' must be a rxode2 control options list",
+         call.=FALSE)
+  }
+  rxControl$atol <- c(rep(rxControl$atol[1], ncmt - sensCmt), rep(rxControl$atolSens, sensCmt))
+  rxControl$rtol <- c(rep(rxControl$rtol[1], ncmt - sensCmt), rep(rxControl$rtolSens, sensCmt))
+  rxControl$ssAtol <- c(rep(rxControl$ssAtol[1], ncmt - sensCmt), rep(rxControl$ssAtolSens, sensCmt))
+  rxControl$ssRtol <- c(rep(rxControl$ssRtol[1], ncmt - sensCmt), rep(rxControl$ssRtolSens, sensCmt))
+  rxControl
 }

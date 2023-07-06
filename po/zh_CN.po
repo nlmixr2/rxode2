@@ -1,0 +1,1456 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Rxode2 package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Rxode2 1.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-05-26 10:39-0500\n"
+"PO-Revision-Date: 2023-07-03 00:00\n"
+"Last-Translator: FuYongchao <3212418315@qq.com>\n"
+"Language-Team: FuYongchao <3212418315@qq.com>\n"
+"Language: Chinese\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: cvPost.cpp:148
+msgid "'shape' must be non-negative"
+msgstr "“shape(形状因子)”参数的值必须是非负数的"
+
+#: cvPost.cpp:169
+msgid "dimension, 'd' of correlation matrix must be > 1"
+msgstr "维度数，相关矩阵的维度数“d”必须> 1"
+
+#: cvPost.cpp:172
+msgid "'eta' must be >= 1"
+msgstr "“eta”必须>= 1"
+
+#: cvPost.cpp:217
+msgid "log standard deviation size needs to be the same size as the log standard error of the estimate"
+msgstr "对数标准差的数量需要与估计值的对数标准误的数量相同"
+
+#: cvPost.cpp:243
+msgid "'nu' must be greater than 'd'-1"
+msgstr "Wishart分布的自由度“nu”必须大于“d(维数)”-1"
+
+#: cvPost.cpp:316
+msgid "unknown 'diagXformType' transformation"
+msgstr "未知的“diagXformType(对角线矩阵X的实现类型)”转换"
+
+#: cvPost.cpp:368
+#, c-format
+msgid "variable 'type': Unrecognized cvPost type='%s'"
+msgstr "变量 'type'： 无法识别的cvPost类型='%s'"
+
+#: cvPost.cpp:371
+msgid "variable 'type': Can only use type string or integer[1,3]"
+msgstr "变量 'type'：只能使用字符串或整数[1，3]"
+
+#: cvPost.cpp:472
+#, c-format
+msgid "variable 'diagXformType': Unrecognized transformation '%s'"
+msgstr "变量 'diagXformType(对角线矩阵X的实现类型)'：无法识别的实现类型 '%s'"
+
+#: cvPost.cpp:477
+msgid "variable 'diagXformType': Can only use transformation string or integer[1,6]"
+msgstr "变量 'diagXformType(对角线矩阵X的实现类型)'：只能使用字符串或整数[1，6]表示实现类型"
+
+#: cvPost.cpp:483
+msgid "'n' is determined by the 'omega' argument which contains the simulated standard deviations"
+msgstr "‘n’由包含模拟标准差的‘omega’参数确定"
+
+#: cvPost.cpp:496
+msgid "when sampling from correlation priors to create covariance matrices, the input must be a matrix of standard deviations"
+msgstr "从相关性先验中抽样以创建协方差矩阵时，输入必须是一个标准差矩阵"
+
+#: cvPost.cpp:500
+msgid "'omega' needs to be a matrix or a numeric vector that can be converted to a matrix"
+msgstr "‘n’由包含模拟标准差的‘omega’参数确定"
+
+#: cvPost.cpp:520
+msgid "'thetaMat' needs 'params' to be non-NULL"
+msgstr "“thetaMat”需要“参数”为\"非空(non-NULL)\""
+
+#: cvPost.cpp:535
+msgid "when specifying 'thetaMat', 'omega', or 'sigma' the parameters cannot be a 'data.frame'/'matrix'"
+msgstr "指定“thetaMat”、“omega”或“sigma”时，参数不能是一个“data.frame”/“matrix”"
+
+#: cvPost.cpp:546
+msgid "'thetaMat' must be a symmetric, positive definite matrix"
+msgstr "“thetaMat”必须是对称的正定矩阵"
+
+#: cvPost.cpp:593
+msgid "'theta' must be the same size as 'thetaMat'"
+msgstr "“theta”必须与“thetaMat”大小相同"
+
+#: cvPost.cpp:716
+msgid "'omega' must be symmetric, positive definite"
+msgstr "“omega”必须是对称的、正定的"
+
+#: cvPost.cpp:735
+msgid "'omega' needs to be a matrix or lotri matrix"
+msgstr "“omega”需要是\"矩阵(matrix)\"或\"lotri matrix\"类型"
+
+#: cvPost.cpp:773 cvPost.cpp:814 rxData.cpp:2840
+#, c-format
+msgid "provided multi-subject data (n=%d) trying to simulate a different number of subjects (n=%d)"
+msgstr "提供多个体数据（n=%d）尝试模拟不同数量的受试者 （n=%d）"
+
+#: cvPost.cpp:935
+msgid "'sigma' must be symmetric, positive definite"
+msgstr "“sigma”必须是对称的、正定的"
+
+#: cvPost.cpp:950
+msgid "'sigma' needs to be a matrix or lotri matrix"
+msgstr "“sigma”需要是\"矩阵(matrix)\"或\"lotri matrix\"类型"
+
+#: cvPost.cpp:1087
+msgid "un-handled nesting information"
+msgstr "未处理的嵌套信息"
+
+#: cvPost.cpp:1111
+msgid "cannot find 'id' column in dataset"
+msgstr "在数据集中找不到“id”列"
+
+#: cvPost.cpp:1124
+msgid "'omega' must be a list/lotri/matrix"
+msgstr "“omega”必须是\"列表(list)\"/lotri/\"矩阵(matrix)\"类型"
+
+#: dop853.c:401 dop853.c:668
+#, c-format
+msgid "exit of dop853 at x = %.16e\n"
+msgstr "在 x = %.16e处,退出dop853\n"
+
+#: dop853.c:412
+#, c-format
+msgid "exit of dop853 at x = %.16e, more than nmax = %li are needed\n"
+msgstr "在 x = %.16e处退出dop853，需要超过 nmax = %li\n"
+
+#: dop853.c:421
+#, c-format
+msgid "exit of dop853 at x = %.16e, step size too small h = %.16e\n"
+msgstr "在 x = %.16e处退出dop853，步长太小 h = %.16e\n"
+
+#: dop853.c:553
+#, c-format
+msgid "the problem seems to become stiff at x = %.16e\n"
+msgstr "问题似乎在 x = %.16e 时变得刚性\n"
+
+#: dop853.c:724
+#, c-format
+msgid "system too big, max. n = %u\n"
+msgstr "系统太大，最大值 n = %u\n"
+
+#: dop853.c:734
+#, c-format
+msgid "wrong input, nmax = %li\n"
+msgstr "错误的输入，nmax = %li\n"
+
+#: dop853.c:744
+#, c-format
+msgid "curious input, meth = %i\n"
+msgstr "奇异的输入，meth = %i\n"
+
+#: dop853.c:758
+#, c-format
+msgid "wrong input, iout = %i\n"
+msgstr "错误的输入，iout = %i\n"
+
+#: dop853.c:766
+#, c-format
+msgid "curious input, nrdens = %u\n"
+msgstr "奇异的输入，nrdens = %u\n"
+
+#: dop853.c:787
+msgid "not enough free memory for rcont12345678&indir\n"
+msgstr "没有足够的可用内存用于 rcont12345678和indir\n"
+
+#: dop853.c:795
+msgid "warning : when nrdens = n there is no need allocating memory for icont\n"
+msgstr "警告：当nrdens = n时，不需要为 icont 分配内存\n"
+
+#: dop853.c:801
+#, c-format
+msgid "insufficient storage for icont, min. licont = %u\n"
+msgstr "icont的存储空间不足，最小 licont = %u\n"
+
+#: dop853.c:974
+#, c-format
+msgid "no dense output available for %uth component"
+msgstr "没有可用于第 %u 分量的密集输出"
+
+#: et.cpp:142 rxData.cpp:5164
+#, c-format
+msgid "partial match of '%s' to '%s'"
+msgstr "“%s”与“%s”部分匹配"
+
+#: et.cpp:403
+msgid "event table was not updated (no dose/sampling windows)"
+msgstr "事件表未更新（无给药/采样时间窗）"
+
+#: et.cpp:480
+msgid "windows need to be a list of observation windows, each of 2 elements e.g. list(c(0,2), c(2,7))"
+msgstr "时间窗必须是观测的时间窗的\"列表(list)\"，每个时间窗有两个元素，例如列表（C（0，2）、C（2，7））"
+
+#: et.cpp:482
+msgid "windows need to be ordered list(c(2,0)) is invalid"
+msgstr "Windows需要排序，list(c(2,0))无效"
+
+#: et.cpp:881 et.cpp:898
+#, c-format
+msgid "unknown method: '%s'"
+msgstr "未知的方法：“%s”"
+
+#: et.cpp:939 etTran.cpp:451
+msgid "can only specify either 'amt' or 'value'"
+msgstr "只能指定“amt”或“value”"
+
+#: et.cpp:943 etTran.cpp:455
+msgid "can only specify either 'cmt', 'ytype', 'state' or 'var'"
+msgstr "只能指定“cmt”、“ytype”、“state”或“var”"
+
+#: et.cpp:951
+msgid "can only specify either 'duration' or 'dur'"
+msgstr "只能指定“duration”或“dur”"
+
+#: et.cpp:959
+msgid "need a 'time' column"
+msgstr "需要一个“time(时间)”列"
+
+#: et.cpp:969
+msgid "using 'mdv' instead of 'method'"
+msgstr "应使用“mdv”而不是“method”"
+
+#: et.cpp:979
+msgid "using 'evid' instead of 'mdv'"
+msgstr "应使用“evid”而不是“mdv”"
+
+#: et.cpp:994
+msgid "'ID' type is unknown"
+msgstr "“ID”的类型未知"
+
+#: et.cpp:1081
+msgid "can not figure out how to import the compartment variable"
+msgstr "无法弄清楚如何导入\"compartment(房室)\"变量"
+
+#: et.cpp:1152 et.cpp:1154
+msgid "replacement/multiplication events cannot be combined with infusions"
+msgstr "\"替换(replacement)\"/\"倍数(multiplication)\"事件不能与输注联合使用"
+
+#: et.cpp:1168
+msgid "old Rxode2 'evid' values are not supported with string compartments"
+msgstr "文本型房室不支持旧版 Rxode2的“evid”值"
+
+#: et.cpp:1381
+msgid "'amt'/'time' needs units to convert the rate to the right units to import the data"
+msgstr "“amt”/“time”需要单位将速率转换为正确的单位以导入数据"
+
+#: et.cpp:1636
+msgid "'do.sampling' is not supported with dose windows"
+msgstr "给药时间窗不支持\"do.sampling\""
+
+#: et.cpp:1658
+msgid "dosing window you need to specify window in order, e.g. 'et(time=list(c(0,2)),amt=3)'"
+msgstr "给药时间窗您需要按顺序指定时间窗，例如'et(time=list(c(0,2)),amt=3)'"
+
+#: et.cpp:1661
+msgid "dosing time or time windows must only be 1-2 elements"
+msgstr "给药时间或时间时间窗只能是1~2个元素"
+
+#: et.cpp:1922
+msgid "cannot mix named compartments and integer compartments"
+msgstr "不能混合使用命名的房室和整数房室"
+
+#: et.cpp:2026 et.cpp:2188
+msgid "cannot add more 'ID's to this event table"
+msgstr "无法向此事件表添加更多“ID”"
+
+#: et.cpp:2256
+msgid "can only have one of the following: 'amt', 'dose'"
+msgstr "只能具有以下其中一项：“amt”、“dose”"
+
+#: et.cpp:2263
+msgid "can only have one of the following: 'ii', 'dosing.interval', 'dosingInterval' or 'dosing_interval'"
+msgstr "只能具有以下其中一项：“ii”、“dosing.interval”、“dosingInterva”或“dosing_interval”"
+
+#: et.cpp:2283
+msgid "can only have one of the following: 'cmt', 'dosing.to', 'dose.to', 'state'"
+msgstr "只能具有以下其中一项：“cmt”、“dosing.to”、“dose.to”、“state”"
+
+#: et.cpp:2292
+msgid "can only have one of the following: 'amount.units', 'amt.units', 'dose.units'"
+msgstr "只能具有以下之一：“'amount.units”、“'amt.units”、“dose.units”"
+
+#: et.cpp:2299
+msgid "can only have one of the following: 'time.units', 'timeUnits', 'time_units'"
+msgstr "只能具有以下其中一项：“time.units”、“timeUnits”、“time_units”"
+
+#: et.cpp:2307
+msgid "can only have one of the following: 'add.sampling', 'do.sampling'"
+msgstr "只能具有以下其中一项：“add.sampling”、“do.sampling”"
+
+#: et.cpp:2315
+msgid "can only have one of the following: 'time', 'start.time', 'from'"
+msgstr "只能具有以下其中一项：“time”、“start.time”、“from”"
+
+#: et.cpp:2321
+msgid "can only have one of the following: 'nbrDoses', 'nbr.doses'"
+msgstr "只能具有以下其中一项：“nbrDoses”、“nbr.doses”"
+
+#: et.cpp:2336
+msgid "can only have one of the following: 'dur', 'duration'"
+msgstr "只能具有以下其中一项：“dur”、“duration”"
+
+#: et.cpp:2343
+#, c-format
+msgid "unused argument '%s'"
+msgstr "未使用的参数 '%s'"
+
+#: et.cpp:2354 et.cpp:2359 et.cpp:2374 et.cpp:2379
+msgid "multiple event tables supplied, not sure what to do; try 'c', 'rbind', 'seq' or 'rep'"
+msgstr "提供了多个事件表，不知道该如何使用;尝试“c”、“rbind”、“seq”或“rep”"
+
+#: et.cpp:2397 et.cpp:2405 et.cpp:2650 et.cpp:2673 et.cpp:2708 et.cpp:2729
+#: et.cpp:2736 et.cpp:2747 et.cpp:2766 et.cpp:2831 et.cpp:2859 et.cpp:2882
+#: et.cpp:2895 et.cpp:2924 et.cpp:2928 et.cpp:2937 et.cpp:3061 et.cpp:3069
+#, c-format
+msgid "'%s' cannot be a vector"
+msgstr "'%s' 不能是一个向量"
+
+#: et.cpp:2561 et.cpp:2565
+msgid "nothing done"
+msgstr "什么也没做"
+
+#: et.cpp:2611
+#, c-format
+msgid "cannot mix named and integer compartments in '%s'"
+msgstr "不能在 '%s' 中混合使用命名的房室和整数房室"
+
+#: et.cpp:2619
+#, c-format
+msgid "'%s' compartment cannot be a vector"
+msgstr "“%s”房室不能是一个向量"
+
+#: et.cpp:2631
+#, c-format
+msgid "'%s' cannot be zero"
+msgstr "'%s' 不能为零"
+
+#: et.cpp:2635
+#, c-format
+msgid "'%s' cannot be an vector"
+msgstr "'%s' 不能是一个向量"
+
+#: et.cpp:2638
+#, c-format
+msgid "'%s' must be an integer or a character"
+msgstr "'%s' 必须是\"整数型(integer)\"或\"字符型(character)\""
+
+#: et.cpp:2677
+#, c-format
+msgid "turning off compartments can only be done when '%s'=2"
+msgstr "仅能在 '%s' = 2 时才能关闭房室"
+
+#: et.cpp:2680
+#, c-format
+msgid "zero '%s' cannot be used with '%s'"
+msgstr "零个“%s”不能与“%s”一起使用"
+
+#: et.cpp:2683
+#, c-format
+msgid "'%s' requires an '%s'"
+msgstr "“%s”需要是一个“%s”"
+
+#: et.cpp:2687
+#, c-format
+msgid "'%s' is ignored when '%s'=2 or '%s'=3"
+msgstr "当“%s”=2 或“%s”=3 时，将忽略“%s”"
+
+#: et.cpp:2710 et.cpp:2717 et.cpp:2720 et.cpp:2731 et.cpp:2738
+#, c-format
+msgid "'%s' needs a '%s'"
+msgstr "“%s”需要一个“%s”"
+
+#: et.cpp:2725
+#, c-format
+msgid "can not specify '%s' and '%s' for a dose, please pick one"
+msgstr "不能指定“%s”和“%s”作为给药，请选择一个"
+
+#: et.cpp:2749
+msgid "'ii' needs a 'dose'/'amt'"
+msgstr "“ii(给药间隔)”需要“dose(给药)”/“amt(药量)”"
+
+#: et.cpp:2760
+msgid "dosing interval of zero makes no sense with multiple dose events"
+msgstr "给药间隔为零对于多次给药事件毫无意义"
+
+#: et.cpp:2768 et.cpp:2900
+#, c-format
+msgid "non-zero '%s' needs a '%s'"
+msgstr "非零'%s' 需要一个'%s'"
+
+#: et.cpp:2805 et.cpp:2808 et.cpp:2811
+#, c-format
+msgid "can only specify '%s' or '%s', not both"
+msgstr "只能指定“%s”或“%s”，不能同时指定两者"
+
+#: et.cpp:2817
+#, c-format
+msgid "'%s' can only have one item"
+msgstr "'%s' 只能有一个项目"
+
+#: et.cpp:2820
+#, c-format
+msgid "'%s' must be logical"
+msgstr "'%s' 必须是逻辑的"
+
+#: et.cpp:2827
+#, c-format
+msgid "cannot specify '%s' and '%s' for a dose, please pick one"
+msgstr "不能为给药指定“%s”和“%s”，请选择一个"
+
+#: et.cpp:2838
+msgid "-1 and -2 rates do not make sense with units"
+msgstr "-1 和 -2 速率(rate)对单位没有意义"
+
+#: et.cpp:2843
+#, c-format
+msgid "'%s' is cannot be converted and added to this table"
+msgstr "“%s”是无法被转换并添加到此表中"
+
+#: et.cpp:2850
+#, c-format
+msgid "steady state constant infusion dosing records must have '%s=-1' or positive rate"
+msgstr "稳态恒速输注给药记录必须具有“%s=-1”或正数的速率(rate)"
+
+#: et.cpp:2869
+#, c-format
+msgid "'%s' cannot be converted and added to this table"
+msgstr "“%s”无法被转换并添加到此表中"
+
+#: et.cpp:2930
+#, c-format
+msgid "number of doses must be at least one ('%s': %d)"
+msgstr "给药数必须至少为一（“%s”： %d）"
+
+#: et.cpp:2939
+#, c-format
+msgid "'%s' can only be used with positive inter-dose intervals ('%s')"
+msgstr "“%s”只能与正数的给药间隔（“%s”）一起使用"
+
+#: et.cpp:2949
+#, c-format
+msgid "'%s' does not make sense with multiple dosing times"
+msgstr "'%s' 在多次给药时没有意义"
+
+#: et.cpp:2978
+msgid "dosing windows can only have 1-2 items in them"
+msgstr "给药时间窗只能有1-2个项"
+
+#: et.cpp:2987
+#, c-format
+msgid "'%s' requires non zero additional doses ('%s') or steady state dosing ('%s': %f, '%s': %d; '%s': %d), reset '%s' to zero."
+msgstr "“%s”需要非零额外附加给药（“%s”）或稳态给药（“%s”：%f，“%s”：%d;“%s”： %d），将“%s”重置为零。"
+
+#: et.cpp:2993
+#, c-format
+msgid "'%s' must be 1 when specifying a steady-state constant infusion"
+msgstr "当描述为稳态恒速输注时，'%s' 必须为 1"
+
+#: et.cpp:2996
+#, c-format
+msgid "'%s' must be 0, 1 or 2"
+msgstr "'%s' 必须为 0、1 或 2"
+
+#: et.cpp:2999
+#, c-format
+msgid "'%s' required with '%s'"
+msgstr "“%s”和“%s”是必需的"
+
+#: et.cpp:3003
+#, c-format
+msgid "'%s' cannot be used with steady state constant infusion"
+msgstr "'%s' 不能与稳态恒速输注一起使用"
+
+#: et.cpp:3006
+#, c-format
+msgid "steady state ('%s') is not supported with dosing windows"
+msgstr "给药时间窗不支持稳定状态（'%s'）"
+
+#: et.cpp:3009
+#, c-format
+msgid "additional doses must be positive ('%s'=%d)"
+msgstr "额外的附加给药必须为正数（'%s'=%d）"
+
+#: et.cpp:3012
+#, c-format
+msgid "additional doses require an inter-dose interval ('%s')"
+msgstr "额外的附加给药需要给药间隔（“%s”）"
+
+#: et.cpp:3017
+#, c-format
+msgid "for steady state infusions, you need %s=0, %s>0, %s=1, %s=0"
+msgstr "对于稳态输注，您需要 %s=0、%s>0、%s=1、%s=0"
+
+#: et.cpp:3030
+msgid "dosing time window lists can have 1-2 numeric entries in them"
+msgstr "给药时间窗列表中可以包含1-2个数字项"
+
+#: et.cpp:3035
+msgid "dosing window list needs to be numeric values only"
+msgstr "给药时间窗列表只需要是数值的值"
+
+#: et.cpp:3088
+msgid "cannot figure out what type of 'EventTable' you are trying to create"
+msgstr "无法弄清楚您尝试创建的“事件表”类型"
+
+#: et.cpp:3173 et.cpp:3176
+msgid "cannot have event tables with integer and character 'cmt'"
+msgstr "事件表中整数和字符“cmt”不能混合使用"
+
+#: et.cpp:3261
+#, c-format
+msgid "assumed a dose interval of %.1f between event tables; use 'ii' to adjust"
+msgstr "假设事件表之间的给药间隔为%.1f;使用“ii”进行调整"
+
+#: et.cpp:3347
+msgid "no events table found for 'seq'/'rep'/'rbind'/'c'"
+msgstr "未找到用于“seq”/“rep”/“rbind”/“c”的事件表"
+
+#: et.cpp:3468
+msgid "'wait' cannot be a vector"
+msgstr "“wait”不能是向量"
+
+#: etTran.cpp:141
+#, c-format
+msgid "negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s, row: %d)"
+msgstr "non-ode 'cmt'（%s）上的负数房室没有意义（ID： %s， 行： %d）"
+
+#: etTran.cpp:276 etTran.cpp:286
+#, c-format
+msgid "negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s row: %d)"
+msgstr "non-ode 'cmt'（%s）上的负数房室没有意义（ID： %s， 行： %d）"
+
+#: etTran.cpp:307
+msgid "should not reach here"
+msgstr "不应该到达这里"
+
+#: etTran.cpp:471
+msgid "cannot keep 'evid'; try 'addDosing'"
+msgstr "不能保持“evid”;尝试“adDosing”"
+
+#: etTran.cpp:616
+msgid "'time' is required in dataset"
+msgstr "数据集中需要“time”"
+
+#: etTran.cpp:708
+msgid "steady state column ('ss') needs to be an integer"
+msgstr "稳态列 （'ss'） 需要是一个整数"
+
+#: etTran.cpp:719
+msgid "event id ('evid') needs to be an integer"
+msgstr "事件id列（'evid'） 需要为整数"
+
+#: etTran.cpp:728
+msgid "missing DV ('mdv') needs to be an integer"
+msgstr "视为因变量缺失列（'mdv'） 需要是一个整数"
+
+#: etTran.cpp:742
+msgid "missing dependent variable ('mdv') needs to be an integer"
+msgstr "视为因变量缺失列（'MDV'） 需要是一个整数"
+
+#: etTran.cpp:750
+msgid "'rate' needs to be a number"
+msgstr "“rate(速率)”列需要是一个数字"
+
+#: etTran.cpp:759
+msgid "'dur' needs to be a number"
+msgstr "“dur(持续时长)”列需要是一个数字"
+
+#: etTran.cpp:774
+msgid "amount ('amt') needs to be a number"
+msgstr "药量（“amt”）列需要是一个数字"
+
+#: etTran.cpp:782
+msgid "inter-dose interval ('ii') needs to be a number"
+msgstr "给药间隔列（'ii'） 需要是一个数字"
+
+#: etTran.cpp:790
+msgid "number of additional doses ('addl') needs to be an integer"
+msgstr "额外的附件给药次数列（'addl'） 需要是一个整数"
+
+#: etTran.cpp:798
+msgid "dependent variable ('dv') needs to be a number"
+msgstr "因变量列（'dv'） 需要是一个数字"
+
+#: etTran.cpp:806
+msgid "censoring variable ('cens') needs to be a number"
+msgstr "删失变量列（“cens”）需要是一个数字"
+
+#: etTran.cpp:814
+msgid "limit variable ('limit') needs to be a number"
+msgstr "定量限变量列（“limit”）需要是一个数字"
+
+#: etTran.cpp:863
+#, c-format
+msgid "censoring column can only be -1, 0 or 1 (id: %s, row: %d)"
+msgstr "删失列只能为 -1、0 或 1（id： %s，row： %d）"
+
+#: etTran.cpp:888
+#, c-format
+msgid "infinite times are not allowed (id: %s, row: %d)"
+msgstr "不允许无穷大的时间（id： %s，row： %d）"
+
+#: etTran.cpp:946
+#, c-format
+msgid "steady state records cannot be on negative compartments (id: %s, row: %d)"
+msgstr "达到稳态的记录不能位负数的房室上（id： %s，row： %d）"
+
+#: etTran.cpp:976
+#, c-format
+msgid "when using steady state constant infusion modeling duration does not make sense (id: %s, row: %d)"
+msgstr "使用稳态恒速输注建模时，输注持续时间没有意义（id： %s，row： %d）"
+
+#: etTran.cpp:995
+#, c-format
+msgid "specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"
+msgstr "使用稳态恒速输注时，指定输注持续时长没有意义（id： %s，row： %d）"
+
+#: etTran.cpp:1001 etTran.cpp:1007
+#, c-format
+msgid "specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"
+msgstr "使用稳态恒速输注时，指定输注持续时长没有意义（id： %d, row： %d）"
+
+#: etTran.cpp:1018
+#, c-format
+msgid "'rate' and/or 'dur' are not specified correctly (id: %d row: %d)"
+msgstr "未正确指定“rate”和/或“dur”（id： %s，row： %d）"
+
+#: etTran.cpp:1036
+#, c-format
+msgid "'amt' or 'dur'/'rate' are non-zero therefore MDV cannot = 0 (id: %s row: %d)"
+msgstr "“amt”或“dur”/“rate”不为零，因此MDV不能= 0（id： %s, row： %d）"
+
+#: etTran.cpp:1074
+msgid "'addl' is ignored with observations"
+msgstr "“addl”被观测忽略"
+
+#: etTran.cpp:1096 etTran.cpp:1180
+#, c-format
+msgid "'limit' (%f) cannot equal 'dv' (%f) id: %s row: %d"
+msgstr "“limit”（%f）不能等于“dv”（%f） id： %s, row： %d"
+
+#: etTran.cpp:1129
+#, c-format
+msgid "'cmt' and 'dvid' specify different compartments (id: %s row: %d)"
+msgstr "“cmt”和“dvid”指了不同的房室（id： %s, row： %d）"
+
+#: etTran.cpp:1150
+msgid "'DVID'/'CMT' translation:\n"
+msgstr "“DVID”/“CMT”转换:\n"
+
+#: etTran.cpp:1156
+#, c-format
+msgid "'dvid'->'cmt' or 'cmt' on observation record on a undefined compartment (use 'cmt()' 'dvid()') id: %s row: %d"
+msgstr "'dvid'->'cmt' 或 'cmt' 在未定义的房室上的观测记录上（使用 'cmt()' 'dvid()'） id： %s row： %d"
+
+#: etTran.cpp:1195
+#, c-format
+msgid "'mdv' cannot be 0 when 'evid'=1 id: %s row: %d"
+msgstr "当“evid”=1时,“mdv” 不能为 0，id： %s, row： %d"
+
+#: etTran.cpp:1212
+msgid "'addl' is ignored with 'EVID=2'"
+msgstr "“EVID=2”，“addl”被忽略"
+
+#: etTran.cpp:1215
+msgid "'ss' is ignored with 'EVID=2'"
+msgstr "“EVID=2”，“ss”被忽略"
+
+#: etTran.cpp:1257
+msgid "'addl' is ignored with 'EVID=3'"
+msgstr "“EVID=2”，“addl”被忽略"
+
+#: etTran.cpp:1260
+msgid "'ss' is ignored with 'EVID=3'"
+msgstr "“EVID=2”，“ss”被忽略"
+
+#: etTran.cpp:1284
+#, c-format
+msgid "'mdv' cannot be 0 when 'evid'=4 id: %s row: %d"
+msgstr "当“evid”=4时，“mdv” 不能为 0, id： %s, row： %d"
+
+#: etTran.cpp:1310
+#, c-format
+msgid "cannot have an infusion event with a replacement event (id: %s row: %d)"
+msgstr "\"替换(replacement)\"事件不能具有输注事件（id： %s, row： %d）"
+
+#: etTran.cpp:1317
+#, c-format
+msgid "cannot have an infusion event with a multiplication event (id: %s row: %d)"
+msgstr "\"倍数(multiplication)\"事件不能具有输注事件（id： %s, row： %d）"
+
+#: etTran.cpp:1328
+msgid "'rate' or 'dur' is ignored with classic Rxode2 'EVID's"
+msgstr "“rate”或“dur”在经典Rxode2 'EVID'中被忽略"
+
+#: etTran.cpp:1332
+msgid "'ss' is ignored with classic Rxode2 'EVID's"
+msgstr "“ss”在经典Rxode2 'EVID'中被忽略"
+
+#: etTran.cpp:1353
+#, c-format
+msgid "'ss' with 'addl' not supported (id: %s row: %d)"
+msgstr "不支持带有“addl”的“ss”（id： %s, row： %d）"
+
+#: etTran.cpp:1364
+#, c-format
+msgid "'amt' value NA or 0 for dose event (id: %s row: %d)"
+msgstr "给药事件的“amt”值为NA或为0（id： %s, row： %d）"
+
+#: etTran.cpp:1402
+#, c-format
+msgid "'amt' value NA for dose event; (id: %s, amt: %f, evid: %d Rxode2 evid: %d, row: %d)"
+msgstr "给药事件的“amt”值为NA;(id: %s, amt: %f, evid: %d Rxode2 evid: %d, row: %d)"
+
+#: etTran.cpp:1480
+msgid "there are evid=3/4 records in an incorrectly sorted dataset, system is reset, but time is not reset"
+msgstr "数据集中存在错误排序的evid=3或4记录，系统已重置，但时间未重置"
+
+#: etTran.cpp:1537
+msgid "censoring missing 'DV' values do not make sense"
+msgstr "删失缺失的“DV”值没有意义"
+
+#: etTran.cpp:1590
+msgid "no rows in event table or input data"
+msgstr "事件表或输入数据中没有数据行"
+
+#: etTran.cpp:1612
+msgid "empty data"
+msgstr "空数据"
+
+#: etTran.cpp:1628
+msgid "while censoring is included in dataset, no observations are censored"
+msgstr "虽然数据集中包含删失，但不会对任何观测值进行删失"
+
+#: etTran.cpp:1632
+msgid "'dv' and 'limit' swapped since 'limit' > 'dv'"
+msgstr "“dv”和“limit”交换，因为“limit”>“dv”"
+
+#: etTran.cpp:1753
+msgid "number of individuals not calculated correctly"
+msgstr "个体数量没有被计算正确"
+
+#: etTran.cpp:1908
+msgid "corrupted event table"
+msgstr "事件表已损坏"
+
+#: etTran.cpp:2022
+msgid "\n"
+"with negative times, compartments initialize at first negative observed time\n"
+"with positive times, compartments initialize at time zero\n"
+"use 'rxSetIni0(FALSE)' to initialize at first observed time\n"
+"this warning is displayed once per session"
+msgstr "\n"
+"当时间为负数时，房室在第一次负数的观察时间初始化\n"
+"当时间为正数时，房室在时间0初始化\n"
+"使用'rxSetIni0(FALSE)'，在第一次观测的时间初始化\n"
+"此警告在每个会话中显示一次"
+
+#: expandGrid.cpp:73
+msgid "unanticipated input for rxExpandGrid_"
+msgstr "意料之外的rxExpandGrid_输入"
+
+#: expm.cpp:211
+msgid "requested tolerance is too high"
+msgstr "请求的公差(tolerance)太高"
+
+#: expm.cpp:410
+#, c-format
+msgid "unsupported indLin code: %d"
+msgstr "不支持的indLin代码： %d"
+
+#: forder.cpp:62
+#, c-format
+msgid "ignoring invalid %s==\"%s\"\n"
+" not an integer >= 1\n"
+"remove any characters that are not a digit [0-9]\n"
+" See ?Rxode2::setDTthreads"
+msgstr "忽略无效的 %s==“%s”\n"
+"不是一个整数 >= 1\n"
+"删除任何不是数字[0-9]的字符\n"
+"请参阅?Rxode2::setDTthreads"
+
+#: forder.cpp:88
+#, c-format
+msgid "ignoring invalid RXODE2_NUM_PROCS_PERCENT==%d.\n"
+"If used it must be an integer between 2 and 100. Default is 50. See ?rxSetThreads"
+msgstr "忽略无效的RXODE2_NUM_PROCS_PERCENT==%d。\n"
+"如果使用，它必须是介于 2 和 100 之间的整数。默认值为 50。请参阅?rxSetThreads"
+
+#: forder.cpp:124
+msgid "'verbose' must be TRUE or FALSE"
+msgstr "“verbose”必须为逻辑值真(TRUE)或假(FALSE)"
+
+#: forder.cpp:127
+msgid "This installation of data.table has not been compiled with OpenMP support.\n"
+msgstr "此data.table安装没有在OpenMP支持下编译。\n"
+
+#: forder.cpp:132
+#, c-format
+msgid "  omp_get_num_procs()            %d\n"
+msgstr "  omp_get_num_procs() %d\n"
+
+#: forder.cpp:133
+#, c-format
+msgid "  RXODE2_NUM_PROCS_PERCENT  %s\n"
+msgstr "  RXODE2_NUM_PROCS_PERCENT %s\n"
+
+#: forder.cpp:134
+#, c-format
+msgid "  RXODE2_NUM_THREADS        %s\n"
+msgstr "  RXODE2_NUM_THREADS %s\n"
+
+#: forder.cpp:135
+#, c-format
+msgid "  RXODE2_THROTTLE           %s\n"
+msgstr "  RXODE2_THROTTLE %s\n"
+
+#: forder.cpp:136
+#, c-format
+msgid "  omp_get_thread_limit()         %d\n"
+msgstr "  omp_get_thread_limit() %d\n"
+
+#: forder.cpp:137
+#, c-format
+msgid "  omp_get_max_threads()          %d\n"
+msgstr "  omp_get_max_threads() %d\n"
+
+#: forder.cpp:138
+#, c-format
+msgid "  OMP_THREAD_LIMIT               %s\n"
+msgstr "  OMP_THREAD_LIMIT %s\n"
+
+#: forder.cpp:139
+#, c-format
+msgid "  OMP_NUM_THREADS                %s\n"
+msgstr "  OMP_NUM_THREADS %s\n"
+
+#: forder.cpp:141
+#, c-format
+msgid "  Rxode2 is using %d threads with throttle==%d. See ?setRxthreads.\n"
+msgstr "  Rxode2 正在使用%d个线程和throttle==%d。请参阅?setRxthreads。\n"
+
+#: forder.cpp:149
+msgid "'throttle' must be a single number, non-NA, and >=1"
+msgstr "“throttle”必须是单个数字，非NA且 >=1"
+
+#: forder.cpp:163
+msgid "threads= must be either NULL or a single number >= 0 See ?setRxthreads"
+msgstr "threads=必须是NULL或单个>=0的数字。请参阅?setRxthreads"
+
+#: forder.cpp:167
+msgid "internal error: percent= must be TRUE or FALSE at C level"
+msgstr "内部错误：percent(百分比)= 在C级别必须为TRUE或FALSE"
+
+#: forder.cpp:170
+#, c-format
+msgid "internal error: threads==%d should be between 2 and 100 (percent=TRUE at C level)"
+msgstr "内部错误：threads==%d 应介于 2 和 100 之间（C 级别的percent(百分比)=TRUE）"
+
+#: intdy.c:50
+#, c-format
+msgid "[intdy] k = %d illegal\n"
+msgstr "[intdy] k = %d 非法\n"
+
+#: intdy.c:55
+#, c-format
+msgid "intdy -- t = %g illegal. t not in interval tcur - _rxC(hu) to tcur\n"
+msgstr "intdy -- t = %g 非法。t没有在tcur - _rxC（hu）到tcur的间隔中\n"
+
+#: lincmt.c:39 lincmt.c:46
+msgid "could not find a start to the infusion"
+msgstr "找不到输注的开始"
+
+#: lincmt.c:51 lincmt.c:58
+msgid "could not find an end to the infusion"
+msgstr "找不到输注的终止"
+
+#: lincmt.c:200
+msgid "solve data is not loaded"
+msgstr "求解数据未加载"
+
+#: lincmt.c:1879
+msgid "not an integer/real"
+msgstr "不是整数/实数"
+
+#: lincmt.c:1897 lincmt.c:2007 lincmt.c:2179
+msgid "The dimensions of the parameters must match"
+msgstr "参数的维数必须匹配"
+
+#: lincmt.c:2394
+msgid "'ncmt' needs to be 1-3"
+msgstr "“ncmt”需要为 1~3"
+
+#: lincmt.c:2397
+msgid "'inp' needs to be list/data frame"
+msgstr "“inp”需要是\"列表(list)\"/\"数据框(data frame)\"类型"
+
+#: lincmtB.cpp:181
+#, c-format
+msgid "invalid trans (2 cmt trans %d)\n"
+msgstr "无效的\"trans(参数化方式)\"（2 cmt trans %d）\n"
+
+#: lsoda.c:221
+#, c-format
+msgid "[lsoda] illegal itask = %d\n"
+msgstr "[lsoda]非法itask = %d\n"
+
+#: lsoda.c:226
+#, c-format
+msgid "[lsoda] ixpr = %d is illegal\n"
+msgstr "[lsoda] ixpr = %d是非法的\n"
+
+#: lsoda.c:230
+msgid "[lsoda] mxstep < 0\n"
+msgstr "[lsoda]mxstep< 0\n"
+
+#: lsoda.c:235
+msgid "[lsoda] mxhnil < 0\n"
+msgstr "[lsoda] mxhnil < 0\n"
+
+#: lsoda.c:240
+#, c-format
+msgid "[lsoda] mxordn = %d is less than 0\n"
+msgstr "[lsoda] mxordn = %d小于0\n"
+
+#: lsoda.c:246
+#, c-format
+msgid "[lsoda] mxords = %d is less than 0\n"
+msgstr "[lsoda] mxords = %d小于0\n"
+
+#: lsoda.c:253
+msgid "[lsoda] hmax < 0.\n"
+msgstr "[lsoda] hmax < 0.\n"
+
+#: lsoda.c:260
+msgid "[lsoda] hmin < 0.\n"
+msgstr "[lsoda] hmin < 0.\n"
+
+#: lsoda.c:490
+#, c-format
+msgid "unhandled error message: %s\n"
+msgstr "未处理的错误消息： %s\n"
+
+#: lsoda.c:768
+#, c-format
+msgid "lsoda -- warning..internal t = %g and _rxC(h) = %g are\n"
+msgstr "lsoda -- 警告..内部 t = %g 和 _rxC（h） = %g 是\n"
+
+#: lsoda.c:769
+msgid "         such that in the machine, t + _rxC(h) = t on the next step\n"
+msgstr "         这样在机器中，下一步的t _rxC（h） = t\n"
+
+#: lsoda.c:770
+msgid "         solver will continue anyway.\n"
+msgstr "         无论如何，求解器将继续。\n"
+
+#: lsoda.c:772
+#, c-format
+msgid "lsoda -- above warning has been issued %d times,\n"
+msgstr "lsoda -- 以上警告已发出 %d 次，\n"
+
+#: lsoda.c:773
+msgid "         it will not be issued again for this problem\n"
+msgstr "         不会因此问题再次发出\n"
+
+#: lsoda.c:805
+msgid "[lsoda] a switch to the stiff method has occurred "
+msgstr "[LSODA] 已切换到刚性方法 "
+
+#: lsoda.c:807
+msgid "[lsoda] a switch to the nonstiff method has occurred"
+msgstr "[LSODA] 已切换到非刚性方法"
+
+#: lsoda.c:808
+#, c-format
+msgid "at t = %g, tentative step size _rxC(h) = %g, step _rxC(nst) = %d\n"
+msgstr "在 t = %g 时，暂定步长 _rxC（h） = %g，步长 _rxC（nst） = %d\n"
+
+#: par_solve.cpp:2729
+msgid "'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"
+msgstr "'alag（.）'/'rate（.）'/'dur（.）' 不能依赖于状态值"
+
+#: par_solve.cpp:2733
+msgid "could not solve the system"
+msgstr "无法求解系统"
+
+#: par_solve.cpp:2735
+msgid "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
+msgstr "某些 ID 无法正确求解常微分方程;这些值将替换为“NA”"
+
+#: par_solve.cpp:2807
+#, c-format
+msgid "one or more covariates were all 'NA' for subject 'id=%d'"
+msgstr "一个或多个协变量都是“NA”，受试者“id=%d”"
+
+#: par_solve.cpp:3230
+#, c-format
+msgid "dose to compartment %d ignored (not in system; 'id=%d')"
+msgstr "忽略房室 %d 的给药（不在系统中;'id=%d'）"
+
+#: parseLinCmt.c:39
+msgid " with first order absorption\n"
+msgstr " 具有一阶速率吸收\n"
+
+#: prja.c:42
+msgid "[prja] _rxC(miter) != 2\n"
+msgstr "[prja] _rxC(miter) != 2\n"
+
+#: rxData.cpp:296
+msgid "column(s) in 'drop' were not in solved data"
+msgstr "“drop(丢弃)”中的列不在已求解的数据中"
+
+#: rxData.cpp:444
+#, c-format
+msgid "refusing to simulate %d items"
+msgstr "拒绝模拟 %d 项"
+
+#: rxData.cpp:451
+msgid "matrix must be a square matrix"
+msgstr "矩阵必须是方阵"
+
+#: rxData.cpp:459
+msgid "matrix must have named dimensions (try 'lotri')"
+msgstr "矩阵必须具有命名的维度（尝试“lotri”）"
+
+#: rxData.cpp:491
+msgid "lower bounds needs to be a named vector, a single value or exactly the same size"
+msgstr "下限需要是命名向量、单个值或完全相同的大小"
+
+#: rxData.cpp:511
+msgid "upper bounds needs to be a named vector, a single value or exactly the same size"
+msgstr "上限必须是命名向量、单个值或完全相同的大小"
+
+#: rxData.cpp:527
+msgid "t distribution not yet supported"
+msgstr "尚不支持t分布"
+
+#: rxData.cpp:807
+msgid "cannot figure out the model variables"
+msgstr "无法计算出模型变量"
+
+#: rxData.cpp:837 rxData.cpp:855
+msgid "class:\t"
+msgstr "class:\t"
+
+#: rxData.cpp:843 rxData.cpp:861
+msgid "need an Rxode2-type object to extract model variables"
+msgstr "需要一个 Rxode2 类型的对象来提取模型变量"
+
+#: rxData.cpp:851
+msgid "a NULL object does not have any Rxode2 model variables"
+msgstr "一个NULL对象没有任何 Rxode2 模型变量"
+
+#: rxData.cpp:896
+msgid "can only lookup one state at a time"
+msgstr "一次只能查找一个状态"
+
+#: rxData.cpp:899
+msgid "only one state variable should be input"
+msgstr "只应输入一个状态变量"
+
+#: rxData.cpp:909
+#, c-format
+msgid "cannot locate compartment \"%s\""
+msgstr "找不到区间“%s”"
+
+#: rxData.cpp:1148
+msgid "only one estimate per named list item; use 'list(x=1)' instead of 'list(x=1:2)'"
+msgstr "每个命名\"list(列表)\"项只有一个估计值;使用“'list(x=1)”而不是“'list(x=1:2)”"
+
+#: rxData.cpp:1155
+msgid "incompatible initial estimate"
+msgstr "不能共存的初始估计"
+
+#: rxData.cpp:1210
+#, c-format
+msgid "trying to scale the same compartment by 'scale=c(%s=%f,...)' and 'S%d=%f' choose one"
+msgstr "尝试\"缩放(scale)\"相同房室通过“scale=c（%s=%f,...）”和“S%d=%f”选择一个"
+
+#: rxData.cpp:1221
+#, c-format
+msgid "trying to scale the same compartment by 'scale=c(%s=%f,...)' and 's%d=%f' choose one"
+msgstr "尝试\"缩放(scale)\"相同房室通过“scale=c（%s=%f,...）”和“s%d=%f”选择一个"
+
+#: rxData.cpp:1245
+msgid "scaled a compartment that is not defined by the Rxode2 model"
+msgstr "\"缩放(scale)\"了未由 Rxode2 模型定义的房室"
+
+#: rxData.cpp:1374
+msgid "could not allocate memory for solving parameters"
+msgstr "无法为求解参数分配内存"
+
+#: rxData.cpp:1418
+msgid "memory for residual errors could not be allocated"
+msgstr "无为法残差分配内存"
+
+#: rxData.cpp:1425
+msgid "cannot allocate memory to simulate the residuals"
+msgstr "无法分配内存用于模拟残差"
+
+#: rxData.cpp:1484
+msgid "'thetaMat' must be a named matrix"
+msgstr "“thetaMat”必须是已命名的矩阵"
+
+#: rxData.cpp:1492 rxData.cpp:2868
+msgid "'thetaMat' must be symmetric"
+msgstr "“thetaMat”必须是对称的"
+
+#: rxData.cpp:1513
+msgid "'thetaMat' is ignored since nStud <= 1"
+msgstr "'thetaMat' 被忽略，因为 nStud <= 1"
+
+#: rxData.cpp:1553
+#, c-format
+msgid "parameter '%s' was not simulated in 'thetaMat'"
+msgstr "参数 '%s' 未在 'thetaMat' 中模拟"
+
+#: rxData.cpp:1562
+#, c-format
+msgid "'%s' must be a named matrix"
+msgstr "'%s' 必须是已命名的矩阵"
+
+#: rxData.cpp:1572
+#, c-format
+msgid "'%s' must be symmetric"
+msgstr "'%s' 必须是对称的"
+
+#: rxData.cpp:1692
+msgid "requires 'params'"
+msgstr "需要“params(参数)”"
+
+#: rxData.cpp:1697
+msgid "'params' must be a named vector"
+msgstr "“params(参数)”必须是一个已命名的向量"
+
+#: rxData.cpp:1718
+msgid "multi-subject simulation without without 'omega'"
+msgstr "多个体模拟时缺少'omega'"
+
+#: rxData.cpp:2069
+msgid "ran out of memory during 'updateSolveEnvPost'"
+msgstr "在“updateSolveEnvPost”期间内存不足"
+
+#: rxData.cpp:2399
+msgid "No additional parameters were specified, returning original object"
+msgstr "未指定其他参数，返回原始对象"
+
+#: rxData.cpp:2478
+msgid "can not update object"
+msgstr "无法更新对象"
+
+#: rxData.cpp:2525
+msgid "'from' must be of length 1"
+msgstr "“from”的长度必须为 1"
+
+#: rxData.cpp:2533
+msgid "'to' must be of length 1"
+msgstr "“to”的长度必须为 1"
+
+#: rxData.cpp:2543
+msgid "'by' must be of length 1"
+msgstr "“by”的长度必须为 1"
+
+#: rxData.cpp:2551
+msgid "'length.out' must be of length 1"
+msgstr "“length.out”的长度必须为 1"
+
+#: rxData.cpp:2557
+msgid "cannot use both 'by' and 'length.out' for Rxode2 simulations"
+msgstr "不能同时使用“by”和“length.out”进行Rxode2模拟"
+
+#: rxData.cpp:2654
+msgid "Rxode2 only supports 500 factors"
+msgstr "Rxode2 仅支持 500 个因子"
+
+#: rxData.cpp:2797
+msgid "when specifying 'thetaMat', 'omega', or 'sigma' the parameters cannot be a 'data.frame'/'matrix'."
+msgstr "当指定“thetaMat”、“omega”或“sigma”时，参数不能是“data.frame”/“matrix”。"
+
+#: rxData.cpp:2920 rxData.cpp:2943 rxData.cpp:2952
+msgid "if parameters are not named, they must match the order and size of the parameters in the model"
+msgstr "如果未命名参数，则它们必须与模型中参数的顺序和大小匹配"
+
+#: rxData.cpp:3030
+msgid "can not allocate enough memory to load 'evid'"
+msgstr "无法分配足够的内存来加载“evid”"
+
+#: rxData.cpp:3074
+msgid "nothing to solve"
+msgstr "没有什么可求解的"
+
+#: rxData.cpp:3128
+msgid "can not allocate memory for the covariates"
+msgstr "无法为协变量分配内存"
+
+#: rxData.cpp:3215
+msgid "data must be ordered by 'ID' and 'TIME' variables"
+msgstr "数据必须按“ID”和“TIME”变量排序"
+
+#: rxData.cpp:3285
+msgid "cannot allocate enough memory to sort input parameters"
+msgstr "无法分配足够的内存来对输入参数进行排序"
+
+#: rxData.cpp:3416
+msgid "'resample' must be NULL or a character vector"
+msgstr "“resample”(重采样)必须为 NULL 或字符向量"
+
+#: rxData.cpp:3525
+msgid "nPopPar != 1 but parameters are specified as a NumericVector"
+msgstr "nPopPar != 1，但参数被指定为数字向量"
+
+#: rxData.cpp:3636
+msgid "Something is wrong"
+msgstr "有点不对劲"
+
+#: rxData.cpp:3699
+msgid "aborted solve"
+msgstr "中止求解"
+
+#: rxData.cpp:3723
+#, c-format
+msgid "exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"
+msgstr "在%d次迭代后至少一段时间退出，(增加' rxSolve(…,maxwhile = #)”)"
+
+#: rxData.cpp:4066
+msgid "zero 'thetaMat' specified, no uncertainty in fixed effects"
+msgstr "“thetaMat”指定为零，固定效应没有不确定性"
+
+#: rxData.cpp:4069
+msgid "zero 'omega', no variability from random-effects"
+msgstr "“omega”指定为零，没有来自于随即效应的变异"
+
+#: rxData.cpp:4072
+msgid "zero 'sigma', no unexplained variability"
+msgstr "“sigma”指定为零，没有不确定性"
+
+#: rxData.cpp:4090
+msgid "dropped key column, returning data.frame instead of special solved data.frame"
+msgstr "丢弃的键列，返回data.frame而不是特殊已求解的data.frame"
+
+#: rxData.cpp:4285
+msgid "control list not setup correctly"
+msgstr "控制列表设置不正确"
+
+#: rxData.cpp:4348
+msgid "cannot solve without event information"
+msgstr "没有事件信息无法求解"
+
+#: rxData.cpp:4358
+msgid "cannot update this object"
+msgstr "无法更新此对象"
+
+#: rxData.cpp:4414
+msgid "cannot load Rxode2 dlls for this model"
+msgstr "无法加载此模型的 Rxode2 dll"
+
+#: rxData.cpp:4467
+msgid "thread safe method, but results may depend on system/load, using 1 core (can change with `cores=`)"
+msgstr "线程安全方法，但结果可能取决于系统/负载，使用 1 个内核（可以使用“cores=”修改）"
+
+#: rxData.cpp:4478 rxData.cpp:4495
+msgid "not thread safe method, using 1 core"
+msgstr "非线程安全方法，使用 1 个内核"
+
+#: rxData.cpp:4487
+msgid "thread safe method, but results may depend on system/load"
+msgstr "线程安全方法，但结果可能取决于系统/负载"
+
+#: rxData.cpp:4551
+msgid "'infSSstep' needs to be positive"
+msgstr "“infSSstep”需要是正数"
+
+#: rxData.cpp:4599
+msgid "assumed transit compartment model since 'podo' is in the model"
+msgstr "假设是转移室模型，因为“podo”在模型中"
+
+#: rxData.cpp:4635
+msgid "unknown covariate interpolation specified"
+msgstr "未知的协变量插值指定"
+
+#: rxData.cpp:4726
+#, c-format
+msgid "number of parameters (%d) solved by Rxode2 for multi-subject data needs to be a multiple of the number of subjects (%d)"
+msgstr "用于多个体数据通过Rxode2已求解的参数数量（%d），应是多个体量的倍数"
+
+#: rxData.cpp:4844
+msgid "could not allocate enough memory for solving"
+msgstr "无法分配足够的内存用于求解"
+
+#: rxData.cpp:5237
+msgid "cannot update nonexistent parameters"
+msgstr "无法更新不存在的参数"
+
+#: rxData.cpp:5492
+msgid "Can not figure out the Rxode2 object"
+msgstr "无法找出 Rxode2 对象"
+
+#: rxData.cpp:5597 rxData.cpp:5640
+msgid "can not figure out the DLL for this object"
+msgstr "无法找出此对象的 DLL"
+
+#: rxData.cpp:5828
+msgid "package-based models cannot be unloaded"
+msgstr "无法\"卸载(unloaded)\"基于包的模型"
+
+#: rxData.cpp:5875
+msgid "package-based models cannot be deleted"
+msgstr "无法删除基于包的模型"
+
+#: rxInv.cpp:34
+msgid "matrix seems singular; Using pseudo-inverse\n"
+msgstr "矩阵似乎是单数;使用伪逆矩阵\n"
+
+#: rxInv.cpp:55 rxInv.cpp:59
+msgid "can not invert in 'rxToCholOmega'"
+msgstr "不能在“rxToCholOmega”中反转"
+
+#: rxInv.cpp:126
+msgid "theta number must be positive for 'd(omegaInv)'"
+msgstr "theta数量必须为'd(omegaInv)'的正数"
+
+#: rxInv.cpp:130
+msgid "theta number must be positive for 'd(D)'"
+msgstr "theta数量必须为''d(D)'的正数"
+
+#: rxInv.cpp:163
+msgid "error in 'rxSymInvCholEnvCalculate' environment"
+msgstr "“rxSymInvCholEnvCalculate”环境中的报错"
+
+#: rxInv.cpp:176
+msgid "theta for omega calculations not setup yet"
+msgstr "用于omega计算的theta尚未设置"
+
+#: rxInv.cpp:274
+#, c-format
+msgid "theta has to have %d elements"
+msgstr "theta必须有 %d 个元素"
+
+#: rxInv.cpp:277
+msgid "Can only assign 'theta' in this environment"
+msgstr "只能在此环境中分配“theta”"
+
+#: sbuf.c:165
+#, c-format
+msgid "encoding error in 'addLine' format: '%s' n: %d; errno: %d"
+msgstr "“addLine”格式的编码错误：“%s”n：%d;errno： %d"
+
+#: threefry.cpp:46 threefry.cpp:118 threefry.cpp:701
+msgid "n should be a positive integer"
+msgstr "n 应为正整数"
+
+#: threefry.cpp:47 threefry.cpp:119 threefry.cpp:626 threefry.cpp:702
+msgid "'ncores' has to be greater than one"
+msgstr "“ncores”必须大于 1"
+
+#: threefry.cpp:480
+#, c-format
+msgid "dimension wrong in 'gradpsi' (d=%d)"
+msgstr "“gradpsi”（d=%d）中的维度数错误"
+
+#: threefry.cpp:582
+msgid "covariance matrix is ill-conditioned and method failed (truncated mvn)"
+msgstr "协方差矩阵\"病态(ill-conditioned)\"且方法失败（截断多元正太分布）"
+
+#: threefry.cpp:628
+msgid "'lower' and 'upper' must have the same number of elements."
+msgstr "“下”和“上”必须具有相同数量的元素。"
+
+#: threefry.cpp:629
+msgid "'sigma' must be a square matrix with the same dimension as 'upper' and 'lower'"
+msgstr "“sigma”必须是与“上”和“下”维度相同的方阵"
+
+#: threefry.cpp:631
+msgid "'lower' is bigger than 'upper' for at least one item"
+msgstr "至少一项的“较低”大于“较高”"
+
+#: threefry.cpp:641
+msgid "truncated multivariate normal may fail as covariance matrix is singular"
+msgstr "截断的多元正态可能会失败，因为协方差矩阵是奇异的"
+
+#: threefry.cpp:678
+msgid "acceptance probability smaller than 0.001"
+msgstr "接受概率小于 0.001"
+
+#: threefry.cpp:681
+msgid "could not sample from truncated normal"
+msgstr "无法从截断正态采样"
+
+#: threefry.cpp:683
+#, c-format
+msgid "sample of size %d which is smaller than requested 'n' returned"
+msgstr "返回的样本量 %d 小于请求的“n”"
+
+#: threefry.cpp:1447
+msgid "when 'sigma' is a list, it has to have at least 1 element"
+msgstr "当“sigma”是一个列表时，它必须至少有 1 个元素"
+
+#: threefry.cpp:1450
+msgid "'sigma' must be a list of square symmetric matrices"
+msgstr "“sigma”必须是包含有对称方阵的\"列表(list)\""
+
+#: threefry.cpp:1461
+#, c-format
+msgid "'sigma' list element %d does not match dimension of first matrix"
+msgstr "“sigma”列表元素 %d 与第一个矩阵的维度数不匹配"
+
+#: threefry.cpp:1499
+msgid "'mu' length must match 'sigma' dimensions"
+msgstr "“mu”长度必须与“sigma”维度数匹配"
+
+#: threefry.cpp:1649
+msgid "'prob' function should return a vector the same length as the input"
+msgstr "“prob”函数应返回与输入长度相同的向量"
+
+#: utilc.c:60 utilc.c:88
+msgid "'n' must be greater than 0"
+msgstr "“n”必须大于 0"
+
+#: utilc.c:178
+msgid "'phi' requires numeric values"
+msgstr "“phi”需要是数值"
+
+#: utilc.c:201 utilc.c:256 utilc.c:311 utilc.c:366 utilc.c:423 utilc.c:479
+#: utilc.c:535 utilc.c:593 utilc.c:655
+msgid "'a' needs to be a number"
+msgstr "“a”需要是一个数字"
+
+#: utilc.c:209 utilc.c:264 utilc.c:319 utilc.c:374 utilc.c:431 utilc.c:487
+#: utilc.c:543 utilc.c:601 utilc.c:663
+msgid "'z' needs to be a number"
+msgstr "“z”需要是一个数字"
+
+#: utilc.c:233 utilc.c:288 utilc.c:343 utilc.c:399 utilc.c:456 utilc.c:512
+#: utilc.c:568 utilc.c:629 utilc.c:691
+msgid "inconsistent sizes"
+msgstr "不一致的大小"
+
+#: utilc.c:719 utilc.c:729 utilc.c:772 utilc.c:782 utilc.c:825 utilc.c:835
+#: utilc.c:879 utilc.c:889
+msgid "'low' must be a numeric of length 1"
+msgstr "“low”必须是长度为 1 的数字"
+
+#: utilc.c:722 utilc.c:736 utilc.c:775 utilc.c:789 utilc.c:828 utilc.c:842
+#: utilc.c:882 utilc.c:896
+msgid "'high' must be a numeric of length 1"
+msgstr "“high”必须是长度为 1 的数字"
+
+#: utilc.c:739 utilc.c:792 utilc.c:845 utilc.c:899
+msgid "'high' must be greater than 'low'"
+msgstr "“high”必须大于“low”"
+
