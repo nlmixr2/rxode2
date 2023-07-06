@@ -9,10 +9,10 @@ rxTest({
   })
 
   mod2 <- rxode2({
-    a <- 0.4
+    a <- 6
     b <- 0.6
     d / dt(intestine) <- -a * intestine
-    lag(intestine) <- 1
+    lag(intestine) <- 2
     d / dt(blood) <- a * intestine - b * blood
   })
 
@@ -37,6 +37,7 @@ rxTest({
   ms <- c("liblsoda", "lsoda", "dop853")
   for (m in ms) {
     skip_if_not_installed("units")
+    
     obs <- units::set_units(seq(0, 10, by = 1 / 24), "days")
 
     et <- eventTable(time.units = "days")
