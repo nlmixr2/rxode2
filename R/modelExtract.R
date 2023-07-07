@@ -145,6 +145,12 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
                .cur <- get(.curChar)
              }
            }
+           if (is.call(.cur) && identical(.cur[[1]], quote(`$`))) {
+             .tmp <- try(eval(.cur), silent=TRUE)
+             if (!inherits(.tmp, "try-error")) {
+               .cur <- .tmp
+             }
+           }
            if (inherits(.cur, "character")) {
              .cur <- str2lang(.cur)
            }
