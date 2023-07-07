@@ -94,6 +94,4 @@ test_that("modelExtract and related functions", {
   expect_equal(modelExtract(mod, "v", expression=FALSE, endpoint=FALSE),
                "v = exp(tv + eta.v)")
 
-  
-
 })
