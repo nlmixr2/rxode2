@@ -401,11 +401,11 @@ must be setup specially to use this solving routine.</p></li>
 solving requests.  When specified this controls the relative and
 absolute tolerances of the ODE solvers.  By default the tolerance
 is <code>0.5*10^(-sigdig-2)</code> for regular ODEs. For the
-sensitivity equations the default is <code>0.5*10^(-sigdig-1.5)</code>
+sensitivity equations the default is <code>0.5*10\^(-sigdig-1.5)</code>
 (sensitivity changes only applicable for liblsoda).  This also
 controls the <code>atol</code>/<code>rtol</code> of the steady state solutions. The
-<code>ssAtol</code>/<code>ssRtol</code> is <code>0.5*10^(-sigdig)</code> and for the sensitivities
-<code>0.5*10^(-sigdig+0.625)</code>.  By default
+<code>ssAtol</code>/<code>ssRtol</code> is <code>0.5*10\^(-sigdig)</code> and for the sensitivities
+<code>0.5*10\^(-sigdig+0.625)</code>.  By default
 this is unspecified (<code>NULL</code>) and uses the standard <code>atol</code>/<code>rtol</code>.</p></dd>
 
 
@@ -565,11 +565,11 @@ simulates the variance that are directly modeled by the
 simulates <code>log(sd)</code></p></li>
 <li><p><code>nlmixrSqrt</code> This is when the <code>params</code> and
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix
-with the <code>x^2</code> modeled along the diagonal.  This only works
+with the <code>x\^2</code> modeled along the diagonal.  This only works
 with a diagonal matrix.</p></li>
 <li><p><code>nlmixrLog</code> This is when the <code>params</code> and
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix
-with the <code>exp(x^2)</code> along the diagonal.  This only works
+with the <code>exp(x\^2)</code> along the diagonal.  This only works
 with a diagonal matrix.</p></li>
 <li><p><code>nlmixrIdentity</code> This is when the <code>params</code> and
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix.
@@ -710,11 +710,11 @@ simulates the variance that are directly modeled by the
 simulates <code>log(sd)</code></p></li>
 <li><p><code>nlmixrSqrt</code> This is when the <code>params</code> and
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix
-with the <code>x^2</code> modeled along the diagonal.  This only works
+with the <code>x\^2</code> modeled along the diagonal.  This only works
 with a diagonal matrix.</p></li>
 <li><p><code>nlmixrLog</code> This is when the <code>params</code> and
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix
-with the <code>exp(x^2)</code> along the diagonal.  This only works
+with the <code>exp(x\^2)</code> along the diagonal.  This only works
 with a diagonal matrix.</p></li>
 <li><p><code>nlmixrIdentity</code> This is when the <code>params</code> and
 <code>thetaMat</code> simulates the inverse cholesky decomposed matrix.
