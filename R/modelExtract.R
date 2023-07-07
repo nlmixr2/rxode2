@@ -133,7 +133,7 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @return list of expressions
 #' @noRd
 #' @author Matthew L. Fidler
-.quoteCallVars <- function(callInfo, ..., envir=envir) {
+.quoteCallVars <- function(callInfo, ..., envir=parent.frame()) {
   if (length(callInfo) == 0L) return(NULL)
   lapply(seq_along(callInfo),
          function(i) {
