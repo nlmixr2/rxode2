@@ -287,6 +287,14 @@
             identical(.quoted[[3]], quote(`unfix`))) {
         .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
       }
+    } else if (identical(.quoted[[1]], quote(`$`))) {
+      .tmp <- try(eval(.quoted), silent=TRUE)
+      if (!inherits(.tmp, "try-error")) {
+        .quoted <- .tmp
+        if (inherits(.quoted, "character")) {
+          .quoted <- str2lang(.quoted)
+        }
+      }
     }
     .quoted
   })

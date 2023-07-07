@@ -6,6 +6,24 @@ testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
 
 
 rxTest({
+
+  test_that("nse evaluation", {
+
+    tmp <- "d/dt(depot)"
+    expect_equal(testPipeQuote(tmp),
+                 list(quote(d/dt(depot))))
+
+    tmp <- list(tmp="d/dt(depot)")
+
+    expect_equal(testPipeQuote(tmp$tmp),
+                 list(quote(d/dt(depot))))
+
+    tmp <- list(tmp=list(tmp="d/dt(depot)"))
+
+    expect_equal(testPipeQuote(tmp$tmp$tmp),
+                 list(quote(d/dt(depot))))
+  })
+
   test_that("test fix/unfix for eta", {
     expect_equal(testPipeQuote(a~fix),
                  list(quote(a<-fix)))
@@ -1704,7 +1722,7 @@ test_that("piping with append=lhs", {
   expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
 
   test_that("piping ui functions", {
-    
+
     m1 <- function() {
       ini({
         tka <- 0.463613555325211
@@ -1845,7 +1863,7 @@ test_that("piping with append=lhs", {
                  list())
 
     expect_equal(testPipeQuote(m1, iniDf=m6$iniDf),
-                 list())    
+                 list())
   })
   test_that("model piping that shares err parameter#427", {
     u <- function() {
