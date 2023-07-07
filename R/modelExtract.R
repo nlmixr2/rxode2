@@ -59,7 +59,12 @@
 #'
 #'  modelExtract(one.compartment, d/dt(depot))
 #'
-#' modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
+#'  # from variable
+#'  var <- "d/dt(depot)"
+#'
+#'  modelExtract(one.compartment, var)
+#'
+#'  modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
 #'
 modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
   checkmate::assertLogical(expression, any.missing=FALSE, len=1)
@@ -134,6 +139,12 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
          function(i) {
            .name <- names(callInfo)[i]
            .cur <- callInfo[[i]]
+           if (is.name(.cur)) {
+             .curChar <- as.character(.cur)
+             if (exists(.curChar)) {
+               .cur <- get(.curChar)
+             }
+           }
            if (inherits(.cur, "character")) {
              .cur <- str2lang(.cur)
            }
