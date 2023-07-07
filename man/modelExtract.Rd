@@ -122,7 +122,12 @@ one.compartment <- function() {
 
  modelExtract(one.compartment, d/dt(depot))
 
-modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
+ # from variable
+ var <- "d/dt(depot)"
+
+ modelExtract(one.compartment, var)
+
+ modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
 
 }
 \author{
