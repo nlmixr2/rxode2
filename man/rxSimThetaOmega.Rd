@@ -91,11 +91,11 @@ simulates the variance that are directly modeled by the
 simulates \code{log(sd)}
 \item \code{nlmixrSqrt} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{x^2} modeled along the diagonal.  This only works
+with the \verb{x\\^2} modeled along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrLog} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{exp(x^2)} along the diagonal.  This only works
+with the \verb{exp(x\\^2)} along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrIdentity} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix.
@@ -176,11 +176,11 @@ simulates the variance that are directly modeled by the
 simulates \code{log(sd)}
 \item \code{nlmixrSqrt} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{x^2} modeled along the diagonal.  This only works
+with the \verb{x\\^2} modeled along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrLog} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{exp(x^2)} along the diagonal.  This only works
+with the \verb{exp(x\\^2)} along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrIdentity} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix.

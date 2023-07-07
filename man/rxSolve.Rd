@@ -250,11 +250,11 @@ must be setup specially to use this solving routine.
 solving requests.  When specified this controls the relative and
 absolute tolerances of the ODE solvers.  By default the tolerance
 is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
-sensitivity equations the default is \code{0.5*10^(-sigdig-1.5)}
+sensitivity equations the default is \verb{0.5*10\\^(-sigdig-1.5)}
 (sensitivity changes only applicable for liblsoda).  This also
 controls the \code{atol}/\code{rtol} of the steady state solutions. The
-\code{ssAtol}/\code{ssRtol} is \code{0.5*10^(-sigdig)} and for the sensitivities
-\code{0.5*10^(-sigdig+0.625)}.  By default
+\code{ssAtol}/\code{ssRtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
+\verb{0.5*10\\^(-sigdig+0.625)}.  By default
 this is unspecified (\code{NULL}) and uses the standard \code{atol}/\code{rtol}.}
 
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
@@ -379,11 +379,11 @@ simulates the variance that are directly modeled by the
 simulates \code{log(sd)}
 \item \code{nlmixrSqrt} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{x^2} modeled along the diagonal.  This only works
+with the \verb{x\\^2} modeled along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrLog} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{exp(x^2)} along the diagonal.  This only works
+with the \verb{exp(x\\^2)} along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrIdentity} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix.
@@ -501,11 +501,11 @@ simulates the variance that are directly modeled by the
 simulates \code{log(sd)}
 \item \code{nlmixrSqrt} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{x^2} modeled along the diagonal.  This only works
+with the \verb{x\\^2} modeled along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrLog} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{exp(x^2)} along the diagonal.  This only works
+with the \verb{exp(x\\^2)} along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrIdentity} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix.
