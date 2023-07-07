@@ -133,7 +133,7 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @return list of expressions
 #' @noRd
 #' @author Matthew L. Fidler
-.quoteCallVars <- function(callInfo) {
+.quoteCallVars <- function(callInfo, ...) {
   if (length(callInfo) == 0L) return(NULL)
   lapply(seq_along(callInfo),
          function(i) {
@@ -145,11 +145,17 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
                .cur <- get(.curChar)
              }
            }
-           if (is.call(.cur) && identical(.cur[[1]], quote(`$`))) {
-             .tmp <- try(eval(.cur), silent=TRUE)
-             if (!inherits(.tmp, "try-error")) {
-               .cur <- .tmp
-             }
+           if (is.list(.cur)) {
+             .tmp <- eval(.cur)
+             .tmp <- as.vector(.cur)
+             .tmp <- setNames(unlist(.tmp), NULL)
+             .cur <- .tmp
+           }
+           if (is.call(.cur) &&
+                 identical(.cur[[1]], quote(`$`))) {
+             .list <- list(...)
+             .tmp <- .list[[i]]
+             .cur <- .tmp
            }
            if (inherits(.cur, "character")) {
              .cur <- str2lang(.cur)
@@ -172,20 +178,20 @@ modelExtract <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, 
 #' @export
 #' @rdname modelExtract
 modelExtract.function <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
+  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ...)
   .ret <- rxode2(x)
   .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
 #' @rdname modelExtract
 modelExtract.rxUi <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
+  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ...)
   .modelExtractCommon(.modelLines, x, expression=expression, endpoint=endpoint, lines=lines)
 }
 #' @export
 #' @rdname modelExtract
 modelExtract.rxode2 <- function(x, ..., expression=FALSE, endpoint=FALSE, lines=FALSE, envir=parent.frame()) {
-  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)])
+  .modelLines <- .quoteCallVars(match.call(expand.dots = TRUE)[-(1:2)], ...)
   x <- as.function(x)
   .ret <- rxode2(x)
   .modelExtractCommon(.modelLines, .ret, expression=expression, endpoint=endpoint, lines=lines)
