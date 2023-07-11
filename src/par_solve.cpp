@@ -934,8 +934,9 @@ void handleSS(int *neq,
       if (isSsLag) {
         for (j = ind->ixds+3; j < ind->ndoses; j++) {
           if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds+2)) {
-            getWh(getEvid(ind, ind->idose[j]), &wh, &cmt, &wh100, &whI, &wh0);
-            if (whI == oldI && cmt == ind->cmt) {
+            int curEvid = getEvid(ind, ind->idose[j]);
+            getWh(curEvid, &wh, &cmt, &wh100, &whI, &wh0);
+            if (wh0 == EVID0_REGULAR && whI == oldI && cmt == ind->cmt) {
               dur = getTime_(ind->idose[j], ind) -
                 getTime_(ind->idose[ind->ixds+2], ind);
               dur2 = getIiNumber(ind, ind->ixds) - dur;
@@ -960,7 +961,6 @@ void handleSS(int *neq,
           }
         }        
       }
-
     } else if (ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
       // These are right next to another.
       infBixds = ind->ixds;
@@ -1118,6 +1118,14 @@ void handleSS(int *neq,
       }
     } else {
       if (dur >= getIiNumber(ind, ind->ixds)){
+        // in this case, the duration is greater than the inter-dose interval
+        // number of doses before infusions turn off:
+        double curIi = getIiNumber(ind, ind->ixds);
+        int numDoseInf = (int)(dur/curIi);
+        double offTime = dur- numDoseInf*curIi;
+        REprintf("dur: %f and %f; ninf: %d; offTime: %f\n",
+                 dur, getIiNumber(ind, ind->ixds),
+                 numDoseInf, offTime);
         ind->wrongSSDur=1;
         // Bad Solve => NA
         badSolveExit(*i);

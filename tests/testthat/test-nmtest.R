@@ -39,10 +39,11 @@ if (file.exists(test_path("test-nmtest.qs"))) {
     noLag <-  d[d$id == id & d$evid != 0,]$lagt == 0
     if (plot) {
       d <- d[d$id == id,]
-      print(ggplot(d, aes(time, cp)) +
-              geom_point(col="red") +
-              rxode2::rxTheme() +
-              ggtitle(paste0("id=", id)))
+      ## print(ggplot(d, aes(time, cp)) +
+      ##         geom_point(col="red") +
+      ##         rxode2::rxTheme() +
+      ##         ggtitle(paste0("id=", id)))
+      ## print(etTrans(d, fl))
       s1 <- rxSolve(fl, d[d$id == id,])
       print(plot(s1, cp) +
               geom_point(data=d[d$id == id, ], aes(x=time, y=cp), col="red") +
