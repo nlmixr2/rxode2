@@ -41,6 +41,7 @@ For modeled rate/duration infusion flags the on infusion flag must be followed b
 These number are concatenated together to form a full RxODE event ID, as shown in the following examples:
 
 ### Bolus Dose Examples
+
 *A 100 bolus dose to compartment #1 at time 0*
 
 | time | evid | amt |
@@ -113,16 +114,56 @@ Modeled duration with amount of 50
 
 Steady state dose to cmt 1
 
-| time | evid | amt |
-|------|------|-----|
-| 0    | 110  | 50  |
+| time | evid | amt | ii |
+|------|------|-----|----|
+| 0    | 110  | 50  | 24 |
 
 Steady State with super-positioning principle for am 50 and pm 100 dose
 
-| time | evid | amt |
-|------|------|-----|
-| 0    | 110  | 50  |
-| 12   | 120  | 100 |
+| time | evid | amt | ii |
+|------|------|-----|----|
+| 0    | 110  | 50  | 24 |
+| 12   | 120  | 100 | 24 |
+
+### Steady state with lagged dose for classic RxODE evid
+
+Steady state with lagged dose for a bolus dose:
+
+| time | evid | amt | ii |
+| 0    | 109  | 100 | 24 |
+| 0    | 101  | 100 | 0  |
+
+The event 109 calculates the trough amount after the steady state has
+passed by (ii-lag_time) while event `101` applies the next steady
+state dose.
+
+Steady state (=2) with a lagged bolus dose
+
+
+| time | evid | amt | ii |
+|------|------|-----|----|
+| 0    | 109  | 50  | 24 |
+| 0    | 101  | 50  |    |
+| 12   | 119  | 100 | 24 |
+| 12   | 101  | 100 |    |
+
+
+Steady state infusion with lag time
+
+| time | evid  | amt | ii |
+| 0    | 10109 | 5   | 24 |
+| 0    | 10108 | -5  | 24 |
+| 0    | 10101 |  5  |    |
+| 20   | 10101 | -5  |    |
+
+As in the case of the bolus, the `10109` event calculates the trough
+concentration with `ii=24`, which may (or may not) still have an
+infusion running.  If the infusion is running the `10108` event will
+turn off that infusion at the appropriate time.  If the infusion has
+been completed, then the `10108` event is ignored.
+
+The next 2 events `10101` represent the event times (assuming no
+bioavailability has been applied).
 
 ### Turning off a compartment with classic RxODE EVID
 
@@ -131,10 +172,6 @@ Turn off the first compartment at time 12
 | time | evid | amt |
 |------|------|-----|
 | 0    | 110  | 50  |
-| 12   | 130  | NA  |
-
-
-
 
 Event coding in `rxode2` is encoded in a single event number `evid`. For
 compartments under 100, this is coded as:
