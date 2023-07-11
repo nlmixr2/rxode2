@@ -1314,6 +1314,7 @@ struct rx_globals {
   double *gDur;
   double *gall_times;
   int **gixGlobal = NULL;
+  double **extraTimesFull = NULL;
   double *gdv;
   double *glimit;
   int *gcens;
@@ -2512,6 +2513,16 @@ LogicalVector rxSolveFree(){
     rxSolveFreeObj=R_NilValue;
   }
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
+  if (_globals.extraTimesFull != NULL) {
+    unsigned int _idxExtra = 0;
+    while (_globals.extraTimesFull[_idxExtra] != NULL) {
+      free(_globals.extraTimesFull[_idxExtra]);
+      _globals.extraTimesFull[_idxExtra] = NULL;
+      _idxExtra++;
+    }
+    free(_globals.extraTimesFull);
+    _globals.extraTimesFull = NULL;
+  }
   if (_globals.gixGlobal != NULL) {
     unsigned int _freeGlobalIdx = 0;
     while (_globals.gixGlobal[_freeGlobalIdx] != NULL) {
@@ -3490,10 +3501,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           setupRxInd(ind, 1);
         }
         // Setup the pointers.
-        ind->id             = nsub+1;
-        ind->idReal         = id[i];
-        ind->all_times   = &_globals.gall_times[i];
-        ind->all_timesExtra = NULL;
+        ind->id               = nsub+1;
+        ind->idReal           = id[i];
+        ind->all_times        = &_globals.gall_times[i];
         ind->dv = &_globals.gdv[i];
         ind->limit = &_globals.glimit[i];
         ind->cens = &_globals.gcens[i];
@@ -3887,8 +3897,8 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       rx_solving_options_ind indS;
       int linCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmt];
       int nIndSim = rx->nIndSim;
-      for (unsigned int simNum = rx->nsim; simNum--;){
-        for (unsigned int id = rx->nsub; id--;){
+      for (unsigned int simNum = rx->nsim; simNum--;) {
+        for (unsigned int id = rx->nsub; id--;) {
           unsigned int cid = id+simNum*rx->nsub;
           ind = &(rx->subjects[cid]);
           ind->linCmt = linCmt;
@@ -3928,6 +3938,10 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           curSimIni += nIndSim;
           curSolve += (op->neq + op->nlin)*ind->n_all_times;
           ind->ix = _globals.gixGlobal[cid] = (int*)malloc(ind->n_all_times*sizeof(int));
+          // need at least 1 for the free to work
+          ind->all_timesExtra = _globals.extraTimesFull[cid] = (double*)malloc(1*sizeof(double));
+          ind->n_all_timesExtra = 0;
+          ind->n_all_timesAlloc = 1;
           std::iota(ind->ix,ind->ix+ind->n_all_times,0);
           curEvent += eLen;
           curIdx += ind->n_all_times;
@@ -5242,6 +5256,19 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     _globals.gixGlobal = (int**)malloc((rx->nsim*rx->nsub+1)*sizeof(int*));
     for (int ctr=0; ctr < rx->nsim*rx->nsub+1; ctr++) _globals.gixGlobal[ctr] = NULL;
+
+    if (_globals.extraTimesFull != NULL) {
+      unsigned int _idx = 0;
+      while (_globals.extraTimesFull[_idx] != NULL) {
+        free(_globals.extraTimesFull[_idx]);
+        _globals.extraTimesFull[_idx] = NULL;
+        _idx++;
+      }
+      free(_globals.extraTimesFull);
+      _globals.extraTimesFull = NULL;
+    }
+    _globals.extraTimesFull = (double**)malloc((rx->nsim*rx->nsub+1)*sizeof(double*));
+    for (int ctr=0; ctr < rx->nsim*rx->nsub+1; ctr++) _globals.extraTimesFull[ctr] = NULL;
 
 #ifdef rxSolveT
     RSprintf("Time13: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
