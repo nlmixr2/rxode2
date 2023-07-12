@@ -950,7 +950,7 @@ void handleSS(int *neq,
         for (j = ind->ixds+1; j < ind->ndoses; j++){
           if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds)){
             getWh(getEvid(ind, ind->idose[j]), &wh, &cmt, &wh100, &whI, &wh0);
-            if (whI == oldI && cmt == ind->cmt){
+            if (wh0 == EVID0_REGULAR && whI == oldI && cmt == ind->cmt){
               dur = getTime_(ind->idose[j], ind) -
                 getTime_(ind->ix[*i], ind);
               dur2 = getIiNumber(ind, ind->ixds) - dur;
@@ -1123,9 +1123,9 @@ void handleSS(int *neq,
         double curIi = getIiNumber(ind, ind->ixds);
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
-        REprintf("dur: %f and %f; ninf: %d; offTime: %f\n",
-                 dur, getIiNumber(ind, ind->ixds),
-                 numDoseInf, offTime);
+        // REprintf("dur: %f and %f; ninf: %d; offTime: %f\n",
+        //          dur, getIiNumber(ind, ind->ixds),
+        //          numDoseInf, offTime);
         ind->wrongSSDur=1;
         // Bad Solve => NA
         badSolveExit(*i);
