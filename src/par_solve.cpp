@@ -13,6 +13,7 @@
 #include "strncmp.h"
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
+#define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 //#include "seed.h"
 
 extern "C" {
@@ -932,16 +933,15 @@ void handleSS(int *neq,
       infBixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
       if (isSsLag) {
-        for (j = ind->ixds+3; j < ind->ndoses; j++) {
+        for (j = max2(ind->ixds+3, ind->lastIxdsEndInf+1); j < ind->ndoses; j++) {
           if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds+2)) {
             int curEvid = getEvid(ind, ind->idose[j]);
             getWh(curEvid, &wh, &cmt, &wh100, &whI, &wh0);
             if (wh0 == EVID0_REGULAR && whI == oldI && cmt == ind->cmt) {
               dur = getTime_(ind->idose[j], ind) -
                 getTime_(ind->idose[ind->ixds+2], ind);
-              dur2 = getIiNumber(ind, ind->ixds) - dur;
               /* Rprintf("000; dur: %f; dur2: %f; ii: %f;\n", dur, dur2, getIiNumber(ind, ind->ixds)); */
-              infEixds = j;
+              ind->lastIxdsEndInf = infEixds = j;
               break;
             }
           }
@@ -1120,15 +1120,27 @@ void handleSS(int *neq,
       if (dur >= getIiNumber(ind, ind->ixds)){
         // in this case, the duration is greater than the inter-dose interval
         // number of doses before infusions turn off:
+        ind->InfusionRate[ind->cmt] = 0;
         double curIi = getIiNumber(ind, ind->ixds);
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
-        // REprintf("dur: %f and %f; ninf: %d; offTime: %f\n",
-        //          dur, getIiNumber(ind, ind->ixds),
-        //          numDoseInf, offTime);
-        ind->wrongSSDur=1;
-        // Bad Solve => NA
-        badSolveExit(*i);
+        REprintf("dur: %f and %f; ninf: %d; offTime: %f\n",
+                 dur, curIi,
+                 numDoseInf, offTime);
+        // Infusion without turning off for numDoseInf-1
+        for (j = 0; j < numDoseInf; j++) {
+          ind->idx=*i;
+          xout2 = xp2+curIi;
+          // Use "real" xout for handle_evid functions.
+          handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+                      BadDose, InfusionRate, dose, yp,
+                      xout, neq[1], ind);
+          // yp is last solve or y0
+          solveSS_1(neq, BadDose, InfusionRate, dose, yp,
+                    xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+          ind->ixds--; // This dose stays in place
+        }
+
       } else if (ind->err){
         printErr(ind->err, ind->id);
         badSolveExit(*i);
