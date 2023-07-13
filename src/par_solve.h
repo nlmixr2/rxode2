@@ -15,7 +15,6 @@ void sortRadix(rx_solving_options_ind *ind);
 static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
                              t_update_inis u_inis) {
 	ind->_rxFlag=1;
-	ind->lastIxdsEndInf = -1;
 	setIndPointersByThread(ind);
 	for (int i=rxLlikSaveSize*op->nLlik; i--;) {
 		ind->llikSave[i] = 0.0;
