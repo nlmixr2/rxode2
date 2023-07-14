@@ -1585,7 +1585,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ind->idx=i;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
-    if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
+    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         *rc = -1000;
         // Bad Solve => NA
@@ -1613,7 +1613,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx);
-        if (ind->wh0 == 30){
+        if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = inits[ind->cmt];
         }
         if (rx->istateReset) ctx->state = 1;
@@ -1967,7 +1967,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
-        if (ind->wh0 == 30){
+        if (ind->wh0 == EVID0_OFF){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
         }
         if (rx->istateReset) istate = 1;
@@ -2138,7 +2138,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
-        if (ind->wh0 == 30){
+        if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = inits[ind->cmt];
         }
         xp = xout;

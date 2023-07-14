@@ -1367,6 +1367,15 @@ struct rx_globals {
   int ** ignoredDoses = NULL;
   int *  nIgnoredDoses = NULL;
   int *  nAllocIgnoredDoses = NULL;
+
+  // new dosing information
+
+  int    **extraDoseTimeIdx = NULL;
+  double **extraDoseTime    = NULL;
+  int    **extraDoseEvid    = NULL;
+  double **extraDoseDose    = NULL;
+  int     *extraDoseN       = NULL;
+  int     *extraDoseAllocN  = NULL;
 };
 
 
@@ -1424,14 +1433,25 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->tlastS = getTlastSThread();
     ind->tfirstS = getTfirstSThread();
     ind->curDoseS = getCurDoseSThread();
+
     ind->ignoredDoses = _globals.ignoredDoses[omp_get_thread_num()];
     ind->ignoredDosesN = &(_globals.nIgnoredDoses[omp_get_thread_num()]);
     ind->ignoredDosesN[0] = 0; // reset
     ind->ignoredDosesAllocN = &(_globals.nAllocIgnoredDoses[omp_get_thread_num()]);
+
     ind->pendingDoses = _globals.pendingDoses[omp_get_thread_num()];
     ind->pendingDosesN = &(_globals.nPendingDoses[omp_get_thread_num()]);
     ind->pendingDosesN[0] = 0; // reset
     ind->pendingDosesAllocN = &(_globals.nAllocIgnoredDoses[omp_get_thread_num()]);
+
+    ind->extraDoseN = &(_globals.extraDoseN[omp_get_thread_num()]);
+    ind->extraDoseN[0] = 0; //reset
+    ind->extraDoseAllocN = &(_globals.extraDoseAllocN[omp_get_thread_num()]);
+    ind->extraDoseTimeIdx = _globals.extraDoseTimeIdx[omp_get_thread_num()];
+    ind->extraDoseTime = _globals.extraDoseTime[omp_get_thread_num()];
+    ind->extraDoseEvid = _globals.extraDoseEvid[omp_get_thread_num()];
+    ind->extraDoseDose = _globals.extraDoseDose[omp_get_thread_num()];
+
     ind->on = _globals.gon + ncmt*omp_get_thread_num();
     ind->skipDose = _globals.gSkipDose + ncmt*omp_get_thread_num();
     ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
@@ -2527,28 +2547,70 @@ LogicalVector rxSolveFree(){
   }
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
 
-  if (_globals.nPendingDoses != NULL) {
-    if (_globals.pendingDoses != NULL) {
-      int i=0;
-      while (_globals.pendingDoses[i] != NULL) {
-        free(_globals.pendingDoses[i]);
-        _globals.pendingDoses[i++] = NULL;
-      }
-      free(_globals.pendingDoses);
-      _globals.pendingDoses = NULL;
+  if (_globals.pendingDoses != NULL) {
+    int i=0;
+    while (_globals.pendingDoses[i] != NULL) {
+      free(_globals.pendingDoses[i]);
+      _globals.pendingDoses[i++] = NULL;
     }
+    free(_globals.pendingDoses);
+    _globals.pendingDoses = NULL;
   }
-  if (_globals.nIgnoredDoses != NULL) {
-    if (_globals.ignoredDoses != NULL) {
-      int i=0;
-      while (_globals.ignoredDoses[i] != NULL){
-        free(_globals.ignoredDoses[i]);
-        _globals.ignoredDoses[i++] = NULL;
-      }
-      free(_globals.ignoredDoses);
-      _globals.ignoredDoses=NULL;
+
+  if (_globals.ignoredDoses != NULL) {
+    int i=0;
+    while (_globals.ignoredDoses[i] != NULL){
+      free(_globals.ignoredDoses[i]);
+      _globals.ignoredDoses[i++] = NULL;
     }
+    free(_globals.ignoredDoses);
+    _globals.ignoredDoses=NULL;
   }
+
+  if (_globals.extraDoseTimeIdx != NULL) {
+    int i=0;
+    while (_globals.extraDoseTimeIdx[i] != NULL){
+      free(_globals.extraDoseTimeIdx[i]);
+      _globals.extraDoseTimeIdx[i++] = NULL;
+    }
+    free(_globals.extraDoseTimeIdx);
+    _globals.extraDoseTimeIdx=NULL;
+  }
+
+  if (_globals.extraDoseTime != NULL) {
+    int i=0;
+    while (_globals.extraDoseTime[i] != NULL){
+      free(_globals.extraDoseTime[i]);
+      _globals.extraDoseTime[i++] = NULL;
+    }
+    free(_globals.extraDoseTime);
+    _globals.extraDoseTime=NULL;
+  }
+
+  if (_globals.extraDoseEvid != NULL) {
+    int i=0;
+    while (_globals.extraDoseEvid[i] != NULL){
+      free(_globals.extraDoseEvid[i]);
+      _globals.extraDoseEvid[i++] = NULL;
+    }
+    free(_globals.extraDoseEvid);
+    _globals.extraDoseEvid=NULL;
+  }
+
+  if (_globals.extraDoseDose != NULL) {
+    int i=0;
+    while (_globals.extraDoseDose[i] != NULL){
+      free(_globals.extraDoseDose[i]);
+      _globals.extraDoseDose[i++] = NULL;
+    }
+    free(_globals.extraDoseDose);
+    _globals.extraDoseDose=NULL;
+  }
+  if (_globals.extraDoseN != NULL) free(_globals.extraDoseN);
+  _globals.extraDoseN = NULL;
+  if (_globals.extraDoseAllocN != NULL) free(_globals.extraDoseAllocN);
+  _globals.extraDoseAllocN = NULL;
+
   if (_globals.nPendingDoses != NULL) free(_globals.nPendingDoses);
   _globals.nPendingDoses=NULL;
   if (_globals.nAllocPendingDoses != NULL) free(_globals.nAllocPendingDoses);
@@ -3959,7 +4021,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
           curSolve += (op->neq + op->nlin)*ind->n_all_times;
-          ind->ix = ind->ix = &_globals.gix[curIdx];
+          ind->ix = &_globals.gix[curIdx];
           std::iota(ind->ix,ind->ix+ind->n_all_times,0);
           curEvent += eLen;
           curIdx += ind->n_all_times;
@@ -4872,8 +4934,59 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         _globals.ignoredDoses=NULL;
       }
     }
+    if (_globals.extraDoseTimeIdx != NULL) {
+      int i=0;
+      while (_globals.extraDoseTimeIdx[i] != NULL){
+        free(_globals.extraDoseTimeIdx[i]);
+        _globals.extraDoseTimeIdx[i++] = NULL;
+      }
+      free(_globals.extraDoseTimeIdx);
+      _globals.extraDoseTimeIdx=NULL;
+    }
+
+    if (_globals.extraDoseTime != NULL) {
+      int i=0;
+      while (_globals.extraDoseTime[i] != NULL){
+        free(_globals.extraDoseTime[i]);
+        _globals.extraDoseTime[i++] = NULL;
+      }
+      free(_globals.extraDoseTime);
+      _globals.extraDoseTime=NULL;
+    }
+
+    if (_globals.extraDoseEvid != NULL) {
+      int i=0;
+      while (_globals.extraDoseEvid[i] != NULL){
+        free(_globals.extraDoseEvid[i]);
+        _globals.extraDoseEvid[i++] = NULL;
+      }
+      free(_globals.extraDoseEvid);
+      _globals.extraDoseEvid=NULL;
+    }
+
+    if (_globals.extraDoseDose != NULL) {
+      int i=0;
+      while (_globals.extraDoseDose[i] != NULL){
+        free(_globals.extraDoseDose[i]);
+        _globals.extraDoseDose[i++] = NULL;
+      }
+      free(_globals.extraDoseDose);
+      _globals.extraDoseDose=NULL;
+    }
+    if (_globals.extraDoseN != NULL) free(_globals.extraDoseN);
+    _globals.extraDoseN = NULL;
+    _globals.extraDoseN = (int*)malloc((op->cores)* sizeof(int));
+
+    if (_globals.extraDoseAllocN != NULL) free(_globals.extraDoseAllocN);
+    _globals.extraDoseAllocN = NULL;
+    _globals.extraDoseAllocN = (int*)malloc((op->cores)* sizeof(int));
+
     _globals.pendingDoses = (int**)malloc((op->cores+1)* sizeof(int*));
     _globals.ignoredDoses = (int**)malloc((op->cores+1)* sizeof(int*));
+    _globals.extraDoseTimeIdx = (int**)malloc((op->cores+1)* sizeof(int*));
+    _globals.extraDoseEvid = (int**)malloc((op->cores+1)* sizeof(int*));
+    _globals.extraDoseTime = (double**)malloc((op->cores+1)* sizeof(double*));
+    _globals.extraDoseDose = (double**)malloc((op->cores+1)* sizeof(double*));
 
     if (_globals.nPendingDoses != NULL) free(_globals.nPendingDoses);
     _globals.nPendingDoses = (int*)malloc((op->cores)* sizeof(int));
@@ -4894,9 +5007,19 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       _globals.ignoredDoses[i] =  (int*)malloc(100* sizeof(int));
       _globals.nIgnoredDoses[i] = 0;
       _globals.nAllocIgnoredDoses[i] = 100;
+      _globals.extraDoseTimeIdx[i] = (int*)malloc(100* sizeof(int));
+      _globals.extraDoseEvid[i] = (int*)malloc(100* sizeof(int));
+      _globals.extraDoseTime[i] = (double*)malloc(100* sizeof(double));
+      _globals.extraDoseDose[i] = (double*)malloc(100* sizeof(double));
+      _globals.extraDoseAllocN[i] = 100;
+      _globals.extraDoseN[i] = 0;
     }
-    _globals.pendingDoses[op->cores] = NULL;
-    _globals.ignoredDoses[op->cores] = NULL;
+    _globals.pendingDoses[op->cores]     = NULL;
+    _globals.ignoredDoses[op->cores]     = NULL;
+    _globals.extraDoseTimeIdx[op->cores] = NULL;
+    _globals.extraDoseEvid[op->cores]    = NULL;
+    _globals.extraDoseTime[op->cores]    = NULL;
+    _globals.extraDoseDose[op->cores]    = NULL;
 
 
     // Now set up events and parameters
