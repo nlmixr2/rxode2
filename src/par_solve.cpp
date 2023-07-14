@@ -1012,6 +1012,7 @@ void handleSS(int *neq,
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;
     }
+    cancelPendingDoses(ind);
     ind->cacheME=0;
     // Reset LHS to NA
     ind->inLhs = 0;
@@ -1142,7 +1143,7 @@ void handleSS(int *neq,
         double curIi = getIiNumber(ind, ind->ixds);
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
-        
+        pushPendingDose(infEixds, ind);
         for (j = 0; j < numDoseInf; j++) {
           ind->idx=*i;
           xout2 = xp2+curIi;
