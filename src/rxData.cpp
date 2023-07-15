@@ -1451,6 +1451,8 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->extraDoseTime = _globals.extraDoseTime[omp_get_thread_num()];
     ind->extraDoseEvid = _globals.extraDoseEvid[omp_get_thread_num()];
     ind->extraDoseDose = _globals.extraDoseDose[omp_get_thread_num()];
+    ind->idxExtra = 0;
+    ind->extraSorted = 0;
 
     ind->on = _globals.gon + ncmt*omp_get_thread_num();
     ind->skipDose = _globals.gSkipDose + ncmt*omp_get_thread_num();
