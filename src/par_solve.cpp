@@ -1684,7 +1684,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       } else {
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
-
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
             postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -2057,9 +2056,32 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         // Bad Solve => NA
         badSolveExit(i);
       } else {
-        F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                         &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-        postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                             &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+            postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          }
+          int idx = ind->idx;
+          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+          ind->idx = -1-trueIdx;
+          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                      ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          istate = 1;
+          ind->ixds--; // This is a fake dose, real dose stays in place; Reverse dose
+          ind->idx = idx;
+          ind->idxExtra++;
+          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                             &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+            postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          }
+        } else if (!isSameTime(xout, xp)) {
+          F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                           &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+          postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+        }
         //dadt_counter = 0;
       }
     }

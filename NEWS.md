@@ -27,6 +27,9 @@ in the data) for mu expressions.  The `ui` now has more information to
 allow transformation of data internally and transformation to the old
 mu-referencing style to run the optimization.
 
+- Allow steady state infusions with a duration of infusion greater than
+  the inter-dose interval to be solved.
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
