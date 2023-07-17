@@ -930,15 +930,45 @@ static inline int handleExtraDose(int *neq,
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
+    while (time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+      ind->idxExtra++;
+      trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+      ind->idx = -1-trueIdx;
+      time = getAllTimes(ind, ind->idx);
+    }
     if (time >= xp && time <= xout) {
-      REprintf("time: %f, xout: %f, xp: %f\n", time, xout, xp);
-      // handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-      //             BadDose, InfusionRate, dose, yp, time, neq[1], ind);
-      // ind->ixds--; // This is a fake dose, real dose stays in place; Reverse dose
-      // ind->idxExtra++;
-      ind->extraDoseNewXout = time;
-      ind->idx = idx;
-      return 1;
+      bool ignore = true;
+      while (ignore && time <= xout) {
+        ignore=false;
+        for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
+          int curIdx = ind->ignoredDoses[i];
+          if (curIdx < 0 && -1-curIdx == trueIdx) {
+            ignore = true;
+            break;
+          }
+        }
+        if (ignore) {
+          ind->idxExtra++;
+          if (ind->idxExtra < ind->extraDoseN[0]) {
+            trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            time = getAllTimes(ind, ind->idx);
+          } else {
+            ind->idxExtra--;
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      if (ignore) {
+        ind->idx = idx;
+        return 0;
+      } else {
+        ind->extraDoseNewXout = time;
+        ind->idx = idx;
+        return 1;
+      }
     }
     ind->idx = idx;
     return 0;
@@ -1032,7 +1062,7 @@ void handleSS(int *neq,
               break;
             }
           }
-        }        
+        }
       }
     } else if (ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
       // These are right next to another.
@@ -1197,18 +1227,14 @@ void handleSS(int *neq,
         double curIi = getIiNumber(ind, ind->ixds);
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
-        double addTime = getIi(ind, ind->idx)-offTime;
+        double addTime = curIi-offTime;
         pushPendingDose(infEixds, ind);
-        //for (j = 0; j < numDoseInf; ++j) {
-        pushDosingEvent(xp2+offTime,
-                        getDose(ind, ind->idose[infEixds]),
-                        getEvid(ind, ind->idose[infEixds])-EVID0_REGULAR+EVID0_RATEADJ,
-                        ind);
-        // pushDosingEvent(xp2+dur-(numDoseInf-1)*curIi,
-        //                 getDose(ind, ind->idose[infEixds]),
-        //                 getEvid(ind, ind->idose[infEixds])-EVID0_REGULAR+EVID0_RATEADJ,
-        //                 ind);
-          //}
+        for (int cur = 0; cur < numDoseInf; ++cur) {
+          pushDosingEvent(xp2+offTime+ cur*curIi,
+                          getDose(ind, ind->idose[infEixds]),
+                          getEvid(ind, ind->idose[infEixds])-EVID0_REGULAR+EVID0_RATEADJ,
+                          ind);
+        }
         for (j = 0; j < numDoseInf; j++) {
           ind->idx=*i;
           xout2 = xp2+curIi;
@@ -1659,9 +1685,10 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
 
-          REprintf("lsoda1\n");
-          lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
-          //postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
+            postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          }
           int idx = ind->idx;
           int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
           ind->idx = -1-trueIdx;
@@ -1671,8 +1698,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           ind->ixds--; // This is a fake dose, real dose stays in place; Reverse dose
           ind->idx = idx;
           ind->idxExtra++;
-          if (!isSameTime(xout, xp)) {
-            REprintf("lsoda2\n");
+          if (!isSameTime(xout, ind->extraDoseNewXout)) {
             lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
             postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
