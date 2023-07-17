@@ -2227,35 +2227,105 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         // Bad Solve => NA
         badSolveExit(i);
       } else {
-        idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                      c_dydt,       /* function computing the value of f(x,y) */
-                      xp,           /* initial x-value */
-                      yp,           /* initial values for y */
-                      xout,         /* final x-value (xend-x may be positive or negative) */
-                      &rtol,          /* relative error tolerance */
-                      &atol,          /* absolute error tolerance */
-                      itol,         /* switch for rtoler and atoler */
-                      solout,         /* function providing the numerical solution during integration */
-                      iout,         /* switch for calling solout */
-                      NULL,           /* messages stream */
-                      DBL_EPSILON,    /* rounding unit */
-                      0,              /* safety factor */
-                      0,              /* parameters for step size selection */
-                      0,
-                      0,              /* for stabilized step size control */
-                      0,              /* maximal step size */
-                      0,            /* initial step size */
-                      op->mxstep, /* maximal number of allowed steps */
-                      1,            /* switch for the choice of the coefficients */
-                      -1,                     /* test for stiffness */
-                      0,                      /* number of components for which dense outpout is required */
-                      NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                      0                       /* declared length of icon */
-                      );
-      }
-      postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-      xp = xRead();
+        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
+                          c_dydt,       /* function computing the value of f(x,y) */
+                          xp,           /* initial x-value */
+                          yp,           /* initial values for y */
+                          ind->extraDoseNewXout, /* final x-value (xend-x may be positive or negative) */
+                          &rtol,          /* relative error tolerance */
+                          &atol,          /* absolute error tolerance */
+                          itol,         /* switch for rtoler and atoler */
+                          solout,         /* function providing the numerical solution during integration */
+                          iout,         /* switch for calling solout */
+                          NULL,           /* messages stream */
+                          DBL_EPSILON,    /* rounding unit */
+                          0,              /* safety factor */
+                          0,              /* parameters for step size selection */
+                          0,
+                          0,              /* for stabilized step size control */
+                          0,              /* maximal step size */
+                          0,            /* initial step size */
+                          op->mxstep, /* maximal number of allowed steps */
+                          1,            /* switch for the choice of the coefficients */
+                          -1,                     /* test for stiffness */
+                          0,                      /* number of components for which dense outpout is required */
+                          NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                          0                       /* declared length of icon */
+                          );
+            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          }
+          int idx = ind->idx;
+          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+          ind->idx = -1-trueIdx;
+          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          idid = 1;
+          ind->ixds--; // This is a fake dose, real dose stays in place; Reverse dose
+          ind->idx = idx;
+          ind->idxExtra++;
+          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
+                          c_dydt,       /* function computing the value of f(x,y) */
+                          ind->extraDoseNewXout,           /* initial x-value */
+                          yp,           /* initial values for y */
+                          xout, /* final x-value (xend-x may be positive or negative) */
+                          &rtol,          /* relative error tolerance */
+                          &atol,          /* absolute error tolerance */
+                          itol,         /* switch for rtoler and atoler */
+                          solout,         /* function providing the numerical solution during integration */
+                          iout,         /* switch for calling solout */
+                          NULL,           /* messages stream */
+                          DBL_EPSILON,    /* rounding unit */
+                          0,              /* safety factor */
+                          0,              /* parameters for step size selection */
+                          0,
+                          0,              /* for stabilized step size control */
+                          0,              /* maximal step size */
+                          0,            /* initial step size */
+                          op->mxstep, /* maximal number of allowed steps */
+                          1,            /* switch for the choice of the coefficients */
+                          -1,                     /* test for stiffness */
+                          0,                      /* number of components for which dense outpout is required */
+                          NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                          0                       /* declared length of icon */
+                          );
+            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = xRead();
+          }
+        } else if (!isSameTime(xout, xp)) {
+          idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
+                        c_dydt,       /* function computing the value of f(x,y) */
+                        xp,           /* initial x-value */
+                        yp,           /* initial values for y */
+                        xout,         /* final x-value (xend-x may be positive or negative) */
+                        &rtol,          /* relative error tolerance */
+                        &atol,          /* absolute error tolerance */
+                        itol,         /* switch for rtoler and atoler */
+                        solout,         /* function providing the numerical solution during integration */
+                        iout,         /* switch for calling solout */
+                        NULL,           /* messages stream */
+                        DBL_EPSILON,    /* rounding unit */
+                        0,              /* safety factor */
+                        0,              /* parameters for step size selection */
+                        0,
+                        0,              /* for stabilized step size control */
+                        0,              /* maximal step size */
+                        0,            /* initial step size */
+                        op->mxstep, /* maximal number of allowed steps */
+                        1,            /* switch for the choice of the coefficients */
+                        -1,                     /* test for stiffness */
+                        0,                      /* number of components for which dense outpout is required */
+                        NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                        0                       /* declared length of icon */
+                        );
+          postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xRead();
+        }
       //dadt_counter = 0;
+      }
     }
     if (!op->badSolve){
       ind->idx = i;
