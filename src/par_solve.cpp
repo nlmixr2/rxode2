@@ -1024,39 +1024,15 @@ void handleSS(int *neq,
       infBixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
       if (isSsLag) {
-        int curEvid = getEvid(ind, ind->idose[ind->ixds+2]);
-        double curAmt = getDoseNumber(ind, ind->ixds+2);
-        int lastKnownOff = 0;
-        infEixds = -1;
-        for (j = 0; j < ind->ndoses; j++) {
-          if (curEvid == getEvid(ind, ind->idose[j]) &&
-              curAmt == getDoseNumber(ind, j)) {
-            // get the first dose combination
-            if (lastKnownOff == 0) {
-              lastKnownOff=j+1;
-            } else {
-              lastKnownOff++;
-            }
-            for (int k = lastKnownOff; k < ind->ndoses; k++) {
-              if (curEvid == getEvid(ind, ind->idose[k]) &&
-                  curAmt == -getDoseNumber(ind, k)) {
-                lastKnownOff = k;
-                if (j == ind->ixds+2) {
-                  infEixds = k;
-                  dur = getTime_(ind->idose[infEixds], ind);// -
-                  dur -= getTime_(ind->idose[ind->ixds+2], ind);
-                  dur2 = getIiNumber(ind, ind->ixds) - dur;
-                }
-                k = ind->ndoses;
-              }
-            }
-          }
-          if (infEixds != -1) break;
-        }
+        handleInfusionGetEndOfInfusionIndex(ind->ixds+2, &infEixds, rx, op, ind);
         if (infEixds == -1) {
           ind->wrongSSDur=1;
           // // Bad Solve => NA
           badSolveExit(*i);
+        } else {
+          dur = getTime_(ind->idose[infEixds], ind);// -
+          dur -= getTime_(ind->idose[ind->ixds+2], ind);
+          dur2 = getIiNumber(ind, ind->ixds) - dur;
         }
       } else {
         for (j = ind->ixds+1; j < ind->ndoses; j++){
