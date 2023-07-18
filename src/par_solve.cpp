@@ -1035,17 +1035,15 @@ void handleSS(int *neq,
           dur2 = getIiNumber(ind, ind->ixds) - dur;
         }
       } else {
-        for (j = ind->ixds+1; j < ind->ndoses; j++){
-          if (getDoseNumber(ind, j) == -getDoseNumber(ind, ind->ixds)){
-            getWh(getEvid(ind, ind->idose[j]), &wh, &cmt, &wh100, &whI, &wh0);
-            if (whI == oldI && cmt == ind->cmt){
-              dur = getTime_(ind->idose[j], ind) -
-                getTime_(ind->ix[*i], ind);
-              dur2 = getIiNumber(ind, ind->ixds) - dur;
-              infEixds = j;
-              break;
-            }
-          }
+        handleInfusionGetEndOfInfusionIndex(ind->ixds, &infEixds, rx, op, ind);
+        if (infEixds == -1) {
+          ind->wrongSSDur=1;
+          // // Bad Solve => NA
+          badSolveExit(*i);
+        } else {
+          dur = getTime_(ind->idose[infEixds], ind);// -
+          dur -= getTime_(ind->idose[ind->ixds+2], ind);
+          dur2 = getIiNumber(ind, ind->ixds) - dur;
         }
       }
     } else if (ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
@@ -1322,6 +1320,8 @@ void handleSS(int *neq,
         handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
+        // REprintf("xout: %f evid: %d; rate: %f; int->ixds: %d, int->idx %d\n", xout, getEvid(ind, ind->idose[infBixds]),
+        //          InfusionRate[1], ind->ixds, ind->idx);
         // yp is last solve or y0
         *istate=1;
 
