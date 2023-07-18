@@ -529,7 +529,7 @@ double *global_rwork(unsigned int mx){
 }
 
 extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx,
-                                                rx_solving_options op) {
+                                               rx_solving_options op) {
   static void (*fun)(rx_solve,
                      rx_solving_options)=NULL;
   if (fun == NULL) {
@@ -787,8 +787,10 @@ static inline void solveWith1Pt(int *neq,
   int itol=0;
   switch(op->stiff){
   case 3:
-    idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
-                  ME, IndF);
+    if (!isSameTime(xout, xp)) {
+      idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
+                    ME, IndF);
+    }
     if (idid <= 0) {
       /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
       ind->rc[0] = idid;
@@ -802,7 +804,9 @@ static inline void solveWith1Pt(int *neq,
     }
     break;
   case 2:
-    lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
+    if (!isSameTime(xout, xp)) {
+      lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
+    }
     if (*istate <= 0) {
       RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
       /* ind->rc[0] = *istate; */
@@ -824,10 +828,12 @@ static inline void solveWith1Pt(int *neq,
     }
     break;
   case 1:
-    F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
-                     &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                     istate, &giopt, global_rworkp,
-                     &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+    if (!isSameTime(xout, xp)) {
+      F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
+                       &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                       istate, &giopt, global_rworkp,
+                       &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+    }
     if (*istate <= 0) {
       RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
       ind->rc[0] = -2019;/* *istate; */
@@ -848,31 +854,33 @@ static inline void solveWith1Pt(int *neq,
     }
     break;
   case 0:
-    idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
-                  dydt,       /* function computing the value of f(x,y) */
-                  xp,           /* initial x-value */
-                  yp,           /* initial values for y */
-                  xout,         /* final x-value (xend-x may be positive or negative) */
-                  &(op->RTOL),          /* relative error tolerance */
-                  &(op->ATOL),          /* absolute error tolerance */
-                  itol,         /* switch for rtoler and atoler */
-                  solout,         /* function providing the numerical solution during integration */
-                  0,         /* switch for calling solout */
-                  NULL,           /* messages stream */
-                  DBL_EPSILON,    /* rounding unit */
-                  0,              /* safety factor */
-                  0,              /* parameters for step size selection */
-                  0,
-                  0,              /* for stabilized step size control */
-                  0,              /* maximal step size */
-                  0,            /* initial step size */
-                  op->mxstep,            /* maximal number of allowed steps */
-                  1,            /* switch for the choice of the coefficients */
-                  -1,                     /* test for stiffness */
-                  0,                      /* number of components for which dense outpout is required */
-                  NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                  0                       /* declared length of icon */
-                  );
+    if (!isSameTime(xout, xp)) {
+      idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
+                    dydt,       /* function computing the value of f(x,y) */
+                    xp,           /* initial x-value */
+                    yp,           /* initial values for y */
+                    xout,         /* final x-value (xend-x may be positive or negative) */
+                    &(op->RTOL),          /* relative error tolerance */
+                    &(op->ATOL),          /* absolute error tolerance */
+                    itol,         /* switch for rtoler and atoler */
+                    solout,         /* function providing the numerical solution during integration */
+                    0,         /* switch for calling solout */
+                    NULL,           /* messages stream */
+                    DBL_EPSILON,    /* rounding unit */
+                    0,              /* safety factor */
+                    0,              /* parameters for step size selection */
+                    0,
+                    0,              /* for stabilized step size control */
+                    0,              /* maximal step size */
+                    0,            /* initial step size */
+                    op->mxstep,            /* maximal number of allowed steps */
+                    1,            /* switch for the choice of the coefficients */
+                    -1,                     /* test for stiffness */
+                    0,                      /* number of components for which dense outpout is required */
+                    NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                    0                       /* declared length of icon */
+                    );
+    }
     if (idid < 0) {
       ind->rc[0] = -2019;
       // Bad Solve => NA
@@ -1155,7 +1163,6 @@ void handleSS(int *neq,
         xp2=xout;
         *istate=1;
       }
-
     } else if (dur == 0) {
       // Bolus
       for (j = 0; j < op->maxSS; j++) {
@@ -1350,6 +1357,7 @@ void handleSS(int *neq,
         badSolveExit(*i);
       } else {
         // Infusion
+        pushPendingDose(infEixds, ind);
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
@@ -2057,7 +2065,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         badSolveExit(i);
       } else {
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
@@ -2228,7 +2236,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         badSolveExit(i);
       } else {
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
@@ -2324,7 +2332,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xRead();
         }
-      //dadt_counter = 0;
+        //dadt_counter = 0;
       }
     }
     if (!op->badSolve){

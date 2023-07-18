@@ -12,7 +12,6 @@
 // NONMEM nTHETA=20
 // NONMEM nETA=30
 // NONMEM nSIGMA=10
-
 #define NPARS 60
 #include <RcppArmadillo.h>
 #include "nearPD.h"
