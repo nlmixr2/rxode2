@@ -1,5 +1,9 @@
 if (file.exists(test_path("test-nmtest.qs"))) {
 
+  #system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse"); devtools::install("~/src/rxode2random"); devtools::load_all();rxClean();#devtools::test()
+
+  ## devtools::load_all()
+
   d <- qs::qread(test_path("test-nmtest.qs"))
   # internally rxode2 treats lag time evids differently than
   # non-lagged events
@@ -30,38 +34,54 @@ if (file.exists(test_path("test-nmtest.qs"))) {
     if (mode == 2) dur(central) <- dur2
     cp <- central/(v/1000)
   })
-
   library(ggplot2)
 
   p <- TRUE
 
-  solveEqual <- function(id, plot = p) {
+  solveEqual <- function(id, plot = p, meth="liblsoda") {
     noLag <-  d[d$id == id & d$evid != 0,]$lagt == 0
     if (plot) {
       d <- d[d$id == id,]
-      ## print(ggplot(d, aes(time, cp)) +
-      ##         geom_point(col="red") +
-      ##         rxode2::rxTheme() +
-      ##         ggtitle(paste0("id=", id)))
+      print(ggplot(d, aes(time, cp)) +
+              geom_point(col="red") +
+              rxode2::rxTheme() +
+              ggtitle(paste0("id=", id)))
       ## print(etTrans(d, fl))
-      s1 <- rxSolve(fl, d[d$id == id,])
+      s1 <- rxSolve(fl, d[d$id == id,], method=meth)
       print(plot(s1, cp) +
               geom_point(data=d[d$id == id, ], aes(x=time, y=cp), col="red") +
               ggtitle(paste0("id=", id)))
+      ## print(etTrans(d, fl))
     } else {
       if (noLag) {
         test_that(paste0("nmtest id:", id, " no alag"), {
-          s1 <- rxSolve(f, d[d$id == id,])
+          s1 <- rxSolve(f, d[d$id == id,], method=meth)
           expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.01)
         })
        }
       test_that(paste0("nmtest id:", id, " alag"), {
-        s1 <- rxSolve(fl, d[d$id == id,])
+        s1 <- rxSolve(fl, d[d$id == id,], method=meth)
         expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.01)
       })
     }
   }
+  
+  # 19, 25
+  # 27 is the end
 
-  invisible(lapply(seq_len(range(d$id)[2]), solveEqual))
-
+  # Fixed rate, can be changed to modeled rate or duration
+  #d[d$id == 3 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 4 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 6 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 7 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 8 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 9 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 10 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 11 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 12 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 13 & d$evid != 0,] %>% as.data.frame
+  #d[d$id == 13 & d$evid != 0,] %>% as.data.frame 
+  
+  ## invisible(lapply(seq_len(range(d$id)[2]), solveEqual))
+  
 }
