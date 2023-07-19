@@ -932,19 +932,27 @@ static inline int handleExtraDose(int *neq,
              return timea < timeb;
            });
       ind->extraSorted=1;
+      ind->idxExtra=0;
     }
     // Use "real" xout for handle_evid functions.
     int idx = ind->idx;
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
-    while (time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+    while (!isSameTime(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
       ind->idxExtra++;
       trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
       ind->idx = -1-trueIdx;
       time = getAllTimes(ind, ind->idx);
     }
-    if (time >= xp && time <= xout) {
+    while (!isSameTime(time, xout) && time > xout && ind->idxExtra > 0) {
+      ind->idxExtra--;
+      trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+      ind->idx = -1-trueIdx;
+      time = getAllTimes(ind, ind->idx);
+    }
+    if ((isSameTime(time, xp) || time > xp) && (isSameTime(time, xout) || time <= xout)) {
+      REprintf("found\n");
       bool ignore = true;
       while (ignore && time <= xout) {
         ignore=false;
@@ -1320,8 +1328,8 @@ void handleSS(int *neq,
         handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
-        // REprintf("xout: %f evid: %d; rate: %f; int->ixds: %d, int->idx %d\n", xout, getEvid(ind, ind->idose[infBixds]),
-        //          InfusionRate[1], ind->ixds, ind->idx);
+        // REprintf("xout: %f evid: %d; rate: %f; int->ixds: %d, int->idx %d, ssLag: %d\n", xout, getEvid(ind, ind->idose[infBixds]),
+        //          InfusionRate[1], ind->ixds, ind->idx, isSsLag ? 1 : 0);
         // yp is last solve or y0
         *istate=1;
 
