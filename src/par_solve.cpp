@@ -952,7 +952,6 @@ static inline int handleExtraDose(int *neq,
       time = getAllTimes(ind, ind->idx);
     }
     if ((isSameTime(time, xp) || time > xp) && (isSameTime(time, xout) || time <= xout)) {
-      REprintf("found\n");
       bool ignore = true;
       while (ignore && time <= xout) {
         ignore=false;
