@@ -1025,7 +1025,11 @@ void handleSS(int *neq,
       infBixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
       if (isSsLag) {
-        handleInfusionGetEndOfInfusionIndex(ind->ixds+2, &infEixds, rx, op, ind);
+        if (getDoseNumber(ind, ind->ixds+2) < 0.0) {
+          handleInfusionGetEndOfInfusionIndex(ind->ixds+3, &infEixds, rx, op, ind);
+        } else {
+          handleInfusionGetEndOfInfusionIndex(ind->ixds+2, &infEixds, rx, op, ind);
+        }
         if (infEixds == -1) {
           ind->wrongSSDur=1;
           // // Bad Solve => NA
@@ -1043,7 +1047,7 @@ void handleSS(int *neq,
           badSolveExit(*i);
         } else {
           dur = getTime_(ind->idose[infEixds], ind);// -
-          dur -= getTime_(ind->idose[ind->ixds+2], ind);
+          dur -= getTime_(ind->idose[ind->ixds], ind);
           dur2 = getIiNumber(ind, ind->ixds) - dur;
         }
       }
@@ -1091,6 +1095,7 @@ void handleSS(int *neq,
     double xp2, xout2;
     int canBreak=0;
     xp2 = xp;
+    double curIi = getIi(ind, ind->idx);
     if (doSSinf) {
       double rate;
       ind->idx=*i;
@@ -1142,7 +1147,7 @@ void handleSS(int *neq,
       // Bolus
       for (j = 0; j < op->maxSS; j++) {
         ind->idx=*i;
-        xout2 = xp2+getIi(ind, ind->idx);
+        xout2 = xp2+curIi;
         // Use "real" xout for handle_evid functions.
         handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
                     BadDose, InfusionRate, dose, yp,
@@ -1186,7 +1191,7 @@ void handleSS(int *neq,
         //advance the lag time
         ind->idx=*i;
         int wh0 = ind->wh0; ind->wh0=1;
-        xout2 = xp2 + getIi(ind, ind->idx) - getLag(ind, neq[1], ind->cmt, 0.0);
+        xout2 = xp2 + curIi - getLag(ind, neq[1], ind->cmt, 0.0);
         ind->wh0 = wh0;
         // Use "real" xout for handle_evid functions.
         *istate=1;
@@ -1206,7 +1211,6 @@ void handleSS(int *neq,
       if (dur >= getIiNumber(ind, ind->ixds)){
         // in this case, the duration is greater than the inter-dose interval
         // number of doses before infusions turn off:
-        double curIi = getIiNumber(ind, ind->ixds);
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
         double addTime = curIi-offTime;
