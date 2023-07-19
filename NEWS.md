@@ -2,6 +2,9 @@
 
 ## New features
 
+- Steady state infusions with a duration of infusions greater than the
+  inter-dose interval are now supported
+
 - Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
   gives `ini({})` (Issue #523)
 
