@@ -945,12 +945,6 @@ static inline int handleExtraDose(int *neq,
       ind->idx = -1-trueIdx;
       time = getAllTimes(ind, ind->idx);
     }
-    while (!isSameTime(time, xout) && time > xout && ind->idxExtra > 0) {
-      ind->idxExtra--;
-      trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-      ind->idx = -1-trueIdx;
-      time = getAllTimes(ind, ind->idx);
-    }
     if ((isSameTime(time, xp) || time > xp) && (isSameTime(time, xout) || time <= xout)) {
       bool ignore = true;
       while (ignore && time <= xout) {
