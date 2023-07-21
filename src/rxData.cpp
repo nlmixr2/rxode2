@@ -2552,7 +2552,8 @@ LogicalVector rxSolveFree(){
     int i=0;
     while (_globals.pendingDoses[i] != NULL) {
       free(_globals.pendingDoses[i]);
-      _globals.pendingDoses[i++] = NULL;
+      _globals.pendingDoses[i] = NULL;
+      i++;
     }
     free(_globals.pendingDoses);
     _globals.pendingDoses = NULL;
@@ -2562,7 +2563,8 @@ LogicalVector rxSolveFree(){
     int i=0;
     while (_globals.ignoredDoses[i] != NULL){
       free(_globals.ignoredDoses[i]);
-      _globals.ignoredDoses[i++] = NULL;
+      _globals.ignoredDoses[i] = NULL;
+      i++;
     }
     free(_globals.ignoredDoses);
     _globals.ignoredDoses=NULL;
@@ -2572,7 +2574,8 @@ LogicalVector rxSolveFree(){
     int i=0;
     while (_globals.extraDoseTimeIdx[i] != NULL){
       free(_globals.extraDoseTimeIdx[i]);
-      _globals.extraDoseTimeIdx[i++] = NULL;
+      _globals.extraDoseTimeIdx[i] = NULL;
+      i++;
     }
     free(_globals.extraDoseTimeIdx);
     _globals.extraDoseTimeIdx=NULL;
@@ -2582,7 +2585,8 @@ LogicalVector rxSolveFree(){
     int i=0;
     while (_globals.extraDoseTime[i] != NULL){
       free(_globals.extraDoseTime[i]);
-      _globals.extraDoseTime[i++] = NULL;
+      _globals.extraDoseTime[i] = NULL;
+      i++;
     }
     free(_globals.extraDoseTime);
     _globals.extraDoseTime=NULL;
@@ -2592,7 +2596,8 @@ LogicalVector rxSolveFree(){
     int i=0;
     while (_globals.extraDoseEvid[i] != NULL){
       free(_globals.extraDoseEvid[i]);
-      _globals.extraDoseEvid[i++] = NULL;
+      _globals.extraDoseEvid[i] = NULL;
+      i++;
     }
     free(_globals.extraDoseEvid);
     _globals.extraDoseEvid=NULL;
@@ -2602,7 +2607,8 @@ LogicalVector rxSolveFree(){
     int i=0;
     while (_globals.extraDoseDose[i] != NULL){
       free(_globals.extraDoseDose[i]);
-      _globals.extraDoseDose[i++] = NULL;
+      _globals.extraDoseDose[i] = NULL;
+      i++;
     }
     free(_globals.extraDoseDose);
     _globals.extraDoseDose=NULL;
