@@ -5008,17 +5008,17 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.nAllocIgnoredDoses = (int*)malloc((op->cores)* sizeof(int));
 
     for (int i = 0; i < op->cores; i++) {
-      _globals.pendingDoses[i] =  (int*)malloc(100* sizeof(int));
+      _globals.pendingDoses[i] =  (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
       _globals.nPendingDoses[i] = 0;
-      _globals.nAllocPendingDoses[i] = 100;
-      _globals.ignoredDoses[i] =  (int*)malloc(100* sizeof(int));
+      _globals.nAllocPendingDoses[i] = EVID_EXTRA_SIZE;
+      _globals.ignoredDoses[i] =  (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
       _globals.nIgnoredDoses[i] = 0;
-      _globals.nAllocIgnoredDoses[i] = 100;
-      _globals.extraDoseTimeIdx[i] = (int*)malloc(100* sizeof(int));
-      _globals.extraDoseEvid[i] = (int*)malloc(100* sizeof(int));
-      _globals.extraDoseTime[i] = (double*)malloc(100* sizeof(double));
-      _globals.extraDoseDose[i] = (double*)malloc(100* sizeof(double));
-      _globals.extraDoseAllocN[i] = 100;
+      _globals.nAllocIgnoredDoses[i] = EVID_EXTRA_SIZE;
+      _globals.extraDoseTimeIdx[i] = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
+      _globals.extraDoseEvid[i] = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
+      _globals.extraDoseTime[i] = (double*)malloc(EVID_EXTRA_SIZE* sizeof(double));
+      _globals.extraDoseDose[i] = (double*)malloc(EVID_EXTRA_SIZE* sizeof(double));
+      _globals.extraDoseAllocN[i] = EVID_EXTRA_SIZE;
       _globals.extraDoseN[i] = 0;
     }
     _globals.pendingDoses[op->cores]     = NULL;
