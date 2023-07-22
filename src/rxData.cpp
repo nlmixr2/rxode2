@@ -6088,6 +6088,15 @@ void rxAssignPtr(SEXP object = R_NilValue){
   }
 }
 
+extern "C" void updateExtraDoseGlobals(rx_solving_options_ind* ind) {
+  _globals.ignoredDoses[omp_get_thread_num()] = ind->ignoredDoses;
+  _globals.pendingDoses[omp_get_thread_num()] = ind->pendingDoses;
+  _globals.extraDoseTimeIdx[omp_get_thread_num()] = ind->extraDoseTimeIdx;
+  _globals.extraDoseTime[omp_get_thread_num()] = ind->extraDoseTime;
+  _globals.extraDoseEvid[omp_get_thread_num()] = ind->extraDoseEvid;
+  _globals.extraDoseDose[omp_get_thread_num()] = ind->extraDoseDose;
+}
+
 extern "C" void rxAssignPtrC(SEXP obj){
   rxAssignPtr(obj);
 }

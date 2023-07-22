@@ -32,6 +32,8 @@ extern "C" {
   int Rcat(char *msg);
   int isRstudio(void);
   int isProgSupported(void);
+
+  void updateExtraDoseGlobals(rx_solving_options_ind* ind);
   
 #if defined(__cplusplus)
 }

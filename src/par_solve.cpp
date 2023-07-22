@@ -1097,7 +1097,7 @@ void handleSS(int *neq,
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;
     }
-    cancelPendingDoses(ind);
+    if (cancelPendingDoses(ind)) updateExtraDoseGlobals(ind);
     ind->cacheME=0;
     // Reset LHS to NA
     ind->inLhs = 0;
@@ -1156,7 +1156,7 @@ void handleSS(int *neq,
           }
         }
         if (!doSSinf) {
-          pushPendingDose(infEixds, ind);
+          if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
           isSsLag=false; // Even with lag time it is a constant infusion when dur=ii
         }
         xp2=xout;
@@ -1233,12 +1233,12 @@ void handleSS(int *neq,
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
         double addTime = curIi-offTime;
-        pushPendingDose(infEixds, ind);
+        if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
         for (int cur = 0; cur < numDoseInf; ++cur) {
-          pushDosingEvent(xp2+offTime+ cur*curIi,
+          if (pushDosingEvent(xp2+offTime+ cur*curIi,
                           getDose(ind, ind->idose[infEixds]),
                           getEvid(ind, ind->idose[infEixds])-EVID0_REGULAR+EVID0_RATEADJ,
-                          ind);
+                              ind)) updateExtraDoseGlobals(ind);
         }
         for (j = 0; j < numDoseInf; j++) {
           ind->idx=*i;
@@ -1357,7 +1357,7 @@ void handleSS(int *neq,
         badSolveExit(*i);
       } else {
         // Infusion
-        pushPendingDose(infEixds, ind);
+        if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
