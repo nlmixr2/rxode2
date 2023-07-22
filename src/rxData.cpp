@@ -1441,7 +1441,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->pendingDoses = _globals.pendingDoses[omp_get_thread_num()];
     ind->pendingDosesN = &(_globals.nPendingDoses[omp_get_thread_num()]);
     ind->pendingDosesN[0] = 0; // reset
-    ind->pendingDosesAllocN = &(_globals.nAllocIgnoredDoses[omp_get_thread_num()]);
+    ind->pendingDosesAllocN = &(_globals.nAllocPendingDoses[omp_get_thread_num()]);
 
     ind->extraDoseN = &(_globals.extraDoseN[omp_get_thread_num()]);
     ind->extraDoseN[0] = 0; //reset
@@ -4919,16 +4919,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores=1;
     }
     seedEng(op->cores);
-    if (_globals.nPendingDoses != NULL) {
-      if (_globals.pendingDoses != NULL) {
-        int i=0;
-        while (_globals.pendingDoses[i] != NULL){
-          free(_globals.pendingDoses[i]);
-          _globals.pendingDoses[i++] = NULL;
-        }
-        free(_globals.pendingDoses);
-        _globals.pendingDoses=NULL;
+    if (_globals.pendingDoses != NULL) {
+      int i=0;
+      while (_globals.pendingDoses[i] != NULL){
+        free(_globals.pendingDoses[i]);
+        _globals.pendingDoses[i++] = NULL;
       }
+      free(_globals.pendingDoses);
+      _globals.pendingDoses=NULL;
     }
     if (_globals.nIgnoredDoses != NULL) {
       if (_globals.ignoredDoses != NULL) {
