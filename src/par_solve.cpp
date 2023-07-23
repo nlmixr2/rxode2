@@ -1110,11 +1110,7 @@ void handleSS(int *neq,
     double xp2, xout2;
     int canBreak=0;
     xp2 = xp;
-    double curIi = getIi(ind, ind->idx);
-    if (isSameTime(curIi,0) && ind->idx > 0) {
-      ind->idx--;
-      curIi = getIi(ind, ind->idx);
-    }
+    double curIi = getIiNumber(ind, ind->ixds);
 
     if (doSSinf || isSameTimeAbs(curIi,dur)) {
       double rate;
