@@ -1006,6 +1006,7 @@ void handleSS(int *neq,
   int maxSS = op->maxSS;
   int minSS = op->minSS;
   int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
+  bool isDurLong = false;
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
        getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
@@ -1110,6 +1111,10 @@ void handleSS(int *neq,
     int canBreak=0;
     xp2 = xp;
     double curIi = getIi(ind, ind->idx);
+    if (isSameTime(curIi,0) && ind->idx > 0) {
+      ind->idx--;
+      curIi = getIi(ind, ind->idx);
+    }
 
     if (doSSinf || isSameTimeAbs(curIi,dur)) {
       double rate;
@@ -1233,11 +1238,12 @@ void handleSS(int *neq,
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
         double addTime = curIi-offTime;
+        isDurLong = true;
         if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
         for (int cur = 0; cur < numDoseInf; ++cur) {
           if (pushDosingEvent(xp2+offTime+ cur*curIi,
                           getDose(ind, ind->idose[infEixds]),
-                          getEvid(ind, ind->idose[infEixds])-EVID0_REGULAR+EVID0_RATEADJ,
+                          getEvid(ind, ind->idose[infEixds])-ind->wh0+EVID0_RATEADJ,
                               ind)) updateExtraDoseGlobals(ind);
         }
         for (j = 0; j < numDoseInf; j++) {
@@ -1506,7 +1512,7 @@ void handleSS(int *neq,
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
     }
     ind->idx=fi;
-    if (!doSSinf && !isSsLag){
+    if (!doSSinf && !isSsLag && !isDurLong){
       handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
                   BadDose, InfusionRate, dose, yp,
                   xout, neq[1], ind);
