@@ -122,6 +122,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 
 extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx, rx_solving_options op);
 
+extern "C" void printErr(int err, int id);
 extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   _rxode2random_assignSolveOnly2(rx_global, op_global);
   rx_solve *rx;
@@ -216,6 +217,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       Rf_errorcall(R_NilValue, _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
+      for (int solveid = 0; solveid < rx->nsub * rx->nsim; solveid++){
+        rx_solving_options_ind *indE = &(rx->subjects[solveid]);
+        if (indE->err != 0) {
+          printErr(indE->err, indE->id);
+        }
+      }
       rxSolveFreeC();
       Rf_errorcall(R_NilValue, _("could not solve the system"));
     } else {

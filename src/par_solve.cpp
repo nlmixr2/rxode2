@@ -95,7 +95,7 @@ extern "C" const char *rxGetId(int id) {
   return getId(id);
 }
 
-void printErr(int err, int id){
+extern "C" void printErr(int err, int id){
   RSprintf("Recovered solving errors for internal ID %s (%d):\n", getId(id), err);
   if (err & 1){
     RSprintf("  Corrupted event table during sort (1)\n");

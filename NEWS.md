@@ -1,5 +1,11 @@
 # rxode2 (development version)
 
+## Breaking changes
+
+- Steady state with lag times are no longer shifted by the lag time
+  and then solved to steady state, The concentration at the inter-dose
+  interval is back-calculated.
+
 ## New features
 
 - Steady state infusions with a duration of infusions greater than the
@@ -32,6 +38,9 @@ mu-referencing style to run the optimization.
 
 - Allow steady state infusions with a duration of infusion greater than
   the inter-dose interval to be solved.
+
+- Solves will now possibly print more information when issuing a
+  "could not solve the system" error
 
 ## Internal new features
 
