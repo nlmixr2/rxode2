@@ -1007,6 +1007,8 @@ void handleSS(int *neq,
   int minSS = op->minSS;
   int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
   bool isDurLong = false;
+  bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
+    ind->whI == EVIDF_MODEL_RATE_ON;
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
        getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
@@ -1360,6 +1362,16 @@ void handleSS(int *neq,
       } else {
         // Infusion
         if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
+        if (isModeled && isSsLag) {
+          // turn on the modeled duration since it isn't part of the event table
+          double extraRate = -getDose(ind, ind->idose[infEixds]);
+          double extraAmt = getDose(ind, ind->idose[infBixds]);
+          double extraTime = getTime_(ind->idose[infBixds],ind);
+          int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
+            EVID0_REGULAR + EVID0_RATEADJ;
+          if (pushDosingEvent(extraTime, extraRate, extraEvid, ind)) updateExtraDoseGlobals(ind);
+        }
+
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
