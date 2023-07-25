@@ -785,8 +785,7 @@ static inline void solveWith1Pt(int *neq,
                                 rx_solving_options_ind *ind,
                                 t_update_inis u_inis,
                                 void *ctx){
-  int idid;
-  int itol=0;
+  int idid, itol=0;
   switch(op->stiff){
   case 3:
     if (!isSameTime(xout, xp)) {
@@ -1369,9 +1368,11 @@ void handleSS(int *neq,
           double extraTime = getTime_(ind->idose[infBixds],ind);
           int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
             EVID0_REGULAR + EVID0_RATEADJ;
-          if (pushDosingEvent(extraTime, extraRate, extraEvid, ind)) updateExtraDoseGlobals(ind);
+          double curLagExtra = getLag(ind, neq[1], ind->cmt, 0.0);
+          if (!isSameTimeAbs(curLagExtra, 0.0) &&
+              pushDosingEvent(extraTime, extraRate, extraEvid, ind))
+            updateExtraDoseGlobals(ind);
         }
-
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
@@ -1486,7 +1487,7 @@ void handleSS(int *neq,
             // yp is last solve or y0
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-            if (xout2 != totTime) {
+            if (!isSameTimeAbs(xout2, totTime)) {
               // don't give the infusion off dose
               xp2 = xout2;
               // Turn off Infusion, solve (dur-ii)
