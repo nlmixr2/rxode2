@@ -1239,12 +1239,13 @@ void handleSS(int *neq,
         if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
         for (int cur = 0; cur < numDoseInf; ++cur) {
           if (pushDosingEvent(xp2+offTime+ cur*curIi,
-                          getDose(ind, ind->idose[infEixds]),
-                          getEvid(ind, ind->idose[infEixds])-ind->wh0+EVID0_RATEADJ,
+                              getDose(ind, ind->idose[infEixds]),
+                              getEvid(ind, ind->idose[infEixds])-ind->wh0+EVID0_RATEADJ,
                               ind)) updateExtraDoseGlobals(ind);
         }
         for (j = 0; j < numDoseInf; j++) {
-          ind->idx=*i;
+          ind->ixds=infBixds;
+          ind->idx=bi;
           xout2 = xp2+curIi;
           // Use "real" xout for handle_evid functions.
           handle_evid(getEvid(ind, ind->ix[bi]), neq[0],
@@ -1253,7 +1254,6 @@ void handleSS(int *neq,
           // yp is last solve or y0
           solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                        xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-          ind->ixds--; // This dose stays in place
         }
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
@@ -1342,19 +1342,17 @@ void handleSS(int *neq,
           xp2 = xout2;
         }
         *istate=1;
-        ind->idx=fi;
+        if (!isSsLag || !isModeled) {
+          ind->idx = bi;
+          ind->ixds = infBixds;
+          handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                      BadDose, InfusionRate, dose, yp,
+                      xout, neq[1], ind);
+        }
+        ind->idx  = fi;
         ind->ixds = infFixds;
-        handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
-                    BadDose, InfusionRate, dose, yp,
-                    xout, neq[1], ind);
-        // REprintf("xout: %f evid: %d; rate: %f; int->ixds: %d, int->idx %d, ssLag: %d\n", xout, getEvid(ind, ind->idose[infBixds]),
-        //          InfusionRate[1], ind->ixds, ind->idx, isSsLag ? 1 : 0);
         // yp is last solve or y0
         *istate=1;
-
-        // ind->wrongSSDur=1;
-        // // Bad Solve => NA
-        // badSolveExit(*i);
       } else if (ind->err){
         printErr(ind->err, ind->id);
         badSolveExit(*i);
