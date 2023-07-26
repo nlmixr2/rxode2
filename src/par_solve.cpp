@@ -1235,13 +1235,18 @@ void handleSS(int *neq,
         int numDoseInf = (int)(dur/curIi);
         double offTime = dur- numDoseInf*curIi;
         double addTime = curIi-offTime;
+        double startTimeD = getTime_(ind->idose[infBixds],ind);
         isDurLong = true;
+        double extraRate = -getDose(ind, ind->idose[infEixds]);
+        double extraAmt = getDose(ind, ind->idose[infBixds]);
+        double extraTime = getTime_(ind->idose[infBixds],ind);
+        int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
+          EVID0_REGULAR + EVID0_RATEADJ;
         if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
         for (int cur = 0; cur < numDoseInf; ++cur) {
-          if (pushDosingEvent(xp2+offTime+ cur*curIi,
-                              getDose(ind, ind->idose[infEixds]),
-                              getEvid(ind, ind->idose[infEixds])-ind->wh0+EVID0_RATEADJ,
-                              ind)) updateExtraDoseGlobals(ind);
+          if (pushDosingEvent(startTimeD + offTime + cur*curIi,
+                              getDose(ind, ind->idose[infEixds]), extraEvid, ind))
+            updateExtraDoseGlobals(ind);
         }
         for (j = 0; j < numDoseInf; j++) {
           ind->ixds=infBixds;
