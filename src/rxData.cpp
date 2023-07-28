@@ -5268,8 +5268,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       evT.attr("class") = R_NilValue;
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
       rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
-    } else {
-      stop("need rxEtTran!");
     }
     rxSolveDat->par1ini = rxSolveDat->par1;
     // This will update par1 with simulated values
