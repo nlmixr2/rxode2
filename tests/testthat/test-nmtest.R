@@ -1,6 +1,6 @@
 if (file.exists(test_path("test-nmtest.qs"))) {
 
-  ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse"); devtools::install("~/src/rxode2random"); devtools::load_all();rxClean();#devtools::test()
+  # system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse"); devtools::install("~/src/rxode2random"); devtools::load_all();rxClean();#devtools::test()
 
   ## devtools::load_all()
 
@@ -21,7 +21,6 @@ if (file.exists(test_path("test-nmtest.qs"))) {
     cp <- central/(v/1000)
   })
 
-
   fl <- rxode2({
     cl <- 1.1
     v <- 20
@@ -39,7 +38,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   p <- TRUE
 
-  solveEqual <- function(id, plot = p, meth="liblsoda", modifyData = c("rate", "none", "dur")) {
+  solveEqual <- function(id, plot = p, meth="liblsoda", modifyData = c("dur", "rate", "none")) {
     noLag <-  all(d[d$id == id & d$evid != 0,]$lagt == 0)
     hasRate <- any(d[d$id == id & d$evid != 0,]$rate != 0)
     hasModeledRate <- any(d[d$id == id & d$evid != 0,]$mode == 1)
@@ -50,23 +49,25 @@ if (file.exists(test_path("test-nmtest.qs"))) {
     rate <- unlist(as.vector(d[d$evid != 0, "rate"]))
     ii0 <- all(d$ii == 0)
     oneRate <- (length(rate) == 1L)
-    if (modifyData == "rate" && hasRate && !hasModeledRate && !hasModeledDur && oneRate && !ii0) {
+    dose1 <- all(d[d$evid != 0, ]$cmt == 1)
+    if (modifyData == "rate" && hasRate && !hasModeledRate && !hasModeledDur && oneRate && !ii0 && !dose1) {
       if (p) message("modified rate to be modeled")
-      rate <- as.numeric(d[d$evid != 0, "rate"])
+      rate <- d[d$evid != 0, "rate", drop=FALSE]
+      rate <- rate$rate
       if (length(rate) == 1) {
         d$rat2 <- rate
-        d$rate <- ifelse(rate==0, 0, -1)
+        d$rate <- ifelse(d$rate==0, 0, -1)
         d$mode <- 1
-        assign(".d", d, envir=globalenv())
       }
-    } else if (modifyData == "dur" && hasRate && !hasModeledRate && !hasModeledDur && !hasChangedF && oneRate && !ii0) {
+    } else if (modifyData == "dur" && hasRate && !hasModeledRate && !hasModeledDur && !hasChangedF && oneRate && !ii0 && !dose1) {
       if (p) message("modified dur to be modeled")
       rate <- as.numeric(d[d$evid != 0, "rate"])
       amt <- as.numeric(d[d$evid != 0, "amt"])
       if (length(rate) == 1) {
         d$dur2 <- amt/rate
-        d$rate <- ifelse(rate==0, 0, -2)
+        d$rate <- ifelse(d$rate==0, 0, -2)
         d$mode <- 2
+        assign(".d", d, envir=globalenv())
       }
     } else if (any(modifyData == c("dur", "rate"))) {
       if (p) {
@@ -117,33 +118,12 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   p <- FALSE
   lapply(unique(d$id)[-25], function(i) {
     for (meth in c("liblsoda", "lsoda", "dop853")) {
-      for (modifyData in c("none", "rate")) {
+      for (modifyData in c("none", "rate", "dur")) {
         solveEqual(i, meth=meth, modifyData=modifyData)
       }
     }
   })
-
-  p <- TRUE
-
-  ## solveEqual(6)
   
-  ## solveEqual(9)
-  
-  solveEqual(10)
-  
-  ## solveEqual(11)
-  ## solveEqual(12)
-
-  ## solveEqual(13)
-
-  ## solveEqual(14)
-  
-  ## solveEqual(20)
-  ## solveEqual(23)
-  ## solveEqual(24)
-  ## solveEqual(26)
-  ## solveEqual(10)
-
   ## p <- FALSE
   ## lapply(unique(d$id)[-25], function(i) {
   ##   for (meth in c("liblsoda", "lsoda", "dop853")) {
@@ -199,5 +179,4 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   ## time of steady-state release
 
   ## Need to check id=10 with a lag time as well
-  
 }

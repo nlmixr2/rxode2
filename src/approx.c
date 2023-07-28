@@ -75,7 +75,7 @@ extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
 static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, rx_solving_options *op){
   int i = idx;
   double ret = y[ind->ix[idx]];
-  if (ISNA(ret)){
+  if (ISNA(ret)) {
     if (op->f2 == 1.0 && op->f1 == 0.0) {
       // use nocb
       // Go forward
@@ -187,9 +187,9 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
-    if (op->do_par_cov){
-      for (k = ncov; k--;){
-        if (op->par_cov[k]){
+    if (op->do_par_cov) {
+      for (k = ncov; k--;) {
+        if (op->par_cov[k]) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
@@ -216,7 +216,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
-    if (op->do_par_cov){
+    if (op->do_par_cov) {
       for (k = ncov; k--;){
         if (op->par_cov[k]){
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {

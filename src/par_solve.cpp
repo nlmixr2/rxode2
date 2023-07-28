@@ -1056,7 +1056,7 @@ void handleSS(int *neq,
           dur2 = getIiNumber(ind, ind->ixds) - dur;
         }
       }
-    } else if (ind->whI == EVIDF_MODEL_DUR_ON || ind->whI == EVIDF_MODEL_RATE_ON) {
+    } else if (isModeled) {
       // These are right next to another.
       if (isSsLag) {
         infFixds = ind->ixds;
@@ -1079,8 +1079,7 @@ void handleSS(int *neq,
     if (ind->wh0 == EVID0_SSINF){
     } else if (ind->whI == EVIDF_INF_RATE ||
                ind->whI == EVIDF_INF_DUR ||
-               ind->whI == EVIDF_MODEL_DUR_ON ||
-               ind->whI == EVIDF_MODEL_RATE_ON) {
+               isModeled) {
       ei = *i;
       while(ind->ix[ei] != ind->idose[infEixds] && ei < ind->n_all_times){
         ei++;
@@ -1120,6 +1119,8 @@ void handleSS(int *neq,
       if (ind->whI == EVIDF_MODEL_RATE_ON){
         rate  = getRate(ind, ind->id, ind->cmt, 0.0,
                         getAllTimes(ind, ind->idose[ind->ixds]));
+      } else if (ind->whI == EVIDF_MODEL_DUR_ON)  {
+        rate = getDose(ind, ind->idose[infBixds]) / dur;
       } else {
         rate = getDoseNumber(ind, ind->ixds);
       }
