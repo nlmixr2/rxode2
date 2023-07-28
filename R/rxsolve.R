@@ -1,4 +1,4 @@
-#' Solving & Simulation of a ODE/solved system (a options) equation
+#' Options, Solving & Simulation of an ODE/solved system
 #'
 #' This uses rxode2 family of objects, file, or model specification to
 #' solve a ODE system.  There are many options for a solved rxode2
