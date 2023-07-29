@@ -9,7 +9,7 @@
     cat("#ifndef __rxode2_control_H__\n#define __rxode2_control_H__\n")
     cat('#include <rxode2parse_control.h>\n')
     cat("\n#endif // __rxode2_control_H__\n")
-    sink();
+    sink()
     message("Copy header to inst directory")
     file.copy(devtools::package_file("src/rxode2_types.h"),
               devtools::package_file("inst/include/rxode2_types.h"),
