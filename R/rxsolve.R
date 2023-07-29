@@ -1135,6 +1135,11 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
         params[[.t]] <- .theta[.t]
       }
     }
+  } else if (inherits(params, "numeric")) {
+    .theta <- object$theta
+    .n <- names(.theta)
+    .theta <- .theta[!(.n %in% names(params))]
+    params <- c(params, .theta)
   }
 
   if (is.null(.rxControl$thetaLower)) {
