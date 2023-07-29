@@ -4,8 +4,8 @@ rxTest({
   mod <- rxode2({
     a <- 6
     b <- 0.6
-    d / dt(intestine) <- -a * intestine
-    d / dt(blood) <- a * intestine - b * blood
+    d/dt(intestine) <- -a * intestine
+    d/dt(blood) <- a * intestine - b * blood
   })
 
   mod2 <- rxode2({
@@ -16,9 +16,28 @@ rxTest({
     d / dt(blood) <- a * intestine - b * blood
   })
 
+  et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) %>%
+    et(time=0, cmt=1, amt=5, addl=10, ii=4) %>%
+    et(seq(0, 24, by=0.25/24))
+
+  tmp <- rxSolve(mod2, et)
+
+  plot(tmp, intestine)
+
+  et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) %>%
+    et(time=0, cmt=1, amt=5, ii=4, ss=1) %>%
+    et(time=4, cmt=1, amt=5, addl=10, ii=4) %>%
+    et(seq(0, 24, by=0.25/24))
+
+
+  tmp <- rxSolve(mod2, et)
+
+  plot(tmp, intestine)
+
   ms <- c("liblsoda", "lsoda", "dop853")
   for (m in ms) {
     skip_if_not_installed("units")
+    
     obs <- units::set_units(seq(0, 10, by = 1 / 24), "days")
 
     et <- eventTable(time.units = "days")

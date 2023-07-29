@@ -75,7 +75,7 @@ extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
 static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, rx_solving_options *op){
   int i = idx;
   double ret = y[ind->ix[idx]];
-  if (ISNA(ret)){
+  if (ISNA(ret)) {
     if (op->f2 == 1.0 && op->f1 == 0.0) {
       // use nocb
       // Go forward
@@ -157,7 +157,7 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   int idx=0;
   if (idx0 == NA_INTEGER){
     idx=0;
-    if (ind->evid[ind->ix[idx]] == 9) idx++;
+    if (getEvid(ind, ind->ix[idx]) == 9) idx++;
   } else if (idx0 >= ind->n_all_times) {
     return NA_REAL;
   } else {
@@ -187,9 +187,9 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
-    if (op->do_par_cov){
-      for (k = ncov; k--;){
-        if (op->par_cov[k]){
+    if (op->do_par_cov) {
+      for (k = ncov; k--;) {
+        if (op->par_cov[k]) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
@@ -216,7 +216,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
-    if (op->do_par_cov){
+    if (op->do_par_cov) {
       for (k = ncov; k--;){
         if (op->par_cov[k]){
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
@@ -231,12 +231,13 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
             idxSample = idx;
           }
           double *par_ptr = ind->par_ptr;
-          double *all_times = indSample->all_times;
+          //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
-          if (idxSample == 0 && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+          if (idxSample == 0 && fabs(t- getAllTimes(indSample, idxSample)) < DBL_EPSILON) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
-          } else if (idxSample > 0 && idxSample < indSample->n_all_times && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+          } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
+                     fabs(t- getAllTimes(indSample, idxSample)) < DBL_EPSILON) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
             if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
               ind->cacheME=0;

@@ -22,7 +22,7 @@
 \alias{solve.rxParams}
 \alias{solve.rxEt}
 \alias{rxControl}
-\title{Solving & Simulation of a ODE/solved system (a options) equation}
+\title{Options, Solving & Simulation of an ODE/solved system}
 \usage{
 rxSolve(
   object,

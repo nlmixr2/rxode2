@@ -1,3 +1,4 @@
+
 #pragma once
 #define STRICT_R_HEADERS
 #ifndef __rxode2_H__
@@ -75,15 +76,6 @@ typedef void (*t_dydt_lsoda_dum)(int *neq, double *t, double *A, double *DADT);
 typedef void (*t_jdum_lsoda)(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd);
 typedef int (*t_dydt_liblsoda)(double t, double *y, double *ydot, void *data);
 typedef void (*t_ode_current)(void);
-typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_LAG)(int _cSub,  int _cmt, double t);
-typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t);
-typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t);
-
-typedef void (*t_calc_mtime)(int cSub, double *mtime);
-  
-typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
-typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
   
 typedef void (*t_set_solve)(rx_solve *);
 typedef rx_solve *(*t_get_solve)(void);

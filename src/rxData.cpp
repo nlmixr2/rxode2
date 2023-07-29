@@ -12,7 +12,6 @@
 // NONMEM nTHETA=20
 // NONMEM nETA=30
 // NONMEM nSIGMA=10
-
 #define NPARS 60
 #include <RcppArmadillo.h>
 #include "nearPD.h"
@@ -46,7 +45,6 @@ using namespace arma;
 typedef void (*seedEng_t)(uint32_t ncores);
 extern seedEng_t seedEng;
 
-
 #include "cbindThetaOmega.h"
 #include <rxode2parseHandleEvid.h>
 #include "rxThreadData.h"
@@ -69,7 +67,6 @@ extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
 
 extern "C" {
-
   typedef SEXP (*_rxode2parse_getForder_type)(void);
   extern _rxode2parse_getForder_type getForder;
   typedef int (*_rxode2parse_useForder_type)(void);
@@ -1331,6 +1328,7 @@ struct rx_globals {
   //ints
   int *gevid;
   int *gBadDose;
+  int *gSkipDose;
   int *grc;
   int *gidose;
   int *gpar_cov;
@@ -1360,6 +1358,23 @@ struct rx_globals {
   bool zeroOmega = false;
   bool zeroSigma = false;
   int *gindLin = NULL;
+
+  // extra dosing information
+  int ** pendingDoses = NULL;
+  int *  nPendingDoses = NULL;
+  int *  nAllocPendingDoses = NULL;
+  int ** ignoredDoses = NULL;
+  int *  nIgnoredDoses = NULL;
+  int *  nAllocIgnoredDoses = NULL;
+
+  // new dosing information
+
+  int    **extraDoseTimeIdx = NULL;
+  double **extraDoseTime    = NULL;
+  int    **extraDoseEvid    = NULL;
+  double **extraDoseDose    = NULL;
+  int     *extraDoseN       = NULL;
+  int     *extraDoseAllocN  = NULL;
 };
 
 
@@ -1417,7 +1432,29 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->tlastS = getTlastSThread();
     ind->tfirstS = getTfirstSThread();
     ind->curDoseS = getCurDoseSThread();
+
+    ind->ignoredDoses = _globals.ignoredDoses[omp_get_thread_num()];
+    ind->ignoredDosesN = &(_globals.nIgnoredDoses[omp_get_thread_num()]);
+    ind->ignoredDosesN[0] = 0; // reset
+    ind->ignoredDosesAllocN = &(_globals.nAllocIgnoredDoses[omp_get_thread_num()]);
+
+    ind->pendingDoses = _globals.pendingDoses[omp_get_thread_num()];
+    ind->pendingDosesN = &(_globals.nPendingDoses[omp_get_thread_num()]);
+    ind->pendingDosesN[0] = 0; // reset
+    ind->pendingDosesAllocN = &(_globals.nAllocPendingDoses[omp_get_thread_num()]);
+
+    ind->extraDoseN = &(_globals.extraDoseN[omp_get_thread_num()]);
+    ind->extraDoseN[0] = 0; //reset
+    ind->extraDoseAllocN = &(_globals.extraDoseAllocN[omp_get_thread_num()]);
+    ind->extraDoseTimeIdx = _globals.extraDoseTimeIdx[omp_get_thread_num()];
+    ind->extraDoseTime = _globals.extraDoseTime[omp_get_thread_num()];
+    ind->extraDoseEvid = _globals.extraDoseEvid[omp_get_thread_num()];
+    ind->extraDoseDose = _globals.extraDoseDose[omp_get_thread_num()];
+    ind->idxExtra = 0;
+    ind->extraSorted = 0;
+
     ind->on = _globals.gon + ncmt*omp_get_thread_num();
+    ind->skipDose = _globals.gSkipDose + ncmt*omp_get_thread_num();
     ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
     ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
     ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
@@ -2510,6 +2547,87 @@ LogicalVector rxSolveFree(){
     rxSolveFreeObj=R_NilValue;
   }
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
+
+  if (_globals.pendingDoses != NULL) {
+    int i=0;
+    while (_globals.pendingDoses[i] != NULL) {
+      free(_globals.pendingDoses[i]);
+      _globals.pendingDoses[i] = NULL;
+      i++;
+    }
+    free(_globals.pendingDoses);
+    _globals.pendingDoses = NULL;
+  }
+
+  if (_globals.ignoredDoses != NULL) {
+    int i=0;
+    while (_globals.ignoredDoses[i] != NULL){
+      free(_globals.ignoredDoses[i]);
+      _globals.ignoredDoses[i] = NULL;
+      i++;
+    }
+    free(_globals.ignoredDoses);
+    _globals.ignoredDoses=NULL;
+  }
+
+  if (_globals.extraDoseTimeIdx != NULL) {
+    int i=0;
+    while (_globals.extraDoseTimeIdx[i] != NULL){
+      free(_globals.extraDoseTimeIdx[i]);
+      _globals.extraDoseTimeIdx[i] = NULL;
+      i++;
+    }
+    free(_globals.extraDoseTimeIdx);
+    _globals.extraDoseTimeIdx=NULL;
+  }
+
+  if (_globals.extraDoseTime != NULL) {
+    int i=0;
+    while (_globals.extraDoseTime[i] != NULL){
+      free(_globals.extraDoseTime[i]);
+      _globals.extraDoseTime[i] = NULL;
+      i++;
+    }
+    free(_globals.extraDoseTime);
+    _globals.extraDoseTime=NULL;
+  }
+
+  if (_globals.extraDoseEvid != NULL) {
+    int i=0;
+    while (_globals.extraDoseEvid[i] != NULL){
+      free(_globals.extraDoseEvid[i]);
+      _globals.extraDoseEvid[i] = NULL;
+      i++;
+    }
+    free(_globals.extraDoseEvid);
+    _globals.extraDoseEvid=NULL;
+  }
+
+  if (_globals.extraDoseDose != NULL) {
+    int i=0;
+    while (_globals.extraDoseDose[i] != NULL){
+      free(_globals.extraDoseDose[i]);
+      _globals.extraDoseDose[i] = NULL;
+      i++;
+    }
+    free(_globals.extraDoseDose);
+    _globals.extraDoseDose=NULL;
+  }
+  if (_globals.extraDoseN != NULL) free(_globals.extraDoseN);
+  _globals.extraDoseN = NULL;
+  if (_globals.extraDoseAllocN != NULL) free(_globals.extraDoseAllocN);
+  _globals.extraDoseAllocN = NULL;
+
+  if (_globals.nPendingDoses != NULL) free(_globals.nPendingDoses);
+  _globals.nPendingDoses=NULL;
+  if (_globals.nAllocPendingDoses != NULL) free(_globals.nAllocPendingDoses);
+  _globals.nAllocPendingDoses=NULL;
+  if (_globals.nIgnoredDoses != NULL) free(_globals.nIgnoredDoses);
+  _globals.nIgnoredDoses=NULL;
+  if (_globals.nAllocIgnoredDoses != NULL) free(_globals.nAllocIgnoredDoses);
+  _globals.nAllocIgnoredDoses=NULL;
+
+
   rxOptionsFree(); // f77 losda free
   rxOptionsIni();// realloc f77 lsoda cache
   rxClearFuns(); // Assign all the global ODE solving functions to NULL pointers
@@ -2628,6 +2746,7 @@ struct rxSolve_t {
   CharacterVector idLevels;
   bool convertInt = false;
   bool throttle = false;
+  int maxItemsPerId = 0;
 };
 
 SEXP rxSolve_(const RObject &obj, const List &rxControl, const Nullable<CharacterVector> &specParams,
@@ -3477,9 +3596,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           setupRxInd(ind, 1);
         }
         // Setup the pointers.
-        ind->id             = nsub+1;
-        ind->idReal         = id[i];
-        ind->all_times      = &_globals.gall_times[i];
+        ind->id               = nsub+1;
+        ind->idReal           = id[i];
+        ind->all_times        = &_globals.gall_times[i];
         ind->dv = &_globals.gdv[i];
         ind->limit = &_globals.glimit[i];
         ind->cens = &_globals.gcens[i];
@@ -3869,8 +3988,8 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       rx_solving_options_ind indS;
       int linCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmt];
       int nIndSim = rx->nIndSim;
-      for (unsigned int simNum = rx->nsim; simNum--;){
-        for (unsigned int id = rx->nsub; id--;){
+      for (unsigned int simNum = rx->nsim; simNum--;) {
+        for (unsigned int id = rx->nsub; id--;) {
           unsigned int cid = id+simNum*rx->nsub;
           ind = &(rx->subjects[cid]);
           ind->linCmt = linCmt;
@@ -4800,6 +4919,217 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores=1;
     }
     seedEng(op->cores);
+    if (_globals.pendingDoses != NULL) {
+      int i=0;
+      while (_globals.pendingDoses[i] != NULL){
+        free(_globals.pendingDoses[i]);
+        _globals.pendingDoses[i++] = NULL;
+      }
+      free(_globals.pendingDoses);
+      _globals.pendingDoses=NULL;
+    }
+    if (_globals.nIgnoredDoses != NULL) {
+      if (_globals.ignoredDoses != NULL) {
+        int i=0;
+        while (_globals.ignoredDoses[i] != NULL){
+          free(_globals.ignoredDoses[i]);
+          _globals.ignoredDoses[i++] = NULL;
+        }
+        free(_globals.ignoredDoses);
+        _globals.ignoredDoses=NULL;
+      }
+    }
+    if (_globals.extraDoseTimeIdx != NULL) {
+      int i=0;
+      while (_globals.extraDoseTimeIdx[i] != NULL){
+        free(_globals.extraDoseTimeIdx[i]);
+        _globals.extraDoseTimeIdx[i++] = NULL;
+      }
+      free(_globals.extraDoseTimeIdx);
+      _globals.extraDoseTimeIdx=NULL;
+    }
+
+    if (_globals.extraDoseTime != NULL) {
+      int i=0;
+      while (_globals.extraDoseTime[i] != NULL){
+        free(_globals.extraDoseTime[i]);
+        _globals.extraDoseTime[i++] = NULL;
+      }
+      free(_globals.extraDoseTime);
+      _globals.extraDoseTime=NULL;
+    }
+
+    if (_globals.extraDoseEvid != NULL) {
+      int i=0;
+      while (_globals.extraDoseEvid[i] != NULL){
+        free(_globals.extraDoseEvid[i]);
+        _globals.extraDoseEvid[i++] = NULL;
+      }
+      free(_globals.extraDoseEvid);
+      _globals.extraDoseEvid=NULL;
+    }
+
+    if (_globals.extraDoseDose != NULL) {
+      int i=0;
+      while (_globals.extraDoseDose[i] != NULL){
+        free(_globals.extraDoseDose[i]);
+        _globals.extraDoseDose[i++] = NULL;
+      }
+      free(_globals.extraDoseDose);
+      _globals.extraDoseDose=NULL;
+    }
+    if (_globals.extraDoseN != NULL) free(_globals.extraDoseN);
+    _globals.extraDoseN = NULL;
+    int *tmpI = (int*)malloc((op->cores)* sizeof(int));
+    if (tmpI == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.extraDoseN = tmpI;
+
+    if (_globals.extraDoseAllocN != NULL) free(_globals.extraDoseAllocN);
+    _globals.extraDoseAllocN = NULL;
+    tmpI = (int*)malloc((op->cores)* sizeof(int));
+    if (tmpI == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.extraDoseAllocN = tmpI;
+
+    if (_globals.nPendingDoses != NULL) free(_globals.nPendingDoses);
+    tmpI = (int*)malloc((op->cores)* sizeof(int));
+    if (tmpI == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.nPendingDoses = tmpI;
+
+    if (_globals.nAllocPendingDoses != NULL) free(_globals.nAllocPendingDoses);
+    tmpI = (int*)malloc((op->cores)* sizeof(int));
+    if (tmpI == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.nAllocPendingDoses = tmpI;
+
+    if (_globals.nIgnoredDoses != NULL) free(_globals.nIgnoredDoses);
+    tmpI = (int*)malloc((op->cores)* sizeof(int));
+    if (tmpI == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.nIgnoredDoses = tmpI;
+
+
+    if (_globals.nAllocIgnoredDoses != NULL) free(_globals.nAllocIgnoredDoses);
+    tmpI = (int*)malloc((op->cores)* sizeof(int));
+    if (tmpI == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.nAllocIgnoredDoses = tmpI;
+
+
+    int **tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
+    if (tmpII == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.pendingDoses = tmpII;
+
+    tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
+    if (tmpII == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.ignoredDoses = tmpII;
+
+    tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
+    if (tmpII == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.extraDoseTimeIdx = tmpII;
+
+    tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
+    if (tmpII == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.extraDoseEvid = tmpII;
+
+    double **tmpDD = (double**)malloc((op->cores+1)* sizeof(double*));
+    if (tmpDD == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.extraDoseTime = tmpDD;
+
+    tmpDD = (double**)malloc((op->cores+1)* sizeof(double*));
+    if (tmpDD == NULL) {
+      rxSolveFree();
+      stop(_("ran out of memory"));
+    }
+    _globals.extraDoseDose = tmpDD;
+
+    double *tmpD;
+    for (int i = 0; i < op->cores; i++) {
+      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
+      if (tmpI == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      _globals.pendingDoses[i] = tmpI;
+
+      _globals.nPendingDoses[i] = 0;
+      _globals.nAllocPendingDoses[i] = EVID_EXTRA_SIZE;
+
+      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
+      if (tmpI == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      _globals.ignoredDoses[i] =  tmpI;
+
+      _globals.nIgnoredDoses[i] = 0;
+      _globals.nAllocIgnoredDoses[i] = EVID_EXTRA_SIZE;
+      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
+      if (tmpI == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      _globals.extraDoseTimeIdx[i] = tmpI;
+      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
+      if (tmpI == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      _globals.extraDoseEvid[i] = tmpI;
+
+      tmpD = (double*)malloc(EVID_EXTRA_SIZE* sizeof(double));
+      if (tmpD == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      _globals.extraDoseTime[i] = tmpD;
+
+      tmpD = (double*)malloc(EVID_EXTRA_SIZE* sizeof(double));
+      if (tmpD == NULL) {
+        rxSolveFree();
+        stop(_("ran out of memory"));
+      }
+      _globals.extraDoseDose[i] = tmpD;
+      _globals.extraDoseAllocN[i] = EVID_EXTRA_SIZE;
+      _globals.extraDoseN[i] = 0;
+    }
+    _globals.pendingDoses[op->cores]     = NULL;
+    _globals.ignoredDoses[op->cores]     = NULL;
+    _globals.extraDoseTimeIdx[op->cores] = NULL;
+    _globals.extraDoseEvid[op->cores]    = NULL;
+    _globals.extraDoseTime[op->cores]    = NULL;
+    _globals.extraDoseDose[op->cores]    = NULL;
+
+
     // Now set up events and parameters
     RObject par0 = params;
     RObject ev0  = events;
@@ -4937,6 +5267,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       List evT = cls.attr(".rxode2.lst");
       evT.attr("class") = R_NilValue;
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
+      rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
     }
     rxSolveDat->par1ini = rxSolveDat->par1;
     // This will update par1 with simulated values
@@ -5195,7 +5526,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gon != NULL) free(_globals.gon);
-    _globals.gon = (int*)calloc(n3a_c +n3 + 4*rxSolveDat->nSize + 2*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
+    _globals.gon = (int*)calloc(n3a_c*2 +n3 + 4*rxSolveDat->nSize + 1*rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
 #ifdef rxSolveT
     RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -5206,7 +5537,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.slvr_counter = _globals.grc + rxSolveDat->nSize; //[nSize]
     _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
     _globals.jac_counter = _globals.dadt_counter + rxSolveDat->nSize; // [nSize]
-    _globals.gix=_globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
+    _globals.gix = _globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
+    _globals.gSkipDose = _globals.gix + rx->nall*rx->nsim;
+    // _globals.gSkipDose = _globals.gix + rx->nall*rx->nsim; //n3a_c;
 
 #ifdef rxSolveT
     RSprintf("Time13: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5854,6 +6187,15 @@ void rxAssignPtr(SEXP object = R_NilValue){
       _rxModels[prefix] = e;
     }
   }
+}
+
+extern "C" void updateExtraDoseGlobals(rx_solving_options_ind* ind) {
+  _globals.ignoredDoses[omp_get_thread_num()] = ind->ignoredDoses;
+  _globals.pendingDoses[omp_get_thread_num()] = ind->pendingDoses;
+  _globals.extraDoseTimeIdx[omp_get_thread_num()] = ind->extraDoseTimeIdx;
+  _globals.extraDoseTime[omp_get_thread_num()] = ind->extraDoseTime;
+  _globals.extraDoseEvid[omp_get_thread_num()] = ind->extraDoseEvid;
+  _globals.extraDoseDose[omp_get_thread_num()] = ind->extraDoseDose;
 }
 
 extern "C" void rxAssignPtrC(SEXP obj){
