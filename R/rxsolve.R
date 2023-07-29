@@ -1127,6 +1127,14 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
   if (is.null(params)) {
     params <- object$theta
+  } else if (inherits(params, "data.frame")) {
+    .theta <- object$theta
+    params <- as.data.frame(params)
+    for (.t in names(.theta)) {
+      if (!any(names(params) == .t)) {
+        params[[.t]] <- .theta[.t]
+      }
+    }
   }
 
   if (is.null(.rxControl$thetaLower)) {
@@ -1136,13 +1144,18 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .rxControl$thetaUpper <- object$thetaUpper
   }
   if (is.null(.rxControl$omega)) {
-    .rxControl$omega <- object$omega
+    .omega <- object$omega
+    .rxControl$omega <- .omega
   } else if (is.logical(.rxControl$omega)) {
     if (is.na(.rxControl$omega)) {
       .omega <- object$omega
       params <- c(params, setNames(rep(0, dim(.omega)[1]), dimnames(.omega)[[2]]))
       .rxControl$omega <- NULL
     }
+  }
+  if (inherits(.rxControl$omega, "matrix") &&
+        all(dim(.rxControl$omega) == c(0,0))) {
+    .rxControl$omega <- NULL
   }
   if (is.null(.rxControl$sigma)) {
     .rxControl$sigma <- object$simulationSigma
@@ -1154,6 +1167,10 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
       .rxControl$sigma <- NULL
     }
+  }
+  if (inherits(.rxControl$sigma, "matrix") &&
+        all(dim(.rxControl$sigma) == c(0,0))) {
+    .rxControl$sigma <- NULL
   }
   .rx <- object$simulationModel
   list(list(object=.rx, params = params, events = events, inits = inits),
@@ -1171,18 +1188,22 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   .pred <- FALSE
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
     .pred <- TRUE
-    .lst$drop <- c(.lst$drop, "ipredSim")
+    if (any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
+      .lst$drop <- c(.lst$drop, "ipredSim")      
+    }
   }
   .ret <- do.call("rxSolve", .lst)
   if (.pred) {
     .e <- attr(class(.ret), ".rxode2.env")
     .w <- which(names(.ret) == "sim")
-    names(.ret)[.w] <- "pred"
-    # don't break rxSolve, though maybe it should...
-    if (is.environment(.e)) {
-      .n2 <- .e$.check.names
-      .n2[.w] <- "pred"
-      .e$.check.names <- .n2
+    if (length(.w) == 1L) {
+      names(.ret)[.w] <- "pred"
+      # don't break rxSolve, though maybe it should...
+      if (is.environment(.e)) {
+        .n2 <- .e$.check.names
+        .n2[.w] <- "pred"
+        .e$.check.names <- .n2
+      }
     }
   }
   .ret
