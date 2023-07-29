@@ -1010,7 +1010,7 @@ void handleSS(int *neq,
     ind->whI == EVIDF_MODEL_RATE_ON;
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
-       getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF){
+       getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF) {
     if (isSsLag) {
       maxSS--; minSS--;
     }
@@ -1018,7 +1018,10 @@ void handleSS(int *neq,
     ind->ixds--; // This dose stays in place; Reverse dose
     if (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20){
       doSS2=1;
-    } else if (ind->wh0 == EVID0_SSINF){
+      ind->lastIsSs2 = true;
+    } else if (ind->lastIsSs2) {
+      return;
+    } else if (ind->wh0 == EVID0_SSINF) {
       doSSinf=1;
     }
     double dur = 0, dur2=0;
@@ -1531,6 +1534,8 @@ void handleSS(int *neq,
                   xout, neq[1], ind);
     }
     ind->doSS=0;
+  } else {
+    ind->lastIsSs2 = false;
   }
 }
 
