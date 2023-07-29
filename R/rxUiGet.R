@@ -363,7 +363,9 @@ rxUiGet.default <- function(x, ...) {
   get(.arg, x[[1]])
 }
 
-.rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)")
+.rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)",
+                     "meta"="Model meta information",
+                     "iniDf"="Initialization data frame for UI")
 
 .rxUiGetSupportedDollars <- function() {
   .v <- as.character(utils::methods("rxUiGet"))
