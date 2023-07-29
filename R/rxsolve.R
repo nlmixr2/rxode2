@@ -1666,6 +1666,18 @@ predict.rxode2 <- function(object, ...) {
 
 #' @rdname rxSolve
 #' @export
+predict.function <- function(object, ...) {
+  rxSolve(object, ...)
+}
+
+#' @rdname rxSolve
+#' @export
+predict.rxUi <- function(object, ...) {
+  rxSolve(object, ...)
+}
+
+#' @rdname rxSolve
+#' @export
 predict.rxSolve <- predict.rxode2
 
 #' @rdname rxSolve

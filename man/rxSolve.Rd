@@ -9,6 +9,8 @@
 \alias{rxSolve.default}
 \alias{update.rxSolve}
 \alias{predict.rxode2}
+\alias{predict.function}
+\alias{predict.rxUi}
 \alias{predict.rxSolve}
 \alias{predict.rxEt}
 \alias{predict.rxParams}
@@ -182,6 +184,10 @@ rxSolve(
 \method{update}{rxSolve}(object, ...)
 
 \method{predict}{rxode2}(object, ...)
+
+\method{predict}{`function`}(object, ...)
+
+\method{predict}{rxUi}(object, ...)
 
 \method{predict}{rxSolve}(object, ...)
 
