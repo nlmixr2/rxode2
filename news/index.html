@@ -130,8 +130,13 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
 <div class="section level3">
+<h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
+<ul><li>Steady state with lag times are no longer shifted by the lag time and then solved to steady state, The concentration at the inter-dose interval is back-calculated.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
-<ul><li><p>Allow <code>ini(model) &lt;- NULL</code> to drop ini block and <code>as.ini(NULL)</code> gives <code>ini({})</code> (Issue <a href="https://github.com/nlmixr2/rxode2/issues/523" class="external-link">#523</a>)</p></li>
+<ul><li><p>Steady state infusions with a duration of infusions greater than the inter-dose interval are now supported</p></li>
+<li><p>Allow <code>ini(model) &lt;- NULL</code> to drop ini block and <code>as.ini(NULL)</code> gives <code>ini({})</code> (Issue <a href="https://github.com/nlmixr2/rxode2/issues/523" class="external-link">#523</a>)</p></li>
 <li><p>Add a function <code><a href="../reference/modelExtract.html">modelExtract()</a></code> to extract model lines to allow modifying them and then changing the model by piping or simply assigning the modified lines with <code>model(ui) &lt;- newModifiedLines</code></p></li>
 <li><p>Add Algebraic mu-referencing detection (mu2) that allows you to express mu-referenced covariates as:</p></li>
 </ul><div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -142,7 +147,9 @@
 <code class="sourceCode R"><span></span>
 <span><span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">wt_cl</span> <span class="op">*</span> <span class="va">log.WT.div.70.5</span><span class="op">)</span></span></code></pre></div>
 <p>That was previously required (where <code>log.WT.div.70.5</code> was calculated in the data) for mu expressions. The <code>ui</code> now has more information to allow transformation of data internally and transformation to the old mu-referencing style to run the optimization.</p>
-</div>
+<ul><li><p>Allow steady state infusions with a duration of infusion greater than the inter-dose interval to be solved.</p></li>
+<li><p>Solves will now possibly print more information when issuing a “could not solve the system” error</p></li>
+</ul></div>
 <div class="section level3">
 <h3 id="internal-new-features-development-version">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-development-version"></a></h3>
 <ul><li>Add <code><a href="../reference/as.model.html">as.model()</a></code> for list expressions, which implies <code>model(ui) &lt;-   ui$lstExpr</code> will assign model components. It will also more robustly work with character vectors</li>

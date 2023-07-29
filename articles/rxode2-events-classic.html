@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Classic rxode2 Events</h1>
             
-            <h4 data-toc-skip class="date">2023-07-25</h4>
+            <h4 data-toc-skip class="date">2023-07-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-events-classic.Rmd" class="external-link"><code>vignettes/rxode2-events-classic.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-events-classic.Rmd</code></div>
@@ -185,62 +185,68 @@ Monolix and nlmixr, described in the <a href="rxode2-event-types.html">rxode2 ty
 <th>100+ cmt</th>
 <th>Infusion/Event Flag</th>
 <th>&lt;99 Cmt</th>
-<th>SS flag &amp; Turning of Compartment</th>
+<th>SS flag &amp; Turning off Compartment</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td>100+ cmt</td>
 <td>0 = bolus dose</td>
 <td>&lt; 99 cmt</td>
-<td>1 = dose</td>
+<td>01 = dose</td>
 </tr>
 <tr class="even">
 <td></td>
 <td>1 = infusion (rate)</td>
 <td></td>
-<td>10 = Steady state 1 (equivalent to SS=1)</td>
+<td>08 = Turn off Steady state infusion with lag time</td>
 </tr>
 <tr class="odd">
 <td></td>
 <td>2 = infusion (dur)</td>
 <td></td>
-<td>20 = Steady state 2 (equivalent to SS=2)</td>
+<td>09 = Steady state 1 at dose time with alag (SS=1)</td>
 </tr>
 <tr class="even">
 <td></td>
 <td>6 = turn off modeled duration</td>
 <td></td>
-<td>30 = Turn off a compartment (equivalent to -CMT w/EVID=2)</td>
+<td>10 = Steady state 1 (equivalent to SS=1) without alag()</td>
 </tr>
 <tr class="odd">
 <td></td>
 <td>7 = turn off modeled rate</td>
 <td></td>
-<td></td>
+<td>09 = Steady state 1/2 at dose+ alag()</td>
 </tr>
 <tr class="even">
 <td></td>
 <td>8 = turn on modeled duration</td>
 <td></td>
-<td></td>
+<td>19 = Steady state 2 at dose time with alag (SS=2)</td>
 </tr>
 <tr class="odd">
 <td></td>
 <td>9 = turn on modeled rate</td>
 <td></td>
-<td></td>
+<td>20 = Steady state 2 (equivalent to SS=2)</td>
 </tr>
 <tr class="even">
 <td></td>
 <td>4 = replace event</td>
 <td></td>
-<td></td>
+<td>30 = Turn off a compartment (equivalent to -CMT w/EVID=2)</td>
 </tr>
 <tr class="odd">
 <td></td>
 <td>5 = multiply event</td>
 <td></td>
+<td>40 = Steady state constant infusion</td>
+</tr>
+<tr class="even">
 <td></td>
+<td></td>
+<td></td>
+<td>50 = Phantom event, used for transit compartments doses</td>
 </tr>
 </tbody>
 </table>
@@ -477,11 +483,13 @@ bioavailability changes rate of infusion)</p>
 <th>time</th>
 <th>evid</th>
 <th>amt</th>
+<th>ii</th>
 </tr></thead>
 <tbody><tr class="odd">
 <td>0</td>
 <td>110</td>
 <td>50</td>
+<td>24</td>
 </tr></tbody>
 </table>
 <p>Steady State with super-positioning principle for am 50 and pm 100
@@ -491,20 +499,83 @@ dose</p>
 <th>time</th>
 <th>evid</th>
 <th>amt</th>
+<th>ii</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td>0</td>
 <td>110</td>
 <td>50</td>
+<td>24</td>
 </tr>
 <tr class="even">
 <td>12</td>
 <td>120</td>
 <td>100</td>
+<td>24</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level3">
+<h3 id="steady-state-with-lagged-dose-for-classic-rxode-evid">Steady state with lagged dose for classic RxODE evid<a class="anchor" aria-label="anchor" href="#steady-state-with-lagged-dose-for-classic-rxode-evid"></a>
+</h3>
+<p>Steady state with lagged dose for a bolus dose:</p>
+<div class="line-block">time | evid | amt | ii |<br>
+0 | 109 | 100 | 24 |<br>
+0 | 101 | 100 | 0 |</div>
+<p>The event 109 calculates the trough amount after the steady state has
+passed by (ii-lag_time) while event <code>101</code> applies the next
+steady state dose.</p>
+<p>Steady state (=2) with a lagged bolus dose</p>
+<table class="table">
+<thead><tr class="header">
+<th>time</th>
+<th>evid</th>
+<th>amt</th>
+<th>ii</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>0</td>
+<td>109</td>
+<td>50</td>
+<td>24</td>
+</tr>
+<tr class="even">
+<td>0</td>
+<td>101</td>
+<td>50</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>12</td>
+<td>119</td>
+<td>100</td>
+<td>24</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>101</td>
+<td>100</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Steady state infusion with lag time</p>
+<div class="line-block">time | evid | amt | ii |<br>
+0 | 10109 | 5 | 24 |<br>
+0 | 10108 | -5 | 24 |<br>
+0 | 10101 | 5 | |<br>
+20 | 10101 | -5 | |</div>
+<p>As in the case of the bolus, the <code>10109</code> event calculates
+the trough concentration with <code>ii=24</code>, which may (or may not)
+still have an infusion running. If the infusion is running the
+<code>10108</code> event will turn off that infusion at the appropriate
+time. If the infusion has been completed, then the <code>10108</code>
+event is ignored.</p>
+<p>The next 2 events <code>10101</code> represent the event times
+(assuming no bioavailability has been applied).</p>
 </div>
 <div class="section level3">
 <h3 id="turning-off-a-compartment-with-classic-rxode-evid">Turning off a compartment with classic RxODE EVID<a class="anchor" aria-label="anchor" href="#turning-off-a-compartment-with-classic-rxode-evid"></a>
@@ -516,18 +587,11 @@ dose</p>
 <th>evid</th>
 <th>amt</th>
 </tr></thead>
-<tbody>
-<tr class="odd">
+<tbody><tr class="odd">
 <td>0</td>
 <td>110</td>
 <td>50</td>
-</tr>
-<tr class="even">
-<td>12</td>
-<td>130</td>
-<td>NA</td>
-</tr>
-</tbody>
+</tr></tbody>
 </table>
 <p>Event coding in <code>rxode2</code> is encoded in a single event
 number <code>evid</code>. For compartments under 100, this is coded
