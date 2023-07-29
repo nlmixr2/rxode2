@@ -1,6 +1,6 @@
 if (file.exists(test_path("test-nmtest.qs"))) {
 
-  # system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse"); devtools::install("~/src/rxode2random"); devtools::load_all();rxClean();#devtools::test()
+  #system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse"); devtools::install("~/src/rxode2random"); devtools::load_all();rxClean();#devtools::test()
 
   ## devtools::load_all()
 
@@ -38,7 +38,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   p <- TRUE
 
-  solveEqual <- function(id, plot = p, meth="liblsoda", modifyData = c("dur", "rate", "none")) {
+  solveEqual <- function(id, plot = p, meth="liblsoda", modifyData = c("none", "dur", "rate")) {
     noLag <-  all(d[d$id == id & d$evid != 0,]$lagt == 0)
     hasRate <- any(d[d$id == id & d$evid != 0,]$rate != 0)
     hasModeledRate <- any(d[d$id == id & d$evid != 0,]$mode == 1)
@@ -116,61 +116,13 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   }
 
   p <- FALSE
-  lapply(unique(d$id)[-25], function(i) {
+  lapply(unique(d$id), function(i) {
     for (meth in c("liblsoda", "lsoda", "dop853")) {
       for (modifyData in c("none", "rate", "dur")) {
         solveEqual(i, meth=meth, modifyData=modifyData)
       }
     }
   })
-  
-  ## p <- FALSE
-  ## lapply(unique(d$id)[-25], function(i) {
-  ##   for (meth in c("liblsoda", "lsoda", "dop853")) {
-  ##     for (modifyData in c("none", "dur", "rate")) {
-  ##       solveEqual(i, meth=meth, modifyData=modifyData)
-  ##     }
-  ##   }
-  ## })
-
-  # 
-  
-  ## invisible(lapply(seq_len(range(d$id)[2]), function(i){message(i);solveEqual(i)}))
-
-  ## rxSolve(fl, d[d$id == 25,]) %>% dplyr::filter(time %in% c(0, 12, 24, 36,48))
-
-  ## solveEqual(25)
-
-  ## d <- d[d$id == 25, ]
-  ## d$ss  <- 0
-
-  ## solveEqual(25)
-
-##   d <- data.frame(as.data.frame(etTrans(d[d$id == 25, ], fl)), mode=0, dur2=2, rat2=10, bioav=1, lagt=0)
-
-##   names(d)[1] <- "id"
-## d$id <- 25
-
-  ## d$EVID <- ifelse(d$EVID==0, 0, 120)
-  ## d$EVID[1] <- 110
-
-  ## solveEqual(25)
-  
-  # 25
-  # 27 is the end
-
-  # Fixed rate, can be changed to modeled rate or duration
-  #d[d$id == 3 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 4 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 6 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 7 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 8 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 9 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 10 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 11 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 12 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 13 & d$evid != 0,] %>% as.data.frame
-  #d[d$id == 13 & d$evid != 0,] %>% as.data.frame 
   
   ## invisible(lapply(seq_len(range(d$id)[2]), function(i){message(i);solveEqual(i)}))
 
