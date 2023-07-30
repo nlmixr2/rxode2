@@ -6,7 +6,7 @@ without any ODE systems in them.  A very simple example is a one-compartment mod
 ```{r}
 library(rxode2)
 mod <- rxode2({
-    ipre <- 10 * exp(-ke * t);
+  ipre <- 10 * exp(-ke * t);
 })
 mod
 ```
