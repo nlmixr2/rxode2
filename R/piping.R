@@ -262,7 +262,7 @@
           .nsEnv$.quoteCallInfoLinesAppend <- eval(call("quote", .append))
         }
         return(NULL)
-      } else if (.name %in% c("envir",  "auto", "iniDf")) {
+      } else if (.name %in% c("envir",  "auto", "iniDf", "cov")) {
         return(NULL)
       } else if (.name != "") {
         # Changed named items to

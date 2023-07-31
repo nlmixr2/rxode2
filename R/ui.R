@@ -257,6 +257,11 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 #'   By default this is `TRUE`, but it can be changed by
 #'   `options(rxode2.autoVarPiping=FALSE)`.
 #'
+#'
+#' @param cov is a character vector of variables that should be
+#'   assumed to be covariates.  This will override automatic promotion
+#'   to a population parameter estimate (or an eta)
+#'
 #' @param envir the `environment` in which unevaluated model
 #'   expressions is to be evaluated.  May also be `NULL`, a list, a
 #'   data frame, a pairlist or an integer as specified to `sys.call`.
@@ -267,7 +272,8 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 #' @author Matthew Fidler
 #'
 #' @export
-model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE), envir=parent.frame()) {
+model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+                  cov=NULL, envir=parent.frame()) {
   if (is(substitute(x), "{")) {
     .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
     if (inherits(.funName, "try-error")) .funName <- NULL
@@ -310,12 +316,13 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     class(.mod) <- "rxUi"
     return(rxUiCompress(.mod))
   }
+  on.exit({.varSelect$cov <- NULL})
   UseMethod("model")
 }
 
 #' @export
 #' @rdname model
-model.default <- function(x, ..., append=FALSE, envir=parent.frame()) {
+model.default <- function(x, ..., append=FALSE, cov=NULL, envir=parent.frame()) {
   stop("rxode2 does not know how to handle this model statement")
 }
 
