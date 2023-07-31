@@ -8,50 +8,48 @@ simulation workflows that rxode2 can handle:
 ```{r}
 library(rxode2)
 
-Ribba2012 <- rxode2({
+Ribba2012 <- function() {
+  ini({
     k = 100
-
     tkde = 0.24
     eta.tkde = 0
-    kde ~ tkde*exp(eta.tkde)
-
     tkpq = 0.0295
     eta.kpq = 0
-    kpq ~ tkpq * exp(eta.kpq)
-
     tkqpp = 0.0031
     eta.kqpp = 0
-    kqpp ~ tkqpp * exp(eta.kqpp)
-
     tlambdap = 0.121
     eta.lambdap = 0
-    lambdap ~ tlambdap*exp(eta.lambdap)
-
     tgamma = 0.729
     eta.gamma = 0
-    gamma ~ tgamma*exp(eta.gamma)
-
     tdeltaqp = 0.00867
     eta.deltaqp = 0
+    prop.sd <- 0
+    tpt0 = 7.13
+    eta.pt0 = 0
+    tq0 = 41.2
+    eta.q0 = 0
+  })
+  model({
+    kde ~ tkde*exp(eta.tkde)
+    kpq ~ tkpq * exp(eta.kpq)
+    kqpp ~ tkqpp * exp(eta.kqpp)
+    lambdap ~ tlambdap*exp(eta.lambdap)
+    gamma ~ tgamma*exp(eta.gamma)
     deltaqp ~ tdeltaqp*exp(eta.deltaqp)
-
-    prop.err <- 0
-    pstar <- (pt+q+qp)*(1+prop.err)
     d/dt(c) = -kde * c
     d/dt(pt) = lambdap * pt *(1-pstar/k) + kqpp*qp -
-        kpq*pt - gamma*c*kde*pt
+      kpq*pt - gamma*c*kde*pt
     d/dt(q) = kpq*pt -gamma*c*kde*q
     d/dt(qp) = gamma*c*kde*q - kqpp*qp - deltaqp*qp
     ## initial conditions
-    tpt0 = 7.13
-    eta.pt0 = 0
     pt0 ~ tpt0*exp(eta.pt0)
-    tq0 = 41.2
-    eta.q0 = 0
     q0 ~ tq0*exp(eta.q0)
     pt(0) = pt0
     q(0) = q0
-})
+    pstar <- (pt+q+qp)
+    pstar ~  prop(prop.sd)
+  })
+}
 ```
 
 This is a tumor growth model described in Ribba 2012. In this case, we
@@ -103,9 +101,9 @@ omega <- lotri(eta.pt0 ~ lognCv(94),
                eta.q0 ~ lognCv(54),
                eta.lambdap ~ lognCv(72),
                eta.kqp ~ lognCv(76),
-               eta.qpp ~ lognCv(97),
+               eta.kqpp ~ lognCv(97),
                eta.deltaqp ~ lognCv(115),
-               eta.kde ~ lognCv(70))
+               eta.tkde ~ lognCv(70))
 
 omega
 ```
@@ -125,21 +123,25 @@ Ribba2012 %>% # Use rxode2
 
 ```
 
-Note there are two different things that were added to this simulation: 
+Note there are two different things that were added to this simulation:
 - `nSub` to specify how many subjects are in the model
 - `omega` to specify the between subject variability.
 
-## Simulation with unexplained variability 
+## Simulation with unexplained variability
 
 You can even add unexplained variability quite easily:
 
 ```{r}
 Ribba2012 %>% # Use rxode2
-    et(time.units="months") %>% # Pipe to a new event table
-    et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
-     et(0, 250, by=0.5) %>% # Add some sampling times (not required)
-    rxSolve(nSub=3, omega=omega, sigma=lotri(prop.err ~ 0.05^2)) %>% # Solve the simulation
-    plot(pt, q, qp, pstar) # Plot it, plotting the variables of interest
+  ini(prop.sd=0.05) %>% # change variability
+  et(time.units="months") %>% # Pipe to a new event table
+  et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
+  et(0, 250, by=0.5) %>% # Add some sampling times (not required)
+  rxSolve(nSub=3, omega=omega) %>%
+  plot(pt, q, qp, sim) # Plot it, plotting the variables of interest
+
+# note that sim is the simulated pstar since this is simulated from the
+# model with a nlmixr2 endpoint
 ```
 
 In this case we only added the `sigma` matrix to have unexplained
@@ -157,12 +159,13 @@ items informed the `sigma` matrix.
 
 ```{r}
 Ribba2012 %>% # Use rxode2
-    et(time.units="months") %>% # Pipe to a new event table
-    et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
-    et(0, 250, by=0.5) %>% # Add some sampling times (not required)
-    rxSolve(nSub=3, nStud=3, omega=omega, sigma=lotri(prop.err ~ 0.05^2),
-            dfSub=760, dfObs=95) %>% # Solve the simulation
-    plot(pt, q, qp, pstar) # Plot it, plotting the variables of interest
+  ini(prop.sd = 0.05) %>%
+  et(time.units="months") %>% # Pipe to a new event table
+  et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
+  et(0, 250, by=0.5) %>% # Add some sampling times (not required)
+  rxSolve(nSub=3, nStud=3, omega=omega,
+          dfSub=760, dfObs=95) %>% # Solve the simulation
+  plot(pt, q, qp, sim) # Plot it, plotting the variables of interest
 ```
 
 
@@ -177,7 +180,7 @@ paper.  These can be converted as follows:
 
 ```{r}
 rseVar <- function(est, rse){
-    return(est*rse/100)^2
+  return(est*rse/100)^2
 }
 
 thetaMat <- lotri(tpt0 ~ rseVar(7.13,25),
@@ -187,7 +190,7 @@ thetaMat <- lotri(tpt0 ~ rseVar(7.13,25),
                   tdeltaqp ~ rseVar(0.00867, 21),
                   tgamma ~ rseVar(0.729, 37),
                   tkde ~ rseVar(0.24, 33)
-                  );
+                  )
 
 thetaMat
 ```
@@ -203,14 +206,16 @@ rate constant, which does not make sense. For example:
 
 ```
 Ribba2012 %>% # Use rxode2
+ini(prop.sd = 0.05) %>%
 et(time.units="months") %>% # Pipe to a new event table
 et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
 et(0, 250, by=0.5) %>% # Add some sampling times (not required)
-rxSolve(nSub=2, nStud=2, omega=omega, sigma=lotri(prop.err ~ 0.05^2),
-thetaMat=thetaMat, 
+rxSolve(nSub=2, nStud=2, omega=omega,
+thetaMat=thetaMat,
 dfSub=760, dfObs=95) %>% # Solve the simulation
 plot(pt, q, qp, pstar) # Plot it, plotting the variables of interest
 
+#> ℹ change initial estimate of `prop.sd` to `0.05`
 #> unhandled error message: EE:[lsoda] 70000 steps taken before reaching tout
 #> @(lsoda.c:750
 #> Warning message:
@@ -231,14 +236,15 @@ In this case the simulation simply has to be modified to have
 
 ```{r}
 Ribba2012 %>% # Use rxode2
-    et(time.units="months") %>% # Pipe to a new event table
-    et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
-    et(0, 250, by=0.5) %>% # Add some sampling times (not required)
-    rxSolve(nSub=2, nStud=2, omega=omega, sigma=lotri(prop.err ~ 0.05^2),
-            thetaMat=thetaMat,
-            thetaLower=0, # Make sure the rates are reasonable
-            dfSub=760, dfObs=95) %>% # Solve the simulation
-    plot(pt, q, qp, pstar) # Plot it, plotting the variables of interest
+  ini(prop.sd = 0.05) %>%
+  et(time.units="months") %>% # Pipe to a new event table
+  et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
+  et(0, 250, by=0.5) %>% # Add some sampling times (not required)
+  rxSolve(nSub=2, nStud=2, omega=omega,
+          thetaMat=thetaMat,
+          thetaLower=0, # Make sure the rates are reasonable
+          dfSub=760, dfObs=95) %>% # Solve the simulation
+  plot(pt, q, qp, sim) # Plot it, plotting the variables of interest
 ```
 
 
@@ -253,19 +259,18 @@ summary of simulations, `rxode2` also provides this ability by the
 ## time.
 
 sim0 <- Ribba2012 %>% # Use rxode2
-    et(time.units="months") %>% # Pipe to a new event table
-    et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
-    et(0, 250, by=0.5) %>% # Add some sampling times (not required)
-    rxSolve(nSub=10, nStud=10, omega=omega, sigma=lotri(prop.err ~ 0.05^2),
-            thetaMat=thetaMat,
-            thetaLower=0, # Make sure the rates are reasonable
-            dfSub=760, dfObs=95) %>% # Solve the simulation
-    confint(c("pt","q","qp","pstar"),level=0.90); # Create Simulation intervals
+  ini(prop.sd=0.05) %>%
+  et(time.units="months") %>% # Pipe to a new event table
+  et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
+  et(0, 250, by=0.5) %>% # Add some sampling times (not required)
+  rxSolve(nSub=10, nStud=10, omega=omega,
+          thetaMat=thetaMat,
+          thetaLower=0, # Make sure the rates are reasonable
+          dfSub=760, dfObs=95) %>% # Solve the simulation
+  confint(c("pt","q","qp","sim"),level=0.90); # Create Simulation intervals
 
 sim0 %>% plot() # Plot the simulation intervals
 ```
-
-
 
 ## Simulating from a data-frame of parameters
 
@@ -279,18 +284,24 @@ exported too.
 
 ```{r}
 library(dplyr)
-pars <- rxInits(Ribba2012);
+
+Ribba2012 <- Ribba2012()
+# Convert to classic rxode2 model with ini attached
+
+r <- Ribba2012$simulationIniModel
+
+pars <- rxInits(r)
 pars <- pars[regexpr("(prop|eta)",names(pars)) == -1]
 print(pars)
 ## This is the exported method for simulation of Theta/Omega internally in rxode2
 df <- rxSimThetaOmega(params=pars, omega=omega,dfSub=760,
                       thetaMat=thetaMat, thetaLower=0, nSub=60,nStud=60) %>%
-    filter(tkde > tlambdap) %>% as.tbl()
+    filter(tkde > tlambdap) %>% as_tibble()
 ## You could also simulate more and bind them together to a data frame.
 print(df)
 ## Quick check to make sure that all the parameters are OK.
 all(df$tkde>df$tlambdap)
-sim1 <- Ribba2012 %>% # Use rxode2
+sim1 <- r %>% # Use rxode2
     et(time.units="months") %>% # Pipe to a new event table
     et(amt=1, time=50, until=58, ii=1.5) %>% # Add dosing every 1.5 months
     et(0, 250, by=0.5) %>% # Add some sampling times (not required)
@@ -299,7 +310,7 @@ sim1 <- Ribba2012 %>% # Use rxode2
 ## "study", so it summarizes the confidence intervals by dividing the
 ## subjects into sqrt(#subjects) subjects and then summarizes the
 ## confidence intervals
-sim2 <- sim1 %>% confint(c("pt","q","qp","pstar"),level=0.90); # Create Simulation intervals
+sim2 <- sim1 %>% confint(c("pt","q","qp","sim"),level=0.90); # Create Simulation intervals
 save(sim2, file = file.path(system.file(package = "rxode2"), "pipeline-sim2.rds"), version = 2)
 sim2 %>% plot()
 ```
