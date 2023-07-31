@@ -48,6 +48,10 @@ mu-referencing style to run the optimization.
   ui$lstExpr` will assign model components.  It will also more
   robustly work with character vectors
 
+## Bug fixes
+
+- Piping does not add constants to the initial estimates
+
 # rxode2 2.0.13
 
 ## Bug fixes
