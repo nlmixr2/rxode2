@@ -1880,4 +1880,41 @@ test_that("piping with append=lhs", {
 
     expect_error(u %>% model(-a), NA)
   })
+
+  test_that("adding a constant does not add to the ini block", {
+    u <- function() {
+      ini({
+        b <- 3
+        err.sd <- 2
+      })
+      model({
+        a <- x + err.sd
+        c <- 1+b
+        c ~ add(err.sd)
+      })
+    }
+
+    n <- u %>% model(aa <- pi+4, append=c)
+
+    expect_false(any(n$iniDf$name == "pi"))
+  })
+
+  test_that("adding a line with a defined constant doesn't add to ini()", {
+    u <- function() {
+      ini({
+        b <- 3
+        err.sd <- 2
+      })
+      model({
+        a <- x + err.sd
+        aa <- 3
+        c <- 1+b
+        c ~ add(err.sd)
+      })
+    }
+
+    n <- u %>% model(aaa <- aa+4, append=c)
+
+    expect_false(any(n$iniDf$name == "aa"))
+  })
 })
