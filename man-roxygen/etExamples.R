@@ -5,23 +5,29 @@
 ##' library(rxode2)
 ##' library(units)
 ##'
-##' ## Model from rxode2 tutorial
-##' mod1 <-rxode2({
-##'     KA=2.94E-01;
-##'     CL=1.86E+01;
-##'     V2=4.02E+01;
-##'     Q=1.05E+01;
-##'     V3=2.97E+02;
-##'     Kin=1;
-##'     Kout=1;
-##'     EC50=200;
-##'     C2 = centr/V2;
-##'     C3 = peri/V3;
-##'     d/dt(depot) =-KA*depot;
-##'     d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-##'     d/dt(peri)  =                    Q*C2 - Q*C3;
-##'     d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-##' });
+##' # Model from rxode2 tutorial
+##' # Using a nlmixr2 style function
+##'
+##' mod1 <-function(){
+##'   ini({
+##'     KA <- 2.94E-01
+##'     CL <- 1.86E+01
+##'     V2 <- 4.02E+01
+##'     Q <- 1.05E+01
+##'     V3 <- 2.97E+02
+##'     Kin <- 1
+##'     Kout <- 1
+##'     EC50 <- 200
+##'   })
+##'  model({
+##'     C2 <- centr/V2
+##'     C3 <- peri/V3
+##'     d/dt(depot) <- -KA*depot
+##'     d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+##'     d/dt(peri)  <-                    Q*C2 - Q*C3
+##'     d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+##'  })
+##' }
 ##'
 ##' ## These are making the more complex regimens of the rxode2 tutorial
 ##'
@@ -35,7 +41,7 @@
 ##'
 ##' ## bid for 5 days followed by qd for 5 days
 ##'
-##' et <- seq(bid,qd) %>% et(seq(0,11*24,length.out=100));
+##' et <- seq(bid,qd) %>% et(seq(0,11*24,length.out=100))
 ##'
 ##' bidQd <- rxSolve(mod1, et)
 ##'
