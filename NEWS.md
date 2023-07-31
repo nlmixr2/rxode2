@@ -52,6 +52,9 @@ mu-referencing style to run the optimization.
 
 - Piping does not add constants to the initial estimates
 
+- When constants are specified in the `model({})` block (like `k <- 1`), they will not
+  be  to the `ini` block
+
 # rxode2 2.0.13
 
 ## Bug fixes

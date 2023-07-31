@@ -761,6 +761,12 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
                           "M_LOG2E", "M_LOG10E", "M_LN2", "M_LN10")), var) != -1) {
     return(invisible())
   }
+  .mv <- rxModelVars(rxui)
+  .ini <- .mv$ini
+  .ini <- .ini[which(!is.na(.ini))]
+  if (var %in% names(.ini)) {
+    return(invisible())
+  }
   .iniDf <- rxui$iniDf
   .isEta <- TRUE
   checkmate::assertLogical(toEta, len=1)
