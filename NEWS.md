@@ -42,6 +42,12 @@ mu-referencing style to run the optimization.
 - Solves will now possibly print more information when issuing a
   "could not solve the system" error
 
+- The function `rxSetPipingAuto()` is now exported to change the way you
+  affect piping in your individual setup
+
+- Allow covariates to be specified in the model piping, that is `mod
+  %>% model(a=var+3, cov="var")` will add `"var"` as a covariate.
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-

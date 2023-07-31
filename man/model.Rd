@@ -9,23 +9,24 @@
 \alias{model.default}
 \title{Model block for rxode2/nlmixr models}
 \usage{
-\method{model}{`function`}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
+\method{model}{`function`}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
 
-\method{model}{rxUi}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
+\method{model}{rxUi}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
 
-\method{model}{rxode2}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
+\method{model}{rxode2}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
 
-\method{model}{rxModelVars}(x, ..., append = FALSE, auto = TRUE, envir = parent.frame())
+\method{model}{rxModelVars}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
 
 model(
   x,
   ...,
   append = FALSE,
   auto = getOption("rxode2.autoVarPiping", TRUE),
+  cov = NULL,
   envir = parent.frame()
 )
 
-\method{model}{default}(x, ..., append = FALSE, envir = parent.frame())
+\method{model}{default}(x, ..., append = FALSE, cov = NULL, envir = parent.frame())
 }
 \arguments{
 \item{x}{model expression}
@@ -49,6 +50,10 @@ selection is turned off and everything is added as a covariate
 (which can be promoted to a parameter with the \code{ini} statement).
 By default this is \code{TRUE}, but it can be changed by
 \code{options(rxode2.autoVarPiping=FALSE)}.}
+
+\item{cov}{is a character vector of variables that should be
+assumed to be covariates.  This will override automatic promotion
+to a population parameter estimate (or an eta)}
 
 \item{envir}{the \code{environment} in which unevaluated model
 expressions is to be evaluated.  May also be \code{NULL}, a list, a

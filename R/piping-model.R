@@ -646,8 +646,24 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 }
 
 .varSelect <- new.env(parent=emptyenv())
-
-setPipingAuto <- function(thetamodelVars=rex::rex(or("tv", "t", "pop", "POP", "Pop",
+#' Set the variables for the model piping automatic covarite selection
+#'
+#' @param thetamodelVars This is the prefixes for the theta model
+#'   variables in a regular expression
+#' @param covariateExceptions This is a regular expression of
+#'   covariates that should always be covariates
+#' @param etaParts This is the list of eta prefixes/post-fixes that
+#'   identify a variable as a between subject variability
+#' @return Nothing, called for side effects
+#' @export
+#' @author Matthew L. Fidler
+#' @details
+#'
+#' This is called once at startup to set the defaults, though you can
+#' change this if you wish so that piping can work differently for
+#' your individual setup
+#'
+rxSetPipingAuto <- function(thetamodelVars=rex::rex(or("tv", "t", "pop", "POP", "Pop",
                                                      "TV", "T", "cov", "err", "eff")),
                           covariateExceptions = rex::rex(start, or("wt", "sex", "crcl"), end),
                           etaParts=c("eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv",
@@ -666,7 +682,7 @@ setPipingAuto <- function(thetamodelVars=rex::rex(or("tv", "t", "pop", "POP", "P
   .varSelect$cov <- NULL
 }
 
-setPipingAuto()
+rxSetPipingAuto()
 
 .rxIniDfTemplate <-
   data.frame(

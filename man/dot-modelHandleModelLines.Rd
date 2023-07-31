@@ -10,6 +10,7 @@
   modifyIni = FALSE,
   append = FALSE,
   auto = TRUE,
+  cov = NULL,
   envir
 )
 }
@@ -37,6 +38,10 @@ selection is turned off and everything is added as a covariate
 (which can be promoted to a parameter with the \code{ini} statement).
 By default this is \code{TRUE}, but it can be changed by
 \code{options(rxode2.autoVarPiping=FALSE)}.}
+
+\item{cov}{is a character vector of variables that should be
+assumed to be covariates.  This will override automatic promotion
+to a population parameter estimate (or an eta)}
 
 \item{envir}{Environment for evaluation}
 }

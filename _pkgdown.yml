@@ -42,6 +42,8 @@ reference:
   - model<-
   - rxode2<-
   - rxSetCovariateNamesForPiping
+  - rxSetPipingAuto
+  - setPipingAuto
   - rxUiDecompress
   - rxUiCompress
   - as.ini
