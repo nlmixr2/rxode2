@@ -50,7 +50,7 @@ mu-referencing style to run the optimization.
 
 # rxode2 2.0.13
 
-# Bug fixes
+## Bug fixes
 
 - A bug was fixed so that the `zeroRe()` function works with correlated omega
   values.
