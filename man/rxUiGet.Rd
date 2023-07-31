@@ -6,6 +6,7 @@
 \alias{rxUiGet.paramsLine}
 \alias{rxUiGet.simulationSigma}
 \alias{rxUiGet.simulationModel}
+\alias{rxUiGet.simulationIniModel}
 \alias{rxUiGet}
 \alias{rxUiGet.theta}
 \alias{rxUiGet.lstChr}
@@ -43,6 +44,8 @@
 \method{rxUiGet}{simulationSigma}(x, ...)
 
 \method{rxUiGet}{simulationModel}(x, ...)
+
+\method{rxUiGet}{simulationIniModel}(x, ...)
 
 rxUiGet(x, ...)
 

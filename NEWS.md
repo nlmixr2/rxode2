@@ -9,7 +9,10 @@
 ## New features
 
 - Steady state infusions with a duration of infusions greater than the
-  inter-dose interval are now supported
+  inter-dose interval are now supported.
+
+- Added `model$simulationIniModel` which prepend the initial
+  conditions in the `ini({})` block to the classic `rxode2({})` model.
 
 - Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
   gives `ini({})` (Issue #523)

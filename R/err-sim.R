@@ -75,7 +75,7 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .errNum <- line[[3]]
-  .err <- str2lang(paste0("err.", pred1$var))
+  .err <- str2lang(paste0("rxerr.", pred1$var))
   .ret <- vector("list", 2)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
@@ -208,7 +208,7 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .predDf <- get("predDf", .x)
   .sigmaNames <- vapply(seq_along(.predDf$var), function(i) {
     if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
-      paste0("err.", .predDf$var[i])
+      paste0("rxerr.", .predDf$var[i])
     } else {
       ""
     }
@@ -228,6 +228,15 @@ rxUiGet.simulationModel <- function(x, ...) {
   eval(getBaseSimModel(.x))
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.simulationIniModel <- function(x, ...) {
+  .x <- x[[1]]
+  .exact <- x[[2]]
+  eval(getBaseIniSimModel(.x))
+}
+attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini values prepended (from UI)"
 
 .rxModelNoErrorLines <- function(uiModel, prefixLines=NULL, paramsLine=NULL,
                                  modelVars=FALSE, cmtLines=TRUE,
@@ -466,7 +475,8 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
       .curErr <- errLines[[.curErrLine]]
       if (.if) {
         .ret[[.k]] <- as.call(list(quote(`if`),
-                                   as.call(list(quote(`==`), quote(`CMT`), as.numeric(.predDf$cmt[.curErrLine]))),
+                                   as.call(list(quote(`==`), quote(`CMT`),
+                                                as.numeric(.predDf$cmt[.curErrLine]))),
                                    as.call(c(list(quote(`{`)), .curErr))))
         .k <- .k + 1
       } else {
