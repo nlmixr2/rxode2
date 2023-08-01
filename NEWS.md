@@ -11,6 +11,17 @@
 - Steady state infusions with a duration of infusions greater than the
   inter-dose interval are now supported.
 
+- When plotting and creating confidence intervals for multiple
+  endpoint models simulated from a rxode2 ui model, you can
+  plot/summarize each endpoint with `sim`. (ie. `confint(model,
+  "sim")` or `plot(model, sim)`).
+
+  If you only want to summarize a subset of endpoints, you can focus
+  on the endpoint by pre-pending the endpoint with `sim.`  For example
+  if you wanted to plot/summarize only the endpoint `eff` you would
+  use `sim.eff`. (ie `confint(model, "sim.eff")` or `plot(model,
+  sim.eff)`)
+
 - Added `model$simulationIniModel` which prepend the initial
   conditions in the `ini({})` block to the classic `rxode2({})` model.
 

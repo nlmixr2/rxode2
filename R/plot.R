@@ -203,26 +203,49 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   }
   .cmts <- c(
     as.character(substitute(y)),
-    names(sapply(as.character(.call), `c`))
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE))
   )
   .cmts <- .cmts[.cmts != ""]
   if (length(.cmts) == 0L) {
     .cmts <- NULL
   } else {
-    .cmts <- .cmts[!duplicated(.cmts)]
-    .both <- c(rxState(x), rxLhs(x))
-    .cmts0 <- intersect(.cmts, .both)
-    if (length(.cmts0) == 0) {
-      stop("the items requested in the plot do not exist in the solved object: ",
-           paste(.cmts, collapse=", "))
-    } else if (length(.cmts0) != length(.cmts)) {
-      .ignored <- .cmts[!(.cmts %in% .both)]
-      warning("some requested items do not exist in the solved object and were ignored: ",
-              paste(.ignored, collapse=", "))
+    .doSim <- all(vapply(.cmts, function(x) {
+      if (substr(x, 0, 4) == "sim.") return(TRUE)
+      FALSE
+    }, logical(1), USE.NAMES=FALSE))
+    if (.doSim) {
+      .vars <- vapply(.cmts, function(x) {
+        substr(x, 5, nchar(x))
+      }, character(1), USE.NAMES=FALSE)
+      .mv <- rxModelVars(x)
+      .good <- c(.mv$state, .mv$stateExtra)
+      .cmts0 <- intersect(.vars, .good)
+      if (length(.cmts0) == 0) {
+        stop("the `sim` endpoints requested in the plot do not exist in the solved object: ",
+             paste(.cmts, collapse=", "))
+      } else if (length(.cmts0) != length(.cmts)) {
+        .ignored <- .vars[!(.vars %in% .good)]
+        warning("some `sim` requested items do not exist in the solved object and were ignored: ",
+                paste(paste0("sim.", .ignored), collapse=", "))
+      }
+      .cmts <- paste0("sim.", .cmts0)
+    } else {
+      .cmts <- .cmts[!duplicated(.cmts)]
+      .both <- c(rxState(x), rxLhs(x))
+      .cmts0 <- intersect(.cmts, .both)
+      if (length(.cmts0) == 0) {
+        stop("the items requested in the plot do not exist in the solved object: ",
+             paste(.cmts, collapse=", "))
+      } else if (length(.cmts0) != length(.cmts)) {
+        .ignored <- .cmts[!(.cmts %in% .both)]
+        warning("some requested items do not exist in the solved object and were ignored: ",
+                paste(.ignored, collapse=", "))
+      }
+      .cmts <- .cmts0
     }
-    .cmts <- .cmts0
   }
   .dat <- rxStack(x, .cmts)
+  .cmts <- as.character(unique(.dat$trt))
   .nlvl <- 1L
   if (any(names(.dat) == "id")) {
     if (any(names(.dat) == "sim.id")) {
