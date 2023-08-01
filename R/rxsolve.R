@@ -1177,7 +1177,11 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
         all(dim(.rxControl$sigma) == c(0,0))) {
     .rxControl$sigma <- NULL
   }
-  .rx <- object$simulationModel
+  if (inherits(object, "rxode2tos")) {
+    .rx <- object
+  } else {
+    .rx <- object$simulationModel
+  }
   list(list(object=.rx, params = params, events = events, inits = inits),
                        .rxControl,
                        list(theta = theta, eta = eta))
@@ -1187,7 +1191,9 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL) {
-  object <- rxUiDecompress(object)
+  if (inherits(object, "rxUi")) {
+    object <- rxUiDecompress(object)
+  }
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .lst <- do.call("c", .lst)
   .pred <- FALSE
@@ -1213,6 +1219,9 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   }
   .ret
 }
+#' @rdname rxSolve
+#' @export
+rxSolve.rxode2tos <- rxSolve.rxUi
 
 
 #nlmixr2.nlmixr2FitData <- nlmixr2.nlmixr2FitCore

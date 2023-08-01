@@ -4,6 +4,7 @@
 \alias{rxSolve}
 \alias{rxSolve.function}
 \alias{rxSolve.rxUi}
+\alias{rxSolve.rxode2tos}
 \alias{rxSolve.nlmixr2FitData}
 \alias{rxSolve.nlmixr2FitCore}
 \alias{rxSolve.default}
@@ -142,6 +143,16 @@ rxSolve(
 )
 
 \method{rxSolve}{rxUi}(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL
+)
+
+\method{rxSolve}{rxode2tos}(
   object,
   params = NULL,
   events = NULL,
