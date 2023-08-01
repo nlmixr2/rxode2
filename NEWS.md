@@ -26,7 +26,8 @@
   conditions in the `ini({})` block to the classic `rxode2({})` model.
 
 - Now `model$simulationModel` and `model$simulationIniModel` will save
-  and use the initialization values from the compiled model
+  and use the initialization values from the compiled model, and will
+  solve as if it was the original ui model.
 
 - Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
   gives `ini({})` (Issue #523)

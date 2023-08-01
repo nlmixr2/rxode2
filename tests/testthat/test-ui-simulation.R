@@ -143,9 +143,20 @@ rxTest({
       })
     }
 
-    tmp <- rxode2(f)
+     tmp <- rxode2(f)
 
-    expect_error(tmp$simulationModel, NA)
+     expect_error(tmp$simulationModel, NA)
+     expect_error(tmp$simulationIniModel, NA)
+
+     tmp1 <- tmp$simulationModel
+
+     tmp2 <- tmp$simulationIniModel
+
+     expect_true(inherits(as.function(tmp1), "function"))
+     expect_true(inherits(as.function(tmp2), "function"))
+
+     expect_true(inherits(as.rxUi(tmp1), "rxUi"))
+     expect_true(inherits(as.rxUi(tmp2), "rxUi"))
 
     ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
@@ -154,8 +165,27 @@ rxTest({
       dplyr::as_tibble()
 
     rxWithSeed(42, {
-
       s <- rxSolve(tmp, ev,
+                   returnType="tibble", addCov=TRUE)
+
+      s <- s %>% dplyr::filter(CMT == 2)
+      expect_equal(length(as.numeric(table(s$sim))), 2)
+
+      expect_equal(sort(unique(s$sim)), c(1, 2))
+    })
+
+    rxWithSeed(42, {
+      s <- rxSolve(tmp1, ev,
+                   returnType="tibble", addCov=TRUE)
+
+      s <- s %>% dplyr::filter(CMT == 2)
+      expect_equal(length(as.numeric(table(s$sim))), 2)
+
+      expect_equal(sort(unique(s$sim)), c(1, 2))
+    })
+
+    rxWithSeed(42, {
+      s <- rxSolve(tmp2, ev,
                    returnType="tibble", addCov=TRUE)
 
       s <- s %>% dplyr::filter(CMT == 2)
