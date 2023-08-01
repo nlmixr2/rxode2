@@ -525,13 +525,11 @@ rxode2 <- # nolint
     ## cmpMgr = cmpMgr,
     .env$dynLoad <- eval(bquote(function(force = FALSE) {
       rx <- .(.env)
-      class(rx) <- "rxode2"
       rxode2::rxDynLoad(rx)
     }))
     .env$load <- .env$dynLoad
     .env$dynUnload <- eval(bquote(function() {
       rx <- .(.env)
-      class(rx) <- "rxode2"
       rxode2::rxDynUnload(rx)
     }))
     .env$unload <- .env$dynUnload
@@ -558,7 +556,6 @@ rxode2 <- # nolint
             return(TRUE)
           } else {
             rx <- .(.env)
-            class(rx) <- "rxode2"
             rxode2::rxIsLoaded(rx)
           }
         }))
@@ -569,7 +566,6 @@ rxode2 <- # nolint
             stop("cannot delete Dll in package", call. = FALSE)
           } else {
             rx <- .(.env)
-            class(rx) <- "rxode2"
             rxode2::rxDelete(rx)
           }
         }))
@@ -581,12 +577,10 @@ rxode2 <- # nolint
       }))
       .env$isLoaded <- eval(bquote(function() {
         rx <- .(.env)
-        class(rx) <- "rxode2"
         rxode2::rxIsLoaded(rx)
       }))
       .env$delete <- eval(bquote(function() {
         rx <- .(.env)
-        class(rx) <- "rxode2"
         rxode2::rxDelete(rx)
       }))
     }

@@ -224,7 +224,8 @@ attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
   assign("theta", ui$theta, envir=ret)
   assign("omega", ui$omega, envir=ret)
   assign("simulationSigma", ui$simulationSigma, envir=ret)
-  class(ret) <- c("rxode2tos", class(ret))
+  assign("uiFun", as.function(ui), envir=ret)
+  class(ret) <- c("rxode2tos", "rxode2")
   ret
 }
 
