@@ -21,23 +21,25 @@ In rxode2 these can be specified by the following:
 ```{r}
 library(rxode2)
 
-Vtpol2 <- rxode2({
-    d/dt(y)  = dy
-    d/dt(dy) = mu*(1-y^2)*dy - y
+Vtpol2 <- function() {
+  ini({
+    mu <- 1 ## nonstiff; 10 moderately stiff; 1000 stiff
+  })
+  model({
+    d/dt(y)       <- dy
+    d/dt(dy)      <- mu*(1-y^2)*dy - y
     ## Jacobian
-    df(y)/dy(dy)  = 1
-    df(dy)/dy(y)  = -2*dy*mu*y - 1
-    df(dy)/dy(dy) = mu*(1-y^2)
+    df(y)/dy(dy)  <- 1
+    df(dy)/dy(y)  <- -2*dy*mu*y - 1
+    df(dy)/dy(dy) <- mu*(1-y^2)
     ## Initial conditions
-    y(0) = 2
-    dy(0) = 0
-    ## mu
-    mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
-})
+    y(0)          <- 2
+    dy(0)         <- 0
+  })
+}
 
-et <- eventTable();
-et$add.sampling(seq(0, 10, length.out=200));
-et$add.dosing(20, start.time=0);
+et <- et(0, 10, length.out=200) %>%
+  et(amt=0)
 
 s1 <- Vtpol2 %>%  solve(et, method="lsoda")
 print(s1)
@@ -56,31 +58,24 @@ sympy to calculate the Jacobian automatically.
 
 This is done by the rxode2 option `calcJac` option:
 
-```
-Vtpol <- rxode2({
-    d/dt(y)  = dy
-    d/dt(dy) = mu*(1-y^2)*dy - y
-    ## Initial conditions
-    y(0) = 2
-    dy(0) = 0
-    ## mu
-    mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
-}, calcJac=TRUE)
+```{r}
+Vtpol <- function() {
+  ini({
+    mu <- 1 ## nonstiff; 10 moderately stiff; 1000 stiff
+  })
+  model({
+    d/dt(y)       <- dy
+    d/dt(dy)      <- mu*(1-y^2)*dy - y
+    y(0)          <- 2
+    dy(0)         <- 0
+  })
+}
 
-```
-To see the generated model, you can use `rxCat()`:
+Vtpol <- Vtpol()
 
-```
-> rxCat(Vtpol)
-d/dt(y)=dy;
-d/dt(dy)=mu*(1-y^2)*dy-y;
-y(0)=2;
-dy(0)=0;
-mu=1;
-df(y)/dy(y)=0;
-df(dy)/dy(y)=-2*dy*mu*y-1;
-df(y)/dy(dy)=1;
-df(dy)/dy(dy)=mu*(-Rx_pow_di(y,2)+1);
+# you can also use $symengineModelPrune if there is if/else blocks
+# that need to be converted:
+Vtpol <- rxode2(Vtpol$symengineModelNoPrune,  calcJac=TRUE)
 
+summary(Vtpol)
 ```
-
