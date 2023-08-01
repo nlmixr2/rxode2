@@ -52,5 +52,13 @@ rxTest({
     # Step 4 - Fit the model to the data
     expect_error(solve(u, qd), NA)
 
+    u1 <- u$simulationModel
+
+    expect_error(solve(u1, qd), NA)
+
+    u2 <- u$simulationIniModel
+
+    expect_error(solve(u2, qd), NA)
+
   })
 })
