@@ -834,4 +834,33 @@ rxTest({
                            returnType="tibble", addCov=TRUE), NA)
     })
   })
+
+  test_that("model without params() works",{
+
+    mod <- function() {
+      model({
+        ## Table 3 from Savic 2007
+        cl = 17.2 # (L/hr)
+        vc = 45.1 # L
+        ka = 0.38 # 1/hr
+        mtt = 0.37 # hr
+        bio=1
+        n = 20.1
+        k = cl/vc
+        ktr = (n+1)/mtt
+        ## note that lgammafn is the same as lgamma in R.
+        d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-
+                            ktr*tad(depot)-lgammafn(n+1))-ka*depot
+        d/dt(cen) = ka*depot-k*cen
+      })
+    }
+
+    mod <- mod()
+
+    expect_error(mod$simulationModel, NA)
+    expect_error(mod$simulationIniModel, NA)
+    expect_error(mod$symengineModelNoPrune, NA)
+    expect_error(mod$symengineModelPrune, NA)
+
+  })
 })

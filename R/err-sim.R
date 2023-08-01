@@ -251,7 +251,6 @@ attr(rxUiGet.symengineModelNoPrune, "desc") <- "symengine model without pruning 
 #' @rdname rxUiGet
 rxUiGet.symengineModelPrune <- function(x, ...) {
   .x <- x[[1]]
-  browser()
   .tmp <- getBaseSymengineModel(.x)
   .tmp[[1]] <- quote(`rxModelVars`)
   .tmp <- eval(.tmp)

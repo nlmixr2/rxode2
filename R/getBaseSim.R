@@ -13,7 +13,11 @@ getBaseSimModel <- function(obj) {
 #' @export
 getBaseSimModel.default <- function(obj) {
   .ui <- assertRxUi(obj)
-  rxCombineErrorLines(.ui)
+  .ret <- rxCombineErrorLines(.ui)
+  if (identical(.ret[[2]][[2]], str2lang("params()"))) {
+    .ret[[2]] <- .ret[[2]][-2]
+  }
+  .ret
 }
 
 #' Get the symengine for loading into symengine with `rxS()`
@@ -30,8 +34,10 @@ getBaseSymengineModel <- function(obj) {
 #'@export
 getBaseSymengineModel.default <- function(obj) {
   .ui <- assertRxUi(obj)
-  .x <- rxCombineErrorLines(.ui,paramsLine = FALSE, cmtLines=FALSE, dvidLine=FALSE)
-  .x[[2]] <- .x[[2]][-2]
+  .x <- rxCombineErrorLines(.ui, cmtLines=FALSE, dvidLine=FALSE)
+  if (identical(.x[[2]][[2]][[1]], quote(`params`))) {
+    .x[[2]] <- .x[[2]][-2]
+  }
   .x
 }
 
@@ -51,7 +57,7 @@ getBaseIniSimModel <- function(obj) {
 #' @export
 getBaseIniSimModel.default <- function(obj) {
   .ui <- assertRxUi(obj)
-  .ret <- rxode2::rxCombineErrorLines(.ui)
+  .ret <- rxCombineErrorLines(.ui)
   .params <- .ret[[2]][[2]]
   .iniDf <- obj$iniDf
   .iniDf <- .iniDf[(is.na(.iniDf$neta1) | .iniDf$neta1 == .iniDf$neta2),]
@@ -84,5 +90,8 @@ getBaseIniSimModel.default <- function(obj) {
     }
   }
   .mod <- lapply(seq_along(.ret[[2]])[-(1:2)], function(i){.ret[[2]][[i]]})
+  if (identical(.params, str2lang("params()"))) {
+    .params <- NULL
+  }
   as.call(c(list(quote(`rxode2`)),as.call(c(list(quote(`{`)), .params, .sigma, .ini, .mod))))
 }
