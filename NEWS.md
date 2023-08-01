@@ -11,6 +11,9 @@
 - Steady state infusions with a duration of infusions greater than the
   inter-dose interval are now supported.
 
+- Added `$symengineModelNoPrune` and `$symengineModelPrune` for
+  loading models into rxode2 with `rxS()`
+
 - When plotting and creating confidence intervals for multiple
   endpoint models simulated from a rxode2 ui model, you can
   plot/summarize each endpoint with `sim`. (ie. `confint(model,

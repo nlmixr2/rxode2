@@ -13,7 +13,26 @@ getBaseSimModel <- function(obj) {
 #' @export
 getBaseSimModel.default <- function(obj) {
   .ui <- assertRxUi(obj)
-  rxode2::rxCombineErrorLines(.ui)
+  rxCombineErrorLines(.ui)
+}
+
+#' Get the symengine for loading into symengine with `rxS()`
+#'
+#' @param obj Object
+#' @return Simulation model ready to load into symeng
+#' @author Matthew L. Fidler
+#' @export
+#' @keywords internal
+getBaseSymengineModel <- function(obj) {
+  UseMethod("getBaseSymengineModel")
+}
+
+#'@export
+getBaseSymengineModel.default <- function(obj) {
+  .ui <- assertRxUi(obj)
+  .x <- rxCombineErrorLines(.ui,paramsLine = FALSE, cmtLines=FALSE, dvidLine=FALSE)
+  .x[[2]] <- .x[[2]][-2]
+  .x
 }
 
 #' Get the base simulation model for simulation with inis in the

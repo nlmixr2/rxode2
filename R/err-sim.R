@@ -240,6 +240,28 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.symengineModelNoPrune <- function(x, ...) {
+  .x <- x[[1]]
+  .exact <- x[[2]]
+  .simulationModelAssignTOS(.x, eval(getBaseSymengineModel(.x)))
+}
+attr(rxUiGet.symengineModelNoPrune, "desc") <- "symengine model without pruning if/else from UI"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.symengineModelPrune <- function(x, ...) {
+  .x <- x[[1]]
+  browser()
+  .tmp <- getBaseSymengineModel(.x)
+  .tmp[[1]] <- quote(`rxModelVars`)
+  .tmp <- eval(.tmp)
+  .tmp <- rxode2(rxPrune(.tmp))
+  .simulationModelAssignTOS(.x, .tmp) 
+}
+attr(rxUiGet.symengineModelPrune, "desc") <- "symengine model with pruning if/else from UI"
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.simulationIniModel <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
