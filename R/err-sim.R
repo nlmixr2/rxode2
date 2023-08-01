@@ -220,20 +220,11 @@ rxUiGet.simulationSigma <- function(x, ...) {
 }
 attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
 
-.simulationModelAssignTOS <- function(ui, ret, iniCls =FALSE) {
+.simulationModelAssignTOS <- function(ui, ret) {
   assign("theta", ui$theta, envir=ret)
   assign("omega", ui$omega, envir=ret)
-  .predDf <-ui$predDf
-  if (!is.null(.predDf)) {
-    .sigma <- diag(length(.predDf$var))
-    .d <- paste0("rxerr.", .predDf$var)
-    dimnames(.sigma) <- list(.d, .d)
-    assign("sigma", .sigma, envir=ret)
-  } else {
-    assign("sigma", NULL, envir=ret)
-  }
+  assign("simulationSigma", ui$simulationSigma, envir=ret)
   class(ret) <- c("rxode2tos", class(ret))
-  if (iniCls) class(ret) <- c("rxode2tosini", class(ret))
   ret
 }
 
@@ -251,7 +242,7 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 rxUiGet.simulationIniModel <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  .simulationModelAssignTOS(.x, eval(getBaseIniSimModel(.x)), iniCls=TRUE)
+  .simulationModelAssignTOS(.x, eval(getBaseIniSimModel(.x)))
 }
 attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini values prepended (from UI)"
 

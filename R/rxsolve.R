@@ -1182,7 +1182,6 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   } else {
     .rx <- object$simulationModel
   }
-  class(.rx) <- "rxode2"
   list(list(object=.rx, params = params, events = events, inits = inits),
                        .rxControl,
                        list(theta = theta, eta = eta))
@@ -1204,7 +1203,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
       .lst$drop <- c(.lst$drop, "ipredSim")      
     }
   }
-  .ret <- do.call("rxSolve", .lst)
+  .ret <- do.call("rxSolve.default", .lst)
   if (.pred) {
     .e <- attr(class(.ret), ".rxode2.env")
     .w <- which(names(.ret) == "sim")
