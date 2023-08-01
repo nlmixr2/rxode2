@@ -68,6 +68,9 @@ mu-referencing style to run the optimization.
   ui$lstExpr` will assign model components.  It will also more
   robustly work with character vectors
 
+- Simulated objects from `rxSolve` now can access the model variables
+  with `$rxModelVars`
+
 ## Bug fixes
 
 - Piping does not add constants to the initial estimates
