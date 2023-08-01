@@ -71,6 +71,11 @@ mu-referencing style to run the optimization.
 - Simulated objects from `rxSolve` now can access the model variables
   with `$rxModelVars`
 
+- Simulation models from the UI now use `rxerr.endpoint` instead of
+  `err.endpoint` for the `sigma` residual error.  This is to align
+  with the convention that internally generated variables start with
+  `rx` or `nlmixr`
+
 ## Bug fixes
 
 - Piping does not add constants to the initial estimates
