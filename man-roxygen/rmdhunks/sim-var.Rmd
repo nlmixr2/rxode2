@@ -17,47 +17,42 @@ library(rxode2)
 set.seed(32)
 rxSetSeed(32)
 
-mod <- rxode2({
-  eff(0) = 1
-  C2 = centr/V2*(1+prop.err);
-  C3 = peri/V3;
-  CL =  TCl*exp(eta.Cl) ## This is coded as a variable in the model
-  d/dt(depot) =-KA*depot;
-  d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-  d/dt(peri)  =                    Q*C2 - Q*C3;
-  d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-})
+mod <- function() {
+  ini({
+    KA <- 2.94E-01
+    TCl <- 1.86E+01
+    # between subject variability
+    eta.Cl ~ 0.4^2
+    V2 <- 4.02E+01
+    Q <- 1.05E+01
+    V3 <- 2.97E+02
+    Kin <- 1
+    Kout <- 1
+    EC50 <- 200
+  })
+  model({
+    C2 <- centr/V2
+    C3 <- peri/V3
+    CL <-  TCl*exp(eta.Cl) ## This is coded as a variable in the model
+    d/dt(depot) <- -KA*depot
+    d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)  <-                    Q*C2 - Q*C3
+    d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0) <- 1
+  })
+}
 ```
 
-### Adding  the parameter estimates
-
-The next step is to get the parameters into R so that you can start the simulation:
-
-```{r}
-theta <- c(KA=2.94E-01, TCl=1.86E+01, V2=4.02E+01,  # central 
-           Q=1.05E+01, V3=2.97E+02,                # peripheral
-           Kin=1, Kout=1, EC50=200, prop.err=0)      # effects
-```
-
-In this case, I use `lotri` to specify the omega since it uses similar
-lower-triangular matrix specification as nlmixr (also similar to
-NONMEM):
-
-```{r}
-## the column names of the omega matrix need to match the parameters specified by rxode2
-omega <- lotri(eta.Cl ~ 0.4^2)
-omega
-```
 
 ### Simulating 
 
 The next step to simulate is to create the dosing regimen for overall simulation:
 
 ```{r}
-ev <- et(amount.units="mg", time.units="hours") %>%
+ev <- et(amountUnits="mg", timeUnits="hours") %>%
   et(amt=10000, cmt="centr")
 ```
-If you wish, you can also add sampling times (though now rxode2 can fill these in for you):
+If you wish, you can also add sampling times (though rxode2 can fill these in for you):
 
 ```{r}
 ev <- ev %>% et(0,48, length.out=100)
@@ -73,7 +68,7 @@ times](rxode2-events.html#add-doses-and-samples-within-a-sampling-window)).
 Once this is complete you can simulate using the `rxSolve` routine:
 
 ```{r}
-sim  <- rxSolve(mod,theta,ev,omega=omega,nSub=100)
+sim  <- rxSolve(mod, ev, nSub=100)
 ```
 
 To quickly look and customize your simulation you use the default
@@ -149,31 +144,58 @@ head(sim$param)
 In addition to conveniently simulating between subject variability,
 you can also easily simulate unexplained variability.
 
+One way to do that is to create a rxode2 model with the endpoints
+defined. Model piping can do this while keeping the model intact:
+
 ```{r}
-mod <- rxode2({
-  eff(0) = 1
-  C2 = centr/V2;
-  C3 = peri/V3;
-  CL =  TCl*exp(eta.Cl) ## This is coded as a variable in the model
-  d/dt(depot) =-KA*depot;
-  d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-  d/dt(peri)  =                    Q*C2 - Q*C3;
-  d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-  e = eff+eff.err
-  cp = centr*(1+cp.err)
-})
+mod2 <- mod %>%
+  model(eff ~ add(eff.sd), append=TRUE) %>%
+  model(C2 ~ prop(prop.sd), append=TRUE) %>%
+  ini(eff.sd=sqrt(0.1), prop.sd=sqrt(0.1))
+```
 
-theta <- c(KA=2.94E-01, TCl=1.86E+01, V2=4.02E+01,  # central 
-           Q=1.05E+01, V3=2.97E+02,                # peripheral
-           Kin=1, Kout=1, EC50=200)                # effects  
+You can see how the dataset should be defined with
+`$multipleEndpoint`:
 
-sigma <- lotri(eff.err ~ 0.1, cp.err ~ 0.1)
+```{r}
+mod2$multipleEndpoint
+```
 
+Here you see the endpoints should be defined for `eff` and `C2`:
 
-sim  <- rxSolve(mod, theta, ev, omega=omega, nSub=100, sigma=sigma)
-s <- confint(sim, c("eff", "centr"));
+```{r}
+ev <- et(amountUnits="mg", timeUnits="hours") %>%
+  et(amt=10000, cmt="centr") %>%
+  et(seq(0,48, length.out=100), cmt="eff") %>%
+  et(seq(0,48, length.out=100), cmt="C2")
+```
+
+Which allows you to solve the system:
+
+```{r}
+sim  <- rxSolve(mod2, ev, nSub=100)
+```
+
+Since this is simulated from a model with the residual specification
+included and a multiple endpoint model, you can summarize for each
+endpoint by simply taking a confidence interval of `"sim"`:
+
+```{r}
+s <- confint(sim, "sim")
 
 plot(s)
+```
+
+If you want to subset to a specific endpoint, like `eff` you can
+create the confidence interval for only that endpoint by using the
+specification `sim.eff`, where the endpoint name is separated from
+`sim` by a dot:
+
+
+```{r}
+seff <- confint(sim, "sim.eff")
+
+plot(seff)
 ```
 
 ### Simulation of Individuals
@@ -186,22 +208,22 @@ how these datasets should be created.
 
 ```{r}
 library(dplyr)
-ev1 <- eventTable(amount.units="mg", time.units="hours") %>%
-    add.dosing(dose=10000, nbr.doses=1, dosing.to=2) %>%
-    add.sampling(seq(0,48,length.out=10));
+ev1 <- et(amountUnits="mg", timeUnits="hours") %>%
+    et(amt=10000, cmt=2) %>%
+    et(0,48,length.out=10)
 
-ev2 <- eventTable(amount.units="mg", time.units="hours") %>%
-    add.dosing(dose=5000, nbr.doses=1, dosing.to=2) %>%
-    add.sampling(seq(0,48,length.out=8));
+ev2 <- et(amountUnits="mg", timeUnits="hours") %>%
+    et(amt=5000, cmt=2) %>%
+    et(0,48,length.out=8)
 
 dat <- rbind(data.frame(ID=1, ev1$get.EventTable()),
              data.frame(ID=2, ev2$get.EventTable()))
 
 
 ## Note the number of subject is not needed since it is determined by the data
-sim  <- rxSolve(mod, theta, dat, omega=omega, sigma=sigma)
+sim  <- rxSolve(mod, dat)
 
-sim %>% select(id, time, e, cp)
+sim %>% select(id, time, eff, C2)
 ```
 
 # Simulation of Clinical Trials
@@ -251,17 +273,19 @@ The covariance/variance prior is simulated from `rxode2`s `cvPost()`
 function.
 
 ## Simulation from inverse Wishart correlations
+
 An example of this simulation is below:
 ```{r}
+
 ## Creating covariance matrix
 tmp <- matrix(rnorm(8^2), 8, 8)
 tMat <- tcrossprod(tmp, tmp) / (8 ^ 2)
-dimnames(tMat) <- list(NULL, names(theta))
+dimnames(tMat) <- list(NULL, names(mod2$theta)[1:8])
 
-sim  <- rxSolve(mod, theta, ev, omega=omega, nSub=100, sigma=sigma, thetaMat=tMat, nStud=10,
+sim  <- rxSolve(mod2, ev, nSub=100, thetaMat=tMat, nStud=10,
                 dfSub=10, dfObs=100)
 
-s <-sim %>% confint(c("centr", "eff"))
+s <-sim %>% confint("sim")
 
 plot(s)
 ```
@@ -271,11 +295,11 @@ virtual study by accessing them in the solved data object with
 `$omega.list` and `$sigma.list`:
 
 ```{r}
-head(sim$omega.list)
+head(sim$omegaList)
 ```
 
 ```{r}
-head(sim$sigma.list)
+head(sim$sigmaList)
 ```
 
 You can also see the parameter realizations from the `$params` data frame.
@@ -285,7 +309,9 @@ You can also see the parameter realizations from the `$params` data frame.
 Lets assume we wish to simulate from [the nonmem run included in
 xpose](https://github.com/UUPharmacometrics/xpose/blob/master/inst/extdata/run001.lst)
 
-First we setup the model:
+First we setup the model; Since we are taking this from nonmem and
+would like to use the more free-form style from the classic `rxode2`
+model we start from the classic model:
 
 ```{r}
 rx1 <- rxode2({
@@ -372,8 +398,6 @@ s <-sim %>% confint(c("ipred"))
 plot(s)
 ```
 
-
-
 ## Simulate without uncertainty in `omega` or `sigma` parameters
 
 If you do not wish to sample from the prior distributions of either
@@ -382,28 +406,7 @@ specifying the `simVariability = FALSE` option when solving:
 
 ```{r}
 
-mod <- rxode2({
-  eff(0) = 1
-  C2 = centr/V2;
-  C3 = peri/V3;
-  CL =  TCl*exp(eta.Cl) ## This is coded as a variable in the model
-  d/dt(depot) =-KA*depot;
-  d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-  d/dt(peri)  =                    Q*C2 - Q*C3;
-  d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-  e = eff+eff.err
-  cp = centr*(1+cp.err)
-})
-
-theta <- c(KA=2.94E-01, TCl=1.86E+01, V2=4.02E+01,  # central 
-           Q=1.05E+01, V3=2.97E+02,                # peripheral
-           Kin=1, Kout=1, EC50=200)                # effects  
-
-sigma <- lotri(eff.err ~ 0.1, cp.err ~ 0.1)
-
-
-sim  <- rxSolve(mod, theta, ev, omega=omega, nSub=100, sigma=sigma,
-                thetaMat=tMat, nStud=10,
+sim  <- rxSolve(mod2, ev, nSub=100, thetaMat=tMat, nStud=10,
                 simVariability=FALSE)
 
 s <-sim %>% confint(c("centr", "eff"))
@@ -411,33 +414,6 @@ s <-sim %>% confint(c("centr", "eff"))
 plot(s)
 ```
 
-
 Note since realizations of `omega` and `sigma` were not simulated,
-`$omega.list` and `$sigma.list` both return `NULL`.
+`$omegaList` and `$sigmaList` both return `NULL`.
 
-#### rxode2 multi-threaded solving and simulation
-
-rxode2 now supports multi-threaded solving on OpenMP supported
-compilers, including linux and windows. Mac OSX can also be supported
-By default it uses all your available cores for solving as determined
-by `rxCores()`.  This may be overkill depending on your system, at a
-certain point the speed of solving is limited by things other than
-computing power.
-
-You can also speed up simulation by using the multi-cores to generate
-random deviates with the threefry simulation engine.  This is
-controlled by the `nCoresRV` parameter.  For example:
-
-```{r}
-sim  <- rxSolve(mod, theta, ev, omega=omega, nSub=100, sigma=sigma, thetaMat=tMat, nStud=10,
-                nCoresRV=2)
-
-s <-sim %>% confint(c("eff", "centr"))
-```
-
-The default for this is `1` core since the result depends on the
-number of cores and the random seed you use in your simulation as well
-as the work-load each thread is sharing/architecture.  However, you can always
-speed up this process with more cores if you are sure your
-collaborators have the same number of cores available to them and have
-OpenMP thread-capable compile.
