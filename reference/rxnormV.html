@@ -174,14 +174,14 @@ an alias of <code>rxnorm</code>. It is no longer supported in <code>rxode2({})</
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxnorm you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.8461494 -0.1137631 -0.1652338  1.6830841 -0.3084304 -0.3861466</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.2898275 -0.5275415 -0.7026936  0.4118216</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.7067165  0.1440983 -0.6467395  1.7732404 -0.5519410  1.0273073</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.4985019 -0.4696341 -0.6136208  1.6028248</span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.45507180 -0.37156732  1.92944208  0.25940151  1.26877954 -1.36979552</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  2.48014355 -0.30467663 -0.02644343 -0.11662207</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.46298388  0.19503008 -0.39258840 -0.03271747  0.09025161  0.14338323</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -0.69074408  0.49633325  0.10511692  2.20137936</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxnorm</span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span> <span class="co">## The first 2 arguments are the mean and standard deviation</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4.415573</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 7.548251</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxnorm` directly in the model</span></span></span>
