@@ -1790,6 +1790,7 @@ solve.rxEt <- solve.rxSolve
 
 #' @export
 `$.rxSolve` <- function(obj, arg, exact = FALSE) {
+  if (arg == "rxModelVars") return(rxModelVars(obj))
   return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 
