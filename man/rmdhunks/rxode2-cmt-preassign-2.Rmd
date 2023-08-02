@@ -5,13 +5,23 @@ after all the differential equations are defined.
 For example this is legal:
 
 ```{r}
-ode.1c.ka <- rxode2({
+ode.1c.ka <- function(){
+  model({
     C2 = center/V
     d / dt(depot) = -KA * depot
     d/dt(center) = KA * depot - CL*C2
     cmt(eff)
-})
+  })
+}
+
+ode.1c.ka <- ode.1c.ka()
 print(ode.1c.ka)
+```
+
+You can see this more clearly with the underlying classic `rxode2` model:
+
+```{r}
+ode.1c.ka$simulationModel
 ```
 
 But compartments defined before all the differential equations is not supported;  So the model below:

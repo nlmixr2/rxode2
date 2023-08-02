@@ -1,4 +1,3 @@
-
 An `rxode2` model specification consists of one or more 
 statements optionally terminated by semi-colons `;` and
 optional comments (comments are delimited by `#` and an 
