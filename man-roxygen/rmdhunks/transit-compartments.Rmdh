@@ -4,8 +4,11 @@ mechanistic explanation of a a lag-time type phenomena. rxode2 has special handl
 You can specify this in a similar manner as the original paper:
 
 ```{r out.width="100%"}
+
 library(rxode2)
-mod <- rxode2({
+
+mod <- function() {
+  model({
     ## Table 3 from Savic 2007
     cl = 17.2 # (L/hr)
     vc = 45.1 # L
@@ -19,11 +22,11 @@ mod <- rxode2({
     d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-
                         ktr*tad(depot)-lgammafn(n+1))-ka*depot
     d/dt(cen) = ka*depot-k*cen
-})
+  })
+}
 
-et <- eventTable()
-et$add.sampling(seq(0, 7, length.out=200))
-et$add.dosing(20, start.time=0, evid=7)
+et <- et(0, 7, length.out=200) %>%
+  et(amt=20, time=0, evid=7)
 
 transit <- rxSolve(mod, et)
 
@@ -38,23 +41,26 @@ bioavailability term is optional.
 The same model can be specified by:
 
 ```{r}
-mod <- rxode2({
+mod <- function() {
+  ini({
     ## Table 3 from Savic 2007
-    cl = 17.2 # (L/hr)
-    vc = 45.1 # L
-    ka = 0.38 # 1/hr
-    mtt = 0.37 # hr
-    bio=1
-    n = 20.1
-    k = cl/vc
-    ktr = (n+1)/mtt
-    d/dt(depot) = transit(n,mtt,bio)-ka*depot
-    d/dt(cen) = ka*depot-k*cen
-})
+    cl  <- 17.2 # (L/hr)
+    vc  <- 45.1 # L
+    ka  <- 0.38 # 1/hr
+    mtt <- 0.37 # hr
+    bio <- 1
+    n   <- 20.1
+  })
+  model({
+    k           <- cl/vc
+    ktr         <- (n+1)/mtt
+    d/dt(depot) <- transit(n,mtt,bio)-ka*depot
+    d/dt(cen)   <- ka*depot-k*cen
+  })
+}
 
-et <- eventTable();
-et$add.sampling(seq(0, 7, length.out=200));
-et$add.dosing(20, start.time=0, evid=7);
+et <- et(0, 7, length.out=200) %>%
+  et(amt=20, evid=7)
 
 transit <- rxSolve(mod, et)
 
