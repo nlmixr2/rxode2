@@ -56,9 +56,11 @@ rxpois(4) ## The first arguments are the lambda parameter
 
 ## This example uses `rxpois` directly in the model
 
-rx <- rxode2({
-  a <- rxpois(3)
-})
+rx <- function() {
+  model({
+    a <- rxpois(3)
+  })
+}
 
 et <- et(1, id = 1:2)
 

@@ -58,9 +58,11 @@ rxf(1, 3)
 
 ## This example uses `rxf` directly in the model
 
-rx <- rxode2({
-  a <- rxf(2, 2)
-})
+rx <- function() {
+  model({
+    a <- rxf(2, 2)
+  })
+}
 
 et <- et(1, id = 1:2)
 

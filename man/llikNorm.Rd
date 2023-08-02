@@ -43,11 +43,13 @@ et <- et(-3, 3, length.out=10)
 et$mu <- 0
 et$sigma <- 1
 
-model <- rxode2({
-  fx <- llikNorm(time, mu, sigma)
-  dMean <- llikNormDmean(time, mu, sigma)
-  dSd <- llikNormDsd(time, mu, sigma)
-})
+model <- function(){
+  model({
+    fx <- llikNorm(time, mu, sigma)
+    dMean <- llikNormDmean(time, mu, sigma)
+    dSd <- llikNormDsd(time, mu, sigma)
+  })
+ }
 
 ret <- rxSolve(model, et)
 ret

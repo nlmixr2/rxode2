@@ -86,7 +86,7 @@ one.cmt <- function() {
    ka <- exp(tka + eta.ka)
    cl <- exp(tcl + eta.cl)
    v <- exp(tv + eta.v)
-    linCmt() ~ add(add.sd)
+   linCmt() ~ add(add.sd)
  })
 }
 

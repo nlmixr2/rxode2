@@ -36,10 +36,12 @@ llikGeom(1:10, 0.2)
 et  <- et(1:10)
 et$prob <- 0.2
  
-model <- rxode2({
-  fx <- llikGeom(time, prob)
-  dProb <- llikGeomDprob(time, prob)
-})
+model <- function() {
+  model({
+    fx <- llikGeom(time, prob)
+    dProb <- llikGeomDprob(time, prob)
+  })
+}
 
 rxSolve(model, et)
 }

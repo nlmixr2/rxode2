@@ -58,9 +58,11 @@ rxcauchy(3)
 
 ## This example uses `rxcauchy` directly in the model
 
-rx <- rxode2({
-  a <- rxcauchy(2)
-})
+rx <- function() {
+  model({
+    a <- rxcauchy(2)
+  })
+}
 
 et <- et(1, id = 1:2)
 

@@ -40,11 +40,13 @@ et  <- et(seq(0.001, 1, length.out=10))
 et$shape <- 1
 et$rate <- 10
  
-model <- rxode2({
-  fx <- llikGamma(time, shape, rate)
-  dShape<- llikGammaDshape(time, shape, rate)
-  dRate <- llikGammaDrate(time, shape, rate)
-})
+model <- function() {
+  model({
+    fx <- llikGamma(time, shape, rate)
+    dShape<- llikGammaDshape(time, shape, rate)
+    dRate <- llikGammaDrate(time, shape, rate)
+  })
+}
 
 rxSolve(model, et)
 }

@@ -42,9 +42,11 @@ rxnorm(2, 3) ## The first 2 arguments are the mean and standard deviation
 
 ## This example uses `rxnorm` directly in the model
 
-rx <- rxode2({
-  a <- rxnorm()
-})
+rx <- function() {
+  model({
+    a <- rxnorm()
+  })
+}
 
 et <- et(1, id = 1:2)
 

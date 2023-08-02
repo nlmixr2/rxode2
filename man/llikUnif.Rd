@@ -39,11 +39,13 @@ et  <- et(seq(1,1, length.out=4))
 et$alpha <- -2
 et$beta <- 2
  
-model <- rxode2({
-  fx <- llikUnif(time, alpha, beta)
-  dAlpha<- llikUnifDalpha(time, alpha, beta)
-  dBeta <- llikUnifDbeta(time, alpha, beta)
-})
+model <- function() {
+  model({
+    fx <- llikUnif(time, alpha, beta)
+    dAlpha<- llikUnifDalpha(time, alpha, beta)
+    dBeta <- llikUnifDbeta(time, alpha, beta)
+  })
+}
 
 rxSolve(model, et)
 }

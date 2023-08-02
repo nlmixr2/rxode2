@@ -38,10 +38,12 @@ llikPois(0:7, lambda = 4, full=TRUE)
 et <- et(0:10)
 et$lambda <- 0.5
 
-model <- rxode2({
-  fx <- llikPois(time, lambda)
-  dLambda <- llikPoisDlambda(time, lambda)
-})
+model <- function() {
+  model({
+    fx <- llikPois(time, lambda)
+    dLambda <- llikPoisDlambda(time, lambda)
+  })
+}
 
 rxSolve(model, et)
 }

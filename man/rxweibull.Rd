@@ -61,9 +61,11 @@ rxweibull(3)
 
 ## This example uses `rxweibull` directly in the model
 
-rx <- rxode2({
-  a <- rxweibull(1, 3)
-})
+rx <- function() {
+  model({
+    a <- rxweibull(1, 3)
+  })
+}
 
 et <- et(1, id = 1:2)
 

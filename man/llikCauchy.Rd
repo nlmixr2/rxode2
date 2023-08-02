@@ -39,11 +39,13 @@ et <- et(-3, 3, length.out=10)
 et$location <- 0
 et$scale <- 1
 
-model <- rxode2({
-  fx <- llikCauchy(time, location, scale)
-  dLocation <- llikCauchyDlocation(time, location, scale)
-  dScale <- llikCauchyDscale(time, location, scale)
-})
+model <- function() {
+  model({
+    fx <- llikCauchy(time, location, scale)
+    dLocation <- llikCauchyDlocation(time, location, scale)
+    dScale <- llikCauchyDscale(time, location, scale)
+  })
+}
 
 rxSolve(model, et)
 }

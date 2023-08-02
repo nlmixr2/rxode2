@@ -46,12 +46,14 @@ et$nu <- 7
 et$mean <- 0
 et$sd <- 1
 
-model <- rxode2({
-  fx <- llikT(time, nu, mean, sd)
-  dDf <- llikTDdf(time, nu, mean, sd)
-  dMean <- llikTDmean(time, nu, mean, sd)
-  dSd   <- llikTDsd(time, nu, mean, sd)
-})
+model <- function() {
+  model({
+    fx <- llikT(time, nu, mean, sd)
+    dDf <- llikTDdf(time, nu, mean, sd)
+    dMean <- llikTDmean(time, nu, mean, sd)
+    dSd   <- llikTDsd(time, nu, mean, sd)
+  })
+}
 
 rxSolve(model, et)
 }

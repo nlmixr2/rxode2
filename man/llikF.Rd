@@ -34,11 +34,13 @@ x <- seq(0.001, 5, length.out = 100)
 
 llikF(x^2, 1, 5)
 
-model <- rxode2({
-  fx <- llikF(time, df1, df2)
-  dMean <- llikFDdf1(time, df1, df2)
-  dSd <- llikFDdf2(time, df1, df2)
-})
+model <- function(){
+  model({
+    fx <- llikF(time, df1, df2)
+    dMean <- llikFDdf1(time, df1, df2)
+    dSd <- llikFDdf2(time, df1, df2)
+  })
+}
 
 et <- et(x)
 et$df1 <- 1

@@ -38,10 +38,12 @@ llikExp(1, 1:3, full=TRUE)
 et <- et(1:3)
 et$x <- 1
 
-model <- rxode2({
-  fx <- llikExp(x, time)
-  dRate <- llikExpDrate(x, time)
-})
+model <- function() {
+  model({
+    fx <- llikExp(x, time)
+    dRate <- llikExpDrate(x, time)
+  })
+}
 
 rxSolve(model, et)
 }

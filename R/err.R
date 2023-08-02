@@ -63,7 +63,6 @@
 
 .errDistsPositive <- c("add", "prop", "propT", "pow", "powT", "logn", "dlogn", "lnorm", "dlnorm", "logitNorm", "probitNorm")
 
-
 .errUnsupportedDists <- "nlmixrDist"
 
 .errAddDists <- c("add", "prop", "propT", "propF", "norm", "pow", "powT", "powF", "dnorm", "logn", "lnorm", "dlnorm", "tbs", "tbsYj", "boxCox",
@@ -138,7 +137,6 @@
   "t"=c(0, Inf),
   "t2"=c(0, Inf)
 )
-
 
 ## the desired outcome for each expression is to capture the condition
 ## when the multiple endpoint occurs, the lower and upper for the
@@ -296,6 +294,7 @@ rxPreferredDistributionName <- function(dist) {
 #'   rxDemoteAddErr()
 #'
 #' # This is used for logitNorm(NA), the additive portion is stripped
+#' 
 #' @keywords internal
 rxDemoteAddErr <- function(errType) {
   if (inherits(errType, "factor")) {
@@ -533,12 +532,10 @@ rxDemoteAddErr <- function(errType) {
   }
 }
 
-
 #' Combine transformations and error structures
 #'
 #' Combine error information to figure out what transformation is
 #' being applied for the current endpoint
-#'
 #'
 #' @param oldErrType This is the old transformation, by default is
 #'   zero representing no prior transformation. This parameter is
@@ -608,8 +605,6 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   }
   return(FALSE)
 }
-
-
 
 .allowDemoteAddDistributions <- c("lnorm", "probitNorm", "logitNorm")
 
@@ -747,7 +742,6 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     if (.nargs > 0) {
       lapply(seq(1, .nargs), .errHandleSingleDistributionArgument, funName=funName, expression=expression, env=env)
     }
-
   }
 }
 #' This handles a function that is not an error term.
@@ -1310,3 +1304,4 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     stop(paste(.env$err, collapse="\n"), call.=FALSE)
   }
 }
+

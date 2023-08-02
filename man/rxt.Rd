@@ -59,9 +59,11 @@ rxt(4) ## The first argument is the df parameter
 
 ## This example uses `rxt` directly in the model
 
-rx <- rxode2({
-  a <- rxt(3)
-})
+rx <- function() {
+   model({
+    a <- rxt(3)
+   })
+}
 
 et <- et(1, id = 1:2)
 

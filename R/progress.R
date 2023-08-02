@@ -18,6 +18,7 @@
 #' @return All return NULL invisibly.
 #' @author Matthew L. Fidler
 #' @examples
+#' 
 #' f <- function() {
 #'   on.exit({
 #'     rxProgressAbort()

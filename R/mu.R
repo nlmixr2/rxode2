@@ -1072,29 +1072,29 @@
 #' # First lets get a lotri initialization block:
 #'
 #' ini <- lotri({
-#'    ## You may label each parameter with a comment
-#'    tka <- 0.45 # Log Ka
-#'    tcl <- log(c(0, 2.7, 100)) # Log Cl
-#'    ## This works with interactive models
-#'    ## You may also label the preceding line with label("label text")
-#'    tv <- 3.45; label("log V")
-#'    ## the label("Label name") works with all models
-#'    eta.ka ~ 0.6
-#'    eta.cl + eta.v ~ c(0.3,
-#'                       0.001, 0.1)
-#'    add.sd <- 0.7
+#'   ## You may label each parameter with a comment
+#'   tka <- 0.45 # Log Ka
+#'   tcl <- log(c(0, 2.7, 100)) # Log Cl
+#'   ## This works with interactive models
+#'   ## You may also label the preceding line with label("label text")
+#'   tv <- 3.45; label("log V")
+#'   ## the label("Label name") works with all models
+#'   eta.ka ~ 0.6
+#'   eta.cl + eta.v ~ c(0.3,
+#'                      0.001, 0.1)
+#'   add.sd <- 0.7
 #' })
 #'
 #'
 #' ini2 <- lotri({
-#'        ## You may label each parameter with a comment
-#'        tka <- 0.45 # Log Ka
-#'        tcl <- log(c(0, 2.7, 100)) # Log Cl
-#'        ## This works with interactive models
-#'        ## You may also label the preceding line with label("label text")
-#'        tv <- 3.45; label("log V")
-#'        add.sd <- 0.7
-#'     })
+#'   ## You may label each parameter with a comment
+#'   tka <- 0.45 # Log Ka
+#'   tcl <- log(c(0, 2.7, 100)) # Log Cl
+#'   ## This works with interactive models
+#'   ## You may also label the preceding line with label("label text")
+#'   tv <- 3.45; label("log V")
+#'   add.sd <- 0.7
+#' })
 #'
 #' @noRd
 .rxMuRef <- function(mod, ini=NULL) {
