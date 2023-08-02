@@ -89,6 +89,8 @@ mu-referencing style to run the optimization.
 
 - When constants are specified in the `model({})` block (like `k <- 1`), they will not
   be  to the `ini` block
+  
+- Bug fix for `geom_amt()` when the `aes` transformation has `x`
 
 # rxode2 2.0.13
 
