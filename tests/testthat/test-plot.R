@@ -1,4 +1,5 @@
 rxTest({
+  
   expect_plotlog <- function(o, timex, logx, logy, dat) {
     # Checking for the correct type for logx and logy is nontrivial, so j
     expect_named(o, c("timex", "logx", "logy", "dat"))
@@ -76,6 +77,7 @@ rxTest({
 
   test_that("plot() with invalid component throws an error", {
     skip_on_os("mac")
+    
     pheno2 <- function() {
       ini({
         tcl <- log(0.008)
@@ -100,7 +102,7 @@ rxTest({
 
     expect_error(plot(sim, "foo"))
     expect_warning(plot(sim, sim, "foo"))
-    expect_warning(plot(sim, sim, "foo"))
     expect_error(plot(sim), NA)
   })
+  
 })

@@ -203,9 +203,11 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   }
   .cmts <- c(
     as.character(substitute(y)),
-    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE))
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    as.character(unlist(.call))
   )
   .cmts <- .cmts[.cmts != ""]
+  .cmts <- unique(.cmts)
   if (length(.cmts) == 0L) {
     .cmts <- NULL
   } else {

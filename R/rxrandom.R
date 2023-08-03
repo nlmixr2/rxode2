@@ -101,7 +101,6 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' \donttest{
 #'
 #' ## Use threefry engine
-#'
 #' rxt(df = 3, n = 10) # with rxt you have to explicitly state n
 #' rxt(df = 3, n = 10, ncores = 2) # You can parallelize the simulation using openMP
 #'
@@ -119,6 +118,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' et <- et(1, id = 1:2)
 #'
 #' s <- rxSolve(rx, et)
+#' 
 #' }
 #' @export
 rxt <- function(df, n = 1L, ncores = 1L) {
