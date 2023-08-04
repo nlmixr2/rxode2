@@ -1018,9 +1018,6 @@ void handleSS(int *neq,
     ind->ixds--; // This dose stays in place; Reverse dose
     if (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20){
       doSS2=1;
-      ind->lastIsSs2 = true;
-    } else if (ind->lastIsSs2) {
-      return;
     } else if (ind->wh0 == EVID0_SSINF) {
       doSSinf=1;
     }
@@ -1101,7 +1098,7 @@ void handleSS(int *neq,
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;
     }
-    if (cancelPendingDoses(ind)) updateExtraDoseGlobals(ind);
+    cancelPendingDoses(ind);
     ind->cacheME=0;
     // Reset LHS to NA
     ind->inLhs = 0;
@@ -1162,7 +1159,7 @@ void handleSS(int *neq,
           }
         }
         if (!doSSinf) {
-          if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
+          pushPendingDose(infEixds, ind);
           isSsLag=false; // Even with lag time it is a constant infusion when dur=ii
         }
         xp2=xout;
@@ -1244,13 +1241,17 @@ void handleSS(int *neq,
         double extraRate = -getDose(ind, ind->idose[infEixds]);
         double extraAmt = getDose(ind, ind->idose[infBixds]);
         double extraTime = getTime_(ind->idose[infBixds],ind);
+        int oldIxds = ind->ixds;
+        ind->ixds = infBixds;
+        int wh0 = ind->wh0; ind->wh0=1;
+        double curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
+        ind->wh0 = wh0;
         int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
           EVID0_REGULAR + EVID0_RATEADJ;
-        if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
+        pushPendingDose(infEixds, ind);
         for (int cur = 0; cur < numDoseInf; ++cur) {
-          if (pushDosingEvent(startTimeD + offTime + cur*curIi,
-                              getDose(ind, ind->idose[infEixds]), extraEvid, ind))
-            updateExtraDoseGlobals(ind);
+          pushDosingEvent(startTimeD + offTime + cur*curIi + curLagExtra,
+                          getDose(ind, ind->idose[infEixds]), extraEvid, ind);
         }
         for (j = 0; j < numDoseInf; j++) {
           ind->ixds=infBixds;
@@ -1367,7 +1368,7 @@ void handleSS(int *neq,
         badSolveExit(*i);
       } else {
         // Infusion
-        if (pushPendingDose(infEixds, ind)) updateExtraDoseGlobals(ind);
+        pushPendingDose(infEixds, ind);
         if (isModeled && isSsLag) {
           // turn on the modeled duration since it isn't part of the event table
           double extraRate = -getDose(ind, ind->idose[infEixds]);
@@ -1375,7 +1376,8 @@ void handleSS(int *neq,
           double extraTime = getTime_(ind->idose[infBixds],ind);
           int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
             EVID0_REGULAR + EVID0_RATEADJ;
-          double curLagExtra = getLag(ind, neq[1], ind->cmt, 0.0);
+          double startTimeD = getTime_(ind->idose[infBixds],ind);
+          double curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
           if (!isSameTimeAbs(curLagExtra, 0.0) &&
               pushDosingEvent(extraTime, extraRate, extraEvid, ind))
             updateExtraDoseGlobals(ind);
@@ -1534,9 +1536,8 @@ void handleSS(int *neq,
                   xout, neq[1], ind);
     }
     ind->doSS=0;
-  } else {
-    ind->lastIsSs2 = false;
   }
+  updateExtraDoseGlobals(ind);
 }
 
 //================================================================================
