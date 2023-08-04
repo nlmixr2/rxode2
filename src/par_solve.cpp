@@ -998,6 +998,10 @@ void handleSS(int *neq,
               rx_solving_options_ind *ind,
               t_update_inis u_inis,
               void *ctx){
+  if (ind->wh0 == EVID0_RESETDOSE) {
+    cancelPendingDoses(ind);
+    return;
+  }
   rx_solve *rx = &rx_global;
   int j;
   int doSS2=0;
@@ -1244,6 +1248,7 @@ void handleSS(int *neq,
         int oldIxds = ind->ixds;
         ind->ixds = infBixds;
         int wh0 = ind->wh0; ind->wh0=1;
+        ind->idx = bi;
         double curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
         ind->wh0 = wh0;
         int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
@@ -1351,13 +1356,46 @@ void handleSS(int *neq,
           }
           xp2 = xout2;
         }
-        *istate=1;
-        if (!isSsLag || !isModeled) {
-          ind->idx = bi;
-          ind->ixds = infBixds;
-          handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
-                      BadDose, InfusionRate, dose, yp,
-                      xout, neq[1], ind);
+        if (curLagExtra > 0) {
+          double solveTo=curIi - curLagExtra;
+          if (solveTo > offTime) {
+            xp2 = startTimeD;
+            xout2 = xp2+offTime;
+            ind->idx=bi;
+            ind->ixds = infBixds;
+            handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                        BadDose, InfusionRate, dose, yp,
+                        xout, neq[1], ind);
+            // yp is last solve or y0
+            *istate=1;
+            // yp is last solve or y0
+            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            xp2 = xout2;
+            // Turn off Infusion, solve (dur-ii)
+            xout2 = xp2 + solveTo - offTime;
+            ind->ixds = infEixds;
+            ind->idx=ei;
+            handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
+                        BadDose, InfusionRate, dose, yp,
+                        xout+dur, neq[1], ind);
+            *istate=1;
+            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            pushDosingEvent(startTimeD+curLagExtra,
+                            getDose(ind, ind->idose[infBixds]), extraEvid, ind);
+          } else {
+            REprintf("lag 2\n");
+          }
+        } else {
+          *istate=1;
+          if (!isSsLag || !isModeled) {
+            ind->idx = bi;
+            ind->ixds = infBixds;
+            handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                        BadDose, InfusionRate, dose, yp,
+                        xout, neq[1], ind);
+          }
         }
         ind->idx  = fi;
         ind->ixds = infFixds;
@@ -1513,7 +1551,6 @@ void handleSS(int *neq,
               // don't give the next off dose (already turned off)
               ind->skipDose[ind->cmt] = 1;
             }
-
           }
           *istate=1;
           ind->idx=fi;
