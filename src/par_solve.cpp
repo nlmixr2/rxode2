@@ -1359,6 +1359,7 @@ void handleSS(int *neq,
         if (curLagExtra > 0) {
           double solveTo=curIi - curLagExtra;
           if (solveTo > offTime) {
+            // infusion where the lag time does not cause the infusion to occur during the inter-dose interval
             xp2 = startTimeD;
             xout2 = xp2+offTime;
             ind->idx=bi;
@@ -1385,6 +1386,7 @@ void handleSS(int *neq,
             pushDosingEvent(startTimeD+curLagExtra,
                             getDose(ind, ind->idose[infBixds]), extraEvid, ind);
           } else {
+            // infusion where the lag time occurs during the inter-dose interval
             xp2 = startTimeD;
             xout2 = xp2 + solveTo;
             ind->idx=bi;
@@ -1403,6 +1405,7 @@ void handleSS(int *neq,
                             getDose(ind, ind->idose[infBixds]), extraEvid, ind);
           }
         } else {
+          // infusion without a lag time.
           *istate=1;
           if (!isSsLag || !isModeled) {
             ind->idx = bi;
