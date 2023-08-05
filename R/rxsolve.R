@@ -699,7 +699,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     simVariability=NA,
                     nLlikAlloc=NULL,
                     useStdPow=FALSE,
-                    naTimeHandle=c("ignore", "warn", "error")) {
+                    naTimeHandle=c("ignore", "warn", "error"),
+                    addlKeepsCov=FALSE) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -962,6 +963,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       checkmate::assertIntegerish(useStdPow, lower=0, upper=1, len=1, any.missing=FALSE)
     }
+    checkmate::assertLogical(addlKeepsCov, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .zeros <- .xtra$.zeros
@@ -1093,6 +1095,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       nLlikAlloc=nLlikAlloc,
       useStdPow=useStdPow,
       naTimeHandle=naTimeHandle,
+      addlKeepsCov=addlKeepsCov,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

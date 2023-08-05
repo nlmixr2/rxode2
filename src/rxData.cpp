@@ -100,7 +100,8 @@ LogicalVector rxSolveFree();
 List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
              bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
-             CharacterVector keep = CharacterVector(0));
+             CharacterVector keep = CharacterVector(0),
+             bool addlKeepsCov=false);
 extern "C" SEXP _rxode2_et_(SEXP x1, SEXP x2);
 
 RObject et_(List input, List et__) {
@@ -2876,7 +2877,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       // KEEP/DROP?
       List ev1a = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                           false, false, true, R_NilValue,
-                          rxControl[Rxc_keepF]);
+                          rxControl[Rxc_keepF],
+                          rxControl[Rxc_addlKeepsCov]);
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
@@ -2950,7 +2952,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")){
     ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                            false, false, true, R_NilValue,
-                           rxControl[Rxc_keepF]));
+                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov]));
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");

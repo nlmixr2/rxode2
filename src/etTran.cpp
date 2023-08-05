@@ -27,7 +27,7 @@ List rxModelVars_(const RObject &obj);
 
 extern "C" {
   typedef SEXP (*_rxode2_etTransParse_type)(SEXP, SEXP, SEXP, SEXP, SEXP,
-                                            SEXP, SEXP, SEXP);
+                                            SEXP, SEXP, SEXP, SEXP);
   extern _rxode2_etTransParse_type _rxode2_etTransParseP;
 }
 
@@ -59,6 +59,7 @@ extern "C" SEXP assignRxode2ParsePtrs(void);
 //' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
 //'     For added rxode2 event records (if seen), last observation carried forward will be used.
 //'
+//' @inheritParams rxode2::etTransParse
 //' 
 //' @return Object for solving in rxode2
 //'
@@ -69,9 +70,10 @@ extern "C" SEXP assignRxode2ParsePtrs(void);
 List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
              bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
-             CharacterVector keep = CharacterVector(0)){
+             CharacterVector keep = CharacterVector(0),
+             bool addlKeepsCov=false){
   assignRxode2ParsePtrs();
   return as<List>(_rxode2_etTransParseP(inData, rxModelVars_(obj), wrap(addCmt),
                                         wrap(dropUnits), wrap(allTimeVar), wrap(keepDosingOnly),
-                                        wrap(combineDvid), keep));
+                                        wrap(combineDvid), keep, wrap(addlKeepsCov)));
 }
