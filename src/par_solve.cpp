@@ -1372,7 +1372,7 @@ void handleSS(int *neq,
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             xp2 = xout2;
-            // Turn off Infusion, solve (dur-ii)
+            // Turn off Infusion, and solve to infusion stop time
             xout2 = xp2 + solveTo - offTime;
             ind->ixds = infEixds;
             ind->idx=ei;
@@ -1385,7 +1385,22 @@ void handleSS(int *neq,
             pushDosingEvent(startTimeD+curLagExtra,
                             getDose(ind, ind->idose[infBixds]), extraEvid, ind);
           } else {
-            REprintf("lag 2\n");
+            xp2 = startTimeD;
+            xout2 = xp2 + solveTo;
+            ind->idx=bi;
+            ind->ixds = infBixds;
+            handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                        BadDose, InfusionRate, dose, yp,
+                        xout, neq[1], ind);
+            // yp is last solve or y0
+            *istate=1;
+            // yp is last solve or y0
+            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            pushDosingEvent(startTimeD+offTime-solveTo,
+                            getDose(ind, ind->idose[infEixds]), extraEvid, ind);
+            pushDosingEvent(startTimeD+curLagExtra,
+                            getDose(ind, ind->idose[infBixds]), extraEvid, ind);
           }
         } else {
           *istate=1;
