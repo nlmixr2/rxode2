@@ -1254,6 +1254,9 @@ void handleSS(int *neq,
         int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
           EVID0_REGULAR + EVID0_RATEADJ;
         pushPendingDose(infEixds, ind);
+        if (isModeled) {
+          startTimeD = getTime(ind->idose[infFixds],ind);
+        }
         for (int cur = 0; cur < numDoseInf; ++cur) {
           pushDosingEvent(startTimeD + offTime + cur*curIi + curLagExtra,
                           getDose(ind, ind->idose[infEixds]), extraEvid, ind);
@@ -1359,7 +1362,8 @@ void handleSS(int *neq,
         if (curLagExtra > 0) {
           double solveTo=curIi - curLagExtra;
           if (solveTo > offTime) {
-            // infusion where the lag time does not cause the infusion to occur during the inter-dose interval
+            // infusion where the lag time does not cause the infusion
+            // to occur during the inter-dose interval
             xp2 = startTimeD;
             xout2 = xp2+offTime;
             ind->idx=bi;
@@ -1383,8 +1387,10 @@ void handleSS(int *neq,
             *istate=1;
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-            pushDosingEvent(startTimeD+curLagExtra,
-                            getDose(ind, ind->idose[infBixds]), extraEvid, ind);
+            if (!isModeled) {
+              pushDosingEvent(startTimeD+curLagExtra,
+                              getDose(ind, ind->idose[infBixds]), extraEvid, ind);
+            }
           } else {
             // infusion where the lag time occurs during the inter-dose interval
             xp2 = startTimeD;
