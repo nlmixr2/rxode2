@@ -16,8 +16,8 @@
 //#include "seed.h"
 #include "timsort.h"
 #define SORT gfx::timsort
-#define isSameTimeAbs(xout, xp) (fabs((xout)-(xp)) <= DBL_EPSILON*max2(fabs(xout), fabs(xp)))
-
+#define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
+// dop853 is same time
 
 extern "C" {
 #include "dop853.h"
@@ -855,7 +855,7 @@ static inline void solveWith1Pt(int *neq,
     }
     break;
   case 0:
-    if (!isSameTime(xout, xp)) {
+    if (!isSameTimeDop(xout, xp)) {
       idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                     dydt,       /* function computing the value of f(x,y) */
                     xp,           /* initial x-value */
@@ -940,13 +940,13 @@ static inline int handleExtraDose(int *neq,
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
-    while (!isSameTime(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
       ind->idxExtra++;
       trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
       ind->idx = -1-trueIdx;
       time = getAllTimes(ind, ind->idx);
     }
-    if ((isSameTime(time, xp) || time > xp) && (isSameTime(time, xout) || time <= xout)) {
+    if ((isSameTimeOp(time, xp) || time > xp) && (isSameTimeOp(time, xout) || time <= xout)) {
       bool ignore = true;
       while (ignore && time <= xout) {
         ignore=false;
@@ -1116,7 +1116,7 @@ void handleSS(int *neq,
     xp2 = xp;
     double curIi = getIiNumber(ind, ind->ixds);
 
-    if (doSSinf || isSameTimeAbs(curIi,dur)) {
+    if (doSSinf || isSameTimeOp(curIi,dur)) {
       double rate;
       ind->idx=bi;
       // Rate is fixed, so modifying bio-availability doesn't change duration.
@@ -1442,7 +1442,7 @@ void handleSS(int *neq,
             EVID0_REGULAR + EVID0_RATEADJ;
           double startTimeD = getTime_(ind->idose[infBixds],ind);
           double curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
-          if (!isSameTimeAbs(curLagExtra, 0.0) &&
+          if (!isSameTimeOp(curLagExtra, 0.0) &&
               pushDosingEvent(extraTime, extraRate, extraEvid, ind))
             updateExtraDoseGlobals(ind);
         }
@@ -1560,7 +1560,7 @@ void handleSS(int *neq,
             // yp is last solve or y0
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-            if (!isSameTimeAbs(xout2, totTime)) {
+            if (!isSameTimeOp(totTime, xout2)) {
               // don't give the infusion off dose
               xp2 = xout2;
               // Turn off Infusion, solve (dur-ii)
@@ -2328,7 +2328,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       } else {
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           xp,           /* initial x-value */
@@ -2365,7 +2365,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           ind->ixds--; // This is a fake dose, real dose stays in place; Reverse dose
           ind->idx = idx;
           ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+          if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           ind->extraDoseNewXout,           /* initial x-value */
@@ -2394,7 +2394,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
             xp = xRead();
           }
-        } else if (!isSameTime(xout, xp)) {
+        } else if (!isSameTimeDop(xout, xp)) {
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
                         xp,           /* initial x-value */
