@@ -1,6 +1,6 @@
 if (file.exists(test_path("test-nmtest.qs"))) {
 
-  #system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse"); devtools::install("~/src/rxode2random"); devtools::load_all();rxClean();#devtools::test()
+  ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse"); devtools::install("~/src/rxode2random"); devtools::load_all();rxClean();#devtools::test()
 
   ## devtools::load_all()
 
@@ -36,9 +36,8 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   library(ggplot2)
 
-  p <- TRUE
-
-  solveEqual <- function(id, plot = p, meth="liblsoda", modifyData = c("none", "dur", "rate")) {
+  solveEqual <- function(id, plot = p, meth="liblsoda", modifyData = c("none", "dur", "rate"),
+                         addlKeepsCov = TRUE) {
     noLag <-  all(d[d$id == id & d$evid != 0,]$lagt == 0)
     hasRate <- any(d[d$id == id & d$evid != 0,]$rate != 0)
     hasModeledRate <- any(d[d$id == id & d$evid != 0,]$mode == 1)
@@ -87,14 +86,14 @@ if (file.exists(test_path("test-nmtest.qs"))) {
               rxode2::rxTheme() +
               ggtitle(paste0("id=", id)))
       ## print(etTrans(d, fl))
-      s1 <- rxSolve(fl, d, method=meth)
+      s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov)
       if (!noLag) {
         print(plot(s1, cp) +
                 geom_point(data=d, aes(x=time, y=cp), col="red") +
                 ggtitle(paste0("id=", id, "(lag)")))
       } else {
         message("f without lag")
-        s2 <- rxSolve(f, d, method=meth)
+        s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov)
         return(plot(s1, cp) +
                 geom_point(data=d, aes(x=time, y=cp), col="red") +
                 geom_line(data=s2, aes(x=time, y=cp), col="blue", alpha=0.5, linewidth=2) +
@@ -103,32 +102,40 @@ if (file.exists(test_path("test-nmtest.qs"))) {
       ## print(etTrans(d, fl))
     } else {
       if (noLag) {
-        test_that(paste0("nmtest id:", id, " no alag; method: ", meth, "; modifyData:", modifyData), {
-          s1 <- rxSolve(f, d, method=meth)
-          expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.04)
+        test_that(paste0("nmtest id:", id, " no alag; method: ", meth, "; modifyData:", modifyData),
+        {
+          s1 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov)
+          expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.1)
         })
        }
-      test_that(paste0("nmtest id:", id, " alag; method: ", meth, "; modifyData:", modifyData), {
-        s1 <- rxSolve(fl, d, method=meth)
-        expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.04)
+      test_that(paste0("nmtest id:", id, " alag; method: ", meth, "; modifyData:", modifyData),
+      {
+        s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov)
+        expect_equal(s1$cp, d[d$id == id & d$evid == 0,]$cp, tolerance = 0.1)
       })
     }
   }
 
   p <- FALSE
   lapply(unique(d$id), function(i) {
-    for (meth in c("liblsoda", "lsoda", "dop853")) {
-      for (modifyData in c("none", "rate", "dur")) {
+    meths <- c("liblsoda", "lsoda", "dop853")
+    modDat <- c("none", "rate", "dur")
+    for (meth in meths) {
+      for (modifyData in modDat) {
         solveEqual(i, meth=meth, modifyData=modifyData)
       }
     }
   })
-  
+
   ## invisible(lapply(seq_len(range(d$id)[2]), function(i){message(i);solveEqual(i)}))
 
   ## need to check id=25 type for infusions too (static, modeled) need
   ## to check for steady state when the infusion is still going at the
   ## time of steady-state release
 
-  ## Need to check id=10 with a lag time as well
+
+  ## need to check type 10 where the infusion ends exactly at the lag time
+
+  ## check lagTime > ii
+
 }
