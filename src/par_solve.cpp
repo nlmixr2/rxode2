@@ -1407,8 +1407,10 @@ void handleSS(int *neq,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             pushDosingEvent(startTimeD+offTime-solveTo,
                             getDose(ind, ind->idose[infEixds]), extraEvid, ind);
-            pushDosingEvent(startTimeD+curLagExtra,
-                            getDose(ind, ind->idose[infBixds]), extraEvid, ind);
+            if (!isModeled) {
+              pushDosingEvent(startTimeD+curLagExtra,
+                              getDose(ind, ind->idose[infBixds]), extraEvid, ind);
+            }
           }
         } else {
           // infusion without a lag time.
