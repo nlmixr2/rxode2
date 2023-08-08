@@ -1262,9 +1262,11 @@ void handleSS(int *neq,
         for (int cur = 0; cur < overIi; ++cur) {
           pushDosingEvent(startTimeD + offTime + cur*curIi + curLagExtra,
                           getDose(ind, ind->idose[infEixds]), extraEvid, ind);
-          pushDosingEvent(startTimeD + (cur+1)*curIi + curLagExtra,
-                          getDose(ind, ind->idose[infBixds]),
-                          extraEvid, ind);
+          if (!isModeled || cur != overIi-1) {
+            pushDosingEvent(startTimeD + (cur+1)*curIi + curLagExtra,
+                            getDose(ind, ind->idose[infBixds]),
+                            extraEvid, ind);
+          }
         }
         for (int cur = 0; cur < numDoseInf; ++cur) {
           pushDosingEvent(startTimeD + offTime + overIi*curIi + cur*curIi + curLagExtra,
@@ -1401,7 +1403,7 @@ void handleSS(int *neq,
                               getDose(ind, ind->idose[infBixds]), extraEvid, ind);
             }
           } else {
-            // infusion where the lag time occurs during the inter-dose interval
+            // infusion where the lag time occurs during the inter-dose interval split
             xp2 = startTimeD;
             xout2 = xp2 + solveTo;
             ind->idx=bi;
