@@ -1253,12 +1253,21 @@ void handleSS(int *neq,
         ind->wh0 = wh0;
         int extraEvid = getEvidClassic(ind->cmt+1, extraAmt, extraRate, 0.0, 0.0, 1, 0) -
           EVID0_REGULAR + EVID0_RATEADJ;
+        int overIi = floor(curLagExtra/curIi);
+        curLagExtra = curLagExtra - overIi*curIi;
         pushPendingDose(infEixds, ind);
         if (isModeled) {
           startTimeD = getTime(ind->idose[infFixds],ind);
         }
-        for (int cur = 0; cur < numDoseInf; ++cur) {
+        for (int cur = 0; cur < overIi; ++cur) {
           pushDosingEvent(startTimeD + offTime + cur*curIi + curLagExtra,
+                          getDose(ind, ind->idose[infEixds]), extraEvid, ind);
+          pushDosingEvent(startTimeD + (cur+1)*curIi + curLagExtra,
+                          getDose(ind, ind->idose[infBixds]),
+                          extraEvid, ind);
+        }
+        for (int cur = 0; cur < numDoseInf; ++cur) {
+          pushDosingEvent(startTimeD + offTime + overIi*curIi + cur*curIi + curLagExtra,
                           getDose(ind, ind->idose[infEixds]), extraEvid, ind);
         }
         for (j = 0; j < numDoseInf; j++) {
