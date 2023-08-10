@@ -1561,41 +1561,63 @@ void handleSS(int *neq,
         xp2 = xout2;
         if (isSsLag) {
           int wh0 = ind->wh0; ind->wh0=1;
-          double curLag = getLag(ind, neq[1], ind->cmt, 0.0);
+          double curLag = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
           double totTime = xp2 + dur + dur2 - curLag;
           if (curLag > 0) {
-            ind->wh0 = wh0;
-            if (xp2 + dur < totTime) {
-              xout2 = xp2 + dur;
-            } else {
-              xout2 = totTime;
-            }
-            ind->idx=bi;
-            ind->ixds = infBixds;
-            handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
-                        BadDose, InfusionRate, dose, yp,
-                        xout, neq[1], ind);
-            // yp is last solve or y0
-            *istate=1;
-            // yp is last solve or y0
-            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-            if (!isSameTimeOp(totTime, xout2)) {
-              // don't give the infusion off dose
-              xp2 = xout2;
-              // Turn off Infusion, solve (dur-ii)
-              xout2 = totTime;
-              ind->ixds = infEixds;
-              ind->idx=ei;
-              handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
+            if (curLag > dur2) {
+              double solveExtra=dur+dur2-curLag;
+              ind->wh0 = wh0;
+              ind->idx=bi;
+              ind->ixds = infBixds;
+              handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
-                          xout+dur, neq[1], ind);
+                          xout, neq[1], ind);
+              xp2   = startTimeD;
+              xout2 = startTimeD + solveExtra;
               // yp is last solve or y0
               *istate=1;
+              // yp is last solve or y0
               solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-              // skip next dose
-              pushIgnoredDose(infFixds+1, ind);
+              pushIgnoredDose(infBixds, ind);
+              pushIgnoredDose(infEixds, ind);
+              pushDosingEvent(startTimeD+dur-solveExtra, -extraRate, extraEvid, ind);
+              pushDosingEvent(startTimeD+dur+dur2-solveExtra, extraRate, extraEvid, ind);
+              pushDosingEvent(startTimeD+2*dur+dur2-solveExtra, -extraRate, extraEvid, ind);
+            } else {
+              ind->wh0 = wh0;
+              if (xp2 + dur < totTime) {
+                xout2 = xp2 + dur;
+              } else {
+                xout2 = totTime;
+              }
+              ind->idx=bi;
+              ind->ixds = infBixds;
+              handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                          BadDose, InfusionRate, dose, yp,
+                          xout, neq[1], ind);
+              // yp is last solve or y0
+              *istate=1;
+              // yp is last solve or y0
+              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              if (!isSameTimeOp(totTime, xout2)) {
+                // don't give the infusion off dose
+                xp2 = xout2;
+                // Turn off Infusion, solve (dur-ii)
+                xout2 = totTime;
+                ind->ixds = infEixds;
+                ind->idx=ei;
+                handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
+                            BadDose, InfusionRate, dose, yp,
+                            xout+dur, neq[1], ind);
+                // yp is last solve or y0
+                *istate=1;
+                solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                             xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+                // skip next dose
+                pushIgnoredDose(infFixds+1, ind);
+              }
             }
           }
           *istate=1;
