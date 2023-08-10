@@ -1453,7 +1453,13 @@ void handleSS(int *neq,
         // Infusion
         pushPendingDose(infEixds, ind);
         double startTimeD = getTime_(ind->idose[infBixds],ind);
-        double curLagExtra = (isSsLag ? getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD : 0.0);
+        double curLagExtra = 0.0;
+        int wh0 = ind->wh0;
+        if (isSsLag) {
+          ind->wh0=1;
+          curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
+          ind->wh0=wh0;
+        }
         double extraRate = getDose(ind, ind->idose[infBixds]);
         double extraTime = getTime_(ind->idose[infBixds],ind);
         int regEvid = getEvidClassic(ind->cmt+1, extraRate, extraRate, 0.0, 0.0, 1, 0);
@@ -1467,6 +1473,10 @@ void handleSS(int *neq,
             pushDosingEvent(extraTime, extraRate, extraEvid, ind);
           }
         }
+        int overIi = floor(curLagExtra/curIi);
+        curLagExtra = curLagExtra - overIi*curIi;
+        REprintf("startTimeD: %f; curLagExtra: %f overIi %d\n",
+                 startTimeD, curLagExtra, overIi);
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
@@ -1561,13 +1571,10 @@ void handleSS(int *neq,
         }
         xp2 = xout2;
         if (isSsLag) {
-          int wh0 = ind->wh0; ind->wh0=1;
-          double curLag = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
-          double totTime = xp2 + dur + dur2 - curLag;
-          if (curLag > 0) {
-            if (curLag > dur2) {
-              double solveExtra=dur+dur2-curLag;
-              ind->wh0 = wh0;
+          double totTime = xp2 + dur + dur2 - curLagExtra;
+          if (curLagExtra > 0) {
+            if (curLagExtra > dur2) {
+              double solveExtra=dur+dur2-curLagExtra;
               ind->idx=bi;
               ind->ixds = infBixds;
               handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
@@ -1585,6 +1592,9 @@ void handleSS(int *neq,
                 pushIgnoredDose(infEixds, ind);
                 pushDosingEvent(startTimeD+dur-solveExtra, -extraRate, extraEvid, ind);
                 pushDosingEvent(startTimeD+2*dur+dur2-solveExtra, -extraRate, extraEvid, ind);
+                if (overIi) {
+                  pushDosingEvent(startTimeD+curLagExtra, extraRate, extraEvid, ind);
+                }
               } else {
                 pushIgnoredDose(infBixds, ind);
                 pushIgnoredDose(infEixds, ind);
@@ -1592,8 +1602,15 @@ void handleSS(int *neq,
                 pushDosingEvent(startTimeD+dur+dur2-solveExtra, extraRate, extraEvid, ind);
                 pushDosingEvent(startTimeD+2*dur+dur2-solveExtra, -extraRate, extraEvid, ind);
               }
+              for (int cur = 0; cur < overIi; ++cur) {
+                if (!isModeled || cur != overIi - 1) {
+                  pushDosingEvent(startTimeD+dur+dur2-solveExtra+(overIi+cur)*curIi,
+                                  extraRate, extraEvid, ind);
+                }
+                pushDosingEvent(startTimeD+2*dur+dur2-solveExtra+(overIi+cur)*curIi,
+                                -extraRate, extraEvid, ind);
+              }
             } else {
-              ind->wh0 = wh0;
               if (xp2 + dur < totTime) {
                 xout2 = xp2 + dur;
               } else {
