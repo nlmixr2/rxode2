@@ -1009,7 +1009,7 @@ void handleSS(int *neq,
   int maxSS = op->maxSS;
   int minSS = op->minSS;
   int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
-  bool isDurLong = false;
+  bool skipDosingEvent = false;
   bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
     ind->whI == EVIDF_MODEL_RATE_ON;
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
@@ -1026,7 +1026,9 @@ void handleSS(int *neq,
       doSSinf=1;
     }
     double dur = 0, dur2=0;
-    int infBixds =0, infEixds = 0, infFixds = 0, ei=0, wh, cmt, wh100, whI, wh0, oldI,
+    int infBixds =0, infEixds = 0, infFixds = 0,
+      infBixdsA = 0,
+      ei=0, wh, cmt, wh100, whI, wh0, oldI,
       bi = *i, fi = *i;
     if (doSSinf){
     } else if (ind->whI == EVIDF_INF_RATE || ind->whI == EVIDF_INF_DUR) {
@@ -1036,8 +1038,10 @@ void handleSS(int *neq,
       if (isSsLag) {
         if (getDoseNumber(ind, ind->ixds+2) < 0.0) {
           handleInfusionGetEndOfInfusionIndex(ind->ixds+3, &infEixds, rx, op, ind);
+          infBixdsA=ind->ixds+3;
         } else {
           handleInfusionGetEndOfInfusionIndex(ind->ixds+2, &infEixds, rx, op, ind);
+          infBixdsA=ind->ixds+2;
         }
         if (infEixds == -1) {
           ind->wrongSSDur=1;
@@ -1215,10 +1219,17 @@ void handleSS(int *neq,
       }
       if (isSsLag) {
         //advance the lag time
-        ind->idx=*i;
+        double startTimeD = getTime_(ind->idose[bi],ind);
+        double curAmt= getDose(ind, ind->idose[bi]);
         int wh0 = ind->wh0; ind->wh0=1;
-        xout2 = xp2 + curIi - getLag(ind, neq[1], ind->cmt, 0.0);
+        double curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) -
+          startTimeD;
         ind->wh0 = wh0;
+        int overIi = floor(curLagExtra/curIi);
+        curLagExtra = curLagExtra - overIi*curIi;
+        int regEvid = getEvidClassic(ind->cmt+1, curAmt, 0.0, 0.0, 0.0, 1, 0);
+        ind->idx=*i;
+        xout2 = xp2 + curIi - curLagExtra;
         // Use "real" xout for handle_evid functions.
         *istate=1;
         handle_evid(getEvid(ind, ind->ix[bi]), neq[0],
@@ -1227,6 +1238,10 @@ void handleSS(int *neq,
         // yp is last solve or y0
         solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        for (int cur = 0; cur < overIi; ++cur) {
+          pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
+                          curAmt, regEvid, ind);
+        }
         for (k = neq[0]; k--;){
           ind->solveLast[k] = yp[k];
         }
@@ -1241,7 +1256,7 @@ void handleSS(int *neq,
         double offTime = dur- numDoseInf*curIi;
         double addTime = curIi-offTime;
         double startTimeD = getTime_(ind->idose[infBixds],ind);
-        isDurLong = true;
+        skipDosingEvent = true;
         double extraRate = -getDose(ind, ind->idose[infEixds]);
         double extraAmt = getDose(ind, ind->idose[infBixds]);
         double extraTime = getTime_(ind->idose[infBixds],ind);
@@ -1475,8 +1490,6 @@ void handleSS(int *neq,
         }
         int overIi = floor(curLagExtra/curIi);
         curLagExtra = curLagExtra - overIi*curIi;
-        REprintf("startTimeD: %f; curLagExtra: %f overIi %d\n",
-                 startTimeD, curLagExtra, overIi);
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
@@ -1610,6 +1623,26 @@ void handleSS(int *neq,
                 pushDosingEvent(startTimeD+2*dur+dur2-solveExtra+(overIi+cur)*curIi,
                                 -extraRate, extraEvid, ind);
               }
+            } else if (isSameTimeOp(curLagExtra+dur, curIi)) {
+              ind->idx=bi;
+              ind->ixds = infBixds;
+              handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                          BadDose, InfusionRate, dose, yp,
+                          xout, neq[1], ind);
+              xp2   = startTimeD;
+              xout2 = startTimeD + dur;
+              // yp is last solve or y0
+              *istate=1;
+              // yp is last solve or y0
+              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              ind->idx=ei;
+              ind->ixds = infEixds;
+              handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
+                          BadDose, InfusionRate, dose, yp,
+                          xout, neq[1], ind);
+              pushDosingEvent(startTimeD+curLagExtra,
+                              extraRate, extraEvid, ind);
             } else {
               if (xp2 + dur < totTime) {
                 xout2 = xp2 + dur;
@@ -1643,6 +1676,28 @@ void handleSS(int *neq,
                 // skip next dose
                 pushIgnoredDose(infFixds+1, ind);
               }
+              if (overIi && !isModeled) {
+                pushIgnoredDose(infFixds+1, ind);
+                pushIgnoredDose(infFixds+2, ind);
+                pushIgnoredDose(infEixds, ind);
+                for (int cur = 0; cur < (overIi+1); ++cur) {
+                  pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
+                                  extraRate, extraEvid, ind);
+                  pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
+                                  -extraRate, extraEvid, ind);
+                }
+              } else if (overIi && isModeled) {
+                pushIgnoredDose(infBixds, ind);
+                pushIgnoredDose(infEixds, ind);
+                for (int cur = 0; cur < (overIi+1); ++cur) {
+                  if (cur != overIi) {
+                    pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
+                                    extraRate, extraEvid, ind);
+                  }
+                  pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
+                                  -extraRate, extraEvid, ind);
+                }
+              }
             }
           }
           *istate=1;
@@ -1660,7 +1715,7 @@ void handleSS(int *neq,
       for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
     }
     ind->idx=fi;
-    if (!doSSinf && !isSsLag && !isDurLong){
+    if (!doSSinf && !isSsLag && !skipDosingEvent){
       handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
                   BadDose, InfusionRate, dose, yp,
                   xout, neq[1], ind);

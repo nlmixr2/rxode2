@@ -28,8 +28,6 @@
 #'     vector must be the same as the state variables (e.g., PK/PD
 #'     compartments);
 #'
-#' @inheritParams odeMethodToInt
-#'
 #' @param sigdig Specifies the "significant digits" that the ode
 #'   solving requests.  When specified this controls the relative and
 #'   absolute tolerances of the ODE solvers.  By default the tolerance
@@ -575,6 +573,9 @@
 #'   though it won't hurt anything if you do (just may take up more
 #'   memory for larger allocations).
 #'
+#' @inheritParams odeMethodToInt
+#'
+#'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
@@ -700,7 +701,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     nLlikAlloc=NULL,
                     useStdPow=FALSE,
                     naTimeHandle=c("ignore", "warn", "error"),
-                    addlKeepsCov=FALSE) {
+                    addlKeepsCov=FALSE,
+                    addlDropSs=TRUE,
+                    ssAtDoseTime=TRUE) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -964,6 +967,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertIntegerish(useStdPow, lower=0, upper=1, len=1, any.missing=FALSE)
     }
     checkmate::assertLogical(addlKeepsCov, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(addlDropSs, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(ssAtDoseTime, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .zeros <- .xtra$.zeros
@@ -1096,6 +1101,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       useStdPow=useStdPow,
       naTimeHandle=naTimeHandle,
       addlKeepsCov=addlKeepsCov,
+      addlDropSs=addlDropSs,
+      ssAtDoseTime=ssAtDoseTime,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

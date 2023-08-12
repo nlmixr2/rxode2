@@ -24,15 +24,15 @@
 #' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
 #'     For added rxode2 event records (if seen), last observation carried forward will be used.
 #'
-#' @inheritParams rxode2::etTransParse
+#' @inheritParams rxode2parse::etTransParse
 #' 
 #' @return Object for solving in rxode2
 #'
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE) {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime)
 }
 
 #' Expand grid internal function

@@ -50,7 +50,6 @@ results do not depend on the number of cores used.
 \donttest{
 
 ## Use threefry engine
-
 rxt(df = 3, n = 10) # with rxt you have to explicitly state n
 rxt(df = 3, n = 10, ncores = 2) # You can parallelize the simulation using openMP
 
@@ -68,5 +67,6 @@ rx <- function() {
 et <- et(1, id = 1:2)
 
 s <- rxSolve(rx, et)
+
 }
 }

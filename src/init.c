@@ -28,7 +28,8 @@ SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_et_(SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
-                     SEXP, SEXP, SEXP, SEXP);
+                     SEXP, SEXP, SEXP, SEXP, SEXP,
+                     SEXP);
 SEXP _rxode2_rxUpdateTrans_(SEXP, SEXP, SEXP);
 double powerDi(double x, double lambda, int yj);
 double powerD(double x, double lambda, int yj);
@@ -292,7 +293,8 @@ typedef SEXP (*lotriMaxNu_type) (SEXP);
 typedef SEXP (*rxSolveFreeSexp_t)(void);
 typedef void (*setZeroMatrix_t)(int which);
 typedef SEXP (*etTrans_t)(SEXP, SEXP, SEXP, SEXP, SEXP,
-                          SEXP, SEXP, SEXP, SEXP);
+                          SEXP, SEXP, SEXP, SEXP, SEXP,
+                          SEXP);
 typedef void (*rxModelsAssignC_t)(const char* str, SEXP assign);
 typedef SEXP (*rxModelVars_SEXP_t)(SEXP);
 typedef SEXP (*rxExpandNestingSexp_t)(SEXP, SEXP, SEXP);
@@ -405,7 +407,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_setProgSupported", (DL_FUNC) &_rxode2_setProgSupported, 1},
     {"_rxode2_getProgSupported", (DL_FUNC) &_rxode2_getProgSupported, 0},
     {"_rxode2_rxUpdateTrans_", (DL_FUNC) &_rxode2_rxUpdateTrans_, 3},
-    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 9},
+    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 11},
     {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
     {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
     {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},

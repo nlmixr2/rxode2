@@ -101,7 +101,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
              bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
              CharacterVector keep = CharacterVector(0),
-             bool addlKeepsCov=false);
+             bool addlKeepsCov=false,
+             bool addlDropSs = true,
+             bool ssAtDoseTime = true);
 extern "C" SEXP _rxode2_et_(SEXP x1, SEXP x2);
 
 RObject et_(List input, List et__) {

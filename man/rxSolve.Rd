@@ -129,7 +129,10 @@ rxSolve(
   simVariability = NA,
   nLlikAlloc = NULL,
   useStdPow = FALSE,
-  naTimeHandle = c("ignore", "warn", "error")
+  naTimeHandle = c("ignore", "warn", "error"),
+  addlKeepsCov = FALSE,
+  addlDropSs = TRUE,
+  ssAtDoseTime = TRUE
 )
 
 \method{rxSolve}{`function`}(
