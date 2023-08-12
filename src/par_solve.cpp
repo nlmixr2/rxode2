@@ -1641,8 +1641,12 @@ void handleSS(int *neq,
               handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
-              pushDosingEvent(startTimeD+curLagExtra,
-                              extraRate, extraEvid, ind);
+              if (isModeled) {
+                pushIgnoredDose(infBixds, ind);
+              } else {
+                pushDosingEvent(startTimeD+curLagExtra,
+                                extraRate, extraEvid, ind);
+              }
             } else {
               if (xp2 + dur < totTime) {
                 xout2 = xp2 + dur;
