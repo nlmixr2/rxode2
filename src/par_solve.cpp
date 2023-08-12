@@ -1643,9 +1643,21 @@ void handleSS(int *neq,
                           xout, neq[1], ind);
               if (isModeled) {
                 pushIgnoredDose(infBixds, ind);
+                for (int cur = 0; cur < overIi; ++cur) {
+                  pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
+                                  extraRate, extraEvid, ind);
+                  pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
+                                  -extraRate, extraEvid, ind);
+                }
               } else {
-                pushDosingEvent(startTimeD+curLagExtra,
-                                extraRate, extraEvid, ind);
+                pushIgnoredDose(infBixds, ind);
+                pushIgnoredDose(infEixds, ind);
+                for (int cur = 0; cur < overIi+1; ++cur) {
+                  pushDosingEvent(startTimeD+curLagExtra+curIi*cur,
+                                  extraRate, extraEvid, ind);
+                  pushDosingEvent(startTimeD+curLagExtra+dur+curIi*cur,
+                                  -extraRate, extraEvid, ind);
+                }
               }
             } else {
               if (xp2 + dur < totTime) {
