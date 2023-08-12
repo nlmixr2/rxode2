@@ -1603,24 +1603,25 @@ void handleSS(int *neq,
               if (isModeled) {
                 pushIgnoredDose(infBixds, ind);
                 pushIgnoredDose(infEixds, ind);
-                pushDosingEvent(startTimeD+dur-solveExtra, -extraRate, extraEvid, ind);
-                pushDosingEvent(startTimeD+2*dur+dur2-solveExtra, -extraRate, extraEvid, ind);
-                if (overIi) {
-                  pushDosingEvent(startTimeD+curLagExtra, extraRate, extraEvid, ind);
+                for (int cur = 0; cur < (overIi+1); ++cur) {
+                  pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
+                                  -extraRate, extraEvid, ind);
+                  if (cur != overIi)
+                    pushDosingEvent(startTimeD+dur+dur2-solveExtra+cur*curIi,
+                                    extraRate, extraEvid, ind);
                 }
+                pushDosingEvent(startTimeD+dur-solveExtra+(overIi+1)*curIi,
+                                -extraRate, extraEvid, ind);
               } else {
                 pushIgnoredDose(infBixds, ind);
                 pushIgnoredDose(infEixds, ind);
-                pushDosingEvent(startTimeD+dur-solveExtra, -extraRate, extraEvid, ind);
-                pushDosingEvent(startTimeD+dur+dur2-solveExtra, extraRate, extraEvid, ind);
-                pushDosingEvent(startTimeD+2*dur+dur2-solveExtra, -extraRate, extraEvid, ind);
-              }
-              for (int cur = 0; cur < overIi; ++cur) {
-                if (!isModeled || cur != overIi - 1) {
-                  pushDosingEvent(startTimeD+dur+dur2-solveExtra+(overIi+cur)*curIi,
+                for (int cur = 0; cur < (overIi+1); ++cur) {
+                  pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
+                                  -extraRate, extraEvid, ind);
+                  pushDosingEvent(startTimeD+dur+dur2-solveExtra+cur*curIi,
                                   extraRate, extraEvid, ind);
                 }
-                pushDosingEvent(startTimeD+2*dur+dur2-solveExtra+(overIi+cur)*curIi,
+                pushDosingEvent(startTimeD+dur-solveExtra+(overIi+1)*curIi,
                                 -extraRate, extraEvid, ind);
               }
             } else if (isSameTimeOp(curLagExtra+dur, curIi)) {

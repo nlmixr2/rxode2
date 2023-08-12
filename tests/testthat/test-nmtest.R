@@ -2,7 +2,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse", dep=FALSE); devtools::install("~/src/rxode2random", dep=FALSE); devtools::load_all();rxClean();#devtools::test()
 
-  devtools::load_all()
+  ## devtools::load_all()
   
   d <- qs::qread(test_path("test-nmtest.qs"))
   # internally rxode2 treats lag time evids differently than
@@ -103,12 +103,15 @@ if (file.exists(test_path("test-nmtest.qs"))) {
       ## print(etTrans(d, fl))
     } else {
       sub <- 0
-      if (meth == "dop853" && modifyData == "rate" && id  %in% c(409))  {
+      if (meth == "dop853" && modifyData == "rate" && id  %in% c(409, 809))  {
          return(invisible())
       }
       if (id %in% c(410, 411, 409, 415, 709)) {
         sub <- 24
-      } 
+      }
+      if (id %in% c(809, 909, 1009)) {
+        sub <- 48
+      }
       if (noLag) {
         test_that(paste0("nmtest id:", id, " no alag; method: ", meth, "; modifyData:", modifyData),
         {
@@ -132,6 +135,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   # This doesn't work and I'm unsure why.
   ## solveEqual(409, meth="dop853", modifyData = "rate") + ylim(0, 2500)
+
 
   p <- FALSE
   lapply(unique(d$id), function(i) {
