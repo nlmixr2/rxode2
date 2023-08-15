@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Simulation</h1>
             
-            <h4 data-toc-skip class="date">2023-08-08</h4>
+            <h4 data-toc-skip class="date">2023-08-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-sim-var.Rmd" class="external-link"><code>vignettes/rxode2-sim-var.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-sim-var.Rmd</code></div>
@@ -197,7 +197,7 @@ can set create an rxode2 model describing this system below:</p>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">=</span>                    <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>  <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span>;</span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span></span></code></pre></div>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="adding-the-parameter-estimates">Adding the parameter estimates<a class="anchor" aria-label="anchor" href="#adding-the-parameter-estimates"></a>
@@ -326,7 +326,7 @@ you can also easily simulate unexplained variability.</p>
 <span>  <span class="va">e</span> <span class="op">=</span> <span class="va">eff</span><span class="op">+</span><span class="va">eff.err</span></span>
 <span>  <span class="va">cp</span> <span class="op">=</span> <span class="va">centr</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="va">cp.err</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
 <span></span>
 <span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">2.94E-01</span>, TCl<span class="op">=</span><span class="fl">1.86E+01</span>, V2<span class="op">=</span><span class="fl">4.02E+01</span>,  <span class="co"># central </span></span>
 <span>           Q<span class="op">=</span><span class="fl">1.05E+01</span>, V3<span class="op">=</span><span class="fl">2.97E+02</span>,                <span class="co"># peripheral</span></span>
@@ -536,7 +536,7 @@ nonmem run included in xpose</a></p>
 <span>  <span class="va">ipred</span> <span class="op">&lt;-</span> <span class="fu">linCmt</span><span class="op">(</span><span class="op">)</span></span>
 <span>  <span class="va">obs</span> <span class="op">&lt;-</span> <span class="va">ipred</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">prop.sd</span><span class="op">)</span> <span class="op">+</span> <span class="va">add.sd</span> </span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span></span></code></pre></div>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
 <p>Next we input the estimated parameters:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tcl<span class="op">=</span><span class="fl">2.63E+01</span>, tv<span class="op">=</span><span class="fl">1.35E+00</span>, tka<span class="op">=</span><span class="fl">4.20E+00</span>, tlag<span class="op">=</span><span class="fl">2.08E-01</span>,</span>

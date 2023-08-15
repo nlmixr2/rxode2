@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Jacobian specification and Stiff Systems</h1>
             
-            <h4 data-toc-skip class="date">2023-08-08</h4>
+            <h4 data-toc-skip class="date">2023-08-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-stiff.Rmd" class="external-link"><code>vignettes/rxode2-stiff.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-stiff.Rmd</code></div>
@@ -198,7 +198,7 @@ der Pol</a> differential equations.</p>
 <span>    <span class="co">## mu</span></span>
 <span>    <span class="va">mu</span> <span class="op">=</span> <span class="fl">1</span> <span class="co">## nonstiff; 10 moderately stiff; 1000 stiff</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0’</span></span></code></pre>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
 <span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>;</span>
