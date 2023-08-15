@@ -151,16 +151,16 @@ extern "C" void printErr(int err, int id){
   if (err & 131072){
     RSprintf("  Corrupted events\n");
   }
-  if (err & 65536){
+  if (err & rxErrNegCmt){
     RSprintf("  Supplied an invalid EVID\n");
   }
-  if (err & 262144){
-    RSprintf("  Corrupted event table\n");
+  if (err & rxErrSync){
+    RSprintf("  Corrupted event table (during sync)\n");
   }
-  if (err & 524288){
-    RSprintf("  The event table has been corrupted\n");
+  if (err & rxErrSync2){
+    RSprintf("  Corrupted event table (end of sync)\n");
   }
-  if (err & 1048576){
+  if (err & rxErrModeledFss2){
     RSprintf("  SS=2 & Modeled F does not work\n");
   }
   if (err & 2097152){
@@ -998,10 +998,6 @@ void handleSS(int *neq,
               rx_solving_options_ind *ind,
               t_update_inis u_inis,
               void *ctx){
-  if (ind->wh0 == EVID0_RESETDOSE) {
-    cancelPendingDoses(ind, neq[1]);
-    return;
-  }
   rx_solve *rx = &rx_global;
   int j;
   int doSS2=0;
@@ -1032,6 +1028,7 @@ void handleSS(int *neq,
       bi = *i, fi = *i;
     if (doSSinf){
     } else if (ind->whI == EVIDF_INF_RATE || ind->whI == EVIDF_INF_DUR) {
+      if (getDose(ind, ind->idose[ind->ixds]) < 0) return;
       oldI = ind->whI;
       infBixds = infFixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
@@ -1270,7 +1267,6 @@ void handleSS(int *neq,
         int extraEvid = regEvid - EVID0_REGULAR + EVID0_RATEADJ;
         int overIi = floor(curLagExtra/curIi);
         curLagExtra = curLagExtra - overIi*curIi;
-        pushPendingDose(infEixds, ind);
         double onRate = getDose(ind, ind->idose[infBixds]);
         double offRate = getDose(ind, ind->idose[infEixds]);
         if (isModeled) {
@@ -1278,17 +1274,21 @@ void handleSS(int *neq,
           onRate = -offRate;
           if (overIi) {
             pushDosingEvent(startTimeD + curLagExtra,
-                            onRate,
-                            extraEvid, ind);
+                            onRate, extraEvid, ind);
           }
         }
+        if (isSsLag) {
+          pushPendingDose(infFixds, ind);
+          pushPendingDose(infFixds+1, ind);
+          pushPendingDose(infFixds+2, ind);
+          pushPendingDose(infEixds, ind);
+        } 
         for (int cur = 0; cur < overIi; ++cur) {
           pushDosingEvent(startTimeD + offTime + cur*curIi + curLagExtra,
                           offRate, extraEvid, ind);
           if (!isModeled || cur != overIi - 1) {
             pushDosingEvent(startTimeD + (cur+1)*curIi + curLagExtra,
-                            onRate,
-                            extraEvid, ind);
+                            onRate, extraEvid, ind);
           }
         }
         for (int cur = 0; cur < numDoseInf; ++cur) {
@@ -1448,6 +1448,7 @@ void handleSS(int *neq,
           }
         } else {
           // infusion without a lag time.
+          pushPendingDose(infEixds, ind);
           *istate=1;
           if (!isSsLag || !isModeled) {
             ind->idx = bi;
@@ -1469,8 +1470,8 @@ void handleSS(int *neq,
         pushPendingDose(infEixds, ind);
         double startTimeD = getTime_(ind->idose[infBixds],ind);
         double curLagExtra = 0.0;
-        int wh0 = ind->wh0;
         if (isSsLag) {
+          int wh0 = ind->wh0;
           ind->wh0=1;
           curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) - startTimeD;
           ind->wh0=wh0;
@@ -1587,6 +1588,7 @@ void handleSS(int *neq,
           double totTime = xp2 + dur + dur2 - curLagExtra;
           if (curLagExtra > 0) {
             if (curLagExtra > dur2) {
+              // dosing time occurs during the infusion
               double solveExtra=dur+dur2-curLagExtra;
               ind->idx=bi;
               ind->ixds = infBixds;
@@ -1716,6 +1718,19 @@ void handleSS(int *neq,
                 }
               }
             }
+          } else {
+            ind->idx=bi;
+            ind->ixds=infBixds;
+            handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                        BadDose, InfusionRate, dose, yp,
+                        xout, neq[1], ind);
+            pushIgnoredDose(infFixds, ind);
+            pushIgnoredDose(infFixds+1, ind);
+            if (isModeled) {
+              pushPendingDose(infFixds+2, ind);
+            } else {
+              pushIgnoredDose(infFixds+2, ind);
+            }
           }
           *istate=1;
           ind->idx=fi;
@@ -1724,6 +1739,9 @@ void handleSS(int *neq,
             ind->solveLast[k] = yp[k];
           }
           xp2 = xout2;
+        } else {
+          ind->idx=fi;
+          ind->ixds = infFixds;
         }
       }
     }

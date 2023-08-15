@@ -56,6 +56,7 @@ extern "C" {
 			}
 		}
 		ind->ixds=ind->idx=0;
+    ind->pendingDosesN[0] = 0;
 		return 1;
 	}
 

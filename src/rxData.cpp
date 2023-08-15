@@ -2878,7 +2878,9 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       List ev1a = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                           false, false, true, R_NilValue,
                           rxControl[Rxc_keepF],
-                          rxControl[Rxc_addlKeepsCov]);
+                          rxControl[Rxc_addlKeepsCov],
+                          rxControl[Rxc_addlDropSs],
+                          rxControl[Rxc_ssAtDoseTime]);
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
@@ -2952,7 +2954,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")){
     ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                            false, false, true, R_NilValue,
-                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov]));
+                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime]));
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");
@@ -3034,6 +3037,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       }
     }
   }
+  // Rcpp::print(ev1);
   _rxModels[".lastEv1"] = ev1;
 }
 
