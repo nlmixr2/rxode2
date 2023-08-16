@@ -25,7 +25,8 @@ extern "C" {
 		ind->curShift=0.0;
 		ind->lastIsSs2 = false;
 		// neq[0] = op->neq
-		for (int j = (op->neq + op->extraCmt); j--;) {
+    int ncmt = (op->neq + op->extraCmt);
+		for (int j = ncmt; j--;) {
 			ind->InfusionRate[j] = 0;
 			ind->on[j] = 1;
 			ind->tlastS[j] = NA_REAL;
@@ -56,7 +57,7 @@ extern "C" {
 			}
 		}
 		ind->ixds=ind->idx=0;
-    ind->pendingDosesN[0] = 0;
+    if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
 
