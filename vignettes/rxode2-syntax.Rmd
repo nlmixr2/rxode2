@@ -23,7 +23,7 @@ describes the communication of variables between `R` and the
 `rxode2` modeling specification.
 
 
-## Creating rxode2
+## Creating rxode2 models
 
 ```{r child='../man/rmdhunks/rxode2-create-models.Rmd'}
 ```
@@ -122,9 +122,9 @@ whole problem is shifted to a log-likelihood method for estimation in
 ### Notes on additive + proportional models
 
 There are two different ways to specify additive and proportional
-models, which we will call combined1 and combined2, the same way that
-Monolix calls the two distributions (to avoid between software
-differences in naming).
+models, which we will call **combined1** and **combined2**, the same
+way that Monolix calls the two distributions (to avoid between
+software differences in naming).
 
 The first, **combined1**, assumes that the additive and proportional
 differences are on the standard deviation scale, or:
@@ -146,6 +146,7 @@ statistics will add their variances (not the standard deviations).
 However, the **combined1** can describe the data possibly even better
 than **combined2** so both are possible options in `rxode2`/`nlmixr2`.
 
+
 ### Distributions of known likelihoods
 
 For residuals that are not related to normal, t-distribution or
@@ -166,7 +167,8 @@ ll(cmt) ~ llik specification
 
 ### Ordinal likelihoods
 
-Finally, ordinal likelihoods/simulations can be specified in 2 ways. The first is:
+Finally, ordinal likelihoods/simulations can be specified in 2
+ways. The first is:
 
 ``` r
 err ~ c(p0, p1, p2)
@@ -190,7 +192,8 @@ It seems a little off that `p0` is the probability for category `1` and sometime
 err ~ c(p0=0, p1=1, p2=2, 3)
 ```
 
-Here the numeric categories are specified explicitly, and the probabilities remain the same:
+Here the numeric categories are specified explicitly, and the
+probabilities remain the same:
 
 | Category | Probability |
 |----------|-------------|

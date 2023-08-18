@@ -16,17 +16,30 @@
               overwrite=TRUE)
     .createRxUiBlessedList()
   })
-  message("generate documentation rxResidualError")
+  message("generate rxResidualError and update documentation")
   rxResidualError <- read.csv(devtools::package_file("inst/residualErrors.csv"),
                               check.names=FALSE)
   usethis::use_data(rxResidualError, overwrite = TRUE)
   .l <- readLines(devtools::package_file("R/rxResidualError.R"))
-  .l <- sub("[#][']\\s*@format\\s*",
+  .l <- sub("[#][']\\s*@format\\s*.*",
             sprintf("#' @format A data frame with %d columns and %d rows",
                     dim(rxResidualError)[2], dim(rxResidualError)[1]), .l)
   .R <- file(devtools::package_file("R/rxResidualError.R"), "wb")
   writeLines(.l, .R)
   close(.R)
+  message("done")
+  message("generate rxReservedKeywords and update documentation")
+  rxReservedKeywords <- read.csv(devtools::package_file("R/reserved-keywords.csv"))
+  names(rxReservedKeywords)[1] <- "Reserved Name"
+  usethis::use_data(rxReservedKeywords, overwrite=TRUE)
+  .l <- readLines(devtools::package_file("R/rxReservedKeywords.R"))
+  .l <- sub("[#][']\\s*@format\\s*.*",
+            sprintf("#' @format A data frame with %d columns and %d rows",
+                    dim(rxReservedKeywords)[2], dim(rxReservedKeywords)[1]), .l)
+  .R <- file(devtools::package_file("R/rxReservedKeywords.R"), "wb")
+  writeLines(.l, .R)
+  close(.R)
+
   message("done")
   return(invisible(""))
 }

@@ -276,6 +276,34 @@ unlink("modelFile.rxode2")
 \}
 
 mod <- rxode2(mod) # or simply mod() if the model is at the end of the function
+
+# These model functions often have residual components and initial
+# (`ini(\{\})`) conditions attached as well. For example the
+# theophylline model can be written as:
+
+one.compartment <- function() \{
+  ini(\{
+    tka <- 0.45 # Log Ka
+    tcl <- 1 # Log Cl
+    tv <- 3.45    # Log V
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 0.1
+    add.sd <- 0.7
+  \})
+  model(\{
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+    cp ~ add(add.sd)
+  \})
+\}
+
+# after parsing the model
+mod <- one.compartment()
 }\if{html}{\out{</div>}}
 
 For the block statement, character string or text file an internal
@@ -286,8 +314,32 @@ object of class \code{rxode2} which consists of a list-like structure
 
 For the last type of model (a model function), a call to \code{rxode2}
 creates a parsed \code{rxode2} ui that can be translated to the \code{rxode2}
-compilation model. This is the same type of function required for
-\code{nlmixr2} estimation and will be focused on in the documentation.
+compilation model.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
+}\if{html}{\out{</div>}}
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.13.9000 model named rx_a78d633796ac76b9b618d038235c44e4 model (ready). 
+## x$state: depot, center
+## x$stateExtra: cp
+## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
+## x$lhs: ka, cl, v, cp, ipredSim, sim
+}\if{html}{\out{</div>}}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{# or 
+mod$simulationIniModel
+}\if{html}{\out{</div>}}
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.13.9000 model named rx_9e052eab6661f708c3cd8acd8051c234 model (ready). 
+## x$state: depot, center
+## x$stateExtra: cp
+## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
+## x$lhs: ka, cl, v, cp, ipredSim, sim
+}\if{html}{\out{</div>}}
+
+This is the same type of function required for \code{nlmixr2} estimation and
+can be extended and modified by model piping. For this reason will be
+focused on in the documentation.
 
 This basic model specification consists of one or more statements
 optionally terminated by semi-colons \verb{;} and optional comments (comments

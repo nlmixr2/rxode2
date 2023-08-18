@@ -53,6 +53,34 @@ mod <- function() {
 }
 
 mod <- rxode2(mod) # or simply mod() if the model is at the end of the function
+
+# These model functions often have residual components and initial
+# (`ini({})`) conditions attached as well. For example the
+# theophylline model can be written as:
+
+one.compartment <- function() {
+  ini({
+    tka <- 0.45 # Log Ka
+    tcl <- 1 # Log Cl
+    tv <- 3.45    # Log V
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+    cp ~ add(add.sd)
+  })
+}
+
+# after parsing the model
+mod <- one.compartment()
 ```
 
 For the block statement, character string or text file an internal
@@ -64,5 +92,15 @@ functions.
 
 For the last type of model (a model function), a call to `rxode2`
 creates a parsed `rxode2` ui that can be translated to the `rxode2`
-compilation model.  This is the same type of function required for
-`nlmixr2` estimation and will be focused on in the documentation.
+compilation model.
+
+```{r}
+mod$simulationModel
+
+# or 
+mod$simulationIniModel
+```
+
+This is the same type of function required for `nlmixr2` estimation
+and can be extended and modified by model piping.  For this reason
+will be focused on in the documentation.
