@@ -1,3 +1,4 @@
+
 rex::register_shortcuts("rxode2")
 # Hack for Rcpp->R initial values problem
 R_NegInf <- -Inf # nolint
