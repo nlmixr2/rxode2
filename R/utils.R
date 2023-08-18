@@ -746,3 +746,28 @@ is.latex <- function() {
   }
   ret
 }
+#' Print out a table in the documentation
+#'  
+#' @param table data frame
+#' @param caption a character vector representing the caption for the latex table
+#' @return based on the `knitr` context:
+#' - output a `kableExtra::kbl` for `latex` output
+#' - output a `DT::datatable` for html output
+#' - otherwise output a `knitr::kable`
+#' @keywords internal
+#' @export 
+#' @author Matthew L. Fidler
+#' @examples
+#' .rxDocTable(rxReservedKeywords)
+.rxDocTable <- function(table, caption="none") {
+  rxReq("knitr")
+  if (knitr::is_latex_output()) {
+    kableExtra::kbl(table, longtable=TRUE, booktabs=TRUE, caption=caption) %>%
+      kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
+  } else if (knitr::is_html_output(excludes = "gfm")) {
+    rxReq("DT")
+    DT::datatable(table, rownames = FALSE, filter="top",  options=list(pageLength = 5, scrollX=TRUE))
+  } else {
+    knitr::kable(table)
+  }
+}

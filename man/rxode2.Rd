@@ -493,10 +493,7 @@ All the supported functions in rxode2 can be seen with the
 \code{rxSupportedFuns()}.
 
 A brief description of the built-in functions are in the following
-table:
-}
-
-\tabular{lll}{
+table:\tabular{lll}{
    Function \tab Description \tab Aliases \cr
    gamma(x) \tab The Gamma function \tab gammafn \cr
    lgamma(x) \tab Natural logarithm of absolute value of gamma function \tab digamma \cr
@@ -601,6 +598,8 @@ table:
 
 Note that \verb{lag(cmt) =} is equivalent to \verb{alag(cmt) =} and not the same
 as \verb{= lag(wt)}
+}
+
 \subsection{Reserved keywords}{
 
 There are a few reserved keywords in a rxode2 model. They are in the
@@ -637,6 +636,390 @@ following table:\tabular{lll}{
    Inf \tab Infinite Value \tab  \cr
    newind \tab 1: First record of individual; 2: Subsequent record of individual \tab NEWIND \cr
    rxFlag \tab Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs \tab  \cr
+}
+
+
+Note that \code{rxFlag} will always output \code{11} or \code{calc_lhs} since that is
+where the final variables are calculated, though you can tweak or test
+certain parts of \code{rxode2} by using this flag.
+}
+
+\subsection{Residual functions when using rxode2 functions}{
+
+In addition to \code{~} hiding output for certain types of output, it also is
+used to specify a residual output or endpoint when the input is an
+\code{rxode2} model function (that includes the residual in the \code{model({})}
+block).
+
+These specifications are of the form:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{var ~ add(add.sd)
+}\if{html}{\out{</div>}}
+
+Indicating the variable \code{var} is the variable that represents the
+individual central tendencies of the model and it also represents the
+compartment specification in the data-set.
+
+You can also change the compartment name using the \code{|} syntax, that is:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{var ~ add(add.sd) | cmt
+}\if{html}{\out{</div>}}
+
+In the above case \code{var} represents the central tendency and \code{cmt}
+represents the compartment or \code{dvid} specification.
+\subsection{Transformations}{
+
+For normal and related distributions, you can apply the transformation
+on both sides by using some keywords/functions to apply these
+transformations.\tabular{ll}{
+   Transformation \tab rxode2/nlmixr2 code \cr
+   Box-Cox \tab \code{+coxBox(lambda)} \cr
+   Yeo-Johnson \tab \code{+yeoJohnson(lambda)} \cr
+   logit-normal \tab \code{+logitNorm(logit.sd, low, hi)} \cr
+   probit-normal \tab \code{+probitNorm(probid.sd, low, hi)} \cr
+   log-normal \tab \code{+lnorm(lnorm.sd)} \cr
+}
+
+
+By default for the likelihood for all of these transformations is
+calculated on the \strong{untransformed} scale.
+
+For bounded variables like logit-normal or probit-normal the low and
+high values are defaulted to 0 and 1 if missing.
+
+For models where you wish to have a proportional model on one of these
+transformation you can replace the standard deviation with \code{NA}
+
+To allow for more transformations, \code{lnorm()}, \code{probitNorm()} and
+\code{logitNorm()} can be combined the variance stabilizing \code{yeoJohnson()}
+transformation.
+}
+
+\subsection{Normal and t-related distributions}{
+
+For the normal and t-related distributions, we wanted to keep the
+ability to use skewed distributions additive and proportional in the
+t/cauchy-space, so these distributions are specified differently in
+comparison to the other supported distributions within \code{nlmixr2}:\if{html}{\out{
+<table style="width:97%;">
+<colgroup>
+<col style="width: 34%" />
+<col style="width: 23%" />
+<col style="width: 38%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Distribution</th>
+<th>How to Add</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Normal (log-likelihood)</td>
+<td><code>+dnorm()</code></td>
+<td><code>cp~add(add.sd)+dnorm()</code></td>
+</tr>
+<tr class="even">
+<td>T-distribuion</td>
+<td><code>+dt(df)</code></td>
+<td><code>cp~add(add.sd)+dt(df)</code></td>
+</tr>
+<tr class="odd">
+<td>Cauchy<br />
+(t with df=1)</td>
+<td><code>+dcauchy()</code></td>
+<td><code>cp~add(add.sd)+dcauchy()</code></td>
+</tr>
+</tbody>
+</table>
+}}
+
+
+Note that with the normal and t-related distributions \code{nlmixr2} will
+calculate \code{cwres} and \code{npde} under the normal assumption to help assess
+the goodness of the fit of the model.
+
+Also note that the \code{+dnorm()} is mostly for testing purposes and will
+slow down the estimation procedure in \code{nlmixr2}. We suggest not adding
+it (except for explicit testing). When there are multiple endpoint
+models that mix non-normal and normal distributions, the whole problem
+is shifted to a log-likelihood method for estimation in \code{nlmixr2}.
+}
+
+\subsection{Notes on additive + proportional models}{
+
+There are two different ways to specify additive and proportional
+models, which we will call \strong{combined1} and \strong{combined2}, the same way
+that Monolix calls the two distributions (to avoid between software
+differences in naming).
+
+The first, \strong{combined1}, assumes that the additive and proportional
+differences are on the standard deviation scale, or:
+
+[
+y=f+(a+b\times f^c)\times\varepsilon
+]
+
+The second, \strong{combined2}, assumes that the additive and proportional
+differences are combined on a variance scale:
+
+[
+y=f+\left(\sqrt{a^2+b^2\times f^{2c}}\right)\times\varepsilon
+]
+
+The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
+\strong{combined2} since it mirrors how adding 2 normal distributions in
+statistics will add their variances (not the standard deviations).
+However, the \strong{combined1} can describe the data possibly even better
+than \strong{combined2} so both are possible options in \code{rxode2}/\code{nlmixr2}.
+}
+
+\subsection{Distributions of known likelihoods}{
+
+For residuals that are not related to normal, t-distribution or cauchy,
+often the residual specification is of the form:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{cmt ~ dbeta(alpha, beta)
+}\if{html}{\out{</div>}}
+
+Where the compartment specification is on the left handed side of the
+specification.
+
+For generalized likelihood you can specify:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ll(cmt) ~ llik specification
+}\if{html}{\out{</div>}}
+}
+
+\subsection{Ordinal likelihoods}{
+
+Finally, ordinal likelihoods/simulations can be specified in 2 ways. The
+first is:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{err ~ c(p0, p1, p2)
+}\if{html}{\out{</div>}}
+
+Here \code{err} represents the compartment and \code{p0} is the probability of
+being in a specific category:\tabular{ll}{
+   Category \tab Probability \cr
+   1 \tab p0 \cr
+   2 \tab p1 \cr
+   3 \tab p2 \cr
+   4 \tab 1-p0-p1-p2 \cr
+}
+
+
+It is up to the model to ensure that the sum of the \code{p} values are less
+than \code{1}. Additionally you can write an arbitrary number of categories
+in the ordinal model described above.
+
+It seems a little off that \code{p0} is the probability for category \code{1} and
+sometimes scores are in non-whole numbers. This can be modeled as
+follows:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{err ~ c(p0=0, p1=1, p2=2, 3)
+}\if{html}{\out{</div>}}
+
+Here the numeric categories are specified explicitly, and the
+probabilities remain the same:\tabular{ll}{
+   Category \tab Probability \cr
+   0 \tab p0 \cr
+   1 \tab p1 \cr
+   2 \tab p2 \cr
+   3 \tab 1-p0-p1-p2 \cr
+}
+
+}
+
+\subsection{General table of supported residual distributions}{
+
+In general all the that are supported are in the following table
+(available in \code{rxode2::rxResidualError})\tabular{llllll}{
+   Error model \tab Functional Form \tab Transformation \tab code \tab addProp \tab lhs \cr
+   constant \tab  \tab None \tab var ~ add(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab None \tab var ~ prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab None \tab var ~ pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab log \tab var ~ lnorm(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab logit \tab var ~ logitNorm(logit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=2 \tab response variable \cr
+   additive \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=2 \tab response variable \cr
+   constant \tab  \tab logit \tab var ~ probitNorm(probit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   additive \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) \tab  \tab response variable \cr
+   proportional \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
+   power \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
+   additive+proportional \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab None \tab var ~ add(add.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab None \tab var ~ prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab None \tab var ~ pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab log \tab var ~ lnorm(add.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) +combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd)+dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd)+dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent)+dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab logit \tab var ~ logitNorm(logit.sd)+dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd)+dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   constant+t \tab  \tab logit \tab var ~ probitNorm(probit.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dt(df) \tab  \tab response variable \cr
+   proportional+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
+   power+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
+   additive+proportional+t \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+t \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+t \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+t \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) +combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab None \tab var ~ add(add.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab None \tab var ~ prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab None \tab var ~ pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab log \tab var ~ lnorm(add.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() +combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd)+dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd)+dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent)+dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab logit \tab var ~ logitNorm(logit.sd)+dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd)+dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   constant+cauchy \tab  \tab logit \tab var ~ probitNorm(probit.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dcauchy() \tab  \tab response variable \cr
+   proportional+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
+   power+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
+   additive+proportional+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+proportional+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
+   additive+power+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
+   additive+power+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
+   poission \tab  \tab none \tab cmt ~ dpois(lamba) \tab  \tab compartment specification \cr
+   binomial \tab  \tab none \tab cmt ~ dbinom(n, p) \tab  \tab compartment specification \cr
+   beta \tab  \tab none \tab cmt ~ dbeta(alpha, beta) \tab  \tab compartment specification \cr
+   chisq \tab  \tab none \tab cmt ~ dchisq(nu) \tab  \tab compartment specification \cr
+   exponential \tab  \tab none \tab cmt ~ dexp(r) \tab  \tab compartment specification \cr
+   uniform \tab  \tab none \tab cmt ~ dunif(a, b) \tab  \tab compartment specification \cr
+   weibull \tab  \tab none \tab cmt ~ dweibull(a, b) \tab  \tab compartment specification \cr
+   gamma \tab  \tab none \tab cmt ~ dgamma(a, b) \tab  \tab compartment specification \cr
+   geometric \tab  \tab none \tab cmt ~ dgeom(a) \tab  \tab compartment specification \cr
+   negative binomial form #1 \tab  \tab none \tab cmt ~ dnbinom(n, p) \tab  \tab compartment specification \cr
+   negative binomial form #2 \tab  \tab none \tab cmt ~ dnbinomMu(size, mu) \tab  \tab compartment specification \cr
+   ordinal probability \tab  \tab none \tab cmt ~ c(p0=0, p1=1, p2=2, 3) \tab  \tab compartment specification \cr
+   log-likelihood \tab  \tab none \tab ll(cmt) ~ log likelihood expression \tab  \tab likelihood + compartment expression \cr
+}
+
 }
 
 }
