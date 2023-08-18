@@ -217,16 +217,14 @@ The ODE-based model specification may be coded inside four places:
 }}
 
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2(\{
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{library(rxode2)
+mod <- rxode2(\{
   # simple assignment
   C2 <- centr/V2
 
   # time-derivative assignment
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 \})
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 }\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
@@ -242,9 +240,6 @@ The ODE-based model specification may be coded inside four places:
   # time-derivative assignment
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 ")
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:

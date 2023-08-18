@@ -16,6 +16,18 @@
               overwrite=TRUE)
     .createRxUiBlessedList()
   })
+  message("generate documentation rxResidualError")
+  rxResidualError <- read.csv(devtools::package_file("inst/residualErrors.csv"),
+                              check.names=FALSE)
+  usethis::use_data(rxResidualError, overwrite = TRUE)
+  .l <- readLines(devtools::package_file("R/rxResidualError.R"))
+  .l <- sub("[#][']\\s*@format\\s*",
+            sprintf("#' @format A data frame with %d columns and %d rows",
+                    dim(rxResidualError)[2], dim(rxResidualError)[1]), .l)
+  .R <- file(devtools::package_file("R/rxResidualError.R"), "wb")
+  writeLines(.l, .R)
+  close(.R)
+  message("done")
   return(invisible(""))
 }
 #' This creates the list of "blessed" rxode2 items

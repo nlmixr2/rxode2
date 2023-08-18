@@ -23,6 +23,204 @@ describes the communication of variables between `R` and the
 `rxode2` modeling specification.
 
 
+## Creating rxode2
+
+```{r child='../man/rmdhunks/rxode2-create-models.Rmd'}
+```
+
+## Syntax
+
+```{r child='../man/rmdhunks/rxode2-syntax-hunk.Rmd'}
+```
+
+
+## Supported functions
+
+All the supported functions in rxode2 can be seen with the
+`rxSupportedFuns()`.
+
+A brief description of the built-in functions are
+in the following table:
+
+```{r, echo=FALSE, screenshot.force=FALSE}
+library(rxode2)
+## rxSyntaxFunctions <- read.csv("syntax-functions.csv");usethis::use_data(rxSyntaxFunctions)
+library(DT)
+datatable(rxSyntaxFunctions, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
+```
+
+Note that `lag(cmt) = ` is equivalent to `alag(cmt) = ` and not the same as `= lag(wt)`
+
+## Reserved keywords
+
+There are a few reserved keywords in a rxode2 model.  They are  in the following table:
+
+```{r, echo=FALSE, screenshot.force=FALSE}
+## rxReservedKeywords <- read.csv("reserved-keywords.csv");names(rxReservedKeywords)[1] <- "Reserved Name";usethis::use_data(rxReservedKeywords)
+datatable(rxReservedKeywords, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
+```
+
+Note that `rxFlag` will always output `11` or `calc_lhs` since that is
+where the final variables are calculated, though you can tweak or test
+certain parts of `rxode2` by using this flag.
+
+## Residual functions when using rxode2 functions
+
+In addition to `~` hiding output for certain types of output, it also
+is used to specify a residual output or endpoint when the input is an
+`rxode2` model function (that includes the residual in the `model({})`
+block).
+
+These specifications are of the form:
+
+``` r
+var ~ add(add.sd)
+```
+
+Indicating the variable `var` is the variable that represents the
+individual central tendencies of the model and it also represents the
+compartment specification in the data-set.
+
+You can also change the compartment name using the `|` syntax, that is:
+
+``` r
+var ~ add(add.sd) | cmt
+```
+
+In the above case `var` represents the central tendency and `cmt`
+represents the compartment or `dvid` specification. 
+
+### Normal and t-related distributions
+
+For the normal and t-related distributions, we wanted to keep the
+ability to use skewed distributions additive and proportional in the
+t/cauchy-space, so these distributions are specified differently in
+comparison to the other supported distributions within `nlmixr2`:
+
++-------------------------+----------------+----------------------------+
+| Distribution            | How to Add     | Example                    |
++=========================+================+============================+
+| Normal (log-likelihood) | `+dnorm()`     | `cp~add(add.sd)+dnorm()`   |
++-------------------------+----------------+----------------------------+
+| T-distribuion           | `+dt(df)`      | `cp~add(add.sd)+dt(df)`    |
++-------------------------+----------------+----------------------------+
+| Cauchy\                 | `+dcauchy()`   | `cp~add(add.sd)+dcauchy()` |
+| (t with df=1)           |                |                            |
++-------------------------+----------------+----------------------------+
+
+Note that with the normal and t-related distributions `nlmixr2` will
+calculate `cwres` and `npde` under the normal assumption to help
+assess the goodness of the fit of the model.
+
+Also note that the `+dnorm()` is mostly for testing purposes and will
+slow down the estimation procedure in `nlmixr2`.  We suggest not
+adding it (except for explicit testing).  When there are multiple
+endpoint models that mix non-normal and normal distributions, the
+whole problem is shifted to a log-likelihood method for estimation in
+`nlmixr2`.
+
+### Notes on additive + proportional models
+
+There are two different ways to specify additive and proportional
+models, which we will call combined1 and combined2, the same way that
+Monolix calls the two distributions (to avoid between software
+differences in naming).
+
+The first, **combined1**, assumes that the additive and proportional
+differences are on the standard deviation scale, or:
+
+$$
+y=f+(a+b\times f^c)\times\varepsilon
+$$
+
+The second, **combined2**, assumes that the additive and proportional
+differences are combined on a variance scale:
+
+$$
+y=f+\left(\sqrt{a^2+b^2\times f^{2c}}\right)\times\varepsilon
+$$
+
+The default in `nlmixr2`/`rxode2` if not otherwise specified is
+**combined2** since it mirrors how adding 2 normal distributions in
+statistics will add their variances (not the standard deviations).
+However, the **combined1** can describe the data possibly even better
+than **combined2** so both are possible options in `rxode2`/`nlmixr2`.
+
+### Distributions of known likelihoods
+
+For residuals that are not related to normal, t-distribution or
+cauchy, often the residual specification is of the form:
+
+``` r
+cmt ~ dbeta(alpha, beta)
+```
+
+Where the compartment specification is on the left handed side of the
+specification. 
+
+For generalized likelihood you can specify:
+
+``` r
+ll(cmt) ~ llik specification
+```
+
+### Ordinal likelihoods
+
+Finally, ordinal likelihoods/simulations can be specified in 2 ways. The first is:
+
+``` r
+err ~ c(p0, p1, p2)
+```
+
+Here `err` represents the compartment and `p0` is the probability of
+being in a specific category:
+
+| Category | Probability |
+|----------|-------------|
+| 1        | p0          |
+| 2        | p1          |
+| 3        | p2          |
+| 4        | 1-p0-p1-p2  |
+
+It is up to the model to ensure that the sum of the `p` values are less than `1`. Additionally you can write an arbitrary number of categories in the ordinal model described above.
+
+It seems a little off that `p0` is the probability for category `1` and sometimes scores are in non-whole numbers. This can be modeled as follows:
+
+``` r
+err ~ c(p0=0, p1=1, p2=2, 3)
+```
+
+Here the numeric categories are specified explicitly, and the probabilities remain the same:
+
+| Category | Probability |
+|----------|-------------|
+| 0        | p0          |
+| 1        | p1          |
+| 2        | p2          |
+| 3        | 1-p0-p1-p2  |
+
+### General table of supported residual distributions
+
+In general all the that are supported are in the following table
+(available in `rxode2::rxResidualError`)
+
+```{r, echo=FALSE, screenshot.force=FALSE}
+library(rxode2)
+library(DT)
+datatable(rxResidualError, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=TRUE) )
+```
+
+## Bugs and/or deficiencies
+
+- The modulo operator `%%` is currently unsupported. 
+
+## Note
+
+The ODE specification mini-language is parsed with the help of the
+open source tool \code{dparser}, Plevyak (2015).
+
+## Example model
+
 Below is a commented example to quickly show the capabilities of
 `rxode2` syntax.
 
@@ -56,15 +254,7 @@ f <- function() {
 }
 ```
 
-## Creating rxode2
 
-```{r child='../man/rmdhunks/rxode2-create-models.Rmd'}
-```
-
-## Syntax
-
-```{r child='../man/rmdhunks/rxode2-syntax-hunk.Rmd'}
-```
 
 ## Interface and data handling between R and the generated C code
 
@@ -99,42 +289,3 @@ modeling output.
 
 The ODE specification mini-language is parsed with the help of the
 open source tool *DParser*, Plevyak (2015).
-
-## Supported functions
-
-All the supported functions in rxode2 can be seen with the
-`rxSupportedFuns()`.
-
-A brief description of the built-in functions are
-in the following table:
-
-```{r, echo=FALSE, screenshot.force=FALSE}
-library(rxode2)
-## rxSyntaxFunctions <- read.csv("syntax-functions.csv");usethis::use_data(rxSyntaxFunctions)
-library(DT)
-datatable(rxSyntaxFunctions, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
-```
-
-Note that `lag(cmt) = ` is equivalent to `alag(cmt) = ` and not the same as `= lag(wt)`
-
-## Reserved keywords
-
-There are a few reserved keywords in a rxode2 model.  They are  in the following table:
-
-```{r, echo=FALSE, screenshot.force=FALSE}
-## rxReservedKeywords <- read.csv("reserved-keywords.csv");names(rxReservedKeywords)[1] <- "Reserved Name";usethis::use_data(rxReservedKeywords)
-datatable(rxReservedKeywords, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
-```
-
-Note that `rxFlag` will always output `11` or `calc_lhs` since that is
-where the final variables are calculated, though you can tweak or test
-certain parts of `rxode2` by using this flag.
-
-## Bugs and/or deficiencies
-
-- The modulo operator `%%` is currently unsupported. 
-
-## Note
-
-The ODE specification mini-language is parsed with the help of the
-open source tool \code{dparser}, Plevyak (2015).

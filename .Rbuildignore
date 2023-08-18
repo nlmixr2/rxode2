@@ -21,6 +21,7 @@ testthat/.*\.(so|dll)$
 BinaryFiles$
 rxode2.*\.(zip|pdf)$
 ^/?inst/Install-windows.md
+^/?inst/residualErrors.csv$
 ^/?.Rhistory
 ^/?R/.Rhistory
 ^/?src/.Rhistory
@@ -133,6 +134,5 @@ tests/testthat/test-lincmt-parse.R
 ^/?build/dual.R$
 ^/?build/refresh.R$
 ^/?build/sensitivites.R$
-
 ^CRAN-SUBMISSION$
 ^revdep$
