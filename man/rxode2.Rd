@@ -209,22 +209,92 @@ suggest the package emphasis on pharmacometrics modeling, including
 pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 drug-disease modeling, etc.
 
-The ODE-based model specification may be coded inside a character
-string or in a text file, see Section \emph{rxode2 Syntax} below for
-coding details.  An internal \code{rxode2} compilation manager
-object translates the ODE system into C, compiles it, and
-dynamically loads the object code into the current R session.  The
-call to \code{rxode2} produces an object of class \code{rxode2} which
-consists of a list-like structure (environment) with various member
-functions (see Section \emph{Value} below).
+The ODE-based model specification may be coded inside four places:
+\itemize{
+\item Inside a \code{rxode2({})} block statements:
+}\if{html}{\out{
+<!-- end list -->
+}}
 
-For evaluating \code{rxode2} models, two types of inputs may be
-provided: a required set of time points for querying the state of
-the ODE system and an optional set of doses (input amounts).  These
-inputs are combined into a single \emph{event table} object created
-with the function \code{\link[=eventTable]{eventTable()}} or \code{\link[=et]{et()}}.
 
-An \code{rxode2} model specification consists of one or more statements
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2(\{
+  # simple assignment
+  C2 <- centr/V2
+
+  # time-derivative assignment
+  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+\})
+}\if{html}{\out{</div>}}
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
+}\if{html}{\out{</div>}}
+\itemize{
+\item Inside a \code{rxode2("")} string statement:
+}\if{html}{\out{
+<!-- end list -->
+}}
+
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2("
+  # simple assignment
+  C2 <- centr/V2
+
+  # time-derivative assignment
+  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+")
+}\if{html}{\out{</div>}}
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
+}\if{html}{\out{</div>}}
+\itemize{
+\item In a file name to be loaded by rxode2:
+}\if{html}{\out{
+<!-- end list -->
+}}
+
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{writeLines("
+  # simple assignment
+  C2 <- centr/V2
+
+  # time-derivative assignment
+  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+", "modelFile.rxode2")
+mod <- rxode2(filename='modelFile.rxode2')
+unlink("modelFile.rxode2")
+}\if{html}{\out{</div>}}
+\itemize{
+\item In a model function which can be parsed by \code{rxode2}:
+}\if{html}{\out{
+<!-- end list -->
+}}
+
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- function() \{
+  model(\{
+    # simple assignment
+    C2 <- centr/V2
+
+    # time-derivative assignment
+    d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
+  \})
+\}
+
+mod <- rxode2(mod) # or simply mod() if the model is at the end of the function
+}\if{html}{\out{</div>}}
+
+For the block statement, character string or text file an internal
+\code{rxode2} compilation manager translates the ODE system into C, compiles
+it and loads it into the R session. The call to \code{rxode2} produces an
+object of class \code{rxode2} which consists of a list-like structure
+(environment) with various member functions.
+
+For the last type of model (a model function), a call to \code{rxode2}
+creates a parsed \code{rxode2} ui that can be translated to the \code{rxode2}
+compilation model. This is the same type of function required for
+\code{nlmixr2} estimation and will be focused on in the documentation.
+
+This basic model specification consists of one or more statements
 optionally terminated by semi-colons \verb{;} and optional comments (comments
 are delimited by \verb{#} and an end-of-line).
 
@@ -233,7 +303,7 @@ A block of statements is a set of statements delimited by curly braces,
 
 Statements can be either assignments, conditional \code{if}/\verb{else if}/\verb{else},
 \code{while} loops (can be exited by \code{break}), special statements, or
-printing statements (for debugging/testing)
+printing statements (for debugging/testing).
 
 Assignment statements can be:
 \itemize{
@@ -264,7 +334,9 @@ tried with LSODA, this actually slightly slowed down the solving.
 Note that assignment can be done by \code{=}, \verb{<-} or \code{~}.
 
 When assigning with the \code{~} operator, the \strong{simple assignments} and
-\strong{time-derivative} assignments will not be output.
+\strong{time-derivative} assignments will not be output. Note that with the
+\code{rxode2} model functions assignment with \code{~} can also be overloaded with
+a residual distribution specification.
 
 Special statements can be:
 \itemize{
@@ -282,10 +354,10 @@ are specified by \code{param(par1, par2,...)}
 An example model is shown below:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{   # simple assignment
-   C2 = centr/V2;
+   C2 <- centr/V2
 
    # time-derivative assignment
-   d/dt(centr) = F*KA*depot - CL*C2 - Q*C2 + Q*C3; 
+   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 }\if{html}{\out{</div>}}
 
 Expressions in assignment and \code{if} statements can be numeric or logical.
@@ -345,7 +417,7 @@ specification:
 }
 
 Sometimes rxode2 generates variables that are fed back to rxode2.
-Similarly, nlmixr generates some variables that are used in nlmixr
+Similarly, nlmixr2 generates some variables that are used in nlmixr
 estimation and simulation. These variables start with the either the
 \code{rx} or \code{nlmixr} prefixes. To avoid any problems, it is suggested to not
 use these variables starting with either the \code{rx} or \code{nlmixr} prefixes.
@@ -367,7 +439,165 @@ numeric expressions. Unlike R, \code{as.numeric} or \code{as.integer} for these
 logical statements is not only not needed, but will cause an syntax
 error if you try to use the function.
 }
+
+\subsection{Supported functions}{
+
+All the supported functions in rxode2 can be seen with the
+\code{rxSupportedFuns()}.
+
+A brief description of the built-in functions are in the following
+table:
 }
+
+\tabular{lll}{
+   Function \tab Description \tab Aliases \cr
+   gamma(x) \tab The Gamma function \tab gammafn \cr
+   lgamma(x) \tab Natural logarithm of absolute value of gamma function \tab digamma \cr
+   digamma(x) \tab First derivative of lgamma \tab  \cr
+   trigamma(x) \tab Second derivative of lgamma \tab  \cr
+   tetragamma(x) \tab Third derivative of lgamma \tab  \cr
+   pentagamma(x) \tab Fourth derivative of lgamma \tab  \cr
+   psigamma(x, deriv) \tab n-th derivative of Psi, the digamma function, which is the derivative of lgammafn. In other words, digamma(x) is the same as psigamma(x,0), trigamma(x) == psigamma(x,1), etc. \tab  \cr
+   cospi(x) \tab cos(pi*x) \tab  \cr
+   sinpi(x) \tab sin(pi*x) \tab  \cr
+   tanpi(x) \tab tan(pi*x) \tab  \cr
+   beta(a, b) \tab Beta function \tab  \cr
+   lbeta(a, b) \tab log Beta function \tab  \cr
+   bessel_i(x, nu, expo) \tab Bessel function type I with index nu \tab expo==1 is unscaled expo==2 is scaled by exp(-x) \cr
+   bessel_j(x, nu) \tab Bessel function type J with index nu \tab  \cr
+   bessel_k(x, ku, expo) \tab Bessel function type K with index nu \tab expo==1 is unscaled expo==2 is scaled by exp(x) \cr
+   bessel_y(x, nu) \tab Bessel function type Y with index nu \tab  \cr
+   R_pow(x, y) \tab x^y \tab  \cr
+   R_pow_di(x, I) \tab x^y \tab y is an integer \cr
+   log1pmx \tab log(1+x) - x \tab  \cr
+   log1pexp \tab log(1+exp(x)) \tab  \cr
+   expm1(x) \tab exp(x)-1 \tab  \cr
+   lgamma1p(x) \tab log(gamma(x+1)) \tab  \cr
+   sign(x) \tab Compute the signum function where sign(x) is 1, 0 -1 \tab  \cr
+   fsign(x, y) \tab abs(x)*sign(y) \tab  \cr
+   fprec(x, digits) \tab x rounded to digits (after the decimal point, used by signif() \tab  \cr
+   fround(x, digits) \tab Round, used by R’s round() \tab  \cr
+   ftrunc(x) \tab Truncated towards zero \tab  \cr
+   abs(x) \tab absolute value of x \tab fabs \cr
+   sin(x) \tab sine of x \tab  \cr
+   cos(x) \tab cos of x \tab  \cr
+   tan(x) \tab tan of x \tab  \cr
+   factorial(x) \tab factorial of x \tab  \cr
+   lfactorial(x) \tab log(factorial(x)) \tab  \cr
+   log10(x) \tab log base 10 \tab  \cr
+   log2(x) \tab log base 2 \tab  \cr
+   pnorm(x) \tab Normal CDF of x \tab normcdf, phi \cr
+   qnorm(x) \tab Normal pdf of x \tab norminv \cr
+   probit(x, low=0, hi=1) \tab Probit (normal pdf) of x transforming into a range \tab  \cr
+   probitInv(q, low=0, hi=1) \tab Inverse probit of x transforming into a range \tab  \cr
+   acos(x) \tab Inverse cosine \tab  \cr
+   asin(x) \tab Inverse sine \tab  \cr
+   atan(x) \tab Inverse tangent \tab  \cr
+   atan2(a, b) \tab Four quadrant inverse tangent \tab  \cr
+   sinh(x) \tab Hyperbolic sine \tab  \cr
+   cosh(x) \tab Hyperbolic cosine \tab  \cr
+   tanh(x) \tab Hyperbolic tangent \tab  \cr
+   floor(x) \tab Downward rounding \tab  \cr
+   ceil(x) \tab Upward rounding \tab  \cr
+   logit(x, low=0, hi=1) \tab Logit transformation of x transforming into a range \tab  \cr
+   expit(x, low=0, hi=1) \tab expit transofmration in range \tab invLogit, logitInv \cr
+   gammaq(a, z) \tab Normalized incomplete gamma from boost \tab  \cr
+   gammaqInv(a, q) \tab Normalized incomplete gamma inverse from boost \tab  \cr
+   ifelse(cond, trueValue, falseValue) \tab if else function \tab  \cr
+   gammap(a, z) \tab Normalized lower incomplete gamma from boost \tab  \cr
+   gammapInv(a, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
+   gammapInva(x, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
+   rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr
+   rxnormV(x) \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
+   rxcauchy \tab Generate one deviate from the cauchy distribution for each observation \tab  \cr
+   rxchisq \tab Generate one deviate from the chisq distribution for each observation \tab  \cr
+   rxexp \tab Generate one deviate from the exponential distribution for each observation \tab  \cr
+   rxf \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
+   rxgamma \tab Generate one deviate from the gamma distribution for each observation \tab  \cr
+   rxbeta \tab Generate one deviate from the beta distribution for each observation \tab  \cr
+   rxgeom \tab Generate one deviate from the geometric distribution for each observation \tab  \cr
+   rxpois \tab Generate one deviate from the poission distribution for each observation \tab  \cr
+   rxt \tab Generate one deviate from the t distribtuion for each observation \tab  \cr
+   tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt) \tab  \cr
+   tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt) \tab  \cr
+   dosenum() \tab Dose Number \tab  \cr
+   tlast() or tlast(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment \tab  \cr
+   tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment \tab  \cr
+   prod(…) \tab product of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
+   sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
+   max(…) \tab maximum of a group of numbers \tab  \cr
+   min(…) \tab Min of a group of numbers \tab  \cr
+   lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
+   lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
+   diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
+   first(par) \tab Get the first value of an input parameter \tab  \cr
+   last(par) \tab Get the last value of an input parameter \tab  \cr
+   transit() \tab The transit compartment psuedo function \tab  \cr
+   is.na() \tab Determine if a value is NA \tab  \cr
+   is.nan() \tab Determine if a value is NaN \tab  \cr
+   is.infinite() \tab Check to see if the value is infinite \tab  \cr
+   rinorm(x) \tab Generate one deviate of from a normal distribution for each individual \tab  \cr
+   rinormV(x) \tab Generate one deviate from low discrepancy normal for each individual \tab  \cr
+   ricauchy \tab Generate one deviate from the cauchy distribution for each individual \tab  \cr
+   richisq \tab Generate one deviate from the chisq distribution for each individual \tab  \cr
+   riexp \tab Generate one deviate from the exponential distribution for each individual \tab  \cr
+   rif \tab Generate one deviate from low discrepancy normal for each individual \tab  \cr
+   rigamma \tab Generate one deviate from the gamma distribution for each individual \tab  \cr
+   ribeta \tab Generate one deviate from the beta distribution for each individual \tab  \cr
+   rigeom \tab Generate one deviate from the geometric distribution for each individual \tab  \cr
+   ropois \tab Generate one deviate from the poission distribution for each individual \tab  \cr
+   rit \tab Generate one deviate from the t distribtuion for each individual \tab  \cr
+   simeps \tab Simulate EPS from possibly truncated sigma matrix. Will take sigma matrix from the current study. Simulated at the very last moment. \tab  \cr
+   simeta \tab Simulate ETA from possibly truncated omega matrix. Will take the omega matrix from the current study. Simulated at the initilization of the ODE system or the intialization of lhs \tab  \cr
+}
+
+
+Note that \verb{lag(cmt) =} is equivalent to \verb{alag(cmt) =} and not the same
+as \verb{= lag(wt)}
+\subsection{Reserved keywords}{
+
+There are a few reserved keywords in a rxode2 model. They are in the
+following table:\tabular{lll}{
+   Reserved Name \tab Meaning \tab Alias \cr
+   time \tab solver time \tab t \cr
+   podo \tab In Transit compartment models, last dose amount \tab  \cr
+   tlast \tab Time of Last dose \tab  \cr
+   M_E \tab Exp(1) \tab  \cr
+   M_LOG2E \tab log2(e) \tab  \cr
+   M_LOG10E \tab log10(e) \tab  \cr
+   M_LN2 \tab log(2) \tab  \cr
+   M_LN10 \tab log(10) \tab  \cr
+   M_PI \tab pi \tab  \cr
+   M_PI_2 \tab pi/2 \tab  \cr
+   M_PI_4 \tab pi/4 \tab  \cr
+   M_1_PI \tab 1/pi \tab  \cr
+   M_2_PI \tab 2/pi \tab  \cr
+   M_2_SQRTPI \tab 2/sqrt(pi) \tab  \cr
+   M_SQRT2 \tab sqrt(2) \tab  \cr
+   M_SQRT1_2 \tab 1/sqrt(2) \tab  \cr
+   M_SQRT_3 \tab sqrt(3) \tab  \cr
+   M_SQRT_32 \tab sqrt(32) \tab  \cr
+   M_LOG10_2 \tab Log10(2) \tab  \cr
+   M_2PI \tab 2*pi \tab  \cr
+   M_SQRT_PI \tab sqrt(pi) \tab  \cr
+   M_1_SQRT_2PI \tab 1/(sqrt(2*pi)) \tab  \cr
+   M_LN_SQRT_PI \tab log(sqrt(pi)) \tab  \cr
+   M_LN_SQRT_2PI \tab log(sqrt(2*pi)) \tab  \cr
+   M_LN_SQRT_PId2 \tab log(sqrt(pi/2)) \tab  \cr
+   pi \tab pi \tab  \cr
+   NA \tab R’s NA value \tab  \cr
+   NaN \tab Not a Number Value \tab  \cr
+   Inf \tab Infinite Value \tab  \cr
+   newind \tab 1: First record of individual; 2: Subsequent record of individual \tab NEWIND \cr
+   rxFlag \tab Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs \tab  \cr
+}
+
+}
+}
+\section{Creating rxode2 models}{
+NA
+}
+
 \examples{
 \donttest{
 

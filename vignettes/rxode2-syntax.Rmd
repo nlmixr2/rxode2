@@ -28,32 +28,43 @@ Below is a commented example to quickly show the capabilities of
 
 ## Example
 
+```{r}
+f <- function() {
+  ini({
+    
+  })
+  model({
+    # An rxode2 model specification (this line is a comment).
+
+    if(comed==0) {  # concomitant medication (con-med)?
+      F <- 1.0     # full bioavailability w.o. con-med
+    } else {
+      F <- 0.80    # 20% reduced bioavailability
+    }
+
+    C2 <- centr/V2  # concentration in the central compartment
+    C3 <- peri/V3   # concentration in the peripheral compartment
+
+    # ODE describing the PK and PD
+
+    d/dt(depot) <- -KA*depot
+    d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)  <-                      Q*C2 - Q*C3
+    d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0)      <- 1
+  })
+}
 ```
-   # An rxode2 model specification (this line is a comment).
 
-   if(comed==0){   # concomitant medication (con-med)?
-      F = 1.0;     # full bioavailability w.o. con-med
-   } 
-   else {
-      F = 0.80;    # 20% reduced bioavailability
-   }
+## Creating rxode2
 
-   C2 = centr/V2;  # concentration in the central compartment
-   C3 = peri/V3;   # concentration in the peripheral compartment
-
-   # ODE describing the PK and PD
-
-   d/dt(depot) = -KA*depot;
-   d/dt(centr) = F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-   d/dt(peri)  =                      Q*C2 - Q*C3;
-   d/dt(eff)   = Kin - Kout*(1-C2/(EC50+C2))*eff;
+```{r child='../man/rmdhunks/rxode2-create-models.Rmd'}
 ```
 
 ## Syntax
 
 ```{r child='../man/rmdhunks/rxode2-syntax-hunk.Rmd'}
 ```
-
 
 ## Interface and data handling between R and the generated C code
 
@@ -78,12 +89,13 @@ inits <- c(depot=0, centr=0, peri=0, eff=1)
 
 solve(theta, event = qd1, inits = inits)
 ```
-The values of these variables at pre-specified time points are
-saved during model fitting/integration and returned as part of the 
-fitted values (see the function `eventTable`, in particular its 
-member function `add.sampling` function to define a set of time points when
-to capture the values of these variables) and returned as 
-part of the modeling output.
+
+
+The values of these variables at pre-specified time points are saved
+during model fitting/integration and returned as part of the fitted
+values (see the function `et()`, to define a set of time points when
+to capture the values of these variables) and returned as part of the
+modeling output.
 
 The ODE specification mini-language is parsed with the help of the
 open source tool *DParser*, Plevyak (2015).

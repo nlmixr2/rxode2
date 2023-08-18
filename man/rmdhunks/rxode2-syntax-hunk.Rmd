@@ -1,14 +1,13 @@
-An `rxode2` model specification consists of one or more 
-statements optionally terminated by semi-colons `;` and
-optional comments (comments are delimited by `#` and an 
-end-of-line). 
+This basic model specification consists of one or more statements
+optionally terminated by semi-colons `;` and optional comments
+(comments are delimited by `#` and an end-of-line).
 
 A block of statements is a set of statements delimited by
 curly braces, `{ ... }`.
 
 Statements can be either assignments, conditional `if`/`else
 if`/`else`, `while` loops (can be exited by `break`), special
-statements, or printing statements (for debugging/testing)
+statements, or printing statements (for debugging/testing).
 
 Assignment statements can be:
 
@@ -43,8 +42,10 @@ Assignment statements can be:
   
 Note that assignment can be done by `=`, `<-` or `~`.
 
-When assigning with the `~` operator, the **simple
-assignments** and **time-derivative** assignments will not be output.
+When assigning with the `~` operator, the **simple assignments** and
+**time-derivative** assignments will not be output. Note that with the
+`rxode2` model functions assignment with `~` can also be overloaded
+with a residual distribution specification.
 
 Special statements can be:
 
@@ -64,10 +65,10 @@ An example model is shown below:
 
 ```
    # simple assignment
-   C2 = centr/V2;
+   C2 <- centr/V2
 
    # time-derivative assignment
-   d/dt(centr) = F*KA*depot - CL*C2 - Q*C2 + Q*C3; 
+   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 ```
 
 Expressions in assignment and `if` statements can be numeric or logical.
@@ -125,7 +126,7 @@ However the following variables are cannot be used in a model specification:
  - `ii`
 
 Sometimes rxode2 generates variables that are fed back to rxode2.
-Similarly, nlmixr generates some variables that are used in nlmixr
+Similarly, nlmixr2 generates some variables that are used in nlmixr
 estimation and simulation.  These variables start with the either the
 `rx` or `nlmixr` prefixes.  To avoid any problems, it is suggested to
 not use these variables starting with either the `rx` or `nlmixr`

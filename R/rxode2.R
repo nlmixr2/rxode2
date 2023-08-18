@@ -91,22 +91,15 @@ NA_LOGICAL <- NA # nolint
 #' pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 #' drug-disease modeling, etc.
 #'
-#' The ODE-based model specification may be coded inside a character
-#' string or in a text file, see Section *rxode2 Syntax* below for
-#' coding details.  An internal `rxode2` compilation manager
-#' object translates the ODE system into C, compiles it, and
-#' dynamically loads the object code into the current R session.  The
-#' call to `rxode2` produces an object of class `rxode2` which
-#' consists of a list-like structure (environment) with various member
-#' functions (see Section *Value* below).
+#' @section Creating rxode2 models
 #'
-#' For evaluating `rxode2` models, two types of inputs may be
-#' provided: a required set of time points for querying the state of
-#' the ODE system and an optional set of doses (input amounts).  These
-#' inputs are combined into a single *event table* object created
-#' with the function [eventTable()] or [et()].
+#' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
 #' @includeRmd man/rmdhunks/rxode2-syntax-hunk.Rmd
+#'
+#' @includeRmd man/rmdhunks/rxode2-supported-funs.Rmd
+#'
+#' @includeRmd man/rmdhunks/rxode2-supported-funs-kable.Rmd
 #'
 #' @return An object (environment) of class `rxode2` (see Chambers and Temple Lang (2001))
 #'      consisting of the following list of strings and functions:

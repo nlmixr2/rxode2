@@ -7,7 +7,9 @@ underlying "classic" simulation code.
 
 These models are in the form of:
 
-```{r}
+```{r mod1speed}
+library(rxode2)
+
 mod1 <- function() {
   ini({
     KA   <- 0.3
@@ -34,7 +36,7 @@ mod1 <- function() {
 Or you can also specify the end-points for simulation/estimation just
 like `nlmixr2`:
 
-```{r}
+```{r mod2speed}
 mod2 <- function() {
   ini({
     TKA   <- 0.3
@@ -82,7 +84,7 @@ the two underlying `rxode2` classic models.  This takes two steps:
 
 The first step can be done by `rxode2(mod1)` or `mod1()` (or for the second model too).
 
-```{r}
+```{r mod3eval}
 mod1 <- mod1()
 mod2 <- rxode2(mod2)
 ```
@@ -95,7 +97,7 @@ simulation code without the initial conditions pre-pended, the
 are specified, the simulation code for each endpoint is also output.
 You can see the differences below:
 
-```{r}
+```{r modSimModel}
 summary(mod1$simulationModel)
 summary(mod1$simulationIniModel)
 summary(mod2$simulationModel)
@@ -105,11 +107,9 @@ summary(mod2$simulationIniModel)
 If you wish to speed up multiple simualtions from the `rxode2`
 functions, you need to pre-calculate care of the steps above:
 
-```{r}
-mod1 <- mod1()
+```{r simModel2}
 mod1 <- mod1$simulationModel
 
-mod2 <- rxode2(mod2)
 mod2 <- mod2$simulationModel
 ```
 
@@ -132,8 +132,7 @@ solve for a single subject.  This flexibility is still supported.
 
 The original code from the `rxode2` tutorial is below:
 
-```{r}
-
+```{r speed1}
 library(rxode2)
 
 library(microbenchmark)

@@ -1,0 +1,17 @@
+```{r, echo=FALSE, screenshot.force=FALSE}
+library(rxode2)
+## rxSyntaxFunctions <- read.csv("syntax-functions.csv");usethis::use_data(rxSyntaxFunctions)
+library(DT)
+datatable(rxSyntaxFunctions, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
+```
+
+Note that `lag(cmt) = ` is equivalent to `alag(cmt) = ` and not the same as `= lag(wt)`
+
+## Reserved keywords
+
+There are a few reserved keywords in a rxode2 model.  They are  in the following table:
+
+```{r, echo=FALSE, screenshot.force=FALSE}
+## rxReservedKeywords <- read.csv("reserved-keywords.csv");names(rxReservedKeywords)[1] <- "Reserved Name";usethis::use_data(rxReservedKeywords)
+datatable(rxReservedKeywords, rownames = FALSE, filter="top", options = list(pageLength = 10, scrollX=T) )
+```

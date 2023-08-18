@@ -1,0 +1,12 @@
+```{r echo=FALSE}
+knitr::kable(rxSyntaxFunctions)
+```
+Note that `lag(cmt) = ` is equivalent to `alag(cmt) = ` and not the same as `= lag(wt)`
+
+## Reserved keywords
+
+There are a few reserved keywords in a rxode2 model.  They are  in the following table:
+
+```{r, echo=FALSE}
+knitr::kable(rxReservedKeywords)
+```

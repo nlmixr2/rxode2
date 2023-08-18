@@ -1,0 +1,8 @@
+## Supported functions
+
+All the supported functions in rxode2 can be seen with the
+`rxSupportedFuns()`.
+
+A brief description of the built-in functions are
+in the following table:
+
