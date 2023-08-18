@@ -29,7 +29,7 @@
   close(.R)
   message("done")
   message("generate rxReservedKeywords and update documentation")
-  rxReservedKeywords <- read.csv(devtools::package_file("R/reserved-keywords.csv"))
+  rxReservedKeywords <- read.csv(devtools::package_file("inst/reserved-keywords.csv"))
   names(rxReservedKeywords)[1] <- "Reserved Name"
   usethis::use_data(rxReservedKeywords, overwrite=TRUE)
   .l <- readLines(devtools::package_file("R/rxReservedKeywords.R"))
@@ -37,6 +37,16 @@
             sprintf("#' @format A data frame with %d columns and %d rows",
                     dim(rxReservedKeywords)[2], dim(rxReservedKeywords)[1]), .l)
   .R <- file(devtools::package_file("R/rxReservedKeywords.R"), "wb")
+  writeLines(.l, .R)
+  close(.R)
+  message("generate rxSyntaxFunctions and update documentation")
+  rxSyntaxFunctions <- read.csv(devtools::package_file("inst/syntax-functions.csv"))
+  usethis::use_data(rxSyntaxFunctions, overwrite=TRUE)
+  .l <- readLines(devtools::package_file("R/rxSyntaxFunctions.R"))
+  .l <- sub("[#][']\\s*@format\\s*.*",
+            sprintf("#' @format A data frame with %d columns and %d rows",
+                    dim(rxSyntaxFunctions)[2], dim(rxSyntaxFunctions)[1]), .l)
+  .R <- file(devtools::package_file("R/rxSyntaxFunctions.R"), "wb")
   writeLines(.l, .R)
   close(.R)
 

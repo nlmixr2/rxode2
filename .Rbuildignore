@@ -22,6 +22,8 @@ BinaryFiles$
 rxode2.*\.(zip|pdf)$
 ^/?inst/Install-windows.md
 ^/?inst/residualErrors.csv$
+^/?inst/syntax-functions.csv$
+^/?inst/reserved-keywords.csv$
 ^/?.Rhistory
 ^/?R/.Rhistory
 ^/?src/.Rhistory

@@ -29,3 +29,4 @@ NA,R's NA value,
 NaN,Not a Number Value,
 Inf,Infinite Value,
 newind,1: First record of individual; 2: Subsequent record of individual,NEWIND
+rxFlag,Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs,
