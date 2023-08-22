@@ -938,6 +938,7 @@ static inline int handleExtraDose(int *neq,
     }
     // Use "real" xout for handle_evid functions.
     int idx = ind->idx;
+    int ixds = ind->ixds;
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
@@ -974,14 +975,17 @@ static inline int handleExtraDose(int *neq,
       }
       if (ignore) {
         ind->idx = idx;
+        ind->ixds = ixds;
         return 0;
       } else {
         ind->extraDoseNewXout = time;
         ind->idx = idx;
+        ind->ixds = ixds;
         return 1;
       }
     }
     ind->idx = idx;
+    ind->ixds = ixds;
     return 0;
   }
   return 0;
@@ -1035,21 +1039,43 @@ void handleSS(int *neq,
       infBixds = infFixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
       if (isSsLag) {
-        if (getDoseNumber(ind, ind->ixds+2) < 0.0) {
-          handleInfusionGetEndOfInfusionIndex(ind->ixds+3, &infEixds, rx, op, ind);
-          infBixdsA=ind->ixds+3;
-        } else {
-          handleInfusionGetEndOfInfusionIndex(ind->ixds+2, &infEixds, rx, op, ind);
-          infBixdsA=ind->ixds+2;
+        int infBixds2 = ind->ixds+1;
+        int bEvid = getEvid(ind, ind->idose[infBixds2]);
+        double bDose = getDoseNumber(ind,ind->ixds);
+        double cDose = bDose;
+        getWh(bEvid, &wh, &cmt, &wh100, &whI, &wh0);
+        REprintf("bEvid: %d, wh0: %d cDose: %f; %d\n",
+                 bEvid, wh0, cDose, !(wh0 == 1  &&  cDose == bDose) && infBixds2 < ind->ndoses);
+        while (!(wh0 == 1  &&  cDose == bDose) && infBixds2 < ind->ndoses) {
+          infBixds2++;
+          if (infBixds2 == ind->ndoses) {
+            infBixds = -1;
+            infEixds = -1;
+          } else {
+            bEvid = getEvid(ind, ind->idose[infBixds2]);
+            getWh(bEvid, &wh, &cmt, &wh100, &whI, &wh0);
+            cDose = getDoseNumber(ind,ind->ixds);
+            REprintf("bEvid: %d, wh0: %d cDose: %f; %d\n",
+                     bEvid, wh0, cDose, wh0 != 1 && bDose != cDose && infBixds2 < ind->ndoses);
+          }
         }
-        if (infEixds == -1) {
+        if (infEixds != -1) {
+          handleInfusionGetEndOfInfusionIndex(infBixds2,
+                                              &infEixds, rx, op, ind);
+        }
+        if (infEixds == -1 && infBixds2 != -1) {
           ind->wrongSSDur=1;
           // // Bad Solve => NA
           badSolveExit(*i);
         } else {
-          dur = getTime_(ind->idose[infEixds], ind);// -
-          dur -= getTime_(ind->idose[ind->ixds+2], ind);
+          double f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[ind->idx]), rx->ypNA);
+          REprintf("get dur %f %f\n");
+          dur = getAllTimes(ind, ind->idose[infEixds])*f;// -
+          REprintf("\ttime infEixds: %f\n", dur);
+          dur -= getAllTimes(ind, ind->idose[infBixds2]);
+          REprintf("\tdur: %f\n", dur);
           dur2 = getIiNumber(ind, ind->ixds) - dur;
+          REprintf("\tdur2: %f\n", dur2);
         }
       } else {
         handleInfusionGetEndOfInfusionIndex(ind->ixds, &infEixds, rx, op, ind);
@@ -1058,9 +1084,15 @@ void handleSS(int *neq,
           // // Bad Solve => NA
           badSolveExit(*i);
         } else {
-          dur = getTime_(ind->idose[infEixds], ind);// -
-          dur -= getTime_(ind->idose[ind->ixds], ind);
-          dur2 = getIiNumber(ind, ind->ixds) - dur;
+          double f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[ind->idx]), rx->ypNA);
+          REprintf("get dur2\n");
+          dur = getAllTimes(ind, ind->idose[infEixds])*f;// -
+          REprintf("\ttime infEixds: %f\n", dur);
+          dur -= getAllTimes(ind, ind->idose[ind->ixds]);
+          REprintf("\tdur: %f\n", dur);
+          dur2 = getAllTimes(ind, ind->ixds) - dur;
+          REprintf("\tdur2: %f\n", dur2);
+
         }
       }
     } else if (isModeled) {
@@ -1069,18 +1101,26 @@ void handleSS(int *neq,
         infFixds = ind->ixds;
         infBixds = ind->ixds+1;
         infEixds = ind->ixds+2;
-        dur = getTime_(ind->idose[infEixds], ind) -
-          getTime_(ind->idose[infBixds],ind);
+        REprintf("getDur3\n");
+        dur = getTime_(ind->idose[infEixds], ind);// -
+        REprintf("\ttime infEixds: %f\n", dur);
+        dur -= getTime_(ind->idose[infBixds],ind);
+        REprintf("\tdur: %f\n", dur);
         dur2 = getIiNumber(ind, ind->ixds) - dur;
+        REprintf("\tdur2: %f\n", dur2);
         while (ind->ix[bi] != ind->idose[infBixds] && bi < ind->n_all_times) {
           bi++;
         }
       } else {
         infFixds = infBixds = ind->ixds;
         infEixds = ind->ixds+1;
-        dur = getTime_(ind->idose[infEixds], ind) -
-          getTime_(ind->idose[infBixds],ind);
+        REprintf("getDur4\n");
+        dur = getTime_(ind->idose[infEixds], ind);
+        REprintf("\ttime infEixds: %f\n", dur);
+        dur -= getTime_(ind->idose[infBixds],ind);
+        REprintf("\tdur: %f\n", dur);
         dur2 = getIiNumber(ind, ind->ixds) - dur;
+        REprintf("\tdur2: %f\n", dur2);
       }
     }
     if (ind->wh0 == EVID0_SSINF){
@@ -1104,7 +1144,9 @@ void handleSS(int *neq,
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;
+
     }
+    REprintf("reset & cancel pending doses\n");
     cancelPendingDoses(ind, neq[1]);
     ind->cacheME=0;
     // Reset LHS to NA
@@ -1683,8 +1725,15 @@ void handleSS(int *neq,
                                   -extraRate, extraEvid, ind);
                 }
               } else {
-                pushIgnoredDose(infBixds, ind);
-                pushIgnoredDose(infEixds, ind);
+                if (isSsLag) {
+                  pushIgnoredDose(infFixds, ind);
+                  pushIgnoredDose(infFixds+1, ind);
+                  pushIgnoredDose(infFixds+2, ind);
+                  pushIgnoredDose(infEixds, ind);
+                } else {
+                  pushIgnoredDose(infBixds, ind);
+                  pushIgnoredDose(infEixds, ind);
+                }
                 for (int cur = 0; cur < overIi+1; ++cur) {
                   pushDosingEvent(startTimeD+curLagExtra+curIi*cur,
                                   extraRate, extraEvid, ind);
@@ -1693,7 +1742,7 @@ void handleSS(int *neq,
                 }
               }
             } else {
-              REprintf("startTimeD: %f reg infusion\n", startTimeD);
+              REprintf("startTimeD: %f reg infusion (lag: %f dur:%f, dur2: %f)\n", startTimeD, curLagExtra, dur, dur2);
               REprintf("infFixds: %d %f %f %d %d; %d %d\n", getEvid(ind, ind->idose[infFixds]),
                        getDose(ind, ind->idose[infFixds]), getTime(ind->idose[infFixds],ind), fi, infFixds,
                        ind->ix[fi], ind->idose[infFixds]);
