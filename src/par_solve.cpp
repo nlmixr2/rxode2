@@ -982,6 +982,9 @@ void handleSS(int *neq,
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
        getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF) {
+    int ignoreDoses[4];
+    ignoreDoses[0] = ignoreDoses[1] = ignoreDoses[2] = ignoreDoses[3] = -1;
+    int nIgnoredDoses = 0;
     if (isSsLag) {
       maxSS--; minSS--;
     }
@@ -1001,29 +1004,53 @@ void handleSS(int *neq,
     } else if (ind->whI == EVIDF_INF_RATE || ind->whI == EVIDF_INF_DUR) {
       if (getDose(ind, ind->idose[ind->ixds]) < 0) return;
       oldI = ind->whI;
-      infBixds = infFixds = ind->ixds;
+      infBixds = infBixds2 = infFixds = ind->ixds;
       // Find the next fixed length infusion that is turned off.
       if (isSsLag) {
-        infBixds2 = ind->ixds;
+        ignoreDoses[nIgnoredDoses++] = infBixds;
         int bEvid = getEvid(ind, ind->idose[infBixds2]);
         double bIi = getIiNumber(ind, infBixds2);
+        double cIi = bIi;
         double bDose = getDoseNumber(ind,ind->ixds);
         double cDose = bDose;
         getWh(bEvid, &wh, &cmt, &wh100, &whI, &wh0);
-        // REprintf("bEvid: %d, wh0: %d cDose: %f; %d\n",
-        //          bEvid, wh0, cDose, !(wh0 == 1  &&  cDose == bDose) && infBixds2 < ind->ndoses);
-        while (!(wh0 == 1  &&  cDose == bDose && bIi == 0.0) && infBixds2 < ind->ndoses) {
+        // This structure is
+        // TIME  EVID AMT II
+        //    0 10209  10 24
+        //    0 10208 -10 24
+        //    0 10201  10  0
+        // ...
+        //   10 10201 -10  0
+        //
+        // or with ss=2
+        //
+        // TIME  EVID AMT II
+        //    0 10219  10 24 (note the 19 flag)
+        //    0 10208 -10 24
+        //    0 10201  10  0
+        // ...
+        //   10 10201 -10  0
+        int evid8 = bEvid - ind->wh0 + EVID0_INFRM;
+        bool foundEvid8 = false;
+        int evid1 = bEvid - ind->wh0 + EVID0_REGULAR;
+        bool foundEvid1 = false;
+        while (!foundEvid1 && infBixds2 < ind->ndoses) {
           infBixds2++;
           if (infBixds2 == ind->ndoses) {
-            infBixds = -1;
-            infEixds = -1;
+            infBixds = infBixds2 = infEixds = -1;
+            break;
           } else {
             bEvid = getEvid(ind, ind->idose[infBixds2]);
-            getWh(bEvid, &wh, &cmt, &wh100, &whI, &wh0);
             cDose = getDoseNumber(ind, infBixds2);
-            bIi = getIiNumber(ind, infBixds2);
-            // REprintf("bEvid: %d, wh0: %d cDose: %f; bIi: %f\n",
-            //          bEvid, wh0, cDose, bIi);
+            cIi = getIiNumber(ind, infBixds2);
+            if (!foundEvid8 && bEvid == evid8 && cDose == -bDose && cIi == bIi) {
+              foundEvid8 = true;
+              ignoreDoses[nIgnoredDoses++] = infBixds2;
+            } else if (!foundEvid1 && bEvid == evid1 && cDose == bDose && cIi == 0.0) {
+              foundEvid1 = true;
+              ignoreDoses[nIgnoredDoses++] = infBixds2;
+              break;
+            }
           }
         }
         if (infEixds != -1) {
@@ -1034,7 +1061,9 @@ void handleSS(int *neq,
           ind->wrongSSDur=1;
           // // Bad Solve => NA
           badSolveExit(*i);
+          return;
         } else {
+          ignoreDoses[nIgnoredDoses++] = infEixds;
           double f = 1.0;
           if (ind->whI == EVIDF_INF_RATE) {
             f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
@@ -1056,13 +1085,22 @@ void handleSS(int *neq,
           // REprintf("\tdur2: %f\n", dur2);
 
         }
-      } else {
-        handleInfusionGetEndOfInfusionIndex(ind->ixds, &infEixds, rx, op, ind);
+       } else {
+        // This is the infusion structure:
+        // TIME  EVID AMT II
+        //    0 10201  10  0
+        // ...
+        //   10 10201 -10  0
+        infBixds=infBixds2=infEixds=infFixds=ind->ixds;
+        ignoreDoses[nIgnoredDoses++] = infBixds;
+        handleInfusionGetEndOfInfusionIndex(infBixds, &infEixds, rx, op, ind);
         if (infEixds == -1) {
           ind->wrongSSDur=1;
           // // Bad Solve => NA
           badSolveExit(*i);
+          return;
         } else {
+          ignoreDoses[nIgnoredDoses++] = infEixds;
           double f = 1.0;
           if (ind->whI == EVIDF_INF_RATE) {
             f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
@@ -1084,32 +1122,123 @@ void handleSS(int *neq,
         }
       }
     } else if (isModeled) {
-      // These are right next to another.
+      // These are typically right next to another.
+      infBixds=infBixds2=infEixds=infFixds=ind->ixds;
       if (isSsLag) {
-        infFixds = ind->ixds;
-        infBixds = infBixds2 = ind->ixds+1;
-        infEixds = ind->ixds+2;
-        // These use the getTime_() to grab calculated duration
-        // REprintf("getDur3\n");
-        dur = getTime_(ind->idose[infEixds], ind);// -
-        // REprintf("\ttime infEixds: %f\n", dur);
-        dur -= getTime_(ind->idose[infBixds],ind);
-        // REprintf("\tdur: %f\n", dur);
-        dur2 = getIiNumber(ind, ind->ixds) - dur;
-        // REprintf("\tdur2: %f\n", dur2);
-        while (ind->ix[bi] != ind->idose[infBixds] && bi < ind->n_all_times) {
-          bi++;
+        // The structure of this modeled rate with a lag item is:
+        //
+        // SS=1
+        // TIME  EVID AMT II
+        //    0 90209 100 24
+        //    0 90201 100  0
+        //    0 70201 100  0
+        //
+        // OR
+        //
+        // SS=2
+        // TIME  EVID AMT II
+        //    0 90219 100 24
+        //    0 90201 100  0
+        //    0 70201 100  0
+
+        // The structure of this modeled duration item is:
+        //
+        // SS=1
+        // TIME  EVID AMT II
+        //    0 80209 100 24
+        //    0 80201 100  0
+        //    0 60201 100  0
+        //
+        // OR
+        //
+        // SS=2
+        // TIME  EVID AMT II
+        //    0 80219 100 24
+        //    0 80201 100  0
+        //    0 60201 100  0
+        ignoreDoses[nIgnoredDoses++] = infBixds;
+        int bEvid = getEvid(ind, ind->idose[infBixds]);
+        double cIi = 0.0;
+        double bDose = getDoseNumber(ind,ind->ixds);
+        double cDose = bDose;
+        int evid1 = bEvid - ind->wh0 + EVID0_REGULAR;
+        bool foundEvid1 = false;
+        int evidOff = bEvid - ind->wh0 + EVID0_REGULAR - 2*10000;
+        bool foundEvidOff = false;
+        int curRec = infBixds;
+        while (!foundEvidOff && curRec < ind->ndoses) {
+          curRec++;
+          if (curRec == ind->ndoses) {
+            infBixds = infBixds2 = infEixds = -1;
+            break;
+          } else {
+            bEvid = getEvid(ind, ind->idose[curRec]);
+            cDose = getDoseNumber(ind, curRec);
+            cIi = getIiNumber(ind, curRec);
+            if (!foundEvid1 && bEvid == evid1 && cDose == bDose && cIi == 0.0) {
+              foundEvid1 = true;
+              infBixds = infBixds2 = curRec;
+              ignoreDoses[nIgnoredDoses++] = infBixds;
+            } else if (!foundEvidOff && bEvid == evidOff  && cDose < 0.0 &&cIi == 0.0) {
+              // note that this record stores the calculated infusion rate (in amt) and duration (in time)
+              foundEvidOff = true;
+              infEixds = curRec;
+              ignoreDoses[nIgnoredDoses++] = infEixds;
+              break;
+            }
+          }
         }
+        if (infEixds == -1) {
+          ind->wrongSSDur=1;
+          // // Bad Solve => NA
+          badSolveExit(*i);
+          return;
+        } else {
+          // These use the getTime_() to grab calculated duration
+          // REprintf("getDur3\n");
+          dur = getTime_(ind->idose[infEixds], ind);// -
+          dur -= getTime_(ind->idose[infBixds],ind);
+          // REprintf("\tdur: %f\n", dur);
+          dur2 = getIiNumber(ind, ind->ixds) - dur;
+          // REprintf("\tdur2: %f\n", dur2);
+          while (ind->ix[bi] != ind->idose[infBixds] && bi < ind->n_all_times) {
+            bi++;
+          }
+        } 
       } else {
+        // SS=1
+        // TIME  EVID AMT II
+        //    0 90210 100 24
+        //    0 70201 100  0
+        //
+        // OR
+        //
+        // SS=2
+        // TIME  EVID AMT II
+        //    0 90201 100 24
+        //    0 70201 100  0
+
+        // The structure of this modeled duration item is:
+        //
+        // SS=1
+        // TIME  EVID AMT II
+        //    0 80201 100 24
+        //    0 60201 100  0
+        //
+        // OR
+        //
+        // SS=2
+        // TIME  EVID AMT II
+        //    0 80201 100 24
+        //    0 60201 100  0
         infFixds = infBixds = infBixds2 = ind->ixds;
-        infEixds = ind->ixds+1;
-        // REprintf("getDur4\n");
-        dur = getTime_(ind->idose[infEixds], ind);
-        // REprintf("\ttime infEixds: %f\n", dur);
-        dur -= getTime_(ind->idose[infBixds],ind);
-        // REprintf("\tdur: %f\n", dur);
+        infEixds = infBixds+1;
+        ignoreDoses[nIgnoredDoses++] = infBixds;
+        ignoreDoses[nIgnoredDoses++] = infEixds;
+        dur = getAllTimes(ind, ind->idose[infBixds]);
+        dur2 = getAllTimes(ind, ind->idose[infBixds+1]);
+        dur = dur2-dur;
         dur2 = getIiNumber(ind, ind->ixds) - dur;
-        // REprintf("\tdur2: %f\n", dur2);
       }
       rateOn = -getDose(ind, ind->idose[infBixds2+1]);
       rateOff = -rateOn;
@@ -1146,6 +1275,7 @@ void handleSS(int *neq,
         return;
       }
     }
+    // REprintf("rateOn: %f rateOff: %f; dur: %f dur2: %f\n", rateOn, rateOff, dur, dur2);
     // First Reset
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
