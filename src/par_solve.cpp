@@ -979,9 +979,10 @@ void handleSS(int *neq,
   bool skipDosingEvent = false;
   bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
     ind->whI == EVIDF_MODEL_RATE_ON;
+  double curIi = ind->ixds == 0 ? 0.0 : getIiNumber(ind, ind->ixds-1);
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
-       getIiNumber(ind, ind->ixds-1) > 0) || ind->wh0 == EVID0_SSINF) {
+       curIi > 0) || ind->wh0 == EVID0_SSINF) {
     int ignoreDoses[4];
     ignoreDoses[0] = ignoreDoses[1] = ignoreDoses[2] = ignoreDoses[3] = -1;
     int nIgnoredDoses = 0;
@@ -1081,7 +1082,7 @@ void handleSS(int *neq,
           // REprintf("\ttime infBixds: %f %d\n", getAllTimes(ind, ind->idose[infBixds2]), infBixds2);
           dur *= f;
           // REprintf("\tdur: %f\n", dur);
-          dur2 = getIiNumber(ind, ind->ixds) - dur;
+          dur2 = curIi - dur;
           // REprintf("\tdur2: %f\n", dur2);
 
         }
@@ -1117,7 +1118,7 @@ void handleSS(int *neq,
           dur -= getAllTimes(ind, ind->idose[ind->ixds]);
           dur *= f;
           // REprintf("\tdur: %f\n", dur);
-          dur2 =  getIiNumber(ind, ind->ixds) - dur;
+          dur2 =  curIi - dur;
           // REprintf("\tdur2: %f\n", dur2);
         }
       }
@@ -1199,7 +1200,7 @@ void handleSS(int *neq,
           dur = getTime_(ind->idose[infEixds], ind);// -
           dur -= getTime_(ind->idose[infBixds],ind);
           // REprintf("\tdur: %f\n", dur);
-          dur2 = getIiNumber(ind, ind->ixds) - dur;
+          dur2 = curIi - dur;
           // REprintf("\tdur2: %f\n", dur2);
           while (ind->ix[bi] != ind->idose[infBixds] && bi < ind->n_all_times) {
             bi++;
@@ -1238,7 +1239,7 @@ void handleSS(int *neq,
         dur = getAllTimes(ind, ind->idose[infBixds]);
         dur2 = getAllTimes(ind, ind->idose[infBixds+1]);
         dur = dur2-dur;
-        dur2 = getIiNumber(ind, ind->ixds) - dur;
+        dur2 = curIi - dur;
       }
       rateOn = -getDose(ind, ind->idose[infBixds2+1]);
       rateOff = -rateOn;
@@ -1294,7 +1295,6 @@ void handleSS(int *neq,
     double xp2, xout2;
     int canBreak=0;
     xp2 = xp;
-    double curIi = getIiNumber(ind, ind->ixds);
     if (doSSinf || isSameTimeOp(curIi, dur)) {
       double rate;
       ind->ixds=infBixds;
@@ -1441,7 +1441,7 @@ void handleSS(int *neq,
         xp2 = xout2;
       }
     } else {
-      if (dur > getIiNumber(ind, ind->ixds)) {
+      if (dur > curIi) {
         // in this case, the duration is greater than the inter-dose interval
         // number of doses before infusions turn off:
         int numDoseInf = (int)(dur/curIi);
