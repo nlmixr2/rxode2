@@ -1120,9 +1120,13 @@ void handleSS(int *neq,
         rateOn = getDose(ind, ind->idose[infBixds]);
         rateOff = -getDose(ind, ind->idose[infEixds]);
       } else if (isModeled) {
-        rateOn = -getDose(ind, ind->idose[infBixds2+1]);
+        rateOn =getRate(ind, ind->id, ind->cmt, 0.0,
+                        getAllTimes(ind, ind->idose[ind->ixds]));
         rateOff = -rateOn;
       } else {
+        // shouldn't ever get here modeled duration would have to be
+        // infinite for this to occur... but I don't think that is
+        // supported yet
         rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
         rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
       }
