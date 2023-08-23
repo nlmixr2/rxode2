@@ -10,7 +10,7 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
-	void sortRadix(rx_solving_options_ind *ind);
+	void sortInd(rx_solving_options_ind *ind);
 
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
@@ -52,7 +52,7 @@ extern "C" {
 		if (inLhs == 0 || (inLhs == 1 && op->neq==0)) {
 			ind->solved = -1;
 			if (rx->needSort){
-				sortRadix(ind);
+				sortInd(ind);
 				if (op->badSolve) return 0;
 			}
 		}

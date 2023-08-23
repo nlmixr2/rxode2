@@ -6,7 +6,7 @@
  * - http://cr.openjdk.java.net/~martin/webrevs/openjdk7/timsort/raw_files/new/src/share/classes/java/util/TimSort.java
  *
  * Copyright (c) 2011 Fuji, Goro (gfx) <gfuji@cpan.org>.
- * Copyright (c) 2019-2021 Morwenn.
+ * Copyright (c) 2019-2022 Morwenn.
  * Copyright (c) 2021 Igor Kushnir <igorkuo@gmail.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -127,8 +127,8 @@ template <typename RandomAccessIterator, typename Compare> class TimSort {
     typedef typename std::iterator_traits<iter_t>::reference ref_t;
     typedef typename std::iterator_traits<iter_t>::difference_type diff_t;
 
-    static const int MIN_MERGE = 32;
-    static const int MIN_GALLOP = 7;
+    static constexpr int MIN_MERGE = 32;
+    static constexpr int MIN_GALLOP = 7;
 
     int minGallop_; // default to MIN_GALLOP
 
@@ -149,7 +149,7 @@ template <typename RandomAccessIterator, typename Compare> class TimSort {
 
             iter_t const pos = std::upper_bound(lo, start, pivot, compare);
             for (iter_t p = start; p > pos; --p) {
-                *p = std::move(*(p - 1));
+                *p = std::move(*std::prev(p));
             }
             *pos = std::move(pivot);
         }
@@ -158,7 +158,7 @@ template <typename RandomAccessIterator, typename Compare> class TimSort {
     static diff_t countRunAndMakeAscending(iter_t const lo, iter_t const hi, Compare compare) {
         GFX_TIMSORT_ASSERT(lo < hi);
 
-        iter_t runHi = lo + 1;
+        auto runHi = std::next(lo);
         if (runHi == hi) {
             return 1;
         }
@@ -166,12 +166,12 @@ template <typename RandomAccessIterator, typename Compare> class TimSort {
         if (compare(*runHi, *lo)) { // decreasing
             do {
                 ++runHi;
-            } while (runHi < hi && compare(*runHi, *(runHi - 1)));
+            } while (runHi < hi && compare(*runHi, *std::prev(runHi)));
             std::reverse(lo, runHi);
         } else { // non-decreasing
             do {
                 ++runHi;
-            } while (runHi < hi && !compare(*runHi, *(runHi - 1)));
+            } while (runHi < hi && !compare(*runHi, *std::prev(runHi)));
         }
 
         return runHi - lo;
@@ -195,7 +195,7 @@ template <typename RandomAccessIterator, typename Compare> class TimSort {
     ~TimSort() {}
 
     void pushRun(iter_t const runBase, diff_t const runLen) {
-        pending_.push_back(run<iter_t>(runBase, runLen));
+        pending_.emplace_back(runBase, runLen);
     }
 
     void mergeCollapse(Compare compare) {
@@ -382,13 +382,13 @@ template <typename RandomAccessIterator, typename Compare> class TimSort {
     static void rotateLeft(iter_t first, iter_t last)
     {
         value_t tmp = std::move(*first);
-        iter_t last_1 = std::move(first + 1, last, first);
+        auto last_1 = std::move(std::next(first), last, first);
         *last_1 = std::move(tmp);
     }
 
     static void rotateRight(iter_t first, iter_t last)
     {
-        iter_t last_1 = last - 1;
+        auto last_1 = std::prev(last);
         value_t tmp = std::move(*last_1);
         std::move_backward(first, last_1, last);
         *first = std::move(tmp);
@@ -598,12 +598,12 @@ template <typename RandomAccessIterator, typename Compare> class TimSort {
                     goto epilogue;
                 }
 
-                count2 = len2 - gallopLeft(*(cursor1 - 1), tmp_.begin(), len2, len2 - 1, compare);
+                count2 = len2 - gallopLeft(*std::prev(cursor1), tmp_.begin(), len2, len2 - 1, compare);
                 if (count2 != 0) {
                     dest -= count2;
                     cursor2 -= count2;
                     len2 -= count2;
-                    std::move(cursor2 + 1, cursor2 + (1 + count2), dest + 1);
+                    std::move(std::next(cursor2), cursor2 + (1 + count2), std::next(dest));
                     if (len2 <= 1) {
                         goto epilogue;
                     }
@@ -716,9 +716,13 @@ public:
  * Stably merges two consecutive sorted ranges [first, middle) and [middle, last) into one
  * sorted range [first, last) with a comparison function and a projection function.
  */
-template <typename RandomAccessIterator, typename Compare, typename Projection>
-void timmerge(RandomAccessIterator first, RandomAccessIterator middle,
-              RandomAccessIterator last, Compare compare, Projection projection) {
+template <
+    typename RandomAccessIterator,
+    typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>,
+    typename Projection = detail::identity
+>
+void timmerge(RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last,
+              Compare compare={}, Projection projection={}) {
     typedef detail::projection_compare<Compare, Projection> compare_t;
     compare_t comp(std::move(compare), std::move(projection));
     GFX_TIMSORT_AUDIT(std::is_sorted(first, middle, comp) && "Precondition");
@@ -728,30 +732,15 @@ void timmerge(RandomAccessIterator first, RandomAccessIterator middle,
 }
 
 /**
- * Same as std::inplace_merge(first, middle, last, compare).
- */
-template <typename RandomAccessIterator, typename Compare>
-void timmerge(RandomAccessIterator first, RandomAccessIterator middle,
-              RandomAccessIterator last, Compare compare) {
-    gfx::timmerge(first, middle, last, compare, detail::identity());
-}
-
-/**
- * Same as std::inplace_merge(first, middle, last).
- */
-template <typename RandomAccessIterator>
-void timmerge(RandomAccessIterator first, RandomAccessIterator middle,
-              RandomAccessIterator last) {
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type value_type;
-    gfx::timmerge(first, middle, last, std::less<value_type>(), detail::identity());
-}
-
-/**
  * Stably sorts a range with a comparison function and a projection function.
  */
-template <typename RandomAccessIterator, typename Compare, typename Projection>
+template <
+    typename RandomAccessIterator,
+    typename Compare = std::less<typename std::iterator_traits<RandomAccessIterator>::value_type>,
+    typename Projection = detail::identity
+>
 void timsort(RandomAccessIterator const first, RandomAccessIterator const last,
-             Compare compare, Projection projection) {
+             Compare compare={}, Projection projection={}) {
     typedef detail::projection_compare<Compare, Projection> compare_t;
     compare_t comp(std::move(compare), std::move(projection));
     detail::TimSort<RandomAccessIterator, compare_t>::sort(first, last, comp);
@@ -759,44 +748,17 @@ void timsort(RandomAccessIterator const first, RandomAccessIterator const last,
 }
 
 /**
- * Same as std::stable_sort(first, last, compare).
- */
-template <typename RandomAccessIterator, typename Compare>
-void timsort(RandomAccessIterator const first, RandomAccessIterator const last, Compare compare) {
-    gfx::timsort(first, last, compare, detail::identity());
-}
-
-/**
- * Same as std::stable_sort(first, last).
- */
-template <typename RandomAccessIterator>
-void timsort(RandomAccessIterator const first, RandomAccessIterator const last) {
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type value_type;
-    gfx::timsort(first, last, std::less<value_type>(), detail::identity());
-}
-
-/**
  * Stably sorts a range with a comparison function and a projection function.
  */
-template <typename RandomAccessRange, typename Compare, typename Projection>
-void timsort(RandomAccessRange &range, Compare compare, Projection projection) {
+template <
+    typename RandomAccessRange,
+    typename Compare = std::less<typename std::iterator_traits<
+        decltype(std::begin(std::declval<RandomAccessRange>()))
+    >::value_type>,
+    typename Projection = detail::identity
+>
+void timsort(RandomAccessRange &range, Compare compare={}, Projection projection={}) {
     gfx::timsort(std::begin(range), std::end(range), compare, projection);
-}
-
-/**
- * Same as std::stable_sort(std::begin(range), std::end(range), compare).
- */
-template <typename RandomAccessRange, typename Compare>
-void timsort(RandomAccessRange &range, Compare compare) {
-    gfx::timsort(std::begin(range), std::end(range), compare);
-}
-
-/**
- * Same as std::stable_sort(std::begin(range), std::end(range)).
- */
-template <typename RandomAccessRange>
-void timsort(RandomAccessRange &range) {
-    gfx::timsort(std::begin(range), std::end(range));
 }
 
 } // namespace gfx

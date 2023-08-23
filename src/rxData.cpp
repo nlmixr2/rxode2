@@ -73,24 +73,6 @@ extern "C" {
   extern _rxode2parse_useForder_type useForder;
 }
 
-// https://github.com/Rdatatable/data.table/blob/588e0725320eacc5d8fc296ee9da4967cee198af/src/forder.c#L193-L211
-// range_d is modified because it DOES NOT count na/inf because rxode2 assumes times cannot be NA, NaN, -Inf, Inf
-// Also can integrate with prior range information (like prior integer range)
-static void range_d(double *x, int n, uint64_t *out_min, uint64_t *out_max)
-// return range of finite numbers (excluding NA, NaN, -Inf, +Inf), a count of NA and a count of Inf|-Inf|NaN
-{
-  uint64_t min=*out_min, max=*out_max;
-  int i=0;
-  max = min = dtwiddle(x, i++);
-  for(; i<n; i++) {
-    uint64_t tmp = dtwiddle(x, i);
-    if (tmp>max) max=tmp;
-    else if (tmp<min) min=tmp;
-  }
-  *out_min = min;
-  *out_max = max;
-}
-
 #include "../inst/include/rxode2_as.h"
 
 SEXP qassertS(SEXP in, const char *test, const char *what);
@@ -1352,10 +1334,6 @@ struct rx_globals {
   double *gomega = NULL;
   int nOmega = 0;
   int *ordId = NULL;
-  int *nradix = NULL;
-  uint8_t *** keys = NULL;
-  uint8_t * UGRP = NULL;
-  int * TMP = NULL;
   bool zeroTheta = false;
   bool zeroOmega = false;
   bool zeroSigma = false;
@@ -2497,42 +2475,15 @@ LogicalVector rxSolveFree(){
   rx->par_sample=NULL;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
-  if (_globals.nradix != NULL) free(_globals.nradix);
-  _globals.nradix=NULL;
   // Free the omega info
   if (_globals.gomega != NULL) free(_globals.gomega);
   _globals.gomega = NULL;
   if (_globals.gsigma != NULL) free(_globals.gsigma);
   _globals.gsigma = NULL;
-  // Free the allocated keys
-  if (_globals.keys != NULL) {
-    int i=0;
-    while (_globals.keys[i] != NULL){
-      int j = 0;
-      while(_globals.keys[i][j] != NULL){
-        free(_globals.keys[i][j]);
-        _globals.keys[i][j++] = NULL;
-      }
-      free(_globals.keys[i]);
-      _globals.keys[i++] = NULL;
-    }
-    free(_globals.keys);
-    _globals.keys=NULL;
-  }
-
-  if (_globals.TMP != NULL) {
-    free(_globals.TMP);
-  }
-  _globals.TMP = NULL;
-
+  
   _globals.zeroTheta = false;
   _globals.zeroOmega = false;
   _globals.zeroSigma = false;
-
-  if (_globals.UGRP != NULL) {
-    free(_globals.UGRP);
-  }
-  _globals.UGRP = rx->UGRP = NULL;
 
   if (_globals.ordId != NULL) {
     free(_globals.ordId);
@@ -3494,7 +3445,6 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
 
     NumericVector time0 = dataf[rxcTime];
     // Get the range
-    range_d(REAL(dataf[rxcTime]), time0.size(), &(rx->minD), &(rx->maxD));
 
     if (rxIs(time0, "units")){
       rxSolveDat->addTimeUnits=true;
@@ -4050,49 +4000,6 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
     rxSolveFree();
     stop(_("Something is wrong"));
   }
-  // Get the data range required for radix sort
-  // This is adapted from forder:
-  ////////////////////////////////////////////////////////////////////////////////
-  // https://github.com/Rdatatable/data.table/blob/master/src/forder.c
-  // in data.table keyAlloc=(ncol+n_cplx)*8+1 which translates to 9
-  // Since the key is constant we can pre-allocate with stack instead key[9]
-  // NA, NaN, and -Inf +Inf not supported
-  int nbyte=0, nradix=0, spare=0;
-  calcNradix(&nbyte, &nradix, &spare, &(rx->maxD), &(rx->minD));
-  if (_globals.nradix != NULL) free(_globals.nradix);
-  rx->nradix = _globals.nradix = (int*)malloc(sizeof(int));//nbyte-1 + (rx->spare==0); // lost
-  std::fill_n(rx->nradix, 1, nradix);
-  ////////////////////////////////////////////////////////////////////////////////
-  if (_globals.keys!=NULL) {
-    int i=0;
-    while (_globals.keys[i] != NULL){
-      int j = 0;
-      while(_globals.keys[i][j] != NULL){
-        free(_globals.keys[i][j]);
-        _globals.keys[i][j++] = NULL;
-      }
-      free(_globals.keys[i]);
-      _globals.keys[i++] = NULL;
-    }
-    free(_globals.keys);
-  }
-  rx->keys = _globals.keys = NULL;
-  rx->keys = _globals.keys = (uint8_t ***)calloc(2, sizeof(uint8_t **)); // lost
-  rx->keys[1] = NULL;
-  // In rxode2 the keyAlloc size IS 9
-  rx->keys[0] = (uint8_t **)calloc(10, sizeof(uint8_t *));
-  for (int j = 0; j < 10; j++) rx->keys[0][j] = NULL;
-  for (int b = 0; b < nbyte; b++){
-    rx->keys[0][b] = (uint8_t *)calloc(rx->maxAllTimes+1, sizeof(uint8_t));
-  }
-  // Use same variables from data.table
-  if (_globals.TMP != NULL) free(_globals.TMP);
-  _globals.TMP = NULL;
-  rx->TMP = _globals.TMP =  (int *)malloc(UINT16_MAX*sizeof(int)); // used by counting sort (my_n<=65536) in radix_r()
-  if (_globals.UGRP != NULL) free(_globals.UGRP);
-  _globals.UGRP = NULL;
-  rx->UGRP = _globals.UGRP = (uint8_t *) malloc(256); // TODO: align TMP and UGRP to cache lines (and do the same for stack allocations too)
-  // Now there is a key per core
 }
 
 // This creates the final dataset from the currently solved object.
@@ -4594,11 +4501,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->prodType = 1; // long double
   rx->sensType = 4; // advan
   rx->hasFactors = 0;
-  rx->keys = NULL; // keys per thread
-  rx->TMP = NULL;
   rx->ordId = NULL;
-  rx->UGRP = NULL;
-  rx->nradix = NULL;
   rx->ypNA = NULL;
   rx->sample = false;
   rx->par_sample = NULL;

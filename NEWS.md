@@ -82,6 +82,9 @@ mu-referencing style to run the optimization.
   `err.endpoint` for the `sigma` residual error.  This is to align
   with the convention that internally generated variables start with
   `rx` or `nlmixr`
+  
+- Sorting only uses timsort now, and was upgraded to the latest
+  version from Morwenn
 
 ## Bug fixes
 
