@@ -1908,14 +1908,6 @@ void handleSS(int *neq,
                    &dur,
                    &dur2,
                    &canBreak);
-        pushPendingDose(infEixds, ind);
-        if (isModeled && isSsLag) {
-          // turn on the modeled duration since it isn't part of the event table
-          if (!isSameTimeOp(curLagExtra, 0.0)) {
-            pushDosingEvent(startTimeD, rateOn, extraEvid, ind);
-          }
-          startTimeD = getTime(ind->idose[infFixds],ind);
-        }
         *istate=1;
         ind->ixds = infFixds;
         ind->idx=fi;
@@ -1926,6 +1918,15 @@ void handleSS(int *neq,
         xp2 = xout2;
         if (isSsLag) {
           // REprintf("infusion at %f\n", startTimeD);
+          pushPendingDose(infEixds, ind);
+          if (isModeled && isSsLag) {
+            // turn on the modeled duration since it isn't part of the event table
+            if (!isSameTimeOp(curLagExtra, 0.0)) {
+              pushDosingEvent(startTimeD, rateOn, extraEvid, ind);
+            }
+            startTimeD = getTime(ind->idose[infFixds],ind);
+          }
+
           double totTime = xp2 + dur + dur2 - curLagExtra;
           if (curLagExtra > 0) {
             if (curLagExtra > dur2) {
@@ -2150,9 +2151,27 @@ void handleSS(int *neq,
           }
           xp2 = xout2;
         } else {
+          pushPendingDose(infEixds, ind);
+          if (isModeled && isSsLag) {
+            // turn on the modeled duration since it isn't part of the event table
+            if (!isSameTimeOp(curLagExtra, 0.0)) {
+              pushDosingEvent(startTimeD, rateOn, extraEvid, ind);
+            }
+            startTimeD = getTime(ind->idose[infFixds],ind);
+          }
           ind->idx=fi;
           ind->ixds = infFixds;
           // REprintf("Assign ind->ixds to %d (idx: %d) #12\n", ind->ixds, ind->idx);
+          if (doSS2){
+            // Add at the end
+            for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
+          }
+          handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+                      BadDose, InfusionRate, dose, yp,
+                      xout, neq[1], ind);
+          ind->doSS=0;
+          updateExtraDoseGlobals(ind);
+          return;
         }
       }
     }
