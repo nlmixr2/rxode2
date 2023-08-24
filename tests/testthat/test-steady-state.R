@@ -1,6 +1,7 @@
 rxTest({
   ms <- c("liblsoda", "lsoda", "dop853")
   for (m in ms) {
+    
     et <- eventTable() %>%
       add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) %>%
       add.sampling(seq(0, 48, length.out = 200))
@@ -49,7 +50,7 @@ rxTest({
 
     # context(sprintf("Steady state IV Bolus (%s)", m))
 
-    test_that("Non steady state dose makes sense", {
+    test_that(paste0("Non steady state dose makes sense; meth=",m), {
       expect_equal(x2$C2[1], c0)
     })
 
@@ -62,7 +63,7 @@ rxTest({
         et(amt = d, time = ii) %>%
         et(seq(0, 48, length.out = 200))
       x2 <- solve(ode.1c, et3, method = m)
-      test_that(paste("Steady State dose makes sense for ii=", ii), {
+      test_that(paste("Steady State dose makes sense for ii=", ii,"; meth=", m), {
         expect_equal(x2$C2[1], c0 / (1 - exp(-ke * ii)), tolerance = tol)
       })
     }
@@ -94,16 +95,18 @@ rxTest({
           as.list(rxInit(ode.1c)),
           infMax * exp(-ke * (ii - dur))
         )
-        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(rate)"), {
-          expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
+        
+        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(rate); meth=", m), {
+          expect_equal(x2$C2[x2$time == dur], infMax, tolerance = tol)
           expect_equal(x2$C2[1], inf0, tolerance = tol)
         })
+        
         ## Fixed duration
         et3 <- et() %>%
           et(amt = d, ss = 1, ii = ii, dur = dur) %>%
           et(c(dur, seq(0, 24, length.out = 19)))
         x2 <- solve(ode.1c, et3, method = m, maxsteps = 10000)
-        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(dur)"), {
+        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(dur); met=", m), {
           expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
           expect_equal(x2$C2[1], inf0, tolerance = tol)
         })
@@ -112,7 +115,7 @@ rxTest({
           et(amt = d, ss = 1, ii = ii, rate = -1) %>%
           et(c(dur, seq(0, 24, length.out = 19)))
         x2 <- rxSolve(ode.1cR, et3, c(rateIn = d / dur), method = m, maxsteps = 10000)
-        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(rate modeled)"), {
+        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(rate modeled); meth=", m), {
           expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
           expect_equal(x2$C2[1], inf0, tolerance = tol)
         })
@@ -121,7 +124,7 @@ rxTest({
           et(amt = d, ss = 1, ii = ii, rate = -2) %>%
           et(c(dur, seq(0, 24, length.out = 19)))
         x2 <- rxSolve(ode.1cD, et3, c(durIn = dur), method = m, maxsteps = 10000)
-        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(dur modeled)"), {
+        test_that(paste("Infusion Steady State dose makes sense for ii=", ii, " dur=", dur, "(dur modeled); meth=", m), {
           expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
           expect_equal(x2$C2[1], inf0, tolerance = tol)
         })
@@ -140,9 +143,9 @@ rxTest({
             et3 <- et() %>%
               et(amt = d, ss = 1, ii = ii, rate = d / dur) %>%
               et(time = ii, amt = d, ii = ii, addl = floor(24 / ii), rate = d / dur) %>%
-              et(c(dur * f, seq(0, 24, length.out = 200)))
+              et(c(dur * f, seq(0, 24, length.out = 400)))
             x2 <- solve(ode.1c, et3, c(fc = f), method = m, maxsteps = 10000)
-            test_that(paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(rate)"), {
+            test_that(paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(rate); meth=", m), {
               expect_equal(x2$C2[x2 == dur * f], infMax, tolerance = tol)
               expect_equal(x2$C2[1], inf0, tolerance = tol)
             })
@@ -151,7 +154,7 @@ rxTest({
               et(amt = d, ss = 1, ii = ii, rate = -1) %>%
               et(c(dur * f, seq(0, 24, length.out = 19)))
             x2 <- rxSolve(ode.1cR, et3, c(fc = f, rateIn = d / dur), method = m, maxsteps = 10000)
-            test_that(paste("Infusion Steady State dose makes sense for f= ", f, " ii=", ii, " dur=", dur, "(rate modeled)"), {
+            test_that(paste("Infusion Steady State dose makes sense for f= ", f, " ii=", ii, " dur=", dur, "(rate modeled); meth=", m), {
               expect_equal(x2$C2[x2 == dur * f], infMax, tolerance = tol)
               expect_equal(x2$C2[1], inf0, tolerance = tol)
             })
@@ -171,7 +174,7 @@ rxTest({
             et(time = ii, amt = d, ii = ii, addl = floor(24 / ii), dur = dur) %>%
             et(unique(c(dur, seq(0, 24, length.out = 200))))
           x2 <- solve(ode.1c, et3, c(fc = f), method = m, maxsteps = 10000)
-          test_that(paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(dur)"), {
+          test_that(paste("Infusion Steady State dose makes sense for f= ", f, "ii=", ii, " dur=", dur, "(dur); meth=", m), {
             expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
             expect_equal(x2$C2[1], inf0, tolerance = tol)
           })
@@ -179,7 +182,7 @@ rxTest({
             et(amt = d, ss = 1, ii = ii, rate = -2) %>%
             et(c(dur, seq(0, 24, length.out = 19)))
           x2 <- rxSolve(ode.1cD, et3, c(fc = f, durIn = dur), method = m, maxsteps = 10000)
-          test_that(paste("Infusion Steady State dose makes sense for f=", f, "ii=", ii, " dur=", dur, "(dur modeled)"), {
+          test_that(paste("Infusion Steady State dose makes sense for f=", f, "ii=", ii, " dur=", dur, "(dur modeled); meth=", m), {
             expect_equal(x2$C2[x2 == dur], infMax, tolerance = tol)
             expect_equal(x2$C2[1], inf0, tolerance = tol)
           })
@@ -189,7 +192,7 @@ rxTest({
 
     ## steady-state = 2 for bolus
     # context(sprintf("Bolus SS=2 (%s)", m))
-    test_that("bolus SS=2", {
+    test_that(paste0("bolus SS=2; meth=", m), {
       e2 <- et(amt = 20, ii = 24, ss = 2, time = 12) %>%
         et(seq(0, 24, length.out = 100))
       s2 <- rxSolve(ode.1c, e2)
@@ -234,11 +237,11 @@ rxTest({
             et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = d * 2 / dur) %>%
             et(seq(0, 24, length.out = 200))
           s3 <- solve(ode.1c, e3, c(fc = f), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(rate)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(rate); meth=", m), {
             expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
           })
         } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur); meth=", m), {
             expect_error(solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000))
           })
         }
@@ -257,11 +260,11 @@ rxTest({
             et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = d * 2 / dur) %>%
             et(seq(0, 24, length.out = 200))
           s3 <- solve(ode.1c, e3, c(fc = f), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur); meth=", m), {
             expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
           })
         } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur); meth=", m), {
             expect_error(solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000))
           })
         }
@@ -280,11 +283,11 @@ rxTest({
             et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -1) %>%
             et(seq(0, 24, length.out = 200))
           s3 <- solve(ode.1cR, e3, c(fc = f, rateIn = 2 * d / dur), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled rate)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled rate); meth=", m), {
             expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
           })
         } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled rate)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled rate); meth=", m), {
             expect_error(solve(ode.1cR, e2, c(fc = f, rateIn = 2 * d / dur), method = m, maxsteps = 1000000))
           })
         }
@@ -303,11 +306,11 @@ rxTest({
             et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -2) %>%
             et(seq(0, 24, length.out = 200))
           s3 <- solve(ode.1cD, e3, c(fc = f, durIn = dur), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled duration)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled duration); meth=", m), {
             expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
           })
         } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled duration)"), {
+          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled duration); meth=", m), {
             expect_error(solve(ode.1cD, e2, c(fc = f, durIn = dur), method = m, maxsteps = 1000000))
           })
         }
@@ -316,7 +319,7 @@ rxTest({
 
     # context("Constant Infusion steady state")
 
-    test_that("constant infusion steady state", {
+    test_that(paste0("constant infusion steady state; meth=", m), {
       ode.1cR <- rxode2({
         V <- 20
         Cl <- 1

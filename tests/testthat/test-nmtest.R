@@ -1,6 +1,6 @@
 if (file.exists(test_path("test-nmtest.qs"))) {
 
-  ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse", dep=FALSE); devtools::install("~/src/rxode2random", dep=FALSE); devtools::load_all();rxClean();#devtools::test()
+  ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse", dep=FALSE); devtools::install("~/src/rxode2random", dep=FALSE); devtools::load_all();rxClean();#devtools::test()'
 
   ## devtools::load_all()
   
@@ -98,7 +98,9 @@ if (file.exists(test_path("test-nmtest.qs"))) {
                 geom_point(data=d, aes(x=time, y=cp), col="red") +
                 ggtitle(paste0("id=", id, "(lag)")))
       } else {
+        message("================================================== ")
         message("f without lag")
+        message("================================================== ")
         s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov, addlDropSs=addlDropSs)
         return(plot(s1, cp) +
                 geom_point(data=d, aes(x=time, y=cp), col="red") +
@@ -108,7 +110,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
       ## print(etTrans(d, fl))
     } else {
       sub <- 0
-      if (meth == "dop853" && modifyData == "rate" && id  %in% c(409, 809))  {
+      if (meth == "dop853" &&  id  %in% c(409, 809))  {
          return(invisible())
       }
       if (id %in% c(410, 411, 409, 415, 709, 510, 610)) {
@@ -138,11 +140,48 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   p <- TRUE
 
+  ## solveEqual(409, addlDropSs=FALSE)
+  
+
+  ## solveEqual(19, addlDropSs=FALSE)
+  
+  ## solveEqual(11,modifyData="rate", addlDropSs=FALSE)
+  
+  ## solveEqual(11,modifyData="rate", addlDropSs=TRUE)
+  
+  ## solveEqual(11, addlDropSs=TRUE)
+  
+  ## solveEqual(11, addlDropSs=FALSE)
+
+  ## solveEqual(109, addlDropSs=FALSE)
+  ## solveEqual(109, modifyData = "rate", addlDropSs=FALSE)
+
+
+  ## solveEqual(9, modifyData = "rate", addlDropSs=FALSE)
+  
+  ## solveEqual(9, addlDropSs=FALSE)
+
+  ## solveEqual(809, addlDropSs=FALSE) + ylim(0, 2500)
+  
+  ## solveEqual(809, modifyData = "rate", addlDropSs=FALSE)
+  
+  ## solveEqual(509, addlDropSs=FALSE)
+
+
+  
+  ## solveEqual(409, addlDropSs=FALSE)
+
+
+  ## solveEqual(425) + xlim(0, 48) +
+  ##   geom_vline(xintercept = c(12, 24, 36, 48), col="red", linewidth=1.2)
+  
 
   # This doesn't work and I'm unsure why.
   ## solveEqual(409, meth="dop853", modifyData = "rate") + ylim(0, 2500)
 
   id <- unique(d$id)
+
+  id <- id[!(id %in% c(425, 525))]
 
   p <- FALSE
   lapply(id, function(i) {
@@ -162,5 +201,9 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   ## need to check id=25 type for infusions too (static, modeled) need
   ## to check for steady state when the infusion is still going at the
   ## time of steady-state release
+
+  ## Need to check steady state infusion as well as infusions where ii=dur with lag times
+
+  ## modeled equivalents of 425, 525
 
 }
