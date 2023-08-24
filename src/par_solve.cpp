@@ -2157,6 +2157,7 @@ void handleSS(int *neq,
             if (!isSameTimeOp(curLagExtra, 0.0)) {
               pushDosingEvent(startTimeD, rateOn, extraEvid, ind);
             }
+            startTimeD = getTime(ind->idose[infFixds],ind);
           }
           ind->idx=fi;
           ind->ixds = infFixds;
@@ -2388,9 +2389,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
             postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
-          xp = ind->extraDoseNewXout;
-        }
-        if (!isSameTime(xout, xp)) {
+        } else if (!isSameTime(xout, xp)) {
           lsoda(ctx, yp, &xp, xout);
           postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
         }
@@ -2739,7 +2738,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->idx=i;
     yp   = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
-    if (getEvid(ind, ind->ix[i]) != 3) {
+    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         ind->rc[0] = -1000;
         // Bad Solve => NA
@@ -2767,8 +2766,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
-        }
-        if (!isSameTime(xout, xp)) {
+        } else if (!isSameTime(xout, xp)) {
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
           postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
@@ -2911,7 +2909,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     if (global_debug){
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
-    if (getEvid(ind, ind->ix[i]) != 3) {
+    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
       if (ind->err){
         printErr(ind->err, ind->id);
         *rc = idid;
@@ -2987,8 +2985,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
             xp = xRead();
           }
-        }
-        if (!isSameTimeDop(xout, xp)) {
+        } else if (!isSameTimeDop(xout, xp)) {
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
                         xp,           /* initial x-value */
