@@ -1019,6 +1019,68 @@ extern "C" void handleSSinf8(int *neq,
   }
 }
 
+extern "C" void handleSSbolus(int *neq,
+                              int *BadDose,
+                              double *InfusionRate,
+                              double *dose,
+                              double *yp,
+                              double *xout, double xp, int id,
+                              int *i, int nx,
+                              int *istate,
+                              rx_solving_options *op,
+                              rx_solving_options_ind *ind,
+                              t_update_inis u_inis,
+                              void *ctx,
+                              rx_solve *rx,
+                              double *xout2,
+                              double *xp2,
+                              double *curIi,
+                              int *canBreak) {
+  for (int j = 0; j < op->maxSS; j++) {
+    ind->idx=*i;
+    *xout2 = *xp2 + *curIi;
+    // Use "real" xout for handle_evid functions.
+    handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+                BadDose, InfusionRate, dose, yp,
+                *xout, neq[1], ind);
+    // yp is last solve or y0
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    ind->ixds--; // This dose stays in place
+    // REprintf("ixds-- #2\n");
+    *canBreak=1;
+    if (j <= op->minSS -1){
+      if (ind->rc[0]== -2019){
+        badSolveExit(*i);
+        break;
+      }
+      for (int k = op->neq; k--;) {
+        ind->solveLast[k] = yp[k];
+      }
+      *canBreak=0;
+    } else if (j >= op->minSS){
+      if (ind->rc[0] == -2019){
+        for (int k = neq[0]; k--;) {
+          yp[k] = ind->solveLast[k];
+        }
+        ind->rc[0] = 2019;
+        break;
+      }
+      for (int k = neq[0]; k--;){
+        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+          *canBreak=0;
+        }
+        ind->solveLast[k] = yp[k];
+      }
+      if (*canBreak){
+        break;
+      }
+    }
+    *istate=1;
+    *xp2 = *xout2;
+  }
+}
+
 
 void handleSS(int *neq,
               int *BadDose,
@@ -1061,7 +1123,7 @@ void handleSS(int *neq,
     }
     double dur = 0, dur2=0, rateOn=0.0, rateOff = 0.0;
     int infBixds =0, infBixds2=0, infEixds = 0, infFixds = 0,
-      infBixdsA = 0, infSixds = 0,
+      infSixds = 0,
       ei=0, wh, cmt, wh100, whI, wh0, oldI,
       bi = *i, fi = *i;
     if (doSSinf){
@@ -1424,49 +1486,23 @@ void handleSS(int *neq,
       return;
     } else if (dur == 0) {
       // Bolus
-      for (j = 0; j < op->maxSS; j++) {
-        ind->idx=*i;
-        xout2 = xp2+curIi;
-        // Use "real" xout for handle_evid functions.
-        handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
-                    BadDose, InfusionRate, dose, yp,
-                    xout, neq[1], ind);
-        // yp is last solve or y0
-        solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-        ind->ixds--; // This dose stays in place
-        // REprintf("ixds-- #2\n");
-        canBreak=1;
-        if (j <= op->minSS -1){
-          if (ind->rc[0]== -2019){
-            badSolveExit(*i);
-            break;
-          }
-          for (k = op->neq; k--;) {
-            ind->solveLast[k] = yp[k];
-          }
-          canBreak=0;
-        } else if (j >= op->minSS){
-          if (ind->rc[0] == -2019){
-            for (k = neq[0]; k--;) {
-              yp[k] = ind->solveLast[k];
-            }
-            ind->rc[0] = 2019;
-            break;
-          }
-          for (k = neq[0]; k--;){
-            if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-              canBreak=0;
-            }
-            ind->solveLast[k] = yp[k];
-          }
-          if (canBreak){
-            break;
-          }
-        }
-        *istate=1;
-        xp2 = xout2;
-      }
+      handleSSbolus(neq,
+                    BadDose,
+                    InfusionRate,
+                    dose,
+                    yp,
+                    &xout, xp, id,
+                    i, nx,
+                    istate,
+                    op,
+                    ind,
+                    u_inis,
+                    ctx,
+                    rx,
+                    &xout2,
+                    &xp2,
+                    &curIi,
+                    &canBreak);
       if (isSsLag) {
         //advance the lag time
         ind->idx=*i;
@@ -1498,7 +1534,6 @@ void handleSS(int *neq,
         double offTime = dur- numDoseInf*curIi;
         double addTime = curIi-offTime;
         skipDosingEvent = true;
-        int oldIxds = ind->ixds;
         ind->ixds = infBixds;
         ind->idx = bi;
         // REprintf("Assign ind->ixds to %d (idx: %d) #1\n", indf->ixds, ind->idx);
