@@ -1352,7 +1352,7 @@ void handleSS(int *neq,
           }
         }
         xp2=xout;
-        *istate=1;
+        if (rx->istateReset) *istate = 1;
       }
       if (isSameTimeOp(curIi, dur) && !isSameTimeOp(dur, 0.0)) {
         ind->InfusionRate[ind->cmt] = rate;
@@ -1415,7 +1415,7 @@ void handleSS(int *neq,
             break;
           }
         }
-        *istate=1;
+        if (rx->istateReset) *istate = 1;
         xp2 = xout2;
       }
       if (isSsLag) {
@@ -1423,7 +1423,7 @@ void handleSS(int *neq,
         ind->idx=*i;
         xout2 = xp2 + curIi - curLagExtra;
         // Use "real" xout for handle_evid functions.
-        *istate=1;
+        if (rx->istateReset) *istate = 1;
         handle_evid(getEvid(ind, ind->ix[bi]), neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
@@ -1486,7 +1486,7 @@ void handleSS(int *neq,
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
           // yp is last solve or y0
-          *istate=1;
+          if (rx->istateReset) *istate = 1;
           // yp is last solve or y0
           solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                        xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -1526,7 +1526,7 @@ void handleSS(int *neq,
             }
           }
           // yp is last solve or y0
-          *istate=1;
+          if (rx->istateReset) *istate = 1;
           solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                        xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
           if (j <= op->minSS -1){
@@ -1575,7 +1575,7 @@ void handleSS(int *neq,
                         BadDose, InfusionRate, dose, yp,
                         xout, neq[1], ind);
             // yp is last solve or y0
-            *istate=1;
+            if (rx->istateReset) *istate = 1;
             // yp is last solve or y0
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -1587,7 +1587,7 @@ void handleSS(int *neq,
             handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
                         BadDose, InfusionRate, dose, yp,
                         xout+dur, neq[1], ind);
-            *istate=1;
+            if (rx->istateReset) *istate = 1;
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             pushDosingEvent(startTimeD+curLagExtra,
@@ -1602,7 +1602,7 @@ void handleSS(int *neq,
                         BadDose, InfusionRate, dose, yp,
                         xout, neq[1], ind);
             // yp is last solve or y0
-            *istate=1;
+            if (rx->istateReset) *istate = 1;
             // yp is last solve or y0
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -1613,7 +1613,7 @@ void handleSS(int *neq,
           }
         } else {
           // infusion without a lag time.
-          *istate=1;
+          if (rx->istateReset) *istate = 1;
           ind->idx = bi;
           ind->ixds = infBixds;
           handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0], BadDose, InfusionRate, dose, yp,
@@ -1647,7 +1647,7 @@ void handleSS(int *neq,
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
           // yp is last solve or y0
-          *istate=1;
+          if (rx->istateReset) *istate = 1;
           // yp is last solve or y0
           solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                        xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -1687,7 +1687,7 @@ void handleSS(int *neq,
             }
           }
           // yp is last solve or y0
-          *istate=1;
+          if (rx->istateReset) *istate = 1;
           solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                        xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
           if (j <= op->minSS -1){
@@ -1723,7 +1723,7 @@ void handleSS(int *neq,
           }
           xp2 = xout2;
         }
-        *istate=1;
+        if (rx->istateReset) *istate = 1;
         ind->ixds = infFixds;
         ind->idx=fi;
         // REprintf("Assign ind->ixds to %d (idx: %d) #6\n", ind->ixds, ind->idx);
@@ -1746,7 +1746,7 @@ void handleSS(int *neq,
               xp2   = startTimeD;
               xout2 = startTimeD + dur;
               // yp is last solve or y0
-              *istate=1;
+              if (rx->istateReset) *istate = 1;
               // yp is last solve or y0
               solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -1778,7 +1778,7 @@ void handleSS(int *neq,
               xp2   = startTimeD;
               xout2 = startTimeD + solveExtra;
               // yp is last solve or y0
-              *istate=1;
+              if (rx->istateReset) *istate = 1;
               // yp is last solve or y0
               solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -1805,7 +1805,7 @@ void handleSS(int *neq,
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
               // yp is last solve or y0
-              *istate=1;
+              if (rx->istateReset) *istate = 1;
               // yp is last solve or y0
               solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -1820,7 +1820,7 @@ void handleSS(int *neq,
                             BadDose, InfusionRate, dose, yp,
                             xout+dur, neq[1], ind);
                 // yp is last solve or y0
-                *istate=1;
+                if (rx->istateReset) *istate = 1;
                 solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                              xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
                 ind->ixds = infFixds+1;
@@ -1852,7 +1852,7 @@ void handleSS(int *neq,
           pushDosingEvent(startTimeD+dur,
                           rateOff, getEvid(ind, ind->idose[infEixds]), ind);
         }
-        *istate=1;
+        if (rx->istateReset) *istate = 1;
         for (k = neq[0]; k--;){
           ind->solveLast[k] = yp[k];
         }
@@ -2618,8 +2618,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,              /* parameters for step size selection */
                           0,
                           0,              /* for stabilized step size control */
-                          0,              /* maximal step size */
-                          0,            /* initial step size */
+                          ind->HMAX,     /* maximal step size */
+                          op->H0,            /* initial step size */
                           op->mxstep, /* maximal number of allowed steps */
                           1,            /* switch for the choice of the coefficients */
                           -1,                     /* test for stiffness */
@@ -2656,8 +2656,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,              /* parameters for step size selection */
                           0,
                           0,              /* for stabilized step size control */
-                          0,              /* maximal step size */
-                          0,            /* initial step size */
+                          ind->HMAX,              /* maximal step size */
+                          op->H0,            /* initial step size */
                           op->mxstep, /* maximal number of allowed steps */
                           1,            /* switch for the choice of the coefficients */
                           -1,                     /* test for stiffness */
@@ -2685,8 +2685,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         0,              /* parameters for step size selection */
                         0,
                         0,              /* for stabilized step size control */
-                        0,              /* maximal step size */
-                        0,            /* initial step size */
+                        ind->HMAX,     /* maximal step size */
+                        op->H0,        /* initial step size */
                         op->mxstep, /* maximal number of allowed steps */
                         1,            /* switch for the choice of the coefficients */
                         -1,                     /* test for stiffness */

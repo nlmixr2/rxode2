@@ -85,6 +85,8 @@ mu-referencing style to run the optimization.
   
 - Sorting only uses timsort now, and was upgraded to the latest
   version from Morwenn
+  
+- `dop853` now takes `hmax` and `h0` from `rxControl()`
 
 ## Bug fixes
 
