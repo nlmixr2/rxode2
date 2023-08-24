@@ -1575,7 +1575,7 @@ void handleSS(int *neq,
             bi++;
           }
           infSixds = infBixds;
-        } 
+        }
       } else {
         // SS=1
         // TIME  EVID AMT II
@@ -1614,7 +1614,7 @@ void handleSS(int *neq,
       }
       if (dur > curIi) {
         infSixds = infFixds;
-      } 
+      }
       rateOn = -getDose(ind, ind->idose[infBixds2+1]);
       rateOff = -rateOn;
     }
@@ -1885,6 +1885,11 @@ void handleSS(int *neq,
         badSolveExit(*i);
       } else {
         // Infusion
+        dur2 = curIi-dur;
+        if (isModeled && isSsLag) {
+          // adjust start time for modeled w/ssLag
+          startTimeD = getTime(ind->idose[infFixds],ind);
+        }
         solveSSinf(neq,
                    BadDose,
                    InfusionRate,
@@ -1916,71 +1921,15 @@ void handleSS(int *neq,
           ind->solveLast[k] = yp[k];
         }
         xp2 = xout2;
+        bool doNoLag = false;
         if (isSsLag) {
-          // REprintf("infusion at %f\n", startTimeD);
-          pushPendingDose(infEixds, ind);
-          if (isModeled && isSsLag) {
-            // turn on the modeled duration since it isn't part of the event table
-            if (!isSameTimeOp(curLagExtra, 0.0)) {
-              pushDosingEvent(startTimeD, rateOn, extraEvid, ind);
-            }
-            startTimeD = getTime(ind->idose[infFixds],ind);
-          }
-
           double totTime = xp2 + dur + dur2 - curLagExtra;
           if (curLagExtra > 0) {
-            if (curLagExtra > dur2) {
-              // REprintf("%f curLagExtra: %f > dur2: %f\n",
-              //          startTimeD, curLagExtra, dur2);
-              // dosing time occurs during the infusion
-              double solveExtra=dur+dur2-curLagExtra;
-              ind->idx=bi;
-              ind->ixds = infBixds;
-              // REprintf("Assign ind->ixds to %d (idx: %d) #7\n", ind->ixds, ind->idx);
-              handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
-                          BadDose, InfusionRate, dose, yp,
-                          xout, neq[1], ind);
-              xp2   = startTimeD;
-              xout2 = startTimeD + solveExtra;
-              // yp is last solve or y0
-              *istate=1;
-              // yp is last solve or y0
-              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-              if (isModeled) {
-                pushIgnoredDose(infBixds, ind);
-                pushIgnoredDose(infFixds+1, ind);
-                pushIgnoredDose(infFixds+2, ind);
-                pushIgnoredDose(infEixds, ind);
-                for (int cur = 0; cur < (overIi+1); ++cur) {
-                  pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
-                                  rateOff, extraEvid, ind);
-                  if (cur != overIi)
-                    pushDosingEvent(startTimeD+dur+dur2-solveExtra+cur*curIi,
-                                    rateOn, extraEvid, ind);
-                }
-                pushDosingEvent(startTimeD+dur-solveExtra+(overIi+1)*curIi,
-                                rateOff, extraEvid, ind);
-              } else {
-                // REprintf("%f curLagExtra: %f <= dur2: %f\n",
-                //          startTimeD, curLagExtra, dur2);
-                pushIgnoredDose(infBixds, ind);
-                pushIgnoredDose(infEixds, ind);
-                for (int cur = 0; cur < (overIi+1); ++cur) {
-                  pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
-                                  rateOff, extraEvid, ind);
-                  pushDosingEvent(startTimeD+dur+dur2-solveExtra+cur*curIi,
-                                  rateOn, extraEvid, ind);
-                }
-                pushDosingEvent(startTimeD+dur-solveExtra+(overIi+1)*curIi,
-                                rateOff, extraEvid, ind);
-              }
-            } else if (isSameTimeOp(curLagExtra+dur, curIi)) {
-              // REprintf("%f curLagExtra: %f+dur:%f == curIi: %f\n",
-              //          startTimeD, curLagExtra, dur, curIi);
+            if (isSameTimeOp(curLagExtra+dur, curIi)) {
+              // REprintf("isSameTimeOp(curLagExtra:%f+dur:%f, curIi:%f)\n",
+              //          curLagExtra, dur, curIi);
               ind->idx  = bi;
               ind->ixds = infBixds;
-              // REprintf("Assign ind->ixds to %d (idx: %d) #8\n", ind->ixds, ind->idx);
               handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
@@ -1993,77 +1942,54 @@ void handleSS(int *neq,
                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
               ind->idx=ei;
               ind->ixds = infEixds;
-              // REprintf("Assign ind->ixds to %d (idx: %d) #9\n", ind->ixds, ind->idx);
               handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
               ind->idx=ei;
               ind->ixds = infEixds;
-              if (isModeled) {
-                if (isSsLag) {
-                  pushIgnoredDose(infBixds, ind);
-                  pushPendingDose(infEixds, ind); 
-                } else {
-                  pushIgnoredDose(infBixds, ind);
-                  pushIgnoredDose(infEixds, ind);
-                }
-                for (int cur = 0; cur < overIi; ++cur) {
-                  pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
-                                  rateOn, extraEvid, ind);
-                  pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
-                                  rateOff, extraEvid, ind);
-                }
-              } else {
-                if (isSsLag) {
-                  // REprintf("isSsLag?\n");
-                  pushIgnoredDose(infFixds, ind);
-                  pushIgnoredDose(infFixds+1, ind);
-                  pushIgnoredDose(infFixds+2, ind);
-                  pushIgnoredDose(infEixds, ind);
-                } else {
-                  pushIgnoredDose(infBixds, ind);
-                  pushIgnoredDose(infEixds, ind);
-                }
-                for (int cur = 0; cur < overIi+1; ++cur) {
-                  // REprintf("Dose @ %f, Turn on dosing event at: %f\n",
-                  //          startTimeD, startTimeD+curLagExtra+curIi*cur);
-                  pushDosingEvent(startTimeD+curLagExtra+curIi*cur,
-                                  rateOn, extraEvid, ind);
-                  pushDosingEvent(startTimeD+curLagExtra+dur+curIi*cur,
-                                  rateOff, extraEvid, ind);
-                }
-                if (isSsLag) {
-                  ind->ixds=infFixds+1;
-                }
+              for (int cur = 0; cur < (overIi+1); ++cur) {
+                pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
+                                rateOn, extraEvid, ind);
+                pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
+                                rateOff, extraEvid, ind);
               }
+              ind->idx=fi;
+              ind->ixds = infFixds;
+            } else if (curLagExtra > dur2) {
+              // REprintf("(curLagExtra: %f > dur2: %f)\n",
+              //          curLagExtra, dur2);
+              // dosing time occurs during the infusion
+              double solveExtra=dur+dur2-curLagExtra;
+              ind->idx=bi;
+              ind->ixds = infBixds;
+              handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
+                          BadDose, InfusionRate, dose, yp,
+                          xout, neq[1], ind);
+              xp2   = startTimeD;
+              xout2 = startTimeD + solveExtra;
+              // yp is last solve or y0
+              *istate=1;
+              // yp is last solve or y0
+              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+
+              for (int cur = 0; cur < (overIi+1); ++cur) {
+                pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
+                                rateOff, extraEvid, ind);
+                pushDosingEvent(startTimeD+dur+dur2-solveExtra+cur*curIi,
+                                rateOn, extraEvid, ind);
+              }
+              pushDosingEvent(startTimeD+dur-solveExtra+(overIi+1)*curIi,
+                              rateOff, extraEvid, ind);
+              ind->idx=fi;
+              ind->ixds = infFixds;
             } else {
-              // REprintf("startTimeD: %f reg infusion (lag: %f dur:%f, dur2: %f)\n", startTimeD, curLagExtra, dur, dur2);
-              // REprintf("infFixds: %d %f %f %d %d; %d %d\n", getEvid(ind, ind->idose[infFixds]),
-              //          getDose(ind, ind->idose[infFixds]), getTime(ind->idose[infFixds],ind), fi, infFixds,
-              //          ind->ix[fi], ind->idose[infFixds]);
-              // REprintf("infFixds+1: %d %f %f %d %d; %d %d\n", getEvid(ind, ind->idose[infFixds+1]),
-              //          getDose(ind, ind->idose[infFixds+1]), getTime(ind->idose[infFixds+1],ind),
-              //          fi+1, infFixds+1,
-              //          ind->ix[fi+1], ind->idose[infFixds+1]);
-              // REprintf("infFixds+2: %d %f %f %d %d: %d %d\n", getEvid(ind, ind->idose[infFixds+2]),
-              //          getDose(ind, ind->idose[infFixds+2]), getTime(ind->idose[infFixds+2],ind),
-              //          fi+2, infFixds+2,
-              //          ind->ix[fi+2], ind->idose[infFixds+2]);
-              // REprintf("infBixds: %d %f %f %d %d; %d %d\n", getEvid(ind, ind->idose[infBixds]),
-              //          getDose(ind, ind->idose[infBixds]), getTime(ind->idose[infBixds],ind),
-              //          bi, infBixds,
-              //          ind->ix[bi], ind->idose[infBixds]);
-              // REprintf("infEixds: %d %f %f %d %d; %d %d\n", getEvid(ind, ind->idose[infEixds]),
-              //          getDose(ind, ind->idose[infEixds]), getTime(ind->idose[infEixds],ind),
-              //          ei, infEixds,
-              //          ind->ix[ei], ind->idose[infEixds]);
               if (xp2 + dur < totTime) {
                 xout2 = xp2 + dur;
               } else {
                 xout2 = totTime;
               }
               ind->idx=bi;
-              // REprintf("Assign ind->ixds to %d (idx: %d) #10\n", ind->ixds, ind->idx);
               ind->ixds = infBixds;
               handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
@@ -2080,7 +2006,6 @@ void handleSS(int *neq,
                 xout2 = totTime;
                 ind->ixds = infEixds;
                 ind->idx = ei;
-                // REprintf("Assign ind->ixds to %d (idx: %d) #11\n", ind->ixds, ind->idx);
                 handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
                             BadDose, InfusionRate, dose, yp,
                             xout+dur, neq[1], ind);
@@ -2093,85 +2018,39 @@ void handleSS(int *neq,
                 // REprintf("Assign ind->ixds to %d (idx: %d) #11a\n", ind->ixds, ind->idx);
                 //skip next dose
               }
-              if (overIi && !isModeled) {
-                pushIgnoredDose(infFixds+1, ind);
-                pushIgnoredDose(infFixds+2, ind);
-                pushIgnoredDose(infEixds, ind);
-                for (int cur = 0; cur < (overIi+1); ++cur) {
-                  pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
-                                  rateOn, extraEvid, ind);
-                  pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
-                                  rateOff, extraEvid, ind);
-                }
-              } else if (overIi && isModeled) {
-                pushIgnoredDose(infBixds, ind);
-                pushIgnoredDose(infEixds, ind);
-                for (int cur = 0; cur < (overIi+1); ++cur) {
-                  if (cur != overIi) {
-                    pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
-                                    rateOn, extraEvid, ind);
-                  }
-                  pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
-                                  rateOff, extraEvid, ind);
-                }
-              } else if (isModeled) {
-                pushIgnoredDose(infBixds, ind);
-                pushIgnoredDose(infEixds, ind);
-                pushDosingEvent(startTimeD+curLagExtra+dur,
-                                rateOff, extraEvid, ind);
-              } else {
-                pushIgnoredDose(infEixds, ind);
-                pushDosingEvent(startTimeD+curLagExtra,
+              for (int cur = 0; cur < (overIi+1); ++cur) {
+                pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
                                 rateOn, extraEvid, ind);
-                pushDosingEvent(startTimeD+curLagExtra+dur,
+                pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
                                 rateOff, extraEvid, ind);
               }
+              ind->ixds=infFixds;
+              ind->idx=fi;
             }
           } else {
-            ind->idx=bi;
-            ind->ixds=infBixds;
-            // REprintf("Assign ind->ixds to %d (idx: %d) #11b\n", ind->ixds, ind->idx);
-            handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
-                        BadDose, InfusionRate, dose, yp,
-                        xout, neq[1], ind);
-            pushIgnoredDose(infFixds, ind);
-            pushIgnoredDose(infFixds+1, ind);
-            if (isModeled) {
-              pushPendingDose(infFixds+2, ind);
-            } else {
-              pushIgnoredDose(infFixds+2, ind);
-            }
+            doNoLag = true;
           }
-          *istate=1;
-          // ind->idx=fi;
-          // ind->ixds = infFixds;
-          // REprintf("Assign ind->ixds to %d #11b\n", infFixds);
-          for (k = neq[0]; k--;){
-            ind->solveLast[k] = yp[k];
-          }
-          xp2 = xout2;
         } else {
-          pushPendingDose(infEixds, ind);
-          if (isModeled && isSsLag) {
-            // turn on the modeled duration since it isn't part of the event table
-            if (!isSameTimeOp(curLagExtra, 0.0)) {
-              pushDosingEvent(startTimeD, rateOn, extraEvid, ind);
-            }
-            startTimeD = getTime(ind->idose[infFixds],ind);
-          }
-          ind->idx=fi;
-          ind->ixds = infFixds;
-          // REprintf("Assign ind->ixds to %d (idx: %d) #12\n", ind->ixds, ind->idx);
-          if (doSS2){
-            // Add at the end
-            for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
-          }
-          handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+          doNoLag = true;
+        }
+        if (doNoLag) {
+          ind->idx=bi;
+          ind->ixds=infBixds;
+          handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
-          ind->doSS=0;
-          updateExtraDoseGlobals(ind);
-          return;
+          pushDosingEvent(startTimeD+dur,
+                          rateOff, getEvid(ind, ind->idose[infEixds]), ind);
+        }
+        *istate=1;
+        for (k = neq[0]; k--;){
+          ind->solveLast[k] = yp[k];
+        }
+        xp2 = xout2;
+        ind->idx=fi;
+        ind->ixds = infFixds;
+        for (int ii = 0; ii < nIgnoredDoses; ++ii) {
+          pushIgnoredDose(ignoreDoses[ii], ind);
         }
       }
     }
@@ -2389,10 +2268,13 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
             postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
-        } else if (!isSameTime(xout, xp)) {
+          xp =  ind->extraDoseNewXout;
+        }
+        if (!isSameTime(xout, xp)) {
           lsoda(ctx, yp, &xp, xout);
           postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
         }
+        xp = xout;
       }
     }
     ind->_newind = 2;
@@ -2766,11 +2648,14 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
-        } else if (!isSameTime(xout, xp)) {
+          xp =  ind->extraDoseNewXout;
+        }
+        if (!isSameTime(xout, xp)) {
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
           postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
+        xp = xout;
         //dadt_counter = 0;
       }
     }
@@ -2909,7 +2794,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     if (global_debug){
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
-    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
+    if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err){
         printErr(ind->err, ind->id);
         *rc = idid;
@@ -2983,9 +2868,10 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0                       /* declared length of icon */
                           );
             postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            xp = xRead();
           }
-        } else if (!isSameTimeDop(xout, xp)) {
+          xp = ind->extraDoseNewXout;
+        }
+        if (!isSameTimeDop(xout, xp)) {
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
                         xp,           /* initial x-value */
@@ -3012,7 +2898,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         0                       /* declared length of icon */
                         );
           postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-          xp = xRead();
+          xp = xout;
         }
         //dadt_counter = 0;
       }
