@@ -1272,7 +1272,7 @@ void handleSS(int *neq,
                ind->whI == EVIDF_INF_DUR ||
                isModeled) {
       ei = *i;
-      while(ind->ix[ei] != ind->idose[infEixds] && ei < ind->n_all_times){
+      while(ind->ix[ei] != ind->idose[infEixds] && ei < ind->n_all_times) {
         ei++;
       }
       if (ind->ix[ei] != ind->idose[infEixds]){
@@ -1470,27 +1470,13 @@ void handleSS(int *neq,
         ind->ixds = infBixds;
         ind->idx = bi;
         // REprintf("Assign ind->ixds to %d (idx: %d) #1\n", indf->ixds, ind->idx);
-        if (isModeled) {
-          if (overIi) {
-            pushDosingEvent(startTimeD + curLagExtra,
-                            rateOn, extraEvid, ind);
-          }
-        }
-        if (isSsLag) {
-          pushPendingDose(infFixds, ind);
-          pushPendingDose(infFixds+1, ind);
-          pushPendingDose(infFixds+2, ind);
-          pushPendingDose(infEixds, ind);
-        } 
         for (int cur = 0; cur < overIi; ++cur) {
           pushDosingEvent(startTimeD + offTime + cur*curIi + curLagExtra,
                           rateOff, extraEvid, ind);
-          if (!isModeled || cur != overIi - 1) {
-            pushDosingEvent(startTimeD + (cur+1)*curIi + curLagExtra,
-                            rateOn, extraEvid, ind);
-          }
+          pushDosingEvent(startTimeD + (cur+1)*curIi + curLagExtra,
+                          rateOn, extraEvid, ind);
         }
-        for (int cur = 0; cur < numDoseInf; ++cur) {
+        for (int cur = 0; cur < numDoseInf+1; ++cur) {
           pushDosingEvent(startTimeD + offTime + (overIi+cur)*curIi + curLagExtra,
                           rateOff, extraEvid, ind);
         }
@@ -1622,10 +1608,8 @@ void handleSS(int *neq,
             *istate=1;
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-            if (!isModeled) {
-              pushDosingEvent(startTimeD+curLagExtra,
-                              getDose(ind, ind->idose[infBixds]), extraEvid, ind);
-            }
+            pushDosingEvent(startTimeD+curLagExtra,
+                            rateOn, extraEvid, ind);
           } else {
             // infusion where the lag time occurs during the inter-dose interval split
             xp2 = startTimeD;
@@ -1643,30 +1627,27 @@ void handleSS(int *neq,
             solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             pushDosingEvent(startTimeD+offTime-solveTo,
-                            getDose(ind, ind->idose[infEixds]), extraEvid, ind);
-            if (!isModeled) {
-              pushDosingEvent(startTimeD+curLagExtra,
-                              getDose(ind, ind->idose[infBixds]), extraEvid, ind);
-            }
+                            rateOff, extraEvid, ind);
+            pushDosingEvent(startTimeD+curLagExtra,
+                            rateOn, extraEvid, ind);
           }
         } else {
           // infusion without a lag time.
-          pushPendingDose(infEixds, ind);
           *istate=1;
-          if (!isSsLag || !isModeled) {
-            ind->idx = bi;
-            ind->ixds = infBixds;
-            // REprintf("Assign ind->ixds to %d (idx: %d) #5\n", ind->ixds, ind->idx);
-            handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
-                        BadDose, InfusionRate, dose, yp,
-                        xout, neq[1], ind);
-          }
+          ind->idx = bi;
+          ind->ixds = infBixds;
+          // REprintf("Assign ind->ixds to %d (idx: %d) #5\n", ind->ixds, ind->idx);
+          handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0], BadDose, InfusionRate, dose, yp,
+                      xout, neq[1], ind);
         }
         ind->idx  = fi+1;
         ind->ixds = infFixds+1;
         // REprintf("Assign ind->ixds to %d (idx: %d) #5a\n", ind->ixds, ind->idx);
         // yp is last solve or y0
         *istate=1;
+        for (int ii = 0; ii < nIgnoredDoses; ++ii) {
+          pushIgnoredDose(ignoreDoses[ii], ind);
+        }
       } else if (ind->err) {
         printErr(ind->err, ind->id);
         badSolveExit(*i);
