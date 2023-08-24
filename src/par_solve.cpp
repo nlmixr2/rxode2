@@ -837,8 +837,8 @@ static inline void solveWith1Pt(int *neq,
                     0,              /* parameters for step size selection */
                     0,
                     0,              /* for stabilized step size control */
-                    0,              /* maximal step size */
-                    0,            /* initial step size */
+                    ind->HMAX,              /* maximal step size */
+                    op->H0,            /* initial step size */
                     op->mxstep,            /* maximal number of allowed steps */
                     1,            /* switch for the choice of the coefficients */
                     -1,                     /* test for stiffness */
@@ -2820,8 +2820,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,              /* parameters for step size selection */
                           0,
                           0,              /* for stabilized step size control */
-                          0,              /* maximal step size */
-                          0,            /* initial step size */
+                          ind->HMAX,              /* maximal step size */
+                          op->H0,            /* initial step size */
                           op->mxstep, /* maximal number of allowed steps */
                           1,            /* switch for the choice of the coefficients */
                           -1,                     /* test for stiffness */
@@ -2858,8 +2858,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0,              /* parameters for step size selection */
                           0,
                           0,              /* for stabilized step size control */
-                          0,              /* maximal step size */
-                          0,            /* initial step size */
+                          ind->HMAX,              /* maximal step size */
+                          op->H0,            /* initial step size */
                           op->mxstep, /* maximal number of allowed steps */
                           1,            /* switch for the choice of the coefficients */
                           -1,                     /* test for stiffness */
@@ -2888,8 +2888,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         0,              /* parameters for step size selection */
                         0,
                         0,              /* for stabilized step size control */
-                        0,              /* maximal step size */
-                        0,            /* initial step size */
+                        ind->HMAX,              /* maximal step size */
+                        op->H0,            /* initial step size */
                         op->mxstep, /* maximal number of allowed steps */
                         1,            /* switch for the choice of the coefficients */
                         -1,                     /* test for stiffness */

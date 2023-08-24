@@ -5,6 +5,9 @@
 - Steady state with lag times are no longer shifted by the lag time
   and then solved to steady state, The concentration at the inter-dose
   interval is back-calculated.
+  
+- "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
+  `rxSolve()`.  This may change some ODE solving using "dop853"
 
 ## New features
 
