@@ -664,11 +664,11 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
 
 // Adapted from
 extern "C" void sortInd(rx_solving_options_ind *ind){
-#ifdef _OPENMP
-  int core = omp_get_thread_num();
-#else
-  int core = 0;
-#endif
+// #ifdef _OPENMP
+//   int core = omp_get_thread_num();
+// #else
+//   int core = 0;
+// #endif
   rx_solve *rx = &rx_global;
   rx_solving_options *op = &op_global;
   // Reset times for infusion
@@ -954,6 +954,69 @@ static inline int handleExtraDose(int *neq,
     return 0;
   }
   return 0;
+}
+
+extern "C" void handleSSinf8(int *neq,
+                             int *BadDose,
+                             double *InfusionRate,
+                             double *dose,
+                             double *yp,
+                             double *xout, double xp, int id,
+                             int *i, int nx,
+                             int *istate,
+                             rx_solving_options *op,
+                             rx_solving_options_ind *ind,
+                             t_update_inis u_inis,
+                             void *ctx,
+                             rx_solve *rx,
+                             int *infBixds,
+                             int *bi,
+                             double *rateOn,
+                             double *xout2,
+                             double *xp2,
+                             int *canBreak) {
+  ind->ixds= *infBixds;
+  ind->idx= *bi;
+  // REprintf("Assign ind->ixds to %d (idx: %d) #0\n", ind->ixds, ind->idx);
+  // Rate is fixed, so modifying bio-availability doesn't change duration.
+  ind->InfusionRate[ind->cmt] = *rateOn;
+  ind->on[ind->cmt] = 1;
+  *xp2 = 0.0;
+  double infStep = op->infSSstep, a1=1.0, t1=*xp2+1.0;
+  // Based on http://www.rxkinetics.com/theo.html -- Chiou method
+  for (int j = 0; j < op->maxSS; j++){
+    if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
+    else *xout2 = *xp2+infStep;
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    *canBreak=1;
+    if (j <= op->minSS -1){
+      for (int k = neq[0]; k--;) {
+        ind->solveLast[k] = yp[k];
+      }
+      if (j == 0) {
+        a1 = yp[ind->cmt];
+      }
+      *canBreak=0;
+    } else {
+      for (int k = neq[0]; k--;){
+        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+          *canBreak=0;
+        }
+        ind->solveLast[k] = yp[k];
+      }
+      if (*canBreak){
+        ind->InfusionRate[ind->cmt] = 0.0;
+        break;
+      } else {
+        // Assumes that this is at least one half life.
+        double a2 = yp[ind->cmt];
+        infStep = max2(infStep,M_LN2/(*rateOn/(a1+a2) + 2*(a1-a2)/((a1+a2)*(*xout-t1))));
+      }
+    }
+    *xp2=*xout;
+    *istate=1;
+  }
 }
 
 
@@ -1322,65 +1385,34 @@ void handleSS(int *neq,
     int canBreak=0;
     xp2 = xp;
     if (doSSinf || isSameTimeOp(curIi, dur)) {
-      double rate;
-      ind->ixds=infBixds;
-      ind->idx=bi;
-      // REprintf("Assign ind->ixds to %d (idx: %d) #0\n", ind->ixds, ind->idx);
-      // Rate is fixed, so modifying bio-availability doesn't change duration.
-      rate = rateOn;
-      ind->InfusionRate[ind->cmt] = rate;
-      ind->on[ind->cmt] = 1;
-      xp2 = 0.0;
-      double infStep = op->infSSstep, a1=1.0, t1=xp2+1.0;
-      // Based on http://www.rxkinetics.com/theo.html -- Chiou method
-      double realXout = xout;
-      xout=0.0;
-      for (j = 0; j < op->maxSS; j++){
-        if (j == 0) xout2 = xp2+1.; // the first level drawn one hour after infusion
-        else xout2 = xp2+infStep;
-        solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-        canBreak=1;
-        if (j <= op->minSS -1){
-          for (k = neq[0]; k--;) {
-            ind->solveLast[k] = yp[k];
-          }
-          if (j == 0) {
-            a1 = yp[ind->cmt];
-          }
-          canBreak=0;
-        } else {
-          for (k = neq[0]; k--;){
-            if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-              canBreak=0;
-            }
-            ind->solveLast[k] = yp[k];
-          }
-          if (canBreak){
-            ind->InfusionRate[ind->cmt] = 0.0;
-            break;
-          } else {
-            // Assumes that this is at least one half life.
-            double a2 = yp[ind->cmt];
-            infStep = max2(infStep,M_LN2/(rate/(a1+a2) + 2*(a1-a2)/((a1+a2)*(xout-t1))));
-          }
-        }
-        xp2=xout;
-        *istate=1;
-      }
+      handleSSinf8(neq,
+                   BadDose,
+                   InfusionRate,
+                   dose,
+                   yp,
+                   &xout, xp, id,
+                   i, nx,
+                   istate,
+                   op,
+                   ind,
+                   u_inis,
+                   ctx,
+                   rx,
+                   &infBixds,
+                   &bi,
+                   &rateOn,
+                   &xout2,
+                   &xp2,
+                   &canBreak);
       if (isSameTimeOp(curIi, dur) && !isSameTimeOp(dur, 0.0)) {
-        ind->InfusionRate[ind->cmt] = rate;
-        pushPendingDose(infEixds, ind);
-        ind->ixds = infFixds+1;
-        ind->idx=fi+1;
-        if (isSsLag && isModeled) {
-          pushIgnoredDose(infFixds, ind);
-          pushIgnoredDose(infFixds+1, ind);
+        ind->InfusionRate[ind->cmt] = rateOn;
+        pushDosingEvent(startTimeD+curIi, rateOff, regEvid, ind);
+        for (int ii = 0; ii < nIgnoredDoses; ++ii) {
+          pushIgnoredDose(ignoreDoses[ii], ind);
         }
       } else {
         ind->InfusionRate[ind->cmt] = 0.0;
       }
-      xout=realXout; xp2=realXout;
       // REprintf("at ss: %f (inf: %f; rate: %f)\n", yp[ind->cmt],
       //          ind->InfusionRate[ind->cmt], rate);
       if (doSS2){
