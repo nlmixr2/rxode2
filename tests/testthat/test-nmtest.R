@@ -110,9 +110,6 @@ if (file.exists(test_path("test-nmtest.qs"))) {
       ## print(etTrans(d, fl))
     } else {
       sub <- 0
-      if (meth == "dop853" &&  id  %in% c(409, 809))  {
-         return(invisible())
-      }
       if (id %in% c(410, 411, 409, 415, 709, 510, 610)) {
         sub <- 24
       }
