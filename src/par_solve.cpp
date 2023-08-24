@@ -1287,9 +1287,11 @@ void handleSS(int *neq,
     // REprintf("rateOn: %f rateOff: %f; dur: %f dur2: %f\n", rateOn, rateOff, dur, dur2);
     double startTimeD = 0.0;
     double curLagExtra = 0.0;
-    int overIi = 0;
+    int overIi = 0, regEvid = 0, extraEvid = 0;
     if (isRateDose) {
       startTimeD = getTime_(ind->idose[infSixds], ind);
+      regEvid = getEvidClassic(ind->cmt+1, rateOn, rateOn, 0.0, 0.0, 1, 0);
+      extraEvid = regEvid - EVID0_REGULAR + EVID0_RATEADJ;
     } else {
       startTimeD = getTime_(ind->idose[ind->ixds], ind);
     }
@@ -1435,7 +1437,6 @@ void handleSS(int *neq,
       }
       if (isSsLag) {
         //advance the lag time
-        int regEvid = getEvidClassic(ind->cmt+1, rateOn, 0.0, 0.0, 0.0, 1, 0);
         ind->idx=*i;
         xout2 = xp2 + curIi - curLagExtra;
         // Use "real" xout for handle_evid functions.
@@ -1469,8 +1470,6 @@ void handleSS(int *neq,
         ind->ixds = infBixds;
         ind->idx = bi;
         // REprintf("Assign ind->ixds to %d (idx: %d) #1\n", indf->ixds, ind->idx);
-        int regEvid = getEvidClassic(ind->cmt+1, getDose(ind, ind->idose[infBixds]), rateOn, 0.0, 0.0, 1, 0);
-        int extraEvid = regEvid - EVID0_REGULAR + EVID0_RATEADJ;
         if (isModeled) {
           if (overIi) {
             pushDosingEvent(startTimeD + curLagExtra,
@@ -1674,8 +1673,6 @@ void handleSS(int *neq,
       } else {
         // Infusion
         pushPendingDose(infEixds, ind);
-        int regEvid = getEvidClassic(ind->cmt+1, rateOn, rateOn, 0.0, 0.0, 1, 0);
-        int extraEvid = regEvid - EVID0_REGULAR + EVID0_RATEADJ;
         if (isModeled && isSsLag) {
           // turn on the modeled duration since it isn't part of the event table
           if (!isSameTimeOp(curLagExtra, 0.0)) {
