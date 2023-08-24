@@ -1287,6 +1287,7 @@ void handleSS(int *neq,
     // REprintf("rateOn: %f rateOff: %f; dur: %f dur2: %f\n", rateOn, rateOff, dur, dur2);
     double startTimeD = 0.0;
     double curLagExtra = 0.0;
+    int overIi = 0;
     if (isRateDose) {
       startTimeD = getTime_(ind->idose[infSixds], ind);
     } else {
@@ -1297,6 +1298,8 @@ void handleSS(int *neq,
       curLagExtra = getLag(ind, neq[1], ind->cmt, startTimeD) -
         startTimeD;
       ind->wh0 = wh0;
+      overIi = floor(curLagExtra/curIi);
+      curLagExtra = curLagExtra - overIi*curIi;
     }
     // First Reset
     for (j = neq[0]; j--;) {
@@ -1432,8 +1435,6 @@ void handleSS(int *neq,
       }
       if (isSsLag) {
         //advance the lag time
-        int overIi = floor(curLagExtra/curIi);
-        curLagExtra = curLagExtra - overIi*curIi;
         int regEvid = getEvidClassic(ind->cmt+1, rateOn, 0.0, 0.0, 0.0, 1, 0);
         ind->idx=*i;
         xout2 = xp2 + curIi - curLagExtra;
@@ -1470,8 +1471,6 @@ void handleSS(int *neq,
         // REprintf("Assign ind->ixds to %d (idx: %d) #1\n", indf->ixds, ind->idx);
         int regEvid = getEvidClassic(ind->cmt+1, getDose(ind, ind->idose[infBixds]), rateOn, 0.0, 0.0, 1, 0);
         int extraEvid = regEvid - EVID0_REGULAR + EVID0_RATEADJ;
-        int overIi = floor(curLagExtra/curIi);
-        curLagExtra = curLagExtra - overIi*curIi;
         if (isModeled) {
           if (overIi) {
             pushDosingEvent(startTimeD + curLagExtra,
@@ -1684,8 +1683,6 @@ void handleSS(int *neq,
           }
           startTimeD = getTime(ind->idose[infFixds],ind);
         }
-        int overIi = floor(curLagExtra/curIi);
-        curLagExtra = curLagExtra - overIi*curIi;
         for (j = 0; j < op->maxSS; j++) {
           // Turn on Infusion, solve (0-dur)
           canBreak=1;
