@@ -1295,11 +1295,13 @@ struct rx_globals {
   double *gRate;
   double *gDur;
   double *gall_times;
+  double *gall_timesS;
   int *gix;
   double *gdv;
   double *glimit;
   int *gcens;
   double *gamt;
+  double *gamtS;
   double *gii;
   double *glhs;
   double *gcov;
@@ -2582,8 +2584,8 @@ LogicalVector rxSolveFree(){
   _globals.nIgnoredDoses=NULL;
   if (_globals.nAllocIgnoredDoses != NULL) free(_globals.nAllocIgnoredDoses);
   _globals.nAllocIgnoredDoses=NULL;
-
-
+  if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
+  _globals.gall_timesS = NULL;
   rxOptionsFree(); // f77 losda free
   rxOptionsIni();// realloc f77 lsoda cache
   rxClearFuns(); // Assign all the global ODE solving functions to NULL pointers
@@ -3948,8 +3950,24 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       rx_solving_options_ind indS;
       int linCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmt];
       int nIndSim = rx->nIndSim;
+      if (rx->needSort != 0 && rx->nsim > 1) {
+        if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
+        _globals.gall_timesS = (double*)malloc((2*(rx->nsim-1)*rx->nall)* sizeof(double));
+        if (_globals.gall_timesS == NULL) {
+          rxSolveFree();
+          stop(_("ran out of memory"));
+        }
+        _globals.gamtS= _globals.gall_timesS + (rx->nsim-1)*rx->nall;
+        for (int iii = 0; iii < rx->nsim-1; ++iii) {
+          std::copy(_globals.gamt, _globals.gamt + rx->nall,
+                    _globals.gamtS + iii*rx->nall);
+          std::copy(_globals.gall_times, _globals.gall_times + rx->nall,
+                    _globals.gall_timesS + iii*rx->nall);
+        }
+      }
       for (unsigned int simNum = rx->nsim; simNum--;) {
-        for (unsigned int id = rx->nsub; id--;) {
+        unsigned int cIdx2 = 0;
+        for (unsigned int id = 0; id < rx->nsub; ++id) {
           unsigned int cid = id+simNum*rx->nsub;
           ind = &(rx->subjects[cid]);
           ind->linCmt = linCmt;
@@ -3976,12 +3994,18 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->idose = &(indS.idose[0]);
             ind->ndoses = indS.ndoses;
             ind->nevid2 = indS.nevid2;
-            ind->dose = &(indS.dose[0]);
             ind->ii   = &(indS.ii[0]);
             ind->evid =&(indS.evid[0]);
-            ind->all_times = &(indS.all_times[0]);
             ind->id=id+1;
             ind->idReal = indS.idReal;
+            if (rx->needSort == 0) {
+              ind->dose = &(indS.dose[0]);
+              ind->all_times = &(indS.all_times[0]);
+            } else {
+              ind->all_times = &_globals.gall_timesS[(simNum-1)*rx->nall + cIdx2];
+              ind->dose = &_globals.gamtS[(simNum-1)*rx->nall + cIdx2];
+              cIdx2 += ind->n_all_times;
+            }
           }
           int eLen = op->neq*ind->n_all_times;
           ind->solve = &_globals.gsolve[curSolve];
@@ -4778,7 +4802,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     op->stiff = method;
     rxSolveDat->throttle = false;
-    if (method != 2 || rx->needSort != 0){
+    if (method != 2){
       op->cores = 1;//getRxThreads(1, false);
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
