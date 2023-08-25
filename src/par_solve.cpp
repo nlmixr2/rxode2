@@ -663,7 +663,7 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
 }
 
 // Adapted from
-extern "C" void sortInd(rx_solving_options_ind *ind){
+extern "C" void sortInd(rx_solving_options_ind *ind) {
 // #ifdef _OPENMP
 //   int core = omp_get_thread_num();
 // #else
@@ -673,7 +673,7 @@ extern "C" void sortInd(rx_solving_options_ind *ind){
   rx_solving_options *op = &op_global;
   // Reset times for infusion
   int doSort = 1;
-  double *time = new double[ind->n_all_times];
+  double *time = ind->timeThread;
   ind->ixds = 0;
   ind->curShift = 0;
   for (int i = 0; i < ind->n_all_times; i++) {
@@ -704,7 +704,6 @@ extern "C" void sortInd(rx_solving_options_ind *ind){
            return timea < timeb;
          });
   }
-  delete[] time;
 }
 
 extern "C" int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,

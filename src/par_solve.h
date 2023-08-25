@@ -51,11 +51,9 @@ extern "C" {
 		ind->curDose = NA_REAL;
 		if (inLhs == 0 || (inLhs == 1 && op->neq==0)) {
 			ind->solved = -1;
-			if (rx->needSort){
-				sortInd(ind);
-				if (op->badSolve) return 0;
-			}
 		}
+    sortInd(ind);
+    if (op->badSolve) return 0;
 		ind->ixds=ind->idx=0;
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
