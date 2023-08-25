@@ -1348,6 +1348,7 @@ void handleSS(int *neq,
   if (((ind->wh0 == EVID0_SS2  || isSsLag ||
         ind->wh0 == EVID0_SS) &&
        curIi > 0) || ind->wh0 == EVID0_SSINF) {
+    int oldIdx = ind->idx, oldIxds = ind->ixds;
     int ignoreDoses[4];
     ignoreDoses[0] = ignoreDoses[1] = ignoreDoses[2] = ignoreDoses[3] = -1;
     int nIgnoredDoses = 0;
@@ -1674,7 +1675,11 @@ void handleSS(int *neq,
       // ind->on[j] = 1; // nonmem doesn't reset on according to doc
     }
     // REprintf("reset & cancel pending doses\n");
-    cancelPendingDoses(ind, neq[1]);
+    if (!rx->ss2cancelAllPending && doSS2) {
+      cancelPendingDosesAfter(ind, neq[1], startTimeD + curLagExtra + overIi*curIi);
+    } else {
+      cancelPendingDoses(ind, neq[1]);
+    }
     ind->cacheME=0;
     // Reset LHS to NA
     ind->inLhs = 0;
@@ -1871,8 +1876,6 @@ void handleSS(int *neq,
           handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0], BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
         }
-        ind->idx  = fi+1;
-        ind->ixds = infFixds+1;
         // REprintf("Assign ind->ixds to %d (idx: %d) #5a\n", ind->ixds, ind->idx);
         // yp is last solve or y0
         *istate=1;
@@ -1913,8 +1916,6 @@ void handleSS(int *neq,
                    &dur2,
                    &canBreak);
         *istate=1;
-        ind->ixds = infFixds;
-        ind->idx=fi;
         // REprintf("Assign ind->ixds to %d (idx: %d) #6\n", ind->ixds, ind->idx);
         for (k = neq[0]; k--;){
           ind->solveLast[k] = yp[k];
@@ -2012,10 +2013,6 @@ void handleSS(int *neq,
                 *istate=1;
                 solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                              xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-                ind->ixds = infFixds+1;
-                ind->idx  = fi+1;
-                // REprintf("Assign ind->ixds to %d (idx: %d) #11a\n", ind->ixds, ind->idx);
-                //skip next dose
               }
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
@@ -2023,8 +2020,6 @@ void handleSS(int *neq,
                 pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
                                 rateOff, extraEvid, ind);
               }
-              ind->ixds=infFixds;
-              ind->idx=fi;
             }
           } else {
             doNoLag = true;
@@ -2039,7 +2034,7 @@ void handleSS(int *neq,
                       BadDose, InfusionRate, dose, yp,
                       xout, neq[1], ind);
           pushDosingEvent(startTimeD+dur,
-                          rateOff, getEvid(ind, ind->idose[infEixds]), ind);
+                          rateOff, extraEvid, ind);
         }
         *istate=1;
         for (k = neq[0]; k--;){
@@ -2063,7 +2058,41 @@ void handleSS(int *neq,
                   BadDose, InfusionRate, dose, yp,
                   xout, neq[1], ind);
     }
+    // if (isRateDose) {
+    //   REprintf("at %f\n", getAllTimes(ind, ind->idose[infFixds]));
+    //   REprintf("\tinfFixds(idx:%d/ixds:%d): %d %f %f (ignored: %d)\n",
+    //            ind->idose[infFixds], infFixds,
+    //            getEvid(ind, ind->idose[infFixds]),
+    //            getAllTimes(ind, ind->idose[infFixds]),
+    //            getDose(ind, ind->idose[infFixds]),
+    //            isIgnoredDose(ind, infFixds));
+    //   REprintf("\tinfSixds(idx:%d/ixds:%d): %d %f %f (ignored: %d)\n",
+    //            ind->idose[infSixds], infSixds,
+    //            getEvid(ind, ind->idose[infSixds]),
+    //            getAllTimes(ind, ind->idose[infSixds]),
+    //            getDose(ind, ind->idose[infSixds]),
+    //            isIgnoredDose(ind, infSixds));
+    //   REprintf("\tinfBixds(idx:%d/ixds:%d): %d %f %f (ignored: %d)\n",
+    //            ind->idose[infBixds], infBixds,
+    //            getEvid(ind, ind->idose[infBixds]),
+    //            getAllTimes(ind, infBixds),
+    //            getDose(ind, ind->idose[infBixds]),
+    //            isIgnoredDose(ind, infBixds));
+    //   REprintf("\tinfBixds2(idx:%d/ixds:%d): %d %f %f (ignored: %d)\n",
+    //            ind->idose[infBixds2], infBixds2,
+    //            getEvid(ind, ind->idose[infBixds2]),
+    //            getAllTimes(ind, ind->idose[infBixds2]),
+    //            getDose(ind, ind->idose[infBixds2]),
+    //            isIgnoredDose(ind, infBixds2));
+    //   REprintf("\tinfEixds(idx:%d/ixds:%d): %d %f %f (ignored: %d)\n",
+    //            ind->idose[infEixds], infEixds,
+    //            getEvid(ind, ind->idose[infEixds]),
+    //            getAllTimes(ind, ind->idose[infEixds]),
+    //            getDose(ind, ind->idose[infEixds]),
+    //            isIgnoredDose(ind, infEixds));
+    // }
     ind->doSS=0;
+    ind->ixds=oldIxds; ind->idx=oldIdx;
   }
   updateExtraDoseGlobals(ind);
 }

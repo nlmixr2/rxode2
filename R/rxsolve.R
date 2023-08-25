@@ -579,6 +579,12 @@
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
+#' @param ss2cancelAllPending When `TRUE` the `SS=2` event type
+#'   cancels all pending doses like `SS=1`.  When `FALSE` the pending
+#'   doses are canceled after the current dose time + current lag
+#'   time. In this case pending doses below current dose time +
+#'   current lag time are retained.
+#'
 #' @param naTimeHandle Determines what time of handling happens when
 #'   the time becomes `NA`: current options are:
 #'
@@ -703,7 +709,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     naTimeHandle=c("ignore", "warn", "error"),
                     addlKeepsCov=FALSE,
                     addlDropSs=TRUE,
-                    ssAtDoseTime=TRUE) {
+                    ssAtDoseTime=TRUE,
+                    ss2cancelAllPending=FALSE) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -969,6 +976,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(addlKeepsCov, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(addlDropSs, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(ssAtDoseTime, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(ss2cancelAllPending, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .zeros <- .xtra$.zeros
@@ -1103,6 +1111,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       addlKeepsCov=addlKeepsCov,
       addlDropSs=addlDropSs,
       ssAtDoseTime=ssAtDoseTime,
+      ss2cancelAllPending=ss2cancelAllPending,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

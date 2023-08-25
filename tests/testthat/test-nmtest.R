@@ -37,7 +37,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   library(ggplot2)
 
   solveEqual <- function(id, plot = p, meth="liblsoda", modifyData = c("none", "dur", "rate"),
-                         addlKeepsCov = TRUE, addlDropSs=TRUE) {
+                         addlKeepsCov = TRUE, addlDropSs=TRUE, ss2cancelAllPending=FALSE) {
     noLag <-  all(d[d$id == id & d$evid != 0,]$lagt == 0)
     hasRate <- any(d[d$id == id & d$evid != 0,]$rate != 0)
     hasModeledRate <- any(d[d$id == id & d$evid != 0,]$mode == 1)
@@ -92,7 +92,8 @@ if (file.exists(test_path("test-nmtest.qs"))) {
               rxode2::rxTheme() +
               ggtitle(paste0("id=", id)))
       ## print(etTrans(d, fl))
-      s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov, addlDropSs=addlDropSs)
+      s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov, addlDropSs=addlDropSs,
+                    ss2cancelAllPending=ss2cancelAllPending)
       if (!noLag) {
         print(plot(s1, cp) +
                 geom_point(data=d, aes(x=time, y=cp), col="red") +
@@ -101,7 +102,8 @@ if (file.exists(test_path("test-nmtest.qs"))) {
         message("================================================== ")
         message("f without lag")
         message("================================================== ")
-        s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov, addlDropSs=addlDropSs)
+        s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov, addlDropSs=addlDropSs,
+                      ss2cancelAllPending=ss2cancelAllPending)
         return(plot(s1, cp) +
                 geom_point(data=d, aes(x=time, y=cp), col="red") +
                 geom_line(data=s2, aes(x=time, y=cp), col="blue", alpha=0.5, linewidth=2) +
@@ -136,15 +138,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   }
 
   p <- TRUE
-
-  ## solveEqual(9, modifyData="rate")
-
-  ## solveEqual(425) + xlim(0, 48) +
-  ##   geom_vline(xintercept = c(12, 24, 36, 48), col="red", linewidth=1.2)
-
-  id <- unique(d$id)
-
-  id <- id[!(id %in% c(425, 525))]
+  ## id <- unique(d$id)
 
   p <- FALSE
   lapply(id, function(i) {

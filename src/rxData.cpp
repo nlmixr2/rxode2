@@ -4524,6 +4524,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->limit = 0;
   rx->safeZero = 1;
   rx->useStdPow = 0;
+  rx->ss2cancelAllPending = false;
   rx->sumType = 1; // pairwise
   rx->prodType = 1; // long double
   rx->sensType = 4; // advan
@@ -4800,6 +4801,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->istateReset = asInt(rxControl[Rxc_istateReset], "istateReset");
     rx->safeZero = asInt(rxControl[Rxc_safeZero], "safeZero");
     rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
+    rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
     op->stiff = method;
     rxSolveDat->throttle = false;
     if (method != 2){

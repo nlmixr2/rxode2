@@ -132,7 +132,8 @@ rxSolve(
   naTimeHandle = c("ignore", "warn", "error"),
   addlKeepsCov = FALSE,
   addlDropSs = TRUE,
-  ssAtDoseTime = TRUE
+  ssAtDoseTime = TRUE,
+  ss2cancelAllPending = FALSE
 )
 
 \method{rxSolve}{`function`}(
@@ -784,6 +785,12 @@ solve, but continues solving passing through the \code{NA} time
 \item \code{error} this will stop this solve if this is not a parallel
 solved ODE (otherwise stopping can crash R)
 }}
+
+\item{ss2cancelAllPending}{When \code{TRUE} the \code{SS=2} event type
+cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
+doses are canceled after the current dose time + current lag
+time. In this case pending doses below current dose time +
+current lag time are retained.}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

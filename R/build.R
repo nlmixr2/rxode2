@@ -1,4 +1,5 @@
 ## nocov start
+
 .rxodeBuildCode <- function() {
   # This builds the code needed for rxode2
   # generate control
@@ -49,7 +50,16 @@
   .R <- file(devtools::package_file("R/rxSyntaxFunctions.R"), "wb")
   writeLines(.l, .R)
   close(.R)
-
+  message("done")
+  message("generate rxode2_control.h")
+  .n <- gsub("[.]","_",names(rxControl()))
+  sink(devtools::package_file("inst/include/rxode2_control.h"))
+  cat("#pragma once\n")
+  cat("#ifndef __rxode2_control_H__\n#define __rxode2_control_H__\n")
+  cat('#include <rxode2parse_control.h>\n')
+  cat(paste(paste0("#define ", "Rxc_", .n, " ", seq_along(.n)-1),collapse="\n"))
+  cat("\n#endif // __rxode2_control_H__\n")
+  sink()
   message("done")
   return(invisible(""))
 }
