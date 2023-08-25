@@ -3966,8 +3966,8 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
         }
       }
       for (unsigned int simNum = rx->nsim; simNum--;) {
-        unsigned int cIdx2 = 0;
-        for (unsigned int id = 0; id < rx->nsub; ++id) {
+        unsigned int cIdx2 = rx->nall;
+        for (unsigned int id = rx->nsub; id--;) {
           unsigned int cid = id+simNum*rx->nsub;
           ind = &(rx->subjects[cid]);
           ind->linCmt = linCmt;
@@ -4002,9 +4002,9 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->dose = &(indS.dose[0]);
               ind->all_times = &(indS.all_times[0]);
             } else {
+              cIdx2 -= ind->n_all_times;
               ind->all_times = &_globals.gall_timesS[(simNum-1)*rx->nall + cIdx2];
               ind->dose = &_globals.gamtS[(simNum-1)*rx->nall + cIdx2];
-              cIdx2 += ind->n_all_times;
             }
           }
           int eLen = op->neq*ind->n_all_times;
