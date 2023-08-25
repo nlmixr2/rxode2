@@ -1,6 +1,6 @@
 if (file.exists(test_path("test-nmtest.qs"))) {
 
-  ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse", dep=FALSE); devtools::install("~/src/rxode2random", dep=FALSE); devtools::load_all();rxClean();#devtools::test()'
+  ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse", dep=FALSE); devtools::install("~/src/rxode2random", dep=FALSE); devtools::load_all();rxClean();#devtools::test()
 
   ## devtools::load_all()
   
@@ -137,44 +137,10 @@ if (file.exists(test_path("test-nmtest.qs"))) {
 
   p <- TRUE
 
-  ## solveEqual(409, addlDropSs=FALSE)
-  
-
-  ## solveEqual(19, addlDropSs=FALSE)
-  
-  ## solveEqual(11,modifyData="rate", addlDropSs=FALSE)
-  
-  ## solveEqual(11,modifyData="rate", addlDropSs=TRUE)
-  
-  ## solveEqual(11, addlDropSs=TRUE)
-  
-  ## solveEqual(11, addlDropSs=FALSE)
-
-  ## solveEqual(109, addlDropSs=FALSE)
-  ## solveEqual(109, modifyData = "rate", addlDropSs=FALSE)
-
-
-  ## solveEqual(9, modifyData = "rate", addlDropSs=FALSE)
-  
-  ## solveEqual(9, addlDropSs=FALSE)
-
-  ## solveEqual(809, addlDropSs=FALSE) + ylim(0, 2500)
-  
-  ## solveEqual(809, modifyData = "rate", addlDropSs=FALSE)
-  
-  ## solveEqual(509, addlDropSs=FALSE)
-
-
-  
-  ## solveEqual(409, addlDropSs=FALSE)
-
+  ## solveEqual(9, modifyData="rate")
 
   ## solveEqual(425) + xlim(0, 48) +
   ##   geom_vline(xintercept = c(12, 24, 36, 48), col="red", linewidth=1.2)
-  
-
-  # This doesn't work and I'm unsure why.
-  ## solveEqual(409, meth="dop853", modifyData = "rate") + ylim(0, 2500)
 
   id <- unique(d$id)
 
