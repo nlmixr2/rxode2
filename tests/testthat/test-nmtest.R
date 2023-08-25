@@ -138,7 +138,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   }
 
   p <- TRUE
-  ## id <- unique(d$id)
+  id <- unique(d$id)
 
   p <- FALSE
   lapply(id, function(i) {
