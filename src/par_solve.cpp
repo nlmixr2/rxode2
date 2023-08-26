@@ -97,58 +97,55 @@ extern "C" const char *rxGetId(int id) {
 
 extern "C" void printErr(int err, int id){
   RSprintf("Recovered solving errors for internal ID %s (%d):\n", getId(id), err);
-  if (err & 1){
+  if (err & rxErrCorruptETSort){
     RSprintf("  Corrupted event table during sort (1)\n");
   }
-  if (err & 2){
+  if (err & rxErrRate0){
     RSprintf("  Rate is zero/negative\n");
   }
-  if (err & 4){
+  if (err & rxErrModelRateAbsent){
     RSprintf("  Modeled rate requested in event table, but not in model; use 'rate(cmt) ='\n");
   }
-  if (err & 4){
-    RSprintf("  Modeled rate requested in event table, but not in model; use 'rate(cmt) ='\n");
-  }
-  if (err & 8){
+  if (err & rxErrCorruptETSort2){
     RSprintf("  Corrupted event table during sort (2)\n");
   }
-  if (err & 16){
+  if (err & rxErrDurNeg0){
     RSprintf("  Duration is zero/negative\n");
   }
-  if (err & 32){
+  if (err & rxErrModelDurAbsent){
     RSprintf("  Modeled duration requested in event table, but not in model; use 'dur(cmt) ='\n");
   }
-  if (err & 64){
+  if (err & rxErrModelData686){
     RSprintf("  Data error 686\n");
   }
-  if (err & 128){
+  if (err & rxErrModelDataNeg6){
     RSprintf("  Data Error -6\n");
   }
-  if (err & 256){
+  if (err & rxErrModelDataErr8){
     RSprintf("  Data Error 8\n");
   }
-  if (err & 512){
+  if (err & rxErrModelDataErr886){
     RSprintf("  Data error 886\n");
   }
-  if (err & 1024){
+  if (err & rxErrModelDataErr797){
     RSprintf("  Data error 797\n");
   }
-  if (err & 2048){
+  if (err & rxErrModelDataNeg7){
     RSprintf("  Data Error -7\n");
   }
-  if (err & 4096){
+  if (err & rxErrModelDataErr9){
     RSprintf("  Data Error 9\n");
   }
-  if (err & 8192){
+  if (err & rxErrModelDataErr997){
     RSprintf("  Data error 997\n");
   }
-  if (err & 16384){
-    RSprintf("  Corrupted event table during sort (1)\n");
+  if (err & rxErrCorruptETSort3){
+    RSprintf("  Corrupted event table during sort (3)\n");
   }
-  if (err & 32768){
+  if (err & rxErrCorruptET) {
     RSprintf("  Corrupted event table\n");
   }
-  if (err & 131072){
+  if (err & rxErrCorruptET2){
     RSprintf("  Corrupted events\n");
   }
   if (err & rxErrNegCmt){
@@ -160,16 +157,16 @@ extern "C" void printErr(int err, int id){
   if (err & rxErrSync2){
     RSprintf("  Corrupted event table (end of sync)\n");
   }
-  if (err & rxErrModeledFss2){
+  if (err & rxErrSs2LargeLag) {
+    REprintf("Lag times with SS=2 must be smaller than II when using ss2cancelAllPending=FALSE\n");
+  }
+  if (err & rxErrModeledFss2n2){
     RSprintf("  SS=2 & Modeled F does not work\n");
   }
-  if (err & 2097152){
+  if (err & rxErrModeledFss2n3){
     RSprintf("  SS=2 & Modeled F does not work\n");
   }
-  if (err & 4194304){
-    RSprintf("  SS=2 & Modeled F does not work\n");
-  }
-  if (err & 8388608){
+  if (err & rxErrRate02){
     RSprintf(" Rate is zero/negative\n");
   }
 }
@@ -1651,6 +1648,12 @@ void handleSS(int *neq,
       overIi = floor(curLagExtra/curIi);
       curLagExtra = curLagExtra - overIi*curIi;
     }
+    if (doSS2 && overIi != 0 && !rx->ss2cancelAllPending) {
+      if (!(ind->err & rxErrSs2LargeLag)){
+        ind->err += rxErrSs2LargeLag;
+      }
+      badSolveExit(*i);
+    }
     // First Reset
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
@@ -1695,7 +1698,7 @@ void handleSS(int *neq,
                    &canBreak);
       if (isSameTimeOp(curIi, dur) && !isSameTimeOp(dur, 0.0)) {
         ind->InfusionRate[ind->cmt] = rateOn;
-        pushDosingEvent(startTimeD+curIi, rateOff, regEvid, ind);
+        pushDosingEvent(startTimeD+curIi, rateOff, extraEvid, ind);
         for (int ii = 0; ii < nIgnoredDoses; ++ii) {
           pushIgnoredDose(ignoreDoses[ii], ind);
         }
@@ -1931,9 +1934,9 @@ void handleSS(int *neq,
               ind->ixds = infEixds;
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
-                                rateOn, extraEvid, ind);
+                                rateOn, regEvid, ind);
                 pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
-                                rateOff, extraEvid, ind);
+                                rateOff, regEvid, ind);
               }
               ind->idx=fi;
               ind->ixds = infFixds;
@@ -1957,12 +1960,12 @@ void handleSS(int *neq,
 
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
-                                rateOff, extraEvid, ind);
+                                rateOff, (cur == 0) ? extraEvid : regEvid, ind);
                 pushDosingEvent(startTimeD+dur+dur2-solveExtra+cur*curIi,
-                                rateOn, extraEvid, ind);
+                                rateOn, regEvid, ind);
               }
               pushDosingEvent(startTimeD+dur-solveExtra+(overIi+1)*curIi,
-                              rateOff, extraEvid, ind);
+                              rateOff, overIi == 0 ? extraEvid : regEvid, ind);
               ind->idx=fi;
               ind->ixds = infFixds;
             } else {
@@ -1998,9 +2001,9 @@ void handleSS(int *neq,
               }
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
-                                rateOn, extraEvid, ind);
+                                rateOn, regEvid, ind);
                 pushDosingEvent(startTimeD+curLagExtra+dur+cur*curIi,
-                                rateOff, extraEvid, ind);
+                                rateOff, regEvid, ind);
               }
             }
           } else {
