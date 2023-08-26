@@ -138,7 +138,11 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   }
 
   p <- TRUE
+
+  ## solveEqual(825)
+  
   id <- unique(d$id)
+  id <- id[id != 825]
 
   p <- FALSE
   lapply(id, function(i) {

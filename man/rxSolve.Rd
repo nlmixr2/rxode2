@@ -788,9 +788,7 @@ solved ODE (otherwise stopping can crash R)
 
 \item{ss2cancelAllPending}{When \code{TRUE} the \code{SS=2} event type
 cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
-doses are canceled after the current dose time + current lag
-time. In this case pending doses below current dose time +
-current lag time are retained.}
+doses not canceled with \code{SS=2}.}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

@@ -581,9 +581,7 @@
 #'
 #' @param ss2cancelAllPending When `TRUE` the `SS=2` event type
 #'   cancels all pending doses like `SS=1`.  When `FALSE` the pending
-#'   doses are canceled after the current dose time + current lag
-#'   time. In this case pending doses below current dose time +
-#'   current lag time are retained.
+#'   doses not canceled with `SS=2`.
 #'
 #' @param naTimeHandle Determines what time of handling happens when
 #'   the time becomes `NA`: current options are:

@@ -157,9 +157,10 @@ extern "C" void printErr(int err, int id){
   if (err & rxErrSync2){
     RSprintf("  Corrupted event table (end of sync)\n");
   }
-  if (err & rxErrSs2LargeLag) {
-    REprintf("Lag times with SS=2 must be smaller than II when using ss2cancelAllPending=FALSE\n");
+  if (err & rxErrModeledFss2){
+    RSprintf("  SS=2 & Modeled F does not work\n");
   }
+
   if (err & rxErrModeledFss2n2){
     RSprintf("  SS=2 & Modeled F does not work\n");
   }
@@ -1666,12 +1667,6 @@ void handleSS(int *neq,
       overIi = floor(curLagExtra/curIi);
       curLagExtra = curLagExtra - overIi*curIi;
     }
-    if (doSS2 && overIi != 0 && !rx->ss2cancelAllPending) {
-      if (!(ind->err & rxErrSs2LargeLag)){
-        ind->err += rxErrSs2LargeLag;
-      }
-      badSolveExit(*i);
-    }
     // First Reset
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
@@ -1679,7 +1674,6 @@ void handleSS(int *neq,
     }
     // REprintf("reset & cancel pending doses\n");
     if (!rx->ss2cancelAllPending && doSS2) {
-      cancelPendingDosesAfter(ind, neq[1], startTimeD + curLagExtra + overIi*curIi);
     } else {
       cancelPendingDoses(ind, neq[1]);
     }
