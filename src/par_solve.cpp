@@ -14,7 +14,7 @@
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
 //#include "seed.h"
-#include "timsort.h"
+#include <timsort.h>
 #define SORT gfx::timsort
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
 // dop853 is same time
