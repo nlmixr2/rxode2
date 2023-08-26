@@ -877,7 +877,25 @@ static inline int handleExtraDose(int *neq,
                                   t_update_inis u_inis,
                                   void *ctx) {
   if (ind->extraDoseN[0] > ind->idxExtra) {
-    sortExtraDose(ind);
+    if (ind->extraSorted == 0) {
+      // do sort
+      SORT(ind->extraDoseTimeIdx + ind->idxExtra, ind->extraDoseTimeIdx + ind->extraDoseN[0],
+           [ind](int a, int b){
+             double timea = ind->extraDoseTime[a],
+               timeb = ind->extraDoseTime[b];
+             if (timea == timeb) {
+               int evida = ind->extraDoseEvid[a],
+                 evidb = ind->extraDoseEvid[b];
+               if (evida == evidb){
+                 return a < b;
+               }
+               return evida < evidb;
+             }
+             return timea < timeb;
+           });
+      ind->extraSorted=1;
+      ind->idxExtra=0;
+    }
     // Use "real" xout for handle_evid functions.
     int idx = ind->idx;
     int ixds = ind->ixds;
