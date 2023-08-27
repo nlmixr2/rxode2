@@ -581,7 +581,8 @@
 #'
 #' @param ss2cancelAllPending When `TRUE` the `SS=2` event type
 #'   cancels all pending doses like `SS=1`.  When `FALSE` the pending
-#'   doses not canceled with `SS=2`.
+#'   doses not canceled with `SS=2` (the infusions started before
+#'   `SS=2` occurred are canceled, though).
 #'
 #' @param naTimeHandle Determines what time of handling happens when
 #'   the time becomes `NA`: current options are:
