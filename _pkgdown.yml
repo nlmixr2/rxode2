@@ -3,6 +3,9 @@ template:
   bootstrap: 5
   params:
     bootswatch: flatly
+  includes:
+    in_header: |
+      <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU" />
 reference:
 - title: Creating/Deleting/Loading rxode2 compiled objects
   contents:
