@@ -1673,6 +1673,7 @@ void handleSS(int *neq,
       // ind->on[j] = 1; // nonmem doesn't reset on according to doc
     }
     // REprintf("reset & cancel pending doses\n");
+    cancelInfusionsThatHaveStarted(ind, neq[1], startTimeD);
     if (!rx->ss2cancelAllPending && doSS2) {
     } else {
       cancelPendingDoses(ind, neq[1]);
@@ -2153,6 +2154,8 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
           ind->on[j] = 1;
           ind->cacheME=0;
         }
+        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
+        cancelPendingDoses(ind, neq[1]);
         memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
         if (rx->istateReset) idid = 1;
@@ -2312,6 +2315,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           ind->on[j] = 1;
           ind->cacheME=0;
         }
+        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
+        cancelPendingDoses(ind, neq[1]);
         memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
         if (rx->istateReset) ctx->state = 1;
@@ -2693,6 +2698,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ind->InfusionRate[j] = 0;
           ind->on[j] = 1;
         }
+        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
+        cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
         if (rx->istateReset) istate = 1;
@@ -2937,6 +2944,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           ind->on[j] = 1;
           ind->cacheME=0;
         }
+        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
+        cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
         ind->ixds++;
