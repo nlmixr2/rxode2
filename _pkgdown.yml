@@ -193,6 +193,9 @@ reference:
   - rxTrans
   - rxUiGet
   - summary.rxode2
+- title: Rxode2 data sets
+  contents:
+  - rxResidualError
 navbar:
   left:
   - text: Articles
