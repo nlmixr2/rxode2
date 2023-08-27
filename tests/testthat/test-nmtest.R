@@ -118,6 +118,9 @@ if (file.exists(test_path("test-nmtest.qs"))) {
       if (id %in% c(809, 909, 1009)) {
         sub <- 48
       }
+      if (id %in% 825) {
+        sub <- 96
+      }
       if (noLag) {
         test_that(paste0("nmtest id:", id, " no alag; method: ", meth, "; modifyData:", modifyData, "; addlDropSs: ", addlDropSs),
         {
@@ -138,11 +141,8 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   }
 
   p <- TRUE
-
-  ## solveEqual(825)
   
   id <- unique(d$id)
-  id <- id[id != 825]
 
   p <- FALSE
   lapply(id, function(i) {
