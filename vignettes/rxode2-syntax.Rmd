@@ -30,10 +30,23 @@ describes the communication of variables between `R` and the
 
 ## Syntax
 
-```{r child='../man/rmdhunks/rxode2-syntax-hunk.Rmd'}
+```{r child='../man/rmdhunks/rxode2-syntax-hunk-1.Rmd'}
 ```
 
+$$
+y=f+(a+b\times f^c)\times\varepsilon
+$$
 
+The second, **combined2**, assumes that the additive and proportional
+differences are combined on a variance scale:
+
+$$
+y=f+\left(\sqrt{a^2+b^2\times f^{2c}}\right)\times\varepsilon
+$$
+
+
+```{r child='../man/rmdhunks/rxode2-syntax-hunk-2.Rmd'}
+```
 
 ## Bugs and/or deficiencies
 

@@ -226,9 +226,6 @@ mod <- rxode2(\{
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 \})
 }\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-}\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
 }\if{html}{\out{
@@ -243,9 +240,6 @@ mod <- rxode2(\{
   # time-derivative assignment
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 ")
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
@@ -325,9 +319,7 @@ compilation model.
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
 }\if{html}{\out{</div>}}
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-
-## rxode2 2.0.13.9000 model named rx_432644d77dc17016c1fcff8262805db9 model (ready). 
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.13.9000 model named rx_dbd9d9052eeef81ccd5e07cc7df253d2 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -338,9 +330,7 @@ compilation model.
 mod$simulationIniModel
 }\if{html}{\out{</div>}}
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-
-## rxode2 2.0.13.9000 model named rx_fba807e1806f96b2f83b9d09b3319981 model (ready). 
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.13.9000 model named rx_bd7124e0e4de9b93afb333b63054f58d model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -503,107 +493,2833 @@ All the supported functions in rxode2 can be seen with the
 \code{rxSupportedFuns()}.
 
 A brief description of the built-in functions are in the following
-table:\tabular{lll}{
-   Function \tab Description \tab Aliases \cr
-   gamma(x) \tab The Gamma function \tab gammafn \cr
-   lgamma(x) \tab Natural logarithm of absolute value of gamma function \tab digamma \cr
-   digamma(x) \tab First derivative of lgamma \tab  \cr
-   trigamma(x) \tab Second derivative of lgamma \tab  \cr
-   tetragamma(x) \tab Third derivative of lgamma \tab  \cr
-   pentagamma(x) \tab Fourth derivative of lgamma \tab  \cr
-   psigamma(x, deriv) \tab n-th derivative of Psi, the digamma function, which is the derivative of lgammafn. In other words, digamma(x) is the same as psigamma(x,0), trigamma(x) == psigamma(x,1), etc. \tab  \cr
-   cospi(x) \tab cos(pi*x) \tab  \cr
-   sinpi(x) \tab sin(pi*x) \tab  \cr
-   tanpi(x) \tab tan(pi*x) \tab  \cr
-   beta(a, b) \tab Beta function \tab  \cr
-   lbeta(a, b) \tab log Beta function \tab  \cr
-   bessel_i(x, nu, expo) \tab Bessel function type I with index nu \tab expo==1 is unscaled expo==2 is scaled by exp(-x) \cr
-   bessel_j(x, nu) \tab Bessel function type J with index nu \tab  \cr
-   bessel_k(x, ku, expo) \tab Bessel function type K with index nu \tab expo==1 is unscaled expo==2 is scaled by exp(x) \cr
-   bessel_y(x, nu) \tab Bessel function type Y with index nu \tab  \cr
-   R_pow(x, y) \tab x^y \tab  \cr
-   R_pow_di(x, I) \tab x^y \tab y is an integer \cr
-   log1pmx \tab log(1+x) - x \tab  \cr
-   log1pexp \tab log(1+exp(x)) \tab  \cr
-   expm1(x) \tab exp(x)-1 \tab  \cr
-   lgamma1p(x) \tab log(gamma(x+1)) \tab  \cr
-   sign(x) \tab Compute the signum function where sign(x) is 1, 0 -1 \tab  \cr
-   fsign(x, y) \tab abs(x)*sign(y) \tab  \cr
-   fprec(x, digits) \tab x rounded to digits (after the decimal point, used by signif() \tab  \cr
-   fround(x, digits) \tab Round, used by R’s round() \tab  \cr
-   ftrunc(x) \tab Truncated towards zero \tab  \cr
-   abs(x) \tab absolute value of x \tab fabs \cr
-   sin(x) \tab sine of x \tab  \cr
-   cos(x) \tab cos of x \tab  \cr
-   tan(x) \tab tan of x \tab  \cr
-   factorial(x) \tab factorial of x \tab  \cr
-   lfactorial(x) \tab log(factorial(x)) \tab  \cr
-   log10(x) \tab log base 10 \tab  \cr
-   log2(x) \tab log base 2 \tab  \cr
-   pnorm(x) \tab Normal CDF of x \tab normcdf, phi \cr
-   qnorm(x) \tab Normal pdf of x \tab norminv \cr
-   probit(x, low=0, hi=1) \tab Probit (normal pdf) of x transforming into a range \tab  \cr
-   probitInv(q, low=0, hi=1) \tab Inverse probit of x transforming into a range \tab  \cr
-   acos(x) \tab Inverse cosine \tab  \cr
-   asin(x) \tab Inverse sine \tab  \cr
-   atan(x) \tab Inverse tangent \tab  \cr
-   atan2(a, b) \tab Four quadrant inverse tangent \tab  \cr
-   sinh(x) \tab Hyperbolic sine \tab  \cr
-   cosh(x) \tab Hyperbolic cosine \tab  \cr
-   tanh(x) \tab Hyperbolic tangent \tab  \cr
-   floor(x) \tab Downward rounding \tab  \cr
-   ceil(x) \tab Upward rounding \tab  \cr
-   logit(x, low=0, hi=1) \tab Logit transformation of x transforming into a range \tab  \cr
-   expit(x, low=0, hi=1) \tab expit transofmration in range \tab invLogit, logitInv \cr
-   gammaq(a, z) \tab Normalized incomplete gamma from boost \tab  \cr
-   gammaqInv(a, q) \tab Normalized incomplete gamma inverse from boost \tab  \cr
-   ifelse(cond, trueValue, falseValue) \tab if else function \tab  \cr
-   gammap(a, z) \tab Normalized lower incomplete gamma from boost \tab  \cr
-   gammapInv(a, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
-   gammapInva(x, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
-   rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr
-   rxnormV(x) \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
-   rxcauchy \tab Generate one deviate from the cauchy distribution for each observation \tab  \cr
-   rxchisq \tab Generate one deviate from the chisq distribution for each observation \tab  \cr
-   rxexp \tab Generate one deviate from the exponential distribution for each observation \tab  \cr
-   rxf \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
-   rxgamma \tab Generate one deviate from the gamma distribution for each observation \tab  \cr
-   rxbeta \tab Generate one deviate from the beta distribution for each observation \tab  \cr
-   rxgeom \tab Generate one deviate from the geometric distribution for each observation \tab  \cr
-   rxpois \tab Generate one deviate from the poission distribution for each observation \tab  \cr
-   rxt \tab Generate one deviate from the t distribtuion for each observation \tab  \cr
-   tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt) \tab  \cr
-   tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt) \tab  \cr
-   dosenum() \tab Dose Number \tab  \cr
-   tlast() or tlast(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment \tab  \cr
-   tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment \tab  \cr
-   prod(…) \tab product of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
-   sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
-   max(…) \tab maximum of a group of numbers \tab  \cr
-   min(…) \tab Min of a group of numbers \tab  \cr
-   lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
-   lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
-   diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
-   first(par) \tab Get the first value of an input parameter \tab  \cr
-   last(par) \tab Get the last value of an input parameter \tab  \cr
-   transit() \tab The transit compartment psuedo function \tab  \cr
-   is.na() \tab Determine if a value is NA \tab  \cr
-   is.nan() \tab Determine if a value is NaN \tab  \cr
-   is.infinite() \tab Check to see if the value is infinite \tab  \cr
-   rinorm(x) \tab Generate one deviate of from a normal distribution for each individual \tab  \cr
-   rinormV(x) \tab Generate one deviate from low discrepancy normal for each individual \tab  \cr
-   ricauchy \tab Generate one deviate from the cauchy distribution for each individual \tab  \cr
-   richisq \tab Generate one deviate from the chisq distribution for each individual \tab  \cr
-   riexp \tab Generate one deviate from the exponential distribution for each individual \tab  \cr
-   rif \tab Generate one deviate from low discrepancy normal for each individual \tab  \cr
-   rigamma \tab Generate one deviate from the gamma distribution for each individual \tab  \cr
-   ribeta \tab Generate one deviate from the beta distribution for each individual \tab  \cr
-   rigeom \tab Generate one deviate from the geometric distribution for each individual \tab  \cr
-   ropois \tab Generate one deviate from the poission distribution for each individual \tab  \cr
-   rit \tab Generate one deviate from the t distribtuion for each individual \tab  \cr
-   simeps \tab Simulate EPS from possibly truncated sigma matrix. Will take sigma matrix from the current study. Simulated at the very last moment. \tab  \cr
-   simeta \tab Simulate ETA from possibly truncated omega matrix. Will take the omega matrix from the current study. Simulated at the initilization of the ODE system or the intialization of lhs \tab  \cr
-}
+table:\if{html}{\out{
+<table>
+}}
+\if{html}{\out{
+<thead>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Function\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Description\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Aliases\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</thead>
+}}
+\if{html}{\out{
+<tbody>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gamma(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+The Gamma function\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gammafn\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+lgamma(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Natural logarithm of absolute value of gamma function\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+digamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+digamma(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+First derivative of lgamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+trigamma(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Second derivative of lgamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tetragamma(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Third derivative of lgamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+pentagamma(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Fourth derivative of lgamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+psigamma(x, deriv)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+n-th derivative of Psi, the digamma function, which is the derivative of
+lgammafn. In other words, digamma(x) is the same as psigamma(x,0),
+trigamma(x) == psigamma(x,1), etc.\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cospi(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cos(pi*x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sinpi(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sin(pi*x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tanpi(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tan(pi*x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+beta(a, b)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Beta function\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+lbeta(a, b)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log Beta function\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+bessel_i(x, nu, expo)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Bessel function type I with index nu\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+expo==1 is unscaled expo==2 is scaled by exp(-x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+bessel_j(x, nu)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Bessel function type J with index nu\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+bessel_k(x, ku, expo)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Bessel function type K with index nu\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+expo==1 is unscaled expo==2 is scaled by exp(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+bessel_y(x, nu)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Bessel function type Y with index nu\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+R_pow(x, y)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+x^y\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+R_pow_di(x, I)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+x^y\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+y is an integer\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log1pmx\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(1+x) - x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log1pexp\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(1+exp(x))\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+expm1(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+exp(x)-1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+lgamma1p(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(gamma(x+1))\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sign(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Compute the signum function where sign(x) is 1, 0 -1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+fsign(x, y)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+abs(x)*sign(y)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+fprec(x, digits)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+x rounded to digits (after the decimal point, used by signif()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+fround(x, digits)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Round, used by R’s round()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ftrunc(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Truncated towards zero\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+abs(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+absolute value of x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+fabs\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sin(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sine of x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cos(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cos of x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tan(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tan of x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+factorial(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+factorial of x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+lfactorial(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(factorial(x))\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log10(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log base 10\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log2(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log base 2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+pnorm(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Normal CDF of x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+normcdf, phi\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+qnorm(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Normal pdf of x\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+norminv\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit(x, low=0, hi=1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Probit (normal pdf) of x transforming into a range\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probitInv(q, low=0, hi=1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Inverse probit of x transforming into a range\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+acos(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Inverse cosine\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+asin(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Inverse sine\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+atan(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Inverse tangent\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+atan2(a, b)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Four quadrant inverse tangent\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sinh(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Hyperbolic sine\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cosh(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Hyperbolic cosine\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tanh(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Hyperbolic tangent\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+floor(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Downward rounding\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ceil(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Upward rounding\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit(x, low=0, hi=1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Logit transformation of x transforming into a range\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+expit(x, low=0, hi=1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+expit transofmration in range\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+invLogit, logitInv\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gammaq(a, z)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Normalized incomplete gamma from boost\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gammaqInv(a, q)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Normalized incomplete gamma inverse from boost\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ifelse(cond, trueValue, falseValue)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+if else function\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gammap(a, z)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Normalized lower incomplete gamma from boost\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gammapInv(a, p)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Inverse of Normalized lower incomplete gamma from boost\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gammapInva(x, p)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Inverse of Normalized lower incomplete gamma from boost\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxnorm(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate of from a normal distribution for each observation
+scale\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxnormV(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from low discrepancy normal for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxcauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the cauchy distribution for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxchisq\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the chisq distribution for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxexp\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the exponential distribution for each
+observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxf\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from low discrepancy normal for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxgamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the gamma distribution for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxbeta\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the beta distribution for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxgeom\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the geometric distribution for each
+observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxpois\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the poission distribution for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxt\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the t distribtuion for each observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tad() or tad(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Time after dose (tad()) or time after dose for a compartment tad(cmt)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tafd() or tafd(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Time after first dose (tafd()) or time after first dose for a
+compartment tafd(cmt)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+dosenum()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Dose Number\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tlast() or tlast(cmt)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Time of Last dose; This takes into consideration any lag time, so if
+there is a dose at time 3 and a lag of 1, the time of last dose would be
+4. tlast(cmt) calculates the time since last dose of a compartment\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tfirst() or tfirst(cmt)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Time since first dose or time since first dose of a compartment\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+prod(…)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+product of terms; This uses PreciseSums so the product will not have as
+much floating point errors (though it will take longer)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sum(…)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sum of terms; This uses PreciseSums so the product will not have as much
+floating point errors (though it will take longer)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+max(…)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+maximum of a group of numbers\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+min(…)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Min of a group of numbers\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+lag(parameter, number=1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Get the lag of an input parameter; You can specify a number of lagged
+observations\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+lead(parameter, number=2)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Get the lead of an input parameter; You can specify a number of lead
+observation\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+diff(par, number=1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Get the difference between the current parameter and the last parameter;
+Can change the parameter number\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+first(par)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Get the first value of an input parameter\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+last(par)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Get the last value of an input parameter\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+transit()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+The transit compartment psuedo function\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+is.na()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Determine if a value is NA\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+is.nan()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Determine if a value is NaN\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+is.infinite()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Check to see if the value is infinite\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rinorm(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate of from a normal distribution for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rinormV(x)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from low discrepancy normal for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ricauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the cauchy distribution for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+richisq\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the chisq distribution for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+riexp\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the exponential distribution for each
+individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rif\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from low discrepancy normal for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rigamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the gamma distribution for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ribeta\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the beta distribution for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rigeom\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the geometric distribution for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ropois\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the poission distribution for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Generate one deviate from the t distribtuion for each individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+simeps\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Simulate EPS from possibly truncated sigma matrix. Will take sigma
+matrix from the current study. Simulated at the very last moment.\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+simeta\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Simulate ETA from possibly truncated omega matrix. Will take the omega
+matrix from the current study. Simulated at the initilization of the ODE
+system or the intialization of lhs\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</tbody>
+}}
+\if{html}{\out{
+</table>
+}}
 
 
 Note that \verb{lag(cmt) =} is equivalent to \verb{alag(cmt) =} and not the same
@@ -613,40 +3329,928 @@ as \verb{= lag(wt)}
 \subsection{Reserved keywords}{
 
 There are a few reserved keywords in a rxode2 model. They are in the
-following table:\tabular{lll}{
-   Reserved Name \tab Meaning \tab Alias \cr
-   time \tab solver time \tab t \cr
-   podo \tab In Transit compartment models, last dose amount \tab  \cr
-   tlast \tab Time of Last dose \tab  \cr
-   M_E \tab Exp(1) \tab  \cr
-   M_LOG2E \tab log2(e) \tab  \cr
-   M_LOG10E \tab log10(e) \tab  \cr
-   M_LN2 \tab log(2) \tab  \cr
-   M_LN10 \tab log(10) \tab  \cr
-   M_PI \tab pi \tab  \cr
-   M_PI_2 \tab pi/2 \tab  \cr
-   M_PI_4 \tab pi/4 \tab  \cr
-   M_1_PI \tab 1/pi \tab  \cr
-   M_2_PI \tab 2/pi \tab  \cr
-   M_2_SQRTPI \tab 2/sqrt(pi) \tab  \cr
-   M_SQRT2 \tab sqrt(2) \tab  \cr
-   M_SQRT1_2 \tab 1/sqrt(2) \tab  \cr
-   M_SQRT_3 \tab sqrt(3) \tab  \cr
-   M_SQRT_32 \tab sqrt(32) \tab  \cr
-   M_LOG10_2 \tab Log10(2) \tab  \cr
-   M_2PI \tab 2*pi \tab  \cr
-   M_SQRT_PI \tab sqrt(pi) \tab  \cr
-   M_1_SQRT_2PI \tab 1/(sqrt(2*pi)) \tab  \cr
-   M_LN_SQRT_PI \tab log(sqrt(pi)) \tab  \cr
-   M_LN_SQRT_2PI \tab log(sqrt(2*pi)) \tab  \cr
-   M_LN_SQRT_PId2 \tab log(sqrt(pi/2)) \tab  \cr
-   pi \tab pi \tab  \cr
-   NA \tab R’s NA value \tab  \cr
-   NaN \tab Not a Number Value \tab  \cr
-   Inf \tab Infinite Value \tab  \cr
-   newind \tab 1: First record of individual; 2: Subsequent record of individual \tab NEWIND \cr
-   rxFlag \tab Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs \tab  \cr
-}
+following table:\if{html}{\out{
+<table>
+}}
+\if{html}{\out{
+<thead>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Reserved Name\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Meaning\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Alias\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</thead>
+}}
+\if{html}{\out{
+<tbody>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+time\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+solver time\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+podo\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+In Transit compartment models, last dose amount\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+tlast\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Time of Last dose\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_E\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Exp(1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LOG2E\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log2(e)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LOG10E\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log10(e)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LN2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(2)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LN10\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(10)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+pi\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_PI_2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+pi/2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_PI_4\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+pi/4\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_1_PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+1/pi\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_2_PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+2/pi\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_2_SQRTPI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+2/sqrt(pi)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_SQRT2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sqrt(2)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_SQRT1_2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+1/sqrt(2)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_SQRT_3\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sqrt(3)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_SQRT_32\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sqrt(32)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LOG10_2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Log10(2)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_2PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+2*pi\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_SQRT_PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+sqrt(pi)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_1_SQRT_2PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+1/(sqrt(2*pi))\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LN_SQRT_PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(sqrt(pi))\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LN_SQRT_2PI\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(sqrt(2*pi))\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+M_LN_SQRT_PId2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log(sqrt(pi/2))\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+pi\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+pi\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+NA\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+R’s NA value\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+NaN\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Not a Number Value\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Inf\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Infinite Value\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+newind\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+1: First record of individual; 2: Subsequent record of individual\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+NEWIND\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+rxFlag\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3:
+ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10:
+inductive linearization; 11: lhs\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</tbody>
+}}
+\if{html}{\out{
+</table>
+}}
 
 
 Note that \code{rxFlag} will always output \code{11} or \code{calc_lhs} since that is
@@ -681,14 +4285,156 @@ represents the compartment or \code{dvid} specification.
 
 For normal and related distributions, you can apply the transformation
 on both sides by using some keywords/functions to apply these
-transformations.\tabular{ll}{
-   Transformation \tab rxode2/nlmixr2 code \cr
-   Box-Cox \tab \code{+coxBox(lambda)} \cr
-   Yeo-Johnson \tab \code{+yeoJohnson(lambda)} \cr
-   logit-normal \tab \code{+logitNorm(logit.sd, low, hi)} \cr
-   probit-normal \tab \code{+probitNorm(probid.sd, low, hi)} \cr
-   log-normal \tab \code{+lnorm(lnorm.sd)} \cr
-}
+transformations.\if{html}{\out{
+<table>
+}}
+\if{html}{\out{
+<thead>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Transformation\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+rxode2/nlmixr2 code\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</thead>
+}}
+\if{html}{\out{
+<tbody>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Box-Cox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++boxCox(lambda)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Yeo-Johnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++yeoJohnson(lambda)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit-normal\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++logitNorm(logit.sd, low, hi)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit-normal\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++probitNorm(probid.sd, low, hi)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log-normal\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++lnorm(lnorm.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</tbody>
+}}
+\if{html}{\out{
+</table>
+}}
 
 
 By default for the likelihood for all of these transformations is
@@ -711,37 +4457,141 @@ For the normal and t-related distributions, we wanted to keep the
 ability to use skewed distributions additive and proportional in the
 t/cauchy-space, so these distributions are specified differently in
 comparison to the other supported distributions within \code{nlmixr2}:\if{html}{\out{
-<table style="width:97%;">
-<colgroup>
-<col style="width: 34%" />
-<col style="width: 23%" />
-<col style="width: 38%" />
-</colgroup>
+<table>
+}}
+\if{html}{\out{
 <thead>
-<tr class="header">
-<th>Distribution</th>
-<th>How to Add</th>
-<th>Example</th>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Distribution\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+How to Add\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Example\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
 </tr>
+}}
+\if{html}{\out{
 </thead>
+}}
+\if{html}{\out{
 <tbody>
-<tr class="odd">
-<td>Normal (log-likelihood)</td>
-<td><code>+dnorm()</code></td>
-<td><code>cp~add(add.sd)+dnorm()</code></td>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Normal (log-likelihood)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++dnorm()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cc ~ add(add.sd) + dnorm()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
 </tr>
-<tr class="even">
-<td>T-distribuion</td>
-<td><code>+dt(df)</code></td>
-<td><code>cp~add(add.sd)+dt(df)</code></td>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+T-distribution\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cc ~a dd(add.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
 </tr>
-<tr class="odd">
-<td>Cauchy<br />
-(t with df=1)</td>
-<td><code>+dcauchy()</code></td>
-<td><code>cp~add(add.sd)+dcauchy()</code></td>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+Cauchy (t with df=1)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
++dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cc ~ add(add.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
 </tr>
+}}
+\if{html}{\out{
 </tbody>
+}}
+\if{html}{\out{
 </table>
 }}
 
@@ -767,16 +4617,12 @@ differences in naming).
 The first, \strong{combined1}, assumes that the additive and proportional
 differences are on the standard deviation scale, or:
 
-[
-y=f+(a+b\times f^c)\times\varepsilon
-]
+y=f+(a+b* f^c)*err
 
 The second, \strong{combined2}, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-[
-y=f+\left(\sqrt{a^2+b^2\times f^{2c}}\right)\times\varepsilon
-]
+y=f+[sqrt(a^2+b^2 *f^(2c))]*err
 
 The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 \strong{combined2} since it mirrors how adding 2 normal distributions in
@@ -845,190 +4691,9584 @@ probabilities remain the same:\tabular{ll}{
 \subsection{General table of supported residual distributions}{
 
 In general all the that are supported are in the following table
-(available in \code{rxode2::rxResidualError})\tabular{llllll}{
-   Error model \tab Functional Form \tab Transformation \tab code \tab addProp \tab lhs \cr
-   constant \tab  \tab None \tab var ~ add(add.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab None \tab var ~ prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab None \tab var ~ pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
-   constant \tab  \tab log \tab var ~ lnorm(add.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
-   constant \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
-   constant \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
-   constant \tab  \tab logit \tab var ~ logitNorm(logit.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=2 \tab response variable \cr
-   additive \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) \tab addProp=2 \tab response variable \cr
-   constant \tab  \tab logit \tab var ~ probitNorm(probit.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
-   additive \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) \tab  \tab response variable \cr
-   proportional \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) \tab  \tab response variable \cr
-   power \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) \tab  \tab response variable \cr
-   additive+proportional \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2() \tab addProp=2 \tab response variable \cr
-   constant+t \tab  \tab None \tab var ~ add(add.sd) + dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab None \tab var ~ prop(prop.sd) + dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab None \tab var ~ pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined2() \tab addProp=2 \tab response variable \cr
-   constant+t \tab  \tab log \tab var ~ lnorm(add.sd) + dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) +combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   constant+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd)+dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd)+dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent)+dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   constant+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   constant+t \tab  \tab logit \tab var ~ logitNorm(logit.sd)+dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd)+dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   constant+t \tab  \tab logit \tab var ~ probitNorm(probit.sd) + dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dt(df) \tab  \tab response variable \cr
-   proportional+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dt(df) \tab  \tab response variable \cr
-   power+t \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dt(df) \tab  \tab response variable \cr
-   additive+proportional+t \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+t \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+t \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+t \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) +combined2() \tab addProp=2 \tab response variable \cr
-   constant+cauchy \tab  \tab None \tab var ~ add(add.sd) + dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab None \tab var ~ prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab None \tab var ~ pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab None \tab var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab None \tab var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
-   constant+cauchy \tab  \tab log \tab var ~ lnorm(add.sd) + dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab log \tab var ~ lnorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab log \tab var ~ lnorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() +combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab log \tab var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab log \tab var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   constant+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd)+dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + prop(prop.sd)+dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab boxCox \tab var ~ boxCox(lambda) + pow(pow.sd, exponent)+dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab boxCox \tab var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   constant+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab yeoJohnson \tab var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   constant+cauchy \tab  \tab logit \tab var ~ logitNorm(logit.sd)+dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab logit \tab var ~ logitNorm(NA) + prop(prop.sd)+dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab logit \tab var ~ logitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab logit \tab var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab yeoJohnson(logit()) \tab var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   constant+cauchy \tab  \tab logit \tab var ~ probitNorm(probit.sd) + dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab probit \tab var ~ probitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab probit \tab var ~ probitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab probit \tab var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dcauchy() \tab  \tab response variable \cr
-   proportional+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dcauchy() \tab  \tab response variable \cr
-   power+cauchy \tab  \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dcauchy() \tab  \tab response variable \cr
-   additive+proportional+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+proportional+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
-   additive+power+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
-   additive+power+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
-   poission \tab  \tab none \tab cmt ~ dpois(lamba) \tab  \tab compartment specification \cr
-   binomial \tab  \tab none \tab cmt ~ dbinom(n, p) \tab  \tab compartment specification \cr
-   beta \tab  \tab none \tab cmt ~ dbeta(alpha, beta) \tab  \tab compartment specification \cr
-   chisq \tab  \tab none \tab cmt ~ dchisq(nu) \tab  \tab compartment specification \cr
-   exponential \tab  \tab none \tab cmt ~ dexp(r) \tab  \tab compartment specification \cr
-   uniform \tab  \tab none \tab cmt ~ dunif(a, b) \tab  \tab compartment specification \cr
-   weibull \tab  \tab none \tab cmt ~ dweibull(a, b) \tab  \tab compartment specification \cr
-   gamma \tab  \tab none \tab cmt ~ dgamma(a, b) \tab  \tab compartment specification \cr
-   geometric \tab  \tab none \tab cmt ~ dgeom(a) \tab  \tab compartment specification \cr
-   negative binomial form #1 \tab  \tab none \tab cmt ~ dnbinom(n, p) \tab  \tab compartment specification \cr
-   negative binomial form #2 \tab  \tab none \tab cmt ~ dnbinomMu(size, mu) \tab  \tab compartment specification \cr
-   ordinal probability \tab  \tab none \tab cmt ~ c(p0=0, p1=1, p2=2, 3) \tab  \tab compartment specification \cr
-   log-likelihood \tab  \tab none \tab ll(cmt) ~ log likelihood expression \tab  \tab likelihood + compartment expression \cr
-}
+(available in \code{rxode2::rxResidualError})\if{html}{\out{
+<table>
+}}
+\if{html}{\out{
+<thead>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Error model\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Functional Form\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+Transformation\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+code\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+addProp\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+<th style="text-align:left;">
+}}
+
+
+lhs\if{html}{\out{
+</th>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</thead>
+}}
+\if{html}{\out{
+<tbody>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + prop(prop.sd) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + prop(prop.sd) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + pow(pow.sd, exponent) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + pow(pow.sd, exponent) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(NA) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(NA) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + prop(prop.sd) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + prop(prop.sd) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(NA) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(NA) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(NA) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(NA) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + prop(prop.sd) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + prop(prop.sd) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd,
+exponent) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd,
+exponent) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ prop(prop.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ pow(pow.sd, exponent) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(NA) + prop(prop.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(NA) + pow(pow.sd, exponent) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) +combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd)+dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + prop(prop.sd)+dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + pow(pow.sd, exponent)+dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + prop(prop.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df)
+\itemize{
+\item combined1()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df)
+\itemize{
+\item combined2()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd)+dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(NA) + prop(prop.sd)+dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(NA) + pow(pow.sd, exponent) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) +
+dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df)
+\itemize{
+\item combined1()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df)
+\itemize{
+\item combined2()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)
+\itemize{
+\item dt(df) + combined1()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)
+\itemize{
+\item dt(df) + combined2()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(NA) + prop(prop.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(NA) + pow(pow.sd, exponent) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) +
+dt(df)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) +
+dt(df) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) +
+dt(df) + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd,
+exponent) + dt(df) + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+t\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd,
+exponent) + dt(df) +combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ prop(prop.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ pow(pow.sd, exponent) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+None\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(NA) + prop(prop.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(NA) + pow(pow.sd, exponent) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() +combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd)+dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + prop(prop.sd)+dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + pow(pow.sd, exponent)+dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy()
+\itemize{
+\item combined1()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+boxCox\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy()
+\itemize{
+\item combined2()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + prop(prop.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) +
+dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) +
+dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd)+dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(NA) + prop(prop.sd)+dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(NA) + pow(pow.sd, exponent) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) +
+dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) +
+dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) +
+dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)
+\itemize{
+\item dcauchy() + combined1()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(logit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)
+\itemize{
+\item dcauchy() + combined2()
+}\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+constant+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+logit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(NA) + prop(prop.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(NA) + pow(pow.sd, exponent) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +
+combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+probit\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +
+combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) +
+dcauchy()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) +
+dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+proportional+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) +
+dcauchy() + combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd,
+exponent) + dcauchy() + combined1()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+additive+power+cauchy\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+combined2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+yeoJohnson(probit())\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd,
+exponent) + dcauchy() +combined2()\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+addProp=2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+response variable\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+poission\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dpois(lamba)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+binomial\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dbinom(n, p)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+beta\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dbeta(alpha, beta)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+chisq\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dchisq(nu)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+exponential\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dexp(r)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+uniform\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dunif(a, b)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+weibull\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dweibull(a, b)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+gamma\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dgamma(a, b)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+geometric\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dgeom(a)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+negative binomial form #1\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dnbinom(n, p)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+negative binomial form #2\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ dnbinomMu(size, mu)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ordinal probability\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+cmt ~ c(p0=0, p1=1, p2=2, 3)\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+compartment specification\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+<tr>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+log-likelihood\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+none\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+ll(cmt) ~ log likelihood expression\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+<td style="text-align:left;">
+}}
+
+
+likelihood + compartment expression\if{html}{\out{
+</td>
+}}
+\if{html}{\out{
+</tr>
+}}
+\if{html}{\out{
+</tbody>
+}}
+\if{html}{\out{
+</table>
+}}
 
 }
 
