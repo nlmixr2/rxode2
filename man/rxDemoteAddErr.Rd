@@ -25,6 +25,7 @@ rxErrTypeCombine("add") \%>\%
   rxDemoteAddErr()
 
 # This is used for logitNorm(NA), the additive portion is stripped
+
 }
 \author{
 Matthew Fidler

@@ -58,9 +58,11 @@ rxchisq(1)
 
 ## This example uses `rxchisq` directly in the model
 
-rx <- rxode2({
-  a <- rxchisq(2)
-})
+rx <- function() {
+  model({
+    a <- rxchisq(2)
+  })
+}
 
 et <- et(1, id = 1:2)
 

@@ -5,11 +5,39 @@
 - Steady state with lag times are no longer shifted by the lag time
   and then solved to steady state, The concentration at the inter-dose
   interval is back-calculated.
+  
+- "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
+  `rxSolve()`.  This may change some ODE solving using "dop853"
 
 ## New features
 
+- Parallel solving of models that require sorting (like modeled lag
+  times, modeled duration etc) now solve in parallel instead of downgrading
+  to single threaded solving
+
 - Steady state infusions with a duration of infusions greater than the
-  inter-dose interval are now supported
+  inter-dose interval are now supported.
+
+- Added `$symengineModelNoPrune` and `$symengineModelPrune` for
+  loading models into rxode2 with `rxS()`
+
+- When plotting and creating confidence intervals for multiple
+  endpoint models simulated from a rxode2 ui model, you can
+  plot/summarize each endpoint with `sim`. (ie. `confint(model,
+  "sim")` or `plot(model, sim)`).
+
+  If you only want to summarize a subset of endpoints, you can focus
+  on the endpoint by pre-pending the endpoint with `sim.`  For example
+  if you wanted to plot/summarize only the endpoint `eff` you would
+  use `sim.eff`. (ie `confint(model, "sim.eff")` or `plot(model,
+  sim.eff)`)
+
+- Added `model$simulationIniModel` which prepend the initial
+  conditions in the `ini({})` block to the classic `rxode2({})` model.
+
+- Now `model$simulationModel` and `model$simulationIniModel` will save
+  and use the initialization values from the compiled model, and will
+  solve as if it was the original ui model.
 
 - Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
   gives `ini({})` (Issue #523)
@@ -42,15 +70,41 @@ mu-referencing style to run the optimization.
 - Solves will now possibly print more information when issuing a
   "could not solve the system" error
 
+- The function `rxSetPipingAuto()` is now exported to change the way you
+  affect piping in your individual setup
+
+- Allow covariates to be specified in the model piping, that is `mod
+  %>% model(a=var+3, cov="var")` will add `"var"` as a covariate.
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
   ui$lstExpr` will assign model components.  It will also more
   robustly work with character vectors
 
+- Simulated objects from `rxSolve` now can access the model variables
+  with `$rxModelVars`
+
+- Simulation models from the UI now use `rxerr.endpoint` instead of
+  `err.endpoint` for the `sigma` residual error.  This is to align
+  with the convention that internally generated variables start with
+  `rx` or `nlmixr`
+  
+- Sorting only uses timsort now, and was upgraded to the latest
+  version from Morwenn
+
+## Bug fixes
+
+- Piping does not add constants to the initial estimates
+
+- When constants are specified in the `model({})` block (like `k <- 1`), they will not
+  be  to the `ini` block
+  
+- Bug fix for `geom_amt()` when the `aes` transformation has `x`
+
 # rxode2 2.0.13
 
-# Bug fixes
+## Bug fixes
 
 - A bug was fixed so that the `zeroRe()` function works with correlated omega
   values.

@@ -32,11 +32,13 @@
 #' et$mu <- 0
 #' et$sigma <- 1
 #' 
-#' model <- rxode2({
-#'   fx <- llikNorm(time, mu, sigma)
-#'   dMean <- llikNormDmean(time, mu, sigma)
-#'   dSd <- llikNormDsd(time, mu, sigma)
-#' })
+#' model <- function(){
+#'   model({
+#'     fx <- llikNorm(time, mu, sigma)
+#'     dMean <- llikNormDmean(time, mu, sigma)
+#'     dSd <- llikNormDsd(time, mu, sigma)
+#'   })
+#'  }
 #'
 #' ret <- rxSolve(model, et)
 #' ret
@@ -71,10 +73,12 @@ llikNorm <- function(x, mean = 0, sd = 1, full=FALSE) {
 #' et <- et(0:10)
 #' et$lambda <- 0.5
 #' 
-#' model <- rxode2({
-#'   fx <- llikPois(time, lambda)
-#'   dLambda <- llikPoisDlambda(time, lambda)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikPois(time, lambda)
+#'     dLambda <- llikPoisDlambda(time, lambda)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -113,10 +117,12 @@ llikPois <- function(x, lambda, full=FALSE) {
 #' et$size <- 100
 #' et$prob <-0.5
 #'
-#' model <- rxode2({
-#'   fx <- llikBinom(time, size, prob)
-#'  dProb <- llikBinomDprob(time, size, prob)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikBinom(time, size, prob)
+#'     dProb <- llikBinomDprob(time, size, prob)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -153,10 +159,12 @@ llikBinom <- function(x, size, prob, full=FALSE) {
 #' et$size <- 100
 #' et$prob <-0.5
 #'
-#' model <- rxode2({
-#'   fx <- llikNbinom(time, size, prob)
-#'   dProb <- llikNbinomDprob(time, size, prob)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikNbinom(time, size, prob)
+#'     dProb <- llikNbinomDprob(time, size, prob)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -197,10 +205,12 @@ llikNbinom <- function(x, size, prob, full=FALSE) {
 #' et$size <- 100
 #' et$mu <- 40
 #'
-#' model <- rxode2({
-#'   fx <- llikNbinomMu(time, size, mu)
-#'   dProb <- llikNbinomMuDmu(time, size, mu)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikNbinomMu(time, size, mu)
+#'     dProb <- llikNbinomMuDmu(time, size, mu)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -242,11 +252,13 @@ llikNbinomMu <- function(x, size, mu, full=FALSE) {
 #' et$shape1 <- 0.5
 #' et$shape2 <- 1.5
 #'
-#' model <- rxode2({
-#'   fx <- llikBeta(time, shape1, shape2)
-#'   dShape1 <- llikBetaDshape1(time, shape1, shape2)
-#'   dShape2 <- llikBetaDshape2(time, shape1, shape2)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikBeta(time, shape1, shape2)
+#'     dShape1 <- llikBetaDshape1(time, shape1, shape2)
+#'     dShape2 <- llikBetaDshape2(time, shape1, shape2)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -283,12 +295,14 @@ llikBeta <- function(x, shape1, shape2, full=FALSE) {
 #' et$mean <- 0
 #' et$sd <- 1
 #'
-#' model <- rxode2({
-#'   fx <- llikT(time, nu, mean, sd)
-#'   dDf <- llikTDdf(time, nu, mean, sd)
-#'   dMean <- llikTDmean(time, nu, mean, sd)
-#'   dSd   <- llikTDsd(time, nu, mean, sd)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikT(time, nu, mean, sd)
+#'     dDf <- llikTDdf(time, nu, mean, sd)
+#'     dMean <- llikTDmean(time, nu, mean, sd)
+#'     dSd   <- llikTDsd(time, nu, mean, sd)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -321,10 +335,12 @@ llikT <- function(x, df, mean=0, sd=1, full=FALSE) {
 #' et <- et(1:3)
 #' et$x <- 1
 #'
-#' model <- rxode2({
+#' model <- function() {
+#'   model({
 #'    fx <- llikChisq(x, time)
 #'    dDf <- llikChisqDdf(x, time)
-#' })
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -361,10 +377,12 @@ llikChisq <- function(x, df, full=FALSE) {
 #' et <- et(1:3)
 #' et$x <- 1
 #'
-#' model <- rxode2({
-#'   fx <- llikExp(x, time)
-#'   dRate <- llikExpDrate(x, time)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikExp(x, time)
+#'     dRate <- llikExpDrate(x, time)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -397,11 +415,13 @@ llikExp <- function(x, rate, full=FALSE) {
 #'
 #' llikF(x^2, 1, 5)
 #'
-#' model <- rxode2({
-#'   fx <- llikF(time, df1, df2)
-#'   dMean <- llikFDdf1(time, df1, df2)
-#'   dSd <- llikFDdf2(time, df1, df2)
-#' })
+#' model <- function(){
+#'   model({
+#'     fx <- llikF(time, df1, df2)
+#'     dMean <- llikFDdf1(time, df1, df2)
+#'     dSd <- llikFDdf2(time, df1, df2)
+#'   })
+#' }
 #' 
 #' et <- et(x)
 #' et$df1 <- 1
@@ -441,10 +461,12 @@ llikF <- function(x, df1, df2, full=FALSE) {
 #' et  <- et(1:10)
 #' et$prob <- 0.2
 #'  
-#' model <- rxode2({
-#'   fx <- llikGeom(time, prob)
-#'   dProb <- llikGeomDprob(time, prob)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikGeom(time, prob)
+#'     dProb <- llikGeomDprob(time, prob)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -483,11 +505,13 @@ llikGeom <- function(x, prob, full=FALSE) {
 #' et$alpha <- -2
 #' et$beta <- 2
 #'  
-#' model <- rxode2({
-#'   fx <- llikUnif(time, alpha, beta)
-#'   dAlpha<- llikUnifDalpha(time, alpha, beta)
-#'   dBeta <- llikUnifDbeta(time, alpha, beta)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikUnif(time, alpha, beta)
+#'     dAlpha<- llikUnifDalpha(time, alpha, beta)
+#'     dBeta <- llikUnifDbeta(time, alpha, beta)
+#'   })
+#' }
 #' 
 #' rxSolve(model, et)
 #' }
@@ -525,11 +549,13 @@ llikUnif <- function(x, alpha, beta, full=FALSE) {
 #' et$shape <- 1
 #' et$scale <- 10
 #'  
-#' model <- rxode2({
-#'   fx <- llikWeibull(time, shape, scale)
-#'   dShape<- llikWeibullDshape(time, shape, scale)
-#'   dScale <- llikWeibullDscale(time, shape, scale)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikWeibull(time, shape, scale)
+#'     dShape<- llikWeibullDshape(time, shape, scale)
+#'     dScale <- llikWeibullDscale(time, shape, scale)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }
@@ -573,11 +599,13 @@ llikWeibull <- function(x, shape, scale, full=FALSE) {
 #' et$shape <- 1
 #' et$rate <- 10
 #'  
-#' model <- rxode2({
-#'   fx <- llikGamma(time, shape, rate)
-#'   dShape<- llikGammaDshape(time, shape, rate)
-#'   dRate <- llikGammaDrate(time, shape, rate)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikGamma(time, shape, rate)
+#'     dShape<- llikGammaDshape(time, shape, rate)
+#'     dRate <- llikGammaDrate(time, shape, rate)
+#'   })
+#' }
 #' 
 #' rxSolve(model, et)
 #' }
@@ -613,11 +641,13 @@ llikGamma <- function(x, shape, rate, full=FALSE) {
 #' et$location <- 0
 #' et$scale <- 1
 #'
-#' model <- rxode2({
-#'   fx <- llikCauchy(time, location, scale)
-#'   dLocation <- llikCauchyDlocation(time, location, scale)
-#'   dScale <- llikCauchyDscale(time, location, scale)
-#' })
+#' model <- function() {
+#'   model({
+#'     fx <- llikCauchy(time, location, scale)
+#'     dLocation <- llikCauchyDlocation(time, location, scale)
+#'     dScale <- llikCauchyDscale(time, location, scale)
+#'   })
+#' }
 #'
 #' rxSolve(model, et)
 #' }

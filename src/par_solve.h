@@ -10,7 +10,7 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
-	void sortRadix(rx_solving_options_ind *ind);
+	void sortInd(rx_solving_options_ind *ind);
 
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
@@ -25,10 +25,10 @@ extern "C" {
 		ind->curShift=0.0;
 		ind->lastIsSs2 = false;
 		// neq[0] = op->neq
-		for (int j = (op->neq + op->extraCmt); j--;) {
+    int ncmt = (op->neq + op->extraCmt);
+		for (int j = ncmt; j--;) {
 			ind->InfusionRate[j] = 0;
 			ind->on[j] = 1;
-			ind->skipDose[j] = 0;
 			ind->tlastS[j] = NA_REAL;
 			ind->tfirstS[j] = NA_REAL;
 			ind->curDoseS[j] = NA_REAL;
@@ -51,12 +51,11 @@ extern "C" {
 		ind->curDose = NA_REAL;
 		if (inLhs == 0 || (inLhs == 1 && op->neq==0)) {
 			ind->solved = -1;
-			if (rx->needSort){
-				sortRadix(ind);
-				if (op->badSolve) return 0;
-			}
 		}
+    sortInd(ind);
+    if (op->badSolve) return 0;
 		ind->ixds=ind->idx=0;
+    if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
 

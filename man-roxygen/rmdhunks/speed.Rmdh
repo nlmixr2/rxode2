@@ -1,23 +1,150 @@
+# A note about the speed of the functional form for rxode2
+
+The functional form has the benefit that it is what is supported by
+nlmixr2 and therefore there is only one interface between solving and
+estimating, and it takes some computation time to get to the
+underlying "classic" simulation code.
+
+These models are in the form of:
+
+```{r mod1speed}
+library(rxode2)
+
+mod1 <- function() {
+  ini({
+    KA   <- 0.3
+    CL   <- 7
+    V2   <- 40
+    Q    <- 10
+    V3   <- 300
+    Kin  <- 0.2
+    Kout <- 0.2
+    EC50 <- 8
+  })
+  model({
+    C2 = centr/V2
+    C3 = peri/V3
+    d/dt(depot) = -KA*depot
+    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri) = Q*C2 - Q*C3
+    d/dt(eff) = Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0) = 1
+  }) 
+}
+```
+
+Or you can also specify the end-points for simulation/estimation just
+like `nlmixr2`:
+
+```{r mod2speed}
+mod2 <- function() {
+  ini({
+    TKA   <- 0.3
+    TCL   <- 7
+    TV2   <- 40
+    TQ    <- 10
+    TV3   <- 300
+    TKin  <- 0.2
+    TKout <- 0.2
+    TEC50 <- 8
+    eta.cl + eta.v ~ c(0.09,
+                       0.08, 0.25)
+    c2.prop.sd <- 0.1
+    eff.add.sd <- 0.1
+  })
+  model({
+    KA <- TKA   
+    CL <- TCL*exp(eta.cl)
+    V2  <- TV2*exp(eta.v)
+    Q   <- TQ
+    V3  <- TV3
+    Kin  <- TKin
+    Kout <- TKout
+    EC50 <- TEC50
+    C2 = centr/V2
+    C3 = peri/V3
+    d/dt(depot) = -KA*depot
+    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri) = Q*C2 - Q*C3
+    d/dt(eff) = Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0) = 1
+    C2 ~ prop(c2.prop.sd)
+    eff ~ add(eff.add.sd)
+  }) 
+}
+```
+
+For every solve, there is a compile (or a cached compile) of the
+underlying model.  If you wish to speed this process up you can use
+the two underlying `rxode2` classic models.  This takes two steps:
+
+- Parsing/evaluating the model
+
+- Creating the simulation model
+
+The first step can be done by `rxode2(mod1)` or `mod1()` (or for the second model too).
+
+```{r mod3eval}
+mod1 <- mod1()
+mod2 <- rxode2(mod2)
+```
+
+The second step is to create the underlying "classic" `rxode2` model,
+which can be done with two different methods:`$simulationModel` and
+`$simulationIniModel`. The `$simulationModel` will provide the
+simulation code without the initial conditions pre-pended, the
+`$simulationIniModel` will pre-pend the values.  When the endpoints
+are specified, the simulation code for each endpoint is also output.
+You can see the differences below:
+
+```{r modSimModel}
+summary(mod1$simulationModel)
+summary(mod1$simulationIniModel)
+summary(mod2$simulationModel)
+summary(mod2$simulationIniModel)
+```
+
+If you wish to speed up multiple simualtions from the `rxode2`
+functions, you need to pre-calculate care of the steps above:
+
+```{r simModel2}
+mod1 <- mod1$simulationModel
+
+mod2 <- mod2$simulationModel
+```
+
+These functions then can act like a normal ui model to be solved.  You
+can convert them back to a UI `as.rxUi()` or a function
+`as.function()` as needed.
+
+To increase speed for multiple simulations from the same model you
+should use the lower level simulation model (ie `$simulationModel` or
+`$simulationIniModel` depending on what you need)
+
 # Increasing rxode2 speed by multi-subject parallel solving
+
+Using the classic `rxode2` model specification (which we can convert
+from a functional/ui model style) we will continue the discussion on
+`rxode2` speed enhancements.
+
 `rxode2` originally developed as an ODE solver that allowed an ODE
 solve for a single subject.  This flexibility is still supported.
 
 The original code from the `rxode2` tutorial is below:
 
-```{r}
-
+```{r speed1}
 library(rxode2)
 
 library(microbenchmark)
 library(ggplot2)
 
 mod1 <- rxode2({
-    C2 = centr/V2;
-    C3 = peri/V3;
-    d/dt(depot) = -KA*depot;
-    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-    d/dt(peri) = Q*C2 - Q*C3;
-    d/dt(eff) = Kin - Kout*(1-C2/(EC50+C2))*eff;
+    C2 = centr/V2
+    C3 = peri/V3
+    d/dt(depot) = -KA*depot
+    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri) = Q*C2 - Q*C3
+    d/dt(eff) = Kin - Kout*(1-C2/(EC50+C2))*eff
     eff(0) = 1
 })
 

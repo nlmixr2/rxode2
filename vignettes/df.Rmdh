@@ -6,59 +6,52 @@
 This is done by the `predict()`, `solve()`, or `rxSolve()` methods.
 
 ```{r}
-
 library(rxode2)
 library(units)
 
 ## Setup example model
-mod1 <- rxode2({
-  C2 = centr/V2;
-  C3 = peri/V3;
-  d/dt(depot) =-KA*depot;
-  d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-  d/dt(peri)  =                    Q*C2 - Q*C3;
-  d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-})
+mod1 <- function() {
+  ini({
+    # central 
+    KA <- 2.94E-01
+    CL <- 1.86E+01
+    # peripheral
+    V2 <- 4.02E+01 
+    Q  <- 1.05E+01
+    V3 <- 2.97E+02
+    # effects
+    Kin  <- 1
+    Kout <- 1
+    EC50 <- 200
+  })
+  model({
+    C2 <- centr/V2
+    C3 <- peri/V3
+    d/dt(depot) <- -KA*depot
+    d/dt(centr) <-  KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)  <-                     Q*C2 - Q*C3
+    d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0) <- 1
+  })
+}
 
 ## Seup parameters and initial conditions
 
-theta <- 
-  c(KA=2.94E-01, CL=1.86E+01, V2=4.02E+01, # central 
-    Q=1.05E+01,  V3=2.97E+02,              # peripheral
-    Kin=1, Kout=1, EC50=200)               # effects
-
-inits <- c(eff=1)
 
 ## Setup dosing event information
-ev <- eventTable(amount.units="mg", time.units="hours") %>%
-  add.dosing(dose=10000, nbr.doses=10, dosing.interval=12) %>%
-  add.dosing(dose=20000, nbr.doses=5, start.time=120,
-             dosing.interval=24) %>%
-  add.sampling(0:240);
+ev <- et(amountUnits="mg", timeUnits = "hours") %>%
+  et(amt=10000, addl=9, ii=12) %>%
+  et(amt=20000, addl=4, time=120, ii=24) %>%
+  et(0:240)
 
 
 ## Now solve
-x <- predict(mod1,theta, ev, inits)
-print(x)
-```
-or
+x <- predict(mod1, ev)
 
-```{r}
-x <- solve(mod1,theta, ev, inits)
-print(x)
-```
-
-Or with `mattigr`
-
-```{r}
-x <- mod1 %>% solve(theta, ev, inits)
-print(x)
+x
 ```
 
 ## rxode2 solved object properties
-
-
-
 
 ## Using the solved object as a simple data frame
 
@@ -66,13 +59,15 @@ The solved object acts as a `data.frame` or `tbl` that can be filtered
 by `dpylr`.  For example you could filter it easily.
 
 ```{r}
+
 library(dplyr)
 ## You can  drop units for comparisons and filtering
-x <- mod1 %>% solve(theta,ev,inits) %>%
-    drop_units %>% filter(time <= 3) %>% as.tbl
+x <- mod1 %>% solve(ev) %>%
+  drop_units() %>% filter(time <= 3) %>% as_tibble()
+
 ## or keep them and compare with the proper units.
-x <- mod1 %>% solve(theta,ev,inits) %>%
-    filter(time <= set_units(3, hr)) %>% as.tbl
+x <- mod1 %>% solve(ev) %>%
+    filter(time <= set_units(3, hr)) %>% as_tibble()
 x
 ```
 
@@ -85,29 +80,9 @@ time.
 First we need to recreate the original solved system:
 
 ```{r}
-x <- mod1 %>% solve(theta,ev,inits);
+x <- mod1 %>% solve(ev)
 print(x)
 ```
-## Modifying initial conditions
-
-To examine or change initial conditions, you can use the syntax
-`cmt.0`, `cmt0`, or `cmt_0`. In the case of the `eff` compartment
-defined by the model, this is:
-
-```{r}
-x$eff0
-```
-
-which shows the initial condition of the effect compartment.  If you
-wished to change this initial condition to 2, this can be done easily
-by:
-
-```{r}
-x$eff0 <- 2
-print(x)
-plot(x)
-```
-
 ## Modifying observation times for rxode2
 Notice that the initial effect is now `2`.
 
@@ -137,9 +112,6 @@ plot(x)
 ```
 
 
-You can access/change all the parameters, initialization(s) or events with
-the `$params`, `$inits`, `$events` accessor syntax, similar to what is
-used above.
+You can access/change all the parameters, initialization(s) or events with the `$params`, `$inits`, `$events` accessor syntax, similar to what is used above.
 
-This syntax makes it easy to update and explore the effect of various
-parameters on the solved object.
+This syntax makes it easy to update and explore the effect of various parameters on the solved object.

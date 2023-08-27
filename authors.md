@@ -22,11 +22,10 @@
  * Simon Frost -- thread safe C implementation of liblsoda
  * Kevin Ushey -- Original author of fast factor, modified by Matthew Filder
  * Yu Feng -- thread safe liblsoda
- * Matt Dowle -- forder primary author (version modified by Matthew Fidler to allow different type of threading and exclude grouping)
  * Cleve Moler -- LApack author
  * David Cooley -- Author of fast_factor which was modified and now is used RxODE to quickly create factors for IDs without sorting them like R does
  * Drew Schmidt -- Drew Schmidt author of edits for exponential matrix utility taken from R package expm
- * Arun Srinivasan -- forder secondary author (version modified by Matthew Fidler to allow different type of threading, indexing and exclude grouping)
+ * Matt Dowle & Arun Srinivasan -- data.table authors on which the openMp framework is based upon
  
 # RxODE acknowledgments:
 

@@ -27,9 +27,11 @@
 #'
 #' ## This example uses `rxnorm` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxnorm()
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxnorm()
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -68,9 +70,11 @@ rxnorm <- rxnormV
 #'
 #' ## This example uses `rxpois` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxpois(3)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxpois(3)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -97,7 +101,6 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' \donttest{
 #'
 #' ## Use threefry engine
-#'
 #' rxt(df = 3, n = 10) # with rxt you have to explicitly state n
 #' rxt(df = 3, n = 10, ncores = 2) # You can parallelize the simulation using openMP
 #'
@@ -106,13 +109,16 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxt` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxt(3)
-#' })
+#' rx <- function() {
+#'    model({
+#'     a <- rxt(3)
+#'    })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
 #' s <- rxSolve(rx, et)
+#' 
 #' }
 #' @export
 rxt <- function(df, n = 1L, ncores = 1L) {
@@ -144,9 +150,11 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxunif` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxunif(0, 3)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxunif(0, 3)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -187,9 +195,11 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxweibull` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxweibull(1, 3)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxweibull(1, 3)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -226,9 +236,11 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxgeom` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxgeom(0.24)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxgeom(0.24)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -267,9 +279,11 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxbeta` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxbeta(2, 2)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxbeta(2, 2)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -311,9 +325,11 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxbeta` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxgamma(2)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxgamma(2)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -331,7 +347,6 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
   rxSeedEng(ncores)
   .Call(`_rxode2_rxgamma_`, shape, rate, n, ncores)
 }
-
 
 #' Simulate F variable from threefry generator
 #'
@@ -355,9 +370,11 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxf` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxf(2, 2)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxf(2, 2)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -375,7 +392,6 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
   rxSeedEng(ncores)
   .Call(`_rxode2_rxf_`, df1, df2, n, ncores)
 }
-
 
 #' Simulate exponential variable from threefry generator
 #'
@@ -399,9 +415,11 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxexp` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxexp(2)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxexp(2)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -441,9 +459,11 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxchisq` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxchisq(2)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxchisq(2)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -482,9 +502,11 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxcauchy` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxcauchy(2)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxcauchy(2)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -562,9 +584,11 @@ rxord <- function(...) {
 #'
 #' ## This example uses `rxbinom` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxbinom(1, 0.5)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxbinom(1, 0.5)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:2)
 #'
@@ -606,20 +630,23 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'
 #' ## This example uses `rxbinom` directly in the model
 #'
-#' rx <- rxode2({
-#'   a <- rxnbinom(10, 0.5)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxnbinom(10, 0.5)
+#'   })
+#' }
 #'
 #' et <- et(1, id = 1:100)
 #'
 #' s <- rxSolve(rx, et)
 #'
-#' rx <- rxode2({
-#'   a <- rxnbinomMu(10, 40)
-#' })
+#' rx <- function() {
+#'   model({
+#'     a <- rxnbinomMu(10, 40)
+#'   })
+#' }
 #'
-#'  s <- rxSolve(rx, et)
-#'
+#' s <- rxSolve(rx, et)
 #' }
 #' @export
 rxnbinom <- function(size, prob, n = 1L, ncores = 1L) {
@@ -641,9 +668,6 @@ rxnbinomMu <- function(size, mu, n = 1L, ncores = 1L) {
   rxSeedEng(ncores)
   .Call(`_rxode2_rxnbinomMu_`, size, mu, n, ncores)
 }
-
-
-
 
 #' Simulate a from a Poisson process
 #'
@@ -715,4 +739,3 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
   }
   .Call(`_rxode2_rpp_`, n, lambda, gamma, prob, t0, tmax, randomOrder, PACKAGE = "rxode2")
 }
-

@@ -1,0 +1,182 @@
+Error model,Functional Form,Transformation,code,addProp ,lhs
+constant,,None,var ~ add(add.sd),,response variable
+proportional,,None,var ~ prop(prop.sd),,response variable
+power,,None,"var ~ pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,None,var ~ add(add.sd) + prop(prop.sd) + combined1(),addProp=1,response variable
+additive+proportional,combined2,None,var ~ add(add.sd) + prop(prop.sd) + combined2(),addProp=2,response variable
+additive+power,combined1,None,"var ~ add(add.sd) + pow(pow.sd, exponent) + combined1()",addProp=1,response variable
+additive+power,combined2,None,"var ~ add(add.sd) + pow(pow.sd, exponent) + combined2()",addProp=2,response variable
+constant,,log,var ~ lnorm(add.sd),,response variable
+proportional,,log,var ~ lnorm(NA) + prop(prop.sd),,response variable
+power,,log,"var ~ lnorm(NA) + pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,log,var ~ lnorm(add.sd) + prop(prop.sd) + combined1(),addProp=1,response variable
+additive+proportional,combined2,log,var ~ lnorm(add.sd) + prop(prop.sd) + combined2(),addProp=2,response variable
+additive+power,combined1,log,"var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined1()",addProp=1,response variable
+additive+power,combined2,log,"var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined2()",addProp=2,response variable
+constant,,boxCox,var ~ boxCox(lambda) + add(add.sd),,response variable
+proportional,,boxCox,var ~ boxCox(lambda) + prop(prop.sd),,response variable
+power,,boxCox,"var ~ boxCox(lambda) + pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,boxCox,var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined1(),addProp=1,response variable
+additive+proportional,combined2,boxCox,var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined2(),addProp=2,response variable
+additive+power,combined1,boxCox,"var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1()",addProp=1,response variable
+additive+power,combined2,boxCox,"var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2()",addProp=2,response variable
+constant,,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd),,response variable
+proportional,,yeoJohnson,var ~ yeoJohnson(lambda) + prop(prop.sd),,response variable
+power,,yeoJohnson,"var ~ yeoJohnson(lambda) + pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined1(),addProp=1,response variable
+additive+proportional,combined2,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined2(),addProp=2,response variable
+additive+power,combined1,yeoJohnson,"var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1()",addProp=1,response variable
+additive+power,combined2,yeoJohnson,"var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2()",addProp=2,response variable
+constant,,logit,var ~ logitNorm(logit.sd),,response variable
+proportional,,logit,var ~ logitNorm(NA) + prop(prop.sd),,response variable
+power,,logit,"var ~ logitNorm(NA) + pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,logit,var ~ logitNorm(logit.sd) + prop(prop.sd),addProp=1,response variable
+additive+proportional,combined2,logit,var ~ logitNorm(logit.sd) + prop(prop.sd),addProp=2,response variable
+additive+power,combined1,logit,"var ~ logitNorm(logit.sd) + pow(pow.sd, exponent)",addProp=1,response variable
+additive+power,combined2,logit,"var ~ logitNorm(logit.sd) + pow(pow.sd, exponent)",addProp=2,response variable
+additive ,,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd),,response variable
+proportional,,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd),,response variable
+power,,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd),addProp=1,response variable
+additive+proportional,combined2,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd),addProp=2,response variable
+additive+power,combined1,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)",addProp=1,response variable
+additive+power,combined2,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)",addProp=2,response variable
+constant,,logit,var ~ probitNorm(probit.sd),,response variable
+proportional,,probit,var ~ probitNorm(NA) + prop(prop.sd),,response variable
+power,,probit,"var ~ probitNorm(NA) + pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,probit,var ~ probitNorm(probit.sd) + prop(prop.sd) + combined1(),addProp=1,response variable
+additive+proportional,combined2,probit,var ~ probitNorm(probit.sd) + prop(prop.sd) + combined2(),addProp=2,response variable
+additive+power,combined1,probit,"var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1()",addProp=1,response variable
+additive+power,combined2,probit,"var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2()",addProp=2,response variable
+additive ,,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd),,response variable
+proportional,,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd),,response variable
+power,,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent)",,response variable
+additive+proportional,combined1,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined1(),addProp=1,response variable
+additive+proportional,combined2,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined2(),addProp=2,response variable
+additive+power,combined1,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1()",addProp=1,response variable
+additive+power,combined2,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2()",addProp=2,response variable
+constant+t,,None,var ~ add(add.sd) + dt(df),,response variable
+proportional+t,,None,var ~ prop(prop.sd) + dt(df),,response variable
+power+t,,None,"var ~ pow(pow.sd, exponent) + dt(df)",,response variable
+additive+proportional+t,combined1,None,var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined1(),addProp=1,response variable
+additive+proportional+t,combined2,None,var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,None,"var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined1()",addProp=1,response variable
+additive+power+t,combined2,None,"var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined2()",addProp=2,response variable
+constant+t,,log,var ~ lnorm(add.sd) + dt(df),,response variable
+proportional+t,,log,var ~ lnorm(NA) + prop(prop.sd) + dt(df),,response variable
+power+t,,log,"var ~ lnorm(NA) + pow(pow.sd, exponent) + dt(df)",,response variable
+additive+proportional+t,combined1,log,var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) +combined1(),addProp=1,response variable
+additive+proportional+t,combined2,log,var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,log,"var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined1()",addProp=1,response variable
+additive+power+t,combined2,log,"var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined2()",addProp=2,response variable
+constant+t,,boxCox,var ~ boxCox(lambda) + add(add.sd)+dt(df),,response variable
+proportional+t,,boxCox,var ~ boxCox(lambda) + prop(prop.sd)+dt(df),,response variable
+power+t,,boxCox,"var ~ boxCox(lambda) + pow(pow.sd, exponent)+dt(df)",,response variable
+additive+proportional+t,combined1,boxCox,var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1(),addProp=1,response variable
+additive+proportional+t,combined2,boxCox,var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,boxCox,"var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1()",addProp=1,response variable
+additive+power+t,combined2,boxCox,"var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2()",addProp=2,response variable
+constant+t,,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + dt(df),,response variable
+proportional+t,,yeoJohnson,var ~ yeoJohnson(lambda) + prop(prop.sd) + dt(df),,response variable
+power+t,,yeoJohnson,"var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dt(df)",,response variable
+additive+proportional+t,combined1,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1(),addProp=1,response variable
+additive+proportional+t,combined2,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,yeoJohnson,"var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1()",addProp=1,response variable
+additive+power+t,combined2,yeoJohnson,"var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2()",addProp=2,response variable
+constant+t,,logit,var ~ logitNorm(logit.sd)+dt(df),,response variable
+proportional+t,,logit,var ~ logitNorm(NA) + prop(prop.sd)+dt(df),,response variable
+power+t,,logit,"var ~ logitNorm(NA) + pow(pow.sd, exponent) + dt(df)",,response variable
+additive+proportional+t,combined1,logit,var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1(),addProp=1,response variable
+additive+proportional+t,combined2,logit,var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,logit,"var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()",addProp=1,response variable
+additive+power+t,combined2,logit,"var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2()",addProp=2,response variable
+additive+t,,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dt(df),,response variable
+proportional+t,,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dt(df),,response variable
+power+t,,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dt(df)",,response variable
+additive+proportional+t,combined1,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1(),addProp=1,response variable
+additive+proportional+t,combined2,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()",addProp=1,response variable
+additive+power+t,combined2,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2()",addProp=2,response variable
+constant+t,,logit,var ~ probitNorm(probit.sd) + dt(df),,response variable
+proportional+t,,probit,var ~ probitNorm(NA) + prop(prop.sd) + dt(df),,response variable
+power+t,,probit,"var ~ probitNorm(NA) + pow(pow.sd, exponent) + dt(df)",,response variable
+additive+proportional+t,combined1,probit,var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1(),addProp=1,response variable
+additive+proportional+t,combined2,probit,var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,probit,"var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()",addProp=1,response variable
+additive+power+t,combined2,probit,"var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined2()",addProp=2,response variable
+additive+t,,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dt(df),,response variable
+proportional+t,,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dt(df),,response variable
+power+t,,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dt(df)",,response variable
+additive+proportional+t,combined1,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1(),addProp=1,response variable
+additive+proportional+t,combined2,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2(),addProp=2,response variable
+additive+power+t,combined1,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()",addProp=1,response variable
+additive+power+t,combined2,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) +combined2()",addProp=2,response variable
+constant+cauchy,,None,var ~ add(add.sd) + dcauchy(),,response variable
+proportional+cauchy,,None,var ~ prop(prop.sd) + dcauchy(),,response variable
+power+cauchy,,None,"var ~ pow(pow.sd, exponent) + dcauchy()",,response variable
+additive+proportional+cauchy,combined1,None,var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,None,var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,None,"var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,None,"var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined2()",addProp=2,response variable
+constant+cauchy,,log,var ~ lnorm(add.sd) + dcauchy(),,response variable
+proportional+cauchy,,log,var ~ lnorm(NA) + prop(prop.sd) + dcauchy(),,response variable
+power+cauchy,,log,"var ~ lnorm(NA) + pow(pow.sd, exponent) + dcauchy()",,response variable
+additive+proportional+cauchy,combined1,log,var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() +combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,log,var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,log,"var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,log,"var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()",addProp=2,response variable
+constant+cauchy,,boxCox,var ~ boxCox(lambda) + add(add.sd)+dcauchy(),,response variable
+proportional+cauchy,,boxCox,var ~ boxCox(lambda) + prop(prop.sd)+dcauchy(),,response variable
+power+cauchy,,boxCox,"var ~ boxCox(lambda) + pow(pow.sd, exponent)+dcauchy()",,response variable
+additive+proportional+cauchy,combined1,boxCox,var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,boxCox,var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,boxCox,"var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,boxCox,"var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2()",addProp=2,response variable
+constant+cauchy,,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + dcauchy(),,response variable
+proportional+cauchy,,yeoJohnson,var ~ yeoJohnson(lambda) + prop(prop.sd) + dcauchy(),,response variable
+power+cauchy,,yeoJohnson,"var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dcauchy()",,response variable
+additive+proportional+cauchy,combined1,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,yeoJohnson,var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,yeoJohnson,"var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,yeoJohnson,"var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2()",addProp=2,response variable
+constant+cauchy,,logit,var ~ logitNorm(logit.sd)+dcauchy(),,response variable
+proportional+cauchy,,logit,var ~ logitNorm(NA) + prop(prop.sd)+dcauchy(),,response variable
+power+cauchy,,logit,"var ~ logitNorm(NA) + pow(pow.sd, exponent) + dcauchy()",,response variable
+additive+proportional+cauchy,combined1,logit,var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,logit,var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,logit,"var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,logit,"var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()",addProp=2,response variable
+additive+cauchy,,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dcauchy(),,response variable
+proportional+cauchy,,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dcauchy(),,response variable
+power+cauchy,,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dcauchy()",,response variable
+additive+proportional+cauchy,combined1,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,yeoJohnson(logit()),var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,yeoJohnson(logit()),"var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()",addProp=2,response variable
+constant+cauchy,,logit,var ~ probitNorm(probit.sd) + dcauchy(),,response variable
+proportional+cauchy,,probit,var ~ probitNorm(NA) + prop(prop.sd) + dcauchy(),,response variable
+power+cauchy,,probit,"var ~ probitNorm(NA) + pow(pow.sd, exponent) + dcauchy()",,response variable
+additive+proportional+cauchy,combined1,probit,var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,probit,var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,probit,"var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,probit,"var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()",addProp=2,response variable
+additive+cauchy,,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dcauchy(),,response variable
+proportional+cauchy,,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dcauchy(),,response variable
+power+cauchy,,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dcauchy()",,response variable
+additive+proportional+cauchy,combined1,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1(),addProp=1,response variable
+additive+proportional+cauchy,combined2,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
+additive+power+cauchy,combined1,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
+additive+power+cauchy,combined2,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2()",addProp=2,response variable
+poission,,none,cmt ~ dpois(lamba),,compartment specification
+binomial,,none,"cmt ~ dbinom(n, p)",,compartment specification
+beta,,none,"cmt ~ dbeta(alpha, beta)",,compartment specification
+chisq,,none,cmt ~ dchisq(nu),,compartment specification
+exponential,,none,cmt ~ dexp(r),,compartment specification
+uniform,,none,"cmt ~ dunif(a, b)",,compartment specification
+weibull,,none,"cmt ~ dweibull(a, b)",,compartment specification
+gamma,,none,"cmt ~ dgamma(a, b)",,compartment specification
+geometric,,none,cmt ~ dgeom(a),,compartment specification
+negative binomial form #1,,none,"cmt ~ dnbinom(n, p)",,compartment specification
+negative binomial form #2,,none,"cmt ~ dnbinomMu(size, mu)",,compartment specification
+ordinal probability,,none,"cmt ~ c(p0=0, p1=1, p2=2, 3)",,compartment specification
+log-likelihood,,none,ll(cmt) ~ log likelihood expression,,likelihood + compartment expression

@@ -28,8 +28,6 @@
 #'     vector must be the same as the state variables (e.g., PK/PD
 #'     compartments);
 #'
-#' @inheritParams odeMethodToInt
-#'
 #' @param sigdig Specifies the "significant digits" that the ode
 #'   solving requests.  When specified this controls the relative and
 #'   absolute tolerances of the ODE solvers.  By default the tolerance
@@ -575,8 +573,16 @@
 #'   though it won't hurt anything if you do (just may take up more
 #'   memory for larger allocations).
 #'
+#' @inheritParams odeMethodToInt
+#'
+#'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
+#'
+#' @param ss2cancelAllPending When `TRUE` the `SS=2` event type
+#'   cancels all pending doses like `SS=1`.  When `FALSE` the pending
+#'   doses not canceled with `SS=2` (the infusions started before
+#'   `SS=2` occurred are canceled, though).
 #'
 #' @param naTimeHandle Determines what time of handling happens when
 #'   the time becomes `NA`: current options are:
@@ -699,7 +705,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     simVariability=NA,
                     nLlikAlloc=NULL,
                     useStdPow=FALSE,
-                    naTimeHandle=c("ignore", "warn", "error")) {
+                    naTimeHandle=c("ignore", "warn", "error"),
+                    addlKeepsCov=FALSE,
+                    addlDropSs=TRUE,
+                    ssAtDoseTime=TRUE,
+                    ss2cancelAllPending=FALSE) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -962,6 +972,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       checkmate::assertIntegerish(useStdPow, lower=0, upper=1, len=1, any.missing=FALSE)
     }
+    checkmate::assertLogical(addlKeepsCov, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(addlDropSs, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(ssAtDoseTime, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(ss2cancelAllPending, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .zeros <- .xtra$.zeros
@@ -1093,6 +1107,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       nLlikAlloc=nLlikAlloc,
       useStdPow=useStdPow,
       naTimeHandle=naTimeHandle,
+      addlKeepsCov=addlKeepsCov,
+      addlDropSs=addlDropSs,
+      ssAtDoseTime=ssAtDoseTime,
+      ss2cancelAllPending=ss2cancelAllPending,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1127,6 +1145,19 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
   if (is.null(params)) {
     params <- object$theta
+  } else if (inherits(params, "data.frame")) {
+    .theta <- object$theta
+    params <- as.data.frame(params)
+    for (.t in names(.theta)) {
+      if (!any(names(params) == .t)) {
+        params[[.t]] <- .theta[.t]
+      }
+    }
+  } else if (inherits(params, "numeric")) {
+    .theta <- object$theta
+    .n <- names(.theta)
+    .theta <- .theta[!(.n %in% names(params))]
+    params <- c(params, .theta)
   }
 
   if (is.null(.rxControl$thetaLower)) {
@@ -1136,13 +1167,18 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .rxControl$thetaUpper <- object$thetaUpper
   }
   if (is.null(.rxControl$omega)) {
-    .rxControl$omega <- object$omega
+    .omega <- object$omega
+    .rxControl$omega <- .omega
   } else if (is.logical(.rxControl$omega)) {
     if (is.na(.rxControl$omega)) {
       .omega <- object$omega
       params <- c(params, setNames(rep(0, dim(.omega)[1]), dimnames(.omega)[[2]]))
       .rxControl$omega <- NULL
     }
+  }
+  if (inherits(.rxControl$omega, "matrix") &&
+        all(dim(.rxControl$omega) == c(0,0))) {
+    .rxControl$omega <- NULL
   }
   if (is.null(.rxControl$sigma)) {
     .rxControl$sigma <- object$simulationSigma
@@ -1155,7 +1191,15 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .rxControl$sigma <- NULL
     }
   }
-  .rx <- object$simulationModel
+  if (inherits(.rxControl$sigma, "matrix") &&
+        all(dim(.rxControl$sigma) == c(0,0))) {
+    .rxControl$sigma <- NULL
+  }
+  if (inherits(object, "rxode2tos")) {
+    .rx <- object
+  } else {
+    .rx <- object$simulationModel
+  }
   list(list(object=.rx, params = params, events = events, inits = inits),
                        .rxControl,
                        list(theta = theta, eta = eta))
@@ -1165,28 +1209,37 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL) {
-  object <- rxUiDecompress(object)
+  if (inherits(object, "rxUi")) {
+    object <- rxUiDecompress(object)
+  }
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .lst <- do.call("c", .lst)
   .pred <- FALSE
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
     .pred <- TRUE
-    .lst$drop <- c(.lst$drop, "ipredSim")
+    if (any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
+      .lst$drop <- c(.lst$drop, "ipredSim")      
+    }
   }
-  .ret <- do.call("rxSolve", .lst)
+  .ret <- do.call("rxSolve.default", .lst)
   if (.pred) {
     .e <- attr(class(.ret), ".rxode2.env")
     .w <- which(names(.ret) == "sim")
-    names(.ret)[.w] <- "pred"
-    # don't break rxSolve, though maybe it should...
-    if (is.environment(.e)) {
-      .n2 <- .e$.check.names
-      .n2[.w] <- "pred"
-      .e$.check.names <- .n2
+    if (length(.w) == 1L) {
+      names(.ret)[.w] <- "pred"
+      # don't break rxSolve, though maybe it should...
+      if (is.environment(.e)) {
+        .n2 <- .e$.check.names
+        .n2[.w] <- "pred"
+        .e$.check.names <- .n2
+      }
     }
   }
   .ret
 }
+#' @rdname rxSolve
+#' @export
+rxSolve.rxode2tos <- rxSolve.rxUi
 
 
 #nlmixr2.nlmixr2FitData <- nlmixr2.nlmixr2FitCore
@@ -1515,6 +1568,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .rx <- rxNorm(object)
     qs::qsave(list(.rx, .ctl, .nms, .xtra, params, events, inits, .setupOnly), file.path(rxTempDir(), "last-rxode2.qs"))
   }
+  if (inherits(object, "function") ||
+        inherits(object, "rxUi")) {
+    .lst <- c(list(object, params = params, events = events, inits = inits),
+              .ctl)
+
+    return(do.call(rxSolve, .lst))
+  }
   if (!any(class(object) %in% c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll"))) {
     stop("Unsupported type of model trying to be solved")
   }
@@ -1666,6 +1726,18 @@ predict.rxode2 <- function(object, ...) {
 
 #' @rdname rxSolve
 #' @export
+predict.function <- function(object, ...) {
+  rxSolve(object, ...)
+}
+
+#' @rdname rxSolve
+#' @export
+predict.rxUi <- function(object, ...) {
+  rxSolve(object, ...)
+}
+
+#' @rdname rxSolve
+#' @export
 predict.rxSolve <- predict.rxode2
 
 #' @rdname rxSolve
@@ -1745,6 +1817,7 @@ solve.rxEt <- solve.rxSolve
 
 #' @export
 `$.rxSolve` <- function(obj, arg, exact = FALSE) {
+  if (arg == "rxModelVars") return(rxModelVars(obj))
   return(.Call(`_rxode2_rxSolveGet`, obj, arg, exact))
 }
 

@@ -24,7 +24,8 @@ extern "C" {
   _rxode2_convertId_type _rxode2parse__convertId_;
 
   typedef SEXP (*_rxode2_etTransParse_type)(SEXP, SEXP, SEXP, SEXP, SEXP,
-                                            SEXP, SEXP, SEXP);
+                                            SEXP, SEXP, SEXP, SEXP, SEXP,
+                                            SEXP);
   _rxode2_etTransParse_type _rxode2_etTransParseP;
 
   typedef SEXP (*_rxode2_chin_type)(SEXP, SEXP);

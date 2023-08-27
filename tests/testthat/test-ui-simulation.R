@@ -143,9 +143,20 @@ rxTest({
       })
     }
 
-    tmp <- rxode2(f)
+     tmp <- rxode2(f)
 
-    expect_error(tmp$simulationModel, NA)
+     expect_error(tmp$simulationModel, NA)
+     expect_error(tmp$simulationIniModel, NA)
+
+     tmp1 <- tmp$simulationModel
+
+     tmp2 <- tmp$simulationIniModel
+
+     expect_true(inherits(as.function(tmp1), "function"))
+     expect_true(inherits(as.function(tmp2), "function"))
+
+     expect_true(inherits(as.rxUi(tmp1), "rxUi"))
+     expect_true(inherits(as.rxUi(tmp2), "rxUi"))
 
     ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) %>%
       et(seq(0.1, 24 * 8, by=12), cmt=1) %>%
@@ -154,8 +165,27 @@ rxTest({
       dplyr::as_tibble()
 
     rxWithSeed(42, {
-
       s <- rxSolve(tmp, ev,
+                   returnType="tibble", addCov=TRUE)
+
+      s <- s %>% dplyr::filter(CMT == 2)
+      expect_equal(length(as.numeric(table(s$sim))), 2)
+
+      expect_equal(sort(unique(s$sim)), c(1, 2))
+    })
+
+    rxWithSeed(42, {
+      s <- rxSolve(tmp1, ev,
+                   returnType="tibble", addCov=TRUE)
+
+      s <- s %>% dplyr::filter(CMT == 2)
+      expect_equal(length(as.numeric(table(s$sim))), 2)
+
+      expect_equal(sort(unique(s$sim)), c(1, 2))
+    })
+
+    rxWithSeed(42, {
+      s <- rxSolve(tmp2, ev,
                    returnType="tibble", addCov=TRUE)
 
       s <- s %>% dplyr::filter(CMT == 2)
@@ -803,5 +833,34 @@ rxTest({
       expect_error(rxSolve(tmp, ev,
                            returnType="tibble", addCov=TRUE), NA)
     })
+  })
+
+  test_that("model without params() works",{
+
+    mod <- function() {
+      model({
+        ## Table 3 from Savic 2007
+        cl = 17.2 # (L/hr)
+        vc = 45.1 # L
+        ka = 0.38 # 1/hr
+        mtt = 0.37 # hr
+        bio=1
+        n = 20.1
+        k = cl/vc
+        ktr = (n+1)/mtt
+        ## note that lgammafn is the same as lgamma in R.
+        d/dt(depot) = exp(log(bio*podo(depot))+log(ktr)+n*log(ktr*tad(depot))-
+                            ktr*tad(depot)-lgammafn(n+1))-ka*depot
+        d/dt(cen) = ka*depot-k*cen
+      })
+    }
+
+    mod <- mod()
+
+    expect_error(mod$simulationModel, NA)
+    expect_error(mod$simulationIniModel, NA)
+    expect_error(mod$symengineModelNoPrune, NA)
+    expect_error(mod$symengineModelPrune, NA)
+
   })
 })

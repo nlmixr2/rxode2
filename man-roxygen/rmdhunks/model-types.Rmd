@@ -3,17 +3,19 @@
 Prediction only models are simple to create.  You use the rxode2 syntax
 without any ODE systems in them.  A very simple example is a one-compartment model.
 
-```{r}
+```{r predOnlyModel}
 library(rxode2)
-mod <- rxode2({
-    ipre <- 10 * exp(-ke * t);
-})
-mod
+
+mod <- function(){
+  model({
+    ipre <- 10 * exp(-ke * t)
+  })
+}
 ```
 
 Solving the rxode2 models are the same as saving the simple ODE system, but faster of course.
 
-```{r}
+```{r predOnlyModelSolve}
 et  <- et(seq(0,24,length.out=50))
 cmt1 <- rxSolve(mod,et,params=c(ke=0.5))
 cmt1
@@ -33,7 +35,7 @@ and clearances. Clearances are specified by NONMEM-style names of
 Peripheral/Tissue (`VP`, `VT`).  While more translations are
 available, some example translations are below:
 
-```{r, echo=FALSE}
+```{r clLinCmt, echo=FALSE}
 clLinCmt <- read.csv("../../vignettes/cl-lincmt.csv")
 if (knitr::is_latex_output()) {
   library(kableExtra)
@@ -45,12 +47,11 @@ if (knitr::is_latex_output()) {
 }
 ```
 
-
 Another popular parameterization is in terms of micro-constants. rxode2
 assumes compartment `1` is the central compartment.  The elimination
 constant would be specified by `K`, `Ke` or `Kel`. Some example translations are below:
 
-```{r, echo=FALSE}
+```{r kelLinCmt, echo=FALSE}
 kelLinCmt <- read.csv("../../vignettes/kel-lincmt.csv");
 if (knitr::is_latex_output()) {
   kbl(kelLinCmt, longtable=TRUE, booktabs=TRUE, caption="Kel Based linCmt() parameterizations") %>%
@@ -63,7 +64,7 @@ if (knitr::is_latex_output()) {
 The last parameterization possible is using `alpha` and `V` and/or
 `A`/`B`/`C`. Some example translations are below:
 
-```{r, echo=FALSE}
+```{r alphaLinCmt, echo=FALSE}
 alphaLinCmt <- read.csv("../../vignettes/alpha-lincmt.csv");
 if (knitr::is_latex_output()) {
   kbl(alphaLinCmt, longtable=TRUE, booktabs=TRUE, caption="alpha Based linCmt() parameterizations") %>%
@@ -90,22 +91,25 @@ These compartments take the same sort of events that a ODE model can
 take, and are discussed in the [rxode2 events
 vignette](rxode2-events.html). 
 
-```{r}
-mod <- rxode2({
-    ke <- 0.5
+```{r modLinCmtExample}
+mod <- function() {
+  ini({
+    kel <- 0.5
     V <- 1
-    ipre <- linCmt();
-})
-mod
+  })
+  model({
+    ipre <- linCmt(V, kel)
+  })
+}
 ```
 
 This then acts as an ODE model; You specify a dose to the depot
 compartment and then solve the system:
 
-```{r}
+```{r modLinCmtEt}
 et  <- et(amt=10,time=0,cmt=depot) %>%
-    et(seq(0,24,length.out=50))
-cmt1 <- rxSolve(mod,et,params=c(ke=0.5))
+  et(seq(0,24,length.out=50))
+cmt1 <- rxSolve(mod,et)
 cmt1
 ```
 
@@ -117,17 +121,19 @@ In addition to pure ODEs, you may mix solved systems and ODEs.  The
 prior 2-compartment indirect response model can be simplified with a
 `linCmt()` function:
 
-```{r}
+```{r modMixedLinOde}
 library(rxode2)
 ## Setup example model
-mod1 <-rxode2({
-    C2 = centr/V2;
-    C3 = peri/V3;
-    d/dt(depot) =-KA*depot;
-    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3;
-    d/dt(peri)  =                    Q*C2 - Q*C3;
-    d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff;
-});
+mod1 <-function() {
+  model({
+    C2 = centr/V2
+    C3 = peri/V3
+    d/dt(depot) =-KA*depot
+    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)  =                    Q*C2 - Q*C3
+    d/dt(eff)  = Kin - Kout*(1-C2/(EC50+C2))*eff
+  })
+}
 
 ## Seup parameters and initial conditions
 
@@ -136,22 +142,24 @@ theta <-
       Q=1.05E+01,  V3=2.97E+02,              # peripheral
       Kin=1, Kout=1, EC50=200)               # effects
 
-inits <- c(eff=1);
+inits <- c(eff=1)
 
 ## Setup dosing event information
-ev <- eventTable(amount.units="mg", time.units="hours") %>%
-    add.dosing(dose=10000, nbr.doses=10, dosing.interval=12) %>%
-    add.dosing(dose=20000, nbr.doses=5, start.time=120,dosing.interval=24) %>%
-    add.sampling(0:240);
+ev <- et(amountUnits="mg", timeUnits="hours") %>%
+    et(amt=10000, addl=9, ii=12) %>%
+    et(amt=20000, addl=4, time=120, ii=24) %>%
+    add.sampling(0:240)
 
 ## Setup a mixed solved/ode system:
-mod2 <- rxode2({
+mod2 <- function() {
+  model({
     ## the order of variables do not matter, the type of compartmental
     ## model is determined by the parameters specified.
     C2   = linCmt(KA, CL, V2, Q, V3);
     eff(0) = 1  ## This specifies that the effect compartment starts at 1.
     d/dt(eff) =  Kin - Kout*(1-C2/(EC50+C2))*eff;
-})
+  })
+}
 ```
 
 
@@ -172,26 +180,27 @@ depot is compartment #2.
 This compartment model requires a new event table since the
 compartment number changed:
 
-```{r}
-ev <- eventTable(amount.units='mg', time.units='hours') %>%
-    add.dosing(dose=10000, nbr.doses=10, dosing.interval=12,dosing.to=2) %>%
-    add.dosing(dose=20000, nbr.doses=5, start.time=120,dosing.interval=24,dosing.to=2) %>%
-    add.sampling(0:240);
+```{r modMixedLinOdeET}
+ev <- et(amountUnits='mg', timeUnits='hours') %>%
+  et(amt=10000, addl=9, ii=12, cmt=2) %>%
+  et(amt=20000, addl=4, time=120, ii=24, cmt=2) %>%
+  et(0:240)
 ```
 
 This can be solved with the following command:
 
-```{r}
+```{r modMixedLinOdeSovle}
 x <- mod2 %>%  solve(theta, ev)
 print(x)
 ```
 
 Note this solving did not require specifying the effect compartment
-initial condition to be `1`.  Rather, this is already pre-specified by `eff(0)=1`.
+initial condition to be `1`.  Rather, this is already pre-specified by
+`eff(0)=1`.
 
 This can be solved for different initial conditions easily:
 
-```{r}
+```{r modMixedLinOdeIni}
 x <- mod2 %>%  solve(theta, ev,c(eff=2))
 print(x)
 ```
@@ -203,22 +212,28 @@ system.
 
 
 ```{r}
-mod3 <- rxode2({
-    KA=2.94E-01;
-    CL=1.86E+01;
-    V2=4.02E+01;
-    Q=1.05E+01;
-    V3=2.97E+02;
-    Kin=1;
-    Kout=1;
-    EC50=200;
-    ## The linCmt() picks up the variables from above
-    C2   = linCmt();
-    eff(0) = 1  ## This specifies that the effect compartment starts at 1.
-    d/dt(eff) =  Kin - Kout*(1-C2/(EC50+C2))*eff;
-})
+mod3 <- function() {
+  ini({
+    KA <- 2.94E-01
+    CL <- 1.86E+01
+    V2 <- 4.02E+01
+    Q <- 1.05E+01
+    V3 <- 2.97E+02
+    Kin <- 1
+    Kout <- 1
+    EC50 <- 200
+  })
+  model({
+    # Since the parameters are in the ini block, put them in linCmt so
+    # that the model is detected correctly
+    C2   <- linCmt(KA, CL, V2, Q, V3)
+    eff(0) <- 1  ## This specifies that the effect compartment starts at 1.
+    d/dt(eff) <-  Kin - Kout*(1-C2/(EC50+C2))*eff;
+  })
+}
 
 x <- mod3 %>%  solve(ev)
+
 print(x)
 ```
 

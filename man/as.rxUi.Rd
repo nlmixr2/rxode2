@@ -3,6 +3,7 @@
 \name{as.rxUi}
 \alias{as.rxUi}
 \alias{as.rxUi.rxode2}
+\alias{as.rxUi.rxode2tos}
 \alias{as.rxUi.rxModelVars}
 \alias{as.rxUi.function}
 \alias{as.rxUi.rxUi}
@@ -12,6 +13,8 @@
 as.rxUi(x)
 
 \method{as.rxUi}{rxode2}(x)
+
+\method{as.rxUi}{rxode2tos}(x)
 
 \method{as.rxUi}{rxModelVars}(x)
 

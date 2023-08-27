@@ -70,19 +70,22 @@ rxnbinomMu(40, 40, n=10)
 
 ## This example uses `rxbinom` directly in the model
 
-rx <- rxode2({
-  a <- rxnbinom(10, 0.5)
-})
+rx <- function() {
+  model({
+    a <- rxnbinom(10, 0.5)
+  })
+}
 
 et <- et(1, id = 1:100)
 
 s <- rxSolve(rx, et)
 
-rx <- rxode2({
-  a <- rxnbinomMu(10, 40)
-})
+rx <- function() {
+  model({
+    a <- rxnbinomMu(10, 40)
+  })
+}
 
- s <- rxSolve(rx, et)
-
+s <- rxSolve(rx, et)
 }
 }

@@ -61,9 +61,11 @@ rxgamma(1)
 
 ## This example uses `rxbeta` directly in the model
 
-rx <- rxode2({
-  a <- rxgamma(2)
-})
+rx <- function() {
+  model({
+    a <- rxgamma(2)
+  })
+}
 
 et <- et(1, id = 1:2)
 

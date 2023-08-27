@@ -37,7 +37,6 @@ if (Sys.getenv("rxode2_derivs") == "TRUE") {
 
 
 genDefine <- function() {
-
   .n <- gsub("[.]","_",names(rxControl()))
   sink(devtools::package_file("inst/include/rxode2_control.h"))
   cat("#pragma once\n")

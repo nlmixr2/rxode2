@@ -37,11 +37,13 @@ et  <- et(seq(0.001, 1, length.out=10))
 et$shape <- 1
 et$scale <- 10
  
-model <- rxode2({
-  fx <- llikWeibull(time, shape, scale)
-  dShape<- llikWeibullDshape(time, shape, scale)
-  dScale <- llikWeibullDscale(time, shape, scale)
-})
+model <- function() {
+  model({
+    fx <- llikWeibull(time, shape, scale)
+    dShape<- llikWeibullDshape(time, shape, scale)
+    dScale <- llikWeibullDscale(time, shape, scale)
+  })
+}
 
 rxSolve(model, et)
 }

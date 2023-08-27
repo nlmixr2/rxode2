@@ -75,7 +75,7 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .errNum <- line[[3]]
-  .err <- str2lang(paste0("err.", pred1$var))
+  .err <- str2lang(paste0("rxerr.", pred1$var))
   .ret <- vector("list", 2)
   .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
   .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
@@ -208,7 +208,7 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .predDf <- get("predDf", .x)
   .sigmaNames <- vapply(seq_along(.predDf$var), function(i) {
     if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
-      paste0("err.", .predDf$var[i])
+      paste0("rxerr.", .predDf$var[i])
     } else {
       ""
     }
@@ -220,14 +220,53 @@ rxUiGet.simulationSigma <- function(x, ...) {
 }
 attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
 
+.simulationModelAssignTOS <- function(ui, ret) {
+  assign("theta", ui$theta, envir=ret)
+  assign("omega", ui$omega, envir=ret)
+  assign("simulationSigma", ui$simulationSigma, envir=ret)
+  assign("uiFun", as.function(ui), envir=ret)
+  class(ret) <- c("rxode2tos", "rxode2")
+  ret
+}
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.simulationModel <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  eval(getBaseSimModel(.x))
+  .simulationModelAssignTOS(.x, eval(getBaseSimModel(.x)))
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.symengineModelNoPrune <- function(x, ...) {
+  .x <- x[[1]]
+  .exact <- x[[2]]
+  .simulationModelAssignTOS(.x, eval(getBaseSymengineModel(.x)))
+}
+attr(rxUiGet.symengineModelNoPrune, "desc") <- "symengine model without pruning if/else from UI"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.symengineModelPrune <- function(x, ...) {
+  .x <- x[[1]]
+  .tmp <- getBaseSymengineModel(.x)
+  .tmp[[1]] <- quote(`rxModelVars`)
+  .tmp <- eval(.tmp)
+  .tmp <- rxode2(rxPrune(.tmp))
+  .simulationModelAssignTOS(.x, .tmp) 
+}
+attr(rxUiGet.symengineModelPrune, "desc") <- "symengine model with pruning if/else from UI"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.simulationIniModel <- function(x, ...) {
+  .x <- x[[1]]
+  .exact <- x[[2]]
+  .simulationModelAssignTOS(.x, eval(getBaseIniSimModel(.x)))
+}
+attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini values prepended (from UI)"
 
 .rxModelNoErrorLines <- function(uiModel, prefixLines=NULL, paramsLine=NULL,
                                  modelVars=FALSE, cmtLines=TRUE,
@@ -309,25 +348,25 @@ attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 #' \donttest{
 #'
 #' one.cmt <- function() {
-#'    ini({
-#'      ## You may label each parameter with a comment
-#'      tka <- 0.45 # Log Ka
-#'      tcl <- log(c(0, 2.7, 100)) # Log Cl
-#'      ## This works with interactive models
-#'      ## You may also label the preceding line with label("label text")
-#'      tv <- 3.45; label("log V")
-#'      ## the label("Label name") works with all models
-#'      eta.ka ~ 0.6
-#'      eta.cl ~ 0.3
-#'      eta.v ~ 0.1
-#'      add.sd <- 0.7
-#'    })
-#'    model({
-#'      ka <- exp(tka + eta.ka)
-#'      cl <- exp(tcl + eta.cl)
-#'      v <- exp(tv + eta.v)
-#'      linCmt() ~ add(add.sd)
-#'    })
+#'   ini({
+#'     ## You may label each parameter with a comment
+#'     tka <- 0.45 # Log Ka
+#'     tcl <- log(c(0, 2.7, 100)) # Log Cl
+#'     ## This works with interactive models
+#'     ## You may also label the preceding line with label("label text")
+#'     tv <- 3.45; label("log V")
+#'     ## the label("Label name") works with all models
+#'     eta.ka ~ 0.6
+#'     eta.cl ~ 0.3
+#'     eta.v ~ 0.1
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka + eta.ka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv + eta.v)
+#'     linCmt() ~ add(add.sd)
+#'   })
 #' }
 #'
 #' f <- rxode2(one.cmt)
@@ -466,7 +505,8 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
       .curErr <- errLines[[.curErrLine]]
       if (.if) {
         .ret[[.k]] <- as.call(list(quote(`if`),
-                                   as.call(list(quote(`==`), quote(`CMT`), as.numeric(.predDf$cmt[.curErrLine]))),
+                                   as.call(list(quote(`==`), quote(`CMT`),
+                                                as.numeric(.predDf$cmt[.curErrLine]))),
                                    as.call(c(list(quote(`{`)), .curErr))))
         .k <- .k + 1
       } else {

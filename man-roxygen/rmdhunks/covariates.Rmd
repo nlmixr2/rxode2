@@ -4,31 +4,47 @@ If there is an individual covariate you wish to solve for you may specify it by 
 
 ```{r individual-covariates}
 library(rxode2)
+
 library(units)
 library(xgxr)
 
-mod3 <- rxode2({
-    KA=2.94E-01;
+mod3 <- function() {
+  ini({
+    TKA   <- 2.94E-01
     ## Clearance with individuals
-    CL=1.86E+01 * (WT / 70) ^ 0.75;
-    V2=4.02E+01;
-    Q=1.05E+01;
-    V3=2.97E+02;
-    Kin=1;
-    Kout=1;
-    EC50=200;
-    ## The linCmt() picks up the variables from above
-    C2   = linCmt();
-    Tz= 8
-    amp=0.1
-    eff(0) = 1  ## This specifies that the effect compartment starts at 1.
-    d/dt(eff) =  Kin - Kout*(1-C2/(EC50+C2))*eff;
-})
+    TCL   <- 1.86E+01 
+    TV2   <-4.02E+01
+    TQ    <-1.05E+01
+    TV3   <-2.97E+02
+    TKin  <- 1
+    TKout <- 1
+    TEC50 <-200
+  })
+  model({
+    KA            <- TKA
+    CL            <- TCL * (WT / 70) ^ 0.75
+    V2            <- TV2
+    Q             <- TQ
+    V3            <- TV3
+    Kin           <- TKin
+    Kout          <- TKout
+    EC50          <- TEC50
+    Tz            <- 8
+    amp           <- 0.1
+    C2            <- central/V2
+    C3            <- peri/V3
+    d/dt(depot)   <- -KA*depot
+    d/dt(central) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri)    <-                    Q*C2 - Q*C3
+    d/dt(eff)     <-  Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0)        <- 1  ## This specifies that the effect compartment starts at 1.
+  })
+}
 
 ev <- et(amount.units="mg", time.units="hours") %>%
-    et(amt=10000, cmt=1) %>%
-    et(0,48,length.out=100) %>%
-    et(id=1:4);
+  et(amt=10000, cmt=1) %>%
+  et(0,48,length.out=100) %>%
+  et(id=1:4)
 
 set.seed(10)
 rxSetSeed(10)
@@ -65,41 +81,28 @@ already discussed, we have:
 library(rxode2)
 library(units)
 
-mod3 <- rxode2({
-    KA=2.94E-01;
-    CL=1.86E+01;
-    V2=4.02E+01;
-    Q=1.05E+01;
-    V3=2.97E+02;
-    Kin0=1;
-    Kout=1;
-    EC50=200;
-    ## The linCmt() picks up the variables from above
-    C2   = linCmt();
-    Tz= 8
-    amp=0.1
-    eff(0) = 1  ## This specifies that the effect compartment starts at 1.
-    ## Kin changes based on time of day (like cortosol)
-    Kin =   Kin0 +amp *cos(2*pi*(ctime-Tz)/24)
-    d/dt(eff) =  Kin - Kout*(1-C2/(EC50+C2))*eff;
-})
-
-
-ev <- eventTable(amount.units="mg", time.units="hours") %>%
-    add.dosing(dose=10000, nbr.doses=1, dosing.to=1) %>%
-    add.sampling(seq(0,48,length.out=100));
+mod4 <- mod3 %>%
+  model(d/dt(eff) <-  Kin - Kout*(1-C2/(EC50+C2))*eff) %>%
+  model(-Kin) %>%
+  model(Kin <- TKin + amp *cos(2*pi*(ctime-Tz)/24), append=C2, cov="ctime")
+ 
+ev <- et(amountUnits="mg", timeUnits="hours") %>%
+    et(amt=10000, cmt=1) %>%
+    et(0,48,length.out=100)
 
 
 ## Create data frame of 8 am dosing for the first dose This is done
 ## with base R but it can be done with dplyr or data.table
 ev$ctime <- (ev$time+set_units(8,hr)) %% 24
+ev$WT <- 70
+
 ```
 
 Now there is a covariate present in the event dataset, the system can
 be solved by combining the dataset and the model:
 
 ```{r}
-r1 <- solve(mod3, ev, covsInterpolation="linear")
+r1 <- solve(mod4, ev, covsInterpolation="linear")
 print(r1)
 ```
 
@@ -128,7 +131,7 @@ equivalent to R's `approxfun` with `method="constant"`.
 
 
 ```{r}
-r1 <- solve(mod3, ev,covsInterpolation="locf")
+r1 <- solve(mod4, ev,covsInterpolation="locf")
 print(r1)
 ```
 
@@ -148,7 +151,7 @@ You can also use NONMEM's preferred interpolation style of next
 observation carried backward (NOCB):
 
 ```{r}
-r1 <- solve(mod3, ev,covsInterpolation="nocb")
+r1 <- solve(mod4, ev,covsInterpolation="nocb")
 print(r1)
 ```
 

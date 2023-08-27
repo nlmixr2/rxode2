@@ -1,20 +1,21 @@
-
 #' @export
 #' @rdname model
-model.function <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
+model.function <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(rxode2(x))
   if (length(.modelLines) == 0) return(.ret$modelFun)
-  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
+  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto,
+                         cov=cov, envir=envir)
 }
 
 #' @export
 #' @rdname model
-model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
+model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   if (length(.modelLines) == 0) return(.ret$modelFun)
-  .ret <- .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
+  .ret <- .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto,
+                                 cov=cov, envir=envir)
   # need to adjust since the model function was from a rxui object
   .x <- rxUiDecompress(x)
   .ret <- rxUiDecompress(.ret)
@@ -29,12 +30,13 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
 
 #' @export
 #' @rdname model
-model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, envir=parent.frame()) {
+model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   x <- as.function(x)
   .ret <- rxUiDecompress(rxode2(x))
   if (length(.modelLines) == 0) return(.ret$modelFun)
-  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto, envir=envir)
+  .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto,
+                         cov=cov, envir=envir)
 }
 
 #' @export
@@ -51,10 +53,13 @@ model.rxModelVars <- model.rxode2
 #' @return New UI
 #' @author Matthew L. Fidler
 #' @export
-.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, auto=TRUE, envir) {
+.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, auto=TRUE,
+                                   cov=NULL, envir) {
   checkmate::assertLogical(modifyIni, any.missing=FALSE, len=1)
   ## checkmate::assertLogical(append, any.missing=TRUE, len=1)
   checkmate::assertLogical(auto, any.missing=TRUE, len=1)
+  checkmate::assertCharacter(cov, pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", null.ok=TRUE)
+  .varSelect$cov <- cov
   .doAppend <- FALSE
   rxui <- rxUiDecompress(rxui)
   if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
@@ -640,18 +645,44 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
   invisible()
 }
 
-.thetamodelVars <- rex::rex(or("tv", "t", "pop", "POP", "Pop", "TV", "T", "cov", "err", "eff"))
-.thetaModelReg <- rex::rex(or(
-  group(start, .thetamodelVars),
-  group(.thetamodelVars, end)))
+.varSelect <- new.env(parent=emptyenv())
+#' Set the variables for the model piping automatic covarite selection
+#'
+#' @param thetamodelVars This is the prefixes for the theta model
+#'   variables in a regular expression
+#' @param covariateExceptions This is a regular expression of
+#'   covariates that should always be covariates
+#' @param etaParts This is the list of eta prefixes/post-fixes that
+#'   identify a variable as a between subject variability
+#' @return Nothing, called for side effects
+#' @export
+#' @author Matthew L. Fidler
+#' @details
+#'
+#' This is called once at startup to set the defaults, though you can
+#' change this if you wish so that piping can work differently for
+#' your individual setup
+#'
+rxSetPipingAuto <- function(thetamodelVars=rex::rex(or("tv", "t", "pop", "POP", "Pop",
+                                                     "TV", "T", "cov", "err", "eff")),
+                          covariateExceptions = rex::rex(start, or("wt", "sex", "crcl"), end),
+                          etaParts=c("eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv",
+                                     "bsv", "Bsv", "BSV","bpv", "Bpv", "BPV", "psv", "PSV",
+                                     "Psv")
+                          ) {
+  .varSelect$thetamodelVars <- thetamodelVars
+  .varSelect$thetaModelReg <- rex::rex(or(
+    group(start, thetamodelVars),
+    group(thetamodelVars, end)))
+  .varSelect$covariateExceptions <- covariateExceptions
+  .varSelect$etaParts <- etaParts
+  .varSelect$etaModelReg <- rex::rex(or(group(start, or(etaParts)),
+                                        group(or(etaParts), end)))
+  .varSelect$covariateNames <- NULL
+  .varSelect$cov <- NULL
+}
 
-.covariateExceptions <- rex::rex(start, or("wt", "sex", "crcl"), end)
-
-.etaParts <- c(
-  "eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv", "bsv", "Bsv", "BSV",
-  "bpv", "Bpv", "BPV", "psv", "PSV", "Psv")
-
-.etaModelReg <- rex::rex(or(group(start, or(.etaParts)), group(or(.etaParts), end)))
+rxSetPipingAuto()
 
 .rxIniDfTemplate <-
   data.frame(
@@ -669,9 +700,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
     err = NA_character_
   )
 
-.covariteNames <- NULL
 #' Assign covariates for piping
-#'
 #'
 #' @param covariates NULL (for no covariates), or the list of
 #'   covariates. nlmixr uses this function to set covariates if you
@@ -732,7 +761,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
   if (!is.null(covariates)) {
     checkmate::assertCharacter(covariates, any.missing=FALSE, unique=TRUE)
   }
-  assignInMyNamespace(".covariteNames", covariates)
+  .varSelect$covariateNames <-  covariates
 }
 #' Add a single variable from the initialization data frame
 #'
@@ -753,6 +782,28 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
 #' @author Matthew L. Fidler
 #' @noRd
 .addVariableToIniDf <- function(var, rxui, toEta=NA, value=1, promote=FALSE) {
+  if (var %in% c("pi", "M_E", "M_E", "E", "M_PI", "M_PI_2",
+                 "M_PI_4", "M_1_PI", "M_2_PI", "M_2PI", "M_SQRT_PI",
+                 "M_2_SQRTPI", "M_1_SQRT_2PI", "M_SQRT2", "M_SQRT_3",
+                 "M_SQRT_32", "M_SQRT_2dPI", "M_LN_SQRT_PI",
+                 "M_LN_SQRT_2PI", "M_LN_SQRT_PId2", "M_LOG10_2",
+                 "M_LOG2E", "M_LOG10E", "M_LN2", "M_LN10")) {
+    return(invisible())
+  }
+  if (!is.null(.varSelect$cov)) {
+    if (var %in% .varSelect$cov) {
+      if (rxode2.verbose.pipe) {
+        .minfo(paste0("add covariate {.code ", var, "} (as requested by cov option)"))
+      }
+      return(invisible())
+    }
+  }
+  .mv <- rxModelVars(rxui)
+  .ini <- .mv$ini
+  .ini <- .ini[which(!is.na(.ini))]
+  if (var %in% names(.ini)) {
+    return(invisible())
+  }
   .iniDf <- rxui$iniDf
   .isEta <- TRUE
   checkmate::assertLogical(toEta, len=1)
@@ -771,7 +822,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
   }
   checkmate::assertLogical(promote, len=1)
   if (is.na(toEta)) {
-    .isEta <- (regexpr(.etaModelReg, var)  != -1)
+    .isEta <- (regexpr(.varSelect$etaModelReg, var)  != -1)
   } else  {
     .isEta <- toEta
   }
@@ -807,13 +858,15 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
   } else {
     if (is.na(promote)) {
     } else if (!promote) {
-      if (regexpr(.covariateExceptions, tolower(var)) != -1 || regexpr(.thetaModelReg, var, perl=TRUE) == -1) {
+      if (regexpr(.varSelect$covariateExceptions, tolower(var)) != -1 ||
+            regexpr(.varSelect$thetaModelReg, var, perl=TRUE) == -1) {
         if (rxode2.verbose.pipe) {
           .minfo(paste0("add covariate {.code ", var, "}"))
         }
         return(invisible())
-      } else if (!is.null(.covariteNames)) {
-        if (var %in% .covariteNames) {
+      }
+      if (!is.null(.varSelect$covariateNames)) {
+        if (var %in% .varSelect$covariateNames) {
           if (rxode2.verbose.pipe) {
             .minfo(paste0("add covariate {.code ", var, "} (known covariate)"))
           }

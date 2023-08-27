@@ -39,10 +39,12 @@ et <- et(46:54)
 et$size <- 100
 et$mu <- 40
 
-model <- rxode2({
-  fx <- llikNbinomMu(time, size, mu)
-  dProb <- llikNbinomMuDmu(time, size, mu)
-})
+model <- function() {
+  model({
+    fx <- llikNbinomMu(time, size, mu)
+    dProb <- llikNbinomMuDmu(time, size, mu)
+  })
+}
 
 rxSolve(model, et)
 }

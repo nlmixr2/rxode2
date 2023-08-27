@@ -1,4 +1,5 @@
 ## nocov start
+
 .rxodeBuildCode <- function() {
   # This builds the code needed for rxode2
   # generate control
@@ -16,6 +17,50 @@
               overwrite=TRUE)
     .createRxUiBlessedList()
   })
+  message("generate rxResidualError and update documentation")
+  rxResidualError <- read.csv(devtools::package_file("inst/residualErrors.csv"),
+                              check.names=FALSE)
+  usethis::use_data(rxResidualError, overwrite = TRUE)
+  .l <- readLines(devtools::package_file("R/rxResidualError.R"))
+  .l <- sub("[#][']\\s*@format\\s*.*",
+            sprintf("#' @format A data frame with %d columns and %d rows",
+                    dim(rxResidualError)[2], dim(rxResidualError)[1]), .l)
+  .R <- file(devtools::package_file("R/rxResidualError.R"), "wb")
+  writeLines(.l, .R)
+  close(.R)
+  message("done")
+  message("generate rxReservedKeywords and update documentation")
+  rxReservedKeywords <- read.csv(devtools::package_file("inst/reserved-keywords.csv"))
+  names(rxReservedKeywords)[1] <- "Reserved Name"
+  usethis::use_data(rxReservedKeywords, overwrite=TRUE)
+  .l <- readLines(devtools::package_file("R/rxReservedKeywords.R"))
+  .l <- sub("[#][']\\s*@format\\s*.*",
+            sprintf("#' @format A data frame with %d columns and %d rows",
+                    dim(rxReservedKeywords)[2], dim(rxReservedKeywords)[1]), .l)
+  .R <- file(devtools::package_file("R/rxReservedKeywords.R"), "wb")
+  writeLines(.l, .R)
+  close(.R)
+  message("generate rxSyntaxFunctions and update documentation")
+  rxSyntaxFunctions <- read.csv(devtools::package_file("inst/syntax-functions.csv"))
+  usethis::use_data(rxSyntaxFunctions, overwrite=TRUE)
+  .l <- readLines(devtools::package_file("R/rxSyntaxFunctions.R"))
+  .l <- sub("[#][']\\s*@format\\s*.*",
+            sprintf("#' @format A data frame with %d columns and %d rows",
+                    dim(rxSyntaxFunctions)[2], dim(rxSyntaxFunctions)[1]), .l)
+  .R <- file(devtools::package_file("R/rxSyntaxFunctions.R"), "wb")
+  writeLines(.l, .R)
+  close(.R)
+  message("done")
+  message("generate rxode2_control.h")
+  .n <- gsub("[.]","_",names(rxControl()))
+  sink(devtools::package_file("inst/include/rxode2_control.h"))
+  cat("#pragma once\n")
+  cat("#ifndef __rxode2_control_H__\n#define __rxode2_control_H__\n")
+  cat('#include <rxode2parse_control.h>\n')
+  cat(paste(paste0("#define ", "Rxc_", .n, " ", seq_along(.n)-1),collapse="\n"))
+  cat("\n#endif // __rxode2_control_H__\n")
+  sink()
+  message("done")
   return(invisible(""))
 }
 #' This creates the list of "blessed" rxode2 items

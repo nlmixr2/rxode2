@@ -4,11 +4,14 @@
 \alias{rxSolve}
 \alias{rxSolve.function}
 \alias{rxSolve.rxUi}
+\alias{rxSolve.rxode2tos}
 \alias{rxSolve.nlmixr2FitData}
 \alias{rxSolve.nlmixr2FitCore}
 \alias{rxSolve.default}
 \alias{update.rxSolve}
 \alias{predict.rxode2}
+\alias{predict.function}
+\alias{predict.rxUi}
 \alias{predict.rxSolve}
 \alias{predict.rxEt}
 \alias{predict.rxParams}
@@ -126,7 +129,11 @@ rxSolve(
   simVariability = NA,
   nLlikAlloc = NULL,
   useStdPow = FALSE,
-  naTimeHandle = c("ignore", "warn", "error")
+  naTimeHandle = c("ignore", "warn", "error"),
+  addlKeepsCov = FALSE,
+  addlDropSs = TRUE,
+  ssAtDoseTime = TRUE,
+  ss2cancelAllPending = FALSE
 )
 
 \method{rxSolve}{`function`}(
@@ -140,6 +147,16 @@ rxSolve(
 )
 
 \method{rxSolve}{rxUi}(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL
+)
+
+\method{rxSolve}{rxode2tos}(
   object,
   params = NULL,
   events = NULL,
@@ -182,6 +199,10 @@ rxSolve(
 \method{update}{rxSolve}(object, ...)
 
 \method{predict}{rxode2}(object, ...)
+
+\method{predict}{`function`}(object, ...)
+
+\method{predict}{rxUi}(object, ...)
 
 \method{predict}{rxSolve}(object, ...)
 
@@ -764,6 +785,11 @@ solve, but continues solving passing through the \code{NA} time
 \item \code{error} this will stop this solve if this is not a parallel
 solved ODE (otherwise stopping can crash R)
 }}
+
+\item{ss2cancelAllPending}{When \code{TRUE} the \code{SS=2} event type
+cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
+doses not canceled with \code{SS=2} (the infusions started before
+\code{SS=2} occurred are canceled, though).}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in
