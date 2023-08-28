@@ -671,7 +671,7 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
   rx_solving_options *op = &op_global;
   // Reset times for infusion
   int doSort = 1;
-  double *time = ind->timeThread;
+  double *time =  new double[ind->n_all_times];//ind->timeThread;
   ind->ixds = 0;
   ind->curShift = 0;
   for (int i = 0; i < ind->n_all_times; i++) {
@@ -702,6 +702,7 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
            return timea < timeb;
          });
   }
+  delete[] time;
 }
 
 extern "C" int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
