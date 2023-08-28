@@ -8,9 +8,10 @@ the `theo_sd` data frame
 
 ```{r}
 library(rxode2)
+library(nlmixr2data)
 
 ## Load data from nlmixr
-d <- nlmixr2data::theo_sd
+d <- theo_sd
 
 ## Create rxode2 model
 theo <- function() {

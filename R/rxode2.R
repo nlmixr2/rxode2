@@ -96,7 +96,7 @@ NA_LOGICAL <- NA # nolint
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
 #' @includeRmd man/rmdhunks/rxode2-syntax-hunk.Rmd
-#'
+#' 
 #' @return An object (environment) of class `rxode2` (see Chambers and Temple Lang (2001))
 #'      consisting of the following list of strings and functions:
 #'

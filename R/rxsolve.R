@@ -575,7 +575,6 @@
 #'
 #' @inheritParams odeMethodToInt
 #'
-#'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
@@ -583,6 +582,18 @@
 #'   cancels all pending doses like `SS=1`.  When `FALSE` the pending
 #'   doses not canceled with `SS=2` (the infusions started before
 #'   `SS=2` occurred are canceled, though).
+#'
+#' @param addlKeepsCov This determines if the additional dosing items
+#'   repeats the dose only (`FALSE`) or keeps the covariates at the
+#'   record of the dose (`TRUE`)
+#'
+#' @param addlDropSs When there are steady state doses with an `addl`
+#'   specification the steady state flag is dropped with repeated
+#'   doses (when `TRUE`) or retained (when `FALSE`)
+#'
+#' @param ssAtDoseTime Boolean that when `TRUE` back calculates the
+#'   steady concentration at the actual time of dose, otherwise when
+#'   `FALSE` the doses are shifted
 #'
 #' @param naTimeHandle Determines what time of handling happens when
 #'   the time becomes `NA`: current options are:

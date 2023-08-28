@@ -327,7 +327,7 @@ compilation model.
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 
-## rxode2 2.0.13.9000 model named rx_432644d77dc17016c1fcff8262805db9 model (ready). 
+## rxode2 2.0.13.9000 model named rx_dbd9d9052eeef81ccd5e07cc7df253d2 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -340,7 +340,7 @@ mod$simulationIniModel
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 
-## rxode2 2.0.13.9000 model named rx_fba807e1806f96b2f83b9d09b3319981 model (ready). 
+## rxode2 2.0.13.9000 model named rx_bd7124e0e4de9b93afb333b63054f58d model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -683,11 +683,11 @@ For normal and related distributions, you can apply the transformation
 on both sides by using some keywords/functions to apply these
 transformations.\tabular{ll}{
    Transformation \tab rxode2/nlmixr2 code \cr
-   Box-Cox \tab \code{+coxBox(lambda)} \cr
-   Yeo-Johnson \tab \code{+yeoJohnson(lambda)} \cr
-   logit-normal \tab \code{+logitNorm(logit.sd, low, hi)} \cr
-   probit-normal \tab \code{+probitNorm(probid.sd, low, hi)} \cr
-   log-normal \tab \code{+lnorm(lnorm.sd)} \cr
+   Box-Cox \tab +boxCox(lambda) \cr
+   Yeo-Johnson \tab +yeoJohnson(lambda) \cr
+   logit-normal \tab +logitNorm(logit.sd, low, hi) \cr
+   probit-normal \tab +probitNorm(probid.sd, low, hi) \cr
+   log-normal \tab +lnorm(lnorm.sd) \cr
 }
 
 
@@ -710,40 +710,12 @@ transformation.
 For the normal and t-related distributions, we wanted to keep the
 ability to use skewed distributions additive and proportional in the
 t/cauchy-space, so these distributions are specified differently in
-comparison to the other supported distributions within \code{nlmixr2}:\if{html}{\out{
-<table style="width:97%;">
-<colgroup>
-<col style="width: 34%" />
-<col style="width: 23%" />
-<col style="width: 38%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th>Distribution</th>
-<th>How to Add</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Normal (log-likelihood)</td>
-<td><code>+dnorm()</code></td>
-<td><code>cp~add(add.sd)+dnorm()</code></td>
-</tr>
-<tr class="even">
-<td>T-distribuion</td>
-<td><code>+dt(df)</code></td>
-<td><code>cp~add(add.sd)+dt(df)</code></td>
-</tr>
-<tr class="odd">
-<td>Cauchy<br />
-(t with df=1)</td>
-<td><code>+dcauchy()</code></td>
-<td><code>cp~add(add.sd)+dcauchy()</code></td>
-</tr>
-</tbody>
-</table>
-}}
+comparison to the other supported distributions within \code{nlmixr2}:\tabular{lll}{
+   Distribution \tab How to Add \tab Example \cr
+   Normal (log-likelihood) \tab +dnorm() \tab cc ~ add(add.sd) + dnorm() \cr
+   T-distribution \tab +dt(df) \tab cc ~a dd(add.sd) + dt(df) \cr
+   Cauchy (t with df=1) \tab +dcauchy() \tab cc ~ add(add.sd) + dcauchy() \cr
+}
 
 
 Note that with the normal and t-related distributions \code{nlmixr2} will
@@ -767,16 +739,12 @@ differences in naming).
 The first, \strong{combined1}, assumes that the additive and proportional
 differences are on the standard deviation scale, or:
 
-[
-y=f+(a+b\times f^c)\times\varepsilon
-]
+y=f+(a+b* f^c)*err
 
 The second, \strong{combined2}, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-[
-y=f+\left(\sqrt{a^2+b^2\times f^{2c}}\right)\times\varepsilon
-]
+y=f+[sqrt(a^2+b^2 *f^(2c))]*err
 
 The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 \strong{combined2} since it mirrors how adding 2 normal distributions in

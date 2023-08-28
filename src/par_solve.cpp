@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <time.h>
 #include <R.h>
-#include <string>
 #include <Rinternals.h>
+#include <string>
 #include <Rmath.h> //Rmath includes math.
 #include <R_ext/Rdynload.h>
 #include "../inst/include/rxode2.h"

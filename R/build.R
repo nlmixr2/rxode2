@@ -18,7 +18,7 @@
     .createRxUiBlessedList()
   })
   message("generate rxResidualError and update documentation")
-  rxResidualError <- read.csv(devtools::package_file("inst/residualErrors.csv"),
+  rxResidualError <- utils::read.csv(devtools::package_file("inst/residualErrors.csv"),
                               check.names=FALSE)
   usethis::use_data(rxResidualError, overwrite = TRUE)
   .l <- readLines(devtools::package_file("R/rxResidualError.R"))
@@ -30,7 +30,7 @@
   close(.R)
   message("done")
   message("generate rxReservedKeywords and update documentation")
-  rxReservedKeywords <- read.csv(devtools::package_file("inst/reserved-keywords.csv"))
+  rxReservedKeywords <- utils::read.csv(devtools::package_file("inst/reserved-keywords.csv"))
   names(rxReservedKeywords)[1] <- "Reserved Name"
   usethis::use_data(rxReservedKeywords, overwrite=TRUE)
   .l <- readLines(devtools::package_file("R/rxReservedKeywords.R"))
@@ -41,7 +41,7 @@
   writeLines(.l, .R)
   close(.R)
   message("generate rxSyntaxFunctions and update documentation")
-  rxSyntaxFunctions <- read.csv(devtools::package_file("inst/syntax-functions.csv"))
+  rxSyntaxFunctions <- utils::read.csv(devtools::package_file("inst/syntax-functions.csv"))
   usethis::use_data(rxSyntaxFunctions, overwrite=TRUE)
   .l <- readLines(devtools::package_file("R/rxSyntaxFunctions.R"))
   .l <- sub("[#][']\\s*@format\\s*.*",

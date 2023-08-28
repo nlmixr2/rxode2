@@ -33,8 +33,6 @@ describes the communication of variables between `R` and the
 ```{r child='../man/rmdhunks/rxode2-syntax-hunk.Rmd'}
 ```
 
-
-
 ## Bugs and/or deficiencies
 
 - The modulo operator `%%` is currently unsupported. 

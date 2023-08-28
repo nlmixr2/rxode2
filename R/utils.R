@@ -762,8 +762,9 @@ is.latex <- function() {
 .rxDocTable <- function(table, caption="none") {
   rxReq("knitr")
   if (knitr::is_latex_output()) {
+    rxReq("kableExtra")
     kableExtra::kbl(table, longtable=TRUE, booktabs=TRUE, caption=caption) %>%
-      kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
+      kableExtra::kable_styling(latex_options=c("repeat_header", "striped", "hold_position"))
   } else if (knitr::is_html_output(excludes = "gfm")) {
     rxReq("DT")
     DT::datatable(table, rownames = FALSE, filter="top",  options=list(pageLength = 5, scrollX=TRUE))

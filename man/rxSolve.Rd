@@ -786,6 +786,18 @@ solve, but continues solving passing through the \code{NA} time
 solved ODE (otherwise stopping can crash R)
 }}
 
+\item{addlKeepsCov}{This determines if the additional dosing items
+repeats the dose only (\code{FALSE}) or keeps the covariates at the
+record of the dose (\code{TRUE})}
+
+\item{addlDropSs}{When there are steady state doses with an \code{addl}
+specification the steady state flag is dropped with repeated
+doses (when \code{TRUE}) or retained (when \code{FALSE})}
+
+\item{ssAtDoseTime}{Boolean that when \code{TRUE} back calculates the
+steady concentration at the actual time of dose, otherwise when
+\code{FALSE} the doses are shifted}
+
 \item{ss2cancelAllPending}{When \code{TRUE} the \code{SS=2} event type
 cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
 doses not canceled with \code{SS=2} (the infusions started before
