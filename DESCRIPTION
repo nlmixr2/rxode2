@@ -69,7 +69,8 @@ Suggests:
     devtools,
     patchwork,
     nlmixr2data,
-    lifecycle
+    lifecycle,
+    kableExtra
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),

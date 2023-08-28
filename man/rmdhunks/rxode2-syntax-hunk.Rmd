@@ -217,19 +217,15 @@ For normal and related distributions, you can apply the transformation
 on both sides by using some keywords/functions to apply these
 transformations.
 
-+-------------------------+--------------------------------------------+
-| Transformation          | rxode2/nlmixr2 code                        |
-+=========================+============================================+
-| Box-Cox                 | `+coxBox(lambda)`                          |
-+-------------------------+--------------------------------------------+
-| Yeo-Johnson             | `+yeoJohnson(lambda)`                      |
-+-------------------------+--------------------------------------------+
-| logit-normal            | `+logitNorm(logit.sd, low, hi)`            |
-+-------------------------+--------------------------------------------+
-| probit-normal           | `+probitNorm(probid.sd, low, hi)`          |
-+-------------------------+--------------------------------------------+
-| log-normal              | `+lnorm(lnorm.sd)`                         |
-+-------------------------+--------------------------------------------+
+```{r transformationCode, echo=FALSE, screenshot.force=FALSE}
+.rxDocTable(dplyr::tribble(~"Transformation", ~"rxode2/nlmixr2 code",
+                           "Box-Cox", "+boxCox(lambda)",
+                           "Yeo-Johnson", "+yeoJohnson(lambda)",
+                           "logit-normal", "+logitNorm(logit.sd, low, hi)",
+                           "probit-normal", "+probitNorm(probid.sd, low, hi)",
+                           "log-normal","+lnorm(lnorm.sd)"),
+            caption="rxode2/nlmixr2 normal/t/cauchy transformations")
+```
 
 By default for the likelihood for all of these transformations is
 calculated on the **untransformed** scale.
@@ -251,17 +247,14 @@ ability to use skewed distributions additive and proportional in the
 t/cauchy-space, so these distributions are specified differently in
 comparison to the other supported distributions within `nlmixr2`:
 
-+------------------------+----------------+---------------------------+
-| Distribution           | How to Add     | Example                   |
-+========================+================+===========================+
-| Normal                 | `+dnorm()`     | `cp~add(add.sd)+dnorm()`  |
-| (log-likelihood)       |                |                           |
-+------------------------+----------------+---------------------------+
-| T-distribuion          | `+dt(df)`      | `cp~add(add.sd)+dt(df)`   |
-+------------------------+----------------+---------------------------+
-| Cauchy\                | `+dcauchy()`   | `                         |
-| (t with df=1)          |                | cp~add(add.sd)+dcauchy()` |
-+------------------------+----------------+---------------------------+
+```{r llikTable, echo=FALSE, screenshot.force=FALSE}
+.rxDocTable(dplyr::tribble(
+  ~"Distribution", ~"How to Add", ~"Example",
+  "Normal (log-likelihood)", "+dnorm()", "cc ~ add(add.sd) + dnorm()",
+  "T-distribution", "+dt(df)", "cc ~a dd(add.sd) + dt(df)",
+  "Cauchy (t with df=1)", "+dcauchy()", "cc ~ add(add.sd) + dcauchy()"),
+            caption="rxode2/nlmixr2 normal/t/cauchy log-liklihood specification")
+```
 
 Note that with the normal and t-related distributions `nlmixr2` will
 calculate `cwres` and `npde` under the normal assumption to help assess
@@ -283,16 +276,12 @@ differences in naming).
 The first, **combined1**, assumes that the additive and proportional
 differences are on the standard deviation scale, or:
 
-$$
-y=f+(a+b\times f^c)\times\varepsilon
-$$
+y=f+(a+b* f^c)*err
 
 The second, **combined2**, assumes that the additive and proportional
 differences are combined on a variance scale:
 
-$$
-y=f+\left(\sqrt{a^2+b^2\times f^{2c}}\right)\times\varepsilon
-$$
+y=f+\[sqrt(a^2+b^2 *f^(2c))\]*err
 
 The default in `nlmixr2`/`rxode2` if not otherwise specified is
 **combined2** since it mirrors how adding 2 normal distributions in
