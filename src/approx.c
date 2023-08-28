@@ -183,9 +183,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   int idx = idxIn;
   rx_solving_options *op = rx->op;
   // handle extra dose, and out of bounds idx values
-  if (idx < 0 && ind->extraDoseN[0] == 0) {
-    idx = 0;
-  } else if (idx < 0) {
+  if (idx < 0 && ind->extraDoseN[0] > 0) {
     if (-1-idx >= ind->extraDoseN[0]) {
       // Get the last dose index for the extra doses
       idx = -1-ind->extraDoseTimeIdx[ind->extraDoseN[0]-1];
@@ -222,8 +220,11 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
         idx = i;
       }
     }
-  } else if (idx >= ind->n_all_times) {
+  }
+  if (idx >= ind->n_all_times) {
     idx = ind->n_all_times-1;
+  } else if (idx < 0) {
+    idx = 0;
   }
   ind->_update_par_ptr_in = 1;
   if (ISNA(t)) {
