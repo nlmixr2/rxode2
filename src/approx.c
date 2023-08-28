@@ -97,7 +97,7 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
       if (ISNA(ret)){
         // Still not found go forward.
         i = idx;
-        while (ISNA(ret) && i != ind->n_all_times){
+        while (ISNA(ret) && i != ind->n_all_times-1){
           i++; ret = y[ind->ix[i]];
         }
       }
