@@ -181,30 +181,38 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   ind = &(rx->subjects[id]);
   if (ind->_update_par_ptr_in) return;
   int idx = idxIn;
-  if (idx < 0) {
+  rx_solving_options *op = rx->op;
+  // handle extra dose, and out of bounds idx values
+  if (idx < 0 && ind->extraDoseN[0] == 0) {
+    idx = 0;
+  } else if (idx < 0) {
+    if (-1-idx >= ind->extraDoseN[0]) {
+      // Get the last dose index for the extra doses
+      idx = -1-ind->extraDoseTimeIdx[ind->extraDoseN[0]-1];
+    }
     // extra dose time, find the closest index
     double v = getAllTimes(ind, idxIn);
-    int i, j, ij, n = n->n_all_times;
+    int i, j, ij, n = ind->n_all_times;
     i = 0;
     j = n - 1;
-    if (v < getTime(ind, i)) {
+    if (v < getTime(i, ind)) {
       idx = i;
-    } else if (v > getTime(ind, j)) {
+    } else if (v > getTime(j, ind)) {
       idx = j;
     } else {
       /* find the correct interval by bisection */
       while(i < j - 1) { /* T(i) <= v <= T(j) */
         ij = (i + j)/2; /* i+1 <= ij <= j-1 */
-        if (v < getTime(ind, ij)) {
+        if (v < getTime(ij, ind)) {
           j = ij;
         } else  {
           i = ij;
         }
       }
       // Pick best match
-      if (v == getTime(ind, j)) {
+      if (v == getTime(j, ind)) {
         idx = j;
-      } else if (v == getTime(ind, i)) {
+      } else if (v == getTime(i, ind)) {
         idx = i;
       } else if (op->is_locf == 2) {
         // nocb
@@ -214,11 +222,13 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
         idx = i;
       }
     }
+  } else if (idx >= ind->n_all_times) {
+    idx = ind->n_all_times-1;
   }
   ind->_update_par_ptr_in = 1;
   if (ISNA(t)) {
     // functional lag, rate, duration, mtime
-    rx_solving_options *op = rx->op;
+
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
@@ -247,7 +257,6 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
       }
     }
   } else {
-    rx_solving_options *op = rx->op;
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
