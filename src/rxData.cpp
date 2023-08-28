@@ -1357,7 +1357,6 @@ struct rx_globals {
   double **extraDoseDose    = NULL;
   int     *extraDoseN       = NULL;
   int     *extraDoseAllocN  = NULL;
-
 };
 
 
