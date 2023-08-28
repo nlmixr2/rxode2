@@ -183,7 +183,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   int idx = idxIn;
   if (idx < 0) {
     // extra dose time, find the closest index
-    double v = getTime(ind, idxIn);
+    double v = getAllTimes(ind, idxIn);
     int i, j, ij, n = n->n_all_times;
     i = 0;
     j = n - 1;
