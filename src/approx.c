@@ -97,7 +97,7 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
       if (ISNA(ret)){
         // Still not found go forward.
         i = idx;
-        while (ISNA(ret) && i != ind->n_all_times){
+        while (ISNA(ret) && i != ind->n_all_times-1){
           i++; ret = y[ind->ix[i]];
         }
       }
@@ -175,25 +175,72 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   return ind->par_ptr[parNo];
 }
 
-void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
+void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) Rf_errorcall(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
   if (ind->_update_par_ptr_in) return;
+  int idx = idxIn;
+  rx_solving_options *op = rx->op;
+  // handle extra dose, and out of bounds idx values
+  if (idx < 0 && ind->extraDoseN[0] > 0) {
+    if (-1-idx >= ind->extraDoseN[0]) {
+      // Get the last dose index for the extra doses
+      idx = -1-ind->extraDoseTimeIdx[ind->extraDoseN[0]-1];
+    }
+    // extra dose time, find the closest index
+    double v = getAllTimes(ind, idxIn);
+    int i, j, ij, n = ind->n_all_times;
+    i = 0;
+    j = n - 1;
+    if (v < getTime(i, ind)) {
+      idx = i;
+    } else if (v > getTime(j, ind)) {
+      idx = j;
+    } else {
+      /* find the correct interval by bisection */
+      while(i < j - 1) { /* T(i) <= v <= T(j) */
+        ij = (i + j)/2; /* i+1 <= ij <= j-1 */
+        if (v < getTime(ij, ind)) {
+          j = ij;
+        } else  {
+          i = ij;
+        }
+      }
+      // Pick best match
+      if (v == getTime(j, ind)) {
+        idx = j;
+      } else if (v == getTime(i, ind)) {
+        idx = i;
+      } else if (op->is_locf == 2) {
+        // nocb
+        idx = j;
+      }  else {
+        // locf
+        idx = i;
+      }
+    }
+  }
+  if (idx >= ind->n_all_times) {
+    idx = ind->n_all_times-1;
+  } else if (idx < 0) {
+    idx = 0;
+  }
   ind->_update_par_ptr_in = 1;
   if (ISNA(t)) {
     // functional lag, rate, duration, mtime
-    rx_solving_options *op = rx->op;
+
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
+    indSample = ind;
     if (op->do_par_cov) {
       for (k = ncov; k--;) {
         if (op->par_cov[k]) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = (int)rxodeUnif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
+              ind->cov_sample[k] = round(rxodeUnif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
@@ -212,7 +259,6 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
       }
     }
   } else {
-    rx_solving_options *op = rx->op;
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
