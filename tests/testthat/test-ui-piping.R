@@ -1924,9 +1924,9 @@ test_that("test ui appending of derived variables like `sim` can work", {
   
   one.compartment <- function() {
     ini({
-      tka <- 0.45 ; label("Log Ka")
-      tcl <- 1 ; label("Log Cl")
-      tv <- 3.45 ; label("Log V")
+      tka <- 0.45
+      tcl <- 1 
+      tv <- 3.45 
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -1945,6 +1945,6 @@ test_that("test ui appending of derived variables like `sim` can work", {
 
   f <- rxode2(one.compartment)
 
-  expect_error(model(f$simulationModel, {sim2=sim+1}, append=sim), NA)
+  expect_error(model(f$simulationModel, sim2=sim+1, append=sim), NA)
   
 })

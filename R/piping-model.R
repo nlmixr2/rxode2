@@ -33,7 +33,7 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.f
 model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   x <- as.function(x)
-  .ret <- rxUiDecompress(rxode2(x))
+  .ret <- suppressMessages(rxUiDecompress(rxode2(x)))
   if (length(.modelLines) == 0) return(.ret$modelFun)
   .modelHandleModelLines(.modelLines, .ret, modifyIni=FALSE, append=append, auto=auto,
                          cov=cov, envir=envir)
@@ -80,7 +80,7 @@ model.rxModelVars <- model.rxode2
           class(.asFunctionEnv$rx) <- "rxode2"
           .fun <- suppressMessages(as.function(.asFunctionEnv$rx))
           class(.asFunctionEnv$rx) <- .cls
-          rxui <- as.rxUi(.fun)
+          rxui <- suppressMessages(as.rxUi(.fun))
           ini(rxui) <- .iniDf
           rxui <- rxUiDecompress(rxui)
           .ll <- length(rxui$lstExpr)
