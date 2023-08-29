@@ -1294,6 +1294,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
                             theta = NULL, eta = NULL) {
   on.exit({
     .clearPipe()
+    .asFunctionEnv$rx <- NULL
   })
   .applyParams <- FALSE
   .rxParams <- NULL

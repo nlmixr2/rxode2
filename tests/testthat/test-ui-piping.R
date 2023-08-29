@@ -1918,3 +1918,33 @@ test_that("piping with append=lhs", {
     expect_false(any(n$iniDf$name == "aa"))
   })
 })
+
+
+test_that("test ui appending of derived variables like `sim` can work", {
+  
+  one.compartment <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- 1 
+      tv <- 3.45 
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.err <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      cp ~ add(add.err)
+    })
+  }
+
+  f <- rxode2(one.compartment)
+
+  expect_error(model(f$simulationModel, sim2=sim+1, append=sim), NA)
+  
+})
