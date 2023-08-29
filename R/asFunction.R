@@ -1,3 +1,5 @@
+.asFunctionEnv <- new.env(parent=emptyenv())
+.asFunctionEnv$rx <- NULL
 #' @export
 as.function.rxUi <- function(x, ...) {
   x$fun
@@ -6,7 +8,8 @@ as.function.rxUi <- function(x, ...) {
 
 #' @export
 as.function.rxode2tos <- function(x, ...) {
-  x$uiFun
+  .asFunctionEnv$rx <- x
+  suppressMessages(x$uiFun)
 }
 
 #' @export

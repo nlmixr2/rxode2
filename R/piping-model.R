@@ -69,9 +69,37 @@ model.rxModelVars <- model.rxode2
                          .lhs <- .getLhs(rxui$lstExpr[[i]])
                          identical(.lhs, .nsEnv$.quoteCallInfoLinesAppend)
                        }, logical(1), USE.NAMES=FALSE))
-    if (length(.w) == 0) stop("cannot find '",
-                              deparse1(.nsEnv$.quoteCallInfoLinesAppend),
-                              "' in lhs model, cannot append")
+    if (length(.w) == 0) {
+      .var <- deparse1(.nsEnv$.quoteCallInfoLinesAppend)
+      .stop <- TRUE
+      if (!is.null(.asFunctionEnv$rx)) {
+        if (any(.asFunctionEnv$rx$lhs == .var)) {
+          .iniDf <- rxui$iniDf
+          .tmp <- .asFunctionEnv$rx
+          .cls <- class(.asFunctionEnv$rx)
+          class(.asFunctionEnv$rx) <- "rxode2"
+          .fun <- suppressMessages(as.function(.asFunctionEnv$rx))
+          class(.asFunctionEnv$rx) <- .cls
+          rxui <- as.rxUi(.fun)
+          ini(rxui) <- .iniDf
+          rxui <- rxUiDecompress(rxui)
+          .ll <- length(rxui$lstExpr)
+          .w <- which(vapply(seq_len(.ll),
+                             function(i) {
+                               .lhs <- .getLhs(rxui$lstExpr[[i]])
+                               identical(.lhs, .nsEnv$.quoteCallInfoLinesAppend)
+                             }, logical(1), USE.NAMES=FALSE))
+          if (length(.w) == 0) {
+            .stop <- TRUE
+          } else {
+            .stop <- FALSE
+          }
+        }
+      }
+      if (.stop) {
+        stop("cannot find '", .var, "' in lhs model, cannot append", call.=FALSE)
+      }
+    }
     .w <- max(.w)
     if (.w == .ll) {
       assign("lstExpr", c(rxui$lstExpr, modelLines), envir=rxui)
