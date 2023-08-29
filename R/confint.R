@@ -14,13 +14,21 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   } else {
     .doSim=TRUE
   }
+  .by <- NULL
+  if (any(names(.args) == "by")) {
+    .by <- .args$by
+  }
   .stk <- rxStack(object, parm, doSim=.doSim)
+  for(.v in .by) {
+    .stk[[.v]] <- object[[.v]]
+  }
   setDT(.stk)
   .a <- (1 - level) / 2
   .p <- c(.a, 0.5, 1 - .a)
   .lst <- list(
     lvl = paste0("p", .p * 100),
-    parm = levels(.stk$trt)
+    parm = levels(.stk$trt),
+    by = .by
   )
   class(.lst) <- "rxHidden"
   if (object$env$.args$nStud <= 1) {
@@ -31,7 +39,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
         p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE),
         Percentile = sprintf("%s%%", .p * 100)
       ),
-      by = c("time", "trt")
+      by = c("time", "trt", .by)
       ]
       if (requireNamespace("tibble", quietly = TRUE)) {
         .stk <- tibble::as_tibble(.stk)
@@ -51,11 +59,11 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .n <- object$env$.args$nStud
   }
   message("summarizing data...", appendLF = FALSE)
-  .ret <- .stk[, id := sim.id %% .n][, list(p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt")][, setNames(
+  .ret <- .stk[, id := sim.id %% .n][, list(p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)][, setNames(
     as.list(stats::quantile(.SD$eff, probs = .p, na.rm = TRUE)),
     sprintf("p%s", .p * 100)
   ),
-  by = c("p1", "time", "trt")
+  by = c("p1", "time", "trt", .by)
   ]
   .ret$Percentile <- factor(sprintf("%s%%", .ret$p1 * 100))
   if (requireNamespace("tibble", quietly = TRUE)) {
