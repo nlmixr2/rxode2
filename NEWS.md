@@ -3,8 +3,10 @@
 ## Breaking changes
 
 - Steady state with lag times are no longer shifted by the lag time
-  and then solved to steady state, The concentration at the inter-dose
-  interval is back-calculated.
+  and then solved to steady state by default.  In addition the steady
+  state at the original time of dosing is also back-calculated. If you
+  want the old behavior you can bring back the option with
+  `ssAtDoseTime=FALSE`.
   
 - "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
   `rxSolve()`.  This may change some ODE solving using "dop853"
@@ -75,6 +77,11 @@ mu-referencing style to run the optimization.
 
 - Allow covariates to be specified in the model piping, that is `mod
   %>% model(a=var+3, cov="var")` will add `"var"` as a covariate.
+  
+- When calculating confidence intervals for `rxode2` simulated objects
+  you can now use `by` to stratify the simulation summary.  For
+  example you can now stratify by gender and race by: `confint(sim,
+  "sim", by=c("race", "gender"))`
 
 ## Internal new features
 
