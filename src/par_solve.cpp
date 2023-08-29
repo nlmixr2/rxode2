@@ -1232,7 +1232,7 @@ extern "C" void handleSSinf8_iter(int *neq,
 }
 
 extern "C" void updateExtraDoseGlobals(rx_solving_options_ind* ind);
-#define handleSS(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx) handleSSGen(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx, solveWith1Pt_ode, handleSSbolus_iter, solveSSinf_iter,solveSSinfLargeDur_iter, handleSSinf8_iter, updateExtraDoseGlobals,RSprintf);
+#define handleSS(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx) handleSSGen(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx, solveWith1Pt_ode, handleSSbolus_iter, solveSSinf_iter,solveSSinfLargeDur_iter, handleSSinf8_iter, updateExtraDoseGlobals);
 
 
 //================================================================================
