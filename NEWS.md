@@ -7,7 +7,7 @@
   state at the original time of dosing is also back-calculated. If you
   want the old behavior you can bring back the option with
   `ssAtDoseTime=FALSE`.
-  
+
 - "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
   `rxSolve()`.  This may change some ODE solving using "dop853"
 
@@ -77,11 +77,17 @@ mu-referencing style to run the optimization.
 
 - Allow covariates to be specified in the model piping, that is `mod
   %>% model(a=var+3, cov="var")` will add `"var"` as a covariate.
-  
+
 - When calculating confidence intervals for `rxode2` simulated objects
   you can now use `by` to stratify the simulation summary.  For
   example you can now stratify by gender and race by: `confint(sim,
   "sim", by=c("race", "gender"))`
+
+  - When calculating the intervals for `rxode2` simulated objects you
+  can now use `ci=FALSE` so that it only calculates the default
+  intervals without bands on each of the percentiles; You can also
+  choose not to match the secondary bands limits with `levels` but use
+  your own `ci=0.99` for instance
 
 ## Internal new features
 
@@ -96,7 +102,7 @@ mu-referencing style to run the optimization.
   `err.endpoint` for the `sigma` residual error.  This is to align
   with the convention that internally generated variables start with
   `rx` or `nlmixr`
-  
+
 - Sorting only uses timsort now, and was upgraded to the latest
   version from Morwenn
 
@@ -106,7 +112,7 @@ mu-referencing style to run the optimization.
 
 - When constants are specified in the `model({})` block (like `k <- 1`), they will not
   be  to the `ini` block
-  
+
 - Bug fix for `geom_amt()` when the `aes` transformation has `x`
 
 # rxode2 2.0.13

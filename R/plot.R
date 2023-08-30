@@ -422,6 +422,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
 plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
   .lvl <- attr(class(x), ".rx")$lvl
+  .ci  <- attr(class(x), ".rx")$ci
   .parm <- attr(class(x), ".rx")$parm
   .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$p50,
@@ -429,7 +430,7 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
     fill = .data$Percentile,
     group = .data$p
   )
-  .aesR <- ggplot2::aes_string(ymin = .lvl[1], ymax = .lvl[3])
+  .aesR <- ggplot2::aes_string(ymin = .ci[1], ymax = .ci[3])
   .facet <- NULL
   .dat <- x
   .lst <- .plotTime(.dat, xlab)
