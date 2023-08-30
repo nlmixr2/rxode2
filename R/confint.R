@@ -42,7 +42,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .p2 <- c(.c, 0.5, 1 - .c)
   .lst <- list(
     lvl = paste0("p", .p * 100),
-    ci = paste0("p", .c * 100),
+    ci = paste0("p", .p2 * 100),
     parm = levels(.stk$trt),
     by = .by
   )
@@ -81,12 +81,12 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .n <- object$env$.args$nStud
   }
   message("summarizing data...", appendLF = FALSE)
-  .ret <- .stk[, id := sim.id %% .n
-               ][, list(p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)][
-               , setNames(as.list(stats::quantile(.SD$eff, probs = .c, na.rm = TRUE)),
-                          sprintf("p%s", .c * 100)),
-  by = c("p1", "time", "trt", .by)
-  ]
+  .ret <- .stk[, id := sim.id %% .n]
+  .ret <- .ret[, list(p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)]
+  .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
+                          sprintf("p%s", .p2 * 100)),
+               by = c("p1", "time", "trt", .by)
+               ]
   .ret$Percentile <- factor(sprintf("%s%%", .ret$p1 * 100))
   if (requireNamespace("tibble", quietly = TRUE)) {
     .ret <- tibble::as_tibble(.ret)

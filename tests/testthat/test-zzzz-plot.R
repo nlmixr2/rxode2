@@ -151,7 +151,7 @@ rxTest({
 
     .rxWithOptions(list(rxode2.theme = TRUE), {
 
-      ci1.C2 <- confint(sim, "C2")
+      ci1.C2 <- confint(sim, "C2", ci=0.99)
 
       ci1.C2.e <- confint(sim, "C2", by="extra")
 
