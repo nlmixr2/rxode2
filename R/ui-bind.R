@@ -1,21 +1,21 @@
-#' Append two rxui models together
+#' Append two rxUi models together
 #'
-#' @param model1 rxUi model 1
-#' @param model2 rxUi model 2
+#' @param model1,model2 Two rxUi models to combine
+#' @param requireShared Require at least one shared variable between model 1 and
+#'   2
 #' @return New model with both models appended together
 #' @author Matthew L. Fidler
 #' @export
 #' @examples
-#' 
+#'
 #' \donttest{
-#' 
+#'
 #' ocmt <- function() {
 #'   ini({
-#'     tka <- exp(0.45) # Ka
-#'     tcl <- exp(1) # Cl
-#'     tv <- exp(3.45); # log V
-#'     ## the label("Label name") works with all models
-#'     add.sd <- 0.7
+#'     tka <- exp(0.45); label("Absorption rate")
+#'     tcl <- exp(1); label("Clearance")
+#'     tv <- exp(3.45); label("Volume of distribution")
+#'     add.sd <- 0.7; label("Additive residual error")
 #'   })
 #'   model({
 #'     ka <- tka
@@ -46,10 +46,8 @@
 #' }
 #'
 #' rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
-#' 
 #' }
-#'
-rxAppendModel <- function(model1, model2) {
+rxAppendModel <- function(model1, model2, requireShared = TRUE) {
   model1 <- assertRxUi(model1)
   model1 <- .copyUi(model1) # so modifications do not affect first model
   model2 <- assertRxUi(model2)
@@ -57,8 +55,8 @@ rxAppendModel <- function(model1, model2) {
   .ini1 <- model1$iniDf
   .ini2 <- model2$iniDf
   .bind <- intersect(c(model1$mv0$lhs, model1$mv0$state), model2$allCovs)
-  if (length(.bind) == 0) {
-    stop("the first model does not have variables that are used by the second model",
+  if (requireShared & length(.bind) == 0) {
+    stop("the first model does not have variables that are used by the second model (set requireShared=FALSE to allow this)",
          call.=FALSE)
   }
   .maxTheta <- suppressWarnings(max(.ini1$ntheta, na.rm=TRUE))
