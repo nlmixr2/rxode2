@@ -5,33 +5,69 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   ## p1 <-eff <-Percentile <-sim.id <-id <-p2 <-p50 <-p05 <- p95 <- . <- time <- trt <- NULL
   ## rxode2::rxReq("dplyr")
   ## rxode2::rxReq("tidyr")
-  if (level <= 0 || level >= 1) {
-    stop("simulation summaries must be between 0 and 1", call. = FALSE)
-  }
+  checkmate::assertNumeric(level, lower=0, upper=1, finite=TRUE, any.missing=FALSE)
   .args <- list(...)
   if (any(names(.args) == "doSim")) {
+    checkmate::assertLogical(.args$doSim, len=1,
+                                       any.missing=FALSE, .var.name="doSim")
     .doSim <- .args$doSim
   } else {
-    .doSim=TRUE
+    .doSim<-TRUE
+  }
+  .by <- NULL
+  if (any(names(.args) == "by")) {
+    .by <- .args$by
+    checkmate::assertSubset(.by, names(object), .var.name="by")
+  }
+  .ci <- level
+  if (any(names(.args) == "ci")) {
+    .ci <- .args$ci
+    if (inherits(.ci, "logical")) {
+      checkmate::assertLogical(.ci, len=1, any.missing=FALSE)
+      if (!.ci) {
+        .ci <- 0.0
+      }
+    } else {
+      checkmate::assertNumeric(.ci, lower=0, upper=1, finite=TRUE, any.missing=FALSE)
+    }
   }
   .stk <- rxStack(object, parm, doSim=.doSim)
+  for(.v in .by) {
+    .stk[[.v]] <- object[[.v]]
+  }
   setDT(.stk)
   .a <- (1 - level) / 2
   .p <- c(.a, 0.5, 1 - .a)
+  .c <- (1-.ci) / 2
+  .p2 <- c(.c, 0.5, 1 - .c)
   .lst <- list(
     lvl = paste0("p", .p * 100),
-    parm = levels(.stk$trt)
+    ci = paste0("p", .p2 * 100),
+    parm = levels(.stk$trt),
+    by = .by
   )
   class(.lst) <- "rxHidden"
-  if (object$env$.args$nStud <= 1) {
-    if (object$env$.args$nSub < 2500) {
-      .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations")
-      message("summarizing data...", appendLF = FALSE)
+  if (.ci ==0 || !any(names(.stk) == "sim.id")) {
+    if (any(names(.stk) == "sim.id")) {
+      .stk$id <- factor(paste(.stk$sim.id, .stk$id))
+      .ntot <- length(levels(.stk$id))
+      .stk$id <- as.integer(.stk$id)
+    } else {
+      .ntot <- object$env$.args$nSub
+      if (.ntot == 1L && object$env$.args$nStud > 1L) {
+        .ntot <- object$env$.args$nStud
+      }
+    }
+    if (.ci == 0 || .ntot < 2500) {
+      if (.ci != 0.0) {
+        .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations")
+        message("summarizing data...", appendLF = FALSE)
+      }
       .stk <- .stk[, list(
         p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE),
         Percentile = sprintf("%s%%", .p * 100)
       ),
-      by = c("time", "trt")
+      by = c("time", "trt", .by)
       ]
       if (requireNamespace("tibble", quietly = TRUE)) {
         .stk <- tibble::as_tibble(.stk)
@@ -42,7 +78,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
       message("done")
       return(.stk)
     } else {
-      .n <- round(sqrt(object$env$.args$nSub))
+      .n <- round(sqrt(.ntot))
       if (!any(names(.stk) == "sim.id")) {
         .stk$sim.id <- .stk$id
       }
@@ -51,12 +87,12 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .n <- object$env$.args$nStud
   }
   message("summarizing data...", appendLF = FALSE)
-  .ret <- .stk[, id := sim.id %% .n][, list(p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt")][, setNames(
-    as.list(stats::quantile(.SD$eff, probs = .p, na.rm = TRUE)),
-    sprintf("p%s", .p * 100)
-  ),
-  by = c("p1", "time", "trt")
-  ]
+  .ret <- .stk[, id := sim.id %% .n]
+  .ret <- .ret[, list(p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)]
+  .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
+                          sprintf("p%s", .p2 * 100)),
+               by = c("p1", "time", "trt", .by)
+               ]
   .ret$Percentile <- factor(sprintf("%s%%", .ret$p1 * 100))
   if (requireNamespace("tibble", quietly = TRUE)) {
     .ret <- tibble::as_tibble(.ret)

@@ -360,6 +360,7 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .data <- NULL
   .lvl <- attr(class(x), ".rx")$lvl
   .parm <- attr(class(x), ".rx")$parm
+  .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$eff)
   .facet <- NULL
   .dat <- x
@@ -371,7 +372,15 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .logy <- .lst[["logy"]]
   .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
-    .facet <- facet_wrap(~trt, scales = "free_y")
+    if (length(.by) > 0) {
+      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),
+                                     ", scales = \"free_y\")")))
+    } else {
+      .facet <- facet_wrap(~trt, scales = "free_y")
+    }
+  } else if (length(.by) > 0) {
+    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse="+"),
+                                   ", scales = \"free_y\")")))
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
     .line <- geom_line(size = 1.2, show.legend = !is.null(.facet))
@@ -413,13 +422,15 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
 plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
   .lvl <- attr(class(x), ".rx")$lvl
+  .ci  <- attr(class(x), ".rx")$ci
   .parm <- attr(class(x), ".rx")$parm
+  .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$p50,
     color = .data$Percentile,
     fill = .data$Percentile,
     group = .data$p
   )
-  .aesR <- ggplot2::aes_string(ymin = .lvl[1], ymax = .lvl[3])
+  .aesR <- ggplot2::aes_string(ymin = .ci[1], ymax = .ci[3])
   .facet <- NULL
   .dat <- x
   .lst <- .plotTime(.dat, xlab)
@@ -430,7 +441,15 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .logy <- .lst[["logy"]]
   .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
-    .facet <- facet_wrap(~trt, scales = "free_y")
+    if (length(.by) > 0) {
+      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),
+                                     ", scales = \"free_y\")")))
+    } else {
+      .facet <- facet_wrap(~trt, scales = "free_y")
+    }
+  } else if (length(.by) > 0) {
+    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse="+"),
+                                   ", scales = \"free_y\")")))
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
     .line <- geom_line(size = 1.1, show.legend = FALSE)

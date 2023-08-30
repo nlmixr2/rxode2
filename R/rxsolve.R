@@ -1226,9 +1226,18 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .lst <- do.call("c", .lst)
   .pred <- FALSE
+  .mv <- rxModelVars(object)
+  .hasIpred <- FALSE
+  if (any(.mv$lhs == "ipredSim")) {
+    .hasIpred <- TRUE
+  }
+  .hasSim <- FALSE
+  if (any(.mv$lhs == "sim")) {
+    .hasSim <- TRUE
+  }
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
     .pred <- TRUE
-    if (any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
+    if (!.hasIpred && any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
       .lst$drop <- c(.lst$drop, "ipredSim")      
     }
   }
@@ -1236,7 +1245,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (.pred) {
     .e <- attr(class(.ret), ".rxode2.env")
     .w <- which(names(.ret) == "sim")
-    if (length(.w) == 1L) {
+    if (!.hasSim && length(.w) == 1L) {
       names(.ret)[.w] <- "pred"
       # don't break rxSolve, though maybe it should...
       if (is.environment(.e)) {
@@ -1294,6 +1303,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
                             theta = NULL, eta = NULL) {
   on.exit({
     .clearPipe()
+    .asFunctionEnv$rx <- NULL
   })
   .applyParams <- FALSE
   .rxParams <- NULL

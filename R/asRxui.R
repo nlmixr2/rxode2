@@ -46,7 +46,7 @@ as.rxUi.rxode2 <- function(x) {
 #' @rdname as.rxUi
 #' @export
 as.rxUi.rxode2tos <- function(x) {
-  as.rxUi(as.function(x))
+  suppressMessages(as.rxUi(as.function(x)))
 }
 #' @export
 #' @rdname as.rxUi
