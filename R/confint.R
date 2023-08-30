@@ -32,7 +32,11 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   )
   class(.lst) <- "rxHidden"
   if (!any(names(.stk) == "sim.id")) {
-    if (object$env$.args$nSub < 2500) {
+    .ntot <- object$env$.args$nSub
+    if (.ntot == 1L && object$env$.args$nStud > 1L) {
+      .ntot <- object$env$.args$nStud
+    }
+    if (.ntot < 2500) {
       .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations")
       message("summarizing data...", appendLF = FALSE)
       .stk <- .stk[, list(
@@ -50,7 +54,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
       message("done")
       return(.stk)
     } else {
-      .n <- round(sqrt(object$env$.args$nSub))
+      .n <- round(sqrt(.ntot))
       if (!any(names(.stk) == "sim.id")) {
         .stk$sim.id <- .stk$id
       }
