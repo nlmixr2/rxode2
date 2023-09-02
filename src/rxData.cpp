@@ -3527,6 +3527,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0;
     nsub = 0;
     ind = &(rx->subjects[0]);
+    ind->solveid = 0;
     setupRxInd(ind, 1);
     j=0;
     rx->maxAllTimes=0;
@@ -3555,6 +3556,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
             ind->HMAX = hmax0;
           }
           ind = &(rx->subjects[nsub]);
+          ind->solveid = nsub;
           setupRxInd(ind, 1);
         }
         // Setup the pointers.
@@ -3970,6 +3972,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
         for (unsigned int id = rx->nsub; id--;) {
           unsigned int cid = id+simNum*rx->nsub;
           ind = &(rx->subjects[cid]);
+          ind->solveid=cid;
           ind->linCmt = linCmt;
           setupRxInd(ind, 1);
           ind->par_ptr = &_globals.gpars[cid*rxSolveDat->npars];

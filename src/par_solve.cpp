@@ -642,19 +642,20 @@ extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, 
                       t_ME ME, t_IndF  IndF);
 
 
-extern "C" void solveWith1Pt_ode(int *neq,
-                      int *BadDose,
-                      double *InfusionRate,
-                      double *dose,
-                      double *yp,
-                      double xout, double xp, int id,
-                      int *i, int nx,
-                      int *istate,
-                      rx_solving_options *op,
-                      rx_solving_options_ind *ind,
-                      t_update_inis u_inis,
-                      void *ctx) {
-  int idid, itol=0;
+extern "C" void solveWith1Pt_ode(int *BadDose,
+                                 double *InfusionRate,
+                                 double *dose,
+                                 double *yp,
+                                 double xout, double xp, 
+                                 int *i, 
+                                 int *istate,
+                                 rx_solving_options *op,
+                                 rx_solving_options_ind *ind,
+                                 t_update_inis u_inis,
+                                 void *ctx) {
+  int idid, itol=0, neq[2];
+  neq[0] = op->neq;
+  neq[1] = ind->solveid;
   switch(op->stiff){
   case 3:
     if (!isSameTime(xout, xp)) {
@@ -799,8 +800,8 @@ extern "C" void handleSSbolus_iter(int *neq,
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     ind->ixds--; // This dose stays in place
     // REprintf("ixds-- #2\n");
     *canBreak=1;
@@ -872,8 +873,8 @@ extern "C" void solveSSinf_iter(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (*dur-ii)
     *xout2 = *xp2 + *dur2;
@@ -911,8 +912,8 @@ extern "C" void solveSSinf_iter(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -988,8 +989,8 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
   }
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
@@ -1003,8 +1004,8 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (dur-ii)
     *xout2 = *xp2 + *addTime;
@@ -1042,8 +1043,8 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -1111,8 +1112,8 @@ extern "C" void handleSSinf8_iter(int *neq,
   for (int j = 0; j < op->maxSS; j++){
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *canBreak=1;
     if (j <= op->minSS -1){
       for (int k = neq[0]; k--;) {
