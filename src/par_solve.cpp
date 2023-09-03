@@ -771,19 +771,14 @@ extern "C" void solveWith1Pt_ode(double *yp,
 }
 
 
-extern "C" void handleSSbolus_iter(int *neq,
-                                   int *BadDose,
-                                   double *InfusionRate,
-                                   double *dose,
-                                   double *yp,
-                                   double *xout, double xp, int id,
-                                   int *i, int nx,
+extern "C" void handleSSbolus_iter(double *yp,
+                                   double *xout, double xp,
+                                   int *i, 
                                    int *istate,
                                    rx_solving_options *op,
                                    rx_solving_options_ind *ind,
                                    t_update_inis u_inis,
                                    void *ctx,
-                                   rx_solve *rx,
                                    double *xout2,
                                    double *xp2,
                                    double *curIi,
@@ -810,13 +805,13 @@ extern "C" void handleSSbolus_iter(int *neq,
       *canBreak=0;
     } else if (j >= op->minSS){
       if (ind->rc[0] == -2019){
-        for (int k = neq[0]; k--;) {
+        for (int k = op->neq; k--;) {
           yp[k] = ind->solveLast[k];
         }
         ind->rc[0] = 2019;
         break;
       }
-      for (int k = neq[0]; k--;){
+      for (int k = op->neq; k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
