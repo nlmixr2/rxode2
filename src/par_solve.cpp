@@ -642,10 +642,7 @@ extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, 
                       t_ME ME, t_IndF  IndF);
 
 
-extern "C" void solveWith1Pt_ode(int *BadDose,
-                                 double *InfusionRate,
-                                 double *dose,
-                                 double *yp,
+extern "C" void solveWith1Pt_ode(double *yp,
                                  double xout, double xp, 
                                  int *i, 
                                  int *istate,
@@ -796,12 +793,9 @@ extern "C" void handleSSbolus_iter(int *neq,
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
     // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout, neq[1], ind);
+    handle_evid(getEvid(ind, ind->ix[*i]), yp, *xout, ind);
     // yp is last solve or y0
-    solveWith1Pt(BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     ind->ixds--; // This dose stays in place
     // REprintf("ixds-- #2\n");
     *canBreak=1;
@@ -867,22 +861,17 @@ extern "C" void solveSSinf_iter(int *neq,
     *xout2 = *xp2+*dur;
     ind->idx=*bi;
     ind->ixds = *infBixds;
-    handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout, neq[1], ind);
+    handle_evid(getEvid(ind, ind->idose[*infBixds]), yp, *xout, ind);
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (*dur-ii)
     *xout2 = *xp2 + *dur2;
     ind->ixds = *infEixds;
     ind->idx=*ei;
-    handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout+*dur, neq[1], ind);
+    handle_evid(getEvid(ind, ind->idose[*infEixds]), yp, *xout+*dur, ind);
     if (j <= op->minSS -1){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -912,8 +901,7 @@ extern "C" void solveSSinf_iter(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    solveWith1Pt(BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -985,12 +973,9 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
     ind->idx = *bi;
     *xout2 = *xp2 + *curIi;
     // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*bi]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout, neq[1], ind);
+    handle_evid(getEvid(ind, ind->ix[*bi]), yp, *xout, ind);
     // yp is last solve or y0
-    solveWith1Pt(BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
   }
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
@@ -998,22 +983,17 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
     *xout2    = *xp2 + *offTime;
     ind->idx  = *bi;
     ind->ixds = *infBixds;
-    handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout, neq[1], ind);
+    handle_evid(getEvid(ind, ind->idose[*infBixds]), yp, *xout, ind);
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (dur-ii)
     *xout2 = *xp2 + *addTime;
     ind->ixds = *infEixds;
     ind->idx= *ei;
-    handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout + *dur, neq[1], ind);
+    handle_evid(getEvid(ind, ind->idose[*infEixds]), yp, *xout + *dur, ind);
     if (j <= op->minSS -1){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -1043,8 +1023,7 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    solveWith1Pt(BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -1112,8 +1091,7 @@ extern "C" void handleSSinf8_iter(int *neq,
   for (int j = 0; j < op->maxSS; j++){
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
-    solveWith1Pt(BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
+    solveWith1Pt(yp,*xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *canBreak=1;
     if (j <= op->minSS -1){
       for (int k = neq[0]; k--;) {
@@ -1339,8 +1317,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           int ixds= ind->ixds;
           int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
           ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          handle_evid(ind->extraDoseEvid[trueIdx], yp, xout, ind);
           ctx->state = 1;
           ind->idx = idx;
           ind->ixds = ixds;
@@ -1720,8 +1697,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           int ixds = ind->ixds;
           int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
           ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          handle_evid(ind->extraDoseEvid[trueIdx], yp, xout, ind);
           istate = 1;
           ind->ixds = ixds; // This is a fake dose, real dose stays in place
           ind->idx = idx;
@@ -1920,8 +1896,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           int ixds = ind->ixds;
           int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
           ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          handle_evid(ind->extraDoseEvid[trueIdx], yp, xout, ind);
           idid = 1;
           ind->idx = idx;
           ind->ixds = ixds;
