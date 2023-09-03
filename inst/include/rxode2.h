@@ -70,10 +70,6 @@ extern "C" {
   void parseFree(int last);
 #endif
 
-typedef void (*t_dydt)(int *neq, double t, double *A, double *DADT);
-typedef void (*t_calc_jac)(int *neq, double t, double *A, double *JAC, unsigned int __NROWPD__);
-typedef void (*t_calc_lhs)(int cSub, double t, double *A, double *lhs);
-typedef void (*t_update_inis)(int cSub, double *);
 typedef void (*t_dydt_lsoda_dum)(int *neq, double *t, double *A, double *DADT);
 typedef void (*t_jdum_lsoda)(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd);
 typedef int (*t_dydt_liblsoda)(double t, double *y, double *ydot, void *data);
