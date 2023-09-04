@@ -643,8 +643,8 @@ extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, 
 
 
 extern "C" void solveWith1Pt_ode(double *yp,
-                                 double xout, double xp, 
-                                 int *i, 
+                                 double xout, double xp,
+                                 int *i,
                                  int *istate,
                                  rx_solving_options *op,
                                  rx_solving_options_ind *ind,
@@ -773,7 +773,7 @@ extern "C" void solveWith1Pt_ode(double *yp,
 
 extern "C" void handleSSbolus_iter(double *yp,
                                    double *xout, double xp,
-                                   int *i, 
+                                   int *i,
                                    int *istate,
                                    rx_solving_options *op,
                                    rx_solving_options_ind *ind,
@@ -826,19 +826,14 @@ extern "C" void handleSSbolus_iter(double *yp,
   }
 }
 
-extern "C" void solveSSinf_iter(int *neq,
-                                int *BadDose,
-                                double *InfusionRate,
-                                double *dose,
-                                double *yp,
-                                double *xout, double xp, int id,
-                                int *i, int nx,
+extern "C" void solveSSinf_iter(double *yp,
+                                double *xout, double xp,
+                                int *i,
                                 int *istate,
                                 rx_solving_options *op,
                                 rx_solving_options_ind *ind,
                                 t_update_inis u_inis,
                                 void *ctx,
-                                rx_solve *rx,
                                 double *xout2,
                                 double *xp2,
                                 int *infBixds,
@@ -872,7 +867,7 @@ extern "C" void solveSSinf_iter(int *neq,
         badSolveExit(*i);
         break;
       }
-      for (int k = neq[0]; k--;) {
+      for (int k = op->neq; k--;) {
         ind->solveLast[k] = yp[k];
       }
       *canBreak=0;
@@ -881,13 +876,13 @@ extern "C" void solveSSinf_iter(int *neq,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
-          for (int k = neq[0]; k--;){
+          for (int k = op->neq; k--;){
             yp[k] = ind->solveLast[k];
           }
           ind->rc[0] = 2019;
         }
       }
-      for (int k = neq[0]; k--;) {
+      for (int k = op->neq; k--;) {
         ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
@@ -902,7 +897,7 @@ extern "C" void solveSSinf_iter(int *neq,
         badSolveExit(*i);
         break;
       }
-      for (int k = neq[0]; k--;){
+      for (int k = op->neq; k--;){
         ind->solveLast2[k] = yp[k];
       }
       *canBreak=0;
@@ -911,14 +906,14 @@ extern "C" void solveSSinf_iter(int *neq,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
-          for (int k = neq[0]; k--;){
+          for (int k = op->neq; k--;){
             yp[k] = ind->solveLast2[k];
           }
           ind->rc[0] = 2019;
         }
         break;
       }
-      for (int k = neq[0]; k--;){
+      for (int k = op->neq; k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
           *canBreak=0;
         }
@@ -994,7 +989,7 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
         badSolveExit(*i);
         break;
       }
-      for (int k = neq[0]; k--;) {
+      for (int k = op->neq; k--;) {
         ind->solveLast[k] = yp[k];
       }
       *canBreak=0;
@@ -1003,13 +998,13 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
-          for (int k = neq[0]; k--;){
+          for (int k = op->neq; k--;){
             yp[k] = ind->solveLast[k];
           }
           ind->rc[0] = 2019;
         }
       }
-      for (int k = neq[0]; k--;) {
+      for (int k = op->neq; k--;) {
         ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
@@ -1024,7 +1019,7 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
         badSolveExit(*i);
         break;
       }
-      for (int k = neq[0]; k--;){
+      for (int k = op->neq; k--;){
         ind->solveLast2[k] = yp[k];
       }
       *canBreak=0;
@@ -1033,14 +1028,14 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
-          for (int k = neq[0]; k--;){
+          for (int k = op->neq; k--;){
             yp[k] = ind->solveLast2[k];
           }
           ind->rc[0] = 2019;
         }
         break;
       }
-      for (int k = neq[0]; k--;){
+      for (int k = op->neq; k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
           *canBreak=0;
         }
@@ -1054,19 +1049,14 @@ extern "C" void solveSSinfLargeDur_iter(int *neq,
   }
 }
 
-extern "C" void handleSSinf8_iter(int *neq,
-                                  int *BadDose,
-                                  double *InfusionRate,
-                                  double *dose,
-                                  double *yp,
-                                  double *xout, double xp, int id,
-                                  int *i, int nx,
+extern "C" void handleSSinf8_iter(double *yp,
+                                  double *xout, double xp,
+                                  int *i,
                                   int *istate,
                                   rx_solving_options *op,
                                   rx_solving_options_ind *ind,
                                   t_update_inis u_inis,
                                   void *ctx,
-                                  rx_solve *rx,
                                   int *infBixds,
                                   int *bi,
                                   double *rateOn,
@@ -1089,7 +1079,7 @@ extern "C" void handleSSinf8_iter(int *neq,
     solveWith1Pt(yp,*xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *canBreak=1;
     if (j <= op->minSS -1){
-      for (int k = neq[0]; k--;) {
+      for (int k = op->neq; k--;) {
         ind->solveLast[k] = yp[k];
       }
       if (j == 0) {
@@ -1097,7 +1087,7 @@ extern "C" void handleSSinf8_iter(int *neq,
       }
       *canBreak=0;
     } else {
-      for (int k = neq[0]; k--;){
+      for (int k = op->neq; k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
