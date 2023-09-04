@@ -1292,8 +1292,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         badSolveExit(i);
       } else {
         // REprintf("xp: %f xout: %f\n", xp, xout);
-        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
+        if (handleExtraDose(yp, xout, xp, &i, &(ctx->state), op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
             postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -1671,8 +1670,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         // Bad Solve => NA
         badSolveExit(i);
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        if (handleExtraDose(yp, xout, xp, &i, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
@@ -1847,8 +1845,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         // Bad Solve => NA
         badSolveExit(i);
       } else {
-        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+        if (handleExtraDose(yp, xout, xp, &i, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
