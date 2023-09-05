@@ -27,7 +27,7 @@ extern "C" {
 }
 #include "par_solve.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-#define badSolveExit(i) for (int j = op->neq*(ind->n_all_times); j--;){ \
+#define badSolveExit(i) for (int j = (op->neq + op->extraCmt)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                            \
   }                                                                     \
   op->badSolve = 1;                                                     \
@@ -399,11 +399,11 @@ static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char*
   } else {
     if (R_FINITE(rx->stateTrimU)){
       double top=fabs(rx->stateTrimU);
-      for (int j = op->neq; j--;) yp[j]= min(top,yp[j]);
+      for (int j = (op->neq+ op->extraCmt); j--;) yp[j]= min(top,yp[j]);
     }
     if (R_FINITE(rx->stateTrimL)){
       double bottom=rx->stateTrimL;
-      for (int j = op->neq; j--;) yp[j]= max(bottom,yp[j]);
+      for (int j = (op->neq + op->extraCmt); j--;) yp[j]= max(bottom,yp[j]);
     }
   }
   ind->slvr_counter[0]++;
@@ -799,19 +799,19 @@ extern "C" void handleSSbolus_iter(double *yp,
         badSolveExit(*i);
         break;
       }
-      for (int k = op->neq; k--;) {
+      for (int k = (op->neq+ op->extraCmt); k--;) {
         ind->solveLast[k] = yp[k];
       }
       *canBreak=0;
     } else if (j >= op->minSS){
       if (ind->rc[0] == -2019){
-        for (int k = op->neq; k--;) {
+        for (int k = (op->neq + op->extraCmt); k--;) {
           yp[k] = ind->solveLast[k];
         }
         ind->rc[0] = 2019;
         break;
       }
-      for (int k = op->neq; k--;){
+      for (int k = (op->neq + op->extraCmt); k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
@@ -867,7 +867,7 @@ extern "C" void solveSSinf_iter(double *yp,
         badSolveExit(*i);
         break;
       }
-      for (int k = op->neq; k--;) {
+      for (int k = (op->neq + op->extraCmt); k--;) {
         ind->solveLast[k] = yp[k];
       }
       *canBreak=0;
@@ -876,13 +876,13 @@ extern "C" void solveSSinf_iter(double *yp,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
-          for (int k = op->neq; k--;){
+          for (int k = (op->neq + op->extraCmt); k--;){
             yp[k] = ind->solveLast[k];
           }
           ind->rc[0] = 2019;
         }
       }
-      for (int k = op->neq; k--;) {
+      for (int k = (op->neq + + op->extraCmt) ; k--;) {
         ind->solveLast[k] = yp[k];
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
@@ -897,7 +897,7 @@ extern "C" void solveSSinf_iter(double *yp,
         badSolveExit(*i);
         break;
       }
-      for (int k = op->neq; k--;){
+      for (int k = (op->neq+ op->extraCmt); k--;){
         ind->solveLast2[k] = yp[k];
       }
       *canBreak=0;
@@ -906,137 +906,20 @@ extern "C" void solveSSinf_iter(double *yp,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
-          for (int k = op->neq; k--;){
+          for (int k = (op->neq+ op->extraCmt); k--;){
             yp[k] = ind->solveLast2[k];
           }
           ind->rc[0] = 2019;
         }
         break;
       }
-      for (int k = op->neq; k--;){
+      for (int k = (op->neq+ op->extraCmt); k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
           *canBreak=0;
         }
         ind->solveLast2[k] = yp[k];
       }
       if (*canBreak){
-        break;
-      }
-    }
-    *xp2 = *xout2;
-  }
-}
-
-extern "C" void solveSSinfLargeDur_iter(double *yp,
-                                        double *xout, double xp,
-                                        int *i,
-                                        int *istate,
-                                        rx_solving_options *op,
-                                        rx_solving_options_ind *ind,
-                                        t_update_inis u_inis,
-                                        void *ctx,
-                                        double *xout2,
-                                        double *xp2,
-                                        int *infBixds,
-                                        int *bi,
-                                        int *infEixds,
-                                        int *ei,
-                                        double *curIi,
-                                        double *dur,
-                                        int *numDoseInf,
-                                        double *offTime,
-                                        double *addTime,
-                                        int *canBreak,
-                                        solveWith1Pt_fn solveWith1Pt) {
-  *numDoseInf = (int)(*dur / *curIi);
-  *offTime = *dur - (*numDoseInf)*(*curIi);
-  *addTime = *curIi - *offTime;
-  ind->ixds = *infBixds;
-  ind->idx = *bi;
-  for (int j = 0; j < *numDoseInf; j++) {
-    ind->ixds = *infBixds;
-    ind->idx = *bi;
-    *xout2 = *xp2 + *curIi;
-    // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*bi]), yp, *xout, ind);
-    // yp is last solve or y0
-    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
-  }
-  for (int j = 0; j < op->maxSS; j++) {
-    // Turn on Infusion, solve (0-dur)
-    *canBreak =1;
-    *xout2    = *xp2 + *offTime;
-    ind->idx  = *bi;
-    ind->ixds = *infBixds;
-    handle_evid(getEvid(ind, ind->idose[*infBixds]), yp, *xout, ind);
-    // yp is last solve or y0
-    *istate=1;
-    // yp is last solve or y0
-    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
-    *xp2 = *xout2;
-    // Turn off Infusion, solve (dur-ii)
-    *xout2 = *xp2 + *addTime;
-    ind->ixds = *infEixds;
-    ind->idx= *ei;
-    handle_evid(getEvid(ind, ind->idose[*infEixds]), yp, *xout + *dur, ind);
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = op->neq; k--;) {
-        ind->solveLast[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
-      if (ind->rc[0]== -2019){
-        if (op->strictSS){
-          badSolveExit(*i);
-        } else {
-          for (int k = op->neq; k--;){
-            yp[k] = ind->solveLast[k];
-          }
-          ind->rc[0] = 2019;
-        }
-      }
-      for (int k = op->neq; k--;) {
-        ind->solveLast[k] = yp[k];
-        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-          *canBreak=0;
-        }
-      }
-    }
-    // yp is last solve or y0
-    *istate=1;
-    solveWith1Pt(yp, *xout2, *xp2, i, istate, op, ind, u_inis, ctx);
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = op->neq; k--;){
-        ind->solveLast2[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
-      if (ind->rc[0]== -2019){
-        if (op->strictSS){
-          badSolveExit(*i);
-        } else {
-          for (int k = op->neq; k--;){
-            yp[k] = ind->solveLast2[k];
-          }
-          ind->rc[0] = 2019;
-        }
-        break;
-      }
-      for (int k = op->neq; k--;){
-        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
-          *canBreak=0;
-        }
-        ind->solveLast2[k] = yp[k];
-      }
-      if (canBreak){
         break;
       }
     }
@@ -1074,7 +957,7 @@ extern "C" void handleSSinf8_iter(double *yp,
     solveWith1Pt(yp,*xout2, *xp2, i, istate, op, ind, u_inis, ctx);
     *canBreak=1;
     if (j <= op->minSS -1){
-      for (int k = op->neq; k--;) {
+      for (int k = (op->neq+ op->extraCmt); k--;) {
         ind->solveLast[k] = yp[k];
       }
       if (j == 0) {
@@ -1082,7 +965,7 @@ extern "C" void handleSSinf8_iter(double *yp,
       }
       *canBreak=0;
     } else {
-      for (int k = op->neq; k--;){
+      for (int k = (op->neq+ op->extraCmt); k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }
@@ -1103,7 +986,7 @@ extern "C" void handleSSinf8_iter(double *yp,
 }
 
 extern "C" void updateExtraDoseGlobals(rx_solving_options_ind* ind);
-#define handleSS(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx) handleSSGen(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx, solveWith1Pt_ode, handleSSbolus_iter, solveSSinf_iter,solveSSinfLargeDur_iter, handleSSinf8_iter, updateExtraDoseGlobals);
+#define handleSS(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx) handleSSGen(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx, solveWith1Pt_ode, handleSSbolus_iter, solveSSinf_iter, handleSSinf8_iter, updateExtraDoseGlobals);
 
 
 //================================================================================

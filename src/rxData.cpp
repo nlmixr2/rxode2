@@ -1439,9 +1439,9 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->extraSorted = 0;
 
     ind->on = _globals.gon + ncmt*omp_get_thread_num();
-    ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
-    ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
-    ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
+    ind->solveSave = _globals.gSolveSave + (op->neq+ op->extraCmt)*omp_get_thread_num();
+    ind->solveLast = _globals.gSolveLast + (op->neq + op->extraCmt) *omp_get_thread_num();
+    ind->solveLast2 = _globals.gSolveLast2 + (op->neq+ op->extraCmt)*omp_get_thread_num();
   } else {
     ind->alag = NULL;
     ind->cRate =NULL;
@@ -5373,7 +5373,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->nlinR = 0;
     int n0 = rx->nall*state.size()*rx->nsim;
-    int nsave = op->neq*op->cores;
+    int nsave = (op->neq+op->extraCmt)*op->cores;
     int nLin = op->nlin;
     if (nLin != 0) {
       op->nlinR = 1+linKa;
