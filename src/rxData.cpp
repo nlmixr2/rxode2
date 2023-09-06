@@ -1413,7 +1413,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->cDur = getDurThread();
     ind->cF = getFThread();
     ind->InfusionRate = getInfusionRateThread();
-    ind->linCmtRate = ind->InfusionRate + op->neq;
+    //ind->linCmtRate = ind->InfusionRate + op->neq;
     ind->tlastS = getTlastSThread();
     ind->tfirstS = getTfirstSThread();
     ind->curDoseS = getCurDoseSThread();
@@ -1437,7 +1437,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->extraDoseDose = _globals.extraDoseDose[omp_get_thread_num()];
     ind->idxExtra = 0;
     ind->extraSorted = 0;
-
+    ind->extraDoseNewXout = NA_REAL;
     ind->on = _globals.gon + ncmt*omp_get_thread_num();
     ind->solveSave = _globals.gSolveSave + (op->neq+ op->extraCmt)*omp_get_thread_num();
     ind->solveLast = _globals.gSolveLast + (op->neq + op->extraCmt) *omp_get_thread_num();
@@ -1448,7 +1448,6 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->cDur = NULL;
     ind->cF   =  NULL;
     ind->InfusionRate = NULL;
-    ind->linCmtRate = NULL;
     ind->tlastS = NULL;
     ind->tfirstS = NULL;
     ind->curDoseS = NULL;
