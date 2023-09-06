@@ -1,4 +1,3 @@
-
 #pragma once
 #define STRICT_R_HEADERS
 #ifndef __rxode2_H__

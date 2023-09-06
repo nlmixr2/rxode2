@@ -14,6 +14,7 @@
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
 #include <rxode2parseHandleSs.h>
+#include <rxode2parseSortInd.h>
 //#include "seed.h"
 #include <timsort.h>
 #define SORT gfx::timsort
@@ -568,46 +569,7 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
 
 // Adapted from
 extern "C" void sortInd(rx_solving_options_ind *ind) {
-// #ifdef _OPENMP
-//   int core = omp_get_thread_num();
-// #else
-//   int core = 0;
-// #endif
-  rx_solve *rx = &rx_global;
-  rx_solving_options *op = &op_global;
-  // Reset times for infusion
-  int doSort = 1;
-  double *time = ind->timeThread;
-  ind->ixds = 0;
-  ind->curShift = 0;
-  for (int i = 0; i < ind->n_all_times; i++) {
-    ind->ix[i] = i;
-    ind->idx = i;
-    if (!isObs(getEvid(ind, i))) {
-      time[i] = getTime__(ind->ix[i], ind, 1);
-      ind->ixds++;
-    } else {
-      if (getEvid(ind, i) == 3) {
-        ind->curShift -= rx->maxShift;
-      }
-      time[i] = getTime__(ind->ix[i], ind, 1);
-    }
-    if (op->naTime == 1){
-      doSort=0;
-      break;
-    }
-  }
-  if (doSort) {
-    SORT(ind->ix, ind->ix + ind->n_all_times,
-         [ind, time](int a, int b){
-           double timea = time[a],
-             timeb = time[b];
-           if (timea == timeb) {
-             return a < b;
-           }
-           return timea < timeb;
-         });
-  }
+  rxode2parse_sortInd(ind);
 }
 
 extern "C" int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
