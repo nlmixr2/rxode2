@@ -13,6 +13,7 @@
 //#include "seed.h"
 #include <rxode2parseGetTime.h>
 
+double getTime(int idx, rx_solving_options_ind *ind);
 SEXP _rxHasOpenMp(void);
 
 SEXP _vecDF(SEXP cv, SEXP n_);
