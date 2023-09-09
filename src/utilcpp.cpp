@@ -185,8 +185,10 @@ NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool u
       ret[i+6] = mn;
     } else if (p == 1) {
       ret[i+6] = mx;
+    } else if (p == 0.5) {
+      ret[i+6] = oldM;
     } else if (useT) {
-      ret[i+6] = oldM + c * Rf_qt(p, (double)(n), 1, 0);
+      ret[i+6] = oldM + c * Rf_qt(p, (double)(n-1), 1, 0);
     } else {
       ret[i+6] = oldM + c * Rf_qnorm5(p, 0.0, 1.0, 1, 0);
     }
