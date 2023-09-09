@@ -23,13 +23,18 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   if (any(names(.args) == "ci")) {
     .ci <- .args$ci
     if (inherits(.ci, "logical")) {
-      checkmate::assertLogical(.ci, len=1, any.missing=FALSE)
+      checkmate::assertLogical(.ci, len=1, any.missing=FALSE, .var.name="ci")
       if (!.ci) {
         .ci <- 0.0
       }
     } else {
-      checkmate::assertNumeric(.ci, lower=0, upper=1, finite=TRUE, any.missing=FALSE)
+      checkmate::assertNumeric(.ci, lower=0, upper=1, finite=TRUE, any.missing=FALSE, .var.name="ci")
     }
+  }
+  .mean <- FALSE
+  if (any(names(.args) == "mean")) {
+    .mean <- .args$mean
+    checkmate::assertLogical(.mean, len=1, any.missing=FALSE, .var.name="mean")
   }
   .stk <- rxStack(object, parm, doSim=.doSim)
   for(.v in .by) {
@@ -44,7 +49,8 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     lvl = paste0("p", .p * 100),
     ci = paste0("p", .p2 * 100),
     parm = levels(.stk$trt),
-    by = .by
+    by = .by,
+    mean = .mean
   )
   class(.lst) <- "rxHidden"
   if (.ci ==0 || !any(names(.stk) == "sim.id")) {
@@ -61,14 +67,23 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     if (.ci == 0 || .ntot < 2500) {
       if (.ci != 0.0) {
         .mwarn("in order to put confidence bands around the intervals, you need at least 2500 simulations")
-        message("summarizing data...", appendLF = FALSE)
       }
-      .stk <- .stk[, list(
-        p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE),
-        Percentile = sprintf("%s%%", .p * 100)
-      ),
-      by = c("time", "trt", .by)
-      ]
+      message("summarizing data...", appendLF = FALSE)
+      if (.mean) {
+        .stk <- .stk[, list(
+          p1 = .p, eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE),
+          Percentile = sprintf("%s%%", .p * 100)
+        ),
+        by = c("time", "trt", .by)
+        ]        
+      } else {
+        .stk <- .stk[, list(
+          p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE),
+          Percentile = sprintf("%s%%", .p * 100)
+        ),
+        by = c("time", "trt", .by)
+        ]
+      }
       if (requireNamespace("tibble", quietly = TRUE)) {
         .stk <- tibble::as_tibble(.stk)
       }
@@ -88,7 +103,15 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   }
   message("summarizing data...", appendLF = FALSE)
   .ret <- .stk[, id := sim.id %% .n]
-  .ret <- .ret[, list(p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)]
+  if (.mean) {
+    .ret <- .ret[, list(p1 = .p,
+                        eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE)),
+                 by = c("id", "time", "trt", .by)]
+  } else {
+    .ret <- .ret[, list(p1 = .p,
+                        eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)]
+    
+  }
   .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
                           sprintf("p%s", .p2 * 100)),
                by = c("p1", "time", "trt", .by)

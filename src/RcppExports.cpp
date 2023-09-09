@@ -1824,6 +1824,43 @@ RcppExport SEXP _rxode2_rxErf(SEXP vSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// meanProbs_
+NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT);
+static SEXP _rxode2_meanProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type probs(probsSEXP);
+    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
+    Rcpp::traits::input_parameter< bool >::type useT(useTSEXP);
+    rcpp_result_gen = Rcpp::wrap(meanProbs_(x, probs, naRm, useT));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_meanProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_meanProbs__try(xSEXP, probsSEXP, naRmSEXP, useTSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 
 // validate (ensure exported C++ functions exist before calling them)
 static int _rxode2_RcppExport_validate(const char* sig) { 
@@ -1879,6 +1916,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
         signatures.insert("NumericVector(*rxErf)(NumericVector)");
+        signatures.insert("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool)");
     }
     return signatures.find(sig) != signatures.end();
 }
@@ -1935,6 +1973,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC)_rxode2_rxSymInvCholEnvCalculate_try);
     R_RegisterCCallable("rxode2", "_rxode2_isNullZero", (DL_FUNC)_rxode2_isNullZero_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxErf", (DL_FUNC)_rxode2_rxErf_try);
+    R_RegisterCCallable("rxode2", "_rxode2_meanProbs_", (DL_FUNC)_rxode2_meanProbs__try);
     R_RegisterCCallable("rxode2", "_rxode2_RcppExport_validate", (DL_FUNC)_rxode2_RcppExport_validate);
     return R_NilValue;
 }
