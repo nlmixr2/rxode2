@@ -83,11 +83,19 @@ mu-referencing style to run the optimization.
   example you can now stratify by gender and race by: `confint(sim,
   "sim", by=c("race", "gender"))`
 
-  - When calculating the intervals for `rxode2` simulated objects you
+- When calculating the intervals for `rxode2` simulated objects you
   can now use `ci=FALSE` so that it only calculates the default
   intervals without bands on each of the percentiles; You can also
   choose not to match the secondary bands limits with `levels` but use
   your own `ci=0.99` for instance
+  
+- A new function was introduced `meanProbs()` which calculates the
+  mean and expected quantiles under either the normal or t
+  distribution
+    
+- When calculating the intervals for `rxode2` simulated objects you
+  can also use `mean=TRUE` to use the mean for the first level of
+  confidence using `meanProbs()`
 
 ## Internal new features
 

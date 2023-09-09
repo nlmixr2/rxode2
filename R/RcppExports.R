@@ -589,3 +589,7 @@ rxErf <- function(v) {
     .Call(`_rxode2_rxErf`, v)
 }
 
+meanProbs_ <- function(x, probs, naRm, useT) {
+    .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT)
+}
+

@@ -283,6 +283,7 @@ SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 SEXP _rxode2_assignSeedInfo(void);
 SEXP _rxSetSeed(SEXP);
+SEXP _rxode2_meanProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP useT);
 
 typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
 typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
@@ -360,6 +361,7 @@ extern SEXP chin(SEXP x, SEXP table);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_meanProbs_", (DL_FUNC) &_rxode2_meanProbs_, 4},
     {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},

@@ -772,3 +772,95 @@ is.latex <- function() {
     knitr::kable(table)
   }
 }
+
+#' Calculate expected quantiles with normal or t sampling distribution
+#'
+#' The generic function `meanProbs` produces expected quantiles under
+#' either the t distribution or the normal sampling distribution. This
+#' uses `qnorm()` or `qt()` with the mean and standard deviation.
+#'
+#' For a single probability, p, it uses either:
+#'
+#' mean + qt(p, df=n)*sd/sqrt(n)
+#'
+#' or
+#'
+#' mean + qnorm(p)*sd/sqrt(n)
+#'
+#' The smallest observation corresponds to a probability of 0 and the
+#' largest to a probability of 1 and the mean corresponds to 0.5.
+#'
+#' The mean and standard deviation of the sample is calculated based
+#' on Welford's method for a single pass.
+#'
+#' This is meant to perform in the same way as `quantile()` so it can
+#' be a drop in replacement for code using `quantile()` but using
+#' distributional assumptions.
+#'  
+#' @param x numeric vector whose mean and probability based confidence
+#'   values are wanted, NA and NaN values are not allowed in numeric
+#'   vectors unless ‘na.rm’ is ‘TRUE’.
+#' @param probs numeric vector of probabilities with values in [0,1].
+#' @param na.rm logical; if true, any NA and NaN's are removed from
+#'   `x` before the quantiles are computed.
+#' @param names logical; if true, the result has a names attribute.
+#' @param useT logical; if true, use the t-distribution to calculate
+#'   the confidence-based estimates. If false use the normal
+#'   distribution to calculate the confidence based estimates.
+#' @param onlyProbs logical; if true, only return the probability based
+#'   confidence interval estimates, otherwise return
+#' @return By default the return has the probabilities as names (if
+#'   named) with the points where the expected distribution are
+#'   located given the sampling mean and standard deviation. If
+#'   `onlyProbs=FALSE` then it would prepend mean, variance, standard
+#'   deviation, minimum, maximum and number of non-NA observations.
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' quantile(x<- rnorm(1001))
+#' meanProbs(x)
+#'
+#' # Can get some extra statistics if you request onlyProbs=FALSE
+#' meanProbs(x, onlyProbs=FALSE)
+#'
+#' x[2] <- NA_real_
+#'
+#' meanProbs(x, onlyProbs=FALSE)
+#'
+#' quantile(x<- rnorm(42))
+#'
+#' meanProbs(x)
+#' 
+#' meanProbs(x, useT=FALSE)
+#' 
+meanProbs <- function(x, ...) {
+  UseMethod("meanProbs")
+}
+
+#' @rdname meanProbs
+#' @export
+meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
+                              names=TRUE, useT=TRUE, onlyProbs=TRUE) {
+  checkmate::assertNumeric(x)
+  checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
+  checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
+  checkmate::assertLogical(names, any.missing=FALSE, len=1)
+  checkmate::assertLogical(useT, any.missing=FALSE, len=1)
+  checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
+  .ret <- .Call(`_rxode2_meanProbs_`, x, probs, na.rm, useT)
+  .names <- NULL
+  if (names) {
+    .names <- paste0(probs*100, "%")
+  }
+  if (onlyProbs) {
+    .ret <- .ret[-1L:-6L]
+    if (names) {
+      names(.ret) <- .names
+    }
+  } else if (names) {
+    names(.ret) <- c("mean","var", "sd", "min", "max", "n", .names)
+  }
+  .ret
+}
+
