@@ -88,6 +88,10 @@ mu-referencing style to run the optimization.
   intervals without bands on each of the percentiles; You can also
   choose not to match the secondary bands limits with `levels` but use
   your own `ci=0.99` for instance
+  
+  - A new function was introduced `meanProbs()` which calculates the
+    mean and expected quantiles under either the normal or t
+    distribution
 
 ## Internal new features
 

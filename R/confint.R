@@ -23,13 +23,18 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   if (any(names(.args) == "ci")) {
     .ci <- .args$ci
     if (inherits(.ci, "logical")) {
-      checkmate::assertLogical(.ci, len=1, any.missing=FALSE)
+      checkmate::assertLogical(.ci, len=1, any.missing=FALSE, .var.name="ci")
       if (!.ci) {
         .ci <- 0.0
       }
     } else {
-      checkmate::assertNumeric(.ci, lower=0, upper=1, finite=TRUE, any.missing=FALSE)
+      checkmate::assertNumeric(.ci, lower=0, upper=1, finite=TRUE, any.missing=FALSE, .var.name="ci")
     }
+  }
+  .mean <- FALSE
+  if (any(names(.args) == "mean")) {
+    .mean <- .args$mean
+    checkmate::assertLogical(.mean, len=1, any.missing=FALSE, .var.name="mean")
   }
   .stk <- rxStack(object, parm, doSim=.doSim)
   for(.v in .by) {
@@ -44,7 +49,8 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     lvl = paste0("p", .p * 100),
     ci = paste0("p", .p2 * 100),
     parm = levels(.stk$trt),
-    by = .by
+    by = .by,
+    mean = .mean
   )
   class(.lst) <- "rxHidden"
   if (.ci ==0 || !any(names(.stk) == "sim.id")) {

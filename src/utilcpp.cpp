@@ -127,3 +127,69 @@ NumericVector rxErf(NumericVector v) {
   }
   return ret;
 }
+
+#define min2( a , b )  ( (a) < (b) ? (a) : (b) )
+#define max2( a , b )  ( (a) > (b) ? (a) : (b) )
+
+//[[Rcpp::export]]
+NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT) {
+  double oldM = 0.0, newM = 0.0,
+    oldS = 0.0, newS = 0.0, mx=R_NegInf, mn=R_PosInf;
+  int n = 0;
+  for (int i = 0; i <  x.size(); ++i) {
+    double cur = x[i];
+    if (ISNA(cur)) {
+      if (naRm) {
+        continue;
+      } else  {
+        NumericVector ret(6+probs.size());
+        for (int j = 0; j < ret.size(); ++j) {
+          ret[j] = NA_REAL;
+        }
+        return ret;
+      }
+    }
+    n++;
+    mn = min2(cur, mn);
+    mx = max2(cur, mx);
+    if (n == 1) {
+      oldM = newM = cur;
+      oldS = 0.0;
+    } else {
+      newM = oldM + (cur - oldM)/n;
+      newS = oldS + (cur - oldM)*(cur - newM);
+      oldM = newM;
+      oldS = newS;
+    }
+  }
+  double var;
+  if (n > 1) {
+    var = newS/(n-1);
+  } else {
+    var = 0.0;
+  }
+  double sd = sqrt(var);
+  // mean, var, sd, min, max
+  NumericVector ret(6+probs.size());
+  ret[0] = oldM;
+  ret[1] = var;
+  ret[2] = sd;
+  ret[3] = mn;
+  ret[4] = mx;
+  ret[5] = (double)n;
+  double c = sd/sqrt((double)(n));
+  for (int i = 0; i < probs.size(); ++i) {
+    double p = probs[i];
+    std::string str = std::to_string(p*100) + "%";
+    if (p == 0) {
+      ret[i+6] = mn;
+    } else if (p == 1) {
+      ret[i+6] = mx;
+    } else if (useT) {
+      ret[i+6] = oldM + c * Rf_qt(p, (double)(n), 1, 0);
+    } else {
+      ret[i+6] = oldM + c * Rf_qnorm5(p, 0.0, 1.0, 1, 0);
+    }
+  }
+  return ret;
+}
