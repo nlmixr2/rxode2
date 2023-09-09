@@ -358,8 +358,26 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
 #' @export
 plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
+  .y <- as.character(substitute(y))
+  .call0 <- match.call()[-(1:2)]
+  .call <- as.list(.call0)
+  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
+  if (length(.w) > 0) {
+    .call <- .call[-.w]
+  }
+  .cmts <- c(
+    as.character(substitute(y)),
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    as.character(unlist(.call))
+  )
+  .cmts <- .cmts[.cmts != ""]
+  .cmts <- unique(.cmts)
   .lvl <- attr(class(x), ".rx")$lvl
   .parm <- attr(class(x), ".rx")$parm
+  if (length(.cmts) > 0) {
+    .parm <- intersect(.parm, .cmts)
+    x  <- x[x$trt %in% .parm,]
+  }
   .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$eff)
   .facet <- NULL
@@ -421,9 +439,27 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
 #' @export
 plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
+  .y <- as.character(substitute(y))
+  .call0 <- match.call()[-(1:2)]
+  .call <- as.list(.call0)
+  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
+  if (length(.w) > 0) {
+    .call <- .call[-.w]
+  }
+  .cmts <- c(
+    as.character(substitute(y)),
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    as.character(unlist(.call))
+  )
+  .cmts <- .cmts[.cmts != ""]
+  .cmts <- unique(.cmts)
+  .parm <- attr(class(x), ".rx")$parm
+  if (length(.cmts) > 0) {
+    .parm <- intersect(.parm, .cmts)
+    x  <- x[x$trt %in% .parm,]
+  }
   .lvl <- attr(class(x), ".rx")$lvl
   .ci  <- attr(class(x), ".rx")$ci
-  .parm <- attr(class(x), ".rx")$parm
   .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$p50,
     color = .data$Percentile,
