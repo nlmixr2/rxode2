@@ -88,14 +88,19 @@ mu-referencing style to run the optimization.
   intervals without bands on each of the percentiles; You can also
   choose not to match the secondary bands limits with `levels` but use
   your own `ci=0.99` for instance
-  
+
 - A new function was introduced `meanProbs()` which calculates the
   mean and expected quantiles under either the normal or t
   distribution
-    
+
 - When calculating the intervals for `rxode2` simulated objects you
   can also use `mean=TRUE` to use the mean for the first level of
   confidence using `meanProbs()`
+
+- When plotting the `confint` derived intervals from an `rxode2`
+  simulation, you can now subset based on a simulated value like
+  `plot(ci, Cc)` which will only plot the variable `Cc` that you
+  summarized even if you also summarized `eff` (for instance).
 
 ## Internal new features
 

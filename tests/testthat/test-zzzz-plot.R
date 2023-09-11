@@ -153,6 +153,8 @@ rxTest({
 
       ci1.C2 <- confint(sim, "C2", ci=0.99)
 
+      ci1.C3 <- confint(sim,  ci=0.99)
+
       ci1.C2.e <- confint(sim, "C2", by="extra")
 
       ci1.C2.eff <- confint(sim, c("C2", "eff"))
@@ -160,11 +162,11 @@ rxTest({
       ci1.C2.eff.e <- confint(sim, c("C2", "eff"), by="extra")
 
       sim2 <- rxSolve(m2, ev, omega = omega, nSub = 2500, keep="extra")
-      
+
       sim2R <- rxSolve(m2, evR, omega = omega, nSub = 2500)
 
       ci2.C2 <- confint(sim2, "C2")
-      
+
       ci2.C2.e <- confint(sim2, "C2", by="extra")
 
       ci2.C2.eff <- confint(sim2, c("C2", "eff"))
@@ -203,6 +205,8 @@ rxTest({
           vdiffr::expect_doppelganger(paste0("plot-", .xgxtxt, "all-log-yx-r"), suppressWarnings(sR %>% plot(log = "yx")))
 
           vdiffr::expect_doppelganger(paste0("plot-ci1c2", .xgxtxt), suppressWarnings(ci1.C2 %>% plot()))
+          vdiffr::expect_doppelganger(paste0("plot-ci1c3", .xgxtxt, "-centr"), suppressWarnings(ci1.C3 %>% plot("centr")))
+          vdiffr::expect_doppelganger(paste0("plot-ci1c3", .xgxtxt, "-full"), suppressWarnings(ci1.C3 %>% plot()))
           vdiffr::expect_doppelganger(paste0("plot-ci1c2", .xgxtxt, "log-x"), suppressWarnings(ci1.C2 %>% plot(log = "x")))
           vdiffr::expect_doppelganger(paste0("plot-ci1c2", .xgxtxt, "log-y"), suppressWarnings(ci1.C2 %>% plot(log = "y")))
           vdiffr::expect_doppelganger(paste0("plot-ci1c2", .xgxtxt, "log-xy"), suppressWarnings(ci1.C2 %>% plot(log = "xy")))
