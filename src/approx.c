@@ -191,28 +191,28 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
       idx = -1-ind->extraDoseTimeIdx[ind->extraDoseN[0]-1];
     }
     // extra dose time, find the closest index
-    double v = getAllTimes(ind, idxIn);
+    double v = getTime(idxIn, ind);
     int i, j, ij, n = ind->n_all_times;
     i = 0;
     j = n - 1;
-    if (v < getTime(i, ind)) {
+    if (v < getTime(ind->ix[i], ind)) {
       idx = i;
-    } else if (v > getTime(j, ind)) {
+    } else if (v > getTime(ind->ix[j], ind)) {
       idx = j;
     } else {
       /* find the correct interval by bisection */
       while(i < j - 1) { /* T(i) <= v <= T(j) */
         ij = (i + j)/2; /* i+1 <= ij <= j-1 */
-        if (v < getTime(ij, ind)) {
+        if (v < getTime(ind->ix[ij], ind)) {
           j = ij;
         } else  {
           i = ij;
         }
       }
       // Pick best match
-      if (isSameTimeOp(v, getTime(j, ind))) {
+      if (isSameTimeOp(v, getTime(ind->ix[j], ind))) {
         idx = j;
-      } else if (isSameTimeOp(v, getTime(i, ind))) {
+      } else if (isSameTimeOp(v, getTime(ind->ix[i], ind))) {
         idx = i;
       } else if (op->is_locf == 2) {
         // nocb
@@ -282,11 +282,11 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
           //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
           if (idxSample == 0 &&
-              isSameTimeOp(t, getAllTimes(indSample, idxSample))) {
+              isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
           } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
-                     isSameTimeOp(t, getAllTimes(indSample, idxSample))) {
+                     isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
             if (!isSameTimeOp(getValue(idxSample, y, indSample, op),
                               getValue(idxSample-1, y, indSample, op))) {
