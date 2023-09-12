@@ -362,6 +362,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
         if (nlhs){
           calc_lhs(neq[1], curT, getSolve(i), ind->lhs);
+          updateExtraDoseGlobals(ind);
         }
         if (subsetEvid == 1){
           if (isObs(evid) && evid >= 10) continue;

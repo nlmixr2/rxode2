@@ -948,7 +948,7 @@ extern "C" void handleSSinf8_iter(double *yp,
 }
 
 extern "C" void updateExtraDoseGlobals(rx_solving_options_ind* ind);
-#define handleSS(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx) handleSSGen(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx, solveWith1Pt_ode, handleSSbolus_iter, solveSSinf_iter, handleSSinf8_iter, updateExtraDoseGlobals);
+#define handleSS(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx) handleSSGen(neq, BadDose,InfusionRate,dose, yp, xout, xp, id, i, nx, istate, op, ind, u_inis, ctx, solveWith1Pt_ode, handleSSbolus_iter, solveSSinf_iter, handleSSinf8_iter);
 
 
 //================================================================================
@@ -1028,6 +1028,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       }
       if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
       calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateExtraDoseGlobals(ind);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
     }
   }
@@ -1187,6 +1188,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       }
       if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
       calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateExtraDoseGlobals(ind);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
@@ -1569,6 +1571,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       // Copy to next solve so when assigned to yp=ind->solve[neq[0]*i]; it will be the prior values
       if (i+1 != ind->n_all_times) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
       calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateExtraDoseGlobals(ind);
     }
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -1811,6 +1814,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
       if (i+1 != nx) memcpy(getSolve(i+1), getSolve(i), neq[0]*sizeof(double));
       calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateExtraDoseGlobals(ind);
     }
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
