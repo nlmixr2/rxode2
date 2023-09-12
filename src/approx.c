@@ -282,7 +282,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
           //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
           if (idxSample == 0 &&
-              isSameTimeOp(t, getAllTimes(indSample, idxSample)) < DBL_EPSILON) {
+              isSameTimeOp(t, getAllTimes(indSample, idxSample))) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
           } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
