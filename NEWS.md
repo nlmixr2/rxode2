@@ -128,6 +128,9 @@ mu-referencing style to run the optimization.
 
 - Bug fix for `geom_amt()` when the `aes` transformation has `x`
 
+- Bug fix for some covariate updates that may affect multiple compartment
+  models (like issue #581)
+
 # rxode2 2.0.13
 
 ## Bug fixes
