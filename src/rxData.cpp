@@ -1360,6 +1360,7 @@ struct rx_globals {
 
   // time per thread
   double *timeThread = NULL;
+  double *linCmtConstants = NULL;
 };
 
 
@@ -1442,6 +1443,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveSave = _globals.gSolveSave + (op->neq+ op->extraCmt)*omp_get_thread_num();
     ind->solveLast = _globals.gSolveLast + (op->neq + op->extraCmt) *omp_get_thread_num();
     ind->solveLast2 = _globals.gSolveLast2 + (op->neq+ op->extraCmt)*omp_get_thread_num();
+    ind->linCmtConstants = _globals.linCmtConstants + 8*omp_get_thread_num();
   } else {
     ind->alag = NULL;
     ind->cRate =NULL;
@@ -3977,7 +3979,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->par_ptr = &_globals.gpars[cid*rxSolveDat->npars];
           ind->mtime   = &_globals.gmtime[rx->nMtime*cid];
           if (rx->nMtime > 0) ind->mtime[0]=-1;
-          ind->BadDose = &_globals.gBadDose[op->neq*cid];
+          ind->BadDose = &_globals.gBadDose[(op->neq+op->extraCmt)*cid];
           // Hmax defined above.
           ind->sim = simNum+1;
           ind->rc = &_globals.grc[cid];
@@ -5295,9 +5297,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int nIndSim = rx->nIndSim;
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     int n8 = rx->maxAllTimes*op->cores;
+    int n9 = op->cores*8;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+nLin+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      5*op->neq + 8*n3a_c + nllik_c,
+                                      5*op->neq + 8*n3a_c + nllik_c + n9,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5336,7 +5339,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gTfirstS  = _globals.gTlastS + n3a_c; // [n3a]
     _globals.gCurDoseS = _globals.gTfirstS + n3a_c; // [n3a]
     _globals.gIndSim   = _globals.gCurDoseS + n3a_c;// [n7]
-    _globals.timeThread = _globals.gIndSim + n7;
+    _globals.linCmtConstants = _globals.gIndSim + n7; //[n9]
+    _globals.timeThread = _globals.linCmtConstants + n9;
     std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);
