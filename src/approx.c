@@ -41,10 +41,10 @@ extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   int i, j, ij;
   i = 0;
   j = ind->n_all_times - 1;
-  if (obs_time < getTime(ind->ix[i], ind)){
+  if (obs_time < getTime_(ind->ix[i], ind)){
     return i;
   }
-  if (obs_time > getTime(ind->ix[j], ind)){
+  if (obs_time > getTime_(ind->ix[j], ind)){
     return j;
   }
   while(i < j - 1) { /* x[i] <= obs_time <= x[j] */
@@ -55,11 +55,11 @@ extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
       i = ij;
   }
   /* if (i == 0) return 0; */
-  while(i != 0 && obs_time == getTime(ind->ix[i], ind)){
+  while(i != 0 && obs_time == getTime_(ind->ix[i], ind)){
     i--;
   }
   if (i == 0){
-    while(i < ind->ndoses-2 && fabs(obs_time  - getTime(ind->ix[i+1], ind))<= sqrt(DBL_EPSILON)){
+    while(i < ind->ndoses-2 && fabs(obs_time  - getTime_(ind->ix[i+1], ind))<= sqrt(DBL_EPSILON)){
       i++;
     }
   }
@@ -108,7 +108,7 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
   }
   return ret;
 }
-#define T(i) getTime(id->ix[i], id)
+#define T(i) getTime_(id->ix[i], id)
 #define V(i) getValue(i, y, id, Meth)
 double rx_approxP(double v, double *y, int n,
                   rx_solving_options *Meth, rx_solving_options_ind *id){
@@ -191,28 +191,28 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
       idx = -1-ind->extraDoseTimeIdx[ind->extraDoseN[0]-1];
     }
     // extra dose time, find the closest index
-    double v = getTime(idxIn, ind);
+    double v = getTime_(idxIn, ind);
     int i, j, ij, n = ind->n_all_times;
     i = 0;
     j = n - 1;
-    if (v < getTime(ind->ix[i], ind)) {
+    if (v < getTime_(ind->ix[i], ind)) {
       idx = i;
-    } else if (v > getTime(ind->ix[j], ind)) {
+    } else if (v > getTime_(ind->ix[j], ind)) {
       idx = j;
     } else {
       /* find the correct interval by bisection */
       while(i < j - 1) { /* T(i) <= v <= T(j) */
         ij = (i + j)/2; /* i+1 <= ij <= j-1 */
-        if (v < getTime(ind->ix[ij], ind)) {
+        if (v < getTime_(ind->ix[ij], ind)) {
           j = ij;
         } else  {
           i = ij;
         }
       }
       // Pick best match
-      if (isSameTimeOp(v, getTime(ind->ix[j], ind))) {
+      if (isSameTimeOp(v, getTime_(ind->ix[j], ind))) {
         idx = j;
-      } else if (isSameTimeOp(v, getTime(ind->ix[i], ind))) {
+      } else if (isSameTimeOp(v, getTime_(ind->ix[i], ind))) {
         idx = i;
       } else if (op->is_locf == 2) {
         // nocb
@@ -282,11 +282,11 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
           //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
           if (idxSample == 0 &&
-              isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
+              isSameTimeOp(t, getTime_(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
           } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
-                     isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
+                     isSameTimeOp(t, getTime_(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
             if (!isSameTimeOp(getValue(idxSample, y, indSample, op),
                               getValue(idxSample-1, y, indSample, op))) {
