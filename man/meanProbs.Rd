@@ -13,7 +13,7 @@ meanProbs(x, ...)
   na.rm = FALSE,
   names = TRUE,
   useT = TRUE,
-  useProbs = FALSE
+  onlyProbs = TRUE
 )
 }
 \arguments{
@@ -32,8 +32,15 @@ vectors unless ‘na.rm’ is ‘TRUE’.}
 the confidence-based estimates. If false use the normal
 distribution to calculate the confidence based estimates.}
 
-\item{useProbs}{logical; if true, only return the probability
-based confidence interval estimates, otherwise return}
+\item{onlyProbs}{logical; if true, only return the probability based
+confidence interval estimates, otherwise return}
+}
+\value{
+By default the return has the probabilities as names (if
+named) with the points where the expected distribution are
+located given the sampling mean and standard deviation. If
+\code{onlyProbs=FALSE} then it would prepend mean, variance, standard
+deviation, minimum, maximum and number of non-NA observations.
 }
 \description{
 The generic function \code{meanProbs} produces expected quantiles under
@@ -53,11 +60,29 @@ The smallest observation corresponds to a probability of 0 and the
 largest to a probability of 1 and the mean corresponds to 0.5.
 
 The mean and standard deviation of the sample is calculated based
-on Welford's method for a single pass
+on Welford's method for a single pass.
+
+This is meant to perform in the same way as \code{quantile()} so it can
+be a drop in replacement for code using \code{quantile()} but using
+distributional assumptions.
 }
 \examples{
 
-meanProbs(x <- rnorm(1001))
+quantile(x<- rnorm(1001))
+meanProbs(x)
+
+# Can get some extra statistics if you request onlyProbs=FALSE
+meanProbs(x, onlyProbs=FALSE)
+
+x[2] <- NA_real_
+
+meanProbs(x, onlyProbs=FALSE)
+
+quantile(x<- rnorm(42))
+
+meanProbs(x)
+
+meanProbs(x, useT=FALSE)
 
 }
 \author{

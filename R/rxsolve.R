@@ -1,4 +1,4 @@
- #' Options, Solving & Simulation of an ODE/solved system
+#' Options, Solving & Simulation of an ODE/solved system
 #'
 #' This uses rxode2 family of objects, file, or model specification to
 #' solve a ODE system.  There are many options for a solved rxode2
@@ -1212,8 +1212,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     .rx <- object$simulationModel
   }
   list(list(object=.rx, params = params, events = events, inits = inits),
-                       .rxControl,
-                       list(theta = theta, eta = eta))
+       .rxControl,
+       list(theta = theta, eta = eta))
 }
 
 #' @rdname rxSolve
@@ -1238,7 +1238,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
     .pred <- TRUE
     if (!.hasIpred && any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
-      .lst$drop <- c(.lst$drop, "ipredSim")      
+      .lst$drop <- c(.lst$drop, "ipredSim")
     }
   }
   .ret <- do.call("rxSolve.default", .lst)
@@ -1301,6 +1301,9 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             theta = NULL, eta = NULL) {
+  if (inherits(object, "rxSolve") && is.null(.v$env$.ev)) {
+    stop("cannot solve from more than one rxSolve object bound together", call.=FALSE)
+  }
   on.exit({
     .clearPipe()
     .asFunctionEnv$rx <- NULL
@@ -1310,13 +1313,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (rxIs(object, "rxEt")) {
     if (!is.null(events)) {
       stop("events can be pipeline or solving arguments not both",
-        call. = FALSE
-      )
+           call. = FALSE
+           )
     }
     if (is.null(rxode2et::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
-        call. = FALSE
-      )
+           call. = FALSE
+           )
     } else {
       events <- object
       object <- rxode2et::.pipeRx(NA)
@@ -1328,16 +1331,16 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     if (is.null(rxode2et::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
-        call. = FALSE
-      )
+           call. = FALSE
+           )
     } else {
       .rxParams <- object
       object <- rxode2et::.pipeRx(NA)
     }
     if (is.null(rxode2et::.pipeEvents(NA))) {
       stop("need an rxode2 events as a part of the pipeline",
-        call. = FALSE
-      )
+           call. = FALSE
+           )
     } else {
       events <- rxode2et::.pipeEvents(NA)
       rxode2et::.pipeEvents(NULL)
@@ -1347,29 +1350,29 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     events <- rxode2et::.pipeEvents(NA)
   } else if (!is.null(rxode2et::.pipeEvents(NA)) && !is.null(events)) {
     stop("'events' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
+         call. = FALSE
+         )
   } else if (!is.null(rxode2et::.pipeEvents(NA)) && !is.null(params) &&
-    rxIs(params, "event.data.frame")) {
+               rxIs(params, "event.data.frame")) {
     stop("'events' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
+         call. = FALSE
+         )
   }
 
   if (!is.null(rxode2et::.pipeParams(NA)) && is.null(params)) {
     params <- rxode2et::.pipeParams(NA)
   } else if (!is.null(rxode2et::.pipeParams(NA)) && !is.null(params)) {
     stop("'params' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
+         call. = FALSE
+         )
   }
 
   if (!is.null(rxode2et::.pipeInits(NA)) && is.null(inits)) {
     inits <- rxode2et::.pipeInits(NA)
   } else if (!is.null(rxode2et::.pipeInits(NA)) && !is.null(inits)) {
     stop("'inits' in pipeline AND in solving arguments, please provide just one",
-      call. = FALSE
-    )
+         call. = FALSE
+         )
   }
 
   if (.applyParams) {
@@ -1380,13 +1383,13 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .xtra <- list(...)
   if (any(duplicated(names(.xtra)))) {
     stop("duplicate arguments do not make sense",
-      call. = FALSE
-    )
+         call. = FALSE
+         )
   }
   if (any(names(.xtra) == "covs")) {
     stop("covariates can no longer be specified by 'covs'\n  include them in the event dataset\n\nindividual covariates: Can be specified by a 'iCov' dataset\n each each individual covariate has a value\n\ntime varying covariates: modify input event data-frame or\n  'eventTable' to include covariates(https://tinyurl.com/y52wfc2y)\n\nEach approach needs the covariates named to match the variable in the model",
-      call. = FALSE
-    )
+         call. = FALSE
+         )
   }
   .nms <- names(as.list(match.call())[-1])
   .lst <- list(...)
@@ -1400,9 +1403,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .both <- intersect(.mv$params, .ctl$keep)
     if (length(.both) > 0) {
       .keep <- .ctl$keep[!(.ctl$keep %in% .both)]
-       if (length(.keep) == 0L) {
-          .keep <- NULL
-       }
+      if (length(.keep) == 0L) {
+        .keep <- NULL
+      }
       .w <- which(names(.ctl) == "keep")
       .ctl[[.w]] <- .keep
       .ctl <- do.call(rxControl,
@@ -1536,8 +1539,8 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       events <- c(.theta, .eta)
     } else {
       stop("cannot specify 'params' and 'theta'/'eta' at the same time",
-        call. = FALSE
-      )
+           call. = FALSE
+           )
     }
   }
   if (!is.null(.ctl$iCov)) {
