@@ -27,7 +27,6 @@
     .v2$sim.id <- .nStud1 + .v2$sim.id
     class(.v2) <- "data.frame"
     .v <- rbind(.v, .v2)
-    .cloneEnv$.args <- NULL
     .cloneEnv$.nsub <- .cloneEnv$.nsub + .env2$.nsub
     .cloneEnv$.et <- NULL
     .cloneEnv$.args.params <- NULL
@@ -94,11 +93,11 @@ rbind.rxSolve <- function(..., deparse.level = 1) {
     if (length(.lst) == 2) {
       return(.ret)
     }
-    return(do.call(rbind,
+    return(do.call(rbind.rxSolve,
                    c(list(.ret),
                      lapply(seq_along(.lst)[-(1:2)],
                             function(i){
-                              .lst[[.]]
+                              .lst[[i]]
                             }))))
   }
   if (length(.lst) == 1) return(.lst[[1]])

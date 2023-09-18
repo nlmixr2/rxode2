@@ -50,4 +50,11 @@ test_that("rbind", {
   pk2 <-
     suppressWarnings(rxSolve(mod2, nStud = 4, ev, cores = 2))
 
+  b1 <- rbind.rxSolve(pk1, pk2)
+
+  b2 <- rbind.rxSolve(pk1, pk2, pk1)
+
+  expect_true(inherits(b1, "rxSolve"))
+  expect_true(inherits(b2, "rxSolve"))
+  expect_error(rbind.rxSolve())
 })
