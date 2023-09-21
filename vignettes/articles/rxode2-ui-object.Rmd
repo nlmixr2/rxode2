@@ -44,7 +44,11 @@ As expected if you try to access any properties of this function without evaluat
 try(m1$iniDf)
 ```
 
-But we can see the information if we either evaluate the function by `m1()` or use `rxode2()`/`nlmixr2()` to evalute the function. If you are in interactive mode, the `rxode2()` /`nlmixr2()` will change comments in the initial estimates block to labels. If you evaluate the function, the labels are dropped.
+But we can see the information if we either evaluate the function by
+`m1()` or use `rxode2()`/`nlmixr2()` to evalute the function. If you
+are in interactive mode, the `rxode2()` /`nlmixr2()` will change
+comments in the initial estimates block to labels. If you evaluate the
+function, the labels are dropped.
 
 Lets evaluate the model using `rxode2()` to find out a bit more about the function:
 
@@ -53,15 +57,21 @@ m1 <- rxode2(m1)
 m1$iniDf
 ```
 
-You can see in the output above, there are no initial estimates in this model, the `$iniDf` from the model has no rows representing the model information (though it does list the columns that are present in the initialization data-frame (which we will discuss later).
+You can see in the output above, there are no initial estimates in
+this model, the `$iniDf` from the model has no rows representing the
+model information (though it does list the columns that are present in
+the initialization data-frame (which we will discuss later).
 
-The other thing you can see from the object is there is no end-points defined by looking at `m1$predDf` which will return `NULL` when there are no end-points.
+The other thing you can see from the object is there is no end-points
+defined by looking at `m1$predDf` which will return `NULL` when there
+are no end-points.
 
 ```{r predDfNone}
 m1$predDf
 ```
 
-Lets change this a bit with model piping to include initial estimates and a residual error to see the difference
+Lets change this a bit with model piping to include initial estimates
+and a residual error to see the difference
 
 ```{r pipeFull}
 m2 <- m1 |>
@@ -106,7 +116,9 @@ The model structure itself is a compressed `rxode2` ui object; you can see it by
 class(m2)
 ```
 
-This compressed object is actually a compressed R environment. If you decompress the environment you can interact with the environment like any typical R environment. This is done by `rxode2::rxUiDecompress():`
+This compressed object is actually a compressed R environment. If you
+decompress the environment you can interact with the environment like
+any typical R environment. This is done by `rxode2::rxUiDecompress():`
 
 ```{r rxUiDecompressCls}
 m2 <- rxUiDecompress(m2)
@@ -115,11 +127,16 @@ class(m2)
 ls(m2, all=TRUE)
 ```
 
-You can see the two properties we queried are low level objects inside of the `roxde2` ui environment (or compressed environment). We will describe the other items in more detail later.
+You can see the two properties we queried are low level objects inside
+of the `roxde2` ui environment (or compressed environment). We will
+describe the other items in more detail later.
 
 ## `$iniDf`: Initialization data frame
 
-The initialization data frame comes from the `lotri` package and converts the `ini({})` a data-frame that is easier to use in R code. This data frame has the following columns:
+The initialization data frame comes from the `lotri` package and
+converts the `ini({})` a data-frame that is easier to use in R
+code. This data frame has the following columns:
+
 
 | Column          | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 |------------------|------------------------------------------------------------|
@@ -165,12 +182,21 @@ Inside the parsed `rxode2` function, there is another element called `$predDf`. 
 
 ## Model (`$lstExpr`), and Model variables (`$mv0` / `$mvL`)
 
-The most basic (ie stored) component of the model is the `ui$lstExpr` which is a list that has a language object representing each line of the model.
+The most basic (ie stored) component of the model is the `ui$lstExpr`
+which is a list that has a language object representing each line of
+the model.
 
-The `ui$mv0` is the `rxode2` model variables for the `model({})` block **with all error model lines excluded**.
+The `ui$mv0` is the `rxode2` model variables for the `model({})` block
+**with all error model lines excluded**.
 
-To get the lower-level functions for linear compartmental models, a `rxode2` model is converted to lower-level functions `linCmtA` or `linCmtB` depending on if gradients are needed. When this occurs, `$mvL` will contain the lower-level model. **This still excludes all the error model lines**
+To get the lower-level functions for linear compartmental models, a
+`rxode2` model is converted to lower-level functions `linCmtA` or
+`linCmtB` depending on if gradients are needed. When this occurs,
+`$mvL` will contain the lower-level model. **This still excludes all
+the error model lines**
 
 ## Covariates
 
-The parameters that are not defined in the model and are not defined as an input parameters are covariates. You can access them directly with `ui$covariates` or use the alias `ui$allCovs`
+The parameters that are not defined in the model and are not defined
+as an input parameters are covariates. You can access them directly
+with `ui$covariates` or use the alias `ui$allCovs`
