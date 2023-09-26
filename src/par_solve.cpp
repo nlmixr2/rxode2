@@ -454,8 +454,7 @@ extern "C" {
                                         t_IndF indf,
                                         t_getTime gettime,
                                         t_locateTimeIndex timeindex,
-                                        t_handle_evidL handleEvid,
-                                        t_getDur getdur);
+                                        t_handle_evidL handleEvid);
 }
 
 
@@ -529,21 +528,20 @@ void rxUpdateFuns(SEXP trans){
      IndF,
      getTime,
      _locateTimeIndex,
-     handle_evidL,
-     _getDur);
+     handle_evidL);
   _rxode2random_assignSolveOnly2(rx_global, op_global);
 }
 
 extern "C" void rxClearFuns(){
-  calc_lhs		= NULL;
-  dydt			= NULL;
-  calc_jac		= NULL;
-  update_inis		= NULL;
-  dydt_lsoda_dum	= NULL;
-  jdum_lsoda		= NULL;
-  set_solve		= NULL;
-  get_solve		= NULL;
-  dydt_liblsoda		= NULL;
+  calc_lhs      = NULL;
+  dydt          = NULL;
+  calc_jac      = NULL;
+  update_inis       = NULL;
+  dydt_lsoda_dum    = NULL;
+  jdum_lsoda        = NULL;
+  set_solve     = NULL;
+  get_solve     = NULL;
+  dydt_liblsoda     = NULL;
 }
 
 extern "C" void F77_NAME(dlsoda)(
