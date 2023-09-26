@@ -1224,7 +1224,7 @@ NumericVector rxSetupIni(const RObject &obj,
 //'
 //' @param obj rxode2 object
 //'
-//' @param inits A numeric vector of initial conditions.
+//' @param scale A numeric vector scales
 //'
 //' @param extraArgs A list of extra args to parse for initial conditions.
 //'
@@ -1755,12 +1755,12 @@ void rxSimOmega(bool &simOmega,
           defaultType = 3;
         }
         RObject ol = _rxode2_cvPost_(as<SEXP>(NumericVector::create(dfSub)),
-                             as<SEXP>(omegaMC),
-                             as<SEXP>(IntegerVector::create(1)),
-                             as<SEXP>(LogicalVector::create(false)),
-                             as<SEXP>(LogicalVector::create(false)),
-                             as<SEXP>(IntegerVector::create(defaultType)),
-                             as<SEXP>(IntegerVector::create(omegaXform)));
+                                     as<SEXP>(omegaMC),
+                                     as<SEXP>(IntegerVector::create(1)),
+                                     as<SEXP>(LogicalVector::create(false)),
+                                     as<SEXP>(LogicalVector::create(false)),
+                                     as<SEXP>(IntegerVector::create(defaultType)),
+                                     as<SEXP>(IntegerVector::create(omegaXform)));
         if (TYPEOF(ol) == VECSXP) {
           omegaList = ol;
         } else {
@@ -1768,12 +1768,12 @@ void rxSimOmega(bool &simOmega,
         }
       } else {
         RObject ol = _rxode2_cvPost_(as<SEXP>(NumericVector::create(dfSub)),
-                             as<SEXP>(omegaMC),
-                             as<SEXP>(IntegerVector::create(nStud)),
-                             as<SEXP>(LogicalVector::create(true)),
-                             as<SEXP>(LogicalVector::create(false)),
-                             as<SEXP>(IntegerVector::create(1)),
-                             as<SEXP>(IntegerVector::create(1)));
+                                     as<SEXP>(omegaMC),
+                                     as<SEXP>(IntegerVector::create(nStud)),
+                                     as<SEXP>(LogicalVector::create(true)),
+                                     as<SEXP>(LogicalVector::create(false)),
+                                     as<SEXP>(IntegerVector::create(1)),
+                                     as<SEXP>(IntegerVector::create(1)));
         if (TYPEOF(ol) == VECSXP) {
           omegaList = ol;
         } else {
