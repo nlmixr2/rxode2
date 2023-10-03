@@ -801,7 +801,7 @@ is.latex <- function() {
 #' @param x numeric vector whose mean and probability based confidence
 #'   values are wanted, NA and NaN values are not allowed in numeric
 #'   vectors unless ‘na.rm’ is ‘TRUE’.
-#' @param probs numeric vector of probabilities with values in [0,1].
+#' @param probs numeric vector of probabilities with values in the interval from 0 to 1 .
 #' @param na.rm logical; if true, any NA and NaN's are removed from
 #'   `x` before the quantiles are computed.
 #' @param names logical; if true, the result has a names attribute.
@@ -810,6 +810,8 @@ is.latex <- function() {
 #'   distribution to calculate the confidence based estimates.
 #' @param onlyProbs logical; if true, only return the probability based
 #'   confidence interval estimates, otherwise return
+#' @param ... Arguments passed to default method, allows many
+#'   different methods to be applied.
 #' @return By default the return has the probabilities as names (if
 #'   named) with the points where the expected distribution are
 #'   located given the sampling mean and standard deviation. If
@@ -880,15 +882,17 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #' @param x numeric vector whose mean and probability based confidence
 #'   values are wanted, NA and NaN values are not allowed in numeric
 #'   vectors unless ‘na.rm’ is ‘TRUE’.
-#' @param probs numeric vector of probabilities with values in
-#'   [0,1]. When 0, it represents the maximum observed, when 1, it
-#'   represents the maximum observed. When 0.5 it represents the
-#'   expected probability (mean)
+#' @param probs numeric vector of probabilities with values in the
+#'   interval 0 to 1, inclusive. When 0, it represents the maximum
+#'   observed, when 1, it represents the maximum observed. When 0.5 it
+#'   represents the expected probability (mean)
 #' @param na.rm logical; if true, any NA and NaN's are removed from
 #'   `x` before the quantiles are computed.
 #' @param names logical; if true, the result has a names attribute.
 #' @param onlyProbs logical; if true, only return the probability
 #'   based confidence interval estimates, otherwise return
+#' @param ... Arguments passed to default method, allows many
+#'   different methods to be applied.
 #' @return By default the return has the probabilities as names (if
 #'   named) with the points where the expected distribution are
 #'   located given the sampling mean and standard deviation. If

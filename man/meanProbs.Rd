@@ -21,7 +21,10 @@ meanProbs(x, ...)
 values are wanted, NA and NaN values are not allowed in numeric
 vectors unless ‘na.rm’ is ‘TRUE’.}
 
-\item{probs}{numeric vector of probabilities with values in \link{0,1}.}
+\item{...}{Arguments passed to default method, allows many
+different methods to be applied.}
+
+\item{probs}{numeric vector of probabilities with values in the interval from 0 to 1 .}
 
 \item{na.rm}{logical; if true, any NA and NaN's are removed from
 \code{x} before the quantiles are computed.}
