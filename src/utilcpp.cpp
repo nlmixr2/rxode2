@@ -133,7 +133,7 @@ NumericVector rxErf(NumericVector v) {
 
 //[[Rcpp::export]]
 NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
-  double oldM = 0.0, newM = 0.0, mx=R_NegInf, mn=R_PosInf;
+  double oldM = 0.0, newM = 0.0;
   int n = 0;
   // Use Newcombe, R. G. (1998). "Two-sided confidence intervals for
   // the single proportion: comparison of seven methods". Statistics
@@ -146,7 +146,7 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
       if (naRm) {
         continue;
       } else  {
-        NumericVector ret(6+probs.size());
+        NumericVector ret(4+probs.size());
         for (int j = 0; j < ret.size(); ++j) {
           ret[j] = NA_REAL;
         }
@@ -154,8 +154,6 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
       }
     }
     n++;
-    mn = min2(cur, mn);
-    mx = max2(cur, mx);
     if (n == 1) {
       oldM = newM = cur;
     } else {
@@ -173,25 +171,23 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
     var = 0.0;
     sd = 0.0;
   }
-  // mean, var, sd, min, max
-  NumericVector ret(6+probs.size());
+  // mean, var, sd
+  NumericVector ret(4+probs.size());
   ret[0] = oldM;
   ret[1] = var;
   ret[2] = sd;
-  ret[3] = mn;
-  ret[4] = mx;
-  ret[5] = (double)n;
+  ret[3] = (double)n;
 
   double c = sd/sqrt((double)(n));
   for (int i = 0; i < probs.size(); ++i) {
     double p = probs[i];
     std::string str = std::to_string(p*100) + "%";
     if (p == 0) {
-      ret[i+6] = mn;
+      ret[i+4] = 0;
     } else if (p == 1) {
-      ret[i+6] = mx;
+      ret[i+4] = 1;
     } else if (p == 0.5) {
-      ret[i+6] = oldM;
+      ret[i+4] = oldM;
     } else {
       double z;
       if (p > 0.5) {
@@ -205,15 +201,15 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
       double coef3 = 2*(n+z2);
       if (p < 0.5) {
         if (p == 0.0) {
-          ret[i+6] = 0.0;
+          ret[i+4] = 0.0;
         } else {
-          ret[i+6] = max2(0, (coef1-coef2)/coef3);
+          ret[i+4] = max2(0, (coef1-coef2)/coef3);
         }
       } else {
         if (p == 1.0) {
-          ret[i+6] = 1.0;
+          ret[i+4] = 1.0;
         } else {
-          ret[i+6] = min2(1, (coef1+coef2)/coef3);
+          ret[i+4] = min2(1, (coef1+coef2)/coef3);
         }
       }
     }

@@ -935,12 +935,12 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
     .names <- paste0(probs*100, "%")
   }
   if (onlyProbs) {
-    .ret <- .ret[-1L:-6L]
+    .ret <- .ret[-1L:-4L]
     if (names) {
       names(.ret) <- .names
     }
   } else if (names) {
-    names(.ret) <- c("mean","var", "sd", "min", "max", "n", .names)
+    names(.ret) <- c("mean","var", "sd", "n", .names)
   }
   .ret
 }
