@@ -90,12 +90,21 @@ mu-referencing style to run the optimization.
   your own `ci=0.99` for instance
 
 - A new function was introduced `meanProbs()` which calculates the
-  mean and expected quantiles under either the normal or t
+  mean and expected confidence bands under either the normal or t
   distribution
+
+- A related new function was introduced that calculates the mean and
+  confidence bands under the binomial/Bernoulli distribution
+  (`binomProbs()`)
 
 - When calculating the intervals for `rxode2` simulated objects you
   can also use `mean=TRUE` to use the mean for the first level of
   confidence using `meanProbs()`
+
+- Also when calculating the intervals for `rxode2` simulated object
+  you can also use `mean="prob"` to use the binomial distributional
+  information (and ci) for the first level of confidence using
+  `binomProbs()`
 
 - When plotting the `confint` derived intervals from an `rxode2`
   simulation, you can now subset based on a simulated value like
