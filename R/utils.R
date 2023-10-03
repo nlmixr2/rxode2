@@ -747,7 +747,7 @@ is.latex <- function() {
   ret
 }
 #' Print out a table in the documentation
-#'  
+#'
 #' @param table data frame
 #' @param caption a character vector representing the caption for the latex table
 #' @return based on the `knitr` context:
@@ -755,7 +755,7 @@ is.latex <- function() {
 #' - output a `DT::datatable` for html output
 #' - otherwise output a `knitr::kable`
 #' @keywords internal
-#' @export 
+#' @export
 #' @author Matthew L. Fidler
 #' @examples
 #' .rxDocTable(rxReservedKeywords)
@@ -773,11 +773,12 @@ is.latex <- function() {
   }
 }
 
-#' Calculate expected quantiles with normal or t sampling distribution
+#' Calculate expected confidence bands with normal or t sampling distribution
 #'
-#' The generic function `meanProbs` produces expected quantiles under
-#' either the t distribution or the normal sampling distribution. This
-#' uses `qnorm()` or `qt()` with the mean and standard deviation.
+#' The generic function `meanProbs` produces expected confidence bands
+#' under either the t distribution or the normal sampling
+#' distribution. This uses `qnorm()` or `qt()` with the mean and
+#' standard deviation.
 #'
 #' For a single probability, p, it uses either:
 #'
@@ -796,7 +797,7 @@ is.latex <- function() {
 #' This is meant to perform in the same way as `quantile()` so it can
 #' be a drop in replacement for code using `quantile()` but using
 #' distributional assumptions.
-#'  
+#'
 #' @param x numeric vector whose mean and probability based confidence
 #'   values are wanted, NA and NaN values are not allowed in numeric
 #'   vectors unless ‘na.rm’ is ‘TRUE’.
@@ -831,9 +832,9 @@ is.latex <- function() {
 #' quantile(x<- rnorm(42))
 #'
 #' meanProbs(x)
-#' 
+#'
 #' meanProbs(x, useT=FALSE)
-#' 
+#'
 meanProbs <- function(x, ...) {
   UseMethod("meanProbs")
 }
@@ -864,3 +865,82 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
   .ret
 }
 
+#' Calculate expected confidence bands with binomial sampling distribution
+#'
+#' The generic function `binomProbs` produces expected confidence bands
+#' using the
+#'
+#' This is meant to perform in the same way as `quantile()` so it can
+#' be a drop in replacement for code using `quantile()` but using
+#' distributional assumptions.
+#'
+#' It is used for confidence intervals with rxode2 solved objects using
+#' `confint(mean="prob")` or `confint(mean="binom")
+#'
+#' @param x numeric vector whose mean and probability based confidence
+#'   values are wanted, NA and NaN values are not allowed in numeric
+#'   vectors unless ‘na.rm’ is ‘TRUE’.
+#' @param probs numeric vector of probabilities with values in
+#'   [0,1]. When 0, it represents the maximum observed, when 1, it
+#'   represents the maximum observed. When 0.5 it represents the
+#'   expected probability (mean)
+#' @param na.rm logical; if true, any NA and NaN's are removed from
+#'   `x` before the quantiles are computed.
+#' @param names logical; if true, the result has a names attribute.
+#' @param onlyProbs logical; if true, only return the probability
+#'   based confidence interval estimates, otherwise return
+#' @return By default the return has the probabilities as names (if
+#'   named) with the points where the expected distribution are
+#'   located given the sampling mean and standard deviation. If
+#'   `onlyProbs=FALSE` then it would prepend mean, variance, standard
+#'   deviation, minimum, maximum and number of non-NA observations.
+#' @export
+#' @author Matthew L. Fidler
+#' @references - Newcombe,
+#'   R. G. (1998). "Two-sided confidence intervals for the single proportion: comparison of seven methods". Statistics
+#'   in Medicine. 17 (8):
+#'   857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
+#'   9595616.
+#' @examples
+#'
+#' quantile(x<- rbinom(7001, p=0.375, size=1))
+#' binomProbs(x)
+#'
+#' # Can get some extra statistics if you request onlyProbs=FALSE
+#' binomProbs(x, onlyProbs=FALSE)
+#'
+#' x[2] <- NA_real_
+#'
+#' binomProbs(x, onlyProbs=FALSE)
+#'
+#' binomProbs(x, na.rm=TRUE)
+#'
+binomProbs <- function(x, ...) {
+  UseMethod("binomProbs")
+}
+
+#' @rdname binomProbs
+#' @export
+binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
+                               names=TRUE, onlyProbs=TRUE) {
+  checkmate::assertIntegerish(x, min.len=1, lower=0.0, upper=1.0)
+  x <- as.double(x)
+  checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
+  checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
+  checkmate::assertLogical(names, any.missing=FALSE, len=1)
+  checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
+  .ret <- .Call(`_rxode2_binomProbs_`, x, probs, na.rm)
+  .names <- NULL
+  if (names) {
+    .names <- paste0(probs*100, "%")
+  }
+  if (onlyProbs) {
+    .ret <- .ret[-1L:-6L]
+    if (names) {
+      names(.ret) <- .names
+    }
+  } else if (names) {
+    names(.ret) <- c("mean","var", "sd", "min", "max", "n", .names)
+  }
+  .ret
+}

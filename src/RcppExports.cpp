@@ -1824,24 +1824,61 @@ RcppExport SEXP _rxode2_rxErf(SEXP vSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// binomProbs_
+NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm);
+static SEXP _rxode2_binomProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type probs(probsSEXP);
+    Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
+    rcpp_result_gen = Rcpp::wrap(binomProbs_(x, probs, naRm));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_binomProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_binomProbs__try(xSEXP, probsSEXP, naRmSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // meanProbs_
-NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT);
-static SEXP _rxode2_meanProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP) {
+NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT, bool useBinom);
+static SEXP _rxode2_meanProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP, SEXP useBinomSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type probs(probsSEXP);
     Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
     Rcpp::traits::input_parameter< bool >::type useT(useTSEXP);
-    rcpp_result_gen = Rcpp::wrap(meanProbs_(x, probs, naRm, useT));
+    Rcpp::traits::input_parameter< bool >::type useBinom(useBinomSEXP);
+    rcpp_result_gen = Rcpp::wrap(meanProbs_(x, probs, naRm, useT, useBinom));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _rxode2_meanProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP) {
+RcppExport SEXP _rxode2_meanProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP, SEXP useBinomSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_meanProbs__try(xSEXP, probsSEXP, naRmSEXP, useTSEXP));
+        rcpp_result_gen = PROTECT(_rxode2_meanProbs__try(xSEXP, probsSEXP, naRmSEXP, useTSEXP, useBinomSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -1916,7 +1953,8 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
         signatures.insert("NumericVector(*rxErf)(NumericVector)");
-        signatures.insert("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool)");
+        signatures.insert("NumericVector(*binomProbs_)(NumericVector,NumericVector,bool)");
+        signatures.insert("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool,bool)");
     }
     return signatures.find(sig) != signatures.end();
 }
@@ -1973,6 +2011,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC)_rxode2_rxSymInvCholEnvCalculate_try);
     R_RegisterCCallable("rxode2", "_rxode2_isNullZero", (DL_FUNC)_rxode2_isNullZero_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxErf", (DL_FUNC)_rxode2_rxErf_try);
+    R_RegisterCCallable("rxode2", "_rxode2_binomProbs_", (DL_FUNC)_rxode2_binomProbs__try);
     R_RegisterCCallable("rxode2", "_rxode2_meanProbs_", (DL_FUNC)_rxode2_meanProbs__try);
     R_RegisterCCallable("rxode2", "_rxode2_RcppExport_validate", (DL_FUNC)_rxode2_RcppExport_validate);
     return R_NilValue;
