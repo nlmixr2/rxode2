@@ -39,7 +39,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .useT <- TRUE
   if (any(names(.args) == "useT")) {
     .useT <- .args$useT
-    checkmate::assertLogical(useT, len=1, any.missing=FALSE, .var.name="pred")
+    checkmate::assertLogical(.useT, len=1, any.missing=FALSE, .var.name="useT")
   }
   if (any(names(.args) == "mean")) {
     .mean <- .args$mean

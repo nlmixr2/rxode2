@@ -89,4 +89,28 @@ test_that("test meanProb()", {
 
   expect_equal(ci1$eff, ci2$eff)
 
+
+  ci1 <- confint(pk1, "blood", mean=TRUE, useT=FALSE)
+
+  # use dplyr
+  ci2 <- pk1 |>
+    dplyr::group_by(time) |>
+    dplyr::reframe(eff=meanProbs(blood, c(0.025, 0.5, 0.975), na.rm=TRUE, names=FALSE, useT=FALSE),
+                   p1=c(0.025, 0.5, 0.975), Percentile=c("2.5%", "50%", "97.5%")) |>
+    dplyr::arrange(time, p1)
+
+  expect_equal(ci1$eff, ci2$eff)
+
+  ci1 <- confint(pk1, "blood", mean=TRUE, useT=FALSE, pred=TRUE)
+
+  # use dplyr
+  ci2 <- pk1 |>
+    dplyr::group_by(time) |>
+    dplyr::reframe(eff=meanProbs(blood, c(0.025, 0.5, 0.975), na.rm=TRUE, names=FALSE, useT=FALSE,
+                                 pred=TRUE),
+                   p1=c(0.025, 0.5, 0.975), Percentile=c("2.5%", "50%", "97.5%")) |>
+    dplyr::arrange(time, p1)
+
+  expect_equal(ci1$eff, ci2$eff)
+
 })
