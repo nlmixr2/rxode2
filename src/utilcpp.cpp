@@ -15,7 +15,7 @@
 using namespace Rcpp;
 using namespace arma;
 
-extern "C" SEXP _rxode2_isNullZero(SEXP); 
+extern "C" SEXP _rxode2_isNullZero(SEXP);
 
 //[[Rcpp::export]]
 LogicalVector isNullZero(RObject obj) {
@@ -132,7 +132,94 @@ NumericVector rxErf(NumericVector v) {
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
 //[[Rcpp::export]]
-NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT) {
+NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
+  double oldM = 0.0, newM = 0.0;
+  int n = 0;
+  // Use Newcombe, R. G. (1998). "Two-sided confidence intervals for
+  // the single proportion: comparison of seven methods". Statistics
+  // in Medicine. 17 (8):
+  // 857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
+  // 9595616.
+  for (int i = 0; i <  x.size(); ++i) {
+    double cur = x[i];
+    if (ISNA(cur)) {
+      if (naRm) {
+        continue;
+      } else  {
+        NumericVector ret(4+probs.size());
+        for (int j = 0; j < ret.size(); ++j) {
+          ret[j] = NA_REAL;
+        }
+        return ret;
+      }
+    }
+    n++;
+    if (n == 1) {
+      oldM = newM = cur;
+    } else {
+      newM = oldM + (cur - oldM)/n;
+      oldM = newM;
+    }
+  }
+
+  double var=0;
+  double sd=0;
+  if (n > 1) {
+    var = oldM*(1.0-oldM);
+    sd = sqrt(var);
+  } else {
+    var = 0.0;
+    sd = 0.0;
+  }
+  // mean, var, sd
+  NumericVector ret(4+probs.size());
+  ret[0] = oldM;
+  ret[1] = var;
+  ret[2] = sd;
+  ret[3] = (double)n;
+
+  double c = sd/sqrt((double)(n));
+  for (int i = 0; i < probs.size(); ++i) {
+    double p = probs[i];
+    std::string str = std::to_string(p*100) + "%";
+    if (p == 0) {
+      ret[i+4] = 0;
+    } else if (p == 1) {
+      ret[i+4] = 1;
+    } else if (p == 0.5) {
+      ret[i+4] = oldM;
+    } else {
+      double z;
+      if (p > 0.5) {
+        z = Rf_qnorm5(p, 0.0, 1.0, 1, 0);
+      } else {
+        z = Rf_qnorm5(1.0-p, 0.0, 1.0, 1, 0);
+      }
+      double z2 = z*z;
+      double coef1 = 2*n*oldM + z2;
+      double coef2 = z*sqrt(z2 - 1.0/n + 4*n*var + (4*oldM-2))+1.0;
+      double coef3 = 2*(n+z2);
+      if (p < 0.5) {
+        if (p == 0.0) {
+          ret[i+4] = 0.0;
+        } else {
+          ret[i+4] = max2(0, (coef1-coef2)/coef3);
+        }
+      } else {
+        if (p == 1.0) {
+          ret[i+4] = 1.0;
+        } else {
+          ret[i+4] = min2(1, (coef1+coef2)/coef3);
+        }
+      }
+    }
+  }
+  return ret;
+}
+
+//[[Rcpp::export]]
+NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT,
+                         bool useBinom) {
   double oldM = 0.0, newM = 0.0,
     oldS = 0.0, newS = 0.0, mx=R_NegInf, mn=R_PosInf;
   int n = 0;

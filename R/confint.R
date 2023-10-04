@@ -32,9 +32,16 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     }
   }
   .mean <- FALSE
+  .prob <- FALSE
   if (any(names(.args) == "mean")) {
     .mean <- .args$mean
-    checkmate::assertLogical(.mean, len=1, any.missing=FALSE, .var.name="mean")
+    if (inherits(.mean, "character") &&
+          any(.mean == c("binom", "prob"))) {
+      .prob <- TRUE
+      .mean <- FALSE
+    } else {
+      checkmate::assertLogical(.mean, len=1, any.missing=FALSE, .var.name="mean")
+    }
   }
   .stk <- rxStack(object, parm, doSim=.doSim)
   for(.v in .by) {
@@ -50,7 +57,8 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     ci = paste0("p", .p2 * 100),
     parm = levels(.stk$trt),
     by = .by,
-    mean = .mean
+    mean = .mean,
+    prob=.prob
   )
   class(.lst) <- "rxHidden"
   if (.ci ==0 || !any(names(.stk) == "sim.id")) {
@@ -75,7 +83,14 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
           Percentile = sprintf("%s%%", .p * 100)
         ),
         by = c("time", "trt", .by)
-        ]        
+        ]
+      } else if (.prob) {
+        .stk <- .stk[, list(
+          p1 = .p, eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE),
+          Percentile = sprintf("%s%%", .p * 100)
+        ),
+        by = c("time", "trt", .by)
+        ]
       } else {
         .stk <- .stk[, list(
           p1 = .p, eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE),
@@ -107,10 +122,14 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .ret <- .ret[, list(p1 = .p,
                         eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE)),
                  by = c("id", "time", "trt", .by)]
+  } else if (.prob) {
+    .ret <- .ret[, list(p1 = .p,
+                        eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE)),
+                 by = c("id", "time", "trt", .by)]
   } else {
     .ret <- .ret[, list(p1 = .p,
                         eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)]
-    
+
   }
   .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
                           sprintf("p%s", .p2 * 100)),
