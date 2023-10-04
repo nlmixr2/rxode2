@@ -32,18 +32,42 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     }
   }
   .mean <- FALSE
-  .prob <- FALSE
+  .binom <- FALSE
+  .m <- 0L
+  .nC <- 0L
+  .pred <- FALSE
+  .useT <- TRUE
+  if (any(names(.args) == "useT")) {
+    .useT <- .args$useT
+    checkmate::assertLogical(useT, len=1, any.missing=FALSE, .var.name="pred")
+  }
   if (any(names(.args) == "mean")) {
     .mean <- .args$mean
     if (inherits(.mean, "character") &&
-          any(.mean == c("binom", "prob"))) {
-      .prob <- TRUE
+          length(.mean) == 1L &&
+          .mean == "binom") {
+      .binom <- TRUE
       .mean <- FALSE
     } else {
       checkmate::assertLogical(.mean, len=1, any.missing=FALSE, .var.name="mean")
     }
   }
+  if (any(names(.args) == "pred")) {
+    .pred <- .args$pred
+    checkmate::assertLogical(.pred, len=1, any.missing=FALSE, .var.name="pred")
+  }
+
+  if (any(names(.args) == "n")) {
+    .nC <- unique(.args$n)
+  }
+  if (any(names(.args) == "m")) {
+    .m <- unique(.args$m)
+  }
   .stk <- rxStack(object, parm, doSim=.doSim)
+  if (!any(names(.stk) == "id") &&
+        any(names(.stk) == "sim.id")) {
+    names(.stk) <- gsub("sim.id", "id", names(.stk))
+  }
   for(.v in .by) {
     .stk[[.v]] <- object[[.v]]
   }
@@ -58,7 +82,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     parm = levels(.stk$trt),
     by = .by,
     mean = .mean,
-    prob=.prob
+    binom=.binom
   )
   class(.lst) <- "rxHidden"
   if (.ci ==0 || !any(names(.stk) == "sim.id")) {
@@ -79,14 +103,16 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
       message("summarizing data...", appendLF = FALSE)
       if (.mean) {
         .stk <- .stk[, list(
-          p1 = .p, eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE),
+          p1 = .p, eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE, useT=.useT,
+                                           n=.nC, pred=.pred),
           Percentile = sprintf("%s%%", .p * 100)
         ),
         by = c("time", "trt", .by)
         ]
-      } else if (.prob) {
+      } else if (.binom) {
         .stk <- .stk[, list(
-          p1 = .p, eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE),
+          p1 = .p, eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
+                                            n=.nC, m=.m, pred=.pred),
           Percentile = sprintf("%s%%", .p * 100)
         ),
         by = c("time", "trt", .by)
@@ -120,11 +146,15 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .ret <- .stk[, id := sim.id %% .n]
   if (.mean) {
     .ret <- .ret[, list(p1 = .p,
-                        eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE)),
+                        eff = rxode2::meanProbs(.SD$value, probs = .p, na.rm = TRUE, n=.nC,
+                                                useT=.useT,
+                                                pred=.pred)),
                  by = c("id", "time", "trt", .by)]
-  } else if (.prob) {
+  } else if (.binom) {
+    print(.nC)
     .ret <- .ret[, list(p1 = .p,
-                        eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE)),
+                        eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
+                                                 n=.nC, m=.m, pred=.pred)),
                  by = c("id", "time", "trt", .by)]
   } else {
     .ret <- .ret[, list(p1 = .p,

@@ -132,14 +132,26 @@ NumericVector rxErf(NumericVector v) {
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
 //[[Rcpp::export]]
-NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
+NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, bool pred,
+                         int nIn, int mIn) {
   double oldM = 0.0, newM = 0.0;
   int n = 0;
-  // Use Newcombe, R. G. (1998). "Two-sided confidence intervals for
+  // For CI use Wilson score interval  with continuity correction.
+  // Described in Newcombe, R. G. (1998). "Two-sided confidence intervals for
   // the single proportion: comparison of seven methods". Statistics
   // in Medicine. 17 (8):
   // 857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
   // 9595616.
+  // For PI use the Frequentist PI described in Hezhi Lu, Hua Jin,
+  // A new prediction interval for binomial random variable based on inferential models,
+  // Journal of Statistical Planning and Inference,
+  // Volume 205,
+  // 2020,
+  // Pages 156-174,
+  // ISSN 0378-3758,
+  // https://doi.org/10.1016/j.jspi.2019.07.001.
+  // in that case we are using the Nelson's prediction interval
+  // With the case where m=n=1 because this is the bernoulli case
   for (int i = 0; i <  x.size(); ++i) {
     double cur = x[i];
     if (ISNA(cur)) {
@@ -161,7 +173,18 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
       oldM = newM;
     }
   }
-
+  int nC;
+  if (nIn == 0) {
+    nC = n;
+  } else {
+    nC = nIn;
+  }
+  int m = 1;
+  if (mIn == 0) {
+    m = n;
+  } else {
+    m = mIn;
+  }
   double var=0;
   double sd=0;
   if (n > 1) {
@@ -194,21 +217,40 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
       } else {
         z = Rf_qnorm5(1.0-p, 0.0, 1.0, 1, 0);
       }
-      double z2 = z*z;
-      double coef1 = 2*n*oldM + z2;
-      double coef2 = z*sqrt(z2 - 1.0/n + 4*n*var + (4*oldM-2))+1.0;
-      double coef3 = 2*(n+z2);
-      if (p < 0.5) {
-        if (p == 0.0) {
-          ret[i+4] = 0.0;
+      if (pred) {
+#define y oldM
+        double z2 = z*z;
+        double A = m*nC*(2*y*z2*(nC+z2+m)+(2*y+z2)/((m+nC)*(m+nC)));
+        double B1 = m*nC*(m+nC)*z2*(m+nC+z2)*(m+nC+z2);
+        double B2 = 2*(nC-y)*(nC*nC*(2*y+z2)+4.0*m*nC*y+2.0*m*m*y);
+        double B3 = nC*z2*(nC*(2*y+z2)+3.0*m*nC+m*m);
+        double B = sqrt(B1*(B2+B3));
+        double C1 = (nC+z2)*(m*m+nC*(nC+z2));
+        double C2 = m*nC*(2*nC+3*z2);
+        double C = 2*nC*(C1+C2);
+        if (p < 0.5) {
+          ret[i+4] = max2(0.0, (A-B)/C);
         } else {
-          ret[i+4] = max2(0, (coef1-coef2)/coef3);
+          ret[i+4] = min2(1.0, (A+B)/C);
         }
+#undef y
       } else {
-        if (p == 1.0) {
-          ret[i+4] = 1.0;
+        double z2 = z*z;
+        double coef1 = 2*nC*oldM + z2;
+        double coef2 = z*sqrt(z2 - 1.0/nC + 4*nC*var + (4*oldM-2))+1.0;
+        double coef3 = 2*(nC+z2);
+        if (p < 0.5) {
+          if (p == 0.0) {
+            ret[i+4] = 0.0;
+          } else {
+            ret[i+4] = max2(0, (coef1-coef2)/coef3);
+          }
         } else {
-          ret[i+4] = min2(1, (coef1+coef2)/coef3);
+          if (p == 1.0) {
+            ret[i+4] = 1.0;
+          } else {
+            ret[i+4] = min2(1, (coef1+coef2)/coef3);
+          }
         }
       }
     }
@@ -218,7 +260,7 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
 
 //[[Rcpp::export]]
 NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT,
-                         bool useBinom) {
+                         bool pred, int nIn) {
   double oldM = 0.0, newM = 0.0,
     oldS = 0.0, newS = 0.0, mx=R_NegInf, mn=R_PosInf;
   int n = 0;
@@ -263,7 +305,18 @@ NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool u
   ret[3] = mn;
   ret[4] = mx;
   ret[5] = (double)n;
-  double c = sd/sqrt((double)(n));
+  double c;
+  int nC;
+  if (nIn == 0) {
+    nC = n;
+  } else {
+    nC = nIn;
+  }
+  if (pred) {
+    c = sd*sqrt(1.0+(1.0/nC));
+  } else {
+    c = sd/sqrt((double)(nC));
+  }
   for (int i = 0; i < probs.size(); ++i) {
     double p = probs[i];
     std::string str = std::to_string(p*100) + "%";
@@ -274,7 +327,7 @@ NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool u
     } else if (p == 0.5) {
       ret[i+6] = oldM;
     } else if (useT) {
-      ret[i+6] = oldM + c * Rf_qt(p, (double)(n-1), 1, 0);
+      ret[i+6] = oldM + c * Rf_qt(p, (double)(nC-1), 1, 0);
     } else {
       ret[i+6] = oldM + c * Rf_qnorm5(p, 0.0, 1.0, 1, 0);
     }

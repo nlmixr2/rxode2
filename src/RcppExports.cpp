@@ -1825,22 +1825,25 @@ RcppExport SEXP _rxode2_rxErf(SEXP vSEXP) {
     return rcpp_result_gen;
 }
 // binomProbs_
-NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm);
-static SEXP _rxode2_binomProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP) {
+NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, bool pred, int nIn, int mIn);
+static SEXP _rxode2_binomProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP predSEXP, SEXP nInSEXP, SEXP mInSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type probs(probsSEXP);
     Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
-    rcpp_result_gen = Rcpp::wrap(binomProbs_(x, probs, naRm));
+    Rcpp::traits::input_parameter< bool >::type pred(predSEXP);
+    Rcpp::traits::input_parameter< int >::type nIn(nInSEXP);
+    Rcpp::traits::input_parameter< int >::type mIn(mInSEXP);
+    rcpp_result_gen = Rcpp::wrap(binomProbs_(x, probs, naRm, pred, nIn, mIn));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _rxode2_binomProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP) {
+RcppExport SEXP _rxode2_binomProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP predSEXP, SEXP nInSEXP, SEXP mInSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_binomProbs__try(xSEXP, probsSEXP, naRmSEXP));
+        rcpp_result_gen = PROTECT(_rxode2_binomProbs__try(xSEXP, probsSEXP, naRmSEXP, predSEXP, nInSEXP, mInSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -1861,24 +1864,25 @@ RcppExport SEXP _rxode2_binomProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP) {
     return rcpp_result_gen;
 }
 // meanProbs_
-NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT, bool useBinom);
-static SEXP _rxode2_meanProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP, SEXP useBinomSEXP) {
+NumericVector meanProbs_(NumericVector x, NumericVector probs, bool naRm, bool useT, bool pred, int nIn);
+static SEXP _rxode2_meanProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP, SEXP predSEXP, SEXP nInSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type probs(probsSEXP);
     Rcpp::traits::input_parameter< bool >::type naRm(naRmSEXP);
     Rcpp::traits::input_parameter< bool >::type useT(useTSEXP);
-    Rcpp::traits::input_parameter< bool >::type useBinom(useBinomSEXP);
-    rcpp_result_gen = Rcpp::wrap(meanProbs_(x, probs, naRm, useT, useBinom));
+    Rcpp::traits::input_parameter< bool >::type pred(predSEXP);
+    Rcpp::traits::input_parameter< int >::type nIn(nInSEXP);
+    rcpp_result_gen = Rcpp::wrap(meanProbs_(x, probs, naRm, useT, pred, nIn));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _rxode2_meanProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP, SEXP useBinomSEXP) {
+RcppExport SEXP _rxode2_meanProbs_(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP useTSEXP, SEXP predSEXP, SEXP nInSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_meanProbs__try(xSEXP, probsSEXP, naRmSEXP, useTSEXP, useBinomSEXP));
+        rcpp_result_gen = PROTECT(_rxode2_meanProbs__try(xSEXP, probsSEXP, naRmSEXP, useTSEXP, predSEXP, nInSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -1953,8 +1957,8 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
         signatures.insert("NumericVector(*rxErf)(NumericVector)");
-        signatures.insert("NumericVector(*binomProbs_)(NumericVector,NumericVector,bool)");
-        signatures.insert("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool,bool)");
+        signatures.insert("NumericVector(*binomProbs_)(NumericVector,NumericVector,bool,bool,int,int)");
+        signatures.insert("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool,bool,int)");
     }
     return signatures.find(sig) != signatures.end();
 }

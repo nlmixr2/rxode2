@@ -13,7 +13,9 @@ meanProbs(x, ...)
   na.rm = FALSE,
   names = TRUE,
   useT = TRUE,
-  onlyProbs = TRUE
+  onlyProbs = TRUE,
+  pred = FALSE,
+  n = 0L
 )
 }
 \arguments{
@@ -24,7 +26,8 @@ vectors unless ‘na.rm’ is ‘TRUE’.}
 \item{...}{Arguments passed to default method, allows many
 different methods to be applied.}
 
-\item{probs}{numeric vector of probabilities with values in the interval from 0 to 1 .}
+\item{probs}{numeric vector of probabilities with values in the
+interval from 0 to 1 .}
 
 \item{na.rm}{logical; if true, any NA and NaN's are removed from
 \code{x} before the quantiles are computed.}
@@ -35,8 +38,15 @@ different methods to be applied.}
 the confidence-based estimates. If false use the normal
 distribution to calculate the confidence based estimates.}
 
-\item{onlyProbs}{logical; if true, only return the probability based
-confidence interval estimates, otherwise return}
+\item{onlyProbs}{logical; if true, only return the probability
+based confidence interval estimates, otherwise return}
+
+\item{pred}{logical; if true use the prediction interval instead of
+the confidence interval}
+
+\item{n}{integer/integerish; this is the n used to calculate the
+prediction or confidence interval.  When \code{n=0} (default) use the
+number of non-\code{NA} observations.}
 }
 \value{
 By default the return has the probabilities as names (if

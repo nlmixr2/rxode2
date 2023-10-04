@@ -12,7 +12,10 @@ binomProbs(x, ...)
   probs = c(0.025, 0.05, 0.5, 0.95, 0.975),
   na.rm = FALSE,
   names = TRUE,
-  onlyProbs = TRUE
+  onlyProbs = TRUE,
+  pred = FALSE,
+  n = 0L,
+  m = 0L
 )
 }
 \arguments{
@@ -34,7 +37,19 @@ represents the expected probability (mean)}
 \item{names}{logical; if true, the result has a names attribute.}
 
 \item{onlyProbs}{logical; if true, only return the probability
-based confidence interval estimates, otherwise return}
+based confidence interval/prediction interval estimates,
+otherwise return extra statistics}
+
+\item{n}{integer/integerish; this is the n used to calculate the
+prediction or confidence interval.  When \code{n=0} (default) use the
+number of non-\code{NA} observations.  When calculating the prediction
+interval, this represents the number of observations used in the
+input ("true") distribution.}
+
+\item{m}{integer/integerish; this is the m used to calculate the
+prediction interval.  It represents the expected number of
+samples in the new statistic.  When \code{1=0} (default) use the
+number of non-\code{NA} observations in the input \code{x}.}
 }
 \value{
 By default the return has the probabilities as names (if
@@ -45,15 +60,19 @@ deviation, minimum, maximum and number of non-NA observations.
 }
 \description{
 The generic function \code{binomProbs} produces expected confidence bands
-using the
+using the Wilson score interval with continuity correction
+(described in Newcombe 1998).
 }
 \details{
+The expected prediction intervals use the Frequentist Nelson's
+predictional interval (described by Lu 2020).
+
 This is meant to perform in the same way as \code{quantile()} so it can
 be a drop in replacement for code using \code{quantile()} but using
 distributional assumptions.
 
 It is used for confidence intervals with rxode2 solved objects using
-\code{confint(mean="prob")} or `confint(mean="binom")
+\code{confint(mean="binom")}
 }
 \examples{
 
@@ -72,11 +91,19 @@ binomProbs(x, na.rm=TRUE)
 }
 \references{
 \itemize{
-\item Newcombe,
-R. G. (1998). "Two-sided confidence intervals for the single proportion: comparison of seven methods". Statistics
+\item Newcombe, R. G. (1998). "Two-sided confidence intervals for the single
+proportion: comparison of seven methods". Statistics
 in Medicine. 17 (8):
 857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
 9595616.
+\item Hezhi Lu, Hua Jin,
+A new prediction interval for binomial random variable based on inferential models,
+Journal of Statistical Planning and Inference,
+Volume 205,
+2020,
+Pages 156-174,
+ISSN 0378-3758,
+https://doi.org/10.1016/j.jspi.2019.07.001.
 }
 }
 \author{
