@@ -67,6 +67,6 @@ test_that("test binomProb()", {
 
   expect_equal(binomProbs(x, n=50), t1)
 
- v ## now get test binomial predictions
+ ## now get test binomial predictions
 
 })
