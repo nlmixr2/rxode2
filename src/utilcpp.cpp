@@ -178,7 +178,6 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm) {
   ret[2] = sd;
   ret[3] = (double)n;
 
-  double c = sd/sqrt((double)(n));
   for (int i = 0; i < probs.size(); ++i) {
     double p = probs[i];
     std::string str = std::to_string(p*100) + "%";

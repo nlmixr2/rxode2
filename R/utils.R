@@ -927,7 +927,7 @@ binomProbs <- function(x, ...) {
 #' @export
 binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
                                names=TRUE, onlyProbs=TRUE) {
-  checkmate::assertIntegerish(x, min.len=1, lower=0.0, upper=1.0)
+  checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
   x <- as.double(x)
   checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
   checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
