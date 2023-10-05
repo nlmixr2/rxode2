@@ -131,6 +131,53 @@ NumericVector rxErf(NumericVector v) {
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
+double binomProbsLimF(double theta, double w, int n, int Y, double U) {
+  return w*Rf_pbeta(1-theta, n-Y+1, Y, 1, 0) + (1-w)*Rf_pbeta(1-theta, n-Y, Y+1, 1, 0) - U;
+}
+
+//[[Rcpp::export]]
+NumericVector binomProbsPredVec_(int n, int m, int Y, int M, bool doP=true, double tol=1e-7) {
+  NumericVector ret(M);
+  for (int i = 0; i < M; i++) {
+    double w = unif_rand();
+    double U = unif_rand();
+    double V = unif_rand();
+    // root finding using bisection
+    double x0 = 0.0, x1 = 1.0;
+    double root = -1.0;
+    double f0 = binomProbsLimF(x0, w, n, Y, U);
+    if (f0 == 0) root = x0;
+    double f1 = binomProbsLimF(x1, w, n, Y, U);
+    if (f1 == 0) root = x0;
+    if (root == -1.0) {
+      double xc, fc;
+      for (;;) {
+        xc = 0.5*(x0+x1);
+        if(fabs(x0-x1) < tol) {
+          root = xc;
+          break;
+        }
+        fc = binomProbsLimF(xc, w, n, Y, U);
+        if(fabs(fc) < tol) {
+          root = xc;
+          break;
+        }
+        if(f0*fc > 0.0) {
+          x0 = xc; f0 = fc;
+        } else {
+          x1 = xc; f1 = fc;
+        }
+      }
+    }
+    if (doP) {
+      ret[i] = Rf_qbinom(V, m, root, 1, 0)/m;
+    } else {
+      ret[i] = Rf_qbinom(V, m, root, 1, 0);
+    }
+  }
+  return ret;
+}
+
 //[[Rcpp::export]]
 NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, int nIn,
                           int cont) {
@@ -196,7 +243,7 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, int n
         z = Rf_qnorm5(1.0-p, 0.0, 1.0, 1, 0);
       }
       double z2 = z*z;
-      double c1, c2, c3;
+      double c1, c2, c3, ns, nh, ph;
 #define contWilsonContinuityCorrection 0
 #define contWilson 1
 #define contWald 2
@@ -240,10 +287,11 @@ NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, int n
         break;
       case contAgrestiCoull:
         // p = ns/n; p*n = ns
-        c1 = oldM*nC;
-        nC = nC + z2;
-        c1 = 1.0/nC*(c1+z2/2.0);
-        c2 = z*sqrt(c1/nC*(1-c1));
+        ns = oldM*nC;
+        nh = nC+z2;
+        ph = 1/nh*(ns+z2/2.0);
+        c1 = ph; // ns
+        c2 = z*sqrt(ph/nh*(1-ph));
         if (p < 0.5) {
           ret[i+4] = c1-c2;
         } else {

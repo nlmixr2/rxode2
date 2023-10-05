@@ -910,12 +910,18 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #'   interval, this represents the number of observations used in the
 #'   input ("true") distribution.
 #'
-#' @param method gives the method for calculating the confidence
+#' @param piMethod gives the prediction interval method (currently only lim) from Lu 2020
+#'
+#' @param M number of simulations to run for the LIM PI.
+#'
+#' @param tol tolerance of root finding in the LIM prediction interval
+#'
+#' @param ciMethod gives the method for calculating the confidence
 #'   interval.
 #'
 #'  Can be:
 #'
-#'  - "argestiCoull" -- Agresti-Coull method. For a 95\% confidence
+#'  - "argestiCoull" or "ac" -- Agresti-Coull method. For a 95\% confidence
 #'     interval, this method does not use the concept   of "adding 2
 #'     successes and 2 failures," but rather uses the formulas explicitly
 #'     described in the following link:
@@ -924,7 +930,7 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #'
 #'   - "wilson" -- Wilson Method
 #'
-#'   - "wilsonCorrect" -- Wilson method with continuity correction
+#'   - "wilsonCorrect" or "wc" -- Wilson method with continuity correction
 #'
 #'   - "wald" -- Wald confidence interval or standard z approximation.
 #'
@@ -976,30 +982,61 @@ binomProbs <- function(x, ...) {
 #' @rdname binomProbs
 #' @export
 binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
-                               names=TRUE, onlyProbs=TRUE, n=0L,
-                               method=c("wilson", "wilsonCorrect", "agrestiCoull", "wald")) {
-  method <- match.arg(method)
-  method <- setNames(c("wilson"=1L, "wilsonCorrect"=0L, "agrestiCoull"=3, "wald"=2L)[method], NULL)
+                               names=TRUE, onlyProbs=TRUE, n=0L, m=0L,
+                               pred=FALSE,
+                               piMethod=c("lim"), M=500000,
+                               tol=.Machine$double.eps^0.25,
+                               ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac")) {
   checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
   x <- as.double(x)
   checkmate::assertIntegerish(n, min.len=1, lower=0, any.missing=FALSE)
   n <- as.integer(n)
+  checkmate::assertIntegerish(m, min.len=1, lower=0, any.missing=FALSE)
+  m <- as.integer(m)
   checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
   checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
   checkmate::assertLogical(names, any.missing=FALSE, len=1)
   checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
-  .ret <- .Call(`_rxode2_binomProbs_`, x, probs, na.rm, n, method)
-  .names <- NULL
-  if (names) {
-    .names <- paste0(probs*100, "%")
-  }
-  if (onlyProbs) {
-    .ret <- .ret[-1L:-4L]
-    if (names) {
-      names(.ret) <- .names
+  if (pred) {
+    .m <- mean(x, na.rm=na.rm)
+    if (is.na(.m)) {
+      .ret <- quantile(NULL,probs=probs)
+      if (!onlyProbs) {
+        .ret <- c("mean"=NA_real_,"var"=NA_real_, "sd"=NA_real_, "n"=NA_real_,
+                  .ret)
+      }
+    } else {
+      .nC <- sum(!is.na(x))
+      if (n == 0L) n <- as.integer(.nC)
+      if (m == 0L) m <- as.integer(.nC)
+      .Y <- round(.nC * .m) # number of successes
+      .ret <- quantile(.Call(`_rxode2_binomProbsPredVec_`, n, m, .Y, M, TRUE, tol),
+                       probs=probs)
+      if (!onlyProbs) {
+        .ret <- c("mean"=.m,"var"=.m * (1.0 - .m), "sd"=sqrt(.m * (1.0 - .m)), "n"=.nC,
+                  .ret)
+      }
     }
-  } else if (names) {
-    names(.ret) <- c("mean","var", "sd", "n", .names)
+    if (!names) {
+      names(.ret) <- NULL
+    }
+    return(.ret)
+  } else {
+    ciMethod <- match.arg(ciMethod)
+    ciMethod <- setNames(c("wilson"=1L, "wilsonCorrect"=0L, "agrestiCoull"=3L, "wald"=2L, "ac"=3L, "wc"=0L)[ciMethod], NULL)
+    .ret <- .Call(`_rxode2_binomProbs_`, x, probs, na.rm, n, ciMethod)
+    .names <- NULL
+    if (names) {
+      .names <- paste0(probs*100, "%")
+    }
+    if (onlyProbs) {
+      .ret <- .ret[-1L:-4L]
+      if (names) {
+        names(.ret) <- .names
+      }
+    } else if (names) {
+      names(.ret) <- c("mean","var", "sd", "n", .names)
+    }
+    .ret
   }
-  .ret
 }

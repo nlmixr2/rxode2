@@ -37,6 +37,8 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   .nC <- 0L
   .pred <- FALSE
   .useT <- TRUE
+  .M <- 500000
+  .tol <- .Machine$double.eps^0.25
   if (any(names(.args) == "useT")) {
     .useT <- .args$useT
     checkmate::assertLogical(.useT, len=1, any.missing=FALSE, .var.name="useT")
@@ -56,16 +58,25 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     .pred <- .args$pred
     checkmate::assertLogical(.pred, len=1, any.missing=FALSE, .var.name="pred")
   }
-
   if (any(names(.args) == "n")) {
     .nC <- unique(.args$n)
+    checkmate::assertIntegerish(.nC, len=1, any.missing=FALSE, lower=0L, .var.name="n")
   }
   if (any(names(.args) == "m")) {
     .m <- unique(.args$m)
+    checkmate::assertIntegerish(.m, len=1, any.missing=FALSE, lower=0L, .var.name="m")
   }
-  .method <- "wald"
-  if (any(names(.args) == "method")) {
-    .method <- .args$method
+  if (any(names(.args) == "M")) {
+    .M <- unique(.args$M)
+    checkmate::assertIntegerish(.M, len=1, any.missing=FALSE, lower=1000L, .var.name="M")
+  }
+  if (any(names(.args) == "tol")) {
+    .tol <- unique(.args$tol)
+    checkmate::assertNumeric(.tol, len=1, any.missing=FALSE, lower=.Machine$double.eps, .var.name="tol")
+  }
+  .ciMethod <- "wald"
+  if (any(names(.args) == "ciMethod")) {
+    .ciMethod <- .args$method
   }
   .stk <- rxStack(object, parm, doSim=.doSim)
   if (!any(names(.stk) == "id") &&
@@ -116,7 +127,8 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
       } else if (.binom) {
         .stk <- .stk[, list(
           p1 = .p, eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                            n=.nC, method=.method),
+                                            n=.nC, m=.m, M=.m, tol=.tol,
+                                            pred=.pred, ciMethod=.ciMethod),
           Percentile = sprintf("%s%%", .p * 100)
         ),
         by = c("time", "trt", .by)
@@ -155,10 +167,10 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
                                                 pred=.pred)),
                  by = c("id", "time", "trt", .by)]
   } else if (.binom) {
-    print(.nC)
     .ret <- .ret[, list(p1 = .p,
                         eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                                 n=.nC, method=.method)),
+                                                 n=.nC, m=.m, M=.m, tol=.tol,
+                                                 pred=.pred, ciMethod=.ciMethod)),
                  by = c("id", "time", "trt", .by)]
   } else {
     .ret <- .ret[, list(p1 = .p,

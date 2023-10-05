@@ -1824,6 +1824,45 @@ RcppExport SEXP _rxode2_rxErf(SEXP vSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// binomProbsPredVec_
+NumericVector binomProbsPredVec_(int n, int m, int Y, int M, bool doP, double tol);
+static SEXP _rxode2_binomProbsPredVec__try(SEXP nSEXP, SEXP mSEXP, SEXP YSEXP, SEXP MSEXP, SEXP doPSEXP, SEXP tolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    Rcpp::traits::input_parameter< int >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< int >::type M(MSEXP);
+    Rcpp::traits::input_parameter< bool >::type doP(doPSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(binomProbsPredVec_(n, m, Y, M, doP, tol));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_binomProbsPredVec_(SEXP nSEXP, SEXP mSEXP, SEXP YSEXP, SEXP MSEXP, SEXP doPSEXP, SEXP tolSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_binomProbsPredVec__try(nSEXP, mSEXP, YSEXP, MSEXP, doPSEXP, tolSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        Rf_error(CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // binomProbs_
 NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, int nIn, int cont);
 static SEXP _rxode2_binomProbs__try(SEXP xSEXP, SEXP probsSEXP, SEXP naRmSEXP, SEXP nInSEXP, SEXP contSEXP) {
@@ -1956,6 +1995,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
         signatures.insert("LogicalVector(*isNullZero)(RObject)");
         signatures.insert("NumericVector(*rxErf)(NumericVector)");
+        signatures.insert("NumericVector(*binomProbsPredVec_)(int,int,int,int,bool,double)");
         signatures.insert("NumericVector(*binomProbs_)(NumericVector,NumericVector,bool,int,int)");
         signatures.insert("NumericVector(*meanProbs_)(NumericVector,NumericVector,bool,bool,bool,int)");
     }
@@ -2014,6 +2054,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC)_rxode2_rxSymInvCholEnvCalculate_try);
     R_RegisterCCallable("rxode2", "_rxode2_isNullZero", (DL_FUNC)_rxode2_isNullZero_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxErf", (DL_FUNC)_rxode2_rxErf_try);
+    R_RegisterCCallable("rxode2", "_rxode2_binomProbsPredVec_", (DL_FUNC)_rxode2_binomProbsPredVec__try);
     R_RegisterCCallable("rxode2", "_rxode2_binomProbs_", (DL_FUNC)_rxode2_binomProbs__try);
     R_RegisterCCallable("rxode2", "_rxode2_meanProbs_", (DL_FUNC)_rxode2_meanProbs__try);
     R_RegisterCCallable("rxode2", "_rxode2_RcppExport_validate", (DL_FUNC)_rxode2_RcppExport_validate);
