@@ -225,7 +225,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
 
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
-void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls, 
+void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
                t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
                t_dydt c_dydt, t_update_inis u_inis, int jt);
 void par_solve(rx_solve *rx);
@@ -283,7 +283,9 @@ SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 SEXP _rxode2_assignSeedInfo(void);
 SEXP _rxSetSeed(SEXP);
-SEXP _rxode2_meanProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP useT);
+SEXP _rxode2_meanProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP useT, SEXP pred, SEXP inN);
+SEXP _rxode2_binomProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP inN, SEXP cont);
+SEXP _rxode2_binomProbsPredVec_(SEXP n, SEXP m, SEXP Y, SEXP M, SEXP doP, SEXP tol);
 
 typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
 typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
@@ -361,7 +363,9 @@ extern SEXP chin(SEXP x, SEXP table);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
-    {"_rxode2_meanProbs_", (DL_FUNC) &_rxode2_meanProbs_, 4},
+    {"_rxode2_binomProbsPredVec_", (DL_FUNC) &_rxode2_binomProbsPredVec_, 6},
+    {"_rxode2_binomProbs_", (DL_FUNC) &_rxode2_binomProbs_, 5},
+    {"_rxode2_meanProbs_", (DL_FUNC) &_rxode2_meanProbs_, 6},
     {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
@@ -495,14 +499,14 @@ void R_init_rxode2(DllInfo *info){
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
-    {NULL, NULL, 0} 
+    {NULL, NULL, 0}
   };
   // C callable to assign environments.
   R_RegisterCCallable("rxode2", "_rxode2_rxModelVars_", (DL_FUNC) &_rxode2_rxModelVars_);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
-  
+
   R_RegisterCCallable("rxode2", "powerDi", (DL_FUNC) &powerDi);
   R_RegisterCCallable("rxode2", "powerD", (DL_FUNC) &powerD);
   R_RegisterCCallable("rxode2", "powerDD", (DL_FUNC) &powerDD);
@@ -517,10 +521,10 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);
-  
+
   R_RegisterCCallable("rxode2","rxode2_ode_free", (DL_FUNC) &rxode2_ode_free);
-  
-  //Functions  
+
+  //Functions
       R_RegisterCCallable("rxode2","rxode2_sum",                (DL_FUNC) &rxode2_sum);
   R_RegisterCCallable("rxode2","rxode2_prod",               (DL_FUNC) &rxode2_prod);
 
