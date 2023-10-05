@@ -63,6 +63,10 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   if (any(names(.args) == "m")) {
     .m <- unique(.args$m)
   }
+  .method <- "wald"
+  if (any(names(.args) == "method")) {
+    .method <- .args$method
+  }
   .stk <- rxStack(object, parm, doSim=.doSim)
   if (!any(names(.stk) == "id") &&
         any(names(.stk) == "sim.id")) {
@@ -112,7 +116,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
       } else if (.binom) {
         .stk <- .stk[, list(
           p1 = .p, eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                            n=.nC, m=.m, pred=.pred),
+                                            n=.nC, method=.method),
           Percentile = sprintf("%s%%", .p * 100)
         ),
         by = c("time", "trt", .by)
@@ -154,7 +158,7 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
     print(.nC)
     .ret <- .ret[, list(p1 = .p,
                         eff = rxode2::binomProbs(.SD$value, probs = .p, na.rm = TRUE,
-                                                 n=.nC, m=.m, pred=.pred)),
+                                                 n=.nC, method=.method)),
                  by = c("id", "time", "trt", .by)]
   } else {
     .ret <- .ret[, list(p1 = .p,

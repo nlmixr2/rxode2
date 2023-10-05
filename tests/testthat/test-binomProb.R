@@ -27,19 +27,20 @@ test_that("test binomProb()", {
           "50%"=m,
           "95%"=z5[2],
           "97.5%"=z2.5[2])
-  expect_equal(binomProbs(x), t1)
+  expect_equal(binomProbs(x, method="wilsonCorrect"), t1)
 
   t2 <- c(c("mean"=m, "var"=v, "sd"=s, "n"=n), t1)
-  expect_equal(binomProbs(x, onlyProbs=FALSE), t2)
+  expect_equal(binomProbs(x, onlyProbs=FALSE, method="wilsonCorrect"), t2)
 
   x2 <- c(x, NA_real_)
   setNames(rep(NA_real_, length(t1)),names(t1))
-  expect_equal(binomProbs(x2), setNames(rep(NA_real_, length(t1)),names(t1)))
+  expect_equal(binomProbs(x2, method="wilsonCorrect"),
+               setNames(rep(NA_real_, length(t1)),names(t1)))
 
-  expect_equal(binomProbs(x2, onlyProbs=FALSE),
+  expect_equal(binomProbs(x2, onlyProbs=FALSE, method="wilsonCorrect"),
                setNames(rep(NA_real_, length(t2)),names(t2)))
-  expect_equal(binomProbs(x2,na.rm=TRUE), t1)
-  expect_equal(binomProbs(x2, onlyProbs=FALSE, na.rm=TRUE), t2)
+  expect_equal(binomProbs(x2,na.rm=TRUE, method="wilsonCorrect"), t1)
+  expect_equal(binomProbs(x2, onlyProbs=FALSE, na.rm=TRUE, method="wilsonCorrect"), t2)
 
 
   n <- 50
@@ -65,8 +66,6 @@ test_that("test binomProb()", {
           "95%"=z5[2],
           "97.5%"=z2.5[2])
 
-  expect_equal(binomProbs(x, n=50), t1)
-
- ## now get test binomial predictions
+  expect_equal(binomProbs(x, n=50, method="wilsonCorrect"), t1)
 
 })

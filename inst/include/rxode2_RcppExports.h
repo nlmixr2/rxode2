@@ -1073,17 +1073,17 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
-    inline NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, bool pred, int nIn, int mIn) {
-        typedef SEXP(*Ptr_binomProbs_)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+    inline NumericVector binomProbs_(NumericVector x, NumericVector probs, bool naRm, int nIn, int cont) {
+        typedef SEXP(*Ptr_binomProbs_)(SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_binomProbs_ p_binomProbs_ = NULL;
         if (p_binomProbs_ == NULL) {
-            validateSignature("NumericVector(*binomProbs_)(NumericVector,NumericVector,bool,bool,int,int)");
+            validateSignature("NumericVector(*binomProbs_)(NumericVector,NumericVector,bool,int,int)");
             p_binomProbs_ = (Ptr_binomProbs_)R_GetCCallable("rxode2", "_rxode2_binomProbs_");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_binomProbs_(Shield<SEXP>(Rcpp::wrap(x)), Shield<SEXP>(Rcpp::wrap(probs)), Shield<SEXP>(Rcpp::wrap(naRm)), Shield<SEXP>(Rcpp::wrap(pred)), Shield<SEXP>(Rcpp::wrap(nIn)), Shield<SEXP>(Rcpp::wrap(mIn)));
+            rcpp_result_gen = p_binomProbs_(Shield<SEXP>(Rcpp::wrap(x)), Shield<SEXP>(Rcpp::wrap(probs)), Shield<SEXP>(Rcpp::wrap(naRm)), Shield<SEXP>(Rcpp::wrap(nIn)), Shield<SEXP>(Rcpp::wrap(cont)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

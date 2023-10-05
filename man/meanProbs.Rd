@@ -3,7 +3,7 @@
 \name{meanProbs}
 \alias{meanProbs}
 \alias{meanProbs.default}
-\title{Calculate expected confidence bands with normal or t sampling distribution}
+\title{Calculate expected confidence bands or prediction intreval with normal or t sampling distribution}
 \usage{
 meanProbs(x, ...)
 

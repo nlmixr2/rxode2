@@ -879,14 +879,6 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 
 #' Calculate expected confidence bands with binomial sampling distribution
 #'
-#' The generic function `binomProbs` produces expected confidence bands
-#' using the Wilson score interval with continuity correction
-#' (described in Newcombe 1998).
-#'
-#' The expected prediction intervals use the Frequentist Nelson's
-#' predictional interval (described by Lu 2020).
-#'
-#'
 #' This is meant to perform in the same way as `quantile()` so it can
 #' be a drop in replacement for code using `quantile()` but using
 #' distributional assumptions.
@@ -896,33 +888,55 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #'
 #' @param x numeric vector whose mean and probability based confidence
 #'   values are wanted, NA and NaN values are not allowed in numeric
-#'   vectors unless ‘na.rm’ is ‘TRUE’.
+#'   vectors unless `na.rm` is `TRUE`.
+#'
 #' @param probs numeric vector of probabilities with values in the
 #'   interval 0 to 1, inclusive. When 0, it represents the maximum
 #'   observed, when 1, it represents the maximum observed. When 0.5 it
-#'   represents the expected probability (mean)
+#'   represents the expected probability (mean).
+#'
 #' @param na.rm logical; if true, any NA and NaN's are removed from
 #'   `x` before the quantiles are computed.
+#'
 #' @param names logical; if true, the result has a names attribute.
+#'
 #' @param onlyProbs logical; if true, only return the probability
 #'   based confidence interval/prediction interval estimates,
-#'   otherwise return extra statistics
+#'   otherwise return extra statistics.
+#'
 #' @param n integer/integerish; this is the n used to calculate the
 #'   prediction or confidence interval.  When `n=0` (default) use the
 #'   number of non-`NA` observations.  When calculating the prediction
 #'   interval, this represents the number of observations used in the
 #'   input ("true") distribution.
-#' @param m integer/integerish; this is the m used to calculate the
-#'   prediction interval.  It represents the expected number of
-#'   samples in the new statistic.  When `1=0` (default) use the
-#'   number of non-`NA` observations in the input `x`.
+#'
+#' @param method gives the method for calculating the confidence
+#'   interval.
+#'
+#'  Can be:
+#'
+#'  - "argestiCoull" -- Agresti-Coull method. For a 95\% confidence
+#'     interval, this method does not use the concept   of "adding 2
+#'     successes and 2 failures," but rather uses the formulas explicitly
+#'     described in the following link:
+#'
+#' https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Agresti-Coull_Interval.
+#'
+#'   - "wilson" -- Wilson Method
+#'
+#'   - "wilsonCorrect" -- Wilson method with continuity correction
+#'
+#'   - "wald" -- Wald confidence interval or standard z approximation.
+#'
 #' @param ... Arguments passed to default method, allows many
 #'   different methods to be applied.
+#'
 #' @return By default the return has the probabilities as names (if
 #'   named) with the points where the expected distribution are
 #'   located given the sampling mean and standard deviation. If
 #'   `onlyProbs=FALSE` then it would prepend mean, variance, standard
 #'   deviation, minimum, maximum and number of non-NA observations.
+#'
 #' @export
 #' @author Matthew L. Fidler
 #' @references
@@ -962,19 +976,19 @@ binomProbs <- function(x, ...) {
 #' @rdname binomProbs
 #' @export
 binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
-                               names=TRUE, onlyProbs=TRUE, pred=FALSE, n=0L, m=0L) {
+                               names=TRUE, onlyProbs=TRUE, n=0L,
+                               method=c("wilson", "wilsonCorrect", "agrestiCoull", "wald")) {
+  method <- match.arg(method)
+  method <- setNames(c("wilson"=1L, "wilsonCorrect"=0L, "agrestiCoull"=3, "wald"=2L)[method], NULL)
   checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
   x <- as.double(x)
   checkmate::assertIntegerish(n, min.len=1, lower=0, any.missing=FALSE)
-  checkmate::assertIntegerish(m, min.len=1, lower=0, any.missing=FALSE)
   n <- as.integer(n)
-  m <- as.integer(m)
   checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
   checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
   checkmate::assertLogical(names, any.missing=FALSE, len=1)
   checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
-  checkmate::assertLogical(pred, any.missing=FALSE, len=1)
-  .ret <- .Call(`_rxode2_binomProbs_`, x, probs, na.rm, pred, n, m)
+  .ret <- .Call(`_rxode2_binomProbs_`, x, probs, na.rm, n, method)
   .names <- NULL
   if (names) {
     .names <- paste0(probs*100, "%")

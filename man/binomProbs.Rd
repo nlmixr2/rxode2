@@ -13,15 +13,14 @@ binomProbs(x, ...)
   na.rm = FALSE,
   names = TRUE,
   onlyProbs = TRUE,
-  pred = FALSE,
   n = 0L,
-  m = 0L
+  method = c("wilson", "wilsonCorrect", "agrestiCoull", "wald")
 )
 }
 \arguments{
 \item{x}{numeric vector whose mean and probability based confidence
 values are wanted, NA and NaN values are not allowed in numeric
-vectors unless ‘na.rm’ is ‘TRUE’.}
+vectors unless \code{na.rm} is \code{TRUE}.}
 
 \item{...}{Arguments passed to default method, allows many
 different methods to be applied.}
@@ -29,7 +28,7 @@ different methods to be applied.}
 \item{probs}{numeric vector of probabilities with values in the
 interval 0 to 1, inclusive. When 0, it represents the maximum
 observed, when 1, it represents the maximum observed. When 0.5 it
-represents the expected probability (mean)}
+represents the expected probability (mean).}
 
 \item{na.rm}{logical; if true, any NA and NaN's are removed from
 \code{x} before the quantiles are computed.}
@@ -38,7 +37,7 @@ represents the expected probability (mean)}
 
 \item{onlyProbs}{logical; if true, only return the probability
 based confidence interval/prediction interval estimates,
-otherwise return extra statistics}
+otherwise return extra statistics.}
 
 \item{n}{integer/integerish; this is the n used to calculate the
 prediction or confidence interval.  When \code{n=0} (default) use the
@@ -46,10 +45,23 @@ number of non-\code{NA} observations.  When calculating the prediction
 interval, this represents the number of observations used in the
 input ("true") distribution.}
 
-\item{m}{integer/integerish; this is the m used to calculate the
-prediction interval.  It represents the expected number of
-samples in the new statistic.  When \code{1=0} (default) use the
-number of non-\code{NA} observations in the input \code{x}.}
+\item{method}{gives the method for calculating the confidence
+interval.
+
+Can be:
+\itemize{
+\item "argestiCoull" -- Agresti-Coull method. For a 95\\% confidence
+interval, this method does not use the concept   of "adding 2
+successes and 2 failures," but rather uses the formulas explicitly
+described in the following link:
+}
+
+https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Agresti-Coull_Interval.
+\itemize{
+\item "wilson" -- Wilson Method
+\item "wilsonCorrect" -- Wilson method with continuity correction
+\item "wald" -- Wald confidence interval or standard z approximation.
+}}
 }
 \value{
 By default the return has the probabilities as names (if
@@ -59,18 +71,11 @@ located given the sampling mean and standard deviation. If
 deviation, minimum, maximum and number of non-NA observations.
 }
 \description{
-The generic function \code{binomProbs} produces expected confidence bands
-using the Wilson score interval with continuity correction
-(described in Newcombe 1998).
-}
-\details{
-The expected prediction intervals use the Frequentist Nelson's
-predictional interval (described by Lu 2020).
-
 This is meant to perform in the same way as \code{quantile()} so it can
 be a drop in replacement for code using \code{quantile()} but using
 distributional assumptions.
-
+}
+\details{
 It is used for confidence intervals with rxode2 solved objects using
 \code{confint(mean="binom")}
 }
