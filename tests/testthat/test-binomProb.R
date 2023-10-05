@@ -149,25 +149,6 @@ test_that("test binomProb()", {
   expect_equal(binomProbs(x, method="ac"), t1)
 
 
-  f <- function(theta, w, n, Y, U) {
-    w * pbeta(1 - theta, n - Y + 1, Y) +
-      (1 - w) * pbeta(1 - theta, n - Y, Y + 1) - U
-  }
-
-  m <- 7
-  n <- 7
-  Y <- 3
-  #M <- 1000000
-  m <- 1000
-  c <- vector()
-  for (i in 1:M) {
-    w <- runif(1, 0, 1)
-    U <- runif(1, 0, 1)
-    V <- runif(1, 0, 1)
-    root1 <- uniroot(f, c(0, 1), w=w, n=n, Y=Y, U=U)$root
-    d <- qbinom(V, m, root1)
-    c <- c(c, d)
-  }
-  LIM <- quantile(c, c(0.05, 0.95))
+  expect_equal(names(binomProbs(x, pred=TRUE)), names(binomProbs(x)))
 
 })

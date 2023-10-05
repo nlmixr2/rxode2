@@ -963,8 +963,13 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #'   https://doi.org/10.1016/j.jspi.2019.07.001.
 #' @examples
 #'
-#' quantile(x<- rbinom(7001, p=0.375, size=1))
+#' x<- rbinom(7001, p=0.375, size=1)
 #' binomProbs(x)
+#'
+#' # you can also use the prediction interval
+#' \donttest{
+#' binomProbs(x, pred=TRUE)
+#' }
 #'
 #' # Can get some extra statistics if you request onlyProbs=FALSE
 #' binomProbs(x, onlyProbs=FALSE)

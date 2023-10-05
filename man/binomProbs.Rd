@@ -14,7 +14,12 @@ binomProbs(x, ...)
   names = TRUE,
   onlyProbs = TRUE,
   n = 0L,
-  method = c("wilson", "wilsonCorrect", "agrestiCoull", "wald")
+  m = 0L,
+  pred = FALSE,
+  piMethod = c("lim"),
+  M = 5e+05,
+  tol = .Machine$double.eps^0.25,
+  ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac")
 )
 }
 \arguments{
@@ -45,12 +50,18 @@ number of non-\code{NA} observations.  When calculating the prediction
 interval, this represents the number of observations used in the
 input ("true") distribution.}
 
-\item{method}{gives the method for calculating the confidence
+\item{piMethod}{gives the prediction interval method (currently only lim) from Lu 2020}
+
+\item{M}{number of simulations to run for the LIM PI.}
+
+\item{tol}{tolerance of root finding in the LIM prediction interval}
+
+\item{ciMethod}{gives the method for calculating the confidence
 interval.
 
 Can be:
 \itemize{
-\item "argestiCoull" -- Agresti-Coull method. For a 95\\% confidence
+\item "argestiCoull" or "ac" -- Agresti-Coull method. For a 95\\% confidence
 interval, this method does not use the concept   of "adding 2
 successes and 2 failures," but rather uses the formulas explicitly
 described in the following link:
@@ -59,7 +70,7 @@ described in the following link:
 https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Agresti-Coull_Interval.
 \itemize{
 \item "wilson" -- Wilson Method
-\item "wilsonCorrect" -- Wilson method with continuity correction
+\item "wilsonCorrect" or "wc" -- Wilson method with continuity correction
 \item "wald" -- Wald confidence interval or standard z approximation.
 }}
 }
@@ -81,8 +92,13 @@ It is used for confidence intervals with rxode2 solved objects using
 }
 \examples{
 
-quantile(x<- rbinom(7001, p=0.375, size=1))
+x<- rbinom(7001, p=0.375, size=1)
 binomProbs(x)
+
+# you can also use the prediction interval
+\donttest{
+binomProbs(x, pred=TRUE)
+}
 
 # Can get some extra statistics if you request onlyProbs=FALSE
 binomProbs(x, onlyProbs=FALSE)

@@ -175,7 +175,6 @@ confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
   } else {
     .ret <- .ret[, list(p1 = .p,
                         eff = stats::quantile(.SD$value, probs = .p, na.rm = TRUE)), by = c("id", "time", "trt", .by)]
-
   }
   .ret <- .ret[, setNames(as.list(stats::quantile(.SD$eff, probs = .p2, na.rm = TRUE)),
                           sprintf("p%s", .p2 * 100)),
