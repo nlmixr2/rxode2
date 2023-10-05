@@ -148,7 +148,7 @@ NumericVector binomProbsPredVec_(int n, int m, int Y, int M, bool doP=true, doub
     double f0 = binomProbsLimF(x0, w, n, Y, U);
     if (f0 == 0) root = x0;
     double f1 = binomProbsLimF(x1, w, n, Y, U);
-    if (f1 == 0) root = x0;
+    if (f1 == 0) root = x1;
     if (root == -1.0) {
       double xc, fc;
       for (;;) {
