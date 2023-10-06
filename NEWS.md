@@ -1,4 +1,12 @@
-# rxode2 development version
+# rxode2 2.1.14
+
+- CRAN requested that FORTRAN `kind` be changed as it was not portable;
+  This was commented code, and simply removed the comment.
+
+- Some documentation was cleaned up from `rxode2` 2.1.13. Otherwise
+  this version is practically the same as 2.1.13
+
+# rxode2 2.1.13
 
 - A bug was fixed so that the `zeroRe()` function works with correlated omega
   values.

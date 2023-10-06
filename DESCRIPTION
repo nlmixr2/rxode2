@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 2.0.13
+Version: 2.0.14
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler",
@@ -7,7 +7,7 @@ Authors@R: c(
       comment=c(ORCID="0000-0001-8538-6691")),
    person("Melissa", "Hallow",
       role = "aut", email = "hallowkm@uga.edu"),
-   person("Wenping", "Wang", 
+   person("Wenping", "Wang",
       role = c("aut"), email = "wwang8198@gmail.com"),
    person("Zufar", "Mulyukov", role="ctb", email="zufar.mulyukov@novartis.com"),
    person("Alan", "Hindmarsh",role="ctb"),
@@ -103,15 +103,15 @@ Description: Facilities for running simulations from ordinary
     Section 6.3, Appendix A, and Appendix D in the "R Administration and
     Installation" manual. Also the code is mostly released under GPL.  The
     'VODE' and 'LSODA' are in the public domain.  The information is available
-    in the inst/COPYRIGHTS. 
+    in the inst/COPYRIGHTS.
 BugReports: https://github.com/nlmixr2/rxode2/issues/
 NeedsCompilation: yes
 VignetteBuilder: knitr
-License: GPL (>= 3) 
+License: GPL (>= 3)
 URL: https://nlmixr2.github.io/rxode2/, https://github.com/nlmixr2/rxode2/
 RoxygenNote: 7.2.3
 Biarch: true
-LinkingTo: 
+LinkingTo:
     rxode2parse (>= 2.0.12),
     rxode2random,
     PreciseSums (>= 0.3),
