@@ -76,7 +76,7 @@ Imports:
     backports,
     cli (>= 2.0.0),
     checkmate,
-    ggplot2,
+    ggplot2 (>= 3.4.0),
     inline,
     lotri (>= 0.4.0),
     magrittr,

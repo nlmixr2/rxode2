@@ -116,7 +116,7 @@ qd <- et(timeUnits="hr") \%>\%
 
 ## bid for 5 days followed by qd for 5 days
 
-et <- seq(bid,qd) \%>\% et(seq(0,11*24,length.out=100));
+et <- seq(bid,qd) \%>\% et(seq(0,11*24,length.out=100))
 
 bidQd <- rxSolve(mod1, et, addDosing=TRUE)
 
@@ -125,6 +125,6 @@ plot(bidQd, C2) + geom_amt(aes(amt=amt))
 
 # of course you can make it a bit more visible
 
-plot(bidQd, C2) + geom_amt(aes(amt=amt), col="red", lty=1, size=1.2)
+plot(bidQd, C2) + geom_amt(aes(amt=amt), col="red", lty=1, linewidth=1.2)
 }
 }
