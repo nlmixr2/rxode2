@@ -96,5 +96,6 @@
 #define Rxc_addlDropSs 91
 #define Rxc_ssAtDoseTime 92
 #define Rxc_ss2cancelAllPending 93
-#define Rxc__zeros 94
+#define Rxc_rxMvObj 94
+#define Rxc__zeros 95
 #endif // __rxode2_control_H__

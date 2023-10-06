@@ -133,7 +133,8 @@ rxSolve(
   addlKeepsCov = FALSE,
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
-  ss2cancelAllPending = FALSE
+  ss2cancelAllPending = FALSE,
+  rxMvObj = TRUE
 )
 
 \method{rxSolve}{`function`}(
@@ -802,6 +803,11 @@ steady concentration at the actual time of dose, otherwise when
 cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
 doses not canceled with \code{SS=2} (the infusions started before
 \code{SS=2} occurred are canceled, though).}
+
+\item{rxMvObj}{Boolean that will add minimal information (model
+variables, nSub and nStud) to the solve to create a \code{rxMvObj}
+type of object. This will allow slightly faster solving but still
+have access to \code{plot()} and \code{confint()}. By default this is \code{TRUE}}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

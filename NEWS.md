@@ -118,6 +118,13 @@ mu-referencing style to run the optimization.
   `plot(ci, Cc)` which will only plot the variable `Cc` that you
   summarized even if you also summarized `eff` (for instance).
 
+- When solving a data-frame type object from `rxode2` with
+  `returnType="data.table"`, `returnType="data.frame"`,
+  `returnType="tibble"`, very minimal rxode2 information is attached
+  (model variables, `nSub` and `nStud`).  These additions allow the
+  `plot()` and `confint()` methods to work. If you don't want this you
+  can use `rxSolve(..., rxMvObj=FALSE)`
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-

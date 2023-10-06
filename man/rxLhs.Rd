@@ -21,7 +21,7 @@ This returns the model calculated variables
 Other Query model information: 
 \code{\link{rxDfdy}()},
 \code{\link{rxInits}()},
-\code{\link{rxModelVars}()},
+\code{\link{rxModelVarsS3.rxMvObj}()},
 \code{\link{rxParams}()},
 \code{\link{rxState}()}
 }

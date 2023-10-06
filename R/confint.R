@@ -1,5 +1,16 @@
+is.rxConfint <- function(object) {
+  if (!rxode2et::is.rxStackData(object)) return(FALSE)
+  .tmp <- try(object$env$.args$nSub, silent=TRUE)
+  if (!is.numeric(.tmp)) return(FALSE)
+  .tmp <- try(object$env$.args$nStud, silent=TRUE)
+  if (!is.numeric(.tmp)) return(FALSE)
+  TRUE
+}
+
 #' @export
 confint.rxSolve <- function(object, parm = NULL, level = 0.95, ...) {
+  if (!is.rxConfint(object)) stop("unsupported object for rxode2 confidence interval",
+                                  call.=FALSE)
   sim.id <- id <- NULL # rcheck nonsense
   rxode2::rxReq("data.table")
   ## p1 <-eff <-Percentile <-sim.id <-id <-p2 <-p50 <-p05 <- p95 <- . <- time <- trt <- NULL

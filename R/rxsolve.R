@@ -606,6 +606,11 @@
 #'  - `error` this will stop this solve if this is not a parallel
 #'     solved ODE (otherwise stopping can crash R)
 #'
+#' @param rxMvObj Boolean that will add minimal information (model
+#'   variables, nSub and nStud) to the solve to create a `rxMvObj`
+#'   type of object. This will allow slightly faster solving but still
+#'   have access to `plot()` and `confint()`. By default this is `TRUE`
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -720,7 +725,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addlKeepsCov=FALSE,
                     addlDropSs=TRUE,
                     ssAtDoseTime=TRUE,
-                    ss2cancelAllPending=FALSE) {
+                    ss2cancelAllPending=FALSE,
+                    rxMvObj=TRUE) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -932,6 +938,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(by, null.ok=TRUE, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(length.out, lower=0, any.missing=FALSE, null.ok=TRUE, len=1)
     checkmate::assertLogical(addCov, len=1, any.missing=FALSE)
+    checkmate::assertLogical(rxMvObj, len=1, any.missing=FALSE)
     checkmate::assertIntegerish(nCoresRV, len=1, lower=1)
     checkmate::assertLogical(sigmaIsChol,len=1, any.missing=FALSE)
     checkmate::assertIntegerish(nDisplayProgress, len=1, lower=100, any.missing=FALSE)
@@ -1122,6 +1129,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       addlDropSs=addlDropSs,
       ssAtDoseTime=ssAtDoseTime,
       ss2cancelAllPending=ss2cancelAllPending,
+      rxMvObj=rxMvObj,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1238,7 +1246,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
     .pred <- TRUE
     if (!.hasIpred && any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
-      .lst$drop <- c(.lst$drop, "ipredSim")      
+      .lst$drop <- c(.lst$drop, "ipredSim")
     }
   }
   .ret <- do.call("rxSolve.default", .lst)
@@ -1727,8 +1735,12 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .ret <- .ret[[1]]
   if (.ctl$returnType == 4L) {
     data.table::setDT(.ret)
+    if (.ctl$rxMvObj) .ret <- rxMvObj(.ret, rxModelVars(object),nSub=.ctl$nSub, nStud=.ctl$nStud)
   } else if (.ctl$returnType == 5L) {
     .ret <- tibble::as_tibble(.ret)
+    if (.ctl$rxMvObj) .ret <- rxMvObj(.ret, rxModelVars(object),nSub=.ctl$nSub, nStud=.ctl$nStud)
+  } else if (.ctl$returnType == 2L && .ctl$rxMvObj) {
+    .ret <- rxMvObj(.ret, rxModelVars(object),nSub=.ctl$nSub, nStud=.ctl$nStud)
   }
   return(.ret)
 }

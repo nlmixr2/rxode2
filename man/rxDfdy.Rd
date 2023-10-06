@@ -20,7 +20,7 @@ Return Jacobain and parameter derivatives
 Other Query model information: 
 \code{\link{rxInits}()},
 \code{\link{rxLhs}()},
-\code{\link{rxModelVars}()},
+\code{\link{rxModelVarsS3.rxMvObj}()},
 \code{\link{rxParams}()},
 \code{\link{rxState}()}
 }
