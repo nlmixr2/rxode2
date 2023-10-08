@@ -19,16 +19,17 @@ SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);
 SEXP _rxode2_atolRtolFactor_(SEXP);
 SEXP _rxode2_etRep_(SEXP, SEXP, SEXP, SEXP, SEXP,
-		   SEXP, SEXP);
+                    SEXP, SEXP);
 SEXP _rxode2_etSeq_(SEXP, SEXP, SEXP, SEXP, SEXP,
-		   SEXP, SEXP, SEXP, SEXP, SEXP,
-		   SEXP);
+                    SEXP, SEXP, SEXP, SEXP, SEXP,
+                    SEXP);
 SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
-			SEXP, SEXP, SEXP);
+                         SEXP, SEXP, SEXP);
 SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_et_(SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
-		    SEXP, SEXP, SEXP);
+                     SEXP, SEXP, SEXP, SEXP, SEXP,
+                     SEXP);
 SEXP _rxode2_rxUpdateTrans_(SEXP, SEXP, SEXP);
 double powerDi(double x, double lambda, int yj);
 double powerD(double x, double lambda, int yj);
@@ -76,18 +77,18 @@ SEXP _rxode2_rxCholperm(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxGradpsi(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxNleq(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxMvnrnd(SEXP, SEXP, SEXP, SEXP, SEXP,
-		     SEXP, SEXP);
+                      SEXP, SEXP);
 SEXP _rxode2_rxMvrandn_(SEXP, SEXP, SEXP, SEXP, SEXP,
-		       SEXP, SEXP, SEXP, SEXP, SEXP);
+                        SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_rxSolveDollarNames(SEXP);
 SEXP _rxode2_rxExpandNesting(SEXP, SEXP, SEXP);
 SEXP _rxode2_expandTheta_(SEXP, SEXP, SEXP, SEXP, SEXP,
-			 SEXP);
+                          SEXP);
 
 SEXP _rxode2_rxRmvnSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
-		       SEXP, SEXP, SEXP, SEXP, SEXP,
-		       SEXP, SEXP);
+                        SEXP, SEXP, SEXP, SEXP, SEXP,
+                        SEXP, SEXP);
 
 SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_);
 
@@ -151,7 +152,7 @@ extern SEXP _rxode2_rxC(SEXP);
 extern SEXP _rxode2_rxIsCurrent(SEXP);
 
 SEXP _rxode2_cvPost_(SEXP, SEXP, SEXP, SEXP, SEXP,
-		    SEXP, SEXP);
+                     SEXP, SEXP);
 SEXP _rxode2_expandPars_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rinvchisq(SEXP, SEXP, SEXP);
 
@@ -191,21 +192,21 @@ SEXP _rxode2_rxbinom_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxnbinomMu_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxnbinom_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxRmvn0(SEXP, SEXP, SEXP, SEXP, SEXP,
-		    SEXP, SEXP, SEXP, SEXP, SEXP,
-		    SEXP);
+                     SEXP, SEXP, SEXP, SEXP, SEXP,
+                     SEXP);
 SEXP _rxode2_invWR1d(SEXP dSEXP, SEXP nuSEXP, SEXP omegaIsCholSEXP);
 
 SEXP _rxode2_rxSimThetaOmega(SEXP paramsSEXP, SEXP omegaSEXP, SEXP omegaDfSEXP, SEXP omegaLowerSEXP, SEXP omegaUpperSEXP,
-			    SEXP omegaIsCholSEXP, SEXP omegaSeparationSEXP, SEXP omegaXformSEXP, SEXP nSubSEXP, SEXP thetaMatSEXP,
-			    SEXP thetaLowerSEXP, SEXP thetaUpperSEXP, SEXP thetaDfSEXP, SEXP thetaIsCholSEXP, SEXP nStudSEXP,
-			    SEXP sigmaSEXP, SEXP sigmaLowerSEXP, SEXP sigmaUpperSEXP, SEXP sigmaDfSEXP, SEXP sigmaIsCholSEXP,
-			    SEXP sigmaSeparationSEXP, SEXP sigmaXformSEXP, SEXP nCoresRVSEXP, SEXP nObsSEXP, SEXP dfSubSEXP,
+                             SEXP omegaIsCholSEXP, SEXP omegaSeparationSEXP, SEXP omegaXformSEXP, SEXP nSubSEXP, SEXP thetaMatSEXP,
+                             SEXP thetaLowerSEXP, SEXP thetaUpperSEXP, SEXP thetaDfSEXP, SEXP thetaIsCholSEXP, SEXP nStudSEXP,
+                             SEXP sigmaSEXP, SEXP sigmaLowerSEXP, SEXP sigmaUpperSEXP, SEXP sigmaDfSEXP, SEXP sigmaIsCholSEXP,
+                             SEXP sigmaSeparationSEXP, SEXP sigmaXformSEXP, SEXP nCoresRVSEXP, SEXP nObsSEXP, SEXP dfSubSEXP,
                              SEXP dfObsSEXP, SEXP simSubjectsSEXP, SEXP simVar);
 
 SEXP _rxode2_convertId_(SEXP);
 
 SEXP _rxode2_rpp_(SEXP nS, SEXP lambdaS, SEXP gammaS, SEXP probS, SEXP t0S,
-		 SEXP tmaxS, SEXP randomOrderS);
+                  SEXP tmaxS, SEXP randomOrderS);
 
 extern int rxIsCurrentC(SEXP obj);
 
@@ -223,9 +224,9 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
 
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
-void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls, 
-	       t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
-	       t_dydt c_dydt, t_update_inis u_inis, int jt);
+void ind_solve(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
+               t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
+               t_dydt c_dydt, t_update_inis u_inis, int jt);
 void par_solve(rx_solve *rx);
 int isRstudio(void);
 
@@ -248,7 +249,7 @@ double gamma_p_inva(double a, double p);
 
 int compareFactorVal(int val, const char *factor, const char *value);
 SEXP _rxode2_rxSolve_(SEXP, SEXP, SEXP, SEXP, SEXP,
-		     SEXP, SEXP, SEXP);
+                      SEXP, SEXP, SEXP);
 
 SEXP getRxThreads_R(SEXP verbose);
 SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
@@ -256,7 +257,7 @@ SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
 int getSilentErr(void);
 
 int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
-		t_update_inis u_inis);
+                t_update_inis u_inis);
 
 t_calc_lhs getRxLhs(void);
 t_update_inis getUpdateInis(void);
@@ -281,6 +282,9 @@ SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
 SEXP _rxode2_assignSeedInfo(void);
 SEXP _rxSetSeed(SEXP);
+SEXP _rxode2_meanProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP useT, SEXP pred, SEXP inN);
+SEXP _rxode2_binomProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP inN, SEXP cont);
+SEXP _rxode2_binomProbsPredVec_(SEXP n, SEXP m, SEXP Y, SEXP M, SEXP doP, SEXP tol);
 
 typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
 typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
@@ -291,7 +295,9 @@ typedef SEXP (*isLotri_type) (SEXP);
 typedef SEXP (*lotriMaxNu_type) (SEXP);
 typedef SEXP (*rxSolveFreeSexp_t)(void);
 typedef void (*setZeroMatrix_t)(int which);
-typedef SEXP (*etTrans_t)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*etTrans_t)(SEXP, SEXP, SEXP, SEXP, SEXP,
+                          SEXP, SEXP, SEXP, SEXP, SEXP,
+                          SEXP);
 typedef void (*rxModelsAssignC_t)(const char* str, SEXP assign);
 typedef SEXP (*rxModelVars_SEXP_t)(SEXP);
 typedef SEXP (*rxExpandNestingSexp_t)(SEXP, SEXP, SEXP);
@@ -326,17 +332,17 @@ void _rxode2random_assignPtrsInRxode2now(rx_solve rx,
                      getArmaMat_t) = NULL;
   if (fun == NULL) {
     fun = (void (*)(rx_solve,
-                     rx_solving_options,
-                     rxSolveFreeSexp_t,
-                     setZeroMatrix_t,
-                     etTrans_t,
-                     rxModelsAssignC_t,
-                     rxModelVars_SEXP_t,
-                     rxExpandNestingSexp_t,
-                     chin_t,
-                     getLowerVec_t,
-                     getUpperVec_t,
-                     getArmaMat_t)) R_GetCCallable("rxode2random","_rxode2random_assignPtrsInRxode2");
+                    rx_solving_options,
+                    rxSolveFreeSexp_t,
+                    setZeroMatrix_t,
+                    etTrans_t,
+                    rxModelsAssignC_t,
+                    rxModelVars_SEXP_t,
+                    rxExpandNestingSexp_t,
+                    chin_t,
+                    getLowerVec_t,
+                    getUpperVec_t,
+                    getArmaMat_t)) R_GetCCallable("rxode2random","_rxode2random_assignPtrsInRxode2");
   }
   fun(rx, op, rSF, sZM, et, rmac, mv, rens, cin, glv, guv, gams);
 }
@@ -356,6 +362,9 @@ extern SEXP chin(SEXP x, SEXP table);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_binomProbsPredVec_", (DL_FUNC) &_rxode2_binomProbsPredVec_, 6},
+    {"_rxode2_binomProbs_", (DL_FUNC) &_rxode2_binomProbs_, 5},
+    {"_rxode2_meanProbs_", (DL_FUNC) &_rxode2_meanProbs_, 6},
     {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
@@ -404,7 +413,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_setProgSupported", (DL_FUNC) &_rxode2_setProgSupported, 1},
     {"_rxode2_getProgSupported", (DL_FUNC) &_rxode2_getProgSupported, 0},
     {"_rxode2_rxUpdateTrans_", (DL_FUNC) &_rxode2_rxUpdateTrans_, 3},
-    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 8},
+    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 11},
     {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
     {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
     {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
@@ -489,14 +498,14 @@ void R_init_rxode2(DllInfo *info){
     {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
-    {NULL, NULL, 0} 
+    {NULL, NULL, 0}
   };
   // C callable to assign environments.
   R_RegisterCCallable("rxode2", "_rxode2_rxModelVars_", (DL_FUNC) &_rxode2_rxModelVars_);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
-  
+
   R_RegisterCCallable("rxode2", "powerDi", (DL_FUNC) &powerDi);
   R_RegisterCCallable("rxode2", "powerD", (DL_FUNC) &powerD);
   R_RegisterCCallable("rxode2", "powerDD", (DL_FUNC) &powerDD);
@@ -511,11 +520,11 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);
-  
+
   R_RegisterCCallable("rxode2","rxode2_ode_free", (DL_FUNC) &rxode2_ode_free);
-  
-  //Functions  
-  R_RegisterCCallable("rxode2","rxode2_sum",                (DL_FUNC) &rxode2_sum);
+
+  //Functions
+      R_RegisterCCallable("rxode2","rxode2_sum",                (DL_FUNC) &rxode2_sum);
   R_RegisterCCallable("rxode2","rxode2_prod",               (DL_FUNC) &rxode2_prod);
 
   R_RegisterCCallable("rxode2","rxode2_assign_fn_pointers", (DL_FUNC) &rxode2_assign_fn_pointers);

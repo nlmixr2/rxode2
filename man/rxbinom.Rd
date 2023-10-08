@@ -59,9 +59,11 @@ rxbinom(4, 0.7)
 
 ## This example uses `rxbinom` directly in the model
 
-rx <- rxode2({
-  a <- rxbinom(1, 0.5)
-})
+rx <- function() {
+  model({
+    a <- rxbinom(1, 0.5)
+  })
+}
 
 et <- et(1, id = 1:2)
 

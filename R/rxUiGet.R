@@ -119,7 +119,8 @@ rxUiGet.muRefTable <- function(x, ...) {
   .exact <- x[[2]]
   .muRef <- get("muRefDataFrame", .x)
   if (length(.muRef$theta) == 0) return(NULL)
-  .muRefCov <- get("muRefCovariateDataFrame", .x)
+  .muRefCov <- rbind(get("muRefCovariateDataFrame", .x),
+                     get("mu2RefCovariateReplaceDataFrame", .x)[,c("theta", "covariate", "covariateParameter")])
   if (length(.muRefCov$theta) > 0) {
     .env <- new.env(parent=emptyenv())
     lapply(seq_along(.muRefCov$theta), function(i) {
@@ -362,7 +363,9 @@ rxUiGet.default <- function(x, ...) {
   get(.arg, x[[1]])
 }
 
-.rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)")
+.rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)",
+                     "meta"="Model meta information",
+                     "iniDf"="Initialization data frame for UI")
 
 .rxUiGetSupportedDollars <- function() {
   .v <- as.character(utils::methods("rxUiGet"))

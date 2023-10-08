@@ -24,14 +24,15 @@
 #' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
 #'     For added rxode2 event records (if seen), last observation carried forward will be used.
 #'
+#' @inheritParams rxode2parse::etTransParse
 #' 
 #' @return Object for solving in rxode2
 #'
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0)) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE) {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime)
 }
 
 #' Expand grid internal function
@@ -586,5 +587,17 @@ isNullZero <- function(obj) {
 
 rxErf <- function(v) {
     .Call(`_rxode2_rxErf`, v)
+}
+
+binomProbsPredVec_ <- function(n, m, Y, M, doP = TRUE, tol = 1e-7) {
+    .Call(`_rxode2_binomProbsPredVec_`, n, m, Y, M, doP, tol)
+}
+
+binomProbs_ <- function(x, probs, naRm, nIn, cont) {
+    .Call(`_rxode2_binomProbs_`, x, probs, naRm, nIn, cont)
+}
+
+meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
+    .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
 

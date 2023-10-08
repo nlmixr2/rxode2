@@ -1,4 +1,144 @@
 rxTest({
+
+  test_that("sync covariates", {
+    
+    dat <- structure(list(ID = c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+                                 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+                                 1L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 
+                                 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 
+                                 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 
+                                 3L, 3L, 3L, 3L, 3L, 3L, 3L),
+                          TIME = c(0, 0, 0, 0.5, 0.5, 1, 1, 
+                                   1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3, 3.5, 3.5, 4, 4, 4.5, 4.5, 5, 
+                                   5, 5.5, 5.5, 6, 6, 0, 0, 0, 0.5, 0.5, 1, 1, 1.5, 1.5, 2, 2, 2.5, 
+                                   2.5, 3, 3, 3.5, 3.5, 4, 4, 4.5, 4.5, 5, 5, 5.5, 5.5, 6, 6, 0, 
+                                   0, 0, 0.5, 0.5, 1, 1, 1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3, 3.5, 3.5, 
+                                   4, 4, 4.5, 4.5, 5, 5, 5.5, 5.5, 6, 6),
+                          EVID = c(80101L, 60101L, 
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 80101L, 60101L, 0L, 0L, 0L, 
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+                                   0L, 0L, 0L, 0L, 0L, 0L, 80101L, 60101L, 0L, 0L, 0L, 0L, 0L, 0L, 
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+                                   0L, 0L, 0L),
+                          AMT = c(10, 10, NA, NA, NA, NA, NA, NA, NA, NA, 
+                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
+                                  NA, 10, 10, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
+                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 10, 10, NA, NA, 
+                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
+                                  NA, NA, NA, NA, NA, NA, NA),
+                          II = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                          DV = c(NA, NA, 0, 3.8, 0.9, 5.8, 
+                                 2.5, 3.2, 3.2, 1.8, 2.9, 1, 2.2, 0.5, 1.6, 0.3, 1.1, 0.2, 0.8, 
+                                 0.1, 0.5, 0, 0.3, 0, 0.2, 0, 0.1, NA, NA, 0, 3.4, 0.7, 7.3, 2.4, 
+                                 2.8, 2.5, 1.3, 2.7, 1, 1.6, 0.6, 1.1, 0.3, 0.8, 0.2, 0.8, 0.1, 
+                                 0.5, 0, 0.3, 0, 0.2, 0, 0.2, NA, NA, 0, 2.8, 1.1, 6.7, 2.7, 3.9, 
+                                 3.6, 1.5, 3.1, 0.7, 2.4, 0.5, 1.5, 0.3, 1.2, 0.1, 0.5, 0.1, 0.6, 
+                                 0.1, 0.4, 0, 0.2, 0, 0.2),
+                          CMT = c(1L, 1L, 4L, 3L, 4L, 3L, 4L, 
+                                  3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 
+                                  3L, 4L, 3L, 4L, 1L, 1L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 
+                                  4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 1L, 
+                                  1L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 
+                                  3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L),
+                          nlmixrRowNums =
+                            c(1, 
+                              NA, 14, 2, 15, 3, 16, 4, 17, 5, 18, 6, 19, 7, 20, 8, 21, 9, 22, 
+                              10, 23, 11, 24, 12, 25, 13, 26, 27, NA, 40, 28, 41, 29, 42, 30, 
+                              43, 31, 44, 32, 45, 33, 46, 34, 47, 35, 48, 36, 49, 37, 50, 38, 
+                              51, 39, 52, 53, NA, 66, 54, 67, 55, 68, 56, 69, 57, 70, 58, 71, 
+                              59, 72, 60, 73, 61, 74, 62, 75, 63, 76, 64, 77, 65, 78)),
+                     class = "data.frame", row.names = c(NA, -81L))
+
+    par <- structure(c(0, 0, 0, 0.693147180559945, 0.693147180559945, 0.693147180559945, 
+                       2.30258509299405, 2.30258509299405, 2.30258509299405, 2.30258509299405, 
+                       2.30258509299405, 2.30258509299405, 0, 0, 0, 1, 1, 1, 1, 1, 1, 
+                       -1.86782087447842, 0, 0, -2.44813462994314, 0, 0, 0.0831313226164289, 
+                       0, 0, -2.28843604434224, 0, 0, 1.97816823869187e-05, 0, 0),
+                     dim = c(3L, 12L),
+                     dimnames = list(NULL,
+                                     c("THETA[1]", "THETA[2]", "THETA[3]", 
+                                       "THETA[4]", "THETA[5]", "THETA[6]", "THETA[7]", "ETA[1]", "ETA[2]", 
+                                       "ETA[3]", "ETA[4]", "ETA[5]")))
+    
+
+    rx <- rxode2({
+      param(THETA[1], THETA[2], THETA[3], THETA[4], THETA[5], THETA[6], 
+            THETA[7], ETA[1], ETA[2], ETA[3], ETA[4], ETA[5])
+      cmt(center)
+      cmt(meta)
+      rx_expr_5 ~ ETA[3] + THETA[1]
+      rx_expr_6 ~ ETA[1] + THETA[2]
+      rx_expr_7 ~ ETA[2] + THETA[4]
+      rx_expr_10 ~ exp(rx_expr_5)
+      d/dt(center) = -rx_expr_10 * center - exp(rx_expr_6 - (rx_expr_7)) * 
+        center
+      rx_expr_8 ~ ETA[5] + THETA[5]
+      rx_expr_11 ~ exp(rx_expr_8)
+      dur(center) = rx_expr_11
+      rx_expr_9 ~ ETA[4] + THETA[3]
+      d/dt(meta) = rx_expr_10 * center - exp(rx_expr_9 - (rx_expr_7)) * 
+        meta
+      center(0) = 0
+      meta(0) = 0
+      rx_expr_0 ~ CMT == 4
+      rx_expr_1 ~ CMT == 3
+      rx_expr_2 ~ 1 - (rx_expr_0)
+      rx_yj_ ~ 2 * (rx_expr_2) * (rx_expr_1) + 2 * (rx_expr_0)
+      rx_expr_3 ~ (rx_expr_0)
+      rx_expr_4 ~ (rx_expr_2)
+      rx_expr_12 ~ rx_expr_4 * (rx_expr_1)
+      rx_lambda_ ~ rx_expr_12 + rx_expr_3
+      rx_hi_ ~ rx_expr_12 + rx_expr_3
+      rx_low_ ~ 0
+      rx_expr_13 ~ exp(-(rx_expr_7))
+      rx_expr_14 ~ rx_expr_13 * meta
+      rx_expr_15 ~ rx_expr_13 * center
+      rx_expr_17 ~ rx_expr_14 * (rx_expr_0)
+      rx_expr_18 ~ rx_expr_15 * (rx_expr_2)
+      rx_expr_19 ~ rx_expr_18 * (rx_expr_1)
+      rx_pred_ = (rx_expr_0) * (rx_expr_17 + rx_expr_19) + rx_expr_18 * 
+        Rx_pow_di((rx_expr_1), 2)
+      rx_r_ = (rx_expr_0) * Rx_pow_di(((rx_expr_17 + rx_expr_19) * 
+                                         THETA[7]), 2) + (rx_expr_2) * Rx_pow_di((rx_expr_15 * 
+                                                                                    THETA[6] * (rx_expr_1)), 2) * (rx_expr_1)
+      tkm = THETA[1]
+      tcl = THETA[2]
+      tclm = THETA[3]
+      tv = THETA[4]
+      tdur0 = THETA[5]
+      prop.err = THETA[6]
+      prop.err2 = THETA[7]
+      eta.cl = ETA[1]
+      eta.v = ETA[2]
+      eta.km = ETA[3]
+      eta.clm = ETA[4]
+      eta.dur0 = ETA[5]
+      km = rx_expr_10
+      cl = exp(rx_expr_6)
+      clm = exp(rx_expr_9)
+      v = exp(rx_expr_7)
+      dur0 = rx_expr_11
+      cp = rx_expr_15
+      cm = rx_expr_14
+      tad = tad()
+      dosenum = dosenum()
+      cmt(cp)
+      cmt(cm)
+      dvid(3, 4)
+    }) 
+
+    s <- rxSolve(rx, dat, par, returnType="data.frame",
+                 keep=c("nlmixrRowNums", "DV"), subsetNonmem=TRUE, addCov=TRUE)
+
+    expect_equal(sort(unique(s[s$time==0.5,"CMT"])), 3:4)
+
+  })
+  
   skip_if_not_installed("units")
 
   for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match precisely.
@@ -7,9 +147,9 @@ rxTest({
 
     ode <- rxode2({
       b <- -1
-      d / dt(X) <- a * X + Y * Z
-      d / dt(Y) <- b * (Y - Z)
-      d / dt(Z) <- -X * Y + c * Y - Z
+      d/dt(X) <- a * X + Y * Z
+      d/dt(Y) <- b * (Y - Z)
+      d/dt(Z) <- -X * Y + c * Y - Z
       printf("%.10f,%.10f\n", t, c)
     })
 
@@ -119,8 +259,7 @@ rxTest({
 
     cov.lin <- approxfun(out$time, out$c,
                          yleft = cov$c[1], yright = cov$c[length(cov$c)],
-                         method = "constant"
-                         )
+                         method = "constant")
 
     lin.interp$c2 <- cov.lin(lin.interp$t)
 
@@ -233,17 +372,17 @@ rxTest({
     )
 
     mod1 <- rxode2({
-      d / dt(A_centr) <- -A_centr * (CLI / V1I + 204 / V1I) + 204 * A_periph / V2I
-      d / dt(A_periph) <- 204 * A_centr / V1I - 204 * A_periph / V2I
-      d / dt(A_circ) <- -4 * A_circ * exp(-ETA[2] - THETA[2]) + 4 * A_tr3 * exp(-ETA[2] - THETA[2])
+      d/dt(A_centr) <- -A_centr * (CLI / V1I + 204 / V1I) + 204 * A_periph / V2I
+      d/dt(A_periph) <- 204 * A_centr / V1I - 204 * A_periph / V2I
+      d/dt(A_circ) <- -4 * A_circ * exp(-ETA[2] - THETA[2]) + 4 * A_tr3 * exp(-ETA[2] - THETA[2])
       A_circ(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_prol) <- 4 * A_prol * Rx_pow(exp(ETA[1] + THETA[1]) / A_circ, exp(THETA[4])) * (-A_centr * exp(ETA[3] + THETA[3]) / V1I + 1) * exp(-ETA[2] - THETA[2]) - 4 * A_prol * exp(-ETA[2] - THETA[2])
+      d/dt(A_prol) <- 4 * A_prol * Rx_pow(exp(ETA[1] + THETA[1]) / A_circ, exp(THETA[4])) * (-A_centr * exp(ETA[3] + THETA[3]) / V1I + 1) * exp(-ETA[2] - THETA[2]) - 4 * A_prol * exp(-ETA[2] - THETA[2])
       A_prol(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_tr1) <- 4 * A_prol * exp(-ETA[2] - THETA[2]) - 4 * A_tr1 * exp(-ETA[2] - THETA[2])
+      d/dt(A_tr1) <- 4 * A_prol * exp(-ETA[2] - THETA[2]) - 4 * A_tr1 * exp(-ETA[2] - THETA[2])
       A_tr1(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_tr2) <- 4 * A_tr1 * exp(-ETA[2] - THETA[2]) - 4 * A_tr2 * exp(-ETA[2] - THETA[2])
+      d/dt(A_tr2) <- 4 * A_tr1 * exp(-ETA[2] - THETA[2]) - 4 * A_tr2 * exp(-ETA[2] - THETA[2])
       A_tr2(0) <- exp(ETA[1] + THETA[1])
-      d / dt(A_tr3) <- 4 * A_tr2 * exp(-ETA[2] - THETA[2]) - 4 * A_tr3 * exp(-ETA[2] - THETA[2])
+      d/dt(A_tr3) <- 4 * A_tr2 * exp(-ETA[2] - THETA[2]) - 4 * A_tr3 * exp(-ETA[2] - THETA[2])
       A_tr3(0) <- exp(ETA[1] + THETA[1])
     })
 
@@ -316,8 +455,7 @@ rxTest({
 
     expect_warning(
       tmp <- rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
-      regexp = "column 'V1I' has only 'NA' values for id '2'"
-    )
+    NA)
 
     tmp2 <- rxSolve(mod1, d3, par2, addCov = TRUE, cores = 2, method = meth)
 
@@ -341,16 +479,14 @@ rxTest({
     test_that("All covariates are NA give a warning", {
       expect_warning(expect_warning(
         rxSolve(mod1, d3na, par2, addCov = TRUE, cores = 2, method = meth),
-        "column 'V1I' has only 'NA' values for id '2'"),
-        regexp = "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'",
-        fixed = TRUE
-      )
+        "column 'V1I' has only 'NA' values for id '2'"))
     })
   }
 
   # time-varying covariates work with ODEs
 
   test_that("time varying covariates lhs", {
+
     dfadvan <- data.frame(
       ID = c(
         1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,

@@ -58,9 +58,11 @@ rxexp(1)
 
 ## This example uses `rxexp` directly in the model
 
-rx <- rxode2({
-  a <- rxexp(2)
-})
+rx <- function() {
+  model({
+    a <- rxexp(2)
+  })
+}
 
 et <- et(1, id = 1:2)
 

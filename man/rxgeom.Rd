@@ -58,9 +58,11 @@ rxgeom(0.75)
 
 ## This example uses `rxgeom` directly in the model
 
-rx <- rxode2({
-  a <- rxgeom(0.24)
-})
+rx <- function() {
+  model({
+    a <- rxgeom(0.24)
+  })
+}
 
 et <- et(1, id = 1:2)
 

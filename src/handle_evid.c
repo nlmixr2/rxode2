@@ -50,7 +50,7 @@ double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p
     if (getDoseNumber(ind, p[0]) != -dose){
       Rf_errorcall(R_NilValue, _("could not find a start to the infusion #2"));
     }
-    return ind->all_times[ind->idose[l]] - ind->all_times[ind->idose[p[0]]];
+    return getAllTimes(ind, ind->idose[l]) - getAllTimes(ind, ind->idose[p[0]]);
   } else {
     if (l >= ind->ndoses) {
       if (backward==2) return(NA_REAL);
@@ -64,6 +64,6 @@ double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p
       if (backward==2) return(NA_REAL);
       Rf_errorcall(R_NilValue, _("could not find an end to the infusion"));
     }
-    return ind->all_times[ind->idose[p[0]]] - ind->all_times[ind->idose[l]];
+    return getAllTimes(ind, ind->idose[p[0]]) - getAllTimes(ind, ind->idose[l]);
   }
 }

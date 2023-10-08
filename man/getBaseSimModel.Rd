@@ -3,11 +3,14 @@
 \name{getBaseSimModel}
 \alias{getBaseSimModel}
 \alias{getBaseSimModel.default}
+\alias{getBaseIniSimModel.default}
 \title{Get the base simulation model for simulation}
 \usage{
 getBaseSimModel(obj)
 
 \method{getBaseSimModel}{default}(obj)
+
+\method{getBaseIniSimModel}{default}(obj)
 }
 \arguments{
 \item{obj}{Fit Object}

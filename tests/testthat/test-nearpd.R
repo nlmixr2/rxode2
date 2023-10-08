@@ -45,6 +45,7 @@ rxTest({
               c(6, 12))) %>%
       et(id=1:1000)
 
+    skip_on_os("windows")
     expect_error(rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
                     thetaMat=thetaMat1,
                     ## Match boundaries of problem

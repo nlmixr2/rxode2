@@ -41,6 +41,7 @@ All return NULL invisibly.
 wasn't called.
 }
 \examples{
+
 f <- function() {
   on.exit({
     rxProgressAbort()

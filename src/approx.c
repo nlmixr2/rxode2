@@ -14,6 +14,8 @@
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)
 #define _as_dbleps(a) (fabs(a) < sqrt(DBL_EPSILON) ? ((a) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : a)
 
+#define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
+
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #define _(String) dgettext ("rxode2", String)
@@ -75,7 +77,7 @@ extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
 static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, rx_solving_options *op){
   int i = idx;
   double ret = y[ind->ix[idx]];
-  if (ISNA(ret)){
+  if (ISNA(ret)) {
     if (op->f2 == 1.0 && op->f1 == 0.0) {
       // use nocb
       // Go forward
@@ -97,7 +99,7 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
       if (ISNA(ret)){
         // Still not found go forward.
         i = idx;
-        while (ISNA(ret) && i != ind->n_all_times){
+        while (ISNA(ret) && i != ind->n_all_times-1){
           i++; ret = y[ind->ix[i]];
         }
       }
@@ -157,7 +159,7 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   int idx=0;
   if (idx0 == NA_INTEGER){
     idx=0;
-    if (ind->evid[ind->ix[idx]] == 9) idx++;
+    if (getEvid(ind, ind->ix[idx]) == 9) idx++;
   } else if (idx0 >= ind->n_all_times) {
     return NA_REAL;
   } else {
@@ -175,25 +177,71 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   return ind->par_ptr[parNo];
 }
 
-void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
+void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) Rf_errorcall(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
   if (ind->_update_par_ptr_in) return;
+  int idx = idxIn;
+  rx_solving_options *op = rx->op;
+  // handle extra dose, and out of bounds idx values
+  if (idx < 0 && ind->extraDoseN[0] > 0) {
+    if (-1-idx >= ind->extraDoseN[0]) {
+      // Get the last dose index for the extra doses
+      idx = -1-ind->extraDoseTimeIdx[ind->extraDoseN[0]-1];
+    }
+    // extra dose time, find the closest index
+    double v = getTime(idxIn, ind);
+    int i, j, ij, n = ind->n_all_times;
+    i = 0;
+    j = n - 1;
+    if (v < getTime(ind->ix[i], ind)) {
+      idx = i;
+    } else if (v > getTime(ind->ix[j], ind)) {
+      idx = j;
+    } else {
+      /* find the correct interval by bisection */
+      while(i < j - 1) { /* T(i) <= v <= T(j) */
+        ij = (i + j)/2; /* i+1 <= ij <= j-1 */
+        if (v < getTime(ind->ix[ij], ind)) {
+          j = ij;
+        } else  {
+          i = ij;
+        }
+      }
+      // Pick best match
+      if (isSameTimeOp(v, getTime(ind->ix[j], ind))) {
+        idx = j;
+      } else if (isSameTimeOp(v, getTime(ind->ix[i], ind))) {
+        idx = i;
+      } else if (op->is_locf == 2) {
+        // nocb
+        idx = j;
+      }  else {
+        // locf
+        idx = i;
+      }
+    }
+  }
+  if (idx >= ind->n_all_times) {
+    idx = ind->n_all_times-1;
+  } else if (idx < 0) {
+    idx = 0;
+  }
   ind->_update_par_ptr_in = 1;
   if (ISNA(t)) {
     // functional lag, rate, duration, mtime
-    rx_solving_options *op = rx->op;
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
-    if (op->do_par_cov){
-      for (k = ncov; k--;){
-        if (op->par_cov[k]){
+    indSample = ind;
+    if (op->do_par_cov) {
+      for (k = ncov; k--;) {
+        if (op->par_cov[k]) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = (int)rxodeUnif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
+              ind->cov_sample[k] = round(rxodeUnif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
@@ -205,18 +253,18 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
           ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
           if (idx == 0){
             ind->cacheME=0;
-          } else if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
+          } else if (!isSameTimeOp(getValue(idxSample, y, indSample, op),
+                                   getValue(idxSample-1, y, indSample, op))) {
             ind->cacheME=0;
           }
         }
       }
     }
   } else {
-    rx_solving_options *op = rx->op;
     // Update all covariate parameters
     int k, idxSample;
     int ncov = op->ncov;
-    if (op->do_par_cov){
+    if (op->do_par_cov) {
       for (k = ncov; k--;){
         if (op->par_cov[k]){
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
@@ -231,14 +279,17 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
             idxSample = idx;
           }
           double *par_ptr = ind->par_ptr;
-          double *all_times = indSample->all_times;
+          //double *all_times = indSample->all_times;
           double *y = indSample->cov_ptr + indSample->n_all_times*k;
-          if (idxSample == 0 && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+          if (idxSample == 0 &&
+              isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
-          } else if (idxSample > 0 && idxSample < indSample->n_all_times && fabs(t- all_times[idxSample]) < DBL_EPSILON) {
+          } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
+                     isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, indSample, op);
-            if (getValue(idxSample, y, indSample, op) != getValue(idxSample-1, y, indSample, op)) {
+            if (!isSameTimeOp(getValue(idxSample, y, indSample, op),
+                              getValue(idxSample-1, y, indSample, op))) {
               ind->cacheME=0;
             }
           } else {
@@ -257,5 +308,5 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx) {
 }
 
 /* void doSort(rx_solving_options_ind *ind); */
-void sortRadix(rx_solving_options_ind *ind);
+void sortInd(rx_solving_options_ind *ind);
 

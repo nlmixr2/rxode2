@@ -58,9 +58,11 @@ rxunif()
 
 ## This example uses `rxunif` directly in the model
 
-rx <- rxode2({
-  a <- rxunif(0, 3)
-})
+rx <- function() {
+  model({
+    a <- rxunif(0, 3)
+  })
+}
 
 et <- et(1, id = 1:2)
 

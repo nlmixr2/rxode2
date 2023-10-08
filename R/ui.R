@@ -257,6 +257,11 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 #'   By default this is `TRUE`, but it can be changed by
 #'   `options(rxode2.autoVarPiping=FALSE)`.
 #'
+#'
+#' @param cov is a character vector of variables that should be
+#'   assumed to be covariates.  This will override automatic promotion
+#'   to a population parameter estimate (or an eta)
+#'
 #' @param envir the `environment` in which unevaluated model
 #'   expressions is to be evaluated.  May also be `NULL`, a list, a
 #'   data frame, a pairlist or an integer as specified to `sys.call`.
@@ -267,7 +272,8 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 #' @author Matthew Fidler
 #'
 #' @export
-model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE), envir=parent.frame()) {
+model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+                  cov=NULL, envir=parent.frame()) {
   if (is(substitute(x), "{")) {
     .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
     if (inherits(.funName, "try-error")) .funName <- NULL
@@ -310,12 +316,13 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     class(.mod) <- "rxUi"
     return(rxUiCompress(.mod))
   }
+  on.exit({.varSelect$cov <- NULL})
   UseMethod("model")
 }
 
 #' @export
 #' @rdname model
-model.default <- function(x, ..., append=FALSE, envir=parent.frame()) {
+model.default <- function(x, ..., append=FALSE, cov=NULL, envir=parent.frame()) {
   stop("rxode2 does not know how to handle this model statement")
 }
 
@@ -387,27 +394,27 @@ print.rxUi <-function(x, ...) {
 #' @author Matthew L. Fidler
 #' @export
 #' @examples
-#'   one.cmt <- function() {
-#'    ini({
-#'      ## You may label each parameter with a comment
-#'      tka <- 0.45 # Log Ka
-#'      tcl <- log(c(0, 2.7, 100)) # Log Cl
-#'      ## This works with interactive models
-#'      ## You may also label the preceding line with label("label text")
-#'      tv <- 3.45; label("log V")
-#'      ## the label("Label name") works with all models
-#'      eta.ka ~ 0.6
-#'      eta.cl ~ 0.3
-#'      eta.v ~ 0.1
-#'      add.sd <- 0.7
-#'    })
-#'    model({
-#'      ka <- exp(tka + eta.ka)
-#'      cl <- exp(tcl + eta.cl)
-#'      v <- exp(tv + eta.v)
-#'      linCmt() ~ add(add.sd) | tmp
+#' one.cmt <- function() {
+#'   ini({
+#'     ## You may label each parameter with a comment
+#'     tka <- 0.45 # Log Ka
+#'     tcl <- log(c(0, 2.7, 100)) # Log Cl
+#'     ## This works with interactive models
+#'     ## You may also label the preceding line with label("label text")
+#'     tv <- 3.45; label("log V")
+#'     ## the label("Label name") works with all models
+#'     eta.ka ~ 0.6
+#'     eta.cl ~ 0.3
+#'     eta.v ~ 0.1
+#'     add.sd <- 0.7
 #'   })
-#'  }
+#'   model({
+#'     ka <- exp(tka + eta.ka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv + eta.v)
+#'     linCmt() ~ add(add.sd) | tmp
+#'   })
+#' }
 #'
 #' f <- rxode2(one.cmt)
 #' print(class(f))
@@ -420,6 +427,7 @@ print.rxUi <-function(x, ...) {
 #' f  <- rxUiCompress(f)
 #' print(class(f))
 #' print(is.environment(f))
+#' 
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)

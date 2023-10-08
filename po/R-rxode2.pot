@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: RxODE 1.1.0\n"
+"Project-Id-Version: Rxode2 1.1.0\n"
 "POT-Creation-Date: 2021-05-26 10:39\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
@@ -10,7 +10,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 
-msgid "RxODE requires 'rtools' for custom models\nPlease download from http://cran.r-project.org/bin/windows/Rtools/,\ninstall and restart your R session before proceeding"
+msgid "Rxode2 requires 'rtools' for custom models\nPlease download from http://cran.r-project.org/bin/windows/Rtools/,\ninstall and restart your R session before proceeding"
 msgstr ""
 
 msgid "'modName' has to be a single length character"
@@ -55,7 +55,7 @@ msgstr ""
 msgid "Jacobians do not make sense for models without ODEs"
 msgstr ""
 
-msgid "Do not know how to add %s to RxODE solved object %s"
+msgid "Do not know how to add %s to Rxode2 solved object %s"
 msgstr ""
 
 msgid "unknown model"
@@ -64,10 +64,10 @@ msgstr ""
 msgid "model"
 msgstr ""
 
-msgid "cannot create RxODE model"
+msgid "cannot create Rxode2 model"
 msgstr ""
 
-msgid "RxODE already building model, waiting for lock file removal"
+msgid "Rxode2 already building model, waiting for lock file removal"
 msgstr ""
 
 msgid "lock file: \"%s\""
@@ -82,7 +82,7 @@ msgstr ""
 msgid "do not need to recompile, minimal change to model detected"
 msgstr ""
 
-msgid "unloaded all RxODE dlls before loading the current DLL"
+msgid "unloaded all Rxode2 dlls before loading the current DLL"
 msgstr ""
 
 msgid "something went wrong in compilation"
@@ -103,13 +103,13 @@ msgstr ""
 msgid "done"
 msgstr ""
 
-msgid "RxODE doesn't support '%s' translation for 'omega' translation"
+msgid "Rxode2 doesn't support '%s' translation for 'omega' translation"
 msgstr ""
 
 msgid "do not know how to handle type '%s'"
 msgstr ""
 
-msgid "RxODE only supports THETA[#] and ETA[#] numbers"
+msgid "Rxode2 only supports THETA[#] and ETA[#] numbers"
 msgstr ""
 
 msgid "cannot supply both 'by' and 'length.out'"
@@ -148,7 +148,7 @@ msgstr ""
 msgid "clearing both amount and time units\nfor more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'"
 msgstr ""
 
-msgid "'deparse.level' not used with RxODE event tables"
+msgid "'deparse.level' not used with Rxode2 event tables"
 msgstr ""
 
 msgid "'length.out' makes no sense with event tables"
@@ -286,7 +286,7 @@ msgstr ""
 msgid "================================================================================"
 msgstr ""
 
-msgid "RxODE compiled with dparser '"
+msgid "Rxode2 compiled with dparser '"
 msgstr ""
 
 msgid "' but dparser '"
@@ -295,10 +295,10 @@ msgstr ""
 msgid "dparser"
 msgstr ""
 
-msgid "' is loaded\nRecompile RxODE with the this version of dparser"
+msgid "' is loaded\nRecompile Rxode2 with the this version of dparser"
 msgstr ""
 
-msgid "RxODE compiled with PreciseSums '"
+msgid "Rxode2 compiled with PreciseSums '"
 msgstr ""
 
 msgid "' but PreciseSums '"
@@ -307,13 +307,13 @@ msgstr ""
 msgid "PreciseSums"
 msgstr ""
 
-msgid "' is loaded\nRecompile RxODE with the this version of PreciseSums"
+msgid "' is loaded\nRecompile Rxode2 with the this version of PreciseSums"
 msgstr ""
 
-msgid "Rtools is not set up correctly!\n\nYou need a working Rtools installation for RxODE to compile models"
+msgid "Rtools is not set up correctly!\n\nYou need a working Rtools installation for Rxode2 to compile models"
 msgstr ""
 
-msgid "RxODE"
+msgid "Rxode2"
 msgstr ""
 
 msgid "using"
@@ -328,7 +328,7 @@ msgstr ""
 msgid "========================================"
 msgstr ""
 
-msgid "RxODE has not detected OpenMP support and will run in single-threaded mode"
+msgid "Rxode2 has not detected OpenMP support and will run in single-threaded mode"
 msgstr ""
 
 msgid "sysname"
@@ -346,7 +346,7 @@ msgstr ""
 msgid "; To get best performance enable OpenMP"
 msgstr ""
 
-msgid "detected new version of RxODE, cleaning cache"
+msgid "detected new version of Rxode2, cleaning cache"
 msgstr ""
 
 msgid "'df' must be greater than 0"
@@ -394,10 +394,10 @@ msgstr ""
 msgid "events can be pipeline or solving arguments not both"
 msgstr ""
 
-msgid "need an RxODE compiled model as the start of the pipeline"
+msgid "need an Rxode2 compiled model as the start of the pipeline"
 msgstr ""
 
-msgid "need an RxODE events as a part of the pipeline"
+msgid "need an Rxode2 events as a part of the pipeline"
 msgstr ""
 
 msgid "'events' in pipeline AND in solving arguments, please provide just one"
@@ -460,7 +460,7 @@ msgstr ""
 msgid "name argument must be a length-one character vector"
 msgstr ""
 
-msgid "a new function requires a C function so it can be used in RxODE"
+msgid "a new function requires a C function so it can be used in Rxode2"
 msgstr ""
 
 msgid "already defined user function '"
@@ -547,7 +547,7 @@ msgstr ""
 msgid "'expit' requires 1-3 arguments"
 msgstr ""
 
-msgid "function '%s' or its derivatives are not supported in RxODE"
+msgid "function '%s' or its derivatives are not supported in Rxode2"
 msgstr ""
 
 msgid "[...] expressions not supported"
@@ -571,7 +571,7 @@ msgstr ""
 msgid "' using numerical differences instead"
 msgstr ""
 
-msgid "RxODE/symengine does not know how to take a derivative of '%s'"
+msgid "Rxode2/symengine does not know how to take a derivative of '%s'"
 msgstr ""
 
 msgid "'Derivative' conversion only takes one function and one argument"
@@ -580,10 +580,10 @@ msgstr ""
 msgid "() takes 0-1 arguments"
 msgstr ""
 
-msgid "'%s' not supported in symengine->RxODE"
+msgid "'%s' not supported in symengine->Rxode2"
 msgstr ""
 
-msgid "RxODE doesn't support '%s' translation for 'Omega' translation"
+msgid "Rxode2 doesn't support '%s' translation for 'Omega' translation"
 msgstr ""
 
 msgid "do not know how to handle type"

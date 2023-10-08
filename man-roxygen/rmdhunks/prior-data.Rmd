@@ -8,24 +8,30 @@ the `theo_sd` data frame
 
 ```{r}
 library(rxode2)
+library(nlmixr2data)
+
 ## Load data from nlmixr
-d <- qs::qread("theo_sd.qs")
+d <- theo_sd
 
 ## Create rxode2 model
-theo <- rxode2({
-    tka ~ 0.45 # Log Ka
-    tcl ~ 1 # Log Cl
-    tv ~ 3.45    # Log V
+theo <- function() {
+  ini({
+    tka <- 0.45 # Log Ka
+    tcl <- 1 # Log Cl
+    tv <- 3.45    # Log V
     eta.ka ~ 0.6
     eta.cl ~ 0.3
     eta.v ~ 0.1
+  })
+  model({
     ka <- exp(tka + eta.ka)
     cl <- exp(tcl + eta.cl)
     v <- exp(tv + eta.v)
     d/dt(depot) = -ka * depot
     d/dt(center) = ka * depot - cl / v * center
     cp = center / v
-})
+  }) 
+}
 
 ## Create parameter dataset
 library(dplyr)
@@ -57,7 +63,7 @@ print(solveData)
 solveData <- rxSolve(theo, parsDf, d, returnType="data.frame")
 
 ## solved data
-dplyr::as.tbl(solveData)
+dplyr::as_tibble(solveData)
 
 data.table::data.table(solveData)
 ```

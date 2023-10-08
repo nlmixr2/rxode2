@@ -46,3 +46,4 @@ docs/
 *.gcda
 revdep/
 /src/sbuf.c
+docs

@@ -7,36 +7,36 @@
 #' @examples
 #' 
 #' model <- quote(model({
-#'    ka <- exp(tka + eta.ka)
-#'    cl <- exp(tcl + eta.cl)
-#'    v <- exp(tv + eta.v)
-#'    d/dt(depot) = -ka * depot
-#'    d/dt(center) = ka * depot - cl / v * center
-#'    cp = center / v
-#'    cp ~ add(add.sd)
+#'   ka <- exp(tka + eta.ka)
+#'   cl <- exp(tcl + eta.cl)
+#'   v <- exp(tv + eta.v)
+#'   d/dt(depot) = -ka * depot
+#'   d/dt(center) = ka * depot - cl / v * center
+#'   cp = center / v
+#'   cp ~ add(add.sd)
 #' }))
 #'  
 #' as.model(model)
 #'
 #' one.compartment <- function() {
-#'    ini({
-#'      tka <- log(1.57)
-#'      tcl <- log(2.72)
-#'      tv <- log(31.5)
-#'      eta.ka ~ 0.6
-#'      eta.cl ~ 0.3
-#'      eta.v ~ 0.1
-#'      add.sd <- 0.7
-#'    })
-#'    model({
-#'      ka <- exp(tka + eta.ka)
-#'      cl <- exp(tcl + eta.cl)
-#'      v <- exp(tv + eta.v)
-#'      d/dt(depot) = -ka * depot
-#'      d/dt(center) = ka * depot - cl / v * center
-#'      cp = center / v
-#'      cp ~ add(add.sd)
-#'    })
+#'   ini({
+#'     tka <- log(1.57)
+#'     tcl <- log(2.72)
+#'     tv <- log(31.5)
+#'     eta.ka ~ 0.6
+#'     eta.cl ~ 0.3
+#'     eta.v ~ 0.1
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka + eta.ka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv + eta.v)
+#'     d/dt(depot) = -ka * depot
+#'     d/dt(center) = ka * depot - cl / v * center
+#'     cp = center / v
+#'     cp ~ add(add.sd)
+#'   })
 #' }
 #'
 #' as.model(one.compartment)
@@ -45,15 +45,15 @@
 #'
 #' as.model(ui)
 #'
-#'  model <- c("model({",
-#'             "ka <- exp(tka + eta.ka)",
-#'             "cl <- exp(tcl + eta.cl)",
-#'             "v <- exp(tv + eta.v)",
-#'             "d/dt(depot) = -ka * depot",
-#'             "d/dt(center) = ka * depot - cl / v * center",
-#'             "cp = center / v",
-#'             "cp ~ add(add.sd)",
-#'             "})")
+#' model <- c("model({",
+#'            "ka <- exp(tka + eta.ka)",
+#'            "cl <- exp(tcl + eta.cl)",
+#'            "v <- exp(tv + eta.v)",
+#'            "d/dt(depot) = -ka * depot",
+#'            "d/dt(center) = ka * depot - cl / v * center",
+#'            "cp = center / v",
+#'            "cp ~ add(add.sd)",
+#'            "})")
 #'
 #' as.model(model)
 #'
@@ -67,7 +67,17 @@ as.model <- function(x) {
 #' @rdname as.model
 #' @export
 as.model.character <- function(x) {
-  as.model(str2lang(paste(x, collapse="\n")))
+  .ret <- try(as.model(lapply(x, function(i) {
+    str2lang(i)
+  })), silent=TRUE)
+  if (inherits(.ret, "try-error")) {
+    .ret <- try(as.model(str2lang(paste(x, collapse="\n"))), silent=TRUE)
+    if (inherits(.ret, "try-error")) {
+      stop("error converting character vector to model({}) expression",
+           call.=FALSE)
+    }
+  }
+  .ret
 }
 
 #' @rdname as.model
@@ -78,6 +88,18 @@ as.model.call <- function(x) {
          call.=FALSE)
   }
   x
+}
+
+#' @rdname as.model
+#' @export
+as.model.list <- function(x) {
+  .lst <- lapply(seq_along(x), function(i) {
+    if (is.language(x[[i]])) return(x[[i]])
+    if (is.character(x[[i]])) return(str2lang(x[[i]]))
+    stop("unsupported expression of model({}) block",
+         call.=FALSE)
+  })
+  as.call(c(quote(`model`), as.call(c(quote(`{`), .lst))))
 }
 
 #' @rdname as.model

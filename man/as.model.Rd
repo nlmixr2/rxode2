@@ -4,6 +4,7 @@
 \alias{as.model}
 \alias{as.model.character}
 \alias{as.model.call}
+\alias{as.model.list}
 \alias{as.model.default}
 \title{Turn into a model expression}
 \usage{
@@ -12,6 +13,8 @@ as.model(x)
 \method{as.model}{character}(x)
 
 \method{as.model}{call}(x)
+
+\method{as.model}{list}(x)
 
 \method{as.model}{default}(x)
 }
@@ -27,36 +30,36 @@ Turn into a model expression
 \examples{
 
 model <- quote(model({
-   ka <- exp(tka + eta.ka)
-   cl <- exp(tcl + eta.cl)
-   v <- exp(tv + eta.v)
-   d/dt(depot) = -ka * depot
-   d/dt(center) = ka * depot - cl / v * center
-   cp = center / v
-   cp ~ add(add.sd)
+  ka <- exp(tka + eta.ka)
+  cl <- exp(tcl + eta.cl)
+  v <- exp(tv + eta.v)
+  d/dt(depot) = -ka * depot
+  d/dt(center) = ka * depot - cl / v * center
+  cp = center / v
+  cp ~ add(add.sd)
 }))
  
 as.model(model)
 
 one.compartment <- function() {
-   ini({
-     tka <- log(1.57)
-     tcl <- log(2.72)
-     tv <- log(31.5)
-     eta.ka ~ 0.6
-     eta.cl ~ 0.3
-     eta.v ~ 0.1
-     add.sd <- 0.7
-   })
-   model({
-     ka <- exp(tka + eta.ka)
-     cl <- exp(tcl + eta.cl)
-     v <- exp(tv + eta.v)
-     d/dt(depot) = -ka * depot
-     d/dt(center) = ka * depot - cl / v * center
-     cp = center / v
-     cp ~ add(add.sd)
-   })
+  ini({
+    tka <- log(1.57)
+    tcl <- log(2.72)
+    tv <- log(31.5)
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) = -ka * depot
+    d/dt(center) = ka * depot - cl / v * center
+    cp = center / v
+    cp ~ add(add.sd)
+  })
 }
 
 as.model(one.compartment)
@@ -65,15 +68,15 @@ ui <- one.compartment()
 
 as.model(ui)
 
- model <- c("model({",
-            "ka <- exp(tka + eta.ka)",
-            "cl <- exp(tcl + eta.cl)",
-            "v <- exp(tv + eta.v)",
-            "d/dt(depot) = -ka * depot",
-            "d/dt(center) = ka * depot - cl / v * center",
-            "cp = center / v",
-            "cp ~ add(add.sd)",
-            "})")
+model <- c("model({",
+           "ka <- exp(tka + eta.ka)",
+           "cl <- exp(tcl + eta.cl)",
+           "v <- exp(tv + eta.v)",
+           "d/dt(depot) = -ka * depot",
+           "d/dt(center) = ka * depot - cl / v * center",
+           "cp = center / v",
+           "cp ~ add(add.sd)",
+           "})")
 
 as.model(model)
 

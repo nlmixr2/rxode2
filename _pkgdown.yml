@@ -1,8 +1,11 @@
-url: https://nlmixr2.github.io/rxode2
+url: https://nlmixr2.github.io/rxode2/
 template:
   bootstrap: 5
   params:
     bootswatch: flatly
+  includes:
+    in_header: |
+      <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU" />
 reference:
 - title: Creating/Deleting/Loading rxode2 compiled objects
   contents:
@@ -30,6 +33,7 @@ reference:
 - title: Functions for working with nlmixr2/rxode2 functions
   contents:
   - model
+  - modelExtract
   - ini
   - zeroRe
   - assertRxUi
@@ -41,6 +45,7 @@ reference:
   - model<-
   - rxode2<-
   - rxSetCovariateNamesForPiping
+  - rxSetPipingAuto
   - rxUiDecompress
   - rxUiCompress
   - as.ini
@@ -60,7 +65,9 @@ reference:
   - rxPkg
 - title: Specialized Simulation functions
   contents:
+  - binomProbs
   - cvPost
+  - meanProbs
   - rinvchisq
   - rxGetSeed
   - rxPp
@@ -145,6 +152,7 @@ reference:
   contents:
   - .copyUi
   - .handleSingleErrTypeNormOrTFoceiBase
+  - .matchesLangTemplate
   - .modelHandleModelLines
   - .quoteCallInfoLines
   - .rxLinCmtGen
@@ -187,6 +195,9 @@ reference:
   - rxTrans
   - rxUiGet
   - summary.rxode2
+- title: Rxode2 data sets
+  contents:
+  - rxResidualError
 navbar:
   left:
   - text: Articles

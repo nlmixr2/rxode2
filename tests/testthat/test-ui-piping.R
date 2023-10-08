@@ -6,6 +6,24 @@ testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
 
 
 rxTest({
+
+  test_that("nse evaluation", {
+
+    tmp <- "d/dt(depot)"
+    expect_equal(testPipeQuote(tmp),
+                 list(quote(d/dt(depot))))
+
+    tmp <- list(tmp="d/dt(depot)")
+
+    expect_equal(testPipeQuote(tmp$tmp),
+                 list(quote(d/dt(depot))))
+
+    tmp <- list(tmp=list(tmp="d/dt(depot)"))
+
+    expect_equal(testPipeQuote(tmp$tmp$tmp),
+                 list(quote(d/dt(depot))))
+  })
+
   test_that("test fix/unfix for eta", {
     expect_equal(testPipeQuote(a~fix),
                  list(quote(a<-fix)))
@@ -1704,7 +1722,7 @@ test_that("piping with append=lhs", {
   expect_true(identical(m3$lstExpr[[4]], quote(cl <- tvcl * 2)))
 
   test_that("piping ui functions", {
-    
+
     m1 <- function() {
       ini({
         tka <- 0.463613555325211
@@ -1845,7 +1863,7 @@ test_that("piping with append=lhs", {
                  list())
 
     expect_equal(testPipeQuote(m1, iniDf=m6$iniDf),
-                 list())    
+                 list())
   })
   test_that("model piping that shares err parameter#427", {
     u <- function() {
@@ -1862,4 +1880,71 @@ test_that("piping with append=lhs", {
 
     expect_error(u %>% model(-a), NA)
   })
+
+  test_that("adding a constant does not add to the ini block", {
+    u <- function() {
+      ini({
+        b <- 3
+        err.sd <- 2
+      })
+      model({
+        a <- x + err.sd
+        c <- 1+b
+        c ~ add(err.sd)
+      })
+    }
+
+    n <- u %>% model(aa <- pi+4, append=c)
+
+    expect_false(any(n$iniDf$name == "pi"))
+  })
+
+  test_that("adding a line with a defined constant doesn't add to ini()", {
+    u <- function() {
+      ini({
+        b <- 3
+        err.sd <- 2
+      })
+      model({
+        a <- x + err.sd
+        aa <- 3
+        c <- 1+b
+        c ~ add(err.sd)
+      })
+    }
+
+    n <- u %>% model(aaa <- aa+4, append=c)
+
+    expect_false(any(n$iniDf$name == "aa"))
+  })
+})
+
+
+test_that("test ui appending of derived variables like `sim` can work", {
+  
+  one.compartment <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- 1 
+      tv <- 3.45 
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.err <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      cp ~ add(add.err)
+    })
+  }
+
+  f <- rxode2(one.compartment)
+
+  expect_error(model(f$simulationModel, sim2=sim+1, append=sim), NA)
+  
 })

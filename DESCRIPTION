@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 2.0.14
+Version: 2.0.14.9000
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler",
@@ -69,7 +69,8 @@ Suggests:
     devtools,
     patchwork,
     nlmixr2data,
-    lifecycle
+    lifecycle,
+    kableExtra
 Imports:
     PreciseSums (>= 0.3),
     Rcpp (>= 0.12.3),
@@ -88,8 +89,8 @@ Imports:
     utils,
     rxode2ll(>= 2.0.9),
     rxode2et (>= 2.0.9),
-    rxode2parse (>= 2.0.12),
-    rxode2random (>= 2.0.9),
+    rxode2parse (> 2.0.16),
+    rxode2random (> 2.0.11),
     data.table (>= 1.12.4),
     qs
 Description: Facilities for running simulations from ordinary
@@ -108,7 +109,8 @@ BugReports: https://github.com/nlmixr2/rxode2/issues/
 NeedsCompilation: yes
 VignetteBuilder: knitr
 License: GPL (>= 3)
-URL: https://nlmixr2.github.io/rxode2/, https://github.com/nlmixr2/rxode2/
+URL: https://nlmixr2.github.io/rxode2/,
+    https://github.com/nlmixr2/rxode2/
 RoxygenNote: 7.2.3
 Biarch: true
 LinkingTo:

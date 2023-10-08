@@ -1,3 +1,152 @@
+# rxode2 (development version)
+
+## Breaking changes
+
+- Steady state with lag times are no longer shifted by the lag time
+  and then solved to steady state by default.  In addition the steady
+  state at the original time of dosing is also back-calculated. If you
+  want the old behavior you can bring back the option with
+  `ssAtDoseTime=FALSE`.
+
+- "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
+  `rxSolve()`.  This may change some ODE solving using "dop853"
+
+## New features
+
+- Parallel solving of models that require sorting (like modeled lag
+  times, modeled duration etc) now solve in parallel instead of downgrading
+  to single threaded solving
+
+- Steady state infusions with a duration of infusions greater than the
+  inter-dose interval are now supported.
+
+- Added `$symengineModelNoPrune` and `$symengineModelPrune` for
+  loading models into rxode2 with `rxS()`
+
+- When plotting and creating confidence intervals for multiple
+  endpoint models simulated from a rxode2 ui model, you can
+  plot/summarize each endpoint with `sim`. (ie. `confint(model,
+  "sim")` or `plot(model, sim)`).
+
+  If you only want to summarize a subset of endpoints, you can focus
+  on the endpoint by pre-pending the endpoint with `sim.`  For example
+  if you wanted to plot/summarize only the endpoint `eff` you would
+  use `sim.eff`. (ie `confint(model, "sim.eff")` or `plot(model,
+  sim.eff)`)
+
+- Added `model$simulationIniModel` which prepend the initial
+  conditions in the `ini({})` block to the classic `rxode2({})` model.
+
+- Now `model$simulationModel` and `model$simulationIniModel` will save
+  and use the initialization values from the compiled model, and will
+  solve as if it was the original ui model.
+
+- Allow `ini(model) <- NULL` to drop ini block and `as.ini(NULL)`
+  gives `ini({})` (Issue #523)
+
+- Add a function `modelExtract()` to extract model lines to allow
+  modifying them and then changing the model by piping or simply
+  assigning the modified lines with `model(ui) <- newModifiedLines`
+
+- Add Algebraic mu-referencing detection (mu2) that allows you to
+  express mu-referenced covariates as:
+
+``` r
+cl <- exp(tcl + eta.cl + wt_cl * log(WT/70.5))
+```
+
+Instead of the
+
+``` r
+cl <- exp(tcl + eta.cl + wt_cl * log.WT.div.70.5)
+```
+
+That was previously required (where `log.WT.div.70.5` was calculated
+in the data) for mu expressions.  The `ui` now has more information to
+allow transformation of data internally and transformation to the old
+mu-referencing style to run the optimization.
+
+- Allow steady state infusions with a duration of infusion greater than
+  the inter-dose interval to be solved.
+
+- Solves will now possibly print more information when issuing a
+  "could not solve the system" error
+
+- The function `rxSetPipingAuto()` is now exported to change the way you
+  affect piping in your individual setup
+
+- Allow covariates to be specified in the model piping, that is `mod
+  %>% model(a=var+3, cov="var")` will add `"var"` as a covariate.
+
+- When calculating confidence intervals for `rxode2` simulated objects
+  you can now use `by` to stratify the simulation summary.  For
+  example you can now stratify by gender and race by: `confint(sim,
+  "sim", by=c("race", "gender"))`
+
+- When calculating the intervals for `rxode2` simulated objects you
+  can now use `ci=FALSE` so that it only calculates the default
+  intervals without bands on each of the percentiles; You can also
+  choose not to match the secondary bands limits with `levels` but use
+  your own `ci=0.99` for instance
+
+- A new function was introduced `meanProbs()` which calculates the
+  mean and expected confidence bands under either the normal or t
+  distribution
+
+- A related new function was introduced that calculates the mean and
+  confidence bands under the Bernoulli/Binomial distribution
+  (`binomProbs()`)
+
+- When calculating the intervals for `rxode2` simulated objects you
+  can also use `mean=TRUE` to use the mean for the first level of
+  confidence using `meanProbs()`. For this confidence interval you can
+  override the `n` used in the confidence interval by using `n=#`. You
+  can also change this to a prediction interval instead using
+  `pred=TRUE`.
+
+- Also when calculating the intervals for `rxode2` simulated object
+  you can also use `mean="binom"` to use the binomial distributional
+  information (and ci) for the first level of confidence using
+  `binomProbs()`.  For this confidence interval you can override the
+  `n` used in the confidence interval by using `n=#`. You can also
+  change this to a prediction interval instead using `pred=TRUE`. With
+  `pred=TRUE` you can override the number of predicted samples with
+  `m=#`
+
+- When plotting the `confint` derived intervals from an `rxode2`
+  simulation, you can now subset based on a simulated value like
+  `plot(ci, Cc)` which will only plot the variable `Cc` that you
+  summarized even if you also summarized `eff` (for instance).
+
+## Internal new features
+
+- Add `as.model()` for list expressions, which implies `model(ui) <-
+  ui$lstExpr` will assign model components.  It will also more
+  robustly work with character vectors
+
+- Simulated objects from `rxSolve` now can access the model variables
+  with `$rxModelVars`
+
+- Simulation models from the UI now use `rxerr.endpoint` instead of
+  `err.endpoint` for the `sigma` residual error.  This is to align
+  with the convention that internally generated variables start with
+  `rx` or `nlmixr`
+
+- Sorting only uses timsort now, and was upgraded to the latest
+  version from Morwenn
+
+## Bug fixes
+
+- Piping does not add constants to the initial estimates
+
+- When constants are specified in the `model({})` block (like `k <- 1`), they will not
+  be  to the `ini` block
+
+- Bug fix for `geom_amt()` when the `aes` transformation has `x`
+
+- Bug fix for some covariate updates that may affect multiple compartment
+  models (like issue #581)
+
 # rxode2 2.1.14
 
 - CRAN requested that FORTRAN `kind` be changed as it was not portable;
@@ -9,13 +158,13 @@
 
 # rxode2 2.1.13
 
+## Bug fixes
+
 - A bug was fixed so that the `zeroRe()` function works with correlated omega
   values.
 
 - A bug was fixed so that the `rename()` function works with initial
   conditions for compartments (`cmt(0)`)
-
-# rxode2 2.0.12
 
 ## New features
 

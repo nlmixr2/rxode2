@@ -37,10 +37,12 @@ llikChisq(1, df = 6:9)
 et <- et(1:3)
 et$x <- 1
 
-model <- rxode2({
+model <- function() {
+  model({
    fx <- llikChisq(x, time)
    dDf <- llikChisqDdf(x, time)
-})
+  })
+}
 
 rxSolve(model, et)
 }

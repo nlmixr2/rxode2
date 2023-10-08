@@ -4,11 +4,14 @@
 \alias{rxSolve}
 \alias{rxSolve.function}
 \alias{rxSolve.rxUi}
+\alias{rxSolve.rxode2tos}
 \alias{rxSolve.nlmixr2FitData}
 \alias{rxSolve.nlmixr2FitCore}
 \alias{rxSolve.default}
 \alias{update.rxSolve}
 \alias{predict.rxode2}
+\alias{predict.function}
+\alias{predict.rxUi}
 \alias{predict.rxSolve}
 \alias{predict.rxEt}
 \alias{predict.rxParams}
@@ -22,7 +25,7 @@
 \alias{solve.rxParams}
 \alias{solve.rxEt}
 \alias{rxControl}
-\title{Solving & Simulation of a ODE/solved system (a options) equation}
+\title{Options, Solving & Simulation of an ODE/solved system}
 \usage{
 rxSolve(
   object,
@@ -125,7 +128,12 @@ rxSolve(
   ssRtolSens = 1e-06,
   simVariability = NA,
   nLlikAlloc = NULL,
-  useStdPow = FALSE
+  useStdPow = FALSE,
+  naTimeHandle = c("ignore", "warn", "error"),
+  addlKeepsCov = FALSE,
+  addlDropSs = TRUE,
+  ssAtDoseTime = TRUE,
+  ss2cancelAllPending = FALSE
 )
 
 \method{rxSolve}{`function`}(
@@ -139,6 +147,16 @@ rxSolve(
 )
 
 \method{rxSolve}{rxUi}(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL
+)
+
+\method{rxSolve}{rxode2tos}(
   object,
   params = NULL,
   events = NULL,
@@ -181,6 +199,10 @@ rxSolve(
 \method{update}{rxSolve}(object, ...)
 
 \method{predict}{rxode2}(object, ...)
+
+\method{predict}{`function`}(object, ...)
+
+\method{predict}{rxUi}(object, ...)
 
 \method{predict}{rxSolve}(object, ...)
 
@@ -249,11 +271,11 @@ must be setup specially to use this solving routine.
 solving requests.  When specified this controls the relative and
 absolute tolerances of the ODE solvers.  By default the tolerance
 is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
-sensitivity equations the default is \code{0.5*10^(-sigdig-1.5)}
+sensitivity equations the default is \verb{0.5*10\\^(-sigdig-1.5)}
 (sensitivity changes only applicable for liblsoda).  This also
 controls the \code{atol}/\code{rtol} of the steady state solutions. The
-\code{ssAtol}/\code{ssRtol} is \code{0.5*10^(-sigdig)} and for the sensitivities
-\code{0.5*10^(-sigdig+0.625)}.  By default
+\code{ssAtol}/\code{ssRtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
+\verb{0.5*10\\^(-sigdig+0.625)}.  By default
 this is unspecified (\code{NULL}) and uses the standard \code{atol}/\code{rtol}.}
 
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
@@ -378,11 +400,11 @@ simulates the variance that are directly modeled by the
 simulates \code{log(sd)}
 \item \code{nlmixrSqrt} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{x^2} modeled along the diagonal.  This only works
+with the \verb{x\\^2} modeled along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrLog} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{exp(x^2)} along the diagonal.  This only works
+with the \verb{exp(x\\^2)} along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrIdentity} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix.
@@ -500,11 +522,11 @@ simulates the variance that are directly modeled by the
 simulates \code{log(sd)}
 \item \code{nlmixrSqrt} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{x^2} modeled along the diagonal.  This only works
+with the \verb{x\\^2} modeled along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrLog} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix
-with the \code{exp(x^2)} along the diagonal.  This only works
+with the \verb{exp(x\\^2)} along the diagonal.  This only works
 with a diagonal matrix.
 \item \code{nlmixrIdentity} This is when the \code{params} and
 \code{thetaMat} simulates the inverse cholesky decomposed matrix.
@@ -753,6 +775,33 @@ memory for larger allocations).}
 
 \item{useStdPow}{This uses C's \code{pow} for exponentiation instead of
 R's \code{R_pow} or \code{R_pow_di}.  By default this is \code{FALSE}}
+
+\item{naTimeHandle}{Determines what time of handling happens when
+the time becomes \code{NA}: current options are:
+\itemize{
+\item \code{ignore} this ignores the \code{NA} time input and passes it through.
+\item \code{warn} (default) this will produce a warning at the end of the
+solve, but continues solving passing through the \code{NA} time
+\item \code{error} this will stop this solve if this is not a parallel
+solved ODE (otherwise stopping can crash R)
+}}
+
+\item{addlKeepsCov}{This determines if the additional dosing items
+repeats the dose only (\code{FALSE}) or keeps the covariates at the
+record of the dose (\code{TRUE})}
+
+\item{addlDropSs}{When there are steady state doses with an \code{addl}
+specification the steady state flag is dropped with repeated
+doses (when \code{TRUE}) or retained (when \code{FALSE})}
+
+\item{ssAtDoseTime}{Boolean that when \code{TRUE} back calculates the
+steady concentration at the actual time of dose, otherwise when
+\code{FALSE} the doses are shifted}
+
+\item{ss2cancelAllPending}{When \code{TRUE} the \code{SS=2} event type
+cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
+doses not canceled with \code{SS=2} (the infusions started before
+\code{SS=2} occurred are canceled, though).}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

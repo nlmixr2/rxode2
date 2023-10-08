@@ -203,26 +203,51 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   }
   .cmts <- c(
     as.character(substitute(y)),
-    names(sapply(as.character(.call), `c`))
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    as.character(unlist(.call))
   )
   .cmts <- .cmts[.cmts != ""]
+  .cmts <- unique(.cmts)
   if (length(.cmts) == 0L) {
     .cmts <- NULL
   } else {
-    .cmts <- .cmts[!duplicated(.cmts)]
-    .both <- c(rxState(x), rxLhs(x))
-    .cmts0 <- intersect(.cmts, .both)
-    if (length(.cmts0) == 0) {
-      stop("the items requested in the plot do not exist in the solved object: ",
-           paste(.cmts, collapse=", "))
-    } else if (length(.cmts0) != length(.cmts)) {
-      .ignored <- .cmts[!(.cmts %in% .both)]
-      warning("some requested items do not exist in the solved object and were ignored: ",
-              paste(.ignored, collapse=", "))
+    .doSim <- all(vapply(.cmts, function(x) {
+      if (substr(x, 0, 4) == "sim.") return(TRUE)
+      FALSE
+    }, logical(1), USE.NAMES=FALSE))
+    if (.doSim) {
+      .vars <- vapply(.cmts, function(x) {
+        substr(x, 5, nchar(x))
+      }, character(1), USE.NAMES=FALSE)
+      .mv <- rxModelVars(x)
+      .good <- c(.mv$state, .mv$stateExtra)
+      .cmts0 <- intersect(.vars, .good)
+      if (length(.cmts0) == 0) {
+        stop("the `sim` endpoints requested in the plot do not exist in the solved object: ",
+             paste(.cmts, collapse=", "))
+      } else if (length(.cmts0) != length(.cmts)) {
+        .ignored <- .vars[!(.vars %in% .good)]
+        warning("some `sim` requested items do not exist in the solved object and were ignored: ",
+                paste(paste0("sim.", .ignored), collapse=", "))
+      }
+      .cmts <- paste0("sim.", .cmts0)
+    } else {
+      .cmts <- .cmts[!duplicated(.cmts)]
+      .both <- c(rxState(x), rxLhs(x))
+      .cmts0 <- intersect(.cmts, .both)
+      if (length(.cmts0) == 0) {
+        stop("the items requested in the plot do not exist in the solved object: ",
+             paste(.cmts, collapse=", "))
+      } else if (length(.cmts0) != length(.cmts)) {
+        .ignored <- .cmts[!(.cmts %in% .both)]
+        warning("some requested items do not exist in the solved object and were ignored: ",
+                paste(.ignored, collapse=", "))
+      }
+      .cmts <- .cmts0
     }
-    .cmts <- .cmts0
   }
   .dat <- rxStack(x, .cmts)
+  .cmts <- as.character(unique(.dat$trt))
   .nlvl <- 1L
   if (any(names(.dat) == "id")) {
     if (any(names(.dat) == "sim.id")) {
@@ -333,8 +358,27 @@ plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
 #' @export
 plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
+  .y <- as.character(substitute(y))
+  .call0 <- match.call()[-(1:2)]
+  .call <- as.list(.call0)
+  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
+  if (length(.w) > 0) {
+    .call <- .call[-.w]
+  }
+  .cmts <- c(
+    as.character(substitute(y)),
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    as.character(unlist(.call))
+  )
+  .cmts <- .cmts[.cmts != ""]
+  .cmts <- unique(.cmts)
   .lvl <- attr(class(x), ".rx")$lvl
   .parm <- attr(class(x), ".rx")$parm
+  if (length(.cmts) > 0) {
+    .parm <- intersect(.parm, .cmts)
+    x  <- x[x$trt %in% .parm,]
+  }
+  .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$eff)
   .facet <- NULL
   .dat <- x
@@ -346,7 +390,15 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .logy <- .lst[["logy"]]
   .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
-    .facet <- facet_wrap(~trt, scales = "free_y")
+    if (length(.by) > 0) {
+      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),
+                                     ", scales = \"free_y\")")))
+    } else {
+      .facet <- facet_wrap(~trt, scales = "free_y")
+    }
+  } else if (length(.by) > 0) {
+    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse="+"),
+                                   ", scales = \"free_y\")")))
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
     .line <- geom_line(size = 1.2, show.legend = !is.null(.facet))
@@ -387,14 +439,34 @@ plot.rxSolveConfint1 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
 #' @export
 plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") {
   .data <- NULL
-  .lvl <- attr(class(x), ".rx")$lvl
+  .y <- as.character(substitute(y))
+  .call0 <- match.call()[-(1:2)]
+  .call <- as.list(.call0)
+  .w <- which(names(.call) %in% c("x", "y", "log", "xlab", "ylab"))
+  if (length(.w) > 0) {
+    .call <- .call[-.w]
+  }
+  .cmts <- c(
+    as.character(substitute(y)),
+    names(vapply(as.character(.call), `c`, character(1), USE.NAMES=FALSE)),
+    as.character(unlist(.call))
+  )
+  .cmts <- .cmts[.cmts != ""]
+  .cmts <- unique(.cmts)
   .parm <- attr(class(x), ".rx")$parm
+  if (length(.cmts) > 0) {
+    .parm <- intersect(.parm, .cmts)
+    x  <- x[x$trt %in% .parm,]
+  }
+  .lvl <- attr(class(x), ".rx")$lvl
+  .ci  <- attr(class(x), ".rx")$ci
+  .by <- attr(class(x), ".rx")$by
   .aes <- aes(.data$time, .data$p50,
     color = .data$Percentile,
     fill = .data$Percentile,
     group = .data$p
   )
-  .aesR <- ggplot2::aes_string(ymin = .lvl[1], ymax = .lvl[3])
+  .aesR <- ggplot2::aes_string(ymin = .ci[1], ymax = .ci[3])
   .facet <- NULL
   .dat <- x
   .lst <- .plotTime(.dat, xlab)
@@ -405,7 +477,15 @@ plot.rxSolveConfint2 <- function(x, y, ..., xlab = "Time", ylab = "", log = "") 
   .logy <- .lst[["logy"]]
   .dat <- .lst[["dat"]]
   if (length(.parm) > 1) {
-    .facet <- facet_wrap(~trt, scales = "free_y")
+    if (length(.by) > 0) {
+      .facet <- eval(str2lang(paste0("facet_wrap(~", paste(c("trt", .by), collapse="+"),
+                                     ", scales = \"free_y\")")))
+    } else {
+      .facet <- facet_wrap(~trt, scales = "free_y")
+    }
+  } else if (length(.by) > 0) {
+    .facet <- eval(str2lang(paste0("facet_wrap(~", paste(.by, collapse="+"),
+                                   ", scales = \"free_y\")")))
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.4.0") < 0) {
     .line <- geom_line(size = 1.1, show.legend = FALSE)
