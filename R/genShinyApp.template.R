@@ -43,7 +43,7 @@
 #'     dosing regimen simulation web application. Users may want to
 #'     modify the code to experiment creating shiny applications for
 #'     their specific `rxode2` models.
-#' @seealso [rxode2()],[eventTable()], and the package \pkg{shiny} (<https://shiny.rstudio.com>).
+#' @seealso [rxode2()],[eventTable()], and the package \pkg{shiny} (<https://shiny.posit.co>).
 #'
 #' @examples
 #' \donttest{

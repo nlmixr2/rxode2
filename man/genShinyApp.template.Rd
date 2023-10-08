@@ -77,7 +77,7 @@ if (requireNamespace("shiny", quietly=TRUE)) {
 }
 }
 \seealso{
-\code{\link[=rxode2]{rxode2()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.rstudio.com}).
+\code{\link[=rxode2]{rxode2()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.posit.co}).
 }
 \concept{PK/PD}
 \concept{pharmacometrics}
