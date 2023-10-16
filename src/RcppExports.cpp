@@ -144,22 +144,23 @@ RcppExport SEXP _rxode2_rxExpandSens2_(SEXP stateSEXP, SEXP s1SEXP, SEXP s2SEXP)
     return rcpp_result_gen;
 }
 // rxExpandFEta_
-List rxExpandFEta_(CharacterVector state, int neta, int pred);
-static SEXP _rxode2_rxExpandFEta__try(SEXP stateSEXP, SEXP netaSEXP, SEXP predSEXP) {
+List rxExpandFEta_(CharacterVector state, int neta, int pred, bool isTheta);
+static SEXP _rxode2_rxExpandFEta__try(SEXP stateSEXP, SEXP netaSEXP, SEXP predSEXP, SEXP isThetaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< CharacterVector >::type state(stateSEXP);
     Rcpp::traits::input_parameter< int >::type neta(netaSEXP);
     Rcpp::traits::input_parameter< int >::type pred(predSEXP);
-    rcpp_result_gen = Rcpp::wrap(rxExpandFEta_(state, neta, pred));
+    Rcpp::traits::input_parameter< bool >::type isTheta(isThetaSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxExpandFEta_(state, neta, pred, isTheta));
     return rcpp_result_gen;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP _rxode2_rxExpandFEta_(SEXP stateSEXP, SEXP netaSEXP, SEXP predSEXP) {
+RcppExport SEXP _rxode2_rxExpandFEta_(SEXP stateSEXP, SEXP netaSEXP, SEXP predSEXP, SEXP isThetaSEXP) {
     SEXP rcpp_result_gen;
     {
         Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_rxExpandFEta__try(stateSEXP, netaSEXP, predSEXP));
+        rcpp_result_gen = PROTECT(_rxode2_rxExpandFEta__try(stateSEXP, netaSEXP, predSEXP, isThetaSEXP));
     }
     Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
     if (rcpp_isInterrupt_gen) {
@@ -1948,7 +1949,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("List(*rxExpandGrid_)(RObject&,RObject&,RObject&)");
         signatures.insert("List(*rxExpandSens_)(CharacterVector,CharacterVector)");
         signatures.insert("List(*rxExpandSens2_)(CharacterVector,CharacterVector,CharacterVector)");
-        signatures.insert("List(*rxExpandFEta_)(CharacterVector,int,int)");
+        signatures.insert("List(*rxExpandFEta_)(CharacterVector,int,int,bool)");
         signatures.insert("std::string(*rxRepR0_)(int)");
         signatures.insert("List(*rxExpandNesting)(const RObject&,List&,bool)");
         signatures.insert("bool(*rxIs)(const RObject&,std::string)");

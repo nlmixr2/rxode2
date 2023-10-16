@@ -4,7 +4,7 @@
 \alias{rxExpandFEta_}
 \title{Expand d(f)/d(eta)}
 \usage{
-rxExpandFEta_(state, neta, pred)
+rxExpandFEta_(state, neta, pred, isTheta = FALSE)
 }
 \arguments{
 \item{state}{is the state to expand}
@@ -12,6 +12,8 @@ rxExpandFEta_(state, neta, pred)
 \item{neta}{is the number of etas}
 
 \item{pred}{type of prediction}
+
+\item{isTheta}{logical, is the expansion actually for thetas instead of etas}
 }
 \value{
 String of symengine expressions to evaluate to calculate df/deta
