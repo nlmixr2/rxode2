@@ -118,7 +118,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' et <- et(1, id = 1:2)
 #'
 #' s <- rxSolve(rx, et)
-#' 
+#'
 #' }
 #' @export
 rxt <- function(df, n = 1L, ncores = 1L) {
@@ -312,7 +312,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #' @return gamma random deviates
 #'
 #' @examples
-#' 
+#'
 #' \donttest{
 #'
 #' ## Use threefry engine
@@ -725,8 +725,9 @@ rxnbinomMu <- function(size, mu, n = 1L, ncores = 1L) {
 #' ## This uses an arbitrary function to sample a non-homogenous Poisson process
 #'
 #' rxPp(10, 1 / 10, prob = function(x) {
-#'   1 / x
+#'   1/(1+abs(x))
 #' })
+#'
 rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, randomOrder = FALSE) {
   checkmate::assertNumeric(t0, len = 1, any.missing = FALSE)
   checkmate::assertNumeric(tmax, len = 1, any.missing = FALSE, lower = t0)
