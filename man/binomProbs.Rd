@@ -19,7 +19,8 @@ binomProbs(x, ...)
   piMethod = c("lim"),
   M = 5e+05,
   tol = .Machine$double.eps^0.25,
-  ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac")
+  ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"),
+  ...
 )
 }
 \arguments{

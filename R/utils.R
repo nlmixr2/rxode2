@@ -851,7 +851,7 @@ meanProbs <- function(x, ...) {
 #' @export
 meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
                               names=TRUE, useT=TRUE, onlyProbs=TRUE, pred=FALSE,
-                              n=0L) {
+                              n=0L, ...) {
   checkmate::assertNumeric(x)
   checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
   checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
@@ -998,7 +998,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
                                pred=FALSE,
                                piMethod=c("lim"), M=500000,
                                tol=.Machine$double.eps^0.25,
-                               ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac")) {
+                               ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"), ...) {
   checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
   x <- as.double(x)
   checkmate::assertIntegerish(n, min.len=1, lower=0, any.missing=FALSE)
