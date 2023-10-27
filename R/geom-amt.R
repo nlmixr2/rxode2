@@ -3,8 +3,7 @@
     stop("need 'amt' aesthetic")
   } else if (!any(names(data) == "x") && any(names(data) == "time")) {
     data$x <- data$time
-  } else if (any(names(data) == "x")) {
-  } else {
+  } else if (!any(names(data) == "x")) {
     stop("need 'x' aesthetic")
   }
   ret <- data[!is.na(data$amt), c("x", "amt")]
@@ -88,7 +87,7 @@ StatAmt <- ggplot2::ggproto("StatAmt", ggplot2::Stat,
 #' # of course you can make it a bit more visible
 #'
 #' plot(bidQd, C2) + geom_amt(aes(amt=amt), col="red", lty=1, linewidth=1.2)
-#' 
+#'
 #' }
 #' @export
 #' @inheritParams ggplot2::stat_identity

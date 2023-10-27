@@ -19,7 +19,8 @@ binomProbs(x, ...)
   piMethod = c("lim"),
   M = 5e+05,
   tol = .Machine$double.eps^0.25,
-  ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac")
+  ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"),
+  ...
 )
 }
 \arguments{
@@ -49,6 +50,13 @@ prediction or confidence interval.  When \code{n=0} (default) use the
 number of non-\code{NA} observations.  When calculating the prediction
 interval, this represents the number of observations used in the
 input ("true") distribution.}
+
+\item{m}{integer.  When using the prediction interval this
+represents the number of samples that will be observed in the
+future for the prediction interval.}
+
+\item{pred}{Use a prediction interval instead of a confidence
+interval.  By default this is \code{FALSE}.}
 
 \item{piMethod}{gives the prediction interval method (currently only lim) from Lu 2020}
 

@@ -851,7 +851,7 @@ meanProbs <- function(x, ...) {
 #' @export
 meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
                               names=TRUE, useT=TRUE, onlyProbs=TRUE, pred=FALSE,
-                              n=0L) {
+                              n=0L, ...) {
   checkmate::assertNumeric(x)
   checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
   checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
@@ -909,6 +909,13 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
 #'   number of non-`NA` observations.  When calculating the prediction
 #'   interval, this represents the number of observations used in the
 #'   input ("true") distribution.
+#'
+#' @param pred Use a prediction interval instead of a confidence
+#'   interval.  By default this is `FALSE`.
+#'
+#' @param m integer.  When using the prediction interval this
+#'   represents the number of samples that will be observed in the
+#'   future for the prediction interval.
 #'
 #' @param piMethod gives the prediction interval method (currently only lim) from Lu 2020
 #'
@@ -991,7 +998,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
                                pred=FALSE,
                                piMethod=c("lim"), M=500000,
                                tol=.Machine$double.eps^0.25,
-                               ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac")) {
+                               ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"), ...) {
   checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
   x <- as.double(x)
   checkmate::assertIntegerish(n, min.len=1, lower=0, any.missing=FALSE)
@@ -1005,7 +1012,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
   if (pred) {
     .m <- mean(x, na.rm=na.rm)
     if (is.na(.m)) {
-      .ret <- quantile(NULL,probs=probs)
+      .ret <- stats::quantile(NULL,probs=probs)
       if (!onlyProbs) {
         .ret <- c("mean"=NA_real_,"var"=NA_real_, "sd"=NA_real_, "n"=NA_real_,
                   .ret)
@@ -1015,7 +1022,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
       if (n == 0L) n <- as.integer(.nC)
       if (m == 0L) m <- as.integer(.nC)
       .Y <- round(.nC * .m) # number of successes
-      .ret <- quantile(.Call(`_rxode2_binomProbsPredVec_`, n, m, .Y, M, TRUE, tol),
+      .ret <- stats::quantile(.Call(`_rxode2_binomProbsPredVec_`, n, m, .Y, M, TRUE, tol),
                        probs=probs)
       if (!onlyProbs) {
         .ret <- c("mean"=.m,"var"=.m * (1.0 - .m), "sd"=sqrt(.m * (1.0 - .m)), "n"=.nC,

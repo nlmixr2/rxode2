@@ -21,7 +21,6 @@
 * Error: Variable 'ldb' cannot appear in the expression at (1)
 *
       DOUBLE PRECISION   A( LDA, * ), B( LDB, * ), C( LDC, * )
-*      complex(kind=8)   A( LDA, * ), B( LDB, * ), C( LDC, * )
 
 *
 *     ..

@@ -15,7 +15,8 @@ meanProbs(x, ...)
   useT = TRUE,
   onlyProbs = TRUE,
   pred = FALSE,
-  n = 0L
+  n = 0L,
+  ...
 )
 }
 \arguments{

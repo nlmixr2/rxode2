@@ -27,21 +27,21 @@ test_that("test binomProb()", {
           "50%"=m,
           "95%"=z5[2],
           "97.5%"=z2.5[2])
-  expect_equal(binomProbs(x, method="wilsonCorrect"), t1)
-  expect_equal(binomProbs(x, method="wc"), t1)
+  expect_equal(binomProbs(x, ciMethod="wilsonCorrect"), t1)
+  expect_equal(binomProbs(x, ciMethod="wc"), t1)
 
   t2 <- c(c("mean"=m, "var"=v, "sd"=s, "n"=n), t1)
-  expect_equal(binomProbs(x, onlyProbs=FALSE, method="wilsonCorrect"), t2)
+  expect_equal(binomProbs(x, onlyProbs=FALSE, ciMethod="wilsonCorrect"), t2)
 
   x2 <- c(x, NA_real_)
   setNames(rep(NA_real_, length(t1)),names(t1))
-  expect_equal(binomProbs(x2, method="wilsonCorrect"),
+  expect_equal(binomProbs(x2, ciMethod="wilsonCorrect"),
                setNames(rep(NA_real_, length(t1)),names(t1)))
 
-  expect_equal(binomProbs(x2, onlyProbs=FALSE, method="wilsonCorrect"),
+  expect_equal(binomProbs(x2, onlyProbs=FALSE, ciMethod="wilsonCorrect"),
                setNames(rep(NA_real_, length(t2)),names(t2)))
-  expect_equal(binomProbs(x2,na.rm=TRUE, method="wilsonCorrect"), t1)
-  expect_equal(binomProbs(x2, onlyProbs=FALSE, na.rm=TRUE, method="wilsonCorrect"), t2)
+  expect_equal(binomProbs(x2,na.rm=TRUE, ciMethod="wilsonCorrect"), t1)
+  expect_equal(binomProbs(x2, onlyProbs=FALSE, na.rm=TRUE, ciMethod="wilsonCorrect"), t2)
 
 
   n <- 50
@@ -67,7 +67,7 @@ test_that("test binomProb()", {
           "95%"=z5[2],
           "97.5%"=z2.5[2])
 
-  expect_equal(binomProbs(x, n=50, method="wilsonCorrect"), t1)
+  expect_equal(binomProbs(x, n=50, ciMethod="wilsonCorrect"), t1)
 
   # now wilson
   x <- rbinom(1001, 1, prob = 0.05)
@@ -93,7 +93,7 @@ test_that("test binomProb()", {
           "95%"=z5[2],
           "97.5%"=z2.5[2])
 
-  expect_equal(binomProbs(x, method="wilson"), t1)
+  expect_equal(binomProbs(x, ciMethod="wilson"), t1)
 
   # wald
   x <- rbinom(1001, 1, prob = 0.05)
@@ -117,7 +117,7 @@ test_that("test binomProb()", {
           "95%"=z5[2],
           "97.5%"=z2.5[2])
 
-  expect_equal(binomProbs(x, method="wald"), t1)
+  expect_equal(binomProbs(x, ciMethod="wald"), t1)
 
   # Agresti-Coull
   x <- rbinom(1001, 1, prob = 0.05)
@@ -145,8 +145,8 @@ test_that("test binomProb()", {
           "95%"=z5[2],
           "97.5%"=z2.5[2])
 
-  expect_equal(binomProbs(x, method="agrestiCoull"), t1)
-  expect_equal(binomProbs(x, method="ac"), t1)
+  expect_equal(binomProbs(x, ciMethod="agrestiCoull"), t1)
+  expect_equal(binomProbs(x, ciMethod="ac"), t1)
 
 
   expect_equal(names(binomProbs(x, pred=TRUE)), names(binomProbs(x)))

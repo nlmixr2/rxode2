@@ -7,7 +7,7 @@
 rxRepR0_(neta)
 }
 \arguments{
-\item{number}{ETA to substitute}
+\item{neta}{ETA to substitute}
 }
 \value{
 Returns a string of R code to substitute the rx_r expression in the symengine environment .s

@@ -89,17 +89,17 @@ namespace rxode2 {
         return Rcpp::as<List >(rcpp_result_gen);
     }
 
-    inline List rxExpandFEta_(CharacterVector state, int neta, int pred) {
-        typedef SEXP(*Ptr_rxExpandFEta_)(SEXP,SEXP,SEXP);
+    inline List rxExpandFEta_(CharacterVector state, int neta, int pred, bool isTheta = false) {
+        typedef SEXP(*Ptr_rxExpandFEta_)(SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxExpandFEta_ p_rxExpandFEta_ = NULL;
         if (p_rxExpandFEta_ == NULL) {
-            validateSignature("List(*rxExpandFEta_)(CharacterVector,int,int)");
+            validateSignature("List(*rxExpandFEta_)(CharacterVector,int,int,bool)");
             p_rxExpandFEta_ = (Ptr_rxExpandFEta_)R_GetCCallable("rxode2", "_rxode2_rxExpandFEta_");
         }
         RObject rcpp_result_gen;
         {
             RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_rxExpandFEta_(Shield<SEXP>(Rcpp::wrap(state)), Shield<SEXP>(Rcpp::wrap(neta)), Shield<SEXP>(Rcpp::wrap(pred)));
+            rcpp_result_gen = p_rxExpandFEta_(Shield<SEXP>(Rcpp::wrap(state)), Shield<SEXP>(Rcpp::wrap(neta)), Shield<SEXP>(Rcpp::wrap(pred)), Shield<SEXP>(Rcpp::wrap(isTheta)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

@@ -46,8 +46,8 @@
   "f"=2:3,
   "dgeom"=1,
   "geom"=1,
-#  "dhyper"=3,
-#  "hyper"=3,
+  #  "dhyper"=3,
+  #  "hyper"=3,
   "dunif"=0:2,
   "unif"=0:2,
   "dweibull"=1:2,
@@ -233,7 +233,7 @@ rxPreferredDistributionName <- function(dist) {
 }
 
 .rxTransformHasBounds <- function(distribution) {
-    (as.integer(distribution) %in% 5:14)
+  (as.integer(distribution) %in% 5:14)
 }
 
 .rxAddPropLevels <- c(
@@ -336,7 +336,7 @@ rxDemoteAddErr <- function(errType) {
 
 .incompatibleErr <- function(err1, err2) {
   .errs <- sort(c(err1, err2))
-   paste0("`", .errs[1], "` and `", .errs[2], "` are incompatible")
+  paste0("`", .errs[1], "` and `", .errs[2], "` are incompatible")
 }
 #' Combine error types to get the model F type
 #'
@@ -545,11 +545,10 @@ rxDemoteAddErr <- function(errType) {
 #'   `oldErrType` to zero assuming that there is no prior
 #'   distribution.
 #'
-#' @param newTransform This is the new distribution that is being
+#' @param newErrType This is the new distribution that is being
 #'   "added" to the current transformation.  These assumes the inputs
 #'   are in the preferred distribution name, as determined by
 #'   `rxPreferredDistributionName()`
-#'
 #'
 #' @return The new transformation as a factor
 #'
@@ -598,7 +597,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       env$.numeric <- -(expression[[2]])
       return(TRUE)
     } else if (identical(expression[[1]], quote(`+`)) &&
-          is.numeric(expression[[2]])) {
+                 is.numeric(expression[[2]])) {
       env$.numeric <- expression[[2]]
       return(TRUE)
     }
@@ -627,7 +626,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   dexp=c("a"), #7
   f=c("a", "b", "c"), #8
   geom=c("a"), #9
-#  hyper=c("a", "b", "c"), #10
+  #  hyper=c("a", "b", "c"), #10
   unif=c("a", "b"), #11
   weibull=c("a", "b"), #12
   cauchy=c("a", "b"),
@@ -1183,7 +1182,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           setNames(
             c("linCmtA" = 1L, "linCmtB" = 2L,
               "linCmtC" = 3L
-            )[match.arg(linCmtSens)],
+              )[match.arg(linCmtSens)],
             NULL
           ), verbose
         ))
@@ -1257,8 +1256,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   }
   .mod <- eval(parse(text=paste0("quote({", .var, "=1+2\n", deparse1(expr), "})")))
   .ini <- as.data.frame(eval(parse(text=paste0("lotri({\n",
-                             paste(paste(allNames(expr[[3]]), "<- 1"), collapse="\n"),
-                             "\n})"))))
+                                               paste(paste(allNames(expr[[3]]), "<- 1"), collapse="\n"),
+                                               "\n})"))))
   .env <- try(.errProcessExpression(.mod, .ini, checkMissing=FALSE), silent=TRUE)
   if (inherits(.env, "try-error")) return(FALSE)
   if (uiEnv) return(.env)
@@ -1267,7 +1266,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'  Is Normal, Cauchy or t distribution model specification?
 #'
 #' @param expr Expression
-#' 
+#'
 #' @return TRUE if this is a normal/t/cauchy model, FALSE otherwise
 #' @author Matthew L. Fidler
 #' @noRd
