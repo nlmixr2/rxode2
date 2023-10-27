@@ -2486,7 +2486,7 @@ LogicalVector rxSolveFree(){
   _globals.gomega = NULL;
   if (_globals.gsigma != NULL) free(_globals.gsigma);
   _globals.gsigma = NULL;
-  
+
   _globals.zeroTheta = false;
   _globals.zeroOmega = false;
   _globals.zeroSigma = false;
