@@ -75,11 +75,12 @@ rxExpandSens2_ <- function(state, s1, s2) {
 #' @param state is the state to expand
 #' @param neta is the number of etas
 #' @param pred type of prediction
+#' @param isTheta logical, is the expansion actually for thetas instead of etas
 #' @keywords internal
 #' @return String of symengine expressions to evaluate to calculate df/deta
 #' @export
-rxExpandFEta_ <- function(state, neta, pred) {
-    .Call(`_rxode2_rxExpandFEta_`, state, neta, pred)
+rxExpandFEta_ <- function(state, neta, pred, isTheta = FALSE) {
+    .Call(`_rxode2_rxExpandFEta_`, state, neta, pred, isTheta)
 }
 
 #' Rep R0 for foce

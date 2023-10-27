@@ -248,14 +248,17 @@ List rxExpandSens2_(CharacterVector state, CharacterVector s1, CharacterVector s
 //' @param state is the state to expand
 //' @param neta is the number of etas
 //' @param pred type of prediction
+//' @param isTheta logical, is the expansion actually for thetas instead of etas
 //' @keywords internal
 //' @return String of symengine expressions to evaluate to calculate df/deta
 //' @export
 //[[Rcpp::export]]
-List rxExpandFEta_(CharacterVector state, int neta, int pred){
+List rxExpandFEta_(CharacterVector state, int neta, int pred, bool isTheta=false){
   CharacterVector fe(neta);
   CharacterVector calcS(neta);
   int nstate = state.size();
+	std::string th = "";
+	if (isTheta) th = "TH";
   for (int i = 0; i < neta; i++){
     std::string etaN = std::to_string(i+1);
     std::string feta;
@@ -263,34 +266,34 @@ List rxExpandFEta_(CharacterVector state, int neta, int pred){
 
     switch(pred){
     case 2:
-      feta = "rx__sens_rx_pred__BY_ETA_" +
+      feta = "rx__sens_rx_pred__BY_" + th + "ETA_" +
         etaN + "___";
-      calc = "assign(\"" + feta + "\",with(.s,-D(rx_pred_, ETA_" +
+      calc = "assign(\"" + feta + "\",with(.s,-D(rx_pred_, " + th + "ETA_" +
         etaN + "_)";
       for (int j = nstate; j--;){
-        calc += "-rx__sens_" + as<std::string>(state[j]) + "_BY_ETA_" + etaN +
+        calc += "-rx__sens_" + as<std::string>(state[j]) + "_BY_" + th + "ETA_" + etaN +
           "___*D(rx_pred_,\""+ symengineRes(as<std::string>(state[j])) + "\")";
       }
       calc += "), envir=.s)";
       break;
     case 1:
-      feta = "rx__sens_rx_pred__BY_ETA_" +
+      feta = "rx__sens_rx_pred__BY_" + th + "ETA_" +
         etaN + "___";
-      calc = "assign(\"" + feta + "\",with(.s,D(rx_pred_, ETA_" +
+      calc = "assign(\"" + feta + "\",with(.s,D(rx_pred_, " + th + "ETA_" +
         etaN + "_)";
       for (int j = nstate; j--;){
-        calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_ETA_" + etaN +
+        calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_" + th + "ETA_" + etaN +
           "___*D(rx_pred_,"+ symengineRes(as<std::string>(state[j])) + ")";
       }
       calc += "), envir=.s)";
       break;
     case 0:
-      feta = "rx__sens_rx_r__BY_ETA_" +
+      feta = "rx__sens_rx_r__BY_" + th + "ETA_" +
         etaN + "___";
-      calc = "assign(\"" + feta + "\",with(.s,D(rx_r_,ETA_" +
+      calc = "assign(\"" + feta + "\",with(.s,D(rx_r_," + th +"ETA_" +
         etaN + "_)";
       for (int j = nstate; j--;){
-        calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_ETA_" + etaN +
+        calc += "+rx__sens_" + as<std::string>(state[j]) + "_BY_" + th + "ETA_" + etaN +
           "___*D(rx_r_,"+ symengineRes(as<std::string>(state[j])) + ")";
       }
       calc += "), envir=.s)";

@@ -96,7 +96,7 @@ NA_LOGICAL <- NA # nolint
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
 #' @includeRmd man/rmdhunks/rxode2-syntax-hunk.Rmd
-#' 
+#'
 #' @return An object (environment) of class `rxode2` (see Chambers and Temple Lang (2001))
 #'      consisting of the following list of strings and functions:
 #'
@@ -1275,6 +1275,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL,
       .cc <- gsub("\n", "", .cc)
       .cflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "CFLAGS"))$stdout)
       .cflags <- gsub("\n", "", .cflags)
+      .cflags <- paste0(.cflags, " -O", getOption("rxode2.compile.O", "2"))
       .shlibCflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "SHLIB_CFLAGS"))$stdout)
       .shlibCflags <- gsub("\n", "", .shlibCflags)
       .cpicflags <- rawToChar(sys::exec_internal(file.path(R.home("bin"), "R"), c("CMD", "config", "CPICFLAGS"))$stdout)

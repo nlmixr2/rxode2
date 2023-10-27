@@ -168,7 +168,7 @@ SEXP _rxode2_rxAllowUnload(SEXP);
 SEXP _rxode2_rxExpandGrid_(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxExpandSens_(SEXP, SEXP);
 SEXP _rxode2_rxExpandSens2_(SEXP, SEXP, SEXP);
-SEXP _rxode2_rxExpandFEta_(SEXP, SEXP, SEXP);
+SEXP _rxode2_rxExpandFEta_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxRepR0_(SEXP);
 SEXP _rxode2_rLKJ1(SEXP, SEXP, SEXP);
 SEXP _rxode2_rLKJcv1(SEXP, SEXP);
@@ -424,7 +424,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxExpandGrid_", (DL_FUNC) &_rxode2_rxExpandGrid_, 3},
     {"_rxode2_rxExpandSens_", (DL_FUNC) &_rxode2_rxExpandSens_, 2},
     {"_rxode2_rxExpandSens2_",(DL_FUNC) &_rxode2_rxExpandSens2_, 3},
-    {"_rxode2_rxExpandFEta_", (DL_FUNC) &_rxode2_rxExpandFEta_, 3},
+    {"_rxode2_rxExpandFEta_", (DL_FUNC) &_rxode2_rxExpandFEta_, 4},
     {"_rxode2_rxRepR0_", (DL_FUNC) &_rxode2_rxRepR0_, 1},
     {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 1},
     {"_rxode2_rxSetSilentErr", (DL_FUNC) &_rxode2_rxSetSilentErr, 1},
