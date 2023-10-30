@@ -85,6 +85,31 @@ test_that("udf functions", {
 
   expect_error(rxToSE("gg(x,y)"))
 
-  exect_error(rxFromSE("Derivative(gg(a,b),a)"))
+  expect_error(rxFromSE("Derivative(gg(a,b),a)"))
+
+  ## manual functions in C vs R functions
+
+  gg <- function(x, y) {
+    x + y
+  }
+
+  x <- rxSolve(f, e)
+
+  # now add a C function with different values
+
+  rxFun("gg", c("x", "y"),
+        "double gg(double x, double y) { return x*y;}")
+
+  gg <- function(x, y, z) {
+    x + y + z
+  }
+
+  expect_error(rxSolve(f, e))
+
+  gg <- function(x, y) {
+    x + y
+  }
+
+  expect_true(all(d$z == d$x * d$y))
 
 })

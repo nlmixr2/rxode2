@@ -411,7 +411,7 @@ rxode2 <- # nolint
           .rx$.clearME()
         })
         .rx$.rxWithWd(wd, {
-          .rx$.extraC(extraC)
+          rxode2parse::.extraC(extraC)
           if (missing.modName) {
             .rxDll <- .rx$rxCompile(.mv,
                                     debug = debug,
@@ -432,7 +432,7 @@ rxode2 <- # nolint
         })
       })
     }))
-    .extraC(extraC)
+    rxode2parse::.extraC(extraC)
     .env$compile()
     .env$get.modelVars <- eval(bquote(function() {
       with(.(.env), {
@@ -1039,7 +1039,7 @@ rxMd5 <- function(model, # Model File
       rxode2.calculate.sensitivity)
     .ret <- c(
       .ret, .tmp, .rxIndLinStrategy, .rxIndLinState,
-      .linCmtSens, ls(.symengineFs), .rxFullPrint
+      .linCmtSens, ls(rxode2parse::.symengineFs()), .rxFullPrint
     )
     if (is.null(.md5Rx)) {
       .tmp <- getLoadedDLLs()$rxode2
@@ -1462,7 +1462,7 @@ rxCompile.rxModelVars <- function(model, # Model
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(.extraCnow)
+        cat(rxode2parse::.extraCnow())
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))

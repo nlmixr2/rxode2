@@ -1,184 +1,190 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Rxode2 1.1.0\n"
-"POT-Creation-Date: 2021-05-26 10:39\n"
+"Project-Id-Version: rxode2 2.0.14.9000\n"
+"POT-Creation-Date: 2023-10-30 08:03\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-
-msgid "Rxode2 requires 'rtools' for custom models\nPlease download from http://cran.r-project.org/bin/windows/Rtools/,\ninstall and restart your R session before proceeding"
+msgid "unsupported expression for ini({}) block"
 msgstr ""
 
-msgid "'modName' has to be a single length character"
+msgid "unsupported expression of ini({}) block"
 msgstr ""
 
-msgid "'extraC' needs to point to a file that exists and is readable"
+msgid "do not know how to convert this to an `ini` expression"
 msgstr ""
 
-msgid "'collapseModel' needs to be logical"
+msgid "error converting character vector to model({}) expression"
 msgstr ""
 
-msgid "'indLin' needs to be logical"
+msgid "unsupported expression of model({}) block"
 msgstr ""
 
-msgid "'debug' needs to be logical"
+msgid "do not know how to convert this to an `model` expression"
 msgstr ""
 
-msgid "'package' needs to a single character for the package name"
+msgid "cannot convert to rxUi object"
 msgstr ""
 
-msgid "with packages 'modName' is required"
+msgid "could not convert to rxUi object"
 msgstr ""
 
-msgid "must specify exactly one of 'model' or 'filename'"
+msgid "'"
 msgstr ""
 
-msgid "cannot delete Dll in package"
+msgid "' needs to be a rxUi model"
 msgstr ""
 
-msgid "'$parse' is no longer supported"
+msgid "there must be at least one prediction in the model({}) block"
 msgstr ""
 
-msgid "cannot update package model"
+msgid ".  Use `~` for predictions"
 msgstr ""
 
-msgid "cannot figure out how to handle the model argument"
+msgid "' needs to be a single endpoint model"
 msgstr ""
 
-msgid "sensitivities do not make sense for models without ODEs"
+msgid "' needs to be a (transformably) normal model"
 msgstr ""
 
-msgid "Jacobians do not make sense for models without ODEs"
+msgid "' needs to be a normal model"
 msgstr ""
 
-msgid "Do not know how to add %s to Rxode2 solved object %s"
+msgid "' needs to be a completely mu-referenced model (ie tcl+eta.cl)"
 msgstr ""
 
-msgid "unknown model"
+msgid "' residual parameters cannot depend on the model calculated parameters"
 msgstr ""
 
-msgid "model"
+msgid "' can only have population estimates"
 msgstr ""
 
-msgid "cannot create Rxode2 model"
+msgid "' needs to be a mixed effect model"
 msgstr ""
 
-msgid "Rxode2 already building model, waiting for lock file removal"
+msgid "' can only have random effects on ID"
 msgstr ""
 
-msgid "lock file: \"%s\""
+msgid "generate defines"
 msgstr ""
 
-msgid "."
+msgid "Copy header to inst directory"
 msgstr ""
 
-msgid "error building model on another thread"
-msgstr ""
-
-msgid "do not need to recompile, minimal change to model detected"
-msgstr ""
-
-msgid "unloaded all Rxode2 dlls before loading the current DLL"
-msgstr ""
-
-msgid "something went wrong in compilation"
-msgstr ""
-
-msgid "'removeJac' is no longer supported"
-msgstr ""
-
-msgid "'removeSens' is no longer supported"
-msgstr ""
-
-msgid "simulation summaries must be between 0 and 1"
-msgstr ""
-
-msgid "summarizing data..."
+msgid "generate rxResidualError and update documentation"
 msgstr ""
 
 msgid "done"
 msgstr ""
 
-msgid "Rxode2 doesn't support '%s' translation for 'omega' translation"
+msgid "generate rxReservedKeywords and update documentation"
+msgstr ""
+
+msgid "generate rxSyntaxFunctions and update documentation"
+msgstr ""
+
+msgid "generate rxode2_control.h"
+msgstr ""
+
+msgid "querying default rxode2 object contents"
+msgstr ""
+
+msgid "saved!"
+msgstr ""
+
+msgid "summarizing data..."
+msgstr ""
+
+msgid "rxode2 doesn't support '%s' translation for 'omega' translation"
 msgstr ""
 
 msgid "do not know how to handle type '%s'"
 msgstr ""
 
-msgid "Rxode2 only supports THETA[#] and ETA[#] numbers"
+msgid "rxode2 only supports THETA[#] and ETA[#] numbers"
 msgstr ""
 
-msgid "cannot supply both 'by' and 'length.out'"
+msgid "cannot find lambda"
 msgstr ""
 
-msgid "improper arguments to 'et'"
+msgid "cannot find additive standard deviation for '"
 msgstr ""
 
-msgid "when supplying vectors of 'time', 'amt' they need to be the same size"
+msgid "; this parameter could be estimated by another endpoint, to fix move outside of error expression."
 msgstr ""
 
-msgid "only a single evid 'evid' can be specified ('%s')"
+msgid "for propF() or powF(), f must be part of the model and not estimated"
 msgstr ""
 
-msgid "', '"
+msgid "cannot find proportional standard deviation"
 msgstr ""
 
-msgid "only a single compartment 'cmt' can be specified ('%s')"
+msgid "cannot find power standard deviation"
 msgstr ""
 
-msgid "only a single rate 'rate' can be specified ('%s')"
+msgid "cannot find exponent of power expression"
 msgstr ""
 
-msgid "only a single duration 'dur' can be specified ('%s')"
+msgid "cannot find additive standard deviation"
 msgstr ""
 
-msgid "'nsim' is ignored when simulating event tables"
+msgid "cannot find pow standard deviation"
 msgstr ""
 
-msgid "requires package 'units'"
+msgid "cannot find pow exponent"
 msgstr ""
 
-msgid "the only valid number defining a unit is '1', signifying a unitless unit"
+msgid "t distribution needs a proper degrees of freedom specified"
 msgstr ""
 
-msgid "clearing both amount and time units\nfor more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'"
+msgid "last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number"
 msgstr ""
 
-msgid "'deparse.level' not used with Rxode2 event tables"
+msgid "names for ordinal simulation incorrect"
 msgstr ""
 
-msgid "'length.out' makes no sense with event tables"
+msgid "not enough categories to estimate"
 msgstr ""
 
-msgid "'each' makes no sense with event tables"
+msgid "uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()"
 msgstr ""
 
-msgid "'evid' is unitless"
+msgid "old transform not in the proper format"
 msgstr ""
 
-msgid "there are no individuals left to solve in %s data"
+msgid "you cannot combine 't' and 'cauchy' distributions"
 msgstr ""
 
-msgid "'ID' missing in '%s' dataset\nindividual parameters are assumed to have the same order as the event dataset"
+msgid "you cannot combine 't' and 'dnorm' distributions"
 msgstr ""
 
-msgid "unable to detect 'ID' correctly in '%s' dataset\nindividual parameters are assumed to have the same order as the dataset"
+msgid "you cannot combine 'dnorm' and 'cauchy' distributions"
 msgstr ""
 
-msgid "dates can only be specified by one of: 'DATE', 'DAT1', 'DAT2', 'DAT3' / 'TIME'"
+msgid "you cannot combine 'cauchy' and 'dnorm' distributions"
 msgstr ""
 
-msgid "dates formatted as MONTH-DAY or DAY alone are not supported in this conversion"
+msgid "the left handed side of the error expression (function: '"
 msgstr ""
 
-msgid "date/time format was not correctly specified"
+msgid "') can only be functions with 'linCmt' or 'll'"
 msgstr ""
 
-msgid "cannot figure out numeric time"
+msgid "endpoint parameter(s) missing, duplicated, or defined with '~':"
+msgstr ""
+
+msgid ","
+msgstr ""
+
+msgid "a rxode2 ui model must have more than error definition(s) in the `model({})` block"
+msgstr ""
+
+msgid "install.packages('shiny') to use genShinyApp.template()"
 msgstr ""
 
 msgid "need 'amt' aesthetic"
@@ -193,52 +199,166 @@ msgstr ""
 msgid "stat_cens requires the following aesthetics: upper, lower or cens (and optionally limit)"
 msgstr ""
 
+msgid "unknown variable expression:"
+msgstr ""
+
+msgid "rxode2 does not know how to handle this modelExtract object"
+msgstr ""
+
+msgid "out"
+msgstr ""
+
+msgid "could not build model for inclusion in package"
+msgstr ""
+
 msgid "'package' needs to be specified"
 msgstr ""
 
-msgid "'log=\"%s\"' not supported"
+msgid "some etas defaulted to non-mu referenced, possible parsing error:"
 msgstr ""
 
-msgid "needs units"
+msgid "as a work-around try putting the mu-referenced expression on a simple line"
+msgstr ""
+
+msgid "currently do not support IOV etc"
+msgstr ""
+
+msgid "syntax/parsing errors (see above) and additionally:"
+msgstr ""
+
+msgid "syntax/parsing errors:"
+msgstr ""
+
+msgid "syntax/parsing errors, see above"
+msgstr ""
+
+msgid "cannot find parameter '"
+msgstr ""
+
+msgid "trying to fix '"
+msgstr ""
+
+msgid "', but already fixed"
+msgstr ""
+
+msgid "trying to unfix '"
+msgstr ""
+
+msgid "', but already unfixed"
+msgstr ""
+
+msgid "piping for '"
+msgstr ""
+
+msgid "' failed, the estimate should only be 1 value"
+msgstr ""
+
+msgid "the '"
+msgstr ""
+
+msgid "' piping lower, estimate, and/or upper estimate is in the wrong order"
+msgstr ""
+
+msgid "the new label for '"
+msgstr ""
+
+msgid "' must be a character string"
+msgstr ""
+
+msgid "'append' must be NULL, logical, numeric, or character"
+msgstr ""
+
+msgid "Cannot find parameter '"
+msgstr ""
+
+msgid "parameter '"
+msgstr ""
+
+msgid "' set to be moved after itself, no change in order made"
+msgstr ""
+
+msgid "only theta parameters can be moved.  '"
+msgstr ""
+
+msgid "' is not a theta parameter"
+msgstr ""
+
+msgid "a NULL value for '"
+msgstr ""
+
+msgid "' piping does not make sense"
+msgstr ""
+
+msgid "to assign a new label, use '%s <- label(\"%s\")'"
+msgstr ""
+
+msgid "invalid expr for ini() modification"
+msgstr ""
+
+msgid "cannot figure out what to do with the ini({}) function"
+msgstr ""
+
+msgid "cannot find '"
+msgstr ""
+
+msgid "' in lhs model, cannot append"
+msgstr ""
+
+msgid "the variable '"
+msgstr ""
+
+msgid "' must be in the defined the model for piping this: '"
+msgstr ""
+
+msgid "with single endpoint model prediction '"
+msgstr ""
+
+msgid "' is changed to '"
+msgstr ""
+
+msgid "the error '"
+msgstr ""
+
+msgid "' is not in the multiple-endpoint model and cannot be modified"
+msgstr ""
+
+msgid "do not know where to put label"
+msgstr ""
+
+msgid "cannot figure out what to do with the unnamed vector"
+msgstr ""
+
+msgid "cannot figure out what to do with the unnamed list"
+msgstr ""
+
+msgid "one of the list items supplied to piping is non-numeric"
+msgstr ""
+
+msgid "vectors and list need to be named numeric expression"
+msgstr ""
+
+msgid "the `sim` endpoints requested in the plot do not exist in the solved object:"
+msgstr ""
+
+msgid "some `sim` requested items do not exist in the solved object and were ignored:"
+msgstr ""
+
+msgid "sim."
+msgstr ""
+
+msgid "the items requested in the plot do not exist in the solved object:"
+msgstr ""
+
+msgid "some requested items do not exist in the solved object and were ignored:"
 msgstr ""
 
 msgid "needs \"ggplot2\" 3.3.0"
-msgstr ""
-
-msgid "this is only used in 'data.table'"
 msgstr ""
 
 msgid "'rxIndLinState' list element '%s' must be a unnamed character vector"
 msgstr ""
 
 msgid "'%s' is from '%s' and cannot be used in this context"
-msgstr ""
-
-msgid "specified %s initial conditions when there are only %s states"
-msgstr ""
-
-msgid "only one 'initCondition=' supported"
-msgstr ""
-
-msgid "this was not generated from nlmixr, loading into symengine"
-msgstr ""
-
-msgid "cannot identify parameters for sensitivity analysis\n   with nlmixr an 'eta' initial estimate must use '~'"
-msgstr ""
-
-msgid "none of the predictions depend on 'ETA'"
-msgstr ""
-
-msgid "some of the predictions do not depend on 'ETA'"
-msgstr ""
-
-msgid "parameters:"
-msgstr ""
-
-msgid ","
-msgstr ""
-
-msgid "cannot figure out PK parameters to convert"
 msgstr ""
 
 msgid "unsupported lhs in optimize expression"
@@ -277,28 +397,22 @@ msgstr ""
 msgid "calculate symbolic inverse: t(chol.mat) %*% chol.mat ..."
 msgstr ""
 
+msgid "."
+msgstr ""
+
 msgid "initial 'omega' matrix inverse is non-positive definite"
 msgstr ""
 
 msgid "zero matrix"
 msgstr ""
 
+msgid "object is wrong type for `rxUiGet`"
+msgstr ""
+
 msgid "================================================================================"
 msgstr ""
 
-msgid "Rxode2 compiled with dparser '"
-msgstr ""
-
-msgid "' but dparser '"
-msgstr ""
-
-msgid "dparser"
-msgstr ""
-
-msgid "' is loaded\nRecompile Rxode2 with the this version of dparser"
-msgstr ""
-
-msgid "Rxode2 compiled with PreciseSums '"
+msgid "rxode2 compiled with PreciseSums '"
 msgstr ""
 
 msgid "' but PreciseSums '"
@@ -307,13 +421,16 @@ msgstr ""
 msgid "PreciseSums"
 msgstr ""
 
-msgid "' is loaded\nRecompile Rxode2 with the this version of PreciseSums"
+msgid "' is loaded\nRecompile rxode2 with the this version of PreciseSums"
 msgstr ""
 
-msgid "Rtools is not set up correctly!\n\nYou need a working Rtools installation for Rxode2 to compile models"
+msgid "rxode2 compiled with rxode2parse with a different solving structure"
 msgstr ""
 
-msgid "Rxode2"
+msgid "can try: install.packages('rxode2', type='source')"
+msgstr ""
+
+msgid "rxode2"
 msgstr ""
 
 msgid "using"
@@ -328,7 +445,7 @@ msgstr ""
 msgid "========================================"
 msgstr ""
 
-msgid "Rxode2 has not detected OpenMP support and will run in single-threaded mode"
+msgid "rxode2 has not detected OpenMP support and will run in single-threaded mode"
 msgstr ""
 
 msgid "sysname"
@@ -346,7 +463,94 @@ msgstr ""
 msgid "; To get best performance enable OpenMP"
 msgstr ""
 
-msgid "detected new version of Rxode2, cleaning cache"
+msgid "detected new version of rxode2, cleaning cache"
+msgstr ""
+
+msgid "'modName' has to be a single length character"
+msgstr ""
+
+msgid "'extraC' needs to point to a file that exists and is readable"
+msgstr ""
+
+msgid "'collapseModel' needs to be logical"
+msgstr ""
+
+msgid "'indLin' needs to be logical"
+msgstr ""
+
+msgid "'debug' needs to be logical"
+msgstr ""
+
+msgid "'package' needs to a single character for the package name"
+msgstr ""
+
+msgid "with packages 'modName' is required"
+msgstr ""
+
+msgid "must specify exactly one of 'model' or 'filename'"
+msgstr ""
+
+msgid "model functions can only be called with one argument"
+msgstr ""
+
+msgid "cannot delete Dll in package"
+msgstr ""
+
+msgid "'$parse' is no longer supported"
+msgstr ""
+
+msgid "cannot update package model"
+msgstr ""
+
+msgid "cannot figure out how to handle the model argument"
+msgstr ""
+
+msgid "sensitivities do not make sense for models without ODEs"
+msgstr ""
+
+msgid "Jacobians do not make sense for models without ODEs"
+msgstr ""
+
+msgid "Do not know how to add %s to rxode2 solved object %s"
+msgstr ""
+
+msgid "unknown model"
+msgstr ""
+
+msgid "model"
+msgstr ""
+
+msgid "cannot create rxode2 model"
+msgstr ""
+
+msgid "cannot seem to remove '"
+msgstr ""
+
+msgid "rxode2 already building model, waiting for lock file removal"
+msgstr ""
+
+msgid "lock file: \"%s\""
+msgstr ""
+
+msgid "error building model on another thread"
+msgstr ""
+
+msgid "do not need to recompile, minimal change to model detected"
+msgstr ""
+
+msgid "unloaded all rxode2 dlls before loading the current DLL"
+msgstr ""
+
+msgid "something went wrong in compilation"
+msgstr ""
+
+msgid "'removeJac' is no longer supported"
+msgstr ""
+
+msgid "'removeSens' is no longer supported"
+msgstr ""
+
+msgid "need an rxode2-type object to extract model variables"
 msgstr ""
 
 msgid "'df' must be greater than 0"
@@ -361,19 +565,13 @@ msgstr ""
 msgid "'shape' cannot be 0"
 msgstr ""
 
-msgid "'rate'/'scale' cannot be 0"
-msgstr ""
-
-msgid "specify 'rate' or 'scale' but not both"
+msgid "'rate' cannot be 0"
 msgstr ""
 
 msgid "'df1' cannot be 0"
 msgstr ""
 
 msgid "'df2' cannot be 0"
-msgstr ""
-
-msgid "'rate' cannot be 0"
 msgstr ""
 
 msgid "'df' cannot be 0"
@@ -385,19 +583,25 @@ msgstr ""
 msgid "when 'gamma' is not 1, 'tmax' cannot be infinite"
 msgstr ""
 
-msgid "duplicate arguments do not make sense"
+msgid "'transitAbs' is no longer supported, use 'evid=7' instead"
+msgstr ""
+
+msgid "unused argument:"
 msgstr ""
 
 msgid "covariates can no longer be specified by 'covs' include them in the event dataset"
 msgstr ""
 
+msgid "'maxSS' must be larger than 'minSS'"
+msgstr ""
+
 msgid "events can be pipeline or solving arguments not both"
 msgstr ""
 
-msgid "need an Rxode2 compiled model as the start of the pipeline"
+msgid "need an rxode2 compiled model as the start of the pipeline"
 msgstr ""
 
-msgid "need an Rxode2 events as a part of the pipeline"
+msgid "need an rxode2 events as a part of the pipeline"
 msgstr ""
 
 msgid "'events' in pipeline AND in solving arguments, please provide just one"
@@ -409,10 +613,16 @@ msgstr ""
 msgid "'inits' in pipeline AND in solving arguments, please provide just one"
 msgstr ""
 
+msgid "duplicate arguments do not make sense"
+msgstr ""
+
 msgid "covariates can no longer be specified by 'covs'\n  include them in the event dataset\n\nindividual covariates: Can be specified by a 'iCov' dataset\n each each individual covariate has a value\n\ntime varying covariates: modify input event data-frame or\n  'eventTable' to include covariates(https://tinyurl.com/y52wfc2y)\n\nEach approach needs the covariates named to match the variable in the model"
 msgstr ""
 
 msgid "'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"
+msgstr ""
+
+msgid "', '"
 msgstr ""
 
 msgid "'theta' cannot be a data.frame"
@@ -457,10 +667,19 @@ msgstr ""
 msgid "'iCov' must be an input dataset"
 msgstr ""
 
+msgid "Unsupported type of model trying to be solved"
+msgstr ""
+
+msgid "'sensCmt' must be lower than the number of compartments 'ncmt'"
+msgstr ""
+
+msgid "'rxControl' must be a rxode2 control options list"
+msgstr ""
+
 msgid "name argument must be a length-one character vector"
 msgstr ""
 
-msgid "a new function requires a C function so it can be used in Rxode2"
+msgid "a new function requires a C function so it can be used in rxode2"
 msgstr ""
 
 msgid "already defined user function '"
@@ -473,12 +692,6 @@ msgid "no user function '"
 msgstr ""
 
 msgid "' to remove"
-msgstr ""
-
-msgid "cannot take a second derivative"
-msgstr ""
-
-msgid "bad 'linCmtB' derivative"
 msgstr ""
 
 msgid "derivatives must be a list of functions with at least 1 element"
@@ -526,7 +739,7 @@ msgstr ""
 msgid "'transit' can only take 2-3 arguments"
 msgstr ""
 
-msgid "'%s' only acceps 1 argument"
+msgid "'%s' only accepts 1 argument"
 msgstr ""
 
 msgid "'%s' only acceps 2 arguments"
@@ -547,13 +760,22 @@ msgstr ""
 msgid "'expit' requires 1-3 arguments"
 msgstr ""
 
-msgid "function '%s' or its derivatives are not supported in Rxode2"
+msgid "function '%s' or its derivatives are not supported in rxode2"
+msgstr ""
+
+msgid "R user function '%s' has variable number of arguments with'...' and is not supported in rxode2"
+msgstr ""
+
+msgid "user function '%s' requires %d arguments (supplied %d)"
 msgstr ""
 
 msgid "[...] expressions not supported"
 msgstr ""
 
 msgid "'polygamma' takes 2 arguments"
+msgstr ""
+
+msgid "'%s' only acceps 1 argument"
 msgstr ""
 
 msgid "'%s' takes %s arguments"
@@ -571,7 +793,7 @@ msgstr ""
 msgid "' using numerical differences instead"
 msgstr ""
 
-msgid "Rxode2/symengine does not know how to take a derivative of '%s'"
+msgid "rxode2/symengine does not know how to take a derivative of '%s'"
 msgstr ""
 
 msgid "'Derivative' conversion only takes one function and one argument"
@@ -580,10 +802,10 @@ msgstr ""
 msgid "() takes 0-1 arguments"
 msgstr ""
 
-msgid "'%s' not supported in symengine->Rxode2"
+msgid "'%s' not supported in symengine->rxode2"
 msgstr ""
 
-msgid "Rxode2 doesn't support '%s' translation for 'Omega' translation"
+msgid "rxode2 doesn't support '%s' translation for 'Omega' translation"
 msgstr ""
 
 msgid "do not know how to handle type"
@@ -655,7 +877,82 @@ msgstr ""
 msgid "'."
 msgstr ""
 
-msgid "package \"%s\" needed for this function to work"
+msgid "cannot figure out what to do with model assignment"
+msgstr ""
+
+msgid "cannot figure out what to do with ini assignment"
+msgstr ""
+
+msgid "wrong input for 'x' in .bodySetRxUi"
+msgstr ""
+
+msgid "cannot figure out how to assign this to the with rxode()<-"
+msgstr ""
+
+msgid "do not know how to assign this"
+msgstr ""
+
+msgid "the first model does not have variables that are used by the second model"
+msgstr ""
+
+msgid "there needs to be at least one population parameter in 'model1'"
+msgstr ""
+
+msgid "cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'"
+msgstr ""
+
+msgid "control must be a list-like object"
+msgstr ""
+
+msgid "cannot assign value to compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'"
+msgstr ""
+
+msgid "to rename a variable you need to use 'newName=oldName' syntax"
+msgstr ""
+
+msgid "to rename a variable you need to use '"
+msgstr ""
+
+msgid "=oldName' syntax"
+msgstr ""
+
+msgid "=oldName' syntax, where oldName is a variable"
+msgstr ""
+
+msgid "the new variable '"
+msgstr ""
+
+msgid "' is already present in the model; cannot replace '"
+msgstr ""
+
+msgid "' with '"
+msgstr ""
+
+msgid "the old variable '"
+msgstr ""
+
+msgid "' is not present in the model and cannot be renamed to '"
+msgstr ""
+
+msgid "unknown expression"
+msgstr ""
+
+msgid "rxode2 model function can only have one 'ini({})' block"
+msgstr ""
+
+msgid "rxode2 model function requires one 'model({})' block"
+msgstr ""
+
+msgid "'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object"
+msgstr ""
+
+msgid "the parameter(s) '"
+msgstr ""
+
+msgid "' cannot be an error and between subject variability"
+msgstr ""
+
+msgid "rxode2 does not know how to handle this model statement"
 msgstr ""
 
 msgid "'wd' is depreciated"

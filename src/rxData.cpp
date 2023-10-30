@@ -63,7 +63,7 @@ extern "C" int getThrottle();
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
-extern "C" void _rxode2parse_assignUdf(SEXP in);
+extern "C" int _rxode2parse_assignUdf(SEXP in);
 
 extern "C" {
   typedef SEXP (*_rxode2parse_getForder_type)(void);
@@ -4735,8 +4735,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFreeObj = object;
     }
   }
-  _rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf]);
-
+  if (_rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf])) {
+    Function rxode2 = getRxFn("rxode2");
+    object = rxode2(object);
+    rxSolveDat->mv = rxModelVars(object);
+    rxSolveFreeObj = object;
+  }
   if (rxSolveDat->isRxSolve || rxSolveDat->isEnvironment){
     rx_solve* rx = getRxSolve_();
     iniRx(rx);

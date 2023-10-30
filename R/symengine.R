@@ -264,41 +264,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "rt" = 1
 )
 
-.rxSEeqUsr <- NULL
-
-.rxCcode <- NULL
-.symengineFs <- new.env(parent = emptyenv())
-
-.extraCnow <- ""
-.extraC <- function(extraC = NULL) {
-  if (!is.null(extraC)) {
-    if (file.exists(extraC)) {
-      .ret <- sprintf("#include \"%s\"\n", extraC)
-    } else {
-      .ret <- paste(extraC, collapse = "\n")
-    }
-  } else {
-    .ret <- ""
-  }
-  if (length(.rxCcode) > 0L) {
-    .ret <- sprintf("%s\n%s\n", .ret, paste(.rxCcode, collapse = "\n"))
-  }
-  assignInMyNamespace(".extraCnow", .ret)
-  return(invisible())
-}
-
-#' Add user function to rxode2
-#'
-#' This adds a user function to rxode2 that can be called.  If needed,
-#' these functions can be differentiated by numerical differences or
-#' by adding the derivatives to rxode2's internal derivative table
-#' with [rxD()]
-#'
-#' @param name This gives the name of the user function
-#' @param args This gives the arguments of the user function
-#' @param cCode This is the C-code for the new function
-#' @return nothing
-#' @author Matthew L. Fidler
+#' @inherit rxode2parse::rxFunParse
 #' @examples
 #' \donttest{
 #' ## Right now rxode2 is not aware of the function f
@@ -348,41 +314,13 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' }
 #' @export
 rxFun <- function(name, args, cCode) {
-  if (!is.character(name) || length(name) != 1L) {
-    stop("name argument must be a length-one character vector", call. = FALSE)
-  }
-  if (missing(cCode)) stop("a new function requires a C function so it can be used in rxode2", call. = FALSE)
-  if (any(name == names(.rxSEeqUsr))) {
-    stop("already defined user function '", name, "', remove it fist ('rxRmFun')",
-      call. = FALSE
-    )
-  }
-  suppressWarnings(rxRmFun(name))
-  assignInMyNamespace(".rxSEeqUsr", c(.rxSEeqUsr, setNames(length(args), name)))
-  assignInMyNamespace(".rxCcode", c(.rxCcode, setNames(cCode, name)))
-  assign(name, symengine::Function(name), envir = .symengineFs)
-  return(invisible())
+  rxode2parse::rxFunParse(name, args, cCode)
 }
 
 #' @rdname rxFun
 #' @export
 rxRmFun <- function(name) {
-  if (!is.character(name) || length(name) != 1L) {
-    stop("name argument must be a length-one character vector",
-      call. = FALSE
-    )
-  }
-  if (!any(name == names(.rxSEeqUsr))) {
-    warning("no user function '", name, "' to remove", call. = FALSE)
-  }
-  .w <- which(name == names(.rxSEeqUsr))
-  if (length(.w) == 1L) assignInMyNamespace(".rxSEeqUsr", .rxSEeqUsr[-.w])
-  .w <- which(name == names(.rxCcode))
-  if (length(.w) == 1L) assignInMyNamespace(".rxCcode", .rxCcode[-.w])
-  .rxD <- rxode2parse::rxode2parseD()
-  if (exists(name, envir = .rxD)) rm(list = name, envir = .rxD)
-  if (exists(name, envir = .symengineFs)) rm(list = name, envir = .symengineFs)
-  return(invisible())
+  rxode2parse::rxRmFunParse(name)
 }
 
 .SE1p <- c(
@@ -1199,7 +1137,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     }
     .ret0 <- c(list(as.character(x[[1]])), lapply(x[-1], .rxToSE, envir = envir))
     if (isEnv) envir$..curCall <- .lastCall
-    .SEeq <- c(.rxSEeq, .rxSEeqUsr)
+    .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
     if (.promoteLinB && .curName == "linCmtA") {
@@ -1888,7 +1826,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         }
       }
       .ret0 <- lapply(lapply(x, .stripP), .rxFromSE)
-      .SEeq <- c(.rxSEeq, .rxSEeqUsr)
+      .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
       .nargs <- .SEeq[paste(.ret0[[1]])]
       if (!is.na(.nargs)) {
         if (.nargs == length(.ret0) - 1) {
@@ -2232,8 +2170,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
   .env$rx_yj_ <- symengine::S("2")
   .env$rx_low_ <- symengine::S("0")
   .env$rx_hi_ <- symengine::S("1")
-  if (!is.null(.rxSEeqUsr)) {
-    sapply(names(.rxSEeqUsr), function(x) {
+  if (!is.null(rxode2parse::.rxSEeqUsr())) {
+    sapply(names(rxode2parse::.rxSEeqUsr()), function(x) {
       assign(.rxFunction(x), x, envir = .env)
     })
   }
@@ -3113,7 +3051,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
   .ret <- c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
-    "linCmt", names(.rxOnly), ls(.symengineFs)
+    "linCmt", names(.rxOnly), ls(rxode2parse::.symengineFs())
   )
   if (extra) {
     .ret <- c(.ret, c(
