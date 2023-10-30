@@ -50,8 +50,6 @@ extern seedEng_t seedEng;
 #include "rxThreadData.h"
 //#include "seed.h"
 
-extern "C" uint64_t dtwiddle(const void *p, int i);
-extern "C" void calcNradix(int *nbyte, int *nradix, int *spare, uint64_t *maxD, uint64_t *minD);
 extern "C" void RSprintf(const char *format, ...);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" double *global_InfusionRate(unsigned int mx);
@@ -65,6 +63,7 @@ extern "C" int getThrottle();
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
+extern "C" void _rxode2parse_assignUdf(SEXP in);
 
 extern "C" {
   typedef SEXP (*_rxode2parse_getForder_type)(void);
@@ -4403,7 +4402,6 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
-
   rxSolveSaveRxSolve(rxSolveDat);
   rx_solve* rx = getRxSolve_();
   // if (rxSolveDat->throttle){
@@ -4737,6 +4735,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFreeObj = object;
     }
   }
+  _rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf]);
+
   if (rxSolveDat->isRxSolve || rxSolveDat->isEnvironment){
     rx_solve* rx = getRxSolve_();
     iniRx(rx);

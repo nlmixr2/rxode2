@@ -471,6 +471,9 @@ rxD <- function(name, derivatives) {
 }
 
 
+.rxToSE.envir <- new.env(parent=emptyenv())
+.rxToSE.envir$envir <- NULL
+
 .promoteLinB <- FALSE
 #' rxode2 to symengine environment
 #'
@@ -491,11 +494,15 @@ rxD <- function(name, derivatives) {
 #'     - `forward` for forward differences
 #'     - `central` for central differences
 #'     - `error` for throwing an error for unknown derivatives
+#'
+#' @param parent is the parent environment to look for R-based user functions
+#'
 #' @return An rxode2 symengine environment
 #' @author Matthew L. Fidler
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
-                   promoteLinSens = TRUE) {
+                   promoteLinSens = TRUE, parent = parent.frame()) {
+  .rxToSE.envir$parent <- parent
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
   assignInMyNamespace(".rxLastAssignedDdt", "")
@@ -1338,9 +1345,27 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                )
         }
       } else {
-        stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
-             call. = FALSE
-             )
+        .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
+        if (inherits(.udf, "try-error")) {
+          stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
+               call. = FALSE
+               )
+        } else {
+          .f <- formals(.udf)
+          if (any(names(.f)  == "...")) {
+            stop(sprintf(gettext("R user function '%s' has variable number of arguments with'...' and is not supported in rxode2"), .fun),
+                 call. = FALSE
+                 )
+          } else if (length(.ret0) == length(.f)) {
+            .ret0 <- unlist(.ret0)
+            .ret <- paste0(.fun, "(",paste(.ret0, collapse=", "), ")")
+          } else {
+            stop(sprintf(gettext("user function '%s' requires %d arguments (supplied %d)"), .fun,
+                         length(.f), length(.ret0)),
+                 call. = FALSE
+                 )
+          }
+        }
       }
     }
   }
@@ -1371,11 +1396,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxFromNumDer <- 0L
 .rxDelta <- (.Machine$double.eps)^(1 / 3)
 
+.rxFromSE.envir <- new.env(parent=emptyenv())
+.rxFromSE.envir$parent <- NULL
 
 #' @rdname rxToSE
 #' @export
-rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
+rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
+                     parent=parent.frame()) {
   rxReq("symengine")
+  .rxFromSE.envir$parent <- parent
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   assignInMyNamespace(".rxFromNumDer", .unknown[match.arg(unknownDerivatives)])
   if (is(substitute(x), "character")) {
@@ -2105,9 +2134,30 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
         }
         stop(paste0(.ret0[[1]], "() takes 0-1 arguments"))
       } else {
-        stop(sprintf(gettext("'%s' not supported in symengine->rxode2"), paste(.ret0[[1]])),
-          call. = FALSE
-        )
+        .fun <- paste(.ret0[[1]])
+        .g <- try(get(.fun, envir=.rxFromSE.envir$parent, mode="function"), silent=TRUE)
+        if (inherits(.g, "try-error")) {
+          stop(sprintf(gettext("'%s' not supported in symengine->rxode2"), .fun),
+               call. = FALSE
+               )
+        } else {
+          .f <- formals(.g)
+          if (any(names(.f)  == "...")) {
+            stop(sprintf(gettext("R user function '%s' has variable number of arguments with'...' and is not supported in rxode2"), .fun),
+                 call. = FALSE
+                 )
+          } else if (length(.ret0) - 1 == length(.f)) {
+            .ret <- unlist(.ret0)
+            .fun <- .ret[1]
+            .args <- .ret[-1]
+            return(paste0(.fun, "(", paste(.args, collapse = ", "), ")"))
+          } else {
+            stop(sprintf(gettext("user function '%s' requires %d arguments (supplied %d)"), .fun,
+                         length(.f), length(.ret0) - 1),
+                 call. = FALSE)
+
+          }
+        }
       }
     }
   } else {

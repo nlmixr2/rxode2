@@ -17,6 +17,74 @@ test_that("udf functions", {
   expect_warning(rxSolve(f, e))
 
   d <- suppressWarnings(rxSolve(f, e))
+
   expect_true(all(d$z == d$x + d$y))
+
+  # now modify gg
+  gg <- function(x, y, z) {
+    x + y + z
+  }
+
+  expect_error(rxSolve(f, e))
+
+  # now modify gg back to 2 arguments
+  gg <- function(x, y) {
+    x * y
+  }
+
+  # different solve results but still runs
+
+  d <- suppressWarnings(rxSolve(f, e))
+
+  expect_true(all(d$z == d$x * d$y))
+
+  rm(gg)
+
+  expect_error(rxSolve(f, e))
+
+  gg <- function(x, ...) {
+    x
+  }
+
+  expect_error(rxSolve(f, e))
+
+  gg <- function(x, y) {
+    stop("running me")
+  }
+
+  expect_error(rxSolve(f, e))
+
+  gg <- function(x, y) {
+    "running "
+  }
+
+  x <- suppressWarnings(rxSolve(f, e))
+  expect_true(all(is.na(x$z)))
+
+  gg <- function(x, y) {
+    "3"
+  }
+
+  x <- rxSolve(f, e)
+  expect_true(all(x$z == 3))
+
+  expect_equal(rxToSE("gg(x,y)"), "gg(x, y)")
+
+  expect_error(rxToSE("gg()"), "user function")
+
+  expect_error(rxFromSE("Derivative(gg(a,b),a)"), NA)
+
+  expect_error(rxFromSE("Derivative(gg(a),a)"))
+
+  expect_error(rxFromSE("Derivative(gg(),a)"))
+
+
+  gg <- function(x, ...) {
+    x
+  }
+
+  expect_error(rxToSE("gg(x,y)"))
+
+  exect_error(rxFromSE("Derivative(gg(a,b),a)"))
 
 })

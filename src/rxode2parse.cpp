@@ -76,6 +76,14 @@ extern "C" SEXP _rxode2_codeLoaded(void) {
   END_RCPP
 }
 
+extern "C" void _rxode2parse_assignUdf(SEXP in) {
+BEGIN_RCPP
+  assignRxode2ParsePtrs();
+ Function fun = as<Function>(rxode2parse[".setupUdf"]);
+ fun(in);
+VOID_END_RCPP
+}
+
 extern "C" SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns) {
   BEGIN_RCPP
   assignRxode2ParsePtrs();
