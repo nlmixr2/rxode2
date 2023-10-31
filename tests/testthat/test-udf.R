@@ -112,4 +112,89 @@ test_that("udf functions", {
 
   expect_true(all(d$z == d$x * d$y))
 
+  udf <- function(x, y) {
+    a <- x + y
+    b <- a ^ 2
+    a + b
+  }
+
+  expect_true(grepl("R_pow_di[(]", rxFun2c(udf)$cCode))
+
+  udf <- function(x, y) {
+    a <- x + y
+    b <- a ^ x
+    a + b
+  }
+
+  expect_true(grepl("R_pow[(]", rxFun2c(udf)$cCode))
+
+  udf <- function(x, y) {
+    a <- x + y
+    b <- cos(a) + x
+    a + b
+  }
+
+  expect_true(grepl("cos[(]", rxFun2c(udf)$cCode))
+
+  udf <- function(x, y) {
+    if (a < b) {
+      return(b ^ 2)
+    }
+    a + b
+  }
+
+  expect_true(grepl("if [(]", rxFun2c(udf)$cCode))
+
+
+  udf <- function(x, y) {
+    a <- x
+    b <- x ^ 2 + a
+    if (a < b) {
+      return(b ^ 2)
+    } else {
+      a + b
+    }
+  }
+
+  expect_true(grepl("else [{]", rxFun2c(udf)$cCode))
+
+  udf <- function(x, y) {
+    a <- x
+    b <- x ^ 2 + a
+    if (a < b) {
+      return(b ^ 2)
+    } else if (a > b + 3) {
+      return(a + b)
+    }
+    a ^ 2 + b ^ 2
+  }
+
+  expect_true(grepl("else if [(]", rxFun2c(udf)$cCode))
+
+
+  udf <- function(x, y) {
+    a <- x
+    b <- x ^ 2 + a
+    if (a < b) {
+      return(b ^ 2)
+    } else if (a > b + 3) {
+      b <- 3
+      if (a > 2) {
+        a <- 2
+      }
+      return(a + b)
+    }
+    a ^ 2 + b ^ 2
+  }
+
+  expect_true(grepl("else if [(]", rxFun2c(udf)$cCode))
+
+  udf <- function(x, y) {
+    a <- x + y
+    x <- a ^ 2
+    x
+  }
+
+  expect_error(rxFun2c(udf)$cCode)
+
 })

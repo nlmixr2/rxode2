@@ -2476,7 +2476,7 @@ rxErrEnvF$probitNorm <- function(est, low = "0", hi = "1") {
     stop("'probitNorm' can only be in an error function", call. = FALSE)
   }
   if (!is.null(rxErrEnv.lambda)) {
-    if (rxErrEnv.yj != "1") {
+    if (rxErrEenv.yj != "1") {
       if (rxErrEnv.yj != "6" &&rxErrEnv.yj != "7") {
         print(rxErrEnv.yj)
         stop("'probitNorm' cannot be used with other data transformations", call. = FALSE)
@@ -3075,4 +3075,348 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 #' @export
 rxSupportedFuns <- function() {
   .rxSupportedFuns(FALSE)
+}
+
+.rxFunEq <- c(
+  "lgamma" = 1,
+  "abs" = 1,
+  "acos" = 1,
+  "acosh" = 1,
+  "asin" = 1,
+  "asinh" = 1,
+  "atan" = 1,
+  "atan2" = 2,
+  "atanh" = 1,
+  "beta" = 2,
+  "cos" = 1,
+  "cosh" = 1,
+  "erf" = 1,
+  "erfc" = 1,
+  "exp" = 1,
+  "log" = 1,
+  "sin" = 1,
+  "sinh" = 1,
+  "sqrt" = 1,
+  "tan" = 1,
+  "tanh" = 1,
+  ## C's math.h library
+  "floor" = 1,
+  "round" = 1,
+  "ceil" = 1,
+  "trunc" = 1,
+  ## Special R functions
+  "bessel_i" = 3,
+  "bessel_j" = 2,
+  "bessel_k" = 3,
+  "bessel_y" = 2,
+  "logspace_add" = 2,
+  "logspace_sub" = 2,
+  "fmax2" = 2,
+  "fmin2" = 2,
+  "sign" = 1,
+  "fsign" = 2,
+  "fprec" = 2,
+  "fround" = 2,
+  "ftrunc" = 2,
+  "transit" = NA,
+  "gammaq" = 2,
+  "gammapDer" = 2,
+  "gammapInv" = 2,
+  "gammapInva" = 2,
+  "gammaqInv" = 2,
+  "gammaqInva" = 2,
+  "lowergamma" = 2,
+  "uppergamma" = 2)
+
+.rxOnly <- c(
+  ## Now random number generators
+  "rnorm" = NA,
+  "rxnorm" = NA,
+  "rxbinom" = 2,
+  "rbinom" = 2,
+  "rxcauchy" = NA,
+  "rcauchy" = NA,
+  "rchisq" = 1,
+  "rxchisq" = 1,
+  "rexp" = 1,
+  "rxexp" = 1,
+  "rbeta" = 2,
+  "rxbeta" = 2,
+  "rgeom" = 1,
+  "rxgeom" = 1,
+  "rxpois" = 1,
+  "rpois" = 1,
+  "rxt" = 1,
+  "rt" = 1
+)
+
+
+.rxFun2cNameOrAtomic <- function(x, envir) {
+  # see if it is a reserved rxode2 name/function for name clashes
+  x <- as.character(x)
+  if (!exists("res", envir=envir)) {
+    envir$res <- c(rxSupportedFuns(),
+                    rxReservedKeywords[, 1],
+                    strsplit(paste(rxReservedKeywords[, 3],collapse=","),"[,]+")[[1]])
+  }
+  if (x %in% envir$funs) {
+    return(paste0("_qf_", x))
+  }
+  x
+}
+
+.rxFun2cArithmeticOperators <- function(x, envir) {
+  if (length(x) == 3) {
+    if (identical(x[[1]], quote(`/`))) {
+      .x2 <- x[[2]]
+      .x3 <- x[[3]]
+      ## df(%s)/dy(%s)
+      if (identical(.x2, quote(`d`)) &&
+            identical(.x3[[1]], quote(`dt`))) {
+        if (length(.x3[[2]]) == 1) {
+          .state <- as.character(.x3[[2]]) # .rxToSE(.x3[[2]], envir = envir)
+        } else {
+          .state <- .rxFun2c(.x3[[2]], envir = envir)
+        }
+        stop("d/dt(", .state, ") not supported in functions for translation")
+      } else {
+        if (length(.x2) == 2 && length(.x3) == 2) {
+          if (identical(.x2[[1]], quote(`df`)) &&
+                identical(.x3[[1]], quote(`dy`))) {
+            if (length(.x2[[2]]) == 1) {
+              .state <- as.character(.x2[[2]])
+            } else {
+              .state <- .rxFun2c(.x2[[2]], envir = envir)
+            }
+            if (length(.x3[[2]]) == 1) {
+              .var <- as.character(.x3[[2]])
+            } else {
+              .var <- .rxFun2c(.x3[[2]], envir = envir)
+            }
+            stop("df(", .state, ")/dy(", .var, ") statements are not supported in translation",
+                 call. = FALSE)
+          }
+        }
+        .ret <- paste0(
+          .rxFun2c(.x2, envir = envir),
+          as.character(x[[1]]),
+          .rxFun2c(.x3, envir = envir)
+        )
+      }
+    } else if (identical(x[[1]], quote(`^`)) ||
+                 identical(x[[1]], quote(`**`))) {
+      if (is.numeric(x[[3]]) &&
+            checkmate::checkIntegerish(x[[3]])) {
+        return(paste0("R_pow_di(", .rxFun2c(x[[2]], envir = envir), ",",
+                     as.character(x[[3]]), ")"))
+      } else {
+        return(paste0("R_pow(", .rxFun2c(x[[2]], envir=envir), ",",
+                     .rxFun2c(x[[3]], envir=envir), ")"))
+      }
+    } else {
+      .ret <- paste0(
+        .rxFun2c(x[[2]], envir = envir),
+        as.character(x[[1]]),
+        .rxFun2c(x[[3]], envir = envir)
+      )
+    }
+    return(.ret)
+  } else {
+    ## Unary Operators
+    return(paste(
+      as.character(x[[1]]),
+      .rxFun2c(x[[2]], envir = envir)
+    ))
+  }
+}
+.rxFun2cAssignOperators <- function(x, envir = envir) {
+  if (identical(x[[1]], quote(`~`))) {
+    stop("formulas or other expressions with '~` are not supported in translation",
+         call.=FALSE)
+  }
+  if (as.character(x[[2]]) %in% envir$args) {
+    stop("cannot assign argument '", as.character(x[[2]]),
+         "' in functions converted to C",
+         call.=FALSE)
+  }
+  .lhs <- .rxFun2cNameOrAtomic(x[[2]], envir=envir)
+  if (!(.lhs %in% envir$args)) {
+    envir$vars <- c(envir$vars, .lhs)
+  }
+  envir$didAssign <- TRUE
+  .pre <- paste0(rep(" ", envir$n), collapse="")
+  return(paste0(.pre, "_lastValue = ", .lhs, " = ",
+                .rxFun2c(x[[3]], envir=envir), ";\n"))
+}
+
+.rxFun2cSquareBracket <- function(x, envir) {
+  stop("bracket expressions (ie ret[3]) are not supported in translation",
+       call. = FALSE)
+}
+
+.rxFun2cLogic <- function(x, envir) {
+  if (identical(x[[1]], quote(`!`))) {
+    return(paste0("!(", .rxFun2c(x[[2]], envir=envir), ")"))
+  } else if (identical(x[[1]], quote(`&`))) {
+    return(paste0(.rxFun2c(x[[2]], envir=envir), " && ",
+                  .rxFun2c(x[[3]], envir=envir)))
+  } else if (identical(x[[1]], quote(`|`))) {
+    return(paste0(.rxFun2c(x[[2]], envir=envir), " || ",
+                  .rxFun2c(x[[3]], envir=envir)))
+  } else {
+    return(paste0(.rxFun2c(x[[2]], envir=envir), " ", as.character(x[[1]]), " ",
+                  .rxFun2c(x[[3]], envir=envir)))
+  }
+}
+
+.rxFun2cIf <- function(x, envir) {
+  .logic <- .rxFun2c(x[[2]], envir=envir)
+  .pre <- paste0(rep(" ", envir$n), collapse="")
+  .ret <- paste(.pre, "if (", .logic, ") ");
+  .ret <- paste0(.ret, .rxFun2c(x[[3]], envir=envir))
+
+  if (length(x) == 3) {
+    envir$isExpr <- TRUE
+    return(.ret)
+  }
+  .ret <- sub("else +if", "else if", paste0(.ret, .pre, "else ", .rxFun2c(x[[4]], envir=envir)))
+  envir$isExpr <- TRUE
+  return(.ret)
+}
+
+.rxFun2cCall <- function(x, envir) {
+  if (identical(x[[1]], quote(`{`))) {
+    .ret <- "{\n"
+    envir$n <- envir$n + 2
+    .ret <- paste0(.ret,
+                   paste(vapply(seq_along(x)[-1],
+                                function(i) {
+                                  .cur <- x[[i]]
+                                  .last <- envir$didAssign
+                                  .expr <-  envir$isExpr
+                                  on.exit({
+                                    assign("isExpr", .expr, envir=envir)
+                                    assign("didAssign", .last, envir=envir)
+                                  })
+                                  envir$didAssign <- FALSE
+                                  .cur <- .rxFun2c(.cur, envir=envir)
+                                  if(!envir$didAssign && !envir$isExpr) {
+                                    .pre <- paste0(rep(" ", envir$n), collapse="")
+                                    return(paste0(.pre, "_lastValue = ", .cur, ";\n"))
+                                  }
+                                  .cur
+                                }, character(1), USE.NAMES = FALSE),
+                         collapse=""))
+    envir$n <- envir$n - 2
+    .pre <- paste0(rep(" ", envir$n), collapse="")
+    .ret <- paste0(.ret, .pre, "}\n")
+    return(.ret)
+  } else if (identical(x[[1]], quote(`(`))) {
+    return(paste0("(", .rxFun2c(x[[2]], envir = envir), ")"))
+  } else if (identical(x[[1]], quote(`&`)) ||
+               identical(x[[1]], quote(`&&`)) ||
+               identical(x[[1]], quote(`==`)) ||
+               identical(x[[1]], quote(`||`)) ||
+               identical(x[[1]], quote(`|`)) ||
+               identical(x[[1]], quote(`>`)) ||
+               identical(x[[1]], quote(`<`)) ||
+               identical(x[[1]], quote(`<=`)) ||
+               identical(x[[1]], quote(`>=`)) ||
+               identical(x[[1]], quote(`!=`)) ||
+               identical(x[[1]], quote(`!`))
+               ){
+    return(.rxFun2cLogic(x, envir=envir))
+  } else if (identical(x[[1]], quote(`*`)) ||
+               identical(x[[1]], quote(`**`)) ||
+               identical(x[[1]], quote(`^`)) ||
+               identical(x[[1]], quote(`+`)) ||
+               identical(x[[1]], quote(`-`)) ||
+               identical(x[[1]], quote(`/`))) {
+    return(.rxFun2cArithmeticOperators(x, envir = envir))
+  } else if (identical(x[[1]], quote(`=`)) ||
+               identical(x[[1]], quote(`<-`)) ||
+               identical(x[[1]], quote(`~`))) {
+    return(.rxFun2cAssignOperators(x, envir))
+  } else if (identical(x[[1]], quote(`[`))) {
+    return(.rxFun2cSquareBracket(x, envir = envir))
+  } else if (identical(x[[1]], quote(`if`))) {
+    return(.rxFun2cIf(x, envir = envir))
+  } else {
+    # supported functions
+    if (identical(x[[1]], quote(`return`))) {
+      .pre <- paste0(rep(" ", envir$n), collapse="")
+      envir$didAssign <- TRUE
+      return(paste0(.pre, "return (", .rxFun2c(x[[2]], envir=envir), ");\n"))
+    }
+    .ret0 <- lapply(x, .stripP)
+    .FunEq <- c(.rxFunEq, rxode2parse::.rxSEeqUsr())
+    .curName <- paste(.ret0[[1]])
+    .nargs <- .FunEq[.curName]
+    if (!is.na(.nargs)) {
+      if (.nargs == length(.ret0) - 1) {
+        return(paste0(.curName, "(",
+                      paste(vapply(seq_along(.ret0)[-1],
+                                  function(i) {
+                                    .rxFun2c(.ret0[[i]], envir=envir)
+                                  }, character(1), USE.NAMES=FALSE),
+                            collapse=","),
+                      ")"))
+      }
+    }
+    stop("cannot translate function '", .curName, "'",
+         call.=FALSE)
+  }
+}
+
+#' @rdname rxToSE
+#' @export
+.rxFun2c <- function(x, envir) {
+  if (is.name(x) || is.atomic(x)) {
+    return(.rxFun2cNameOrAtomic(x, envir=envir))
+  } else if (is.call(x)) {
+    return(.rxFun2cCall(x, envir = envir))
+  } else {
+    stop("unsupported expression", call. = FALSE)
+  }
+}
+
+rxFun2c <- function(fun) {
+  .env <- new.env(parent=emptyenv())
+  .env$vars <- character(0)
+  .funName <- as.character(substitute(fun))
+  .f <- formals(fun)
+  .env$args <- names(.f)
+  .env$n <- 2
+  .env$isExpr <- FALSE
+  if (any(.env$args == "...")) {
+    stop("functions with ... in them are not supported",
+         call. =FALSE)
+  }
+  .start <- paste0("double ", .funName, "(", paste(paste("double ", .env$args), collapse=", "),
+                   ") {\n")
+
+  .body <- as.list(body(fun))
+  .body <- paste(vapply(seq_along(.body)[-1], function(i) {
+    .extra <- .extra2 <- ""
+    .cur <- .body[[i]]
+    .env$didAssign <- FALSE
+    .cur <- .rxFun2c(.cur, envir=.env)
+    if(!.env$didAssign && !.env$isExpr) {
+      .pre <- paste0(rep(" ", .env$n), collapse="")
+      return(paste0(.pre, "_lastValue = ", .cur, ";\n"))
+    }
+    .env$isExpr <- FALSE
+    .cur
+  },
+  character(1), USE.NAMES=FALSE), collapse="")
+
+  .start <- paste0(.start,
+                   paste0("  double ",
+                          paste(paste0(c("_lastValue", unique(.env$vars)), "=NA_REAL"), collapse=","),
+                          ";\n"))
+  .stop <- "  return _lastValue;\n}\n"
+  .cCode <- paste0(.start, .body, .stop)
+  list(name=.funName,
+       args=.env$args,
+       cCode=.cCode)
 }
