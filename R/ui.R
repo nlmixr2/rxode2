@@ -278,7 +278,7 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
     if (inherits(.funName, "try-error")){
       .funName <- NULL
-    } else if (any(.funName == ls(envir=parent.env(envir), all=TRUE))) {
+    } else if (length(.funName) == 1L && exists(.funName, envir=parent.env(envir))) {
       rxode2parse::.udfEnvSet(parent.env(envir))
     }
     .ini <- .lastIni
