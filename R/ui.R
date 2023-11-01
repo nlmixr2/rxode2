@@ -276,7 +276,11 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
                   cov=NULL, envir=parent.frame()) {
   if (is(substitute(x), "{")) {
     .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
-    if (inherits(.funName, "try-error")) .funName <- NULL
+    if (inherits(.funName, "try-error")){
+      .funName <- NULL
+    } else if (any(.funName == ls(envir=parent.env(envir), all=TRUE))) {
+      rxode2parse::.udfEnvSet(parent.env(envir))
+    }
     .ini <- .lastIni
     .iniQ <- .lastIniQ
     if (is.null(.ini)) {
@@ -427,7 +431,7 @@ print.rxUi <-function(x, ...) {
 #' f  <- rxUiCompress(f)
 #' print(class(f))
 #' print(is.environment(f))
-#' 
+#'
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)

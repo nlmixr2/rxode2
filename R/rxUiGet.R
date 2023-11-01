@@ -25,10 +25,20 @@
 #' @export
 `$.rxUi` <- function(obj, arg, exact = TRUE) {
   # need to assign environment correctly for UDF
-  rxode2parse::.udfEnvSet(parent.frame(1))
-  # Keep it locked to avoid environment nesting nightmare
-  rxode2parse::.udfEnvLock()
-  on.exit(rxode2parse::.udfEnvLock(FALSE))
+  #
+  # The model() and rxode2() assign the parent environments for UDF
+  # parsing, if the object is in that environment lock it and then
+  # unlock on exit
+  if (rxode2parse::.udfEnvLockIfExists(obj)) {
+    # If locked unlock when exiting
+    on.exit(rxode2parse::.udfEnvLock(FALSE))
+  } else if (!rxode2parse::.udfEnvLock(NULL)) {
+    ## unlocked, look for object in parent frame until global or empty environment
+    if (rxode2parse::.udfEnvLockIfExists(obj, parent.frame(1))) {
+      # if locked by this, unlock when exiting
+      on.exit(rxode2parse::.udfEnvLock(FALSE))
+    }
+  }
   rxUiGet(.uiToRxUiGet(obj=obj, arg=arg, exact=exact))
 }
 
