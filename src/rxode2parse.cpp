@@ -87,6 +87,26 @@ VOID_END_RCPP
   return _ret;
 }
 
+extern "C" SEXP _rxode2parse_udfEnvSet(SEXP env, bool lock) {
+BEGIN_RCPP
+  assignRxode2ParsePtrs();
+  Function fun = as<Function>(rxode2parse[".udfEnvSet"]);
+  fun(env);
+  Function fun2 = as<Function>(rxode2parse[".udfEnvLock"]);
+  fun2(lock);
+  return R_NilValue;
+  END_RCPP
+}
+
+extern "C" SEXP _rxode2parse_udfUnlock() {
+  BEGIN_RCPP
+    assignRxode2ParsePtrs();
+  Function fun2 = as<Function>(rxode2parse[".udfEnvLock"]);
+  fun2(false);
+  return R_NilValue;
+  END_RCPP
+
+}
 extern "C" SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns) {
   BEGIN_RCPP
   assignRxode2ParsePtrs();

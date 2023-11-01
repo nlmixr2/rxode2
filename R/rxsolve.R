@@ -1,4 +1,4 @@
- #' Options, Solving & Simulation of an ODE/solved system
+#' Options, Solving & Simulation of an ODE/solved system
 #'
 #' This uses rxode2 family of objects, file, or model specification to
 #' solve a ODE system.  There are many options for a solved rxode2
@@ -575,6 +575,8 @@
 #'
 #' @inheritParams odeMethodToInt
 #'
+#' @inheritParams rxode2parse::rxode2parse
+#'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
@@ -720,7 +722,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addlKeepsCov=FALSE,
                     addlDropSs=TRUE,
                     ssAtDoseTime=TRUE,
-                    ss2cancelAllPending=FALSE) {
+                    ss2cancelAllPending=FALSE,
+                    envir=parent.frame()) {
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -1122,7 +1125,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       addlDropSs=addlDropSs,
       ssAtDoseTime=ssAtDoseTime,
       ss2cancelAllPending=ss2cancelAllPending,
+      envir=envir,
       .zeros=unique(.zeros)
+
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -1238,7 +1243,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
     .pred <- TRUE
     if (!.hasIpred && any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
-      .lst$drop <- c(.lst$drop, "ipredSim")      
+      .lst$drop <- c(.lst$drop, "ipredSim")
     }
   }
   .ret <- do.call("rxSolve.default", .lst)
@@ -1300,7 +1305,7 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                            theta = NULL, eta = NULL) {
+                            theta = NULL, eta = NULL, envir=parent.frame()) {
   on.exit({
     .clearPipe()
     .asFunctionEnv$rx <- NULL
@@ -1394,7 +1399,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   if (any(names(.lst) == ".setupOnly")) {
     .setupOnly <- .lst$.setupOnly
   }
-  .ctl <- rxControl(..., events = events, params = params)
+  .ctl <- rxControl(..., events = events, params = params, envir=envir)
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
     .both <- intersect(.mv$params, .ctl$keep)
@@ -1406,7 +1411,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .w <- which(names(.ctl) == "keep")
       .ctl[[.w]] <- .keep
       .ctl <- do.call(rxControl,
-                      c(.ctl, list(events = events, params = params)))
+                      c(.ctl, list(events = events, params = params, envir=envir)))
 
     }
   }
@@ -1671,6 +1676,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
+
   if (rxode2.debug) {
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,
@@ -1797,6 +1803,7 @@ solve.rxSolve <- function(a, b, ...) {
     n[n == "b"] <- ""
   }
   names(lst) <- n
+  lst$envir <- parent.frame(1)
   do.call("rxSolve", lst, envir = parent.frame(1))
 }
 
@@ -2004,8 +2011,9 @@ drop_units.rxSolve <- function(x) {
 
 #' @rdname rxSolve
 #' @export
-rxControl <- function(..., params = NULL, events = NULL, inits = NULL) {
-  rxSolve(object = NULL, params = params, events = events, inits = inits, ...)
+rxControl <- function(..., params = NULL, events = NULL, inits = NULL, envir=parent.frame()) {
+  rxSolve(object = NULL, params = params, events = events, inits = inits, ...,
+          envir=envir)
 }
 
 #' @export

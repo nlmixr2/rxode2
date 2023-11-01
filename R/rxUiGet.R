@@ -24,6 +24,11 @@
 
 #' @export
 `$.rxUi` <- function(obj, arg, exact = TRUE) {
+  # need to assign environment correctly for UDF
+  rxode2parse::.udfEnvSet(parent.frame(1))
+  # Keep it locked to avoid environment nesting nightmare
+  rxode2parse::.udfEnvLock()
+  on.exit(rxode2parse::.udfEnvLock(FALSE))
   rxUiGet(.uiToRxUiGet(obj=obj, arg=arg, exact=exact))
 }
 
@@ -200,7 +205,7 @@ attr(rxUiGet.funPrint, "desc") <- "Normalized, quoted model function (for printi
 rxUiGet.fun <- function(x, ...) {
   .ret <- rxUiGet.funPrint(x, ...)
   .ret2 <- function() {
-    
+
   }
   body(.ret2) <- as.call(.ret)
   .ret2

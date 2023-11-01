@@ -10,22 +10,25 @@
 \alias{as.rxUi.default}
 \title{As rxode2 ui}
 \usage{
-as.rxUi(x)
+as.rxUi(x, envir = parent.frame())
 
-\method{as.rxUi}{rxode2}(x)
+\method{as.rxUi}{rxode2}(x, envir = parent.frame())
 
-\method{as.rxUi}{rxode2tos}(x)
+\method{as.rxUi}{rxode2tos}(x, envir = parent.frame())
 
-\method{as.rxUi}{rxModelVars}(x)
+\method{as.rxUi}{rxModelVars}(x, envir = parent.frame())
 
-\method{as.rxUi}{`function`}(x)
+\method{as.rxUi}{`function`}(x, envir = parent.frame())
 
-\method{as.rxUi}{rxUi}(x)
+\method{as.rxUi}{rxUi}(x, envir = parent.frame())
 
-\method{as.rxUi}{default}(x)
+\method{as.rxUi}{default}(x, envir = parent.frame())
 }
 \arguments{
 \item{x}{Object to convert to \code{rxUi} object}
+
+\item{envir}{is the environment to look for R user functions
+(defaults to parent environment)}
 }
 \value{
 rxUi object (or error if it cannot be converted)
@@ -37,7 +40,7 @@ As rxode2 ui
 
 mod1 <- function() {
  ini({
-   # central 
+   # central
    KA=2.94E-01
    CL=1.86E+01
    V2=4.02E+01
@@ -47,7 +50,7 @@ mod1 <- function() {
    # effects
    Kin=1
    Kout=1
-   EC50=200 
+   EC50=200
  })
  model({
    C2 <- centr/V2

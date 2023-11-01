@@ -29,7 +29,7 @@ nothing
 This adds a user function to rxode2 that can be called.  If needed,
 these functions can be differentiated by numerical differences or
 by adding the derivatives to rxode2's internal derivative table
-with \code{\link[=rxD]{rxD()}}
+with rxode2's \code{rxD} function
 }
 \examples{
 \donttest{

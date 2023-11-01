@@ -21,7 +21,8 @@ rxode2(
   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
   indLin = FALSE,
   verbose = FALSE,
-  fullPrint = getOption("rxode2.fullPrint", FALSE)
+  fullPrint = getOption("rxode2.fullPrint", FALSE),
+  envir = parent.frame()
 )
 
 RxODE(
@@ -39,7 +40,8 @@ RxODE(
   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
   indLin = FALSE,
   verbose = FALSE,
-  fullPrint = getOption("rxode2.fullPrint", FALSE)
+  fullPrint = getOption("rxode2.fullPrint", FALSE),
+  envir = parent.frame()
 )
 
 rxode(
@@ -57,7 +59,8 @@ rxode(
   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
   indLin = FALSE,
   verbose = FALSE,
-  fullPrint = getOption("rxode2.fullPrint", FALSE)
+  fullPrint = getOption("rxode2.fullPrint", FALSE),
+  envir = parent.frame()
 )
 }
 \arguments{
@@ -127,6 +130,9 @@ compartmental model}
 \item{fullPrint}{When using \code{printf} within the model, if \code{TRUE}
 print on every step (except ME/indLin), otherwise when \code{FALSE}
 print only when calculating the \code{d/dt}}
+
+\item{envir}{is the environment to look for R user functions
+(defaults to parent environment)}
 }
 \value{
 An object (environment) of class \code{rxode2} (see Chambers and Temple Lang (2001))
@@ -226,6 +232,9 @@ mod <- rxode2(\{
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 \})
 }\if{html}{\out{</div>}}
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
+}\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
 }\if{html}{\out{
@@ -240,6 +249,9 @@ mod <- rxode2(\{
   # time-derivative assignment
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 ")
+}\if{html}{\out{</div>}}
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
@@ -319,7 +331,9 @@ compilation model.
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
 }\if{html}{\out{</div>}}
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_d670952790aeef6ec09729654f5533fa model (ready). 
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
+
+## rxode2 2.0.14.9000 model named rx_78dcb8ef8275ff5e33a47163f4239e19 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -330,7 +344,9 @@ compilation model.
 mod$simulationIniModel
 }\if{html}{\out{</div>}}
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_2875062832076b4d6009c463ce5eaf6e model (ready). 
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
+
+## rxode2 2.0.14.9000 model named rx_baef7cfc602529d2843782858fc2f522 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp

@@ -133,7 +133,8 @@ rxSolve(
   addlKeepsCov = FALSE,
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
-  ss2cancelAllPending = FALSE
+  ss2cancelAllPending = FALSE,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{`function`}(
@@ -228,7 +229,13 @@ rxSolve(
 
 \method{solve}{rxEt}(a, b, ...)
 
-rxControl(..., params = NULL, events = NULL, inits = NULL)
+rxControl(
+  ...,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  envir = parent.frame()
+)
 }
 \arguments{
 \item{object}{is a either a rxode2 family of objects, or a file-name
@@ -802,6 +809,9 @@ steady concentration at the actual time of dose, otherwise when
 cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
 doses not canceled with \code{SS=2} (the infusions started before
 \code{SS=2} occurred are canceled, though).}
+
+\item{envir}{is the environment to look for R user functions
+(defaults to parent environment)}
 
 \item{a}{when using \code{solve()}, this is equivalent to the
 \code{object} argument.  If you specify \code{object} later in

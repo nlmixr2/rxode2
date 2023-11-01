@@ -100,6 +100,7 @@ test_that("udf functions", {
   rxFun("gg", c("x", "y"),
         "double gg(double x, double y) { return x*y;}")
 
+
   gg <- function(x, y, z) {
     x + y + z
   }
@@ -111,6 +112,8 @@ test_that("udf functions", {
   }
 
   expect_true(all(d$z == d$x * d$y))
+
+  rxRmFun("gg")
 
   udf <- function(x, y) {
     a <- x + y
