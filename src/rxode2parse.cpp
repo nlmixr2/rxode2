@@ -82,6 +82,12 @@ BEGIN_RCPP
  if (Rf_length(in) == 0) {
    return wrap(LogicalVector::create(false));
  }
+ if (TYPEOF(in) != INTSXP) {
+   return wrap(LogicalVector::create(false));
+ }
+ if (Rf_isNull(Rf_getAttrib(in, R_NamesSymbol))) {
+   return wrap(LogicalVector::create(false));
+ }
  Function fun = as<Function>(rxode2parse[".setupUdf"]);
  LogicalVector needRecompile = fun(in);
  return wrap(needRecompile);
