@@ -78,7 +78,6 @@ extern "C" SEXP _rxode2_codeLoaded(void) {
 
 extern "C" SEXP _rxode2parse_assignUdf(SEXP in) {
 BEGIN_RCPP
-  assignRxode2ParsePtrs();
  if (Rf_length(in) == 0) {
    return wrap(LogicalVector::create(false));
  }
@@ -88,6 +87,7 @@ BEGIN_RCPP
  if (Rf_isNull(Rf_getAttrib(in, R_NamesSymbol))) {
    return wrap(LogicalVector::create(false));
  }
+ assignRxode2ParsePtrs();
  Function fun = as<Function>(rxode2parse[".setupUdf"]);
  LogicalVector needRecompile = fun(in);
  return wrap(needRecompile);

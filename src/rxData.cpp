@@ -4743,7 +4743,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   LogicalVector recompileUdf = _rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf]);
 
   if (recompileUdf[0]) {
-    REprintf("here\n");
     Function rxode2 = getRxFn("rxode2");
     object = rxode2(object);
     rxSolveDat->mv = rxModelVars(object);
