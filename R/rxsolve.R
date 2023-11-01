@@ -1138,11 +1138,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                             theta = NULL, eta = NULL) {
+                             theta = NULL, eta = NULL, envir=parent.frame()) {
   .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
                        list(...),
-                       list(theta = theta, eta = eta)))
+                       list(theta = theta, eta = eta, envir=envir)))
 }
 
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
@@ -1411,7 +1411,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .w <- which(names(.ctl) == "keep")
       .ctl[[.w]] <- .keep
       .ctl <- do.call(rxControl,
-                      c(.ctl, list(events = events, params = params, envir=envir)))
+                      c(.ctl, list(events = events, params = params)))
 
     }
   }
