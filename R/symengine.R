@@ -2247,7 +2247,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .env$rx_hi_ <- symengine::S("1")
   if (!is.null(rxode2parse::.rxSEeqUsr())) {
     sapply(names(rxode2parse::.rxSEeqUsr()), function(x) {
-      assign(.rxFunction(x), x, envir = .env)
+      assign(x, .rxFunction(x), envir = .env)
     })
   }
   ## EulerGamma=0.57721566490153286060651209008240243104215933593992

@@ -295,11 +295,19 @@ rxTest({
   test_that("symengine load", {
 
     mod <- "tke=THETA[1];\nprop.sd=THETA[2];\neta.ke=ETA[1];\nke=gg(tke,exp(eta.ke));\nipre=gg(10,exp(-ke*t));\nlipre=log(ipre);\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~ipre;\nrx_pred_~rx_pred_f_;\nrx_r_~(rx_pred_f_*prop.sd)^2;\n"
+
     gg <- function(x, y) {
-      PreciseSums::psProd(c(x, y))
+      x * y
     }
 
-    rxS(mod, TRUE, TRUE)
+    expect_error(rxS(mod, TRUE, TRUE), NA)
+
+    rxFun(gg)
+
+    rm(gg)
+
+    expect_error(rxS(mod, TRUE, TRUE), NA)
+
 
   })
 })
