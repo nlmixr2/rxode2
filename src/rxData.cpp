@@ -63,7 +63,7 @@ extern "C" int getThrottle();
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
-extern "C" int _rxode2parse_assignUdf(SEXP in);
+extern "C" SEXP _rxode2parse_assignUdf(SEXP in);
 extern "C" SEXP _rxode2parse_udfEnvSet(SEXP env, bool lock);
 extern "C" SEXP _rxode2parse_udfUnlock();
 
@@ -4696,7 +4696,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   }
   getRxModels();
   bool didNesting=false;
-  if (rxSolveDat->updateObject && !rxSolveDat->isRxSolve && !rxSolveDat->isEnvironment){
+  if (rxSolveDat->updateObject && !rxSolveDat->isRxSolve && !rxSolveDat->isEnvironment) {
     if (rxIs(rxCurObj, "rxSolve")){
       object = rxCurObj;
       rxSolveDat->isRxSolve = true;
@@ -4739,7 +4739,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFreeObj = object;
     }
   }
-  if (_rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf])) {
+
+  LogicalVector recompileUdf = _rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf]);
+
+  if (recompileUdf[0]) {
+    REprintf("here\n");
     Function rxode2 = getRxFn("rxode2");
     object = rxode2(object);
     rxSolveDat->mv = rxModelVars(object);

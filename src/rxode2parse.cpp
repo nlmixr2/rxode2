@@ -76,15 +76,16 @@ extern "C" SEXP _rxode2_codeLoaded(void) {
   END_RCPP
 }
 
-extern "C" int _rxode2parse_assignUdf(SEXP in) {
-  int _ret;
+extern "C" SEXP _rxode2parse_assignUdf(SEXP in) {
 BEGIN_RCPP
   assignRxode2ParsePtrs();
+ if (Rf_length(in) == 0) {
+   return wrap(LogicalVector::create(false));
+ }
  Function fun = as<Function>(rxode2parse[".setupUdf"]);
  LogicalVector needRecompile = fun(in);
- int _ret = needRecompile[0];
-VOID_END_RCPP
-  return _ret;
+ return wrap(needRecompile);
+END_RCPP
 }
 
 extern "C" SEXP _rxode2parse_udfEnvSet(SEXP env, bool lock) {
