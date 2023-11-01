@@ -497,6 +497,11 @@ rxD <- function(name, derivatives) {
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
+  if (!rxode2parse::.udfEnvLock(NULL)) {
+    rxode2parse::.udfEnvSet(parent)
+    rxode2parse::.udfEnvLock(TRUE)
+    on.exit(rxode2parse::.udfEnvLock(FALSE))
+  }
   .rxToSE.envir$parent <- parent
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
@@ -1352,6 +1357,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                  call. = FALSE
                  )
           } else if (length(.ret0) == length(.f)) {
+            assign(.fun, .rxFunction(.fun), envir = envir)
             .ret0 <- unlist(.ret0)
             .ret <- paste0(.fun, "(",paste(.ret0, collapse=", "), ")")
           } else {
@@ -1399,6 +1405,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
                      parent=parent.frame()) {
   rxReq("symengine")
+  if (!rxode2parse::.udfEnvLock(NULL)) {
+    rxode2parse::.udfEnvSet(parent)
+    rxode2parse::.udfEnvLock(TRUE)
+    on.exit(rxode2parse::.udfEnvLock(FALSE))
+  }
   .rxFromSE.envir$parent <- parent
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   assignInMyNamespace(".rxFromNumDer", .unknown[match.arg(unknownDerivatives)])
@@ -2182,7 +2193,12 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 #' @return rxode2/symengine environment
 #' @author Matthew Fidler
 #' @export
-rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
+rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame()) {
+  if (!rxode2parse::.udfEnvLock(NULL)) {
+    rxode2parse::.udfEnvSet(envir)
+    rxode2parse::.udfEnvLock(TRUE)
+    on.exit(rxode2parse::.udfEnvLock(FALSE))
+  }
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
   .env <- new.env(parent = loadNamespace("symengine"))
@@ -2198,12 +2214,14 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
   .env$..doConst <- doConst
   .rxD <- rxode2parse::rxode2parseD()
   for (.f in c(
+    ls(rxode2parse::.symengineFs()),
     ls(.rxD), "linCmtA", "linCmtB", "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
     "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
   }
+
   for (.v in seq_along(.rxSEreserved)) {
     assign(names(.rxSEreserved)[.v], .rxSEreserved[[.v]], envir = .env)
   }
