@@ -3,7 +3,7 @@
 \name{rxFun}
 \alias{rxFun}
 \alias{rxRmFun}
-\title{Add user function to rxode2}
+\title{Add/Create C functions for use in rxode2}
 \usage{
 rxFun(name, args, cCode)
 
@@ -22,14 +22,8 @@ implied.}
 
 \item{cCode}{This is the C-code for the new function}
 }
-\value{
-nothing
-}
 \description{
-This adds a user function to rxode2 that can be called.  If needed,
-these functions can be differentiated by numerical differences or
-by adding the derivatives to rxode2's internal derivative table
-with rxode2's \code{rxD} function
+Add/Create C functions for use in rxode2
 }
 \examples{
 \donttest{
@@ -120,7 +114,4 @@ rxRmFun("gg")
 rm(gg)
 rm(f)
 }
-}
-\author{
-Matthew L. Fidler
 }

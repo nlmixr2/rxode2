@@ -264,7 +264,10 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "rt" = 1
 )
 
-#' @inherit rxode2parse::rxFunParse
+#' Add/Create C functions for use in rxode2
+#'
+#' @inheritParams rxode2parse::rxFunParse
+#'
 #' @param name This can either give the name of the user function or
 #'   be a simple R function that you wish to convert to C.  If you
 #'   have rxode2 convert the R function to C, the name of the function
@@ -272,6 +275,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #'   will match the R function provided.  Hence, if you are providing
 #'   an R function for conversion to C, the rest of the arguments are
 #'   implied.
+#' @export
 #' @examples
 #' \donttest{
 #' ## Right now rxode2 is not aware of the function fun
@@ -361,7 +365,6 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' rm(gg)
 #' rm(f)
 #' }
-#' @export
 rxFun <- function(name, args, cCode) {
   if (missing(args) && missing(cCode)) {
     .funName <- as.character(substitute(name))
@@ -3489,6 +3492,19 @@ rxSupportedFuns <- function() {
   }
 }
 
+#' Calculate derivatives/C code from a R function
+#'
+#' @param fun Function to convert to C
+#'
+#' @param name function name to convert to C, implied if needed
+#'
+#' @param onlyF Only calculate the C for the function, don't calculate the derivatives
+#'
+#' @return A list with C code and derivative information
+#'
+#' @keywords internal
+#'
+#' @noRd
 rxFun2c <- function(fun, name, onlyF=FALSE) {
   .env <- new.env(parent=emptyenv())
   .env$vars <- character(0)
@@ -3577,10 +3593,6 @@ rxFun2c <- function(fun, name, onlyF=FALSE) {
       .v <- eval(str2lang(.v))
       .dName <-  paste0("rx_", .funName, "_d_", v)
       .v <- rxFun2c(.v, .dName, onlyF=TRUE)
-      #' function(a, b, c) {
-      #'     paste0("2*", a, "+", b)
-      #'   },
-      #'
       .v2 <- paste0("function(", paste(.env$args, collapse=", "), "){\n",
                   "paste0(\"", .dName, "(\", ",
                   paste(.env$args, collapse=", \", \", "), ", \")\")",

@@ -144,7 +144,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{rxUi}(
@@ -194,7 +195,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{update}{rxSolve}(object, ...)
