@@ -512,9 +512,7 @@ rxD <- function(name, derivatives) {
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
-  if (!rxode2parse::.udfEnvLock(NULL)) {
-    rxode2parse::.udfEnvSet(parent)
-    rxode2parse::.udfEnvLock(TRUE)
+  if (rxode2parse::.udfFindAndLock(NULL, parent)) {
     on.exit(rxode2parse::.udfEnvLock(FALSE))
   }
   .rxToSE.envir$parent <- parent
@@ -1425,9 +1423,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
                      parent=parent.frame()) {
   rxReq("symengine")
-  if (!rxode2parse::.udfEnvLock(NULL)) {
-    rxode2parse::.udfEnvSet(parent)
-    rxode2parse::.udfEnvLock(TRUE)
+  if (rxode2parse::.udfFindAndLock(NULL, parent)) {
     on.exit(rxode2parse::.udfEnvLock(FALSE))
   }
   .rxFromSE.envir$parent <- parent
@@ -2218,9 +2214,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 #' @author Matthew Fidler
 #' @export
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame()) {
-  if (!rxode2parse::.udfEnvLock(NULL)) {
-    rxode2parse::.udfEnvSet(envir)
-    rxode2parse::.udfEnvLock(TRUE)
+  if (rxode2parse::.udfFindAndLock(NULL, envir)) {
     on.exit(rxode2parse::.udfEnvLock(FALSE))
   }
   rxReq("symengine")
