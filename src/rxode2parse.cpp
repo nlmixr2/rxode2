@@ -94,22 +94,20 @@ BEGIN_RCPP
 END_RCPP
 }
 
-extern "C" SEXP _rxode2parse_udfEnvSet(SEXP env, bool lock) {
+extern "C" SEXP _rxode2parse_udfEnvSet(SEXP udf) {
 BEGIN_RCPP
   assignRxode2ParsePtrs();
-  Function fun = as<Function>(rxode2parse[".udfEnvSet"]);
-  fun(env);
-  Function fun2 = as<Function>(rxode2parse[".udfEnvLock"]);
-  fun2(lock);
+  Function fun = as<Function>(rxode2parse[".udfEnvSetUdf"]);
+  fun(udf);
   return R_NilValue;
   END_RCPP
 }
 
-extern "C" SEXP _rxode2parse_udfUnlock() {
+extern "C" SEXP _rxode2parse_udfReset() {
   BEGIN_RCPP
     assignRxode2ParsePtrs();
-  Function fun2 = as<Function>(rxode2parse[".udfEnvLock"]);
-  fun2(false);
+  Function fun2 = as<Function>(rxode2parse[".udfEnvReset"]);
+  fun2();
   return R_NilValue;
   END_RCPP
 

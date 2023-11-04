@@ -29,7 +29,6 @@ rxTest({
     x + y + z
   }
 
-
   test_that("udf with 3 arguments works", {
     expect_error(rxSolve(f, e))
   })
@@ -45,6 +44,7 @@ rxTest({
     d <- suppressWarnings(rxSolve(f, e))
 
     expect_true(all(d$z == d$x * d$y))
+
   })
 
   rm(gg)
@@ -75,21 +75,24 @@ rxTest({
   }
 
 
-  test_that("runs with improper output will return NA", {
-    x <- suppressWarnings(rxSolve(f, e))
-    expect_true(all(is.na(x$z)))
+  test_that("runs with improper output will error", {
+    expect_error(rxSolve(f, e))
   })
 
   gg <- function(x, y) {
     "3"
   }
 
-  test_that("converts to 3 when it is a string", {
-    x <- suppressWarnings(rxSolve(f, e))
-    expect_true(all(x$z == 3))
+  test_that("error for invalid input", {
+    expect_error(rxSolve(f, e))
   })
 
+  gg <- function(x, y) {
+    3L
+  }
+
   test_that("test symengine functions work with udf funs", {
+
     expect_equal(rxToSE("gg(x,y)"), "gg(x, y)")
 
     expect_error(rxToSE("gg()"), "user function")
@@ -112,33 +115,31 @@ rxTest({
   })
 
   ## manual functions in C vs R functions
+
+  gg <- function(x, y) {
+    x + y
+  }
+
   test_that("R vs C functions", {
-    gg <- function(x, y) {
-      x + y
-    }
-    x <- suppressWarnings(rxSolve(f, e))
-    # now add a C function with different values
+    d <- suppressWarnings(rxSolve(f, e))
+    expect_true(all(d$z == d$x + d$y))
+  })
 
-    rxFun("gg", c("x", "y"),
-          "double gg(double x, double y) { return x*y;}")
+  # now add a C function with different values
+  rxFun("gg", c("x", "y"),
+        "double gg(double x, double y) { return x*y;}")
 
-    gg <- function(x, y, z) {
-      x + y + z
-    }
 
-    expect_error(rxSolve(f, e))
+  test_that("C functions rule", {
 
-    gg <- function(x, y) {
-      x + y
-    }
 
     d <- suppressWarnings(rxSolve(f, e))
 
     expect_true(all(d$z == d$x * d$y))
 
-    rxRmFun("gg")
-
   })
+
+  rxRmFun("gg")
 
   test_that("c conversion", {
 
@@ -238,6 +239,7 @@ rxTest({
     }
 
     rxFun(udf)
+    rxRmFun("udf")
 
   })
 
@@ -323,6 +325,9 @@ rxTest({
 
     expect_error(rxS(mod, TRUE, TRUE), NA)
 
+    rxRmFun("gg")
+
 
   })
+
 })

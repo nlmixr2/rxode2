@@ -29,9 +29,7 @@
   # The model() and rxode2() assign the parent environments for UDF
   # parsing, if the object is in that environment lock it and then
   # unlock on exit
-  if (rxode2parse::.udfFindAndLock(obj, list(parent.frame(1), parent.frame(2)))) {
-    on.exit(rxode2parse::.udfEnvLock(FALSE))
-  }
+  rxode2parse::.udfEnvSet(list(parent.frame(1), parent.frame(2)))
   rxUiGet(.uiToRxUiGet(obj=obj, arg=arg, exact=exact))
 }
 

@@ -64,8 +64,8 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
 extern "C" SEXP _rxode2parse_assignUdf(SEXP in);
-extern "C" SEXP _rxode2parse_udfEnvSet(SEXP env, bool lock);
-extern "C" SEXP _rxode2parse_udfUnlock();
+extern "C" SEXP _rxode2parse_udfEnvSet(SEXP udf);
+extern "C" SEXP _rxode2parse_udfReset();
 
 extern "C" {
   typedef SEXP (*_rxode2parse_getForder_type)(void);
@@ -2475,7 +2475,7 @@ void resetFkeep();
 //' @export
 // [[Rcpp::export]]
 LogicalVector rxSolveFree(){
-  _rxode2parse_udfUnlock();
+  _rxode2parse_udfReset();
   resetFkeep();
   rx_solve* rx = getRxSolve_();
   // Free the solve id order
@@ -4631,7 +4631,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveFree();
     stop(_("control list not setup correctly"));
   }
-  _rxode2parse_udfEnvSet(rxControl[Rxc_envir], true);
   maxAtolRtolFactor = asDouble(rxControl[Rxc_maxAtolRtolFactor], "maxAtolRtolFactor");
   RObject scale = rxControl[Rxc_scale];
   int method = asInt(rxControl[Rxc_method], "method");
@@ -4740,6 +4739,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
   }
 
+  _rxode2parse_udfEnvSet(rxSolveDat->mv[RxMv_udf]);
   LogicalVector recompileUdf = _rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf]);
 
   if (recompileUdf[0]) {
