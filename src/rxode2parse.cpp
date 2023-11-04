@@ -78,7 +78,7 @@ extern "C" SEXP _rxode2_codeLoaded(void) {
 
 extern "C" SEXP _rxode2parse_assignUdf(SEXP in) {
 BEGIN_RCPP
- if (Rf_length(in) == 0) {
+ if (Rf_length(in) == 0 || Rf_length(in) == 1) {
    return wrap(LogicalVector::create(false));
  }
  if (TYPEOF(in) != INTSXP) {
@@ -96,6 +96,15 @@ END_RCPP
 
 extern "C" SEXP _rxode2parse_udfEnvSet(SEXP udf) {
 BEGIN_RCPP
+  if (Rf_length(udf) == 0 || Rf_length(udf) == 1) {
+    return R_NilValue;
+  }
+ if (TYPEOF(udf) != INTSXP) {
+   return R_NilValue;
+ }
+ if (Rf_isNull(Rf_getAttrib(udf, R_NamesSymbol))) {
+   return R_NilValue;
+ }
   assignRxode2ParsePtrs();
   Function fun = as<Function>(rxode2parse[".udfEnvSetUdf"]);
   fun(udf);
