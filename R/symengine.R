@@ -1392,7 +1392,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                  call. = FALSE
                  )
           } else if (length(.ret0) == length(.f)) {
-            if (is.environment(envir)){
+            if (is.environment(envir)) {
               assign(.fun, .rxFunction(.fun), envir = envir)
             }
             .ret0 <- unlist(.ret0)
@@ -3390,7 +3390,7 @@ rxSupportedFuns <- function() {
 .rxFun2cIf <- function(x, envir) {
   .logic <- .rxFun2c(x[[2]], envir=envir)
   .pre <- paste0(rep(" ", envir$n), collapse="")
-  .ret <- paste(.pre, "if (", .logic, ") ");
+  .ret <- paste(.pre, "if (", .logic, ") ")
   .ret <- paste0(.ret, .rxFun2c(x[[3]], envir=envir))
 
   if (length(x) == 3) {
@@ -3446,7 +3446,7 @@ rxSupportedFuns <- function() {
                identical(x[[1]], quote(`>=`)) ||
                identical(x[[1]], quote(`!=`)) ||
                identical(x[[1]], quote(`!`))
-               ){
+               ) {
     return(.rxFun2cLogic(x, envir=envir))
   } else if (identical(x[[1]], quote(`*`)) ||
                identical(x[[1]], quote(`**`)) ||
@@ -3595,7 +3595,7 @@ rxFun2c <- function(fun, name, onlyF=FALSE) {
     .s <- rxS(.body)
     .lastValue <- .s$rxLastValue
     return(c(list(.ret),
-      lapply(.env$args, function(v){
+      lapply(.env$args, function(v) {
       .v <- symengine::D(.lastValue, symengine::S(v))
       .v <- paste0("function(", paste(.env$args, collapse=", "), ") {\n", rxOptExpr(paste0("rxLastValue=", rxFromSE(.v)), msg=paste0("d(", .funName, ")/d(", v, ")")),
                    "\nrxLastValue}")
