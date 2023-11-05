@@ -128,8 +128,8 @@ extern "C" SEXP _rxode2parse_udfReset() {
   fun2();
   return R_NilValue;
   END_RCPP
-
 }
+
 extern "C" SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP timeId, SEXP lastMv, SEXP goodFuns) {
   BEGIN_RCPP
   assignRxode2ParsePtrs();
