@@ -76,6 +76,15 @@ extern "C" SEXP _rxode2_codeLoaded(void) {
   END_RCPP
 }
 
+extern "C" SEXP _rxode2parse_rxC(SEXP in) {
+BEGIN_RCPP
+  if (TYPEOF(in) != STRSXP) return R_NilValue;
+  assignRxode2ParsePtrs();
+  Function fun = as<Function>(rxode2parse[".rxC"]);
+  return wrap(fun(in));
+END_RCPP
+}
+
 extern "C" SEXP _rxode2parse_assignUdf(SEXP in) {
 BEGIN_RCPP
  if (Rf_length(in) == 0 || Rf_length(in) == 1) {

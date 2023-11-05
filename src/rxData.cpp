@@ -66,6 +66,7 @@ extern "C" void setSilentErr(int silent);
 extern "C" SEXP _rxode2parse_assignUdf(SEXP in);
 extern "C" SEXP _rxode2parse_udfEnvSet(SEXP udf);
 extern "C" SEXP _rxode2parse_udfReset();
+extern "C" SEXP _rxode2parse_rxC(SEXP in);
 
 extern "C" {
   typedef SEXP (*_rxode2parse_getForder_type)(void);
@@ -6224,7 +6225,11 @@ CharacterVector rxC(RObject obj){
     rets = as<std::string>(e["c"]);
   } else if (rxIs(obj, "rxDll")){
     rets = as<std::string>(as<List>(obj)["c"]);
-  } else if (rxIs(obj, "character")){
+  } else if (rxIs(obj, "character")) {
+    Nullable<CharacterVector> rxCp = _rxode2parse_rxC(obj);
+    if (!rxCp.isNull()) {
+      return as<CharacterVector>(rxCp);
+    }
     Function f = getRxFn("rxCompile.character");
     RObject newO = f(as<std::string>(obj));
     rets = rxDll(newO);
