@@ -1226,7 +1226,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  rxode2parse::.udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
@@ -1764,6 +1764,7 @@ predict.function <- function(object, ...) {
 #' @rdname rxSolve
 #' @export
 predict.rxUi <- function(object, ...) {
+  rxode2parse::.udfEnvSet(list(object$meta, parent.frame(1)))
   rxSolve(object, ...)
 }
 
