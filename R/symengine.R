@@ -3268,8 +3268,8 @@ rxSupportedFuns <- function() {
   x <- as.character(x)
   if (!exists("res", envir=envir)) {
     envir$res <- c(rxSupportedFuns(),
-                    rxReservedKeywords[, 1],
-                    strsplit(paste(rxReservedKeywords[, 3],collapse=","),"[,]+")[[1]])
+                    rxode2::rxReservedKeywords[, 1],
+                    strsplit(paste(rxode2::rxReservedKeywords[, 3],collapse=","),"[,]+")[[1]])
   }
   if (x %in% envir$funs) {
     return(paste0("_qf_", x))

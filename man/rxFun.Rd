@@ -113,5 +113,26 @@ rxSolve(f, e)
 rxRmFun("gg")
 rm(gg)
 rm(f)
+
+
+# You can also automatically convert a R function to R code (and
+# calculate first derivatives)
+
+fun <- function(a, b, c) {
+  a^2+b*a+c
+}
+
+rxFun(fun)
+
+# You can see the R code if you want with rxC
+
+message(rxC("fun"))
+
+# you can also remove both the function and the
+# derivatives with rxRmFun("fun")
+
+rxRmFun("fun")
+
+
 }
 }

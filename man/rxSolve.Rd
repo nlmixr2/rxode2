@@ -155,7 +155,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{rxode2tos}(
@@ -165,7 +166,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{nlmixr2FitData}(
@@ -175,7 +177,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{nlmixr2FitCore}(
@@ -185,7 +188,8 @@ rxSolve(
   inits = NULL,
   ...,
   theta = NULL,
-  eta = NULL
+  eta = NULL,
+  envir = parent.frame()
 )
 
 \method{rxSolve}{default}(
