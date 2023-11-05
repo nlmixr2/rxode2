@@ -264,52 +264,29 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "rt" = 1
 )
 
-.rxSEeqUsr <- NULL
-
-.rxCcode <- NULL
-.symengineFs <- new.env(parent = emptyenv())
-
-.extraCnow <- ""
-.extraC <- function(extraC = NULL) {
-  if (!is.null(extraC)) {
-    if (file.exists(extraC)) {
-      .ret <- sprintf("#include \"%s\"\n", extraC)
-    } else {
-      .ret <- paste(extraC, collapse = "\n")
-    }
-  } else {
-    .ret <- ""
-  }
-  if (length(.rxCcode) > 0L) {
-    .ret <- sprintf("%s\n%s\n", .ret, paste(.rxCcode, collapse = "\n"))
-  }
-  assignInMyNamespace(".extraCnow", .ret)
-  return(invisible())
-}
-
-#' Add user function to rxode2
+#' Add/Create C functions for use in rxode2
 #'
-#' This adds a user function to rxode2 that can be called.  If needed,
-#' these functions can be differentiated by numerical differences or
-#' by adding the derivatives to rxode2's internal derivative table
-#' with [rxD()]
+#' @inheritParams rxode2parse::rxFunParse
 #'
-#' @param name This gives the name of the user function
-#' @param args This gives the arguments of the user function
-#' @param cCode This is the C-code for the new function
-#' @return nothing
-#' @author Matthew L. Fidler
+#' @param name This can either give the name of the user function or
+#'   be a simple R function that you wish to convert to C.  If you
+#'   have rxode2 convert the R function to C, the name of the function
+#'   will match the function name provided and the number of arguments
+#'   will match the R function provided.  Hence, if you are providing
+#'   an R function for conversion to C, the rest of the arguments are
+#'   implied.
+#' @export
 #' @examples
 #' \donttest{
-#' ## Right now rxode2 is not aware of the function f
+#' ## Right now rxode2 is not aware of the function fun
 #' ## Therefore it cannot translate it to symengine or
 #' ## Compile a model with it.
 #'
 #' try(rxode2("a=fun(a,b,c)"))
 #'
 #' ## Note for this approach to work, it cannot interfere with C
-#' ## function names or reserved rxode2 specical terms.  Therefore
-#' ## f(x) would not work since f is an alias for bioaviability.
+#' ## function names or reserved rxode2 special terms.  Therefore
+#' ## f(x) would not work since f is an alias for bioavailability.
 #'
 #' fun <- "
 #' double fun(double a, double b, double c) {
@@ -345,44 +322,98 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' # You can also remove the functions by `rxRmFun`
 #'
 #' rxRmFun("fun")
+#'
+#' # you can also use R functions directly in rxode2
+#'
+#'
+#' gg <- function(x, y) {
+#'   x + y
 #' }
-#' @export
+#'
+#' f <- rxode2({
+#'  z = gg(x, y)
+#' })
+#'
+#'
+#' e <- et(1:10) |> as.data.frame()
+#'
+#' e$x <- 1:10
+#' e$y <- 21:30
+#'
+#' rxSolve(f, e)
+#'
+#' # Note that since it touches R, it can only run single-threaded.
+#' # There are also requirements for the function:
+#' #
+#' # 1. It accepts one value per argument (numeric)
+#' #
+#' # 2. It returns one numeric value
+#'
+#' # If it is a simple function (like gg) you can also convert it to C
+#' # using rxFun and load it into rxode2
+#'
+#' rxFun(gg)
+#'
+#' rxSolve(f, e)
+#'
+#' # to stop the recompile simply reassign the function
+#' f <- rxode2(f)
+#'
+#' rxSolve(f, e)
+#'
+#' rxRmFun("gg")
+#' rm(gg)
+#' rm(f)
+#'
+#'
+#' # You can also automatically convert a R function to R code (and
+#' # calculate first derivatives)
+#'
+#' fun <- function(a, b, c) {
+#'   a^2+b*a+c
+#' }
+#'
+#' rxFun(fun)
+#'
+#' # You can see the R code if you want with rxC
+#'
+#' message(rxC("fun"))
+#'
+#' # you can also remove both the function and the
+#' # derivatives with rxRmFun("fun")
+#'
+#' rxRmFun("fun")
+#'
+#'
+#' }
 rxFun <- function(name, args, cCode) {
-  if (!is.character(name) || length(name) != 1L) {
-    stop("name argument must be a length-one character vector", call. = FALSE)
+  if (missing(args) && missing(cCode)) {
+    .funName <- as.character(substitute(name))
+    .lst <- rxFun2c(name, name=.funName)
+    .env <- new.env(parent=emptyenv())
+    .env$d <- list()
+    lapply(seq_along(.lst), function(i) {
+      .cur <- .lst[[i]]
+      do.call(rxode2parse::rxFunParse, .cur[1:3])
+      message("converted R function '", .cur$name, "' to C (will now use in rxode2)")
+      ## message(.cur$cCode)
+      if (length(.cur) == 4L) {
+        .env$d <- c(.env$d, list(.cur[[4]]))
+      }
+    })
+    if (length(.env$d) > 0) {
+      message("Added derivative table for '", .lst[[1]]$name, "'")
+       rxD(.lst[[1]]$name, .env$d)
+    }
+    return(invisible())
   }
-  if (missing(cCode)) stop("a new function requires a C function so it can be used in rxode2", call. = FALSE)
-  if (any(name == names(.rxSEeqUsr))) {
-    stop("already defined user function '", name, "', remove it fist ('rxRmFun')",
-      call. = FALSE
-    )
-  }
-  suppressWarnings(rxRmFun(name))
-  assignInMyNamespace(".rxSEeqUsr", c(.rxSEeqUsr, setNames(length(args), name)))
-  assignInMyNamespace(".rxCcode", c(.rxCcode, setNames(cCode, name)))
-  assign(name, symengine::Function(name), envir = .symengineFs)
-  return(invisible())
+  rxode2parse::rxFunParse(name, args, cCode)
 }
 
 #' @rdname rxFun
 #' @export
 rxRmFun <- function(name) {
-  if (!is.character(name) || length(name) != 1L) {
-    stop("name argument must be a length-one character vector",
-      call. = FALSE
-    )
-  }
-  if (!any(name == names(.rxSEeqUsr))) {
-    warning("no user function '", name, "' to remove", call. = FALSE)
-  }
-  .w <- which(name == names(.rxSEeqUsr))
-  if (length(.w) == 1L) assignInMyNamespace(".rxSEeqUsr", .rxSEeqUsr[-.w])
-  .w <- which(name == names(.rxCcode))
-  if (length(.w) == 1L) assignInMyNamespace(".rxCcode", .rxCcode[-.w])
-  .rxD <- rxode2parse::rxode2parseD()
-  if (exists(name, envir = .rxD)) rm(list = name, envir = .rxD)
-  if (exists(name, envir = .symengineFs)) rm(list = name, envir = .symengineFs)
-  return(invisible())
+  rxode2parse::rxRmFunParse(name)
 }
 
 .SE1p <- c(
@@ -471,6 +502,9 @@ rxD <- function(name, derivatives) {
 }
 
 
+.rxToSE.envir <- new.env(parent=emptyenv())
+.rxToSE.envir$envir <- NULL
+
 .promoteLinB <- FALSE
 #' rxode2 to symengine environment
 #'
@@ -491,11 +525,16 @@ rxD <- function(name, derivatives) {
 #'     - `forward` for forward differences
 #'     - `central` for central differences
 #'     - `error` for throwing an error for unknown derivatives
+#'
+#' @param parent is the parent environment to look for R-based user functions
+#'
 #' @return An rxode2 symengine environment
 #' @author Matthew L. Fidler
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
-                   promoteLinSens = TRUE) {
+                   promoteLinSens = TRUE, parent = parent.frame()) {
+  rxode2parse::.udfEnvSet(parent)
+  .rxToSE.envir$parent <- parent
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
   assignInMyNamespace(".rxLastAssignedDdt", "")
@@ -1192,7 +1231,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     }
     .ret0 <- c(list(as.character(x[[1]])), lapply(x[-1], .rxToSE, envir = envir))
     if (isEnv) envir$..curCall <- .lastCall
-    .SEeq <- c(.rxSEeq, .rxSEeqUsr)
+    .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
     if (.promoteLinB && .curName == "linCmtA") {
@@ -1338,9 +1377,33 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                )
         }
       } else {
-        stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
-             call. = FALSE
-             )
+        .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
+        if (inherits(.udf, "try-error")) {
+          .udf <- try(get(.fun, envir = rxode2parse::.udfEnvSet(NULL), mode="function"), silent =TRUE)
+        }
+        if (inherits(.udf, "try-error")) {
+          stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
+               call. = FALSE
+               )
+        } else {
+          .f <- formals(.udf)
+          if (any(names(.f)  == "...")) {
+            stop(sprintf(gettext("R user function '%s' has variable number of arguments with'...' and is not supported in rxode2"), .fun),
+                 call. = FALSE
+                 )
+          } else if (length(.ret0) == length(.f)) {
+            if (is.environment(envir)) {
+              assign(.fun, .rxFunction(.fun), envir = envir)
+            }
+            .ret0 <- unlist(.ret0)
+            .ret <- paste0(.fun, "(",paste(.ret0, collapse=", "), ")")
+          } else {
+            stop(sprintf(gettext("user function '%s' requires %d arguments (supplied %d)"), .fun,
+                         length(.f), length(.ret0)),
+                 call. = FALSE
+                 )
+          }
+        }
       }
     }
   }
@@ -1371,11 +1434,16 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxFromNumDer <- 0L
 .rxDelta <- (.Machine$double.eps)^(1 / 3)
 
+.rxFromSE.envir <- new.env(parent=emptyenv())
+.rxFromSE.envir$parent <- NULL
 
 #' @rdname rxToSE
 #' @export
-rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
+rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
+                     parent=parent.frame()) {
   rxReq("symengine")
+  rxode2parse::.udfEnvSet(parent)
+  .rxFromSE.envir$parent <- parent
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   assignInMyNamespace(".rxFromNumDer", .unknown[match.arg(unknownDerivatives)])
   if (is(substitute(x), "character")) {
@@ -1859,7 +1927,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
         }
       }
       .ret0 <- lapply(lapply(x, .stripP), .rxFromSE)
-      .SEeq <- c(.rxSEeq, .rxSEeqUsr)
+      .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
       .nargs <- .SEeq[paste(.ret0[[1]])]
       if (!is.na(.nargs)) {
         if (.nargs == length(.ret0) - 1) {
@@ -2105,9 +2173,34 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
         }
         stop(paste0(.ret0[[1]], "() takes 0-1 arguments"))
       } else {
-        stop(sprintf(gettext("'%s' not supported in symengine->rxode2"), paste(.ret0[[1]])),
-          call. = FALSE
-        )
+        .fun <- paste(.ret0[[1]])
+        .g <- try(get(.fun, envir=.rxFromSE.envir$parent, mode="function"), silent=TRUE)
+        if (inherits(.g, "try-error")) {
+          .g <- try(get(.fun, envir=rxode2parse::.udfEnvSet(NULL),
+                        mode="function"), silent=TRUE)
+        }
+        if (inherits(.g, "try-error")) {
+          stop(sprintf(gettext("'%s' not supported in symengine->rxode2"), .fun),
+               call. = FALSE
+               )
+        } else {
+          .f <- formals(.g)
+          if (any(names(.f)  == "...")) {
+            stop(sprintf(gettext("R user function '%s' has variable number of arguments with'...' and is not supported in rxode2"), .fun),
+                 call. = FALSE
+                 )
+          } else if (length(.ret0) - 1 == length(.f)) {
+            .ret <- unlist(.ret0)
+            .fun <- .ret[1]
+            .args <- .ret[-1]
+            return(paste0(.fun, "(", paste(.args, collapse = ", "), ")"))
+          } else {
+            stop(sprintf(gettext("user function '%s' requires %d arguments (supplied %d)"), .fun,
+                         length(.f), length(.ret0) - 1),
+                 call. = FALSE)
+
+          }
+        }
       }
     }
   } else {
@@ -2137,7 +2230,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error")) {
 #' @return rxode2/symengine environment
 #' @author Matthew Fidler
 #' @export
-rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
+rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame()) {
+  rxode2parse::.udfEnvSet(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
   .env <- new.env(parent = loadNamespace("symengine"))
@@ -2153,12 +2247,14 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
   .env$..doConst <- doConst
   .rxD <- rxode2parse::rxode2parseD()
   for (.f in c(
+    ls(rxode2parse::.symengineFs()),
     ls(.rxD), "linCmtA", "linCmtB", "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
     "rxTBSi"
   )) {
     assign(.f, .rxFunction(.f), envir = .env)
   }
+
   for (.v in seq_along(.rxSEreserved)) {
     assign(names(.rxSEreserved)[.v], .rxSEreserved[[.v]], envir = .env)
   }
@@ -2182,9 +2278,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE) {
   .env$rx_yj_ <- symengine::S("2")
   .env$rx_low_ <- symengine::S("0")
   .env$rx_hi_ <- symengine::S("1")
-  if (!is.null(.rxSEeqUsr)) {
-    sapply(names(.rxSEeqUsr), function(x) {
-      assign(.rxFunction(x), x, envir = .env)
+  if (!is.null(rxode2parse::.rxSEeqUsr())) {
+    sapply(names(rxode2parse::.rxSEeqUsr()), function(x) {
+      assign(x, .rxFunction(x), envir = .env)
     })
   }
   ## EulerGamma=0.57721566490153286060651209008240243104215933593992
@@ -2488,7 +2584,7 @@ rxErrEnvF$probitNorm <- function(est, low = "0", hi = "1") {
     stop("'probitNorm' can only be in an error function", call. = FALSE)
   }
   if (!is.null(rxErrEnv.lambda)) {
-    if (rxErrEnv.yj != "1") {
+    if (rxErrEenv.yj != "1") {
       if (rxErrEnv.yj != "6" &&rxErrEnv.yj != "7") {
         print(rxErrEnv.yj)
         stop("'probitNorm' cannot be used with other data transformations", call. = FALSE)
@@ -3063,7 +3159,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
   .ret <- c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
-    "linCmt", names(.rxOnly), ls(.symengineFs)
+    "linCmt", names(.rxOnly), ls(rxode2parse::.symengineFs())
   )
   if (extra) {
     .ret <- c(.ret, c(
@@ -3087,4 +3183,434 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 #' @export
 rxSupportedFuns <- function() {
   .rxSupportedFuns(FALSE)
+}
+
+.rxFunEq <- c(
+  "Rx_pow_di"=2,
+  "Rx_pow"=2,
+  "R_pow_di"=2,
+  "R_pow"=2,
+  "lgamma" = 1,
+  "abs" = 1,
+  "acos" = 1,
+  "acosh" = 1,
+  "asin" = 1,
+  "asinh" = 1,
+  "atan" = 1,
+  "atan2" = 2,
+  "atanh" = 1,
+  "beta" = 2,
+  "cos" = 1,
+  "cosh" = 1,
+  "erf" = 1,
+  "erfc" = 1,
+  "exp" = 1,
+  "log" = 1,
+  "sin" = 1,
+  "sinh" = 1,
+  "sqrt" = 1,
+  "tan" = 1,
+  "tanh" = 1,
+  ## C's math.h library
+  "floor" = 1,
+  "round" = 1,
+  "ceil" = 1,
+  "trunc" = 1,
+  ## Special R functions
+  "bessel_i" = 3,
+  "bessel_j" = 2,
+  "bessel_k" = 3,
+  "bessel_y" = 2,
+  "logspace_add" = 2,
+  "logspace_sub" = 2,
+  "fmax2" = 2,
+  "fmin2" = 2,
+  "sign" = 1,
+  "fsign" = 2,
+  "fprec" = 2,
+  "fround" = 2,
+  "ftrunc" = 2,
+  "transit" = NA,
+  "gammaq" = 2,
+  "gammapDer" = 2,
+  "gammapInv" = 2,
+  "gammapInva" = 2,
+  "gammaqInv" = 2,
+  "gammaqInva" = 2,
+  "lowergamma" = 2,
+  "uppergamma" = 2)
+
+.rxOnly <- c(
+  ## Now random number generators
+  "rnorm" = NA,
+  "rxnorm" = NA,
+  "rxbinom" = 2,
+  "rbinom" = 2,
+  "rxcauchy" = NA,
+  "rcauchy" = NA,
+  "rchisq" = 1,
+  "rxchisq" = 1,
+  "rexp" = 1,
+  "rxexp" = 1,
+  "rbeta" = 2,
+  "rxbeta" = 2,
+  "rgeom" = 1,
+  "rxgeom" = 1,
+  "rxpois" = 1,
+  "rpois" = 1,
+  "rxt" = 1,
+  "rt" = 1
+)
+
+
+.rxFun2cNameOrAtomic <- function(x, envir) {
+  # see if it is a reserved rxode2 name/function for name clashes
+  x <- as.character(x)
+  if (!exists("res", envir=envir)) {
+    envir$res <- c(rxSupportedFuns(),
+                    rxode2::rxReservedKeywords[, 1],
+                    strsplit(paste(rxode2::rxReservedKeywords[, 3],collapse=","),"[,]+")[[1]])
+  }
+  if (x %in% envir$funs) {
+    return(paste0("_qf_", x))
+  }
+  x
+}
+
+.rxFun2cArithmeticOperators <- function(x, envir) {
+  if (length(x) == 3) {
+    if (identical(x[[1]], quote(`/`))) {
+      .x2 <- x[[2]]
+      .x3 <- x[[3]]
+      ## df(%s)/dy(%s)
+      if (identical(.x2, quote(`d`)) &&
+            identical(.x3[[1]], quote(`dt`))) {
+        if (length(.x3[[2]]) == 1) {
+          .state <- as.character(.x3[[2]]) # .rxToSE(.x3[[2]], envir = envir)
+        } else {
+          .state <- .rxFun2c(.x3[[2]], envir = envir)
+        }
+        stop("d/dt(", .state, ") not supported in functions for translation")
+      } else {
+        if (length(.x2) == 2 && length(.x3) == 2) {
+          if (identical(.x2[[1]], quote(`df`)) &&
+                identical(.x3[[1]], quote(`dy`))) {
+            if (length(.x2[[2]]) == 1) {
+              .state <- as.character(.x2[[2]])
+            } else {
+              .state <- .rxFun2c(.x2[[2]], envir = envir)
+            }
+            if (length(.x3[[2]]) == 1) {
+              .var <- as.character(.x3[[2]])
+            } else {
+              .var <- .rxFun2c(.x3[[2]], envir = envir)
+            }
+            stop("df(", .state, ")/dy(", .var, ") statements are not supported in translation",
+                 call. = FALSE)
+          }
+        }
+        .ret <- paste0(
+          .rxFun2c(.x2, envir = envir),
+          as.character(x[[1]]),
+          .rxFun2c(.x3, envir = envir)
+        )
+      }
+    } else if (identical(x[[1]], quote(`^`)) ||
+                 identical(x[[1]], quote(`**`))) {
+      if (is.numeric(x[[3]]) &&
+            checkmate::checkIntegerish(x[[3]])) {
+        return(paste0("R_pow_di(", .rxFun2c(x[[2]], envir = envir), ",",
+                     as.character(x[[3]]), ")"))
+      } else {
+        return(paste0("R_pow(", .rxFun2c(x[[2]], envir=envir), ",",
+                     .rxFun2c(x[[3]], envir=envir), ")"))
+      }
+    } else {
+      .ret <- paste0(
+        .rxFun2c(x[[2]], envir = envir),
+        as.character(x[[1]]),
+        .rxFun2c(x[[3]], envir = envir)
+      )
+    }
+    return(.ret)
+  } else {
+    ## Unary Operators
+    return(paste(
+      as.character(x[[1]]),
+      .rxFun2c(x[[2]], envir = envir)
+    ))
+  }
+}
+.rxFun2cAssignOperators <- function(x, envir = envir) {
+  ## if (!envir$isRx && identical(x[[1]], quote(`~`))) {
+  ##   stop("formulas or other expressions with '~` are not supported in translation",
+  ##        call.=FALSE)
+  ## }
+  if (as.character(x[[2]]) %in% envir$args) {
+    stop("cannot assign argument '", as.character(x[[2]]),
+         "' in functions converted to C",
+         call.=FALSE)
+  }
+  .lhs <- .rxFun2cNameOrAtomic(x[[2]], envir=envir)
+  if (!(.lhs %in% envir$args)) {
+    envir$vars <- c(envir$vars, .lhs)
+  }
+  envir$didAssign <- TRUE
+  .pre <- paste0(rep(" ", envir$n), collapse="")
+  if (envir$isRx) {
+    paste0(.lhs, " <- ",
+           .rxFun2c(x[[3]], envir=envir), "\n",
+           "rxLastValue <-", .lhs, "\n")
+  } else {
+    paste0(.pre, "_lastValue = ", .lhs, " = ",
+                  .rxFun2c(x[[3]], envir=envir), ";\n")
+  }
+}
+
+.rxFun2cSquareBracket <- function(x, envir) {
+  stop("bracket expressions (ie ret[3]) are not supported in translation",
+       call. = FALSE)
+}
+
+.rxFun2cLogic <- function(x, envir) {
+  if (identical(x[[1]], quote(`!`))) {
+    return(paste0("!(", .rxFun2c(x[[2]], envir=envir), ")"))
+  } else if (identical(x[[1]], quote(`&`))) {
+    return(paste0(.rxFun2c(x[[2]], envir=envir), " && ",
+                  .rxFun2c(x[[3]], envir=envir)))
+  } else if (identical(x[[1]], quote(`|`))) {
+    return(paste0(.rxFun2c(x[[2]], envir=envir), " || ",
+                  .rxFun2c(x[[3]], envir=envir)))
+  } else {
+    return(paste0(.rxFun2c(x[[2]], envir=envir), " ", as.character(x[[1]]), " ",
+                  .rxFun2c(x[[3]], envir=envir)))
+  }
+}
+
+.rxFun2cIf <- function(x, envir) {
+  .logic <- .rxFun2c(x[[2]], envir=envir)
+  .pre <- paste0(rep(" ", envir$n), collapse="")
+  .ret <- paste(.pre, "if (", .logic, ") ")
+  .ret <- paste0(.ret, .rxFun2c(x[[3]], envir=envir))
+
+  if (length(x) == 3) {
+    envir$isExpr <- TRUE
+    return(.ret)
+  }
+  .ret <- sub("else +if", "else if", paste0(.ret, .pre, "else ", .rxFun2c(x[[4]], envir=envir)))
+  envir$isExpr <- TRUE
+  return(.ret)
+}
+
+.rxFun2cCall <- function(x, envir) {
+  if (identical(x[[1]], quote(`{`))) {
+    .ret <- "{\n"
+    envir$n <- envir$n + 2
+    .ret <- paste0(.ret,
+                   paste(vapply(seq_along(x)[-1],
+                                function(i) {
+                                  .cur <- x[[i]]
+                                  .last <- envir$didAssign
+                                  .expr <-  envir$isExpr
+                                  on.exit({
+                                    assign("isExpr", .expr, envir=envir)
+                                    assign("didAssign", .last, envir=envir)
+                                  })
+                                  envir$didAssign <- FALSE
+                                  .cur <- .rxFun2c(.cur, envir=envir)
+                                  if(!envir$didAssign && !envir$isExpr) {
+                                    .pre <- paste0(rep(" ", envir$n), collapse="")
+                                    if (envir$isRx) {
+                                      return(paste0(.pre, "rxLastValue <- ", .cur, "\n"))
+                                    } else {
+                                      return(paste0(.pre, "_lastValue = ", .cur, ";\n"))
+                                    }
+                                  }
+                                  .cur
+                                }, character(1), USE.NAMES = FALSE),
+                         collapse=""))
+    envir$n <- envir$n - 2
+    .pre <- paste0(rep(" ", envir$n), collapse="")
+    .ret <- paste0(.ret, .pre, "}\n")
+    return(.ret)
+  } else if (identical(x[[1]], quote(`(`))) {
+    return(paste0("(", .rxFun2c(x[[2]], envir = envir), ")"))
+  } else if (identical(x[[1]], quote(`&`)) ||
+               identical(x[[1]], quote(`&&`)) ||
+               identical(x[[1]], quote(`==`)) ||
+               identical(x[[1]], quote(`||`)) ||
+               identical(x[[1]], quote(`|`)) ||
+               identical(x[[1]], quote(`>`)) ||
+               identical(x[[1]], quote(`<`)) ||
+               identical(x[[1]], quote(`<=`)) ||
+               identical(x[[1]], quote(`>=`)) ||
+               identical(x[[1]], quote(`!=`)) ||
+               identical(x[[1]], quote(`!`))
+               ) {
+    return(.rxFun2cLogic(x, envir=envir))
+  } else if (identical(x[[1]], quote(`*`)) ||
+               identical(x[[1]], quote(`**`)) ||
+               identical(x[[1]], quote(`^`)) ||
+               identical(x[[1]], quote(`+`)) ||
+               identical(x[[1]], quote(`-`)) ||
+               identical(x[[1]], quote(`/`))) {
+    return(.rxFun2cArithmeticOperators(x, envir = envir))
+  } else if (identical(x[[1]], quote(`=`)) ||
+               identical(x[[1]], quote(`<-`)) ||
+               identical(x[[1]], quote(`~`))) {
+    return(.rxFun2cAssignOperators(x, envir))
+  } else if (identical(x[[1]], quote(`[`))) {
+    return(.rxFun2cSquareBracket(x, envir = envir))
+  } else if (identical(x[[1]], quote(`if`))) {
+    return(.rxFun2cIf(x, envir = envir))
+  } else {
+    # supported functions
+    if (identical(x[[1]], quote(`return`))) {
+      envir$hasReturn <- TRUE
+      .pre <- paste0(rep(" ", envir$n), collapse="")
+      envir$didAssign <- TRUE
+      return(paste0(.pre, "return (", .rxFun2c(x[[2]], envir=envir), ");\n"))
+    }
+    .ret0 <- lapply(x, .stripP)
+    .FunEq <- c(.rxFunEq, rxode2parse::.rxSEeqUsr())
+    .curName <- paste(.ret0[[1]])
+    .nargs <- .FunEq[.curName]
+    if (!is.na(.nargs)) {
+      if (.nargs == length(.ret0) - 1) {
+        return(paste0(.curName, "(",
+                      paste(vapply(seq_along(.ret0)[-1],
+                                  function(i) {
+                                    .rxFun2c(.ret0[[i]], envir=envir)
+                                  }, character(1), USE.NAMES=FALSE),
+                            collapse=","),
+                      ")"))
+      }
+    }
+    stop("cannot translate function '", .curName, "'",
+         call.=FALSE)
+  }
+}
+
+.rxFun2c <- function(x, envir) {
+  if (is.name(x) || is.atomic(x)) {
+    return(.rxFun2cNameOrAtomic(x, envir=envir))
+  } else if (is.call(x)) {
+    return(.rxFun2cCall(x, envir = envir))
+  } else {
+    stop("unsupported expression", call. = FALSE)
+  }
+}
+
+#' Calculate derivatives/C code from a R function
+#'
+#' @param fun Function to convert to C
+#'
+#' @param name function name to convert to C, implied if needed
+#'
+#' @param onlyF Only calculate the C for the function, don't calculate the derivatives
+#'
+#' @return A list with C code and derivative information
+#'
+#' @keywords internal
+#'
+#' @noRd
+rxFun2c <- function(fun, name, onlyF=FALSE) {
+  .env <- new.env(parent=emptyenv())
+  .env$vars <- character(0)
+  if (!missing(name)) {
+    .funName <- name
+  } else {
+    .funName <- as.character(substitute(fun))
+  }
+  .f <- formals(fun)
+  .env$args <- names(.f)
+  .env$n <- 2
+  .env$isExpr <- FALSE
+  .env$isRx <- FALSE
+  .env$hasReturn <- FALSE
+  if (any(.env$args == "...")) {
+    stop("functions with ... in them are not supported",
+         call. =FALSE)
+  }
+  .start <- paste0("double ", .funName, "(", paste(paste("double ", .env$args), collapse=", "),
+                   ") {\n")
+
+  .body <- as.list(body(fun))
+  .body <- paste(vapply(seq_along(.body)[-1], function(i) {
+    .extra <- .extra2 <- ""
+    .cur <- .body[[i]]
+    .env$didAssign <- FALSE
+    .cur <- .rxFun2c(.cur, envir=.env)
+    if(!.env$didAssign && !.env$isExpr) {
+      .pre <- paste0(rep(" ", .env$n), collapse="")
+      if (.env$isRx) {
+        return(paste0(.pre, "rxLastValue <- ", .cur, "\n"))
+      } else {
+        return(paste0(.pre, "_lastValue = ", .cur, ";\n"))
+      }
+    }
+    .env$isExpr <- FALSE
+    .cur
+  },
+  character(1), USE.NAMES=FALSE), collapse="")
+
+  .start <- paste0(.start,
+                   paste0("  double ",
+                          paste(paste0(c("_lastValue", unique(.env$vars)), "=NA_REAL"), collapse=","),
+                          ";\n"))
+  .stop <- "  return _lastValue;\n}\n"
+  .cCode <- paste0(.start, .body, .stop)
+  .ret <- list(name=.funName,
+               args=.env$args,
+               cCode=.cCode)
+
+  if (onlyF) {
+    return(.ret)
+  }
+  if (!.env$hasReturn) {
+    # Can calculate derivatives
+    # Firs create an rxode2 like model:
+    .env <- new.env(parent=emptyenv())
+    .env$isRx <- TRUE
+    .env$args <- names(.f)
+    .env$n <- 2
+    .env$isExpr <- FALSE
+    .env$hasReturn <- FALSE
+    .body <- as.list(body(fun))
+    .body <- paste(vapply(seq_along(.body)[-1], function(i) {
+      .extra <- .extra2 <- ""
+      .cur <- .body[[i]]
+      .env$didAssign <- FALSE
+      .cur <- .rxFun2c(.cur, envir=.env)
+      if(!.env$didAssign && !.env$isExpr) {
+        .pre <- paste0(rep(" ", .env$n), collapse="")
+        return(paste0(.pre, "rxLastValue = ", .cur, ";\n"))
+      }
+      .env$isExpr <- FALSE
+      .cur
+    },
+    character(1), USE.NAMES=FALSE), collapse="")
+    # take out if/else
+    .body <- rxPrune(.body)
+    .s <- rxS(.body)
+    .lastValue <- .s$rxLastValue
+    return(c(list(.ret),
+      lapply(.env$args, function(v) {
+      .v <- symengine::D(.lastValue, symengine::S(v))
+      .v <- paste0("function(", paste(.env$args, collapse=", "), ") {\n", rxOptExpr(paste0("rxLastValue=", rxFromSE(.v)), msg=paste0("d(", .funName, ")/d(", v, ")")),
+                   "\nrxLastValue}")
+      .v <- eval(str2lang(.v))
+      .dName <-  paste0("rx_", .funName, "_d_", v)
+      .v <- rxFun2c(.v, .dName, onlyF=TRUE)
+      .v2 <- paste0("function(", paste(.env$args, collapse=", "), "){\n",
+                  "paste0(\"", .dName, "(\", ",
+                  paste(.env$args, collapse=", \", \", "), ", \")\")",
+                  "}")
+      .v2 <- eval(str2lang(.v2))
+      c(.v, list(.v2))
+    })))
+  } else {
+    message("function contains return statement; derivatives not calculated")
+  }
+  return(list(.ret))
 }
