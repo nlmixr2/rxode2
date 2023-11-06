@@ -13,6 +13,10 @@
 
 ## New features
 
+- User defined functions can now be R functions.  For many of these R
+  functions they can be converted to C with `rxFun()` (you can see the
+  C code afterwards with `rxC("funName")`)
+
 - Parallel solving of models that require sorting (like modeled lag
   times, modeled duration etc) now solve in parallel instead of downgrading
   to single threaded solving

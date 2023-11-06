@@ -83,6 +83,8 @@ NA_LOGICAL <- NA # nolint
 #'   print on every step (except ME/indLin), otherwise when `FALSE`
 #'   print only when calculating the `d/dt`
 #'
+#' @inheritParams rxode2parse::rxode2parse
+#'
 #' @details
 #'
 #' The `Rx` in the name `rxode2` is meant to suggest the
@@ -142,7 +144,7 @@ NA_LOGICAL <- NA # nolint
 #'
 #'           `atol`: a numeric absolute tolerance (1e-08 by default);
 #'
-#'           `rtol`: a numeric relative tolerance (1e-06 by default).e
+#'           `rtol`: a numeric relative tolerance (1e-06 by default).
 #'
 #'           The output of \dQuote{solve} is a matrix with as many rows as there
 #'           are sampled time points and as many columns as system variables
@@ -273,7 +275,9 @@ rxode2 <- # nolint
            linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
            indLin = FALSE,
            verbose = FALSE,
-           fullPrint=getOption("rxode2.fullPrint", FALSE)) {
+           fullPrint=getOption("rxode2.fullPrint", FALSE),
+           envir=parent.frame()) {
+    rxode2parse::.udfEnvSet(envir)
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()
     rxode2parse::rxParseSuppressMsg()
@@ -411,7 +415,7 @@ rxode2 <- # nolint
           .rx$.clearME()
         })
         .rx$.rxWithWd(wd, {
-          .rx$.extraC(extraC)
+          rxode2parse::.extraC(extraC)
           if (missing.modName) {
             .rxDll <- .rx$rxCompile(.mv,
                                     debug = debug,
@@ -432,7 +436,7 @@ rxode2 <- # nolint
         })
       })
     }))
-    .extraC(extraC)
+    rxode2parse::.extraC(extraC)
     .env$compile()
     .env$get.modelVars <- eval(bquote(function() {
       with(.(.env), {
@@ -633,23 +637,28 @@ rxGetModel <- function(model, calcSens = NULL, calcJac = NULL, collapseModel = N
       model <- model[-length(model)]
     }
     model <- paste(model, collapse = "\n")
-  } else if (is(model, "function") || is(model, "call")) {
+  } else if (inherits(model, "function") || inherits(model, "call")) {
     model <- deparse(body(model))
     if (model[1] == "{") {
       model <- model[-1]
       model <- model[-length(model)]
     }
     model <- paste(model, collapse = "\n")
-  } else if (is(model, "name")) {
+  } else if (inherits(model, "name")) {
     model <- eval(model)
-  } else if (is(model, "character") || is(model, "rxModelText")) {
+  } else if (inherits(model, "character") || inherits(model, "rxModelText")) {
     model <- as.vector(model)
-  } else if (is(model, "rxode2")) {
+  } else if (inherits(model, "rxode2")) {
     model <- rxModelVars(model)
     ## class(model) <- NULL;
-  } else if (is(model, "rxModelVars")) {
+  } else if (inherits(model, "rxModelVars")) {
+  } else if (inherits(model, "rxDll")) {
+    model <- model$args$model
   } else {
-    stop("cannot figure out how to handle the model argument", call. = FALSE)
+    model <- rxModelVars(model)
+    if (!inherits(model, "rxModelVars")) {
+      stop("cannot figure out how to handle the model argument", call. = FALSE)
+    }
   }
   .ret <- rxModelVars(model)
   if (!is.null(calcSens)) {
@@ -1039,7 +1048,7 @@ rxMd5 <- function(model, # Model File
       rxode2.calculate.sensitivity)
     .ret <- c(
       .ret, .tmp, .rxIndLinStrategy, .rxIndLinState,
-      .linCmtSens, ls(.symengineFs), .rxFullPrint
+      .linCmtSens, rxode2parse::.udfMd5Info(), .rxFullPrint
     )
     if (is.null(.md5Rx)) {
       .tmp <- getLoadedDLLs()$rxode2
@@ -1462,7 +1471,7 @@ rxCompile.rxModelVars <- function(model, # Model
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(.extraCnow)
+        cat(rxode2parse::.extraCnow())
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))

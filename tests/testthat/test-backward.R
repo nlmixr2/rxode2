@@ -1,4 +1,5 @@
 rxTest({
+
   ## Dynmodel routines
   ode <- "
    dose=200;
@@ -169,7 +170,6 @@ rxTest({
       x$add.sampling(0.5)
       expect_equal(as.numeric(x$time[2]), 0.5)
     })
-
     x <- solve(mod1, theta, ev, inits)
 
     test_that("Add dosing makes sense", {

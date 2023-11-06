@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: rxode2 1.1.0\n"
-"POT-Creation-Date: 2021-05-26 10:39\n"
+"POT-Creation-Date: 2023-10-30 08:03\n"
 "PO-Revision-Date: 2023-07-03 00:00\n"
 "Last-Translator: FuYongchao <3212418315@qq.com>\n"
 "Language-Team: FuYongchao <3212418315@qq.com>\n"
@@ -10,429 +10,661 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#, fuzzy
+msgid "unsupported expression for ini({}) block"
+msgstr ""
 
-msgid "rxode2 requires 'rtools' for custom models\n"
-"Please download from http://cran.r-project.org/bin/windows/Rtools/,\n"
-"install and restart your R session before proceeding"
-msgstr "rxode2的自定义模型“rtools”\n"
-"请从http://cran.r-project.org/bin/windows/Rtools/下载rtools，\n"
-"在完成rtools安装与重新启动R会话后，继续之前流程"
+#, fuzzy
+msgid "unsupported expression of ini({}) block"
+msgstr ""
 
-msgid "'modName' has to be a single length character"
-msgstr "“modName”必须是字符串类型的标量或单个长度的字符型向量"
+#, fuzzy
+msgid "do not know how to convert this to an `ini` expression"
+msgstr "\"(errors)\"/\"(PRED)\""
 
-msgid "'extraC' needs to point to a file that exists and is readable"
-msgstr "“extraC”需要指向一个存在并且可读的文件"
+msgid "error converting character vector to model({}) expression"
+msgstr ""
 
-msgid "'collapseModel' needs to be logical"
-msgstr "“collapseModel”需要合乎逻辑"
+#, fuzzy
+msgid "unsupported expression of model({}) block"
+msgstr ""
 
-msgid "'indLin' needs to be logical"
-msgstr "“indLin”需要合乎逻辑"
+#, fuzzy
+msgid "do not know how to convert this to an `model` expression"
+msgstr ""
 
-msgid "'debug' needs to be logical"
-msgstr "“调试(debug)”需要合乎逻辑"
+msgid "cannot convert to rxUi object"
+msgstr ""
 
-msgid "'package' needs to a single character for the package name"
-msgstr "“添加包”需要一个字符作为添加包的名称"
+msgid "could not convert to rxUi object"
+msgstr ""
 
-msgid "with packages 'modName' is required"
-msgstr "“modName”添加包是必需的"
+#, fuzzy
+msgid "'"
+msgstr "'."
 
-msgid "must specify exactly one of 'model' or 'filename'"
-msgstr "必须准确指定“model”(模型)或“filename”(文件名)之一"
+#, fuzzy
+msgid "' needs to be a rxUi model"
+msgstr "(debug)"
 
-msgid "cannot delete Dll in package"
-msgstr "无法删除添加包中的 Dll"
+msgid "there must be at least one prediction in the model({}) block"
+msgstr ""
 
-msgid "'$parse' is no longer supported"
-msgstr "“$parse”不再被支持"
+msgid ".  Use `~` for predictions"
+msgstr ""
 
-msgid "cannot update package model"
-msgstr "无法更新添加包模型"
+msgid "' needs to be a single endpoint model"
+msgstr ""
 
-msgid "cannot figure out how to handle the model argument"
-msgstr "无法弄清楚如何处理模型参数"
+msgid "' needs to be a (transformably) normal model"
+msgstr ""
 
-msgid "sensitivities do not make sense for models without ODEs"
-msgstr "灵敏度对于没有常微分方程的模型没有意义"
+#, fuzzy
+msgid "' needs to be a normal model"
+msgstr "(debug)"
 
-msgid "Jacobians do not make sense for models without ODEs"
-msgstr "雅可比算法对于没有常微分方程的模型没有意义"
+msgid "' needs to be a completely mu-referenced model (ie tcl+eta.cl)"
+msgstr ""
 
-msgid "Do not know how to add %s to rxode2 solved object %s"
-msgstr "不知道如何将 %s 添加到 rxode2 已求解对象 %s"
+msgid "' residual parameters cannot depend on the model calculated parameters"
+msgstr ""
 
-msgid "unknown model"
-msgstr "未知的模型"
+msgid "' can only have population estimates"
+msgstr ""
 
-msgid "model"
-msgstr "模型"
+msgid "' needs to be a mixed effect model"
+msgstr ""
 
-msgid "cannot create rxode2 model"
-msgstr "无法创建 rxode2 模型"
+msgid "' can only have random effects on ID"
+msgstr ""
 
-msgid "rxode2 already building model, waiting for lock file removal"
-msgstr "rxode2 已经构建模型，正在等待锁定文件删除"
+msgid "generate defines"
+msgstr ""
 
-msgid "lock file: \"%s\""
-msgstr "锁定文件：“%s”"
+msgid "Copy header to inst directory"
+msgstr ""
 
-msgid "."
-msgstr "."
-
-msgid "error building model on another thread"
-msgstr "在另一个线程上构建模型时出错"
-
-msgid "do not need to recompile, minimal change to model detected"
-msgstr "无需重新编译，检测到对模型的最小更改"
-
-msgid "unloaded all rxode2 dlls before loading the current DLL"
-msgstr "在加载当前 DLL 之前卸载了所有 rxode2 dll"
-
-msgid "something went wrong in compilation"
-msgstr "编译时出错"
-
-msgid "'removeJac' is no longer supported"
-msgstr "“removeJac”不再被支持"
-
-msgid "'removeSens' is no longer supported"
-msgstr "“removeSens”不再被支持"
-
-msgid "simulation summaries must be between 0 and 1"
-msgstr "模拟摘要必须介于 0 和 1 之间"
-
-msgid "summarizing data..."
-msgstr "汇总数据..."
+msgid "generate rxResidualError and update documentation"
+msgstr ""
 
 msgid "done"
-msgstr "已做完"
+msgstr ""
+
+msgid "generate rxReservedKeywords and update documentation"
+msgstr ""
+
+msgid "generate rxSyntaxFunctions and update documentation"
+msgstr ""
+
+msgid "generate rxode2_control.h"
+msgstr ""
+
+msgid "querying default rxode2 object contents"
+msgstr ""
+
+msgid "saved!"
+msgstr ""
+
+msgid "summarizing data..."
+msgstr "..."
 
 msgid "rxode2 doesn't support '%s' translation for 'omega' translation"
-msgstr "rxode2 不支持对的'omega'转换的'%s'转换"
+msgstr "rxode2 'omega''%s'"
 
 msgid "do not know how to handle type '%s'"
-msgstr "不知道如何处理类型 '%s'"
+msgstr " '%s'"
 
 msgid "rxode2 only supports THETA[#] and ETA[#] numbers"
-msgstr "rxode2 仅支持 THETA[#] 和 ETA[#] 数字"
+msgstr "rxode2  THETA[#]  ETA[#] "
 
-msgid "cannot supply both 'by' and 'length.out'"
-msgstr "不能同时提供“by”和“length.out”"
+msgid "cannot find lambda"
+msgstr ""
 
-msgid "improper arguments to 'et'"
-msgstr "对“et”的不当参数"
+msgid "cannot find additive standard deviation for '"
+msgstr ""
 
-msgid "when supplying vectors of 'time', 'amt' they need to be the same size"
-msgstr "当提供“time”、“amt”的向量时，它们需要具有相同的大小"
+msgid ""
+"; this parameter could be estimated by another endpoint, to fix move outside "
+"of error expression."
+msgstr ""
 
-msgid "only a single evid 'evid' can be specified ('%s')"
-msgstr "只有一个 evid 'evid'能用于描述（'%s'）"
+msgid "for propF() or powF(), f must be part of the model and not estimated"
+msgstr ""
 
-msgid "', '"
-msgstr "', '"
+msgid "cannot find proportional standard deviation"
+msgstr ""
 
-msgid "only a single compartment 'cmt' can be specified ('%s')"
-msgstr "只有单个房室“cmt”能用于描述（“%s”）"
+msgid "cannot find power standard deviation"
+msgstr ""
 
-msgid "only a single rate 'rate' can be specified ('%s')"
-msgstr "只有单个速率“rate”能用于描述（“%s”）"
+msgid "cannot find exponent of power expression"
+msgstr ""
 
-msgid "only a single duration 'dur' can be specified ('%s')"
-msgstr "只有单个持续时间“dur”能用于描述（“%s”）"
+msgid "cannot find additive standard deviation"
+msgstr ""
 
-msgid "'nsim' is ignored when simulating event tables"
-msgstr "模拟事件表时“nsim”被忽略"
+msgid "cannot find pow standard deviation"
+msgstr ""
 
-msgid "requires package 'units'"
-msgstr "需要“unites”添加包"
+msgid "cannot find pow exponent"
+msgstr ""
 
-msgid "the only valid number defining a unit is '1', signifying a unitless unit"
-msgstr "唯一有效的作为单位的数字是“1”，表示单位是没有单位"
+msgid "t distribution needs a proper degrees of freedom specified"
+msgstr ""
 
-msgid "clearing both amount and time units\n"
-"for more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'"
-msgstr "清除\"amout(药量)\"和\"time(时间)\"的单位\n"
-"要进行更精确的控制，请使用“et(amountUnits=\"\")”或“et(timeUnits=\"\")”"
+msgid ""
+"last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, "
+"not a named number"
+msgstr ""
 
-msgid "'deparse.level' not used with rxode2 event tables"
-msgstr "“deparse.level”未与 rxode2 事件表一起使用"
+msgid "names for ordinal simulation incorrect"
+msgstr ""
 
-msgid "'length.out' makes no sense with event tables"
-msgstr "“length.out”对事件表毫无意义"
+msgid "not enough categories to estimate"
+msgstr ""
 
-msgid "'each' makes no sense with event tables"
-msgstr "“each”对于事件表毫无意义"
+msgid ""
+"uiModel must be a evaluated UI model by rxode2(modelFunction) or "
+"modelFunction()"
+msgstr ""
 
-msgid "'evid' is unitless"
-msgstr "“evid”是无单位的"
+msgid "old transform not in the proper format"
+msgstr ""
 
-msgid "there are no individuals left to solve in %s data"
-msgstr "%s 数据中没有需要求解的个体"
+msgid "you cannot combine 't' and 'cauchy' distributions"
+msgstr ""
 
-msgid "'ID' missing in '%s' dataset\n"
-"individual parameters are assumed to have the same order as the event dataset"
-msgstr "“%s”数据集中缺少“ID”\n"
-"假定各个参数的顺序与事件数据集的顺序相同"
+msgid "you cannot combine 't' and 'dnorm' distributions"
+msgstr ""
 
-msgid "unable to detect 'ID' correctly in '%s' dataset\n"
-"individual parameters are assumed to have the same order as the dataset"
-msgstr "无法正确检测“%s”数据集中的“ID”\n"
-"假定各个参数的顺序与数据集相同"
+msgid "you cannot combine 'dnorm' and 'cauchy' distributions"
+msgstr ""
 
-msgid "dates can only be specified by one of: 'DATE', 'DAT1', 'DAT2', 'DAT3' / 'TIME'"
-msgstr "日期只能由以下之一指定：“DATE”、“DAT1”、“DAT2”、“DAT3”/“TIME”"
+msgid "you cannot combine 'cauchy' and 'dnorm' distributions"
+msgstr ""
 
-msgid "dates formatted as MONTH-DAY or DAY alone are not supported in this conversion"
-msgstr "此转换不支持日期格式化为月-日或仅日"
+msgid "the left handed side of the error expression (function: '"
+msgstr ""
 
-msgid "date/time format was not correctly specified"
-msgstr "未正确指定日期/时间格式"
+msgid "') can only be functions with 'linCmt' or 'll'"
+msgstr ""
 
-msgid "cannot figure out numeric time"
-msgstr "无法计算数字时间"
-
-msgid "need 'amt' aesthetic"
-msgstr "需要“amt”的美学"
-
-msgid "need 'x' aesthetic"
-msgstr "需要“x”的美学"
-
-msgid "stat_cens cannot have lower aesthetic with cens aesthetic"
-msgstr "stat_cens有cens的美学不允许存在lower的美学"
-
-msgid "stat_cens requires the following aesthetics: upper, lower or cens (and optionally limit)"
-msgstr "stat_cens需要以下的美学：\"上限(upper)\"、\"下限(lower)\"或\"删失(cens)\"（以及可选的\"定量限(limit)\"）"
-
-msgid "'package' needs to be specified"
-msgstr "需要指定“package”(添加包)"
-
-msgid "'log=\"%s\"' not supported"
-msgstr "“log=”%s“'不被支持"
-
-msgid "needs units"
-msgstr "需要单位"
-
-msgid "needs \"ggplot2\" 3.3.0"
-msgstr "需要“ggplot2” 3.3.0"
-
-msgid "this is only used in 'data.table'"
-msgstr "这仅在“data.table”中使用"
-
-msgid "'rxIndLinState' list element '%s' must be a unnamed character vector"
-msgstr "'rxIndLinState' 列表元素 '%s' 必须是未命名的字符向量"
-
-msgid "'%s' is from '%s' and cannot be used in this context"
-msgstr "“%s”来自“%s”，不能在此上下文中使用"
-
-msgid "specified %s initial conditions when there are only %s states"
-msgstr "当这些是仅%s状态时，描述 %s 初始条件"
-
-msgid "only one 'initCondition=' supported"
-msgstr "仅支持一个“initCondition=”"
-
-msgid "this was not generated from nlmixr, loading into symengine"
-msgstr "这不是由nlmixr生成的，加载到Symengine中"
-
-msgid "cannot identify parameters for sensitivity analysis\n"
-"   with nlmixr an 'eta' initial estimate must use '~'"
-msgstr "无法识别灵敏度分析的参数\n"
-"   使用nlmixr时，“eta”初始估计必须使用“~”"
-
-msgid "none of the predictions depend on 'ETA'"
-msgstr "没有一个预测依赖于“ETA”"
-
-msgid "some of the predictions do not depend on 'ETA'"
-msgstr "一些预测不依赖于“ETA”"
-
-msgid "parameters:"
-msgstr "参数:"
+msgid "endpoint parameter(s) missing, duplicated, or defined with '~':"
+msgstr ""
 
 msgid ","
 msgstr ","
 
-msgid "cannot figure out PK parameters to convert"
-msgstr "无法找出要转换的PK参数"
+msgid ""
+"a rxode2 ui model must have more than error definition(s) in the `model({})` "
+"block"
+msgstr ""
+
+msgid "install.packages('shiny') to use genShinyApp.template()"
+msgstr ""
+
+msgid "need 'amt' aesthetic"
+msgstr "amt"
+
+msgid "need 'x' aesthetic"
+msgstr "x"
+
+msgid "stat_cens cannot have lower aesthetic with cens aesthetic"
+msgstr "stat_censcenslower"
+
+msgid ""
+"stat_cens requires the following aesthetics: upper, lower or cens (and "
+"optionally limit)"
+msgstr "stat_cens\"(upper)\"\"(lower)\"\"(cens)\"\"(limit)\""
+
+#, fuzzy
+msgid "unknown variable expression:"
+msgstr ""
+
+#, fuzzy
+msgid "rxode2 does not know how to handle this modelExtract object"
+msgstr "\"(errors)\"/\"(PRED)\""
+
+msgid "out"
+msgstr ""
+
+msgid "could not build model for inclusion in package"
+msgstr ""
+
+msgid "'package' needs to be specified"
+msgstr "package()"
+
+msgid "some etas defaulted to non-mu referenced, possible parsing error:"
+msgstr ""
+
+msgid ""
+"as a work-around try putting the mu-referenced expression on a simple line"
+msgstr ""
+
+msgid "currently do not support IOV etc"
+msgstr ""
+
+msgid "syntax/parsing errors (see above) and additionally:"
+msgstr ""
+
+msgid "syntax/parsing errors:"
+msgstr ""
+
+msgid "syntax/parsing errors, see above"
+msgstr ""
+
+#, fuzzy
+msgid "cannot find parameter '"
+msgstr "PK"
+
+msgid "trying to fix '"
+msgstr ""
+
+msgid "', but already fixed"
+msgstr ""
+
+msgid "trying to unfix '"
+msgstr ""
+
+msgid "', but already unfixed"
+msgstr ""
+
+msgid "piping for '"
+msgstr ""
+
+msgid "' failed, the estimate should only be 1 value"
+msgstr ""
+
+msgid "the '"
+msgstr ""
+
+msgid "' piping lower, estimate, and/or upper estimate is in the wrong order"
+msgstr ""
+
+msgid "the new label for '"
+msgstr ""
+
+#, fuzzy
+msgid "' must be a character string"
+msgstr "df 0"
+
+msgid "'append' must be NULL, logical, numeric, or character"
+msgstr ""
+
+msgid "Cannot find parameter '"
+msgstr ""
+
+#, fuzzy
+msgid "parameter '"
+msgstr ":"
+
+msgid "' set to be moved after itself, no change in order made"
+msgstr ""
+
+msgid "only theta parameters can be moved.  '"
+msgstr ""
+
+msgid "' is not a theta parameter"
+msgstr ""
+
+msgid "a NULL value for '"
+msgstr ""
+
+#, fuzzy
+msgid "' piping does not make sense"
+msgstr "\"duplicate()\""
+
+msgid "to assign a new label, use '%s <- label(\"%s\")'"
+msgstr ""
+
+msgid "invalid expr for ini() modification"
+msgstr ""
+
+#, fuzzy
+msgid "cannot figure out what to do with the ini({}) function"
+msgstr ""
+
+msgid "cannot find '"
+msgstr ""
+
+msgid "' in lhs model, cannot append"
+msgstr ""
+
+msgid "the variable '"
+msgstr ""
+
+msgid "' must be in the defined the model for piping this: '"
+msgstr ""
+
+msgid "with single endpoint model prediction '"
+msgstr ""
+
+msgid "' is changed to '"
+msgstr ""
+
+msgid "the error '"
+msgstr ""
+
+msgid "' is not in the multiple-endpoint model and cannot be modified"
+msgstr ""
+
+#, fuzzy
+msgid "do not know where to put label"
+msgstr ""
+
+#, fuzzy
+msgid "cannot figure out what to do with the unnamed vector"
+msgstr ""
+
+#, fuzzy
+msgid "cannot figure out what to do with the unnamed list"
+msgstr ""
+
+msgid "one of the list items supplied to piping is non-numeric"
+msgstr ""
+
+msgid "vectors and list need to be named numeric expression"
+msgstr ""
+
+msgid ""
+"the `sim` endpoints requested in the plot do not exist in the solved object:"
+msgstr ""
+
+msgid ""
+"some `sim` requested items do not exist in the solved object and were "
+"ignored:"
+msgstr ""
+
+msgid "sim."
+msgstr ""
+
+msgid "the items requested in the plot do not exist in the solved object:"
+msgstr ""
+
+msgid ""
+"some requested items do not exist in the solved object and were ignored:"
+msgstr ""
+
+msgid "needs \"ggplot2\" 3.3.0"
+msgstr "ggplot2 3.3.0"
+
+msgid "'rxIndLinState' list element '%s' must be a unnamed character vector"
+msgstr "'rxIndLinState'  '%s' "
+
+msgid "'%s' is from '%s' and cannot be used in this context"
+msgstr "%s%s"
 
 msgid "unsupported lhs in optimize expression"
-msgstr "优化表达式中不支持lhs"
+msgstr "lhs"
 
 msgid "cannot divide by zero"
-msgstr "不能除以零"
+msgstr ""
 
 msgid "error optimizing expression, try 'optExpression=FALSE'"
-msgstr "优化表达式时出错，请尝试“optExpression=FALSE”"
+msgstr "optExpression=FALSE"
 
 msgid "'iCov' in a pipline is no longer supported"
-msgstr "管道中的“iCov”不再被支持"
+msgstr "iCov"
 
 msgid "unknown arguments in 'rxParams'"
-msgstr "在“rxParams”中由未知的参数"
+msgstr "rxParams"
 
-msgid "unknown arguments in 'rxParams': %s\n"
+msgid ""
+"unknown arguments in 'rxParams': %s\n"
 "try piping to 'rxSolve'"
-msgstr "在“rxParams”中由未知的参数： %s\n"
-"尝试管道连接到“rxSolve”"
+msgstr ""
+"rxParams %s\n"
+"rxSolve"
 
 msgid "unsupported expression"
-msgstr "不支持的表达式"
+msgstr ""
 
 msgid "using the first solved parameters for rxShiny"
-msgstr "使用 rxShiny 的第一个已求解参数"
+msgstr " rxShiny "
 
 msgid "this has to be a matrix of all 1s or 0s"
-msgstr "这必须是一个全是1或0的矩阵"
+msgstr "10"
 
 msgid "diagonal elements must be non-zero"
-msgstr "对角线元素必须不为零"
+msgstr ""
 
 msgid "diagonal form:"
-msgstr "对角线形式:"
+msgstr ":"
 
 msgid "calculate symbolic inverse: t(chol.mat) %*% chol.mat ..."
-msgstr "计算符号逆： t(chol.mat) %*% chol.mat ..."
+msgstr " t(chol.mat) %*% chol.mat ..."
+
+msgid "."
+msgstr "."
 
 msgid "initial 'omega' matrix inverse is non-positive definite"
-msgstr "初始“omega”矩阵逆是非正定的"
+msgstr "omega"
 
 msgid "zero matrix"
-msgstr "零矩阵"
+msgstr ""
+
+msgid "object is wrong type for `rxUiGet`"
+msgstr ""
 
 msgid "================================================================================"
 msgstr "================================================================================"
 
-msgid "rxode2 compiled with dparser '"
-msgstr "rxode2编译自dparser '"
-
-msgid "' but dparser '"
-msgstr "'但是dparser'"
-
-msgid "dparser"
-msgstr "dparser"
-
-msgid "' is loaded\n"
-"Recompile rxode2 with the this version of dparser"
-msgstr "' 已加载\n"
-"使用此版本的 dparser 重新编译 rxode2"
-
 msgid "rxode2 compiled with PreciseSums '"
-msgstr "rxode2编译自PrecisionSums '"
+msgstr "rxode2PrecisionSums '"
 
 msgid "' but PreciseSums '"
-msgstr "'但是PreciseSums'"
+msgstr "'PreciseSums'"
 
 msgid "PreciseSums"
 msgstr "PreciseSums"
 
-msgid "' is loaded\n"
+msgid ""
+"' is loaded\n"
 "Recompile rxode2 with the this version of PreciseSums"
-msgstr "' 已加载\n"
-"使用此版本的 PrecisionSums 重新编译 rxode2"
+msgstr ""
+"' \n"
+" PrecisionSums  rxode2"
 
-msgid "Rtools is not set up correctly!\n"
-"\n"
-"You need a working Rtools installation for rxode2 to compile models"
-msgstr "Rtools设置不正确！\n"
-"\n"
-"您需要一个有效的 Rtools 安装来编译模型"
+msgid "rxode2 compiled with rxode2parse with a different solving structure"
+msgstr ""
+
+msgid "can try: install.packages('rxode2', type='source')"
+msgstr ""
 
 msgid "rxode2"
 msgstr "rxode2"
 
 msgid "using"
-msgstr "使用"
+msgstr ""
 
 msgid "threads (see ?getRxThreads)"
-msgstr "线程（请参阅?getRxThreads）"
+msgstr "?getRxThreads"
 
 msgid "no cache: create with `rxCreateCache()`"
-msgstr "无缓存：使用 'rxCreateCache()' 创建"
+msgstr " 'rxCreateCache()' "
 
 msgid "========================================"
 msgstr "========================================"
 
-msgid "rxode2 has not detected OpenMP support and will run in single-threaded mode"
-msgstr "rxode2 未检测到 OpenMP 支持，将在单线程模式下运行"
+msgid ""
+"rxode2 has not detected OpenMP support and will run in single-threaded mode"
+msgstr "rxode2  OpenMP "
 
 msgid "sysname"
-msgstr "系统名称"
+msgstr ""
 
 msgid "Darwin"
 msgstr "Darwin"
 
 msgid "This is a Mac. Please read https://mac.r-project.org/openmp/"
-msgstr "这是一台Mac。请阅读 https://mac.r-project.org/openmp/"
+msgstr "Mac https://mac.r-project.org/openmp/"
 
 msgid "The system is"
-msgstr "该系统是"
+msgstr ""
 
 msgid "; To get best performance enable OpenMP"
-msgstr ";要获得最佳性能，请启用 OpenMP"
+msgstr "; OpenMP"
 
 msgid "detected new version of rxode2, cleaning cache"
-msgstr "检测到新版本的 rxode2，正在清理缓存"
+msgstr " rxode2"
+
+msgid "'modName' has to be a single length character"
+msgstr "modName"
+
+msgid "'extraC' needs to point to a file that exists and is readable"
+msgstr "extraC"
+
+msgid "'collapseModel' needs to be logical"
+msgstr "collapseModel"
+
+msgid "'indLin' needs to be logical"
+msgstr "indLin"
+
+msgid "'debug' needs to be logical"
+msgstr "(debug)"
+
+msgid "'package' needs to a single character for the package name"
+msgstr ""
+
+msgid "with packages 'modName' is required"
+msgstr "modName"
+
+msgid "must specify exactly one of 'model' or 'filename'"
+msgstr "model()filename()"
+
+msgid "model functions can only be called with one argument"
+msgstr ""
+
+msgid "cannot delete Dll in package"
+msgstr " Dll"
+
+msgid "'$parse' is no longer supported"
+msgstr "$parse"
+
+msgid "cannot update package model"
+msgstr ""
+
+msgid "cannot figure out how to handle the model argument"
+msgstr ""
+
+msgid "sensitivities do not make sense for models without ODEs"
+msgstr ""
+
+msgid "Jacobians do not make sense for models without ODEs"
+msgstr ""
+
+msgid "Do not know how to add %s to rxode2 solved object %s"
+msgstr " %s  rxode2  %s"
+
+msgid "unknown model"
+msgstr ""
+
+msgid "model"
+msgstr ""
+
+msgid "cannot create rxode2 model"
+msgstr " rxode2 "
+
+#, fuzzy
+msgid "cannot seem to remove '"
+msgstr " rxode2 "
+
+msgid "rxode2 already building model, waiting for lock file removal"
+msgstr "rxode2 "
+
+msgid "lock file: \"%s\""
+msgstr "%s"
+
+msgid "error building model on another thread"
+msgstr ""
+
+msgid "do not need to recompile, minimal change to model detected"
+msgstr ""
+
+msgid "unloaded all rxode2 dlls before loading the current DLL"
+msgstr " DLL  rxode2 dll"
+
+msgid "something went wrong in compilation"
+msgstr ""
+
+msgid "'removeJac' is no longer supported"
+msgstr "removeJac"
+
+msgid "'removeSens' is no longer supported"
+msgstr "removeSens"
+
+msgid "need an rxode2-type object to extract model variables"
+msgstr ""
 
 msgid "'df' must be greater than 0"
-msgstr "“df”必须大于 0"
+msgstr "df 0"
 
 msgid "'shape1' cannot be 0"
-msgstr "“shape1”不能为 0"
+msgstr "shape1 0"
 
 msgid "'shape2' cannot be 0"
-msgstr "“shape2”不能为 0"
+msgstr "shape2 0"
 
 msgid "'shape' cannot be 0"
-msgstr "“shape”不能为 0"
-
-msgid "'rate'/'scale' cannot be 0"
-msgstr "“rate”(输注速率)/“scale”(缩放)不能为 0"
-
-msgid "specify 'rate' or 'scale' but not both"
-msgstr "描述“rate”或“scale”，但不能同时描述两者"
-
-msgid "'df1' cannot be 0"
-msgstr "“df1”不能为 0"
-
-msgid "'df2' cannot be 0"
-msgstr "“df2”不能为 0"
+msgstr "shape 0"
 
 msgid "'rate' cannot be 0"
-msgstr "“rate”不能为 0"
+msgstr "rate 0"
+
+msgid "'df1' cannot be 0"
+msgstr "df1 0"
+
+msgid "'df2' cannot be 0"
+msgstr "df2 0"
 
 msgid "'df' cannot be 0"
-msgstr "“df”不能为 0"
+msgstr "df 0"
 
 msgid "'scale' cannot be 0"
-msgstr "“scale”不能为 0"
+msgstr "scale 0"
 
 msgid "when 'gamma' is not 1, 'tmax' cannot be infinite"
-msgstr "当“Gamma”不是1时，“tmax”不能是无穷大"
+msgstr "Gamma1tmax"
 
-msgid "duplicate arguments do not make sense"
-msgstr "\"duplicate(创建副本)\"的参数没有意义"
+#, fuzzy
+msgid "'transitAbs' is no longer supported, use 'evid=7' instead"
+msgstr "$parse"
 
-msgid "covariates can no longer be specified by 'covs' include them in the event dataset"
-msgstr "协变量不能再由“covs”描述，将它们包含在事件数据集中"
+msgid "unused argument:"
+msgstr ""
+
+msgid ""
+"covariates can no longer be specified by 'covs' include them in the event "
+"dataset"
+msgstr "covs"
+
+#, fuzzy
+msgid "'maxSS' must be larger than 'minSS'"
+msgstr "df 0"
 
 msgid "events can be pipeline or solving arguments not both"
-msgstr "事件可以是管道或求解参数，而不是两者兼而有之"
+msgstr ""
 
 msgid "need an rxode2 compiled model as the start of the pipeline"
-msgstr "需要一个已编译的rxode2模型作为管道的开始"
+msgstr "rxode2"
 
 msgid "need an rxode2 events as a part of the pipeline"
-msgstr "需要 rxode2 事件作为管道的一部分"
+msgstr " rxode2 "
 
 msgid "'events' in pipeline AND in solving arguments, please provide just one"
-msgstr "管道中的“事件”(events)和求解参数，请只提供一个"
+msgstr "(events)"
 
 msgid "'params' in pipeline AND in solving arguments, please provide just one"
-msgstr "管道中的“参数”(params)和求解参数，请只提供一个"
+msgstr "(params)"
 
 msgid "'inits' in pipeline AND in solving arguments, please provide just one"
-msgstr "管道中的“inits”和求解参数，请只提供一个"
+msgstr "inits"
 
-msgid "covariates can no longer be specified by 'covs'\n"
+msgid "duplicate arguments do not make sense"
+msgstr "\"duplicate()\""
+
+msgid ""
+"covariates can no longer be specified by 'covs'\n"
 "  include them in the event dataset\n"
 "\n"
 "individual covariates: Can be specified by a 'iCov' dataset\n"
@@ -442,286 +674,310 @@ msgid "covariates can no longer be specified by 'covs'\n"
 "  'eventTable' to include covariates(https://tinyurl.com/y52wfc2y)\n"
 "\n"
 "Each approach needs the covariates named to match the variable in the model"
-msgstr "协变量不能再由“covs”描述\n"
-"  将它们包含在事件数据集中\n"
+msgstr ""
+"covs\n"
+"  \n"
 "\n"
-"单个协变量：可由“iCov”数据集指定\n"
-" 每个协变量都有一个值\n"
+"iCov\n"
+" \n"
 "\n"
-"时变协变量：修改输入事件数据框或\n"
-"  包含协变量的“事件表”（https://tinyurl.com/y52wfc2y）\n"
 "\n"
-"每种方法都需要命名的协变量来匹配模型中的变量"
+"  https://tinyurl.com/y52wfc2y\n"
+"\n"
+""
 
-msgid "'iCov' has information contained in parameters/event data\n"
+msgid ""
+"'iCov' has information contained in parameters/event data\n"
 "duplicate columns: '%s'"
-msgstr "“iCov”包含参数/事件数据中包含的信息\n"
-"创建列的副本：“%s”"
+msgstr ""
+"iCov/\n"
+"%s"
+
+msgid "', '"
+msgstr "', '"
 
 msgid "'theta' cannot be a data.frame"
-msgstr "“theta”不能是一个\"数据帧(data.frame)\""
+msgstr "theta\"(data.frame)\""
 
 msgid "'theta' can only have 1 row"
-msgstr "“theta”只能有 1 行"
+msgstr "theta 1 "
 
 msgid "name specification for 'theta' is ignored"
-msgstr "“theta”的名称描述已被丢弃"
+msgstr "theta"
 
 msgid "'eta' cannot be a data.frame"
-msgstr "“eta”不能是一个\"数据帧(data.frame)\""
+msgstr "eta\"(data.frame)\""
 
 msgid "'eta' can only have 1 row"
-msgstr "“eta”只能有 1 行"
+msgstr "eta 1 "
 
 msgid "name specification for 'eta' is ignored"
-msgstr "“eta”的名称描述已被丢弃"
+msgstr "eta"
 
 msgid "cannot specify 'params' and 'theta'/'eta' at the same time"
-msgstr "不能同时指定“params”和“theta”/“eta”"
+msgstr "paramstheta/eta"
 
 msgid "Cannot detect an event data frame to merge 'iCov'"
-msgstr "无法检测到要合并“iCov”的事件数据框"
+msgstr "iCov"
 
 msgid "to use 'iCov' you must have an id in your event table"
-msgstr "要使用“iCov”，您必须在事件表中有一个 id"
+msgstr "iCov id"
 
 msgid "'iCov' and 'id' mismatch"
-msgstr "“iCov”和“id”不匹配"
+msgstr "iCovid"
 
 msgid "iCov has duplicate IDs, cannot continue"
-msgstr "iCov 有重复的 ID，无法继续"
+msgstr "iCov  ID"
 
 msgid "combining iCov and events dropped some event information"
-msgstr "结合iCov和事件丢弃了一些事件信息"
+msgstr "iCov"
 
 msgid "combining iCov and events dropped some iCov information"
-msgstr "结合iCov和事件丢弃了一些iCov信息"
+msgstr "iCoviCov"
 
 msgid "'iCov' must be an input dataset"
-msgstr "“iCov”必须是输入数据集"
+msgstr "iCov"
+
+msgid "Unsupported type of model trying to be solved"
+msgstr ""
+
+msgid "'sensCmt' must be lower than the number of compartments 'ncmt'"
+msgstr ""
+
+msgid "'rxControl' must be a rxode2 control options list"
+msgstr ""
 
 msgid "name argument must be a length-one character vector"
-msgstr "\"名称(name)\"参数必须是长度为一的字符向量"
+msgstr "\"(name)\""
 
 msgid "a new function requires a C function so it can be used in rxode2"
-msgstr "一个新函数需要一个C函数，这样它就能在 rxode2 中使用"
+msgstr "C rxode2 "
 
 msgid "already defined user function '"
-msgstr "已定义的用户函数”"
+msgstr ""
 
 msgid "', remove it fist ('rxRmFun')"
-msgstr "'，应首先移除它（'rxRmFun'）"
+msgstr "''rxRmFun'"
 
 msgid "no user function '"
-msgstr "无用户函数 '"
+msgstr " '"
 
 msgid "' to remove"
-msgstr "'要移除"
-
-msgid "cannot take a second derivative"
-msgstr "不能取二阶导数"
-
-msgid "bad 'linCmtB' derivative"
-msgstr "坏的“linCmtB”衍生"
+msgstr "'"
 
 msgid "derivatives must be a list of functions with at least 1 element"
-msgstr "导数必须是至少包含 1 个元素的函数列表"
+msgstr " 1 "
 
 msgid "replacing defined derivatives for '%s'"
-msgstr "替换 '%s' 的定义导数"
+msgstr " '%s' "
 
 msgid "only 'THETA[#]' or 'ETA[#]' are supported"
-msgstr "仅支持“THETA[#]”或“ETA[#]”"
+msgstr "THETA[#]ETA[#]"
 
 msgid "() must be used with a state"
-msgstr "() 必须与状态一起使用"
+msgstr "() "
 
 msgid "() can have 0-1 arguments"
-msgstr "() 可以有 0-1 个参数"
+msgstr "()  0-1 "
 
 msgid "() takes 1-2 arguments"
-msgstr "() 需要 1-2 个参数"
+msgstr "()  1-2 "
 
 msgid "() must be used with a variable"
-msgstr "() 必须与变量一起使用"
+msgstr "() "
 
 msgid "("
 msgstr "("
 
 msgid ", #) must have an integer for the number of lagged doses"
-msgstr "， #) 必须有一个整数用于滞后的给药"
+msgstr " #) "
 
 msgid "'psigamma' takes 2 arguments"
-msgstr "“psigamma”接收 2 个参数"
+msgstr "psigamma 2 "
 
 msgid "'log1pmx' only takes 1 argument"
-msgstr "'log1pmx' 只接收 1 个参数"
+msgstr "'log1pmx'  1 "
 
 msgid "'choose' takes 2 arguments"
-msgstr "“choose”接收 2 个参数"
+msgstr "choose 2 "
 
 msgid "'lchoose' takes 2 arguments"
-msgstr "'lchoose' 接收 2 个参数"
+msgstr "'lchoose'  2 "
 
 msgid "'pnorm' can only take 1-3 arguments"
-msgstr "“pnorm”只接收1-3个参数"
+msgstr "pnorm1-3"
 
 msgid "'transit' can only take 2-3 arguments"
-msgstr "“transit”只接收2-3 个参数"
+msgstr "transit2-3 "
 
-msgid "'%s' only acceps 1 argument"
-msgstr "'%s' 仅接受 1 个参数"
+#, fuzzy
+msgid "'%s' only accepts 1 argument"
+msgstr "'%s'  1 "
 
 msgid "'%s' only acceps 2 arguments"
-msgstr "'%s' 仅接受 2 个参数"
+msgstr "'%s'  2 "
 
 msgid "'%s' takes %s arguments (has %s)"
-msgstr "'%s' 接收 %s 参数（具有 %s）"
+msgstr "'%s'  %s  %s"
 
 msgid "'probitInv' requires 1-3 arguments"
-msgstr "“probitInv”需要 1-3 个参数"
+msgstr "probitInv 1-3 "
 
 msgid "'probit' requires 1-3 arguments"
-msgstr "“probit”需要 1-3 个参数"
+msgstr "probit 1-3 "
 
 msgid "'logit' requires 1-3 arguments"
-msgstr "“logit”需要 1-3 个参数"
+msgstr "logit 1-3 "
 
 msgid "'expit' requires 1-3 arguments"
-msgstr "“expit”需要 1-3 个参数"
+msgstr "expit 1-3 "
 
 msgid "function '%s' or its derivatives are not supported in rxode2"
-msgstr "函数 '%s' 或其导数在 rxode2 中不受支持"
+msgstr " '%s'  rxode2 "
+
+#, fuzzy
+msgid ""
+"R user function '%s' has variable number of arguments with'...' and is not "
+"supported in rxode2"
+msgstr " '%s'  rxode2 "
+
+msgid "user function '%s' requires %d arguments (supplied %d)"
+msgstr ""
 
 msgid "[...] expressions not supported"
-msgstr "[...]不支持的表达式"
+msgstr "[...]"
 
 msgid "'polygamma' takes 2 arguments"
-msgstr "“polygamma”接收 2 个参数"
+msgstr "polygamma 2 "
+
+msgid "'%s' only acceps 1 argument"
+msgstr "'%s'  1 "
 
 msgid "'%s' takes %s arguments"
-msgstr "'%s' 接收 %s 参数"
+msgstr "'%s'  %s "
 
 msgid "only forward and central differences are supported"
-msgstr "仅支持前向和中心差分"
+msgstr ""
 
 msgid "cannot figure out the '%s' derivative with respect to '%s'"
-msgstr "无法计算出相对于“%s”的“%s”导数"
+msgstr "%s%s"
 
 msgid "an error occurred looking up the derivative for '"
-msgstr "查找'"
+msgstr "'"
 
 msgid "' using numerical differences instead"
-msgstr "'导数时遇到一个错误，因此改用数值差分"
+msgstr "'"
 
 msgid "rxode2/symengine does not know how to take a derivative of '%s'"
-msgstr "rxode2/symengine 不知道如何取 '%s' 的导数"
+msgstr "rxode2/symengine  '%s' "
 
 msgid "'Derivative' conversion only takes one function and one argument"
-msgstr "“Derivative”转换只需要一个函数和一个参数"
+msgstr "Derivative"
 
 msgid "() takes 0-1 arguments"
-msgstr "() 接收 0-1 个参数"
+msgstr "()  0-1 "
 
 msgid "'%s' not supported in symengine->rxode2"
-msgstr "“%s”在符号引擎>rxode2 中不受支持"
+msgstr "%s>rxode2 "
 
 msgid "rxode2 doesn't support '%s' translation for 'Omega' translation"
-msgstr "rxode2 不支持对的'Omega'转换的'%s'转换"
+msgstr "rxode2 'Omega''%s'"
 
 msgid "do not know how to handle type"
-msgstr "不知道如何处理类型"
+msgstr ""
 
 msgid "'lnorm' can only be in an error function"
-msgstr "“lnorm”只能在误差函数中"
+msgstr "lnorm"
 
 msgid "'lnorm' cannot be used with other data transformations"
-msgstr "“lnorm”不能与其他数据转换一起使用"
+msgstr "lnorm"
 
 msgid "'logitNorm' can only be in an error function"
-msgstr "“logitNorm”只能在误差函数中"
+msgstr "logitNorm"
 
 msgid "'logitNorm' cannot be used with other data transformations"
-msgstr "“logitNorm”不能与其他数据转换一起使用"
+msgstr "logitNorm"
 
 msgid "'probitNorm' can only be in an error function"
-msgstr "“probitNorm”只能在误差函数中"
+msgstr "probitNorm"
 
 msgid "'probitNorm' cannot be used with other data transformations"
-msgstr "“probitNorm”不能与其他数据转换一起使用"
+msgstr "probitNorm"
 
 msgid "'boxCox' can only be in an error function"
-msgstr "“boxCox”只能在误差函数中"
+msgstr "boxCox"
 
 msgid "'boxCox' cannot be used with other data transformations"
-msgstr "“boxCox”不能与其他数据转换一起使用"
+msgstr "boxCox"
 
 msgid "'yeoJohnson' can only be in an error function"
-msgstr "“yeoJohnson”只能在误差函数中"
+msgstr "yeoJohnson"
 
 msgid "'yeoJohnson' cannot be used with other data transformations"
-msgstr "“yeoJohnson”不能与其他数据转换一起使用"
+msgstr "yeoJohnson"
 
 msgid "'add' can only be in an error function"
-msgstr "“add”只能在误差函数中"
+msgstr "add"
 
 msgid "'for' is not supported"
-msgstr "“for”不被支持"
+msgstr "for"
 
 msgid "The PK function should not return anything"
-msgstr "PK 函数不应返回任何内容"
+msgstr "PK "
 
 msgid "'prop' can only be in an error function"
-msgstr "“prop”只能在误差函数中"
+msgstr "prop"
 
 msgid "'propT' can only be in an error function"
-msgstr "“propT”只能在误差函数中"
+msgstr "propT"
 
 msgid "'pow' can only be in an error function"
-msgstr "“pow”只能在误差函数中"
+msgstr "pow"
 
 msgid "'powT' can only be in an error function"
-msgstr "“powT”只能在误差函数中"
+msgstr "powT"
 
 msgid "use 'return' for errors"
-msgstr "对\"误差(errors)\"使用“return”"
+msgstr "\"(errors)\"return"
 
-msgid "errors and predictions need to have the same conditions ('if'/'then' statements)"
-msgstr "误差和预测需要具有相同的条件（“if”/“then”语句）"
+msgid ""
+"errors and predictions need to have the same conditions ('if'/'then' "
+"statements)"
+msgstr "if/then"
 
 msgid "do not know how to handle this error/pred combination"
-msgstr "不知道如何处理此\"误差(errors)\"/\"预测(PRED)\"组合"
+msgstr "\"(errors)\"/\"(PRED)\""
 
 msgid "Don't know how to handle type '"
-msgstr "不知道如何处理类型 '"
+msgstr " '"
 
 msgid "'."
 msgstr "'."
 
-msgid "package \"%s\" needed for this function to work"
-msgstr "此函数正常工作需要的添加包“%s”"
+#, fuzzy
+msgid "cannot figure out what to do with model assignment"
+msgstr ""
 
-msgid "'wd' is depreciated"
-msgstr "“wd”已折旧(此处指清理的意思)"
+#, fuzzy
+msgid "cannot figure out what to do with ini assignment"
+msgstr ""
 
-msgid "'rxSetSum' has been moved to rxSolve(...,sum=)"
-msgstr "'rxSetSum' 已移至rxSolve(...,sum=)"
+msgid "wrong input for 'x' in .bodySetRxUi"
+msgstr ""
 
-msgid "'rxSetProd' has been moved to rxSolve(...,sum=)"
-msgstr "'rxSetProd' 已移至rxSolve(...,sum=)"
+#, fuzzy
+msgid "cannot figure out how to assign this to the with rxode()<-"
+msgstr ""
 
-msgid "provide either threads= or percent= but not both"
-msgstr "提供threads=或percent=，但不能同时提供两者"
+#, fuzzy
+msgid "do not know how to assign this"
+msgstr ""
 
-msgid "percent= is provided but is length"
-msgstr "提供百分比=，但是长度"
+msgid ""
+"the first model does not have variables that are used by the second model"
+msgstr ""
 
-msgid "percent=="
-msgstr "百分比=="
+msgid "there needs to be at least one population parameter in 'model1'"
+msgstr ""
 
-msgid "but should be a number between 2 and 100"
-msgstr "但应该是 2 到 100 之间的数字"
-
-msgid "%s%s"
-msgstr "%s%s"
-
+msgid ""
