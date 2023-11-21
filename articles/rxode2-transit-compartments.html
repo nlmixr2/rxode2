@@ -23,7 +23,7 @@
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
+<![endif]--><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.13.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.14.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Transit Compartment Models</h1>
             
-            <h4 data-toc-skip class="date">2023-08-22</h4>
+            <h4 data-toc-skip class="date">2023-11-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-transit-compartments.Rmd" class="external-link"><code>vignettes/rxode2-transit-compartments.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-transit-compartments.Rmd</code></div>
@@ -171,10 +171,11 @@ special handling of these models:</p>
 <p>You can specify this in a similar manner as the original paper:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## rxode2 2.0.13.9000 using 1 threads (see ?getRxThreads)</span></span>
+<pre><code><span><span class="co">## rxode2 2.0.14.9000 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">##   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="co">## Table 3 from Savic 2007</span></span>
 <span>    <span class="va">cl</span> <span class="op">=</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span></span>
 <span>    <span class="va">vc</span> <span class="op">=</span> <span class="fl">45.1</span> <span class="co"># L</span></span>
@@ -188,46 +189,50 @@ special handling of these models:</p>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">bio</span><span class="op">*</span><span class="fu">podo</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">)</span><span class="op">+</span><span class="va">n</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">)</span><span class="op">-</span></span>
 <span>                        <span class="va">ktr</span><span class="op">*</span><span class="fu">tad</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span><span class="op">-</span><span class="fu">lgammafn</span><span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span></span>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">20</span>, time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-transit-compartments_files/figure-html/unnamed-chunk-3-1.png" width="100%"></p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="rxode2-transit-compartments_files/figure-html/unnamed-chunk-5-1.png" width="100%"></p>
 <p>Another option is to specify the transit compartment function
 <code>transit</code> syntax. This specifies the parameters
 <code>transit(number of transit compartments, mean transit time, bioavailability)</code>.
 The bioavailability term is optional.</p>
 <p>The same model can be specified by:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="co">## Table 3 from Savic 2007</span></span>
-<span>    <span class="va">cl</span> <span class="op">=</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span></span>
-<span>    <span class="va">vc</span> <span class="op">=</span> <span class="fl">45.1</span> <span class="co"># L</span></span>
-<span>    <span class="va">ka</span> <span class="op">=</span> <span class="fl">0.38</span> <span class="co"># 1/hr</span></span>
-<span>    <span class="va">mtt</span> <span class="op">=</span> <span class="fl">0.37</span> <span class="co"># hr</span></span>
-<span>    <span class="va">bio</span><span class="op">=</span><span class="fl">1</span></span>
-<span>    <span class="va">n</span> <span class="op">=</span> <span class="fl">20.1</span></span>
-<span>    <span class="va">k</span> <span class="op">=</span> <span class="va">cl</span><span class="op">/</span><span class="va">vc</span></span>
-<span>    <span class="va">ktr</span> <span class="op">=</span> <span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">/</span><span class="va">mtt</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="fu">transit</span><span class="op">(</span><span class="va">n</span>,<span class="va">mtt</span>,<span class="va">bio</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<span>    <span class="va">cl</span>  <span class="op">&lt;-</span> <span class="fl">17.2</span> <span class="co"># (L/hr)</span></span>
+<span>    <span class="va">vc</span>  <span class="op">&lt;-</span> <span class="fl">45.1</span> <span class="co"># L</span></span>
+<span>    <span class="va">ka</span>  <span class="op">&lt;-</span> <span class="fl">0.38</span> <span class="co"># 1/hr</span></span>
+<span>    <span class="va">mtt</span> <span class="op">&lt;-</span> <span class="fl">0.37</span> <span class="co"># hr</span></span>
+<span>    <span class="va">bio</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">n</span>   <span class="op">&lt;-</span> <span class="fl">20.1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">k</span>           <span class="op">&lt;-</span> <span class="va">cl</span><span class="op">/</span><span class="va">vc</span></span>
+<span>    <span class="va">ktr</span>         <span class="op">&lt;-</span> <span class="op">(</span><span class="va">n</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">/</span><span class="va">mtt</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu">transit</span><span class="op">(</span><span class="va">n</span>,<span class="va">mtt</span>,<span class="va">bio</span><span class="op">)</span><span class="op">-</span><span class="va">ka</span><span class="op">*</span><span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">cen</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">ka</span><span class="op">*</span><span class="va">depot</span><span class="op">-</span><span class="va">k</span><span class="op">*</span><span class="va">cen</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">20</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #00BBBB;">i</span> parameter labels from comments will be replaced by 'label()'</span></span></code></pre>
 <pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
-<span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">7</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>;</span>
-<span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span>, evid<span class="op">=</span><span class="fl">7</span><span class="op">)</span>;</span>
-<span></span>
-<span><span class="va">transit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">et</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="rxode2-transit-compartments_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">transit</span>, <span class="va">cen</span>, ylab<span class="op">=</span><span class="st">"Central Concentration"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="rxode2-transit-compartments_files/figure-html/unnamed-chunk-6-1.png" width="700"></p>
 <p>A couple of things to keep in mind when using this approach:</p>
 <ul>
 <li><p>This approach implicitly assumes that the absorption through the

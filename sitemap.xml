@@ -7,6 +7,9 @@
     <loc>https://nlmixr2.github.io/rxode2/LICENSE-text.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/articles/Integrating-User-Defined-Functions-into-rxode2.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/articles/index.html</loc>
   </url>
   <url>
@@ -100,6 +103,9 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/assertRxUi.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/binomProbs.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/coef.rxode2.html</loc>
   </url>
   <url>
@@ -128,6 +134,9 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-quoteCallInfoLines.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/dot-rxDocTable.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/dot-rxGetHiBoundaryPred1AndIni.html</loc>
@@ -205,7 +214,13 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/genShinyApp.template.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/getBaseIniSimModel.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/getBaseSimModel.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/getBaseSymengineModel.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/getRxThreads.html</loc>
@@ -275,6 +290,9 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/lowergamma.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/meanProbs.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/model-set.html</loc>
@@ -508,6 +526,9 @@
     <loc>https://nlmixr2.github.io/rxode2/reference/rxReservedKeywords.html</loc>
   </url>
   <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/rxResidualError.html</loc>
+  </url>
+  <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxS.html</loc>
   </url>
   <url>
@@ -515,6 +536,9 @@
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxSetCovariateNamesForPiping.html</loc>
+  </url>
+  <url>
+    <loc>https://nlmixr2.github.io/rxode2/reference/rxSetPipingAuto.html</loc>
   </url>
   <url>
     <loc>https://nlmixr2.github.io/rxode2/reference/rxSetProd.html</loc>

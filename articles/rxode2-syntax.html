@@ -23,7 +23,7 @@
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
+<![endif]--><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.13.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.14.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -153,7 +153,7 @@
 
 
 <script src="rxode2-syntax_files/htmlwidgets-1.6.2/htmlwidgets.js"></script><link href="rxode2-syntax_files/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet">
-<script src="rxode2-syntax_files/datatables-binding-0.28/datatables.js"></script><link href="rxode2-syntax_files/dt-core-1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
+<script src="rxode2-syntax_files/datatables-binding-0.30/datatables.js"></script><link href="rxode2-syntax_files/dt-core-1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
 <link href="rxode2-syntax_files/dt-core-1.13.4/css/jquery.dataTables.extra.css" rel="stylesheet">
 <script src="rxode2-syntax_files/dt-core-1.13.4/js/jquery.dataTables.min.js"></script><link href="rxode2-syntax_files/nouislider-7.0.10/jquery.nouislider.min.css" rel="stylesheet">
 <script src="rxode2-syntax_files/nouislider-7.0.10/jquery.nouislider.min.js"></script><link href="rxode2-syntax_files/selectize-0.12.0/selectize.bootstrap3.css" rel="stylesheet">
@@ -162,7 +162,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 ODE solving syntax</h1>
             
-            <h4 data-toc-skip class="date">2023-08-22</h4>
+            <h4 data-toc-skip class="date">2023-11-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-syntax.Rmd" class="external-link"><code>vignettes/rxode2-syntax.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-syntax.Rmd</code></div>
@@ -177,44 +177,138 @@
 <code>rxode2</code> will translate into R-callable compiled code. It
 also describes the communication of variables between <code>R</code> and
 the <code>rxode2</code> modeling specification.</p>
-<p>Below is a commented example to quickly show the capabilities of
-<code>rxode2</code> syntax.</p>
 </div>
 <div class="section level2">
-<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+<h2 id="creating-rxode2-models">Creating rxode2 models<a class="anchor" aria-label="anchor" href="#creating-rxode2-models"></a>
 </h2>
-<pre><code>   # An rxode2 model specification (this line is a comment).
-
-   if(comed==0){   # concomitant medication (con-med)?
-      F = 1.0;     # full bioavailability w.o. con-med
-   } 
-   else {
-      F = 0.80;    # 20% reduced bioavailability
-   }
-
-   C2 = centr/V2;  # concentration in the central compartment
-   C3 = peri/V3;   # concentration in the peripheral compartment
-
-   # ODE describing the PK and PD
-
-   d/dt(depot) = -KA*depot;
-   d/dt(centr) = F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-   d/dt(peri)  =                      Q*C2 - Q*C3;
-   d/dt(eff)   = Kin - Kout*(1-C2/(EC50+C2))*eff;</code></pre>
+<p>The ODE-based model specification may be coded inside four
+places:</p>
+<ul>
+<li>Inside a <code>rxode2({})</code> block statements:</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; rxode2 2.0.14.9000 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
+<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="co"># simple assignment</span></span>
+<span>  <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
+<span></span>
+<span>  <span class="co"># time-derivative assignment</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<ul>
+<li>Inside a <code>rxode2("")</code> string statement:</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="st">"</span></span>
+<span><span class="st">  # simple assignment</span></span>
+<span><span class="st">  C2 &lt;- centr/V2</span></span>
+<span><span class="st"></span></span>
+<span><span class="st">  # time-derivative assignment</span></span>
+<span><span class="st">  d/dt(centr) &lt;- F*KA*depot - CL*C2 - Q*C2 + Q*C3;</span></span>
+<span><span class="st">"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<ul>
+<li>In a file name to be loaded by rxode2:</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"</span></span>
+<span><span class="st">  # simple assignment</span></span>
+<span><span class="st">  C2 &lt;- centr/V2</span></span>
+<span><span class="st"></span></span>
+<span><span class="st">  # time-derivative assignment</span></span>
+<span><span class="st">  d/dt(centr) &lt;- F*KA*depot - CL*C2 - Q*C2 + Q*C3;</span></span>
+<span><span class="st">"</span>, <span class="st">"modelFile.rxode2"</span><span class="op">)</span></span>
+<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>filename<span class="op">=</span><span class="st">'modelFile.rxode2'</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="st">"modelFile.rxode2"</span><span class="op">)</span></span></code></pre></div>
+<ul>
+<li>In a model function which can be parsed by <code>rxode2</code>:</li>
+</ul>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="co"># simple assignment</span></span>
+<span>    <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
+<span></span>
+<span>    <span class="co"># time-derivative assignment</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="co"># or simply mod() if the model is at the end of the function</span></span>
+<span></span>
+<span><span class="co"># These model functions often have residual components and initial</span></span>
+<span><span class="co"># (`ini({})`) conditions attached as well. For example the</span></span>
+<span><span class="co"># theophylline model can be written as:</span></span>
+<span></span>
+<span><span class="va">one.compartment</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span> <span class="co"># Log Ka</span></span>
+<span>    <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="co"># Log Cl</span></span>
+<span>    <span class="va">tv</span> <span class="op">&lt;-</span> <span class="fl">3.45</span>    <span class="co"># Log V</span></span>
+<span>    <span class="va">eta.ka</span> <span class="op">~</span> <span class="fl">0.6</span></span>
+<span>    <span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">0.3</span></span>
+<span>    <span class="va">eta.v</span> <span class="op">~</span> <span class="fl">0.1</span></span>
+<span>    <span class="va">add.sd</span> <span class="op">&lt;-</span> <span class="fl">0.7</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">+</span> <span class="va">eta.ka</span><span class="op">)</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span><span class="op">)</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tv</span> <span class="op">+</span> <span class="va">eta.v</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">=</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">=</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">/</span> <span class="va">v</span> <span class="op">*</span> <span class="va">center</span></span>
+<span>    <span class="va">cp</span> <span class="op">=</span> <span class="va">center</span> <span class="op">/</span> <span class="va">v</span></span>
+<span>    <span class="va">cp</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># after parsing the model</span></span>
+<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">one.compartment</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>For the block statement, character string or text file an internal
+<code>rxode2</code> compilation manager translates the ODE system into
+C, compiles it and loads it into the R session. The call to
+<code>rxode2</code> produces an object of class <code>rxode2</code>
+which consists of a list-like structure (environment) with various
+member functions.</p>
+<p>For the last type of model (a model function), a call to
+<code>rxode2</code> creates a parsed <code>rxode2</code> ui that can be
+translated to the <code>rxode2</code> compilation model.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod</span><span class="op">$</span><span class="va">simulationModel</span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.14.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_5e576eead95810ba463d08b29f3901aa</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: cp</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$lhs</span>: ka, cl, v, cp, ipredSim, sim</span></span>
+<span></span>
+<span><span class="co"># or </span></span>
+<span><span class="va">mod</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.0.14.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_7da958cb1a0cef26156b441d0c1ac20e</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: cp</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$lhs</span>: ka, cl, v, cp, ipredSim, sim</span></span></code></pre></div>
+<p>This is the same type of function required for <code>nlmixr2</code>
+estimation and can be extended and modified by model piping. For this
+reason will be focused on in the documentation.</p>
 </div>
 <div class="section level2">
 <h2 id="syntax">Syntax<a class="anchor" aria-label="anchor" href="#syntax"></a>
 </h2>
-<p>An <code>rxode2</code> model specification consists of one or more
-statements optionally terminated by semi-colons <code>;</code> and
-optional comments (comments are delimited by <code>#</code> and an
+<p>This basic model specification consists of one or more statements
+optionally terminated by semi-colons <code>;</code> and optional
+comments (comments are delimited by <code>#</code> and an
 end-of-line).</p>
 <p>A block of statements is a set of statements delimited by curly
 braces, <code>{ ... }</code>.</p>
 <p>Statements can be either assignments, conditional
 <code>if</code>/<code>else if</code>/<code>else</code>,
 <code>while</code> loops (can be exited by <code><a href="https://rdrr.io/r/base/Control.html" class="external-link">break</a></code>), special
-statements, or printing statements (for debugging/testing)</p>
+statements, or printing statements (for debugging/testing).</p>
 <p>Assignment statements can be:</p>
 <ul>
 <li><p><strong>simple</strong> assignments, where the left hand is an
@@ -249,7 +343,9 @@ slightly slowed down the solving.</p></li>
 <code>&lt;-</code> or <code>~</code>.</p>
 <p>When assigning with the <code>~</code> operator, the <strong>simple
 assignments</strong> and <strong>time-derivative</strong> assignments
-will not be output.</p>
+will not be output. Note that with the <code>rxode2</code> model
+functions assignment with <code>~</code> can also be overloaded with a
+residual distribution specification.</p>
 <p>Special statements can be:</p>
 <ul>
 <li><p><strong>Compartment declaration statements</strong>, which can
@@ -265,10 +361,10 @@ specified by <code>param(par1, par2,...)</code></p></li>
 </ul>
 <p>An example model is shown below:</p>
 <pre><code><span>   <span class="co"># simple assignment</span></span>
-<span>   <span class="va">C2</span> <span class="op">=</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>;</span>
+<span>   <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
 <span></span>
 <span>   <span class="co"># time-derivative assignment</span></span>
-<span>   <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">=</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>; </span></code></pre>
+<span>   <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span></code></pre>
 <p>Expressions in assignment and <code>if</code> statements can be
 numeric or logical.</p>
 <p>Numeric expressions can include the following numeric operators
@@ -329,7 +425,7 @@ specification:</p>
 <li><code>ii</code></li>
 </ul>
 <p>Sometimes rxode2 generates variables that are fed back to rxode2.
-Similarly, nlmixr generates some variables that are used in nlmixr
+Similarly, nlmixr2 generates some variables that are used in nlmixr
 estimation and simulation. These variables start with the either the
 <code>rx</code> or <code>nlmixr</code> prefixes. To avoid any problems,
 it is suggested to not use these variables starting with either the
@@ -352,6 +448,246 @@ than numeric expressions. Unlike R, <code>as.numeric</code> or
 <code>as.integer</code> for these logical statements is not only not
 needed, but will cause an syntax error if you try to use the
 function.</p>
+</div>
+<div class="section level2">
+<h2 id="supported-functions">Supported functions<a class="anchor" aria-label="anchor" href="#supported-functions"></a>
+</h2>
+<p>All the supported functions in rxode2 can be seen with the
+<code><a href="../reference/rxSupportedFuns.html">rxSupportedFuns()</a></code>.</p>
+<p>A brief description of the built-in functions are in the following
+table:</p>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-86661cd1abe8ccacb65f" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-86661cd1abe8ccacb65f">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["gamma(x)","lgamma(x)","digamma(x)","trigamma(x)","tetragamma(x)","pentagamma(x)","psigamma(x, deriv)","cospi(x)","sinpi(x)","tanpi(x)","beta(a, b)","lbeta(a, b)","bessel_i(x, nu, expo)","bessel_j(x, nu)","bessel_k(x, ku, expo)","bessel_y(x, nu)","R_pow(x, y)","R_pow_di(x, I)","log1pmx","log1pexp","expm1(x)","lgamma1p(x)","sign(x)","fsign(x, y)","fprec(x, digits)","fround(x, digits)","ftrunc(x)","abs(x)","sin(x)","cos(x)","tan(x)","factorial(x)","lfactorial(x)","log10(x)","log2(x)","pnorm(x)","qnorm(x)","probit(x, low=0, hi=1)","probitInv(q, low=0, hi=1)","acos(x)","asin(x)","atan(x)","atan2(a, b)","sinh(x)","cosh(x)","tanh(x)","floor(x)","ceil(x)","logit(x, low=0, hi=1)","expit(x, low=0, hi=1)","gammaq(a, z)","gammaqInv(a, q)","ifelse(cond, trueValue, falseValue)","gammap(a, z)","gammapInv(a, p)","gammapInva(x, p)","rxnorm(x)","rxnormV(x)","rxcauchy","rxchisq","rxexp","rxf","rxgamma","rxbeta","rxgeom","rxpois","rxt","tad() or tad(x)","tafd() or tafd(x)","dosenum()","tlast() or tlast(cmt)","tfirst() or tfirst(cmt)","prod(...)","sum(...)","max(...)","min(...)","lag(parameter, number=1)","lead(parameter, number=2)","diff(par, number=1)","first(par)","last(par)","transit()","is.na()","is.nan()","is.infinite()","rinorm(x)","rinormV(x)","ricauchy","richisq","riexp","rif","rigamma","ribeta","rigeom","ropois","rit","simeps","simeta"],["The Gamma function","Natural logarithm of absolute value of gamma function","First derivative of lgamma","Second derivative of lgamma","Third derivative of lgamma","Fourth derivative of lgamma","n-th derivative of Psi, the digamma function, which is the derivative of lgammafn. In other words, digamma(x) is the same as psigamma(x,0), trigamma(x) == psigamma(x,1), etc. ","cos(pi*x)","sin(pi*x)","tan(pi*x)","Beta function","log Beta function","Bessel function type I with index nu","Bessel function type J with index nu","Bessel function type K with index nu","Bessel function type Y with index nu","x^y","x^y","log(1+x) - x ","log(1+exp(x))","exp(x)-1","log(gamma(x+1))","Compute the signum function where sign(x) is 1, 0 -1","abs(x)*sign(y)","x rounded to digits (after the decimal point, used by signif()","Round, used by R's round()","Truncated towards zero","absolute value of x","sine of x","cos of x","tan of x","factorial of x","log(factorial(x))","log base 10","log base 2","Normal CDF of x","Normal pdf of x","Probit (normal pdf) of x transforming into a range","Inverse probit of x transforming into a range","Inverse cosine","Inverse sine","Inverse tangent","Four quadrant inverse tangent","Hyperbolic sine","Hyperbolic cosine","Hyperbolic tangent","Downward rounding","Upward rounding","Logit transformation of x transforming into a range","expit transofmration in range","Normalized incomplete gamma from boost","Normalized incomplete gamma inverse from boost","if else function","Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Generate one deviate of from a normal distribution for each observation scale","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the cauchy distribution for each observation","Generate one deviate from the chisq distribution for each observation","Generate one deviate from the exponential distribution for each observation","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the gamma distribution for each observation","Generate one deviate from the beta distribution for each observation","Generate one deviate from the geometric distribution for each observation","Generate one deviate from the poission distribution for each observation","Generate one deviate from the t distribtuion for each observation","Time after dose (tad()) or time after dose for a compartment tad(cmt)","Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt)","Dose Number","Time of Last dose;  This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4.  tlast(cmt) calculates the time since last dose of a compartment","Time since first dose or time since first dose of a compartment","product of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","sum of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","maximum of a group of numbers","Min of a group of numbers","Get the lag of an input parameter; You can specify a number of lagged observations","Get the lead of an input parameter; You can specify a number of lead observation","Get the difference between the current parameter and the last parameter; Can change the parameter number","Get the first value of an input parameter","Get the last value of an input parameter","The transit compartment psuedo function","Determine if a value is NA","Determine if a value is NaN","Check to see if the value is infinite","Generate one deviate of from a normal distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the cauchy distribution for each individual","Generate one deviate from the chisq distribution for each individual","Generate one deviate from the exponential distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the gamma distribution for each individual","Generate one deviate from the beta distribution for each individual","Generate one deviate from the geometric distribution for each individual","Generate one deviate from the poission distribution for each individual","Generate one deviate from the t distribtuion for each individual","Simulate EPS from possibly truncated sigma matrix.  Will take sigma matrix from the current study. Simulated at the very last moment.","Simulate ETA from possibly truncated omega matrix.  Will take the omega matrix from the current study. Simulated at the initilization of the ODE system or the intialization of lhs"],["gammafn","digamma","","","","","","","","","",""," expo==1 is unscaled expo==2 is scaled by exp(-x)",""," expo==1 is unscaled expo==2 is scaled by exp(x)","",""," y is an integer","","","","","","","","","","fabs","","","","","","","","normcdf, phi","norminv","","","","","","","","","","","","","invLogit, logitInv","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Function<\/th>\n      <th>Description<\/th>\n      <th>Aliases<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>Note that <code>lag(cmt) =</code> is equivalent to
+<code>alag(cmt) =</code> and not the same as <code>= lag(wt)</code></p>
+</div>
+<div class="section level2">
+<h2 id="reserved-keywords">Reserved keywords<a class="anchor" aria-label="anchor" href="#reserved-keywords"></a>
+</h2>
+<p>There are a few reserved keywords in a rxode2 model. They are in the
+following table:</p>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-97db3a4311a29862bc71" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-97db3a4311a29862bc71">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["time","podo","tlast","M_E","M_LOG2E","M_LOG10E","M_LN2","M_LN10","M_PI","M_PI_2","M_PI_4","M_1_PI","M_2_PI","M_2_SQRTPI","M_SQRT2","M_SQRT1_2","M_SQRT_3","M_SQRT_32","M_LOG10_2","M_2PI","M_SQRT_PI","M_1_SQRT_2PI","M_LN_SQRT_PI","M_LN_SQRT_2PI","M_LN_SQRT_PId2","pi",null,"NaN","Inf","newind","rxFlag"],["solver time","In Transit compartment models, last dose amount","Time of Last dose","Exp(1)","log2(e)","log10(e)","log(2)","log(10)","pi","pi/2","pi/4","1/pi","2/pi","2/sqrt(pi)","sqrt(2)","1/sqrt(2)","sqrt(3)","sqrt(32)","Log10(2)","2*pi","sqrt(pi)","1/(sqrt(2*pi))","log(sqrt(pi))","log(sqrt(2*pi))","log(sqrt(pi/2))","pi","R's NA value","Not a Number Value","Infinite Value","1: First record of individual; 2: Subsequent record of individual","Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs"],["t","","","","","","","","","","","","","","","","","","","","","","","","","","","","","NEWIND",""]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Reserved Name<\/th>\n      <th>Meaning<\/th>\n      <th>Alias<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>Note that <code>rxFlag</code> will always output <code>11</code> or
+<code>calc_lhs</code> since that is where the final variables are
+calculated, though you can tweak or test certain parts of
+<code>rxode2</code> by using this flag.</p>
+</div>
+<div class="section level2">
+<h2 id="residual-functions-when-using-rxode2-functions">Residual functions when using rxode2 functions<a class="anchor" aria-label="anchor" href="#residual-functions-when-using-rxode2-functions"></a>
+</h2>
+<p>In addition to <code>~</code> hiding output for certain types of
+output, it also is used to specify a residual output or endpoint when
+the input is an <code>rxode2</code> model function (that includes the
+residual in the <code>model({})</code> block).</p>
+<p>These specifications are of the form:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span></span></code></pre></div>
+<p>Indicating the variable <code>var</code> is the variable that
+represents the individual central tendencies of the model and it also
+represents the compartment specification in the data-set.</p>
+<p>You can also change the compartment name using the <code>|</code>
+syntax, that is:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">|</span> <span class="va">cmt</span></span></code></pre></div>
+<p>In the above case <code>var</code> represents the central tendency
+and <code>cmt</code> represents the compartment or <code>dvid</code>
+specification.</p>
+<div class="section level3">
+<h3 id="transformations">Transformations<a class="anchor" aria-label="anchor" href="#transformations"></a>
+</h3>
+<p>For normal and related distributions, you can apply the
+transformation on both sides by using some keywords/functions to apply
+these transformations.</p>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-c93df7520bb113cb57b3" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-c93df7520bb113cb57b3">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["Box-Cox","Yeo-Johnson","logit-normal","probit-normal","log-normal"],["+boxCox(lambda)","+yeoJohnson(lambda)","+logitNorm(logit.sd, low, hi)","+probitNorm(probid.sd, low, hi)","+lnorm(lnorm.sd)"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Transformation<\/th>\n      <th>rxode2/nlmixr2 code<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>By default for the likelihood for all of these transformations is
+calculated on the <strong>untransformed</strong> scale.</p>
+<p>For bounded variables like logit-normal or probit-normal the low and
+high values are defaulted to 0 and 1 if missing.</p>
+<p>For models where you wish to have a proportional model on one of
+these transformation you can replace the standard deviation with
+<code>NA</code></p>
+<p>To allow for more transformations, <code>lnorm()</code>,
+<code>probitNorm()</code> and <code>logitNorm()</code> can be combined
+the variance stabilizing <code>yeoJohnson()</code> transformation.</p>
+</div>
+<div class="section level3">
+<h3 id="normal-and-t-related-distributions">Normal and t-related distributions<a class="anchor" aria-label="anchor" href="#normal-and-t-related-distributions"></a>
+</h3>
+<p>For the normal and t-related distributions, we wanted to keep the
+ability to use skewed distributions additive and proportional in the
+t/cauchy-space, so these distributions are specified differently in
+comparison to the other supported distributions within
+<code>nlmixr2</code>:</p>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-80bbc8c7216bebcc038d" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-80bbc8c7216bebcc038d">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["Normal (log-likelihood)","T-distribution","Cauchy (t with df=1)"],["+dnorm()","+dt(df)","+dcauchy()"],["cc ~ add(add.sd) + dnorm()","cc ~a dd(add.sd) + dt(df)","cc ~ add(add.sd) + dcauchy()"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Distribution<\/th>\n      <th>How to Add<\/th>\n      <th>Example<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script><p>Note that with the normal and t-related distributions
+<code>nlmixr2</code> will calculate <code>cwres</code> and
+<code>npde</code> under the normal assumption to help assess the
+goodness of the fit of the model.</p>
+<p>Also note that the <code>+dnorm()</code> is mostly for testing
+purposes and will slow down the estimation procedure in
+<code>nlmixr2</code>. We suggest not adding it (except for explicit
+testing). When there are multiple endpoint models that mix non-normal
+and normal distributions, the whole problem is shifted to a
+log-likelihood method for estimation in <code>nlmixr2</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="notes-on-additive-proportional-models">Notes on additive + proportional models<a class="anchor" aria-label="anchor" href="#notes-on-additive-proportional-models"></a>
+</h3>
+<p>There are two different ways to specify additive and proportional
+models, which we will call <strong>combined1</strong> and
+<strong>combined2</strong>, the same way that Monolix calls the two
+distributions (to avoid between software differences in naming).</p>
+<p>The first, <strong>combined1</strong>, assumes that the additive and
+proportional differences are on the standard deviation scale, or:</p>
+<p>y=f+(a+b* f^c)*err</p>
+<p>The second, <strong>combined2</strong>, assumes that the additive and
+proportional differences are combined on a variance scale:</p>
+<p>y=f+<span class="math display">\[sqrt(a^2+b^2
+*f^(2c))\]</span>*err</p>
+<p>The default in <code>nlmixr2</code>/<code>rxode2</code> if not
+otherwise specified is <strong>combined2</strong> since it mirrors how
+adding 2 normal distributions in statistics will add their variances
+(not the standard deviations). However, the <strong>combined1</strong>
+can describe the data possibly even better than
+<strong>combined2</strong> so both are possible options in
+<code>rxode2</code>/<code>nlmixr2</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="distributions-of-known-likelihoods">Distributions of known likelihoods<a class="anchor" aria-label="anchor" href="#distributions-of-known-likelihoods"></a>
+</h3>
+<p>For residuals that are not related to normal, t-distribution or
+cauchy, often the residual specification is of the form:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cmt</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Beta.html" class="external-link">dbeta</a></span><span class="op">(</span><span class="va">alpha</span>, <span class="va">beta</span><span class="op">)</span></span></code></pre></div>
+<p>Where the compartment specification is on the left handed side of the
+specification.</p>
+<p>For generalized likelihood you can specify:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ll</span>(cmt) <span class="sc">~</span> llik specification</span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="ordinal-likelihoods">Ordinal likelihoods<a class="anchor" aria-label="anchor" href="#ordinal-likelihoods"></a>
+</h3>
+<p>Finally, ordinal likelihoods/simulations can be specified in 2 ways.
+The first is:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">p0</span>, <span class="va">p1</span>, <span class="va">p2</span><span class="op">)</span></span></code></pre></div>
+<p>Here <code>err</code> represents the compartment and <code>p0</code>
+is the probability of being in a specific category:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Category</th>
+<th>Probability</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>p0</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>p1</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>p2</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>1-p0-p1-p2</td>
+</tr>
+</tbody>
+</table>
+<p>It is up to the model to ensure that the sum of the <code>p</code>
+values are less than <code>1</code>. Additionally you can write an
+arbitrary number of categories in the ordinal model described above.</p>
+<p>It seems a little off that <code>p0</code> is the probability for
+category <code>1</code> and sometimes scores are in non-whole numbers.
+This can be modeled as follows:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>p0<span class="op">=</span><span class="fl">0</span>, p1<span class="op">=</span><span class="fl">1</span>, p2<span class="op">=</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<p>Here the numeric categories are specified explicitly, and the
+probabilities remain the same:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Category</th>
+<th>Probability</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>0</td>
+<td>p0</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>p1</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>p2</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td>1-p0-p1-p2</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="general-table-of-supported-residual-distributions">General table of supported residual distributions<a class="anchor" aria-label="anchor" href="#general-table-of-supported-residual-distributions"></a>
+</h3>
+<p>In general all the that are supported are in the following table
+(available in <code><a href="../reference/rxResidualError.html">rxode2::rxResidualError</a></code>)</p>
+<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-afba52f4a8da1bfe2b1d" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-afba52f4a8da1bfe2b1d">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["constant","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","constant","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","constant","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","constant","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","constant","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","additive ","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","constant","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","additive ","proportional","power","additive+proportional","additive+proportional","additive+power","additive+power","constant+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","constant+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","constant+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","constant+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","constant+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","additive+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","constant+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","additive+t","proportional+t","power+t","additive+proportional+t","additive+proportional+t","additive+power+t","additive+power+t","constant+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","constant+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","constant+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","constant+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","constant+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","additive+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","constant+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","additive+cauchy","proportional+cauchy","power+cauchy","additive+proportional+cauchy","additive+proportional+cauchy","additive+power+cauchy","additive+power+cauchy","poission","binomial","beta","chisq","exponential","uniform","weibull","gamma","geometric","negative binomial form #1","negative binomial form #2","ordinal probability","log-likelihood"],["","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","combined1","combined2","combined1","combined2","","","","","","","","","","","","",""],["None","None","None","None","None","None","None","log","log","log","log","log","log","log","boxCox","boxCox","boxCox","boxCox","boxCox","boxCox","boxCox","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","logit","logit","logit","logit","logit","logit","logit","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","logit","probit","probit","probit","probit","probit","probit","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","None","None","None","None","None","None","None","log","log","log","log","log","log","log","boxCox","boxCox","boxCox","boxCox","boxCox","boxCox","boxCox","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","logit","logit","logit","logit","logit","logit","logit","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","logit","probit","probit","probit","probit","probit","probit","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","None","None","None","None","None","None","None","log","log","log","log","log","log","log","boxCox","boxCox","boxCox","boxCox","boxCox","boxCox","boxCox","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","yeoJohnson","logit","logit","logit","logit","logit","logit","logit","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","yeoJohnson(logit())","logit","probit","probit","probit","probit","probit","probit","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","yeoJohnson(probit())","none","none","none","none","none","none","none","none","none","none","none","none","none"],["var ~ add(add.sd)","var ~ prop(prop.sd)","var ~ pow(pow.sd, exponent)","var ~ add(add.sd) + prop(prop.sd) + combined1()","var ~ add(add.sd) + prop(prop.sd) + combined2()","var ~ add(add.sd) + pow(pow.sd, exponent) + combined1()","var ~ add(add.sd) + pow(pow.sd, exponent) + combined2()","var ~ lnorm(add.sd)","var ~ lnorm(NA) + prop(prop.sd)","var ~ lnorm(NA) + pow(pow.sd, exponent)","var ~ lnorm(add.sd) + prop(prop.sd) + combined1()","var ~ lnorm(add.sd) + prop(prop.sd) + combined2()","var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined1()","var ~ lnorm(add.sd) + pow(pow.sd, exponent) + combined2()","var ~ boxCox(lambda) + add(add.sd)","var ~ boxCox(lambda) + prop(prop.sd)","var ~ boxCox(lambda) + pow(pow.sd, exponent)","var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined1()","var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + combined2()","var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1()","var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2()","var ~ yeoJohnson(lambda) + add(add.sd)","var ~ yeoJohnson(lambda) + prop(prop.sd)","var ~ yeoJohnson(lambda) + pow(pow.sd, exponent)","var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined1()","var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + combined2()","var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined1()","var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + combined2()","var ~ logitNorm(logit.sd)","var ~ logitNorm(NA) + prop(prop.sd)","var ~ logitNorm(NA) + pow(pow.sd, exponent)","var ~ logitNorm(logit.sd) + prop(prop.sd)","var ~ logitNorm(logit.sd) + prop(prop.sd)","var ~ logitNorm(logit.sd) + pow(pow.sd, exponent)","var ~ logitNorm(logit.sd) + pow(pow.sd, exponent)","var ~ yeoJohnson(lambda) + logitNorm(logit.sd)","var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd)","var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent)","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd)","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd)","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent)","var ~ probitNorm(probit.sd)","var ~ probitNorm(NA) + prop(prop.sd)","var ~ probitNorm(NA) + pow(pow.sd, exponent)","var ~ probitNorm(probit.sd) + prop(prop.sd) + combined1()","var ~ probitNorm(probit.sd) + prop(prop.sd) + combined2()","var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1()","var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd)","var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd)","var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent)","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined1()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + combined2()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined1()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + combined2()","var ~ add(add.sd) + dt(df)","var ~ prop(prop.sd) + dt(df)","var ~ pow(pow.sd, exponent) + dt(df)","var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined1()","var ~ add(add.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined1()","var ~ add(add.sd) + pow(pow.sd, exponent) + dt(df) +combined2()","var ~ lnorm(add.sd) + dt(df)","var ~ lnorm(NA) + prop(prop.sd) + dt(df)","var ~ lnorm(NA) + pow(pow.sd, exponent) + dt(df)","var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) +combined1()","var ~ lnorm(add.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined1()","var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dt(df) + combined2()","var ~ boxCox(lambda) + add(add.sd)+dt(df)","var ~ boxCox(lambda) + prop(prop.sd)+dt(df)","var ~ boxCox(lambda) + pow(pow.sd, exponent)+dt(df)","var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1()","var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1()","var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2()","var ~ yeoJohnson(lambda) + add(add.sd) + dt(df)","var ~ yeoJohnson(lambda) + prop(prop.sd) + dt(df)","var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dt(df)","var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined1()","var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined1()","var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dt(df) + combined2()","var ~ logitNorm(logit.sd)+dt(df)","var ~ logitNorm(NA) + prop(prop.sd)+dt(df)","var ~ logitNorm(NA) + pow(pow.sd, exponent) + dt(df)","var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1()","var ~ logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()","var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dt(df)","var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dt(df)","var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dt(df)","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined1()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dt(df) + combined2()","var ~ probitNorm(probit.sd) + dt(df)","var ~ probitNorm(NA) + prop(prop.sd) + dt(df)","var ~ probitNorm(NA) + pow(pow.sd, exponent) + dt(df)","var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1()","var ~ probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()","var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined2()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dt(df)","var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dt(df)","var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dt(df)","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined1()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dt(df) + combined2()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) + combined1()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dt(df) +combined2()","var ~ add(add.sd) + dcauchy()","var ~ prop(prop.sd) + dcauchy()","var ~ pow(pow.sd, exponent) + dcauchy()","var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined1()","var ~ add(add.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined1()","var ~ add(add.sd) + pow(pow.sd, exponent) + dcauchy() +combined2()","var ~ lnorm(add.sd) + dcauchy()","var ~ lnorm(NA) + prop(prop.sd) + dcauchy()","var ~ lnorm(NA) + pow(pow.sd, exponent) + dcauchy()","var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() +combined1()","var ~ lnorm(add.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()","var ~ lnorm(add.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()","var ~ boxCox(lambda) + add(add.sd)+dcauchy()","var ~ boxCox(lambda) + prop(prop.sd)+dcauchy()","var ~ boxCox(lambda) + pow(pow.sd, exponent)+dcauchy()","var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1()","var ~ boxCox(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1()","var ~ boxCox(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2()","var ~ yeoJohnson(lambda) + add(add.sd) + dcauchy()","var ~ yeoJohnson(lambda) + prop(prop.sd) + dcauchy()","var ~ yeoJohnson(lambda) + pow(pow.sd, exponent) + dcauchy()","var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined1()","var ~ yeoJohnson(lambda) + add(add.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined1()","var ~ yeoJohnson(lambda) + add(add.sd) + pow(pop.sd, exponent) + dcauchy() + combined2()","var ~ logitNorm(logit.sd)+dcauchy()","var ~ logitNorm(NA) + prop(prop.sd)+dcauchy()","var ~ logitNorm(NA) + pow(pow.sd, exponent) + dcauchy()","var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1()","var ~ logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()","var ~ logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + dcauchy()","var ~ yeoJohnson(lambda) + logitNorm(NA) + prop(prop.sd) + dcauchy()","var ~ yeoJohnson(lambda) + logitNorm(NA) + pow(pow.sd, exponent) + dcauchy()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined1()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()","var ~ yeoJohnson(lambda) + logitNorm(logit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()","var ~ probitNorm(probit.sd) + dcauchy()","var ~ probitNorm(NA) + prop(prop.sd) + dcauchy()","var ~ probitNorm(NA) + pow(pow.sd, exponent) + dcauchy()","var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1()","var ~ probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()","var ~ probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined2()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + dcauchy()","var ~ yeoJohnson(lambda) + probitNorm(NA) + prop(prop.sd) + dcauchy()","var ~ yeoJohnson(lambda) + probitNorm(NA) + pow(pow.sd, exponent) + dcauchy()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined1()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()","var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2()","cmt ~ dpois(lamba)","cmt ~ dbinom(n, p)","cmt ~ dbeta(alpha, beta)","cmt ~ dchisq(nu)","cmt ~ dexp(r)","cmt ~ dunif(a, b)","cmt ~ dweibull(a, b)","cmt ~ dgamma(a, b)","cmt ~ dgeom(a)","cmt ~ dnbinom(n, p)","cmt ~ dnbinomMu(size, mu)","cmt ~ c(p0=0, p1=1, p2=2, 3)","ll(cmt) ~ log likelihood expression"],["","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","addProp=1","addProp=2","addProp=1","addProp=2","","","","","","","","","","","","",""],["response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","response variable","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","compartment specification","likelihood + compartment expression"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Error model<\/th>\n      <th>Functional Form<\/th>\n      <th>Transformation<\/th>\n      <th>code<\/th>\n      <th>addProp<\/th>\n      <th>lhs<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"scrollX":true,"columnDefs":[],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+<div class="section level2">
+<h2 id="bugs-andor-deficiencies">Bugs and/or deficiencies<a class="anchor" aria-label="anchor" href="#bugs-andor-deficiencies"></a>
+</h2>
+<ul>
+<li>The modulo operator <code>%%</code> is currently unsupported.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="note">Note<a class="anchor" aria-label="anchor" href="#note"></a>
+</h2>
+<p>The ODE specification mini-language is parsed with the help of the
+open source tool , Plevyak (2015).</p>
+</div>
+<div class="section level2">
+<h2 id="example-model">Example model<a class="anchor" aria-label="anchor" href="#example-model"></a>
+</h2>
+<p>Below is a commented example to quickly show the capabilities of
+<code>rxode2</code> syntax.</p>
+</div>
+<div class="section level2">
+<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+</h2>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    </span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="co"># An rxode2 model specification (this line is a comment).</span></span>
+<span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">comed</span><span class="op">==</span><span class="fl">0</span><span class="op">)</span> <span class="op">{</span>  <span class="co"># concomitant medication (con-med)?</span></span>
+<span>      <span class="cn">F</span> <span class="op">&lt;-</span> <span class="fl">1.0</span>     <span class="co"># full bioavailability w.o. con-med</span></span>
+<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>      <span class="cn">F</span> <span class="op">&lt;-</span> <span class="fl">0.80</span>    <span class="co"># 20% reduced bioavailability</span></span>
+<span>    <span class="op">}</span></span>
+<span></span>
+<span>    <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span>  <span class="co"># concentration in the central compartment</span></span>
+<span>    <span class="va">C3</span> <span class="op">&lt;-</span> <span class="va">peri</span><span class="op">/</span><span class="va">V3</span>   <span class="co"># concentration in the peripheral compartment</span></span>
+<span></span>
+<span>    <span class="co"># ODE describing the PK and PD</span></span>
+<span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">peri</span><span class="op">)</span>  <span class="op">&lt;-</span>                      <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span>   <span class="op">&lt;-</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span></span>
+<span>    <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>      <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="interface-and-data-handling-between-r-and-the-generated-c-code">Interface and data handling between R and the generated C code<a class="anchor" aria-label="anchor" href="#interface-and-data-handling-between-r-and-the-generated-c-code"></a>
@@ -377,49 +713,11 @@ model specification, and which are model parameters via the
 <span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>, event <span class="op">=</span> <span class="va">qd1</span>, inits <span class="op">=</span> <span class="va">inits</span><span class="op">)</span></span></code></pre>
 <p>The values of these variables at pre-specified time points are saved
 during model fitting/integration and returned as part of the fitted
-values (see the function <code>eventTable</code>, in particular its
-member function <code>add.sampling</code> function to define a set of
-time points when to capture the values of these variables) and returned
-as part of the modeling output.</p>
+values (see the function <code><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et()</a></code>, to define a set of time
+points when to capture the values of these variables) and returned as
+part of the modeling output.</p>
 <p>The ODE specification mini-language is parsed with the help of the
 open source tool <em>DParser</em>, Plevyak (2015).</p>
-</div>
-<div class="section level2">
-<h2 id="supported-functions">Supported functions<a class="anchor" aria-label="anchor" href="#supported-functions"></a>
-</h2>
-<p>All the supported functions in rxode2 can be seen with the
-<code><a href="../reference/rxSupportedFuns.html">rxSupportedFuns()</a></code>.</p>
-<p>A brief description of the built-in functions are in the following
-table:</p>
-<pre><code><span><span class="co">#&gt; rxode2 2.0.13.9000 using 1 threads (see ?getRxThreads)</span></span>
-<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre>
-<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-c53d650a8ef00e891d6b" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-c53d650a8ef00e891d6b">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["gamma(x)","lgamma(x)","digamma(x)","trigamma(x)","tetragamma(x)","pentagamma(x)","psigamma(x, deriv)","cospi(x)","sinpi(x)","tanpi(x)","beta(a, b)","lbeta(a, b)","bessel_i(x, nu, expo)","bessel_j(x, nu)","bessel_k(x, ku, expo)","bessel_y(x, nu)","R_pow(x, y)","R_pow_di(x, I)","log1pmx","log1pexp","expm1(x)","lgamma1p(x)","sign(x)","fsign(x, y)","fprec(x, digits)","fround(x, digits)","ftrunc(x)","abs(x)","sin(x)","cos(x)","tan(x)","factorial(x)","lfactorial(x)","log10(x)","log2(x)","pnorm(x)","qnorm(x)","probit(x, low=0, hi=1)","probitInv(q, low=0, hi=1)","acos(x)","asin(x)","atan(x)","atan2(a, b)","sinh(x)","cosh(x)","tanh(x)","floor(x)","ceil(x)","logit(x, low=0, hi=1)","expit(x, low=0, hi=1)","gammaq(a, z)","gammaqInv(a, q)","ifelse(cond, trueValue, falseValue)","gammap(a, z)","gammapInv(a, p)","gammapInva(x, p)","rxnorm(x)","rxnormV(x)","rxcauchy","rxchisq","rxexp","rxf","rxgamma","rxbeta","rxgeom","rxpois","rxt","tad() or tad(x)","tafd() or tafd(x)","dosenum()","tlast() or tlast(cmt)","tfirst() or tfirst(cmt)","prod(...)","sum(...)","max(...)","min(...)","lag(parameter, number=1)","lead(parameter, number=2)","diff(par, number=1)","first(par)","last(par)","transit()","is.na()","is.nan()","is.infinite()","rinorm(x)","rinormV(x)","ricauchy","richisq","riexp","rif","rigamma","ribeta","rigeom","ropois","rit","simeps","simeta"],["The Gamma function","Natural logarithm of absolute value of gamma function","First derivative of lgamma","Second derivative of lgamma","Third derivative of lgamma","Fourth derivative of lgamma","n-th derivative of Psi, the digamma function, which is the derivative of lgammafn. In other words, digamma(x) is the same as psigamma(x,0), trigamma(x) == psigamma(x,1), etc. ","cos(pi*x)","sin(pi*x)","tan(pi*x)","Beta function","log Beta function","Bessel function type I with index nu","Bessel function type J with index nu","Bessel function type K with index nu","Bessel function type Y with index nu","x^y","x^y","log(1+x) - x ","log(1+exp(x))","exp(x)-1","log(gamma(x+1))","Compute the signum function where sign(x) is 1, 0 -1","abs(x)*sign(y)","x rounded to digits (after the decimal point, used by signif()","Round, used by R's round()","Truncated towards zero","absolute value of x","sine of x","cos of x","tan of x","factorial of x","log(factorial(x))","log base 10","log base 2","Normal CDF of x","Normal pdf of x","Probit (normal pdf) of x transforming into a range","Inverse probit of x transforming into a range","Inverse cosine","Inverse sine","Inverse tangent","Four quadrant inverse tangent","Hyperbolic sine","Hyperbolic cosine","Hyperbolic tangent","Downward rounding","Upward rounding","Logit transformation of x transforming into a range","expit transofmration in range","Normalized incomplete gamma from boost","Normalized incomplete gamma inverse from boost","if else function","Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Inverse of Normalized lower incomplete gamma from boost","Generate one deviate of from a normal distribution for each observation scale","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the cauchy distribution for each observation","Generate one deviate from the chisq distribution for each observation","Generate one deviate from the exponential distribution for each observation","Generate one deviate from low discrepancy normal for each observation","Generate one deviate from the gamma distribution for each observation","Generate one deviate from the beta distribution for each observation","Generate one deviate from the geometric distribution for each observation","Generate one deviate from the poission distribution for each observation","Generate one deviate from the t distribtuion for each observation","Time after dose (tad()) or time after dose for a compartment tad(cmt)","Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt)","Dose Number","Time of Last dose;  This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4.  tlast(cmt) calculates the time since last dose of a compartment","Time since first dose or time since first dose of a compartment","product of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","sum of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer)","maximum of a group of numbers","Min of a group of numbers","Get the lag of an input parameter; You can specify a number of lagged observations","Get the lead of an input parameter; You can specify a number of lead observation","Get the difference between the current parameter and the last parameter; Can change the parameter number","Get the first value of an input parameter","Get the last value of an input parameter","The transit compartment psuedo function","Determine if a value is NA","Determine if a value is NaN","Check to see if the value is infinite","Generate one deviate of from a normal distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the cauchy distribution for each individual","Generate one deviate from the chisq distribution for each individual","Generate one deviate from the exponential distribution for each individual","Generate one deviate from low discrepancy normal for each individual","Generate one deviate from the gamma distribution for each individual","Generate one deviate from the beta distribution for each individual","Generate one deviate from the geometric distribution for each individual","Generate one deviate from the poission distribution for each individual","Generate one deviate from the t distribtuion for each individual","Simulate EPS from possibly truncated sigma matrix.  Will take sigma matrix from the current study. Simulated at the very last moment.","Simulate ETA from possibly truncated omega matrix.  Will take the omega matrix from the current study. Simulated at the initilization of the ODE system or the intialization of lhs"],["gammafn","digamma","","","","","","","","","",""," expo==1 is unscaled expo==2 is scaled by exp(-x)",""," expo==1 is unscaled expo==2 is scaled by exp(x)","",""," y is an integer","","","","","","","","","","fabs","","","","","","","","normcdf, phi","norminv","","","","","","","","","","","","","invLogit, logitInv","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Function<\/th>\n      <th>Description<\/th>\n      <th>Aliases<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":10,"scrollX":true,"columnDefs":[],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true}},"evals":[],"jsHooks":[]}</script><p>Note that <code>lag(cmt) =</code> is equivalent to
-<code>alag(cmt) =</code> and not the same as <code>= lag(wt)</code></p>
-</div>
-<div class="section level2">
-<h2 id="reserved-keywords">Reserved keywords<a class="anchor" aria-label="anchor" href="#reserved-keywords"></a>
-</h2>
-<p>There are a few reserved keywords in a rxode2 model. They are in the
-following table:</p>
-<div class="datatables html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-918020b9a24babe5df5a" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-918020b9a24babe5df5a">{"x":{"filter":"top","vertical":false,"filterHTML":"<tr>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"character\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["time","podo","tlast","M_E","M_LOG2E","M_LOG10E","M_LN2","M_LN10","M_PI","M_PI_2","M_PI_4","M_1_PI","M_2_PI","M_2_SQRTPI","M_SQRT2","M_SQRT1_2","M_SQRT_3","M_SQRT_32","M_LOG10_2","M_2PI","M_SQRT_PI","M_1_SQRT_2PI","M_LN_SQRT_PI","M_LN_SQRT_2PI","M_LN_SQRT_PId2","pi",null,"NaN","Inf","newind","rxFlag"],["solver time","In Transit compartment models, last dose amount","Time of Last dose","Exp(1)","log2(e)","log10(e)","log(2)","log(10)","pi","pi/2","pi/4","1/pi","2/pi","2/sqrt(pi)","sqrt(2)","1/sqrt(2)","sqrt(3)","sqrt(32)","Log10(2)","2*pi","sqrt(pi)","1/(sqrt(2*pi))","log(sqrt(pi))","log(sqrt(2*pi))","log(sqrt(pi/2))","pi","R's NA value","Not a Number Value","Infinite Value","1: First record of individual; 2: Subsequent record of individual","Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs"],["t","","","","","","","","","","","","","","","","","","","","","","","","","","","","","NEWIND",""]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Reserved Name<\/th>\n      <th>Meaning<\/th>\n      <th>Alias<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":10,"scrollX":true,"columnDefs":[],"order":[],"autoWidth":false,"orderClasses":false,"orderCellsTop":true}},"evals":[],"jsHooks":[]}</script><p>Note that <code>rxFlag</code> will always output <code>11</code> or
-<code>calc_lhs</code> since that is where the final variables are
-calculated, though you can tweak or test certain parts of
-<code>rxode2</code> by using this flag.</p>
-</div>
-<div class="section level2">
-<h2 id="bugs-andor-deficiencies">Bugs and/or deficiencies<a class="anchor" aria-label="anchor" href="#bugs-andor-deficiencies"></a>
-</h2>
-<ul>
-<li>The modulo operator <code>%%</code> is currently unsupported.</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="note">Note<a class="anchor" aria-label="anchor" href="#note"></a>
-</h2>
-<p>The ODE specification mini-language is parsed with the help of the
-open source tool , Plevyak (2015).</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>

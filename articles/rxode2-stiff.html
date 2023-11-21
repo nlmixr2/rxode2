@@ -23,7 +23,7 @@
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
+<![endif]--><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.13.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.14.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Jacobian specification and Stiff Systems</h1>
             
-            <h4 data-toc-skip class="date">2023-08-22</h4>
+            <h4 data-toc-skip class="date">2023-11-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-stiff.Rmd" class="external-link"><code>vignettes/rxode2-stiff.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-stiff.Rmd</code></div>
@@ -182,30 +182,34 @@ der Pol</a> differential equations.</p>
 <p>In rxode2 these can be specified by the following:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## rxode2 2.0.13.9000 using 1 threads (see ?getRxThreads)</span></span>
+<pre><code><span><span class="co">## rxode2 2.0.14.9000 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">##   no cache: create with `rxCreateCache()`</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">Vtpol2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">=</span> <span class="va">dy</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">=</span> <span class="va">mu</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">*</span><span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
+<code class="sourceCode R"><span><span class="va">Vtpol2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="co">## nonstiff; 10 moderately stiff; 1000 stiff</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>       <span class="op">&lt;-</span> <span class="va">dy</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span>      <span class="op">&lt;-</span> <span class="va">mu</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">*</span><span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
 <span>    <span class="co">## Jacobian</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span>  <span class="op">=</span> <span class="fl">1</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">=</span> <span class="op">-</span><span class="fl">2</span><span class="op">*</span><span class="va">dy</span><span class="op">*</span><span class="va">mu</span><span class="op">*</span><span class="va">y</span> <span class="op">-</span> <span class="fl">1</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">=</span> <span class="va">mu</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">2</span><span class="op">*</span><span class="va">dy</span><span class="op">*</span><span class="va">mu</span><span class="op">*</span><span class="va">y</span> <span class="op">-</span> <span class="fl">1</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/stats/Fdist.html" class="external-link">df</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span><span class="op">/</span><span class="fu">dy</span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">mu</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
 <span>    <span class="co">## Initial conditions</span></span>
-<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">2</span></span>
-<span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">0</span></span>
-<span>    <span class="co">## mu</span></span>
-<span>    <span class="va">mu</span> <span class="op">=</span> <span class="fl">1</span> <span class="co">## nonstiff; 10 moderately stiff; 1000 stiff</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></span><span class="op">(</span><span class="op">)</span>;</span>
-<span><span class="va">et</span><span class="op">$</span><span class="fu">add.sampling</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span>;</span>
-<span><span class="va">et</span><span class="op">$</span><span class="fu">add.dosing</span><span class="op">(</span><span class="fl">20</span>, start.time<span class="op">=</span><span class="fl">0</span><span class="op">)</span>;</span>
+<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>          <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>         <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">s1</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">et</span>, method<span class="op">=</span><span class="st">"lsoda"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">et</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, length.out<span class="op">=</span><span class="fl">200</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">0</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">s1</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">et</span>, method<span class="op">=</span><span class="st">"lsoda"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #00BBBB;">i</span> parameter labels from comments will be replaced by 'label()'</span></span></code></pre>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
 <span><span class="co">## <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
 <span><span class="co">## mu </span></span>
@@ -217,17 +221,20 @@ der Pol</a> differential equations.</p>
 <span><span class="co">## <span style="color: #949494;"># A tibble: 200 x 3</span></span></span>
 <span><span class="co">##     time     y      dy</span></span>
 <span><span class="co">##    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span> 0       22    0     </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> 0.050<span style="text-decoration: underline;">3</span>  22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span> 0.101   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   22.0 -<span style="color: #BB0000;">0.045</span><span style="color: #BB0000; text-decoration: underline;">6</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> 0       2     0     </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> 0.050<span style="text-decoration: underline;">3</span>  2.00 -<span style="color: #BB0000;">0.093</span><span style="color: #BB0000; text-decoration: underline;">3</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> 0.101   1.99 -<span style="color: #BB0000;">0.173</span> </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   1.98 -<span style="color: #BB0000;">0.242</span> </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   1.97 -<span style="color: #BB0000;">0.302</span> </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   1.95 -<span style="color: #BB0000;">0.353</span> </span></span>
 <span><span class="co">## <span style="color: #949494;"># i 194 more rows</span></span></span></code></pre>
 <p>While this is not stiff at mu=1, mu=1000 is a stiff system</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mu<span class="op">=</span><span class="fl">1000</span><span class="op">)</span>, <span class="va">et</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="va">Vtpol2</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mu<span class="op">=</span><span class="fl">1000</span><span class="op">)</span>, <span class="va">et</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #00BBBB;">i</span> parameter labels from comments will be replaced by 'label()'</span></span></code></pre>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
 <span><span class="co">## <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
 <span><span class="co">##   mu </span></span>
@@ -237,40 +244,65 @@ der Pol</a> differential equations.</p>
 <span><span class="co">##  2  0 </span></span>
 <span><span class="co">## <span style="font-weight: bold;">-- First part of data (object): --</span></span></span>
 <span><span class="co">## <span style="color: #949494;"># A tibble: 200 x 3</span></span></span>
-<span><span class="co">##     time     y         dy</span></span>
-<span><span class="co">##    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span> 0       22    0        </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> 0.050<span style="text-decoration: underline;">3</span>  22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span> 0.101   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   22.0 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">045</span><span style="color: #BB0000;">5</span></span></span>
+<span><span class="co">##     time     y        dy</span></span>
+<span><span class="co">##    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> 0       2     0       </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> 0.050<span style="text-decoration: underline;">3</span>  2.00 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">667</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> 0.101   2.00 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">667</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> 0.151   2.00 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">667</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> 0.201   2.00 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">667</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> 0.251   2.00 -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">667</span></span></span>
 <span><span class="co">## <span style="color: #949494;"># i 194 more rows</span></span></span></code></pre>
 <p>While this is easy enough to do, it is a bit tedious. If you have
 rxode2 setup appropriately, you can use the computer algebra system
 sympy to calculate the Jacobian automatically.</p>
 <p>This is done by the rxode2 option <code>calcJac</code> option:</p>
-<pre><code><span><span class="va">Vtpol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="op">=</span> <span class="va">dy</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span> <span class="op">=</span> <span class="va">mu</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">*</span><span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
-<span>    <span class="co">## Initial conditions</span></span>
-<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">2</span></span>
-<span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">0</span></span>
-<span>    <span class="co">## mu</span></span>
-<span>    <span class="va">mu</span> <span class="op">=</span> <span class="fl">1</span> <span class="co">## nonstiff; 10 moderately stiff; 1000 stiff</span></span>
-<span><span class="op">}</span>, calcJac<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre>
-<p>To see the generated model, you can use <code><a href="../reference/rxCat.html">rxCat()</a></code>:</p>
-<pre><code>&gt; rxCat(Vtpol)
-d/dt(y)=dy;
-d/dt(dy)=mu*(1-y^2)*dy-y;
-y(0)=2;
-dy(0)=0;
-mu=1;
-df(y)/dy(y)=0;
-df(dy)/dy(y)=-2*dy*mu*y-1;
-df(y)/dy(dy)=1;
-df(dy)/dy(dy)=mu*(-Rx_pow_di(y,2)+1);
-</code></pre>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Vtpol</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="co">## nonstiff; 10 moderately stiff; 1000 stiff</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>       <span class="op">&lt;-</span> <span class="va">dy</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">dy</span><span class="op">)</span>      <span class="op">&lt;-</span> <span class="va">mu</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">y</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">*</span><span class="va">dy</span> <span class="op">-</span> <span class="va">y</span></span>
+<span>    <span class="fu">y</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>          <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span>    <span class="fu">dy</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>         <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">Vtpol</span> <span class="op">&lt;-</span> <span class="fu">Vtpol</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># you can also use $symengineModelPrune if there is if/else blocks</span></span>
+<span><span class="co"># that need to be converted:</span></span>
+<span><span class="va">Vtpol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">Vtpol</span><span class="op">$</span><span class="va">symengineModelNoPrune</span>,  calcJac<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
+<pre><code><span><span class="co">## &gt; pruning branches (`if`/`else`)...</span></span></code></pre>
+<pre><code><span><span class="co">## <span style="color: #00BB00;">v</span> done</span></span></code></pre>
+<pre><code><span><span class="co">## &gt; loading into <span style="color: #0000BB;">symengine</span> environment...</span></span></code></pre>
+<pre><code><span><span class="co">## <span style="color: #00BB00;">v</span> done</span></span></code></pre>
+<pre><code><span><span class="co">## &gt; calculate jacobian</span></span></code></pre>
+<pre><code><span><span class="co">## [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span></code></pre>
+<pre><code><span><span class="co">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">Vtpol</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="font-weight: bold;">rxode2 </span>2.0.14.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_ef50d15d33f117ee1731b30570b1648f</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">## DLL: /tmp/RtmpBrHbgF/rxode2/rx_ef50d15d33f117ee1731b30570b1648f__.rxd/rx_ef50d15d33f117ee1731b30570b1648f_.so</span></span>
+<span><span class="co">## NULL</span></span>
+<span><span class="co">## <span style="font-weight: bold;">-- rxode2 Model Syntax --</span></span></span>
+<span><span class="co">## rxode2({</span></span>
+<span><span class="co">##     cmt(y)</span></span>
+<span><span class="co">##     cmt(dy)</span></span>
+<span><span class="co">##     d/dt(y) = dy</span></span>
+<span><span class="co">##     d/dt(dy) = -y + mu * dy * (1 - Rx_pow_di(y, 2))</span></span>
+<span><span class="co">##     y(0) = 2</span></span>
+<span><span class="co">##     dy(0) = 0</span></span>
+<span><span class="co">##     df(y)/dy(y) = 0</span></span>
+<span><span class="co">##     df(dy)/dy(y) = -1 - 2 * y * mu * dy</span></span>
+<span><span class="co">##     df(y)/dy(dy) = 1</span></span>
+<span><span class="co">##     df(dy)/dy(dy) = mu * (1 - Rx_pow_di(y, 2))</span></span>
+<span><span class="co">##     df(y)/dy(mu) = 0</span></span>
+<span><span class="co">##     df(dy)/dy(mu) = dy * (1 - Rx_pow_di(y, 2))</span></span>
+<span><span class="co">## })</span></span></code></pre>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
