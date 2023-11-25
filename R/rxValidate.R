@@ -1,3 +1,4 @@
+
 #' Validate rxode2
 #' This allows easy validation/qualification of nlmixr by running the
 #' testing suite on your system.
@@ -53,5 +54,3 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
 #' @rdname rxValidate
 #' @export
 rxTest <- rxValidate
-
-
