@@ -282,21 +282,21 @@ https://doi.org/10.1016/j.jspi.2019.07.001.</p></li>
 <span class="r-in"><span><span class="va">x</span><span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="fl">7001</span>, p<span class="op">=</span><span class="fl">0.375</span>, size<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      2.5%        5%       50%       95%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3670837 0.3688893 0.3783745 0.3879537 0.3897987 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3730453 0.3748573 0.3843737 0.3939793 0.3958288 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># you can also use the prediction interval</span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span>, pred<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      2.5%        5%       50%       95%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3623768 0.3649479 0.3783745 0.3919440 0.3945151 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3683759 0.3708042 0.3843737 0.3979432 0.4006570 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Can get some extra statistics if you request onlyProbs=FALSE</span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span>, onlyProbs<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         mean          var           sd            n         2.5%           5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3783745    0.2352072    0.4849817 7001.0000000    0.3670837    0.3688893 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3843737    0.2366305    0.4864469 7001.0000000    0.3730453    0.3748573 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          50%          95%        97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3783745    0.3879537    0.3897987 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3843737    0.3939793    0.3958288 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_real_</span></span></span>
 <span class="r-in"><span></span></span>
@@ -306,7 +306,7 @@ https://doi.org/10.1016/j.jspi.2019.07.001.</p></li>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span>, na.rm<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      2.5%        5%       50%       95%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3671366 0.3689424 0.3784286 0.3880087 0.3898539 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3729571 0.3747691 0.3842857 0.3938917 0.3957413 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
