@@ -44,11 +44,7 @@ As expected if you try to access any properties of this function without evaluat
 try(m1$iniDf)
 ```
 
-But we can see the information if we either evaluate the function by
-`m1()` or use `rxode2()`/`nlmixr2()` to evalute the function. If you
-are in interactive mode, the `rxode2()` /`nlmixr2()` will change
-comments in the initial estimates block to labels. If you evaluate the
-function, the labels are dropped.
+But we can see the information if we either evaluate the function by `m1()` or use `rxode2()`/`nlmixr2()` to evalute the function. If you are in interactive mode, the `rxode2()` /`nlmixr2()` will change comments in the initial estimates block to labels. If you evaluate the function, the labels are dropped.
 
 Lets evaluate the model using `rxode2()` to find out a bit more about the function:
 
@@ -57,21 +53,15 @@ m1 <- rxode2(m1)
 m1$iniDf
 ```
 
-You can see in the output above, there are no initial estimates in
-this model, the `$iniDf` from the model has no rows representing the
-model information (though it does list the columns that are present in
-the initialization data-frame (which we will discuss later).
+You can see in the output above, there are no initial estimates in this model, the `$iniDf` from the model has no rows representing the model information (though it does list the columns that are present in the initialization data-frame (which we will discuss later).
 
-The other thing you can see from the object is there is no end-points
-defined by looking at `m1$predDf` which will return `NULL` when there
-are no end-points.
+The other thing you can see from the object is there is no end-points defined by looking at `m1$predDf` which will return `NULL` when there are no end-points.
 
 ```{r predDfNone}
 m1$predDf
 ```
 
-Lets change this a bit with model piping to include initial estimates
-and a residual error to see the difference
+Lets change this a bit with model piping to include initial estimates and a residual error to see the difference
 
 ```{r pipeFull}
 m2 <- m1 |>
@@ -116,9 +106,7 @@ The model structure itself is a compressed `rxode2` ui object; you can see it by
 class(m2)
 ```
 
-This compressed object is actually a compressed R environment. If you
-decompress the environment you can interact with the environment like
-any typical R environment. This is done by `rxode2::rxUiDecompress():`
+This compressed object is actually a compressed R environment. If you decompress the environment you can interact with the environment like any typical R environment. This is done by `rxode2::rxUiDecompress():`
 
 ```{r rxUiDecompressCls}
 m2 <- rxUiDecompress(m2)
@@ -127,76 +115,62 @@ class(m2)
 ls(m2, all=TRUE)
 ```
 
-You can see the two properties we queried are low level objects inside
-of the `roxde2` ui environment (or compressed environment). We will
-describe the other items in more detail later.
+You can see the two properties we queried are low level objects inside of the `roxde2` ui environment (or compressed environment). We will describe the other items in more detail later.
 
 ## `$iniDf`: Initialization data frame
 
-The initialization data frame comes from the `lotri` package and
-converts the `ini({})` a data-frame that is easier to use in R
-code. This data frame has the following columns:
+The initialization data frame comes from the `lotri` package and converts the `ini({})` a data-frame that is easier to use in R code. This data frame has the following columns:
 
-
-| Column          | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-|------------------|------------------------------------------------------------|
-| `ntheta`        | (Integer) this represents the fixed/population effect parameter number (ie. `theta`) This should start with 1 and end at the largest value. It includes the error parameter estimates. When not part of the residual errors or population estimates, it should be `NA_integer_`                                                                                                                                                                                                                       |
-| `neta1`         | (Real Number) this represents the row of the between subject variability matrix (ie `omega`). If not a between subject variability it should be a `NA_real_`                                                                                                                                                                                                                                                                                                                                          |
-| `neta2`         | (Real Number) this represent the column of the between subject variability matrix (ie `oomega`). If not a between subject variability it should be a `NA_real_`                                                                                                                                                                                                                                                                                                                                       |
-| `name`          | (Character) This is the parameter name of the parameter in the model                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `lower`         | (Real Number) Lower bound of the parameter                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `est`           | (Real Number) Value of the parameter                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `upper`         | (Real Number) Upper bound of the parameter                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `fix`           | (Logical) When `TRUE` the estimate is fixed, when `FALSE` the estimate is unfixed.                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `label`         | (Character) the parameter label. When not present, this should be `NA_character_`                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `backTransform` | (Character) Represents the back-transformation that is performed for `nlmixr`'s `$parFixed`. This overrides the implied back-transformation from the `rxode2` model parsing                                                                                                                                                                                                                                                                                                                           |
-| `condition`     | (Character) this represents the level for the between subject varaibilty `id` and eventually other levels like `occ` when between occasion variability is supported. For errors this represents the endpoint that is being applied. All other columns should be `NA_character_`                                                                                                                                                                                                                       |
-| `err`           | (Character) this describes the error type for each parameter describing the residual endpoints or log-likelihood distributions. The `err` will say `add` for additive error, `lnorm` for lognormal error etc. For distributions with multiple parameters, like `pow`, it will display `pow` for the first parameter and `pow2` for the second parameter. This is true of distributions with even more parameters. All parameters that are not defined by a distribution should be `NA_character_`     |
+| Column          | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|------------------|------------------------------------------------------|
+| `ntheta`        | (Integer) this represents the fixed/population effect parameter number (ie. `theta`) This should start with 1 and end at the largest value. It includes the error parameter estimates. When not part of the residual errors or population estimates, it should be `NA_integer_`                                                                                                                                                                                                                   |
+| `neta1`         | (Real Number) this represents the row of the between subject variability matrix (ie `omega`). If not a between subject variability it should be a `NA_real_`                                                                                                                                                                                                                                                                                                                                      |
+| `neta2`         | (Real Number) this represent the column of the between subject variability matrix (ie `oomega`). If not a between subject variability it should be a `NA_real_`                                                                                                                                                                                                                                                                                                                                   |
+| `name`          | (Character) This is the parameter name of the parameter in the model                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `lower`         | (Real Number) Lower bound of the parameter                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `est`           | (Real Number) Value of the parameter                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `upper`         | (Real Number) Upper bound of the parameter                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `fix`           | (Logical) When `TRUE` the estimate is fixed, when `FALSE` the estimate is unfixed.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `label`         | (Character) the parameter label. When not present, this should be `NA_character_`                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `backTransform` | (Character) Represents the back-transformation that is performed for `nlmixr`'s `$parFixed`. This overrides the implied back-transformation from the `rxode2` model parsing                                                                                                                                                                                                                                                                                                                       |
+| `condition`     | (Character) this represents the level for the between subject varaibilty `id` and eventually other levels like `occ` when between occasion variability is supported. For errors this represents the endpoint that is being applied. All other columns should be `NA_character_`                                                                                                                                                                                                                   |
+| `err`           | (Character) this describes the error type for each parameter describing the residual endpoints or log-likelihood distributions. The `err` will say `add` for additive error, `lnorm` for lognormal error etc. For distributions with multiple parameters, like `pow`, it will display `pow` for the first parameter and `pow2` for the second parameter. This is true of distributions with even more parameters. All parameters that are not defined by a distribution should be `NA_character_` |
 
 ## `$predDf` endpoint/residual data.frame
 
 Inside the parsed `rxode2` function, there is another element called `$predDf`. This
 
-| Column          | Description                                                                                                                                                                                                                                                                                                                                |
-|---------------|---------------------------------------------------------|
-| `cond`          | (Character) This is the condition in the expression `var ~ add(add.sd) | cond`                                                                                                                                                                                                                                                             |
-| `var`           | (Character) This is the left-hand sided variable in `var ~ add(add.sd) | cond`                                                                                                                                                                                                                                                             |
-| `dvid`          | (Integer) This an integer that represents the `dvid` that needs to be used in multiple endpoint/residual models                                                                                                                                                                                                                            |
-| `trLow`         | (Real Number) The low value for the current transformation error (like `logitNorm()`                                                                                                                                                                                                                                                       |
-| `trHi`          | (Real Number) The high value for the current transformation error (like `logitNorm()`)                                                                                                                                                                                                                                                     |
-| `transform`     | (Factor) This represents the type of transformation for this endpoint                                                                                                                                                                                                                                                                      |
-| `errType`       | (Factor) This represents the common error types for pharmacometric models. This can be `add`, `prop`, `pow`, `add+prop`, `add+pow` or `none`                                                                                                                                                                                               |
-| `errTypeF`      | (Factor) This specifies the error type for proportional and power error. It can be proportional to the `f` value (which is the default for `prop` and `pow`). In cases where you have a transformation, it can be the `tranformed` `f` value or the `untransformed` `f` value. It can also be `none` for no proportional/additive models   |
-| `addProp`       | Factor that specifies if the `add+prop` residual is type 1 (standard deviations add) or type 2 (variances add), or the default (which is determined by `option(rxode2.addProp="combined1")` or `option(rxode2.addProp="combined2")` but defaults to combined2 error                                                                        |
-| `distribution`  | Factor with 19 levels that name all the known residual/likelihood specifications                                                                                                                                                                                                                                                           |
-| `line`          | (Integer) This is the line number of the original `model({})` block where the error structure occurs                                                                                                                                                                                                                                       |
-| `a`             | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the first parameter                                                                                                                                                                           |
-| `b`             | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the second parameter                                                                                                                                                                          |
-| `c`             | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the third parameter                                                                                                                                                                           |
-| `d`             | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the fourth parameter                                                                                                                                                                          |
-| `e`             | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the fifth parameter                                                                                                                                                                           |
-| `f`             | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the sixth parameter                                                                                                                                                                           |
-| `lambda`        | (Character) This is the lambda parameter in errors like Box-Cox transformation                                                                                                                                                                                                                                                             |
-| `linCmt`        | (logical) This is the linear compartment model logical flag.                                                                                                                                                                                                                                                                               |
-| `cmt`           | (Integer) This is the compartment specification for this particular endpoint.                                                                                                                                                                                                                                                              |
+| Column         | Description                                                                                                                                                                                                                                                                                                                              |
+|-----------------|-------------------------------------------------------|
+| `cond`         | (Character) This is the condition in the expression `var ~ add(add.sd) | cond`                                                                                                                                                                                                                                                           |
+| `var`          | (Character) This is the left-hand sided variable in `var ~ add(add.sd) | cond`                                                                                                                                                                                                                                                           |
+| `dvid`         | (Integer) This an integer that represents the `dvid` that needs to be used in multiple endpoint/residual models                                                                                                                                                                                                                          |
+| `trLow`        | (Real Number) The low value for the current transformation error (like `logitNorm()`                                                                                                                                                                                                                                                     |
+| `trHi`         | (Real Number) The high value for the current transformation error (like `logitNorm()`)                                                                                                                                                                                                                                                   |
+| `transform`    | (Factor) This represents the type of transformation for this endpoint                                                                                                                                                                                                                                                                    |
+| `errType`      | (Factor) This represents the common error types for pharmacometric models. This can be `add`, `prop`, `pow`, `add+prop`, `add+pow` or `none`                                                                                                                                                                                             |
+| `errTypeF`     | (Factor) This specifies the error type for proportional and power error. It can be proportional to the `f` value (which is the default for `prop` and `pow`). In cases where you have a transformation, it can be the `tranformed` `f` value or the `untransformed` `f` value. It can also be `none` for no proportional/additive models |
+| `addProp`      | Factor that specifies if the `add+prop` residual is type 1 (standard deviations add) or type 2 (variances add), or the default (which is determined by `option(rxode2.addProp="combined1")` or `option(rxode2.addProp="combined2")` but defaults to combined2 error                                                                      |
+| `distribution` | Factor with 19 levels that name all the known residual/likelihood specifications                                                                                                                                                                                                                                                         |
+| `line`         | (Integer) This is the line number of the original `model({})` block where the error structure occurs                                                                                                                                                                                                                                     |
+| `a`            | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the first parameter                                                                                                                                                                         |
+| `b`            | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the second parameter                                                                                                                                                                        |
+| `c`            | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the third parameter                                                                                                                                                                         |
+| `d`            | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the fourth parameter                                                                                                                                                                        |
+| `e`            | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the fifth parameter                                                                                                                                                                         |
+| `f`            | (Character) This is a parameter defined in the model that is applied to the error instead of an estimate from the ini block. Usually this is the sixth parameter                                                                                                                                                                         |
+| `lambda`       | (Character) This is the lambda parameter in errors like Box-Cox transformation                                                                                                                                                                                                                                                           |
+| `linCmt`       | (logical) This is the linear compartment model logical flag.                                                                                                                                                                                                                                                                             |
+| `cmt`          | (Integer) This is the compartment specification for this particular endpoint.                                                                                                                                                                                                                                                            |
 
 ## Model (`$lstExpr`), and Model variables (`$mv0` / `$mvL`)
 
-The most basic (ie stored) component of the model is the `ui$lstExpr`
-which is a list that has a language object representing each line of
-the model.
+The most basic (ie stored) component of the model is the `ui$lstExpr` which is a list that has a language object representing each line of the model.
 
-The `ui$mv0` is the `rxode2` model variables for the `model({})` block
-**with all error model lines excluded**.
+The `ui$mv0` is the `rxode2` model variables for the `model({})` block **with all error model lines excluded**.
 
-To get the lower-level functions for linear compartmental models, a
-`rxode2` model is converted to lower-level functions `linCmtA` or
-`linCmtB` depending on if gradients are needed. When this occurs,
-`$mvL` will contain the lower-level model. **This still excludes all
-the error model lines**
+To get the lower-level functions for linear compartmental models, a `rxode2` model is converted to lower-level functions `linCmtA` or `linCmtB` depending on if gradients are needed. When this occurs, `$mvL` will contain the lower-level model. **This still excludes all the error model lines.**
 
 ## Covariates
 
-The parameters that are not defined in the model and are not defined
-as an input parameters are covariates. You can access them directly
-with `ui$covariates` or use the alias `ui$allCovs`
+The parameters that are not defined in the model and are not defined as an input parameters are covariates. You can access them directly with `ui$covariates` or use the alias `ui$allCovs`
