@@ -121,6 +121,9 @@ rxTheme <- function(base_size = 11, base_family = "",
     if (!.xgxr) {
       return(NULL)
     }
+    if (is.null(.unit)) {
+      return(NULL)
+    }
     .timex <- xgxr::xgx_scale_x_time_units(.unit)
     if (inherits(.timex, "list")) {
       .w <- which(sapply(seq_along(.timex), function(x) {
@@ -134,11 +137,34 @@ rxTheme <- function(base_size = 11, base_family = "",
   }
   if (inherits(.dat$time, "units")) {
     .unit <- as.character(units(.dat$time))
+    .unitNames <- c(s="second",
+                    sec="second",
+                    second="second",
+                    min="minute",
+                    minute="minute",
+                    h="hour",
+                    hr="hour",
+                    hour="hour",
+                    d="day",
+                    day="day",
+                    days="day",
+                    week="week",
+                    weeks="week",
+                    month="month",
+                    months="month",
+                    year="year",
+                    years="year",
+                    yr="year")
+    .unit <- setNames(.unitNames[.unit], NULL)
+    if (is.na(.unit)) {
+      .timex <- .xgxrT(NULL)
+      .xlab <- xlab(xlab)
+    }
     .dat$time <- .dropUnits(.dat$time)
     .timex <- .xgxrT(.unit)
     .xlab <- xlab(sprintf("%s [%s]", xlab, .unit))
   } else {
-    .timex <- .xgxrT("h")
+    .timex <- .xgxrT(NULL)
     .xlab <- xlab(xlab)
   }
   list(timex=.timex, xlab=.xlab, dat=.dat)

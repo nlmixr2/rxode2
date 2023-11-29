@@ -368,7 +368,7 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
   par_progress_0=0;
   if (rxt.d != rxt.n || rxt.cur != rxt.n){
     rxSolveFreeC();
-    Rf_errorcall(R_NilValue, CHAR(STRING_ELT(str,0)));
+    Rf_errorcall(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
   }
   return R_NilValue;
 }
