@@ -198,7 +198,7 @@ rxUiGet.funPrint <- function(x, ...) {
         .isLotri <- TRUE
       }
     }
-    if (!.isLotri){
+    if (!.isLotri) {
       .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .var, "<-", deparse1(.val), ")")))
     }
   }
