@@ -11,6 +11,9 @@
 - "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
   `rxSolve()`.  This may change some ODE solving using "dop853"
 
+- When not specified (and xgxr is available), the x axis is no longer
+  assumed to be in hours
+
 ## New features
 
 - User defined functions can now be R functions.  For many of these R
@@ -150,6 +153,10 @@ mu-referencing style to run the optimization.
 
 - Bug fix for some covariate updates that may affect multiple compartment
   models (like issue #581)
+
+## Maintenance fixes
+
+- Modify plot code to work with development `xgxr`
 
 # rxode2 2.0.14
 
