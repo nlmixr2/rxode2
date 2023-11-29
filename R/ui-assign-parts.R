@@ -291,3 +291,30 @@
 `RxODE<-` <- function(x, envir=environment(x), value) {
   UseMethod("rxode2<-")
 }
+
+#' @export
+`$<-.rxUi` <- function(x, name, value) {
+  .raw <- inherits(x, "raw")
+  if (!.raw) {
+    assign(name, value, envir=x)
+    return(x)
+  }
+  .x <- x
+  if (name %in% c("ini", "iniDf")) {
+    ini(x) <- value
+    return(x)
+  }
+  if (name == "model") {
+    model(x) <- value
+    return(x)
+  }
+  .x <- rxUiDecompress(.x)
+  if (exists(name, .x)) {
+    stop("'", name, "' is a fixed UI component and should not be overwritten",
+         call.=FALSE)
+  }
+  .meta <- get("meta", .x)
+  assign(name, value, envir=.meta)
+  .x <- rxUiCompress(.x)
+  .x
+}

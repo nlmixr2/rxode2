@@ -235,6 +235,7 @@ rxUiGet.iniFun <- function(x, ...) {
 }
 attr(rxUiGet.iniFun, "desc") <- "normalized, quoted `ini()` block"
 
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.modelFun <- function(x, ...) {
@@ -242,6 +243,11 @@ rxUiGet.modelFun <- function(x, ...) {
   bquote(model(.(as.call(c(quote(`{`),.x$lstExpr)))))
 }
 attr(rxUiGet.modelFun, "desc") <- "normalized, quoted `model()` block"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.model <- rxUiGet.modelFun
+
 
 #' @export
 #' @rdname rxUiGet
@@ -365,8 +371,15 @@ attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
 #' @rdname rxUiGet
 rxUiGet.default <- function(x, ...) {
   .arg <- class(x)[1]
-  if (!exists(.arg, envir=x[[1]])) return(NULL)
-  get(.arg, x[[1]])
+  .ui <- x[[1]]
+  if (!exists(.arg, envir=.ui)) {
+    .meta <- get("meta", envir=.ui)
+    if (exists(.arg, envir=.meta)) {
+      return(get(.arg, envir=.meta))
+    }
+    return(NULL)
+  }
+  get(.arg, .ui)
 }
 
 .rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)",
