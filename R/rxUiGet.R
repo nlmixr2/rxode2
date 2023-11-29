@@ -188,7 +188,7 @@ rxUiGet.funPrint <- function(x, ...) {
     .var <- .ls[.i]
     .val <- .x$meta[[.ls[.i]]]
     .isLotri <- FALSE
-    if (checkmate::checkMatrix(.val, any.missing=FALSE, row.names="strict", col.names="strict")) {
+    if (checkmate::testMatrix(.val, any.missing=FALSE, row.names="strict", col.names="strict")) {
       .dn <- dimnames(.val)
       if (identical(.dn[[1]], .dn[[2]]) && isSymmetric(.val)) {
         class(.val) <- c("lotriFix", class(.val))
