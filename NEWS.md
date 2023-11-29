@@ -122,6 +122,18 @@ mu-referencing style to run the optimization.
   `plot(ci, Cc)` which will only plot the variable `Cc` that you
   summarized even if you also summarized `eff` (for instance).
 
+- When the rxode2 ui is a compressed ui object, you can modify the ini
+  block with `$ini <-` or modify the model block with `$model <-`.
+  These are equivalent to `ini(model) <-` and `model(model) <-`,
+  respectively. Otherwise, the object is added to the user defined
+  components in the function (ie `$meta`).  When the object is
+  uncompressed, it simply assigns it to the environment instead (just
+  like before).
+
+- When printing meta information that happens to be a `lotri`
+  compatible matrix, use `lotri` to express it instead of the default
+  R expression.
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-

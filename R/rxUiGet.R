@@ -185,7 +185,22 @@ rxUiGet.funPrint <- function(x, ...) {
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
-    .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .ls[.i], "<-", deparse1(.x$meta[[.ls[.i]]]), ")")))
+    .var <- .ls[.i]
+    .val <- .x$meta[[.ls[.i]]]
+    .isLotri <- FALSE
+    if (checkmate::checkMatrix(.val, any.missing=FALSE, row.names="strict", col.names="strict")) {
+      .dn <- dimnames(.val)
+      if (identical(.dn[[1]], .dn[[2]]) && isSymmetric(.val)) {
+        class(.val) <- c("lotriFix", class(.val))
+        .val <- as.expression(.val)
+        .val <- bquote(.(str2lang(.var)) <- .(.val))
+        .ret[[.i + 1]] <- .val
+        .isLotri <- TRUE
+      }
+    }
+    if (!.isLotri){
+      .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .var, "<-", deparse1(.val), ")")))
+    }
   }
   .theta <- x$theta
   .omega <- x$omega
