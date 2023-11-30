@@ -1146,10 +1146,33 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                        list(theta = theta, eta = eta, envir=envir)))
 }
 
+.uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
+                         theta = NULL, eta = NULL) {
+  .ctl <- rxControl()
+  .meta <- get("meta", ui)
+  .lst <- list(...)
+  .nlst <- names(.lst)
+  .w <- which(vapply(names(.ctl), function(x) {
+    !(x %in% names(.nlst)) && exists(x, envir=.meta)
+  }, logical(1), USE.NAMES=FALSE))
+  .extra <- NULL
+  if (length(.w) > 0) {
+    .v <- names(.ctl)[.w]
+    .minfo(paste0("rxControl items read from fun: '",
+           paste(.v, collapse="', '"), "'"))
+    .extra <- setNames(lapply(.v, function(x) {
+      get(x, envir=.meta)
+    }), .v)
+  }
+  do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
+                     .lst, .extra,
+                     list(theta=theta, eta=eta)))
+}
+
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
-  .rxControl <- rxSolve(NULL, params = params, events = events, inits = inits, ...,
-                        theta = theta, eta = eta)
+  .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
+                             theta = theta, eta=eta)
   if (rxIs(params, "rx.event")) {
     if (!is.null(events)) {
       .tmp <- events
@@ -2063,6 +2086,7 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) 
   }
   method
 }
+
 
 
 #' This updates the tolerances based on the sensitivity equations
