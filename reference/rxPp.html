@@ -205,29 +205,29 @@ dropout is equal to or after tmax.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample homogenous Poisson process of rate 1/10</span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  8.19983 13.67398 15.48588 17.26219 25.86169 46.25349 49.45993 51.13983</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 60.37309 60.55272</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  26.15775  33.38380  47.94631  54.17793  55.85722  66.26814  73.62000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 106.75224 116.90016 126.39661</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample inhomogenous Poisson rate of 1/10</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 29.84255 44.80297 48.41821 48.74108 62.10962 64.37036 65.37986 66.33762</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 70.33763 90.42581</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 19.01904 50.51773 52.22514 52.76671 57.93220 59.95101 63.86916 69.82497</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 70.21448 70.65940</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Typically the Poisson process times are in a sequential order,</span></span></span>
 <span class="r-in"><span><span class="co">## using randomOrder gives the Poisson process in random order</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">10</span>, randomOrder <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 10.0000000 10.0000000 10.0000000 10.0000000 10.0000000 10.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 10.0000000 10.0000000 10.0000000  0.8339647</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 10.000000 10.000000 10.000000 10.000000 10.000000 10.000000 10.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 10.000000 10.000000  6.122726</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This uses an arbitrary function to sample a non-homogenous Poisson process</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, prob <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]   4.809088   5.063217  13.240161  67.763702 202.342912 401.974004</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 491.820102 657.699603 663.916682 679.367688</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  76.20239 136.99708 141.49227 242.51418 303.74927 442.45036 475.40954</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 558.23538 591.07437 635.88796</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
