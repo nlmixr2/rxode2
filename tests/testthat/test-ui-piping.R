@@ -1921,12 +1921,12 @@ test_that("piping with append=lhs", {
 
 
 test_that("test ui appending of derived variables like `sim` can work", {
-  
+
   one.compartment <- function() {
     ini({
       tka <- 0.45
-      tcl <- 1 
-      tv <- 3.45 
+      tcl <- 1
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -1946,5 +1946,41 @@ test_that("test ui appending of derived variables like `sim` can work", {
   f <- rxode2(one.compartment)
 
   expect_error(model(f$simulationModel, sim2=sim+1, append=sim), NA)
-  
+
+})
+
+
+test_that("off-diagonal piping issue #518", {
+
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      etaa + etab ~ c(3, 0.1, 4)
+      c <- 5
+      etac ~ 6
+      d <- 7
+      f <- 9
+      etad + etaf ~ c(8, 0.2, 10)
+    })
+    model({
+      g <- (a + etaa)/(b + etab)
+      h <- (c + etac)
+      i <- (d + etad)
+      j <- f + etaf
+    })
+  }
+
+  modNew <-
+    ini(
+      rxode2(mod),
+      etab + etac + etad ~
+        c(7,
+          0.2, 8,
+          0.3, 0.4, 9),
+      etaa ~ 0
+    )
+
+  expect_error(modNew$omega, NA)
+
 })

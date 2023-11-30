@@ -474,6 +474,24 @@
   # (Maybe) update parameter order; this must be at the end so that the
   # parameter exists in case it is promoted from a covariate
   .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
+
+  # now take out ETAs that no longer exist
+  .iniDf <- get("iniDf", envir=rxui)
+  .w <- which(is.na(.iniDf$neta1) & !is.na(.iniDf$neta2))
+  .reassign <- FALSE
+  if (length(.w) > 0) {
+    .iniDf <- .iniDf[-.w, ]
+    .reassign <- TRUE
+  }
+  .iniDf <- get("iniDf", envir=rxui)
+  .w <- which(!is.na(.iniDf$neta1) & is.na(.iniDf$neta2))
+  if (length(.w) > 0) {
+    .iniDf <- .iniDf[-.w, ]
+    .reassign <- TRUE
+  }
+  if (.reassign) {
+    assign("iniDf", .iniDf, envir=rxui)
+  }
 }
 
 # TODO: while nlmixr2est is changed
