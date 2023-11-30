@@ -185,7 +185,22 @@ rxUiGet.funPrint <- function(x, ...) {
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
-    .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .ls[.i], "<-", deparse1(.x$meta[[.ls[.i]]]), ")")))
+    .var <- .ls[.i]
+    .val <- .x$meta[[.ls[.i]]]
+    .isLotri <- FALSE
+    if (checkmate::testMatrix(.val, any.missing=FALSE, row.names="strict", col.names="strict")) {
+      .dn <- dimnames(.val)
+      if (identical(.dn[[1]], .dn[[2]]) && isSymmetric(.val)) {
+        class(.val) <- c("lotriFix", class(.val))
+        .val <- as.expression(.val)
+        .val <- bquote(.(str2lang(.var)) <- .(.val))
+        .ret[[.i + 1]] <- .val
+        .isLotri <- TRUE
+      }
+    }
+    if (!.isLotri) {
+      .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .var, "<-", deparse1(.val), ")")))
+    }
   }
   .theta <- x$theta
   .omega <- x$omega
@@ -235,6 +250,7 @@ rxUiGet.iniFun <- function(x, ...) {
 }
 attr(rxUiGet.iniFun, "desc") <- "normalized, quoted `ini()` block"
 
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.modelFun <- function(x, ...) {
@@ -242,6 +258,11 @@ rxUiGet.modelFun <- function(x, ...) {
   bquote(model(.(as.call(c(quote(`{`),.x$lstExpr)))))
 }
 attr(rxUiGet.modelFun, "desc") <- "normalized, quoted `model()` block"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.model <- rxUiGet.modelFun
+
 
 #' @export
 #' @rdname rxUiGet
@@ -365,8 +386,15 @@ attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
 #' @rdname rxUiGet
 rxUiGet.default <- function(x, ...) {
   .arg <- class(x)[1]
-  if (!exists(.arg, envir=x[[1]])) return(NULL)
-  get(.arg, x[[1]])
+  .ui <- x[[1]]
+  if (!exists(.arg, envir=.ui)) {
+    .meta <- get("meta", envir=.ui)
+    if (exists(.arg, envir=.meta)) {
+      return(get(.arg, envir=.meta))
+    }
+    return(NULL)
+  }
+  get(.arg, .ui)
 }
 
 .rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)",

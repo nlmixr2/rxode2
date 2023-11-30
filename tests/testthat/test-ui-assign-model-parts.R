@@ -95,6 +95,12 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(body(uiTwo$fun), body(rxode2(two.compartment)$fun))
 
   uiOne <- rxode2(one.compartment)
+  uiOne$model <- model(one.compartment2)
+  expect_equal(model(uiOne), model(one.compartment2))
+  expect_equal(ini(uiOne), ini(one.compartment))
+
+
+  uiOne <- rxode2(one.compartment)
 
   model(uiOne) <-  model(one.compartment2)
   expect_equal(model(uiOne), model(one.compartment2))
@@ -143,7 +149,7 @@ test_that("rxode2<- and other rxUi methods", {
   }))
 
   ini(uiOne) <-  iniNew
-  
+
   expect_equal(ini(uiOne), iniNew)
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, "matt")
@@ -208,7 +214,7 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(uiOne$matt, "f")
   expect_equal(uiOne$f, "matt")
   expect_true(inherits(uiOne, "uiOne"))
-    
+
   uiTwo <- uiOne %>%
     model(ka <- tka * exp(eta.ka))
 
@@ -223,7 +229,7 @@ test_that("rxode2<- and other rxUi methods", {
   expect_equal(uiTwo$matt, "f")
   expect_equal(uiTwo$f, "matt")
   expect_true(inherits(uiTwo, "uiOne"))
-    
+
 
   # rename something in the ini block is also an insignificant change
   uiTwo <- uiOne %>%
@@ -257,10 +263,45 @@ test_that("ini(model) <- NULL drops", {
     })
   }
 
-
   uiOne <- one.compartment()
   ini(uiOne) <- NULL
   expect_length(uiOne$iniDf$ntheta, 0L)
   expect_equal(as.ini(NULL), quote(ini({}))) #nolint
+
+  # try with $ini assignment
+  uiOne <- one.compartment()
+  uiOne$ini <- NULL
+  expect_length(uiOne$iniDf$ntheta, 0L)
+  expect_equal(as.ini(NULL), quote(ini({}))) #nolint
 })
 
+test_that("assign model changes meta information", {
+
+  one.compartment <- function() {
+    ini({
+      tka <- log(1.57)
+      tcl <- log(2.72)
+      tv <- log(31.5)
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+    })
+  }
+
+  uiOne <- one.compartment()
+
+  uiOne$matt <- "matt"
+
+  expect_equal(uiOne$meta$matt, "matt")
+
+  expect_equal(uiOne$matt, "matt")
+
+})
