@@ -2708,6 +2708,7 @@ struct rxSolve_t {
   bool convertInt = false;
   bool throttle = false;
   int maxItemsPerId = 0;
+  bool hasICov = false;
 };
 
 SEXP rxSolve_(const RObject &obj, const List &rxControl, const Nullable<CharacterVector> &specParams,
@@ -2835,6 +2836,9 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     int nobs = asInt(etE["nobs"], "nobs");
     if (nobs == 0){
       // KEEP/DROP?
+      if (rxSolveDat->hasICov) {
+        Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
+      }
       List ev1a = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                           false, false, true, R_NilValue,
                           rxControl[Rxc_keepF],
@@ -4675,6 +4679,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   rxSolve_t rxSolveDat0;
   rxSolve_t* rxSolveDat = &rxSolveDat0;
   RObject object;
+  rxSolveDat->hasICov = !Rf_isNull(rxControl[Rxc_iCov]);
   rxSolveDat->updateObject = asBool(rxControl[Rxc_updateObject], "updateObject");
   rxSolveDat->isRxSolve = rxIs(obj, "rxSolve");
   rxSolveDat->isEnvironment = rxIs(obj, "environment");
