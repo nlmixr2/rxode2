@@ -191,7 +191,8 @@ was requested <a href="https://github.com/nlmixrdevelopment/RxODE/issues/162#iss
 github</a> with an appropriate example; However, I will use a very
 simple example here to simply illustrate the concepts.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">newAbs</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<code class="sourceCode R"><span></span>
+<span><span class="va">newAbs</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">x</span> <span class="op">&lt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="op">-</span><span class="va">x</span></span>
 <span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
@@ -247,9 +248,9 @@ Lets see how this very simple function performs:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr      min       lq     mean   median       uq       max neval</span></span>
-<span><span class="co">#&gt;  withoutC 7.700593 7.951526 9.037858 8.122375 8.471702 18.935679   100</span></span>
-<span><span class="co">#&gt;     withC 2.064802 2.125209 2.465687 2.243920 2.724382  7.041264   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr      min       lq     mean   median      uq      max neval</span></span>
+<span><span class="co">#&gt;  withoutC 7.183419 7.614183 8.215557 7.686496 7.89175 13.64278   100</span></span>
+<span><span class="co">#&gt;     withC 1.952291 2.095052 2.421368 2.166716 2.73393  6.57318   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
