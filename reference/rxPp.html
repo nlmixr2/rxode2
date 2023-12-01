@@ -205,13 +205,13 @@ dropout is equal to or after tmax.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample homogenous Poisson process of rate 1/10</span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.1910981  5.9850710 26.7389989 38.2966442 48.9119265 51.5127993</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 54.0622393 62.7904395 63.2837682 76.8835733</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 25.39987 29.37609 31.35669 34.79771 50.41724 55.40644 64.82296 73.32893</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 75.82858 88.35980</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample inhomogenous Poisson rate of 1/10</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  15.39662  19.95004  56.45895  65.31653  86.14830 100.00000 100.00000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  38.49097  50.73037  63.70980  89.03662  96.72347 100.00000 100.00000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 100.00000 100.00000 100.00000</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Typically the Poisson process times are in a sequential order,</span></span></span>
@@ -225,8 +225,8 @@ dropout is equal to or after tmax.</p>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, prob <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  51.53975  98.27722 183.74846 310.94778 315.77714 456.95940 582.60888</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 648.61641 796.71361 825.23302</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  39.71176 134.48758 137.24826 252.29876 329.96723 388.30119 435.15459</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 501.80104 702.68786 801.18172</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

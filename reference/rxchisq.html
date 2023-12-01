@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxchisq you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.7642642054 0.0047708072 0.0550218479 0.0389611886 0.3978583608</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 1.4681548514 1.1108705476 0.0313936499 0.0000117680 0.0009851584</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2.077869e-02 3.917651e-01 6.513481e-03 2.494001e-04 8.265457e-02</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 5.957421e-03 1.903790e-02 3.647179e-02 9.769355e-06 2.273173e-01</span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2.15374793 0.09924111 7.66027059 4.63819409 4.60084911 2.87915800</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 6.07429461 2.08218634 7.40718536 1.60592417</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  4.152249  7.676127  2.690561  3.608128  7.005995  2.805736  9.037367</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  2.482197  6.879507 11.015045</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxchisq</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.06448623</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03713415</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxchisq` directly in the model</span></span></span>

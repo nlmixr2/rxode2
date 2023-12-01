@@ -171,6 +171,7 @@
 <li><p>When plotting the <code>confint</code> derived intervals from an <code>rxode2</code> simulation, you can now subset based on a simulated value like <code>plot(ci, Cc)</code> which will only plot the variable <code>Cc</code> that you summarized even if you also summarized <code>eff</code> (for instance).</p></li>
 <li><p>When the rxode2 ui is a compressed ui object, you can modify the ini block with <code>$ini &lt;-</code> or modify the model block with <code>$model &lt;-</code>. These are equivalent to <code>ini(model) &lt;-</code> and <code>model(model) &lt;-</code>, respectively. Otherwise, the object is added to the user defined components in the function (ie <code>$meta</code>). When the object is uncompressed, it simply assigns it to the environment instead (just like before).</p></li>
 <li><p>When printing meta information that happens to be a <code>lotri</code> compatible matrix, use <code>lotri</code> to express it instead of the default R expression.</p></li>
+<li><p>Allow character vectors to be converted to expressions for piping (<a href="https://github.com/nlmixr2/rxode2/issues/552" class="external-link">#552</a>)</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="internal-new-features-development-version">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-development-version"></a></h3>
