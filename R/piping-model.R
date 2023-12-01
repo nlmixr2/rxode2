@@ -1,6 +1,7 @@
 #' @export
 #' @rdname model
-model.function <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
+model.function <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+                           cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(rxode2(x))
   if (length(.modelLines) == 0) return(.ret$modelFun)
@@ -10,7 +11,8 @@ model.function <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=pare
 
 #' @export
 #' @rdname model
-model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
+model.rxUi <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+                       cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   if (length(.modelLines) == 0) return(.ret$modelFun)
@@ -30,7 +32,8 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.f
 
 #' @export
 #' @rdname model
-model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
+model.rxode2 <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+                         cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   x <- as.function(x)
   .ret <- suppressMessages(rxUiDecompress(rxode2(x)))
@@ -53,7 +56,8 @@ model.rxModelVars <- model.rxode2
 #' @return New UI
 #' @author Matthew L. Fidler
 #' @export
-.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, auto=TRUE,
+.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE,
+                                   auto=getOption("rxode2.autoVarPiping", TRUE),
                                    cov=NULL, envir) {
   checkmate::assertLogical(modifyIni, any.missing=FALSE, len=1)
   ## checkmate::assertLogical(append, any.missing=TRUE, len=1)
@@ -135,7 +139,7 @@ model.rxModelVars <- model.rxode2
           if (.isTilde || .isTheta || .isEta) {
             .addVariableToIniDf(v, rxui,
                                 promote=ifelse(.isTilde,NA,
-                                               auto))
+                                               TRUE))
             .lhs <- c(.lhs, v)
           }
         }
