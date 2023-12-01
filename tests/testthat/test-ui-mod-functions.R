@@ -309,4 +309,58 @@ rxTest({
 
   })
 
+  test_that("etas in first model but not in second", {
+
+    ocmt <- function() {
+      ini({
+        tka <- 0.45
+        tcl <- 1
+        tv <- 3.45
+        eta.ka ~ 0.1
+        eta.cl ~ 0.1
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv + eta.v)
+        d/dt(depot) = -ka * depot
+        d/dt(center) = ka * depot - cl / v * center
+        cp = center / v
+        cp ~ add(add.sd)
+      })
+    }
+
+    idr <- function() {
+      ini({
+        tkin <- log(1)
+        tkout <- log(1)
+        tic50 <- log(10)
+        gamma <- fix(1)
+        idr.sd <- 1
+      })
+      model({
+        kin <- exp(tkin)
+        kout <- exp(tkout)
+        ic50 <- exp(tic50)
+        d/dt(eff) <- kin - kout*(1-ceff^gamma/(ic50^gamma+ceff^gamma))
+        eff ~ add(idr.sd)
+      })
+    }
+
+    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+
+    expect_equal(m1$omega,
+                 lotri({
+                   eta.ka ~ 0.1
+                   eta.cl ~ 0.1
+                   eta.v ~ 0.1
+                 }))
+
+    expect_equal(m1$theta,
+                 c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7, tkin = 0, tkout = 0, tic50 = 2.30258509299405, gamma = 1, idr.sd = 1))
+  })
+
+
 })
