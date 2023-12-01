@@ -2057,4 +2057,27 @@ test_that("piping append", {
       eta.e0 ~ 1
     }))
 
+  # make sure auto model piping turns off
+
+  withr::with_options(list(rxode2.autoVarPiping=FALSE),
+                      mod7 <- mod5 |>
+                        model({
+                          emax <- exp(temax)
+                          e0 <- exp(te0 + eta.e0)
+                          ec50 <- exp(tec50)
+                          kin <- exp(tkin)
+                          kout <- exp(tkout)
+                        }, append=NA))
+
+  expect_equal(mod7$theta,
+               c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7))
+
+  expect_equal(
+    mod7$omega,
+    lotri({
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+    }))
+
+
 })
