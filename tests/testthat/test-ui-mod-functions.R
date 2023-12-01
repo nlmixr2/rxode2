@@ -32,6 +32,7 @@ rxTest({
     expect_equal(m1$theta, setNames(numeric(0), character(0)))
 
   })
+
   test_that("binding together with first model missing an ini", {
 
     ocmt <- function() {
@@ -224,4 +225,51 @@ rxTest({
     expect_false(any(addModelLine$iniDf$name == "eff2"))
     expect_false(any(addModelLine$iniDf$name == "matt"))
   })
+
+  test_that("bind together functions where population parameters overlap", {
+
+    ocmt <- function() {
+      ini({
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
+        add.sd <- 0.7
+      })
+      model({
+        ka <- tka
+        cl <- tcl
+        v <- tv
+        d/dt(depot) = -ka * depot
+        d/dt(center) = ka * depot - cl / v * center
+        cp = center / v
+        cp ~ add(add.sd)
+      })
+    }
+
+    idr <- function() {
+      ini({
+        tkin <- log(1)
+        tkout <- log(1)
+        tic50 <- log(10)
+        gamma <- fix(1)
+        idr.sd <- 1
+        tv <- 3
+      })
+      model({
+        kin <- exp(tkin)
+        kout <- exp(tkout)
+        ic50 <- exp(tic50)
+        v <- exp(tv)
+        d/dt(eff) <- kin - kout*(1-ceff^gamma/(ic50^gamma+ceff^gamma) * v)
+        eff ~ add(idr.sd)
+      })
+    }
+
+    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+
+    expect_equal(m1$theta,
+                 c(tka = 1.56831218549017, tcl = 2.71828182845905, tv = 31.5003923087479, add.sd = 0.7, tkin = 0, tkout = 0, tic50 = 2.30258509299405, gamma = 1, idr.sd = 1))
+
+  })
+
 })
