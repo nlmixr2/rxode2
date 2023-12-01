@@ -67,16 +67,20 @@ rxAppendModel_ <- function(model1, model2, common=TRUE) {
     .complex1 <- which(vapply(.both, function(v) {
       .eta <- .ini1eta[.ini1eta$name == v, "neta1"]
       any(.ini1eta$neta1 == .eta & .ini1eta$neta2 != .eta)
-    }))
+    }, logical(1), USE.NAMES = FALSE))
     .complex2 <- which(vapply(.both, function(v) {
       .eta <- .ini1eta[.ini1eta$name == v, "neta1"]
       any(.ini1eta$neta1 == .eta & .ini1eta$neta2 != .eta)
-    }))
+    }, logical(1), USE.NAMES = FALSE))
     .err <- unique(c(.both[.complex1], .both[.complex2]))
     if (length(.err) > 0) {
       stop("error")
     } else {
       # drop in the second
+      .minfo("duplicated eta parameters when combining 2 models")
+      .minfo(paste0("keeping initialization from first model: '",
+                    paste(.both, collapse="', '"), "'"))
+
       .ini2eta <- .ini2eta[!(.ini2eta$name %in% .both),, drop =FALSE]
     }
   }
