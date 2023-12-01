@@ -117,18 +117,27 @@ model.rxModelVars <- model.rxode2
   }
   if (.doAppend) {
     # in pre-pending or appending, lines are only added
-    .lhs <- character()
-    .rhs <- character()
+    .lhs <- character(0)
+    .rhs <- character(0)
+    .lhs0 <- c(rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name)
     for (x in modelLines) {
       .isTilde <- .isEndpoint(x)
       if (.isTilde || .isAssignment(x)) {
         .rhs <- unique(c(.getVariablesFromExpression(.getRhs(x), ignorePipe=.isTilde), .rhs))
         .lhs <- unique(c(.getVariablesFromExpression(.getLhs(x)), .lhs))
       }
-      .rhs <- setdiff(.rhs, c(.lhs, rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name))
+      .rhs <- setdiff(.rhs, c(.lhs, .lhs0))
       if (isTRUE(auto)) {
         for (v in .rhs) {
-          .addVariableToIniDf(v, rxui, promote=ifelse(.isTilde,NA, TRUE))
+          .isCov <- grepl(.varSelect$covariateExceptions, tolower(v))
+          .isTheta <- !.isCov && grepl(.varSelect$thetaModelReg, v)
+          .isEta <- !.isCov && grepl(.varSelect$etaModelReg, v)
+          if (.isTilde || .isTheta || .isEta) {
+            .addVariableToIniDf(v, rxui,
+                                promote=ifelse(.isTilde,NA,
+                                               TRUE))
+            .lhs <- c(.lhs, v)
+          }
         }
       }
     }
@@ -693,7 +702,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 #'
 rxSetPipingAuto <- function(thetamodelVars=rex::rex(or("tv", "t", "pop", "POP", "Pop",
                                                      "TV", "T", "cov", "err", "eff")),
-                          covariateExceptions = rex::rex(start, or("wt", "sex", "crcl"), end),
+                          covariateExceptions = rex::rex(start, or("wt", "sex", "crcl", "kout"), end),
                           etaParts=c("eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv",
                                      "bsv", "Bsv", "BSV","bpv", "Bpv", "BPV", "psv", "PSV",
                                      "Psv")
@@ -902,7 +911,6 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         }
       }
     }
-
     if (all(is.na(.iniDf$ntheta))) {
       .theta <- 1
     } else {
