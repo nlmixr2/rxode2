@@ -137,6 +137,9 @@ mu-referencing style to run the optimization.
   compatible matrix, use `lotri` to express it instead of the default
   R expression.
 
+- Allow character vectors to be converted to expressions for piping
+  (#552)
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
