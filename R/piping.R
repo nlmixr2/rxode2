@@ -144,7 +144,13 @@
       .cur <- try(eval(.bracketExpression, envir=envir), silent=TRUE)
       if (inherits(.cur, "try-error")) {
       } else if (length(.cur) > 1) {
-        if (identical(.cur[[1]], quote(`{`))) {
+        if (inherits(.cur, "character")) {
+          .cur <- lapply(.cur, function(x) {
+            str2lang(x)
+          })
+          .cur <- as.call(c(list(quote(`{`)),.cur))
+          .bracketExpression <- .cur
+        } else if (identical(.cur[[1]], quote(`{`))) {
           .bracketExpression <- .cur
         }
       }
