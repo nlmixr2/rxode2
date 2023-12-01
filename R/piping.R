@@ -141,8 +141,9 @@
     .cur <- NULL
     if (length(.bracketExpression) == 1) {
       # evaulate expression
-      .cur <- eval(.bracketExpression, envir=envir)
-      if (length(.cur) > 1) {
+      .cur <- try(eval(.bracketExpression, envir=envir), silent=TRUE)
+      if (inherits(.cur, "try-error")) {
+      } else if (length(.cur) > 1) {
         if (identical(.cur[[1]], quote(`{`))) {
           .bracketExpression <- .cur
         }

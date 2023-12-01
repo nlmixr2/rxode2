@@ -15,9 +15,13 @@ knitr::opts_chunk$set(
 library(rxode2)
 ```
 
-When defining models you may have wished to write a small R function or make a function integrate into `rxode2` somehow. This article discusses 2 ways to do this:
+When defining models you may have wished to write a small R function
+or make a function integrate into `rxode2` somehow. This article
+discusses 2 ways to do this:
 
--   A R-based user function which can be loaded as a simple function or in certain circumstances translated to C to run more efficiently
+-   A R-based user function which can be loaded as a simple function
+    or in certain circumstances translated to C to run more
+    efficiently
 
 -   A C function that you define and integrate into code
 
@@ -31,6 +35,7 @@ with an appropriate example; However, I will use a very simple example
 here to simply illustrate the concepts.
 
 ```{r fExample}
+
 newAbs <- function(x) {
   if (x < 0) {
     -x
@@ -88,9 +93,15 @@ of function, but C versions of the derivatives and registers them with
 `rxode2`. This allows the C versions to work with not only `rxode2`
 but `nlmixr2` models.
 
-This function was setup in advance to allow this type of conversion. In general the derivatives will be calculated if there is not a `return()` statement in the user defined function. This means simply let R return the last value instead of explictly calling out the `return()`. Many people prefer this method of coding.
+This function was setup in advance to allow this type of
+conversion. In general the derivatives will be calculated if there is
+not a `return()` statement in the user defined function. This means
+simply let R return the last value instead of explictly calling out
+the `return()`. Many people prefer this method of coding.
 
-Even if there is a `return` function, the function could be converted to `C`. In the github issue, they used a function that would not convert the derivatives:
+Even if there is a `return` function, the function could be converted
+to `C`. In the github issue, they used a function that would not
+convert the derivatives:
 
 ```{r fConvNoDer}
 # Light
