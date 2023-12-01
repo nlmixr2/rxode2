@@ -272,4 +272,41 @@ rxTest({
 
   })
 
+
+  test_that("bind together functions where population parameters where all parameters overlap", {
+
+    ocmt <- function() {
+      ini({
+        tv <- exp(3.45)
+      })
+      model({
+        ka <- tka
+        cl <- tcl
+        v <- tv
+        d/dt(depot) = -ka * depot
+        d/dt(center) = ka * depot - cl / v * center
+        cp = center / v
+      })
+    }
+
+    idr <- function() {
+      ini({
+        tv <- 3
+      })
+      model({
+        kin <- exp(tkin)
+        kout <- exp(tkout)
+        ic50 <- exp(tic50)
+        v <- exp(tv)
+        d/dt(eff) <- kin - kout*(1-ceff^gamma/(ic50^gamma+ceff^gamma) * v)
+      })
+    }
+
+    m1 <- rxAppendModel(ocmt %>% model(ceff=cp,append=TRUE), idr)
+
+    expect_equal(m1$theta,
+                 c(tv = 31.5003923087479))
+
+  })
+
 })
