@@ -135,7 +135,7 @@ model.rxModelVars <- model.rxode2
           if (.isTilde || .isTheta || .isEta) {
             .addVariableToIniDf(v, rxui,
                                 promote=ifelse(.isTilde,NA,
-                                               TRUE))
+                                               auto))
             .lhs <- c(.lhs, v)
           }
         }
