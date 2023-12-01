@@ -19,6 +19,13 @@ rxTest({
                  list(quote(-d/dt(peripheral1)),
                       quote(-d/dt(peripheral2))))
 
+    t <- c(a="x", b="y")
+
+    expect_equal(testPipeQuote(t),
+                 list(quote(a <- x), quote(b <- y)))
+
+
+
     tmp <- list(tmp="d/dt(depot)")
 
     expect_equal(testPipeQuote(tmp$tmp),
