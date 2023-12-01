@@ -13,6 +13,12 @@ rxTest({
     expect_equal(testPipeQuote(tmp),
                  list(quote(d/dt(depot))))
 
+
+    t <- c("-d/dt(peripheral1)", "-d/dt(peripheral2)")
+    expect_equal(testPipeQuote(t),
+                 list(quote(-d/dt(peripheral1)),
+                      quote(-d/dt(peripheral2))))
+
     tmp <- list(tmp="d/dt(depot)")
 
     expect_equal(testPipeQuote(tmp$tmp),
@@ -2009,6 +2015,9 @@ test_that("piping append", {
       cp ~ add(add.sd)
     })
   }
+
+  t <- c("-cp","-d/dt(depot)")
+  expect_error(mod |> model(t), NA)
 
   mod5 <- mod |>
     model({
