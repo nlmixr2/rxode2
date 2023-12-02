@@ -66,15 +66,19 @@ rxAppendModel_ <- function(model1, model2, common=TRUE) {
     # See if any of the items have covariances defined
     .complex1 <- which(vapply(.both, function(v) {
       .eta <- .ini1eta[.ini1eta$name == v, "neta1"]
-      any(.ini1eta$neta1 == .eta & .ini1eta$neta2 != .eta)
+      any((.ini1eta$neta1 == .eta & .ini1eta$neta2 != .eta) |
+            (.ini1eta$neta2 == .eta & .ini1eta$neta1 != .eta))
     }, logical(1), USE.NAMES = FALSE))
     .complex2 <- which(vapply(.both, function(v) {
-      .eta <- .ini1eta[.ini1eta$name == v, "neta1"]
-      any(.ini1eta$neta1 == .eta & .ini1eta$neta2 != .eta)
+      .eta <- .ini2eta[.ini2eta$name == v, "neta1"]
+      any((.ini2eta$neta1 == .eta & .ini2eta$neta2 != .eta) |
+            (.ini2eta$neta2 == .eta & .ini2eta$neta1 != .eta) )
     }, logical(1), USE.NAMES = FALSE))
     .err <- unique(c(.both[.complex1], .both[.complex2]))
     if (length(.err) > 0) {
-      stop("error")
+      stop("duplicated parameter has covariance, will not append models: '",
+           paste0(.err, collapse="', '"), "'",
+           call.=FALSE)
     } else {
       # drop in the second
       .minfo("duplicated eta parameters when combining 2 models")
