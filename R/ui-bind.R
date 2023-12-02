@@ -34,7 +34,7 @@ rxAppendModel_ <- function(model1, model2, common=TRUE) {
   .ini2 <- model2$iniDf
   .bind <- intersect(c(model1$mv0$lhs, model1$mv0$state), model2$allCovs)
   if (common && length(.bind) == 0) {
-    stop("the first model does not have variables that are used by the second model",
+    stop("not all the models have variables in common (use `common=FALSE` to allow this)",
          call.=FALSE)
   }
   if (is.null(.ini1) && is.null(.ini2)) {
