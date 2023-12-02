@@ -386,8 +386,7 @@ drug-disease modeling, etc.</p>
 <span></span>
 <span>  <span class="co"># time-derivative assignment</span></span>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre><p></p></div><ul><li><p>Inside a <code>rxode2("")</code> string statement:</p></li>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre><p></p></div><ul><li><p>Inside a <code>rxode2("")</code> string statement:</p></li>
 </ul><p><!-- end list --></p>
 
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="st">"</span></span>
@@ -396,8 +395,7 @@ drug-disease modeling, etc.</p>
 <span><span class="st"></span></span>
 <span><span class="st">  # time-derivative assignment</span></span>
 <span><span class="st">  d/dt(centr) &lt;- F*KA*depot - CL*C2 - Q*C2 + Q*C3;</span></span>
-<span><span class="st">"</span><span class="op">)</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre><p></p></div><ul><li><p>In a file name to be loaded by rxode2:</p></li>
+<span><span class="st">"</span><span class="op">)</span></span></code></pre><p></p></div><ul><li><p>In a file name to be loaded by rxode2:</p></li>
 </ul><p><!-- end list --></p>
 
 <p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"</span></span>
@@ -459,22 +457,18 @@ object of class <code>rxode2</code> which consists of a list-like structure
 creates a parsed <code>rxode2</code> ui that can be translated to the <code>rxode2</code>
 compilation model.</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">mod</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_8df102744d099fa953635863e30eb814 model (ready). </span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_0beb7cac1558d255bf1dcab2e4b4e4cd model (ready). </span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
 <p></p><div class="sourceCode r"><pre><code><span><span class="co"># or </span></span>
 <span><span class="va">mod</span><span class="op">$</span><span class="va">simulationIniModel</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_13bad113efb37636a1e6416e14daf8da model (ready). </span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_e62e09f9f1f76ce371e52ab9dcb7c2d3 model (ready). </span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
 <p>This is the same type of function required for <code>nlmixr2</code> estimation and
 can be extended and modified by model piping. For this reason will be
 focused on in the documentation.</p>

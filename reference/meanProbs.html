@@ -241,20 +241,20 @@ distributional assumptions.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">x</span><span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1001</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>           0%          25%          50%          75%         100% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> -3.229076464 -0.642073924 -0.003400992  0.714600523  3.327643469 </span>
-<span class="r-in"><span><span class="fu">meanProbs</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          0%         25%         50%         75%        100% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> -3.22907646  0.01562365  0.03688283  0.05814200  3.32764347 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -3.03224139 -0.63327521  0.00390245  0.63067205  3.32707429 </span>
+<span class="r-in"><span><span class="fu">meanProbs</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           0%          25%          50%          75%         100% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -3.032241390 -0.011066681  0.009335343  0.029737367  3.327074289 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Can get some extra statistics if you request onlyProbs=FALSE</span></span></span>
 <span class="r-in"><span><span class="fu">meanProbs</span><span class="op">(</span><span class="va">x</span>, onlyProbs<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          mean           var            sd           min           max </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    0.03688283    0.99371115    0.99685062   -3.22907646    3.32764347 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  9.335343e-03  9.151956e-01  9.566585e-01 -3.032241e+00  3.327074e+00 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             n            0%           25%           50%           75% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1001.00000000   -3.22907646    0.01562365    0.03688283    0.05814200 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.001000e+03 -3.032241e+00 -1.106668e-02  9.335343e-03  2.973737e-02 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          100% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    3.32764347 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.327074e+00 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_real_</span></span></span>
 <span class="r-in"><span></span></span>
@@ -264,15 +264,15 @@ distributional assumptions.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">x</span><span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         0%        25%        50%        75%       100% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> -2.4165357 -0.4159680  0.1443846  0.7463303  2.8964104 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -2.5764970 -0.9824619 -0.1198593  0.7409843  3.1169945 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">meanProbs</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          0%         25%         50%         75%        100% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> -2.41653575  0.08251494  0.19481169  0.30710844  2.89641039 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -2.57649702 -0.19457612 -0.07047172  0.05363268  3.11699453 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">meanProbs</span><span class="op">(</span><span class="va">x</span>, useT<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          0%         25%         50%         75%        100% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> -2.41653575  0.08351015  0.19481169  0.30611323  2.89641039 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -2.57649702 -0.19347626 -0.07047172  0.05253283  3.11699453 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
