@@ -232,9 +232,6 @@ mod <- rxode2(\{
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 \})
 }\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-}\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
 }\if{html}{\out{
@@ -249,9 +246,6 @@ mod <- rxode2(\{
   # time-derivative assignment
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 ")
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
@@ -331,9 +325,7 @@ compilation model.
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
 }\if{html}{\out{</div>}}
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-
-## rxode2 2.0.14.9000 model named rx_8df102744d099fa953635863e30eb814 model (ready). 
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_0beb7cac1558d255bf1dcab2e4b4e4cd model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -344,9 +336,7 @@ compilation model.
 mod$simulationIniModel
 }\if{html}{\out{</div>}}
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-
-## rxode2 2.0.14.9000 model named rx_13bad113efb37636a1e6416e14daf8da model (ready). 
+\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_e62e09f9f1f76ce371e52ab9dcb7c2d3 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp

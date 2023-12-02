@@ -9,13 +9,41 @@
 \alias{model.default}
 \title{Model block for rxode2/nlmixr models}
 \usage{
-\method{model}{`function`}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
+\method{model}{`function`}(
+  x,
+  ...,
+  append = FALSE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
+  cov = NULL,
+  envir = parent.frame()
+)
 
-\method{model}{rxUi}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
+\method{model}{rxUi}(
+  x,
+  ...,
+  append = FALSE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
+  cov = NULL,
+  envir = parent.frame()
+)
 
-\method{model}{rxode2}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
+\method{model}{rxode2}(
+  x,
+  ...,
+  append = FALSE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
+  cov = NULL,
+  envir = parent.frame()
+)
 
-\method{model}{rxModelVars}(x, ..., append = FALSE, auto = TRUE, cov = NULL, envir = parent.frame())
+\method{model}{rxModelVars}(
+  x,
+  ...,
+  append = FALSE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
+  cov = NULL,
+  envir = parent.frame()
+)
 
 model(
   x,

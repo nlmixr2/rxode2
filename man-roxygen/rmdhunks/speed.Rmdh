@@ -345,8 +345,14 @@ Note compiler settings can be tricky and if you setup your system wide
 `ccache` the compile may not be produced with the same options since
 it was cached with the other options.
 
-Anyhow, there is some minimal speed improvement by adding this compile
-option.
+For example, on the github runner (which generates this page), there
+is no advantage to the `"fast"` compile.  However, on my development
+laptop there is [some minimal speed
+increase](https://github.com/nlmixr2/rxode2/issues/583#issuecomment-1834468627).
+You should probably check before using this yourself.
+
+This is disabled by default since there is only minimum increase in
+speed.
 
 # A real life example
 

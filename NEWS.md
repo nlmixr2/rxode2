@@ -140,6 +140,11 @@ mu-referencing style to run the optimization.
 - Allow character vectors to be converted to expressions for piping
   (#552)
 
+- `rxAppendModel()` will now take an arbitrary number of models and
+  append them together; It also has better handling of models with
+  duplicate parameters and models without `ini()` blocks (#617 / #573
+  / #575).
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-

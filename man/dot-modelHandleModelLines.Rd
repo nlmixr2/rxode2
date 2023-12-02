@@ -9,7 +9,7 @@
   rxui,
   modifyIni = FALSE,
   append = FALSE,
-  auto = TRUE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
   cov = NULL,
   envir
 )
