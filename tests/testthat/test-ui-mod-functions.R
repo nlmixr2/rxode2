@@ -798,4 +798,72 @@ rxTest({
     expect_true("tv" %in% m1$iniDf$name)
 
   })
+
+  test_that("combine 3 models", {
+
+    ocmt <- function() {
+      ini({
+        tka <- exp(0.45)
+        tcl <- exp(1)
+        tv <- exp(3.45)
+        add.sd <- 0.7
+      })
+      model({
+        ka <- tka
+        cl <- tcl
+        v <- tv
+        d/dt(depot) = -ka * depot
+        d/dt(center) = ka * depot - cl / v * center
+        cp = center / v
+        cp ~ add(add.sd)
+      })
+    }
+
+    d1 <- ocmt |> rxRename(tkaD1=tka,
+                           tclD1=tcl,
+                           tvD1=tv,
+                           add.sd.d1=add.sd,
+                           kaD1=ka,
+                           clD1=cl,
+                           vD1=v,
+                           depotD1=depot,
+                           centerD1=center,
+                           cpD1=cp)
+
+    d2 <- ocmt |> rxRename(tkad2=tka,
+                           tcld2=tcl,
+                           tvd2=tv,
+                           add.sd.d2=add.sd,
+                           kad2=ka,
+                           cld2=cl,
+                           vd2=v,
+                           depotd2=depot,
+                           centerd2=center,
+                           cpd2=cp)
+
+    idr <- function() {
+      ini({
+        tkin <- log(1)
+        tkout <- log(1)
+        tic50 <- log(10)
+        gamma <- fix(1)
+        idr.sd <- 1
+      })
+      model({
+        kin <- exp(tkin)
+        kout <- exp(tkout)
+        ic50 <- exp(tic50)
+        d/dt(eff) <- kin - kout*(1-ceff^gamma/(ic50^gamma+ceff^gamma))
+        eff ~ add(idr.sd)
+      })
+    }
+
+    idr <- idr |> model(ceff=cpD1 + cpd2, append=NA)
+
+    full <- rxAppendModel(d1, d2, idr, common=FALSE)
+
+    expect_equal(full$theta,
+                 c(tkaD1 = 1.56831218549017, tclD1 = 2.71828182845905, tvD1 = 31.5003923087479, add.sd.d1 = 0.7, tkad2 = 1.56831218549017, tcld2 = 2.71828182845905, tvd2 = 31.5003923087479, add.sd.d2 = 0.7, tkin = 0, tkout = 0, tic50 = 2.30258509299405, gamma = 1, idr.sd = 1))
+
+  })
 })
