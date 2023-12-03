@@ -455,7 +455,7 @@
     .theta <- rbind(.theta, .newTheta)
   } else {
     # switch theta to eta
-    if (!is.na(.iniDf$err[.w])){
+    if (!is.na(.iniDf$err[.w])) {
       stop("cannot switch error parameter '", .var,
            "' to a different type", call. = FALSE)
     }
@@ -513,7 +513,7 @@
     .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
     .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
   } else {
-    if (!is.na(.iniDf$err[.w])){
+    if (!is.na(.iniDf$err[.w])) {
       stop("cannot switch error parameter '", .var,
            "' to a covariate", call. = FALSE)
     }
@@ -586,7 +586,7 @@
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
   } else if (.isTildeExpr(expr)) {
     .iniHandleSwitchType(expr=expr, rxui=rxui, envir=envir)
-  } else if (.isIniDropExpression(expr)){
+  } else if (.isIniDropExpression(expr)) {
     .iniHandleDropType(expr=expr, rxui=rxui, envir=envir)
   } else {
     # Can this error be improved to clarify what is the expression causing the
