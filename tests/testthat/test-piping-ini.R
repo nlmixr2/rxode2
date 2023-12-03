@@ -686,3 +686,54 @@ test_that("change ini type with ~", {
   expect_equal(mod4$omega, lotri(lcl ~ 1))
 
 })
+
+
+
+test_that("change ini variable to covariate with -", {
+
+  mod <- function() {
+    ini({
+      lka + lcl + lvc ~
+        c(0.45,
+          0.01, 1,
+          0.01, -0.01, 3.45)
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini(-lka)
+
+  expect_equal(mod2$allCovs, "lka")
+  expect_equal(mod2$omega, lotri(lcl + lvc ~ c(1, -0.01, 3.45)))
+
+  mod <- function() {
+    ini({
+      lka ~ 0.45
+      lcl ~ 1
+      lvc ~ 3.45
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini(-lka)
+
+  expect_equal(mod2$allCovs, "lka")
+
+
+})

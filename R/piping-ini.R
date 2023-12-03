@@ -408,6 +408,17 @@
   assign("iniDf", ret, envir=rxui)
   invisible()
 }
+
+.iniHandleRecalc <- function(rxui) {
+  .fun <- rxUiDecompress(rxui$fun())
+  for (.i in ls(.fun, all=TRUE)) {
+    if (.i != "meta") {
+      assign(.i, get(.i, envir=.fun), envir=rxui)
+    }
+  }
+  invisible()
+}
+
 #' Handle switching theta to eta and vice versa
 #'
 #' This is coded as model |> ini(~par)
@@ -470,6 +481,49 @@
   }
   .ini <- rbind(.theta, .eta)
   assign("iniDf", .ini, envir=rxui)
+  # This may change mu-referencing, recalculate everything
+  .iniHandleRecalc(rxui)
+  invisible()
+}
+
+#' Handle dropping parameter and treating as if it is a covariate
+#'
+#' This is coded as model |> ini(-par)
+#'
+#' @param expr Expression, this would be the ~par expression
+#' @param rxui rxui uncompressed environment
+#' @param envir Environment for evaluation (if needed)
+#' @return Nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleDropType <- function(expr, rxui, envir=parent.frame()) {
+  .var <- as.character(expr[[2]])
+  .iniDf <- rxui$iniDf
+  .w <- which(.iniDf$name == .var)
+  if (length(.w) != 1L) stop("no initial estimates for '", .var, "', cannot change to covariate", call.=FALSE)
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  if (is.na(.iniDf$ntheta[.w])) {
+    .minfo(paste0("changing between subject variability parameter '", .var, "' to covariate parameter"))
+    .neta <- .iniDf$neta1[.w]
+    .eta <- .eta[.eta$neta1 != .neta,, drop = FALSE]
+    .eta <- .eta[.eta$neta2 != .neta,, drop = FALSE]
+    .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
+    .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
+  } else {
+    if (!is.na(.iniDf$err[.w])){
+      stop("cannot switch error parameter '", .var,
+           "' to a covariate", call. = FALSE)
+    }
+    .minfo(paste0("changing population parameter '", .var, "' to covariate parameter"))
+    .ntheta <- .iniDf$ntheta[.w]
+    .theta <- .theta[.theta$ntheta != .ntheta,, drop = FALSE]
+    .theta$ntheta <- .theta$ntheta - ifelse(.theta$ntheta < .ntheta, 0L, 1L)
+  }
+  .ini <- rbind(.theta, .eta)
+  assign("iniDf", .ini, envir=rxui)
+  # This will change covariates, recalculate everything
+  .iniHandleRecalc(rxui)
   invisible()
 }
 
@@ -530,6 +584,8 @@
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
   } else if (.isTildeExpr(expr)) {
     .iniHandleSwitchType(expr=expr, rxui=rxui, envir=envir)
+  } else if (.isIniDropExpression(expr)){
+    .iniHandleDropType(expr=expr, rxui=rxui, envir=envir)
   } else {
     # Can this error be improved to clarify what is the expression causing the
     # issue?  It needs a single character string representation of something
