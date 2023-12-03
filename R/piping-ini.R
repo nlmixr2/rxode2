@@ -409,6 +409,126 @@
   invisible()
 }
 
+.iniHandleRecalc <- function(rxui) {
+  .fun <- rxUiDecompress(rxui$fun())
+  for (.i in ls(.fun, all=TRUE)) {
+    if (.i != "meta") {
+      assign(.i, get(.i, envir=.fun), envir=rxui)
+    }
+  }
+  invisible()
+}
+
+#' Handle switching theta to eta and vice versa
+#'
+#' This is coded as model |> ini(~par)
+#'
+#' @param expr Expression, this would be the ~par expression
+#' @param rxui rxui uncompressed environment
+#' @param envir Environment for evaluation (if needed)
+#' @return Nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleSwitchType <- function(expr, rxui, envir=parent.frame()) {
+  .var <- as.character(expr[[2]])
+  .iniDf <- rxui$iniDf
+  .w <- which(.iniDf$name == .var)
+  if (length(.w) != 1L) stop("cannot switch parameter type for '", .var, "'", call.=FALSE)
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  if (is.na(.iniDf$ntheta[.w])) {
+    # switch eta to theta
+    .neta <- .iniDf$neta1[.w]
+    .eta <- .eta[.eta$neta1 != .neta,, drop = FALSE]
+    .eta <- .eta[.eta$neta2 != .neta,, drop = FALSE]
+    .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
+    .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
+    .newTheta <- .iniDf[.w, ]
+    .newTheta$neta1 <- NA_integer_
+    .newTheta$neta2 <- NA_integer_
+    if (length(.theta$ntheta) == 0L) {
+      .newTheta$ntheta <- 1L
+    } else {
+      .newTheta$ntheta <- max(.theta$ntheta) + 1L
+    }
+    .minfo(paste0("convert '", .var, "' from between subject variability to population parameter"))
+    .theta <- rbind(.theta, .newTheta)
+  } else {
+    # switch theta to eta
+    if (!is.na(.iniDf$err[.w])) {
+      stop("cannot switch error parameter '", .var,
+           "' to a different type", call. = FALSE)
+    }
+    .ntheta <- .iniDf$ntheta[.w]
+    .theta <- .theta[.theta$ntheta != .ntheta,, drop = FALSE]
+    .theta$ntheta <- .theta$ntheta - ifelse(.theta$ntheta < .ntheta, 0L, 1L)
+    .newEta <- .iniDf[.w, ]
+    .newEta$ntheta <- NA_integer_
+    if (length(.eta$neta1) == 0L) {
+      .newEta$neta1 <- .newEta$neta2 <- 1L
+    } else {
+      .newEta$neta1 <- .newEta$neta2 <- max(.eta$neta1) + 1L
+    }
+    .minfo(paste0("convert '", .var, "' from population parameter to between subject variability"))
+    if (.newEta$est == 0) {
+      .minfo("old initial estimate is zero, changing to 1")
+      .newEta$est <- 1
+    } else if (.newEta$est < 0) {
+      .minfo("old initial estimate was negative, changing to positive")
+      .newEta$est <- -.newEta$est
+    }
+    .newEta$lower <- -Inf
+    .newEta$upper <- Inf
+    .eta <- rbind(.eta, .newEta)
+  }
+  .ini <- rbind(.theta, .eta)
+  assign("iniDf", .ini, envir=rxui)
+  # This may change mu-referencing, recalculate everything
+  .iniHandleRecalc(rxui)
+  invisible()
+}
+
+#' Handle dropping parameter and treating as if it is a covariate
+#'
+#' This is coded as model |> ini(-par)
+#'
+#' @param expr Expression, this would be the ~par expression
+#' @param rxui rxui uncompressed environment
+#' @param envir Environment for evaluation (if needed)
+#' @return Nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleDropType <- function(expr, rxui, envir=parent.frame()) {
+  .var <- as.character(expr[[2]])
+  .iniDf <- rxui$iniDf
+  .w <- which(.iniDf$name == .var)
+  if (length(.w) != 1L) stop("no initial estimates for '", .var, "', cannot change to covariate", call.=FALSE)
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  if (is.na(.iniDf$ntheta[.w])) {
+    .minfo(paste0("changing between subject variability parameter '", .var, "' to covariate parameter"))
+    .neta <- .iniDf$neta1[.w]
+    .eta <- .eta[.eta$neta1 != .neta,, drop = FALSE]
+    .eta <- .eta[.eta$neta2 != .neta,, drop = FALSE]
+    .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
+    .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
+  } else {
+    if (!is.na(.iniDf$err[.w])) {
+      stop("cannot switch error parameter '", .var,
+           "' to a covariate", call. = FALSE)
+    }
+    .minfo(paste0("changing population parameter '", .var, "' to covariate parameter"))
+    .ntheta <- .iniDf$ntheta[.w]
+    .theta <- .theta[.theta$ntheta != .ntheta,, drop = FALSE]
+    .theta$ntheta <- .theta$ntheta - ifelse(.theta$ntheta < .ntheta, 0L, 1L)
+  }
+  .ini <- rbind(.theta, .eta)
+  assign("iniDf", .ini, envir=rxui)
+  # This will change covariates, recalculate everything
+  .iniHandleRecalc(rxui)
+  invisible()
+}
+
 #' Update the iniDf of a model
 #'
 #' @param expr Expression for parsing
@@ -464,6 +584,10 @@
     expr[[3]] <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
                       envir=envir)[1, 1]
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
+  } else if (.isTildeExpr(expr)) {
+    .iniHandleSwitchType(expr=expr, rxui=rxui, envir=envir)
+  } else if (.isIniDropExpression(expr)) {
+    .iniHandleDropType(expr=expr, rxui=rxui, envir=envir)
   } else {
     # Can this error be improved to clarify what is the expression causing the
     # issue?  It needs a single character string representation of something

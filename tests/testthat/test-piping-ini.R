@@ -569,3 +569,171 @@ test_that("append allows promoting from covariate (#472)", {
   )
   expect_equal(newmod$iniDf$name, c("lka", "ka_dose", "lcl", "lvc", "propSd"))
 })
+
+test_that("change ini type with ~", {
+
+  mod <- function() {
+    ini({
+      lka <- 0.45
+      lcl <- 1
+      lvc  <- 3.45
+      propSd <- 0.5
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+      cp ~ prop(propSd)
+    })
+  }
+
+  mod1 <- mod |> ini( ~ lka)
+  expect_equal(mod1$omega, lotri(lka ~ 0.45))
+
+  mod2 <- mod1 |> ini( ~ lka)
+  expect_equal(mod2$omega, NULL)
+
+  expect_error(mod1 |> ini( ~ propSd))
+
+  expect_error(mod1 |> ini( ~ matt))
+
+  ## all etas
+
+  mod <- function() {
+    ini({
+      lka ~ 0.45
+      lcl ~ 1
+      lvc ~ 3.45
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini( ~ lka)
+
+  expect_equal(mod2$omega, lotri(lcl ~ 1, lvc ~ 3.45))
+
+  # remove correlated eta
+
+  mod <- function() {
+    ini({
+      lka + lcl + lvc ~
+        c(0.45,
+          0.01, 1,
+          0.01, -0.01, 3.45)
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini( ~ lka)
+
+  expect_equal(mod2$omega, lotri(lcl + lvc ~ c(1,
+                                               -0.01, 3.45)))
+
+
+  # negative and zero
+
+  mod <- function() {
+    ini({
+      lka <- 0.45
+      lcl <- -1
+      lvc <- 0
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini( ~ lcl)
+
+  expect_equal(mod2$omega, lotri(lcl ~ 1))
+
+  mod2 <- mod |> ini( ~ lvc)
+
+  expect_equal(mod2$omega, lotri(lvc ~ 1))
+
+  mod3 <- mod2 |> ini( ~ lvc)
+
+  expect_equal(mod3$omega, NULL)
+
+  mod4 <- mod3 |> ini( ~ lvc)
+
+  expect_equal(mod4$omega, lotri(lvc ~ 1))
+
+})
+
+
+
+test_that("change ini variable to covariate with -", {
+
+  mod <- function() {
+    ini({
+      lka + lcl + lvc ~
+        c(0.45,
+          0.01, 1,
+          0.01, -0.01, 3.45)
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini(-lka)
+
+  expect_equal(mod2$allCovs, "lka")
+  expect_equal(mod2$omega, lotri(lcl + lvc ~ c(1, -0.01, 3.45)))
+
+  mod <- function() {
+    ini({
+      lka ~ 0.45
+      lcl ~ 1
+      lvc ~ 3.45
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini(-lka)
+
+  expect_equal(mod2$allCovs, "lka")
+
+
+})
