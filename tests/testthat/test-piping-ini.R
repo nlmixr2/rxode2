@@ -679,11 +679,11 @@ test_that("change ini type with ~", {
 
   mod3 <- mod2 |> ini( ~ lvc)
 
-  expect_equal(mod3$omega, lotri(lcl ~ 1, lvc ~ 1))
+  expect_equal(mod3$omega, NULL)
 
   mod4 <- mod3 |> ini( ~ lvc)
 
-  expect_equal(mod4$omega, lotri(lcl ~ 1))
+  expect_equal(mod4$omega, lotri(lvc ~ 1))
 
 })
 
