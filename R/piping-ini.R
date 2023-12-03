@@ -477,6 +477,8 @@
       .minfo("old initial estimate was negative, changing to positive")
       .newEta$est <- -.newEta$est
     }
+    .newEta$lower <- -Inf
+    .newEta$upper <- Inf
     .eta <- rbind(.eta, .newEta)
   }
   .ini <- rbind(.theta, .eta)
