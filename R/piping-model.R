@@ -180,6 +180,10 @@ model.rxModelVars <- model.rxode2
     .matchesLangTemplate(expr, str2lang(". = ."))
 }
 
+.isTildeExpr <- function(expr) {
+  .matchesLangTemplate(expr, str2lang("~ ."))
+}
+
 # get the left hand side of an assignment or endpoint; returns NULL if the input
 # is not an assignment or endpoint
 .getLhs <- function(expr) {
