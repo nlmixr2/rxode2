@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Using Prior Data for ODE solving</h1>
             
-            <h4 data-toc-skip class="date">2023-12-02</h4>
+            <h4 data-toc-skip class="date">2023-12-03</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-prior-data.Rmd" class="external-link"><code>vignettes/rxode2-prior-data.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-prior-data.Rmd</code></div>
@@ -242,33 +242,33 @@ frame</p>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 12 × 7</span></span></span>
-<span><span class="co">#&gt;    id      tka   tcl    tv  eta.ka  eta.cl       eta.v</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1     0.451  1.02  3.45  0.245   0.908   0.182     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2     0.451  1.02  3.45 -<span style="color: #BB0000;">0.271</span>   0.494  -<span style="color: #BB0000;">0.714</span>     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3     0.451  1.02  3.45  1.77    0.750  -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">007</span><span style="color: #BB0000;">96</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4     0.451  1.02  3.45 -<span style="color: #BB0000;">0.939</span>   0.434   0.510     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5     0.451  1.02  3.45 -<span style="color: #BB0000;">0.429</span>  -<span style="color: #BB0000;">0.540</span>   0.104     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6     0.451  1.02  3.45  1.05    0.014<span style="text-decoration: underline;">0</span>  0.563     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7     0.451  1.02  3.45 -<span style="color: #BB0000;">0.091</span><span style="color: #BB0000; text-decoration: underline;">8</span>  0.366   0.034<span style="text-decoration: underline;">8</span>    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8     0.451  1.02  3.45 -<span style="color: #BB0000;">0.716</span>   0.412   0.143     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9     0.451  1.02  3.45 -<span style="color: #BB0000;">1.09</span>   -<span style="color: #BB0000;">0.715</span>  -<span style="color: #BB0000;">0.044</span><span style="color: #BB0000; text-decoration: underline;">0</span>    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10    0.451  1.02  3.45  0.718   0.274  -<span style="color: #BB0000;">0.355</span>     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span> 11    0.451  1.02  3.45  0.454   0.421  -<span style="color: #BB0000;">0.181</span>     </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">12</span> 12    0.451  1.02  3.45  0.972  -<span style="color: #BB0000;">0.288</span>  -<span style="color: #BB0000;">0.252</span>     </span></span>
+<span><span class="co">#&gt;    id      tka   tcl    tv eta.ka    eta.cl   eta.v</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1     0.451  1.02  3.45 -<span style="color: #BB0000;">0.781</span>  0.084<span style="text-decoration: underline;">8</span>   -<span style="color: #BB0000;">0.154</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2     0.451  1.02  3.45 -<span style="color: #BB0000;">0.557</span> -<span style="color: #BB0000;">0.116</span>    -<span style="color: #BB0000;">0.351</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3     0.451  1.02  3.45 -<span style="color: #BB0000;">0.170</span> -<span style="color: #BB0000;">0.748</span>     0.187 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4     0.451  1.02  3.45 -<span style="color: #BB0000;">0.382</span> -<span style="color: #BB0000;">0.158</span>     0.222 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5     0.451  1.02  3.45 -<span style="color: #BB0000;">0.161</span> -<span style="color: #BB0000;">0.536</span>     0.198 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6     0.451  1.02  3.45 -<span style="color: #BB0000;">0.405</span>  0.063<span style="text-decoration: underline;">0</span>   -<span style="color: #BB0000;">0.159</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7     0.451  1.02  3.45  0.216  0.476    -<span style="color: #BB0000;">0.375</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8     0.451  1.02  3.45 -<span style="color: #BB0000;">0.630</span>  0.000<span style="text-decoration: underline;">678</span>  0.084<span style="text-decoration: underline;">4</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9     0.451  1.02  3.45  1.05  -<span style="color: #BB0000;">0.044</span><span style="color: #BB0000; text-decoration: underline;">9</span>   -<span style="color: #BB0000;">0.020</span><span style="color: #BB0000; text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10    0.451  1.02  3.45  0.918  0.250    -<span style="color: #BB0000;">0.199</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span> 11    0.451  1.02  3.45  0.698 -<span style="color: #BB0000;">0.119</span>    -<span style="color: #BB0000;">0.033</span><span style="color: #BB0000; text-decoration: underline;">4</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">12</span> 12    0.451  1.02  3.45  0.103 -<span style="color: #BB0000;">0.148</span>    -<span style="color: #BB0000;">0.208</span> </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Initial Conditions (</span><span style="color: #0000BB; font-weight: bold;">$inits</span><span style="font-weight: bold;">): ──</span></span></span>
 <span><span class="co">#&gt;  depot center </span></span>
 <span><span class="co">#&gt;      0      0 </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── First part of data (object): ──</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 132 × 8</span></span></span>
-<span><span class="co">#&gt;      id  time    ka    cl     v    cp   depot center</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     1  0     2.01  6.86  37.7  0    320.        0 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     1  0.25  2.01  6.86  37.7  3.26 194.      123.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     1  0.57  2.01  6.86  37.7  5.43 102.      205.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1  1.12  2.01  6.86  37.7  6.62  33.9     250.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1  2.02  2.01  6.86  37.7  6.30   5.57    238.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1  3.82  2.01  6.86  37.7  4.65   0.151   176.</span></span>
+<span><span class="co">#&gt;      id  time    ka    cl     v    cp depot center</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     1  0    0.719  3.01  27.0  0    320.     0  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     1  0.25 0.719  3.01  27.0  1.92 267.    51.9</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     1  0.57 0.719  3.01  27.0  3.86 212.   104. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1  1.12 0.719  3.01  27.0  6.12 143.   165. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1  2.02 0.719  3.01  27.0  7.92  74.9  214. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1  3.82 0.719  3.01  27.0  8.27  20.5  223. </span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 126 more rows</span></span></span>
 <span></span>
 <span><span class="co">## Of course the fasest way to solve if you don't care about the rxode2 extra parameters is</span></span>
@@ -280,33 +280,33 @@ frame</p>
 <span><span class="co">## solved data</span></span>
 <span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="va">solveData</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 132 × 8</span></span></span>
-<span><span class="co">#&gt;       id  time    ka    cl     v     cp     depot center</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1  0    0.982  12.1  26.1 0      320.        0   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1  0.25 0.982  12.1  26.1 2.52   250.       65.6 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1  0.57 0.982  12.1  26.1 4.57   183.      119.  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1  1.12 0.982  12.1  26.1 6.10   107.      159.  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     1  2.02 0.982  12.1  26.1 5.92    44.0     154.  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     1  3.82 0.982  12.1  26.1 3.42     7.51     89.1 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     1  5.1  0.982  12.1  26.1 2.04     2.14     53.1 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     1  7.03 0.982  12.1  26.1 0.874    0.321    22.8 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     1  9.05 0.982  12.1  26.1 0.349    0.044<span style="text-decoration: underline;">1</span>    9.10</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     1 12.1  0.982  12.1  26.1 0.084<span style="text-decoration: underline;">9</span>   0.002<span style="text-decoration: underline;">16</span>   2.21</span></span>
+<span><span class="co">#&gt;       id  time    ka    cl     v    cp        depot center</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1  0     1.43  2.37  20.9  0    320.            0  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1  0.25  1.43  2.37  20.9  4.54 224.           94.9</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1  0.57  1.43  2.37  20.9  8.24 141.          172. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1  1.12  1.43  2.37  20.9 11.3   64.3         236. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     1  2.02  1.43  2.37  20.9 12.3   17.7         257. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     1  3.82  1.43  2.37  20.9 10.7    1.34        224. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     1  5.1   1.43  2.37  20.9  9.32   0.215       195. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     1  7.03  1.43  2.37  20.9  7.49   0.013<span style="text-decoration: underline;">5</span>      157. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     1  9.05  1.43  2.37  20.9  5.96   0.000<span style="text-decoration: underline;">750</span>    125. </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     1 12.1   1.43  2.37  20.9  4.21   0.000<span style="text-decoration: underline;">009</span>22   88.0</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 122 more rows</span></span></span>
 <span></span>
 <span><span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/data.table.html" class="external-link">data.table</a></span><span class="op">(</span><span class="va">solveData</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      id  time        ka        cl        v        cp         depot     center</span></span>
-<span><span class="co">#&gt;   1:  1  0.00 0.9821646 12.063671 26.06798 0.0000000  3.199920e+02   0.000000</span></span>
-<span><span class="co">#&gt;   2:  1  0.25 0.9821646 12.063671 26.06798 2.5177930  2.503237e+02  65.633770</span></span>
-<span><span class="co">#&gt;   3:  1  0.57 0.9821646 12.063671 26.06798 4.5690885  1.828127e+02 119.106895</span></span>
-<span><span class="co">#&gt;   4:  1  1.12 0.9821646 12.063671 26.06798 6.0971010  1.065135e+02 158.939089</span></span>
-<span><span class="co">#&gt;   5:  1  2.02 0.9821646 12.063671 26.06798 5.9224441  4.400585e+01 154.386137</span></span>
-<span><span class="co">#&gt;  ---                                                                         </span></span>
-<span><span class="co">#&gt; 128: 12  5.07 1.4733581  3.744114 21.50337 6.9848945  1.827601e-01 150.198777</span></span>
-<span><span class="co">#&gt; 129: 12  7.07 1.4733581  3.744114 21.50337 4.9371645  9.597044e-03 106.165679</span></span>
-<span><span class="co">#&gt; 130: 12  9.03 1.4733581  3.744114 21.50337 3.5099972  5.345496e-04  75.476772</span></span>
-<span><span class="co">#&gt; 131: 12 12.05 1.4733581  3.744114 21.50337 2.0746409  6.245847e-06  44.611773</span></span>
-<span><span class="co">#&gt; 132: 12 24.15 1.4733581  3.744114 21.50337 0.2523259 -3.450497e-11   5.425857</span></span></code></pre></div>
+<span><span class="co">#&gt;      id  time       ka       cl        v        cp         depot    center</span></span>
+<span><span class="co">#&gt;   1:  1  0.00 1.432501 2.368460 20.90624  0.000000  3.199920e+02   0.00000</span></span>
+<span><span class="co">#&gt;   2:  1  0.25 1.432501 2.368460 20.90624  4.538880  2.236698e+02  94.89089</span></span>
+<span><span class="co">#&gt;   3:  1  0.57 1.432501 2.368460 20.90624  8.235471  1.414251e+02 172.17270</span></span>
+<span><span class="co">#&gt;   4:  1  1.12 1.432501 2.368460 20.90624 11.299036  6.432153e+01 236.22032</span></span>
+<span><span class="co">#&gt;   5:  1  2.02 1.432501 2.368460 20.90624 12.300463  1.771909e+01 257.15637</span></span>
+<span><span class="co">#&gt;  ---                                                                      </span></span>
+<span><span class="co">#&gt; 128: 12  5.07 1.848827 1.806708 33.37071  7.521671  2.723616e-02 251.00351</span></span>
+<span><span class="co">#&gt; 129: 12  7.07 1.848827 1.806708 33.37071  6.750496  6.749527e-04 225.26884</span></span>
+<span><span class="co">#&gt; 130: 12  9.03 1.848827 1.806708 33.37071  6.070879  1.801074e-05 202.58956</span></span>
+<span><span class="co">#&gt; 131: 12 12.05 1.848827 1.806708 33.37071  5.155165  6.836463e-08 172.03152</span></span>
+<span><span class="co">#&gt; 132: 12 24.15 1.848827 1.806708 33.37071  2.677546 -1.208373e-09  89.35161</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
