@@ -27,29 +27,29 @@ test_that("Make sure the keep gives the right values", {
     V2 <- exp(ThetaV2)
     Q <- exp(ThetaQ)
     V3 <- exp(ThetaV3)
-    
+
     K20 <- CL / V2
     K23 <- Q / V2
     K32 <- Q / V3
-    
+
     CP <- A2 / V2
-    
+
     ##
     d / dt(A1) <- -KA * A1
     d / dt(A2) <- KA * transit3 - K23 * A2 + K32 * A3 - K20 * A2
     d / dt(A3) <- K23 * A2 - K32 * A3
-    
+
     d / dt(transit1) <- KA * A1 - KA * transit1
     d / dt(transit2) <- KA * transit1 - KA * transit2
     d / dt(transit3) <- KA * transit2 - KA * transit3
-    
+
     f(A1) <- 1
-    
+
     d / dt(AUC) <- CP
     A1(0) <- 0
     A2(0) <- 0
     A3(0) <- 0
-    
+
     AGE2 <- AGE
   })
 
@@ -85,7 +85,7 @@ test_that("Make sure the keep gives the right values", {
 })
 
 test_that("rxSolve 'keep' maintains character output (#190)", {
-  
+
   one.cmt <- function() {
     ini({
       tka <- 0.45
@@ -107,20 +107,26 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
   d <- nlmixr2data::theo_sd
   d$SEX <- ifelse(d$ID < 7, "M", "F")
   d$fSEX <- factor(d$SEX)
+  d$oSEX <- d$fSEX
+  class(d$oSEX) <- c("ordered", "factor")
   d$iSEX <- as.integer(d$fSEX)
   d$dSEX <- d$iSEX + 0.5
+  library(units)
+  d$uSEX <- set_units(d$dSEX, kg)
   d$eSEX <- lapply(d$SEX, function(e) {
-    str2lang(e) 
+    str2lang(e)
   })
 
-  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX"))
-  
+  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "oSEX", "uSEX"))
+
   expect_type(sim$SEX, "character")
   expect_s3_class(sim$fSEX, "factor")
   expect_equal(levels(sim$fSEX), c("F", "M"))
   expect_type(sim$iSEX, "integer")
   expect_type(sim$dSEX, "double")
+  expect_true(inherits(sim$oSEX, "ordered"))
+  expect_true(inherits(sim$uSEX, "units"))
 
   expect_error(rxSolve(one.cmt, events = d, keep = c("eSEX")))
-  
+
 })

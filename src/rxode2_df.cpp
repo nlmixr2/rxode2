@@ -293,16 +293,15 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
        i++) {
     int curType = get_fkeepType(j);
     if (curType == 4) {
-      df[i] = NumericVector(rx->nr);
+      df[i] = assign_fkeepAttr(j, NumericVector(rx->nr));
     } else if (curType == 1) {
-      df[i] = StringVector(rx->nr);
+      df[i] = assign_fkeepAttr(j, StringVector(rx->nr));
     } else {
       IntegerVector cur(rx->nr);
       if (curType == 2) {
         cur.attr("levels") = get_fkeepLevels(j);
-        cur.attr("class") = "factor";
       }
-      df[i] = cur;
+      df[i] = assign_fkeepAttr(j,cur);
     }
     j++;
   }
@@ -951,7 +950,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       jj++;kk++;
     }
     // Put in state names
-    CharacterVector stateNames2 = rxStateNames(op->modNamePtr); 
+    CharacterVector stateNames2 = rxStateNames(op->modNamePtr);
     if (nPrnState){
       for (j = 0; j < neq[0]; j++){
         if (!rmState[j]){
