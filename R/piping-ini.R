@@ -479,11 +479,11 @@
     }
     .newEta$lower <- -Inf
     .newEta$upper <- Inf
+    .newEta$condition <- "id"
     .eta <- rbind(.eta, .newEta)
   }
   .ini <- rbind(.theta, .eta)
   assign("iniDf", .ini, envir=rxui)
-  # This may change mu-referencing, recalculate everything
   .iniHandleRecalc(rxui)
   invisible()
 }
