@@ -711,6 +711,20 @@ f6 <- f4 |>
   ini(-tcl)
 
 print(f6)
+
+# to add it back as a between subject variability or population
+# parameter you can pipe it as follows:
+
+f7 <- f6 |>
+  ini(tcl=4)
+
+print(f7)
+
+
+f8 <- f6 |>
+  ini(tcl ~ 0.1)
+
+print(f8)
 ```
 
 #### Changing parameter labels
