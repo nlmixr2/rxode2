@@ -107,20 +107,27 @@ test_that("rxSolve 'keep' maintains character output (#190/#622)", {
   d <- nlmixr2data::theo_sd
   d$SEX <- ifelse(d$ID < 7, "M", "F")
   d$fSEX <- factor(d$SEX)
+  d$oSEX <- d$fSEX
+  class(d$oSEX) <- c("ordered", "factor")
   d$iSEX <- as.integer(d$fSEX)
   d$lSEX <- as.logical(d$iSEX == 1)
   d$dSEX <- d$iSEX + 0.5
+  library(units)
+  d$uSEX <- set_units(d$dSEX, kg)
   d$eSEX <- lapply(d$SEX, function(e) {
     str2lang(e)
   })
 
-  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "lSEX"))
+  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "oSEX", "uSEX", "lSEX"))
 
   expect_type(sim$SEX, "character")
   expect_s3_class(sim$fSEX, "factor")
   expect_equal(levels(sim$fSEX), c("F", "M"))
   expect_type(sim$iSEX, "integer")
   expect_type(sim$dSEX, "double")
+  expect_true(inherits(sim$oSEX, "ordered"))
+  expect_true(inherits(sim$uSEX, "units"))
+  expect_true(is.logical(sim$lSEX))
 
   d <- nlmixr2data::theo_sd
   d$SEX <- ifelse(d$ID < 7, "M", "F")

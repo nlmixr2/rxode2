@@ -2627,6 +2627,19 @@ extern "C" SEXP get_fkeepLevels(int col) {
   return wrap(cur[1]);
 }
 
+extern "C" SEXP assign_fkeepAttr(int col, SEXP in) {
+  List cur = keepFcovType[col];
+  List attr = cur[2];
+  RObject curRO = as<RObject>(in);
+  CharacterVector attrN = attr.names();
+  for (unsigned int i = 0; i < attr.size(); i++) {
+    std::string curAttr = as<std::string>(attrN[i]);
+    curRO.attr(curAttr) = attr[i];
+  }
+  return wrap(curRO);
+}
+
+
 extern "C" SEXP get_fkeepChar(int col, double val) {
   List cur = keepFcovType[col];
   StringVector levels = cur[1];
