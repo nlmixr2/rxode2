@@ -737,3 +737,11 @@ f4 <- f |> ini(tka=label("Typical Ka (1/hr)"))
 
 print(f4)
 ```
+
+
+You can also change the order while performing operations:
+
+```{r label1}
+f5 <- f |> ini(tka=label("Typical Ka (1/hr)"), append=tcl)
+print(f5)
+```
