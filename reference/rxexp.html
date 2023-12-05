@@ -198,14 +198,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxexp</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxexp you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.49562611 0.48404608 0.51967744 0.18006209 2.26226454 2.52627915</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 1.00640529 1.40211015 1.04958466 0.07007609</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 8.68525395 0.02841823 0.48235555 1.17509369 0.06255837 0.12580220</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 6.35140324 0.03454828 1.66467220 1.94038215</span>
 <span class="r-in"><span><span class="fu">rxexp</span><span class="op">(</span><span class="fl">5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.37785437 0.02748907 0.09579784 0.05564028 0.11824330 0.06890514</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 0.50897733 0.36541471 0.10764909 0.02474404</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 0.50502738 0.16194936 0.40749768 0.06140727 0.58053100 0.32011411</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 0.19783159 0.05296362 0.03715771 0.01727186</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxexp</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.2423548</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.814893</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxexp` directly in the model</span></span></span>
