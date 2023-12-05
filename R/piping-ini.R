@@ -331,7 +331,8 @@
   if (length(.w) != 1) {
     stop("cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
-    stop("the new label for '", lhs, "' must be a character string")
+    stop("the new label for '", lhs, "' must be a character string",
+         call.=FALSE)
   }
   ini$label[.w] <- newLabel
   assign("iniDf", ini, envir=rxui)
