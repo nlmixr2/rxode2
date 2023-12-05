@@ -30,6 +30,7 @@ test_that("in certain solves, the convertId_ did not always work, test here", {
       WT = c(70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70)
     )
 
-  expect_error(rxSolve(f, dMod), NA)
+  f <- rxSolve(f, dMod)
+  expect_error(print(f), NA)
 
 })
