@@ -1,6 +1,6 @@
 #' @export
 #' @rdname model
-model.function <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+model.function <- function(x, ..., append=NULL, auto=getOption("rxode2.autoVarPiping", TRUE),
                            cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(rxode2(x))
@@ -11,7 +11,7 @@ model.function <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarP
 
 #' @export
 #' @rdname model
-model.rxUi <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+model.rxUi <- function(x, ..., append=NULL, auto=getOption("rxode2.autoVarPiping", TRUE),
                        cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
@@ -32,7 +32,7 @@ model.rxUi <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPipin
 
 #' @export
 #' @rdname model
-model.rxode2 <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
+model.rxode2 <- function(x, ..., append=NULL, auto=getOption("rxode2.autoVarPiping", TRUE),
                          cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   x <- as.function(x)
@@ -56,7 +56,7 @@ model.rxModelVars <- model.rxode2
 #' @return New UI
 #' @author Matthew L. Fidler
 #' @export
-.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE,
+.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=NULL,
                                    auto=getOption("rxode2.autoVarPiping", TRUE),
                                    cov=NULL, envir) {
   checkmate::assertLogical(modifyIni, any.missing=FALSE, len=1)
@@ -66,8 +66,34 @@ model.rxModelVars <- model.rxode2
   .varSelect$cov <- cov
   .doAppend <- FALSE
   rxui <- rxUiDecompress(rxui)
+  .ll <- length(rxui$lstExpr)
   if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
-    .ll <- length(rxui$lstExpr)
+    if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(Inf))) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- TRUE
+    } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(-Inf))) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- NA
+    } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(0))) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- NA
+    } else if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=.ll)) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- TRUE
+    }
+  }
+  if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
+    if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=0, upper=.ll)) {
+      .nsEnv$.quoteCallInfoLinesAppend <- .getLhs(rxui$lstExpr[[.nsEnv$.quoteCallInfoLinesAppend]])
+    } else if (checkmate::testCharacter(.nsEnv$.quoteCallInfoLinesAppend, len=1, any.missing=FALSE,
+                                        min.chars = 1)) {
+      .tmp <- try(str2lang(.nsEnv$.quoteCallInfoLinesAppend), silent=TRUE)
+      if (inherits(.tmp, "try-error")) {
+        stop("'append' must refer to a LHS model line when a character",
+             call. = FALSE)
+      }
+      .nsEnv$.quoteCallInfoLinesAppend <- .tmp
+    }
     .w <- which(vapply(seq_len(.ll),
                        function(i) {
                          .lhs <- .getLhs(rxui$lstExpr[[i]])
@@ -112,7 +138,7 @@ model.rxModelVars <- model.rxode2
              envir=rxui)
     }
     .doAppend <- TRUE
-  } else if (is.logical(append) && length(append) == 1L && is.na(append)) {
+  } else if (is.logical(append) && length(append) == 1L && (is.na(append) || !append)) {
     assign("lstExpr", c(modelLines, rxui$lstExpr), envir=rxui)
     .doAppend <- TRUE
   } else if (isTRUE(append)) {

@@ -1428,6 +1428,18 @@ rxTest({
     expect_true("cp1" %in% f2$mv0$lhs)
     expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
+    f <- rxode2(ocmt)
+    f2 <- f %>% model(cp1 <- cp, append=Inf)
+
+    expect_true("cp1" %in% f2$mv0$lhs)
+    expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
+
+    f <- rxode2(ocmt)
+    f2 <- f %>% model(cp1 <- cp, append=100)
+
+    expect_true("cp1" %in% f2$mv0$lhs)
+    expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
+
     f2 <- f %>% model(f2 <- 3 * 2, append=NA)
     expect_true("f2" %in% f2$mv0$lhs)
     expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
@@ -2037,6 +2049,17 @@ test_that("piping append", {
 
   expect_equal(mod5$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7))
 
+  mod5 <- mod |>
+    model({
+      PD <- 1-emax*cp/(ec50+cp)
+      ##
+      effect(0) <- e0
+      kin <- e0*kout
+      d/dt(effect) <- kin*PD -kout*effect
+    }, append="d/dt(center)")
+
+  expect_equal(mod5$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7))
+
   mod6 <- mod5 |>
     model({
       emax <- exp(temax)
@@ -2056,6 +2079,46 @@ test_that("piping append", {
       eta.v ~ 0.1
       eta.e0 ~ 1
     }))
+
+  mod6 <- mod5 |>
+    model({
+      emax <- exp(temax)
+      e0 <- exp(te0 + eta.e0)
+      ec50 <- exp(tec50)
+      kin <- exp(tkin)
+      kout <- exp(tkout)
+    }, append=FALSE)
+
+  expect_equal(
+    mod6$omega,
+    lotri({
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      eta.e0 ~ 1
+    }))
+
+  expect_equal(mod6$theta,
+               c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7, temax = 1, te0 = 1, tec50 = 1, tkin = 1, tkout = 1))
+
+  mod6 <- mod5 |>
+    model({
+      emax <- exp(temax)
+      e0 <- exp(te0 + eta.e0)
+      ec50 <- exp(tec50)
+      kin <- exp(tkin)
+      kout <- exp(tkout)
+    }, append=0)
+
+  expect_equal(
+    mod6$omega,
+    lotri({
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      eta.e0 ~ 1
+    }))
+
+  expect_equal(mod6$theta,
+               c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7, temax = 1, te0 = 1, tec50 = 1, tkin = 1, tkout = 1))
 
   # make sure auto model piping turns off
 

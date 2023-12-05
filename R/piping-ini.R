@@ -331,7 +331,8 @@
   if (length(.w) != 1) {
     stop("cannot find parameter '", lhs, "'", call.=FALSE)
   } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
-    stop("the new label for '", lhs, "' must be a character string")
+    stop("the new label for '", lhs, "' must be a character string",
+         call.=FALSE)
   }
   ini$label[.w] <- newLabel
   assign("iniDf", ini, envir=rxui)
@@ -369,7 +370,8 @@
     checkmate::assert_choice(append, choices = ini$name)
     appendClean <- which(ini$name == append)
   } else {
-    stop("'append' must be NULL, logical, numeric, or character", call. = FALSE)
+    stop("'append' must be NULL, logical, numeric, or character/expression of variable in model",
+         call. = FALSE)
   }
 
   lhs <- as.character(expr[[2]])
@@ -667,16 +669,59 @@
   }
   expr
 }
+#' This gets the append arg for the ini({}) piping
+#'
+#' @param f this is the `try(force(append))` argument,
+#' @param s this is the `as.character(substitute(append))` argument
+#' @return corrected ini piping argument
+#'
+#' This is exported for creating new ini methods that have the same
+#' requirements for piping
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+.iniGetAppendArg <- function(f, s) {
+  if (inherits(f, "try-error") &&
+        checkmate::testCharacter(s, len=1, any.missing=FALSE,
+                                 pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                 min.chars = 1)) {
+    return(s)
+  }
+  if (is.null(f)) {
+    return(NULL)
+  } else if (checkmate::testCharacter(f, len=1, any.missing=FALSE,
+                                      pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                      min.chars = 1)) {
+    return(f)
+  } else if (is.infinite(f)) {
+    return(f)
+  } else if (checkmate::testIntegerish(f, len=1, any.missing=FALSE)) {
+    if (f < 0) {
+      stop("'append' cannot be a negative integer", call.=FALSE)
+    }
+    return(f)
+  } else if (checkmate::testLogical(f, len=1)) {
+    # NA for model piping prepends
+    if (is.na(f)) return(FALSE)
+    return(f)
+  }
+  stop("'append' must be NULL, logical, numeric, or character/expression of variable in model",
+       call.=FALSE)
+}
 
 #' @export
 #' @rdname ini
 ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
+  .s  <- as.character(substitute(append))
+  .f <- try(force(append), silent=TRUE)
+  append <- .iniGetAppendArg(.f, .s)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniDf <- .ret$iniDf
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf= .iniDf)
   if (length(.iniLines) == 0L) return(.ret$iniFun)
   lapply(.iniLines, function(line) {
-    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
+    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append=append)
   })
   if (inherits(x, "rxUi")) {
     .x <- rxUiDecompress(x)
@@ -695,6 +740,9 @@ ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
 #' @rdname ini
 #' @export
 ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
+  .s  <- as.character(substitute(append))
+  .f <- try(force(append), silent=TRUE)
+  append <- .iniGetAppendArg(.f, .s)
   .ret <- try(as.rxUi(x), silent = TRUE)
   if (inherits(.ret, "try-error")) {
     stop("cannot figure out what to do with the ini({}) function", call.=FALSE)

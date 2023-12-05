@@ -150,6 +150,20 @@ mu-referencing style to run the optimization.
   be kept carrying more information with it (for example ordered
   factors, data frame columns with unit information, etc)
 
+- Piping arguments `append` for `ini()` and `model()` have been
+  aligned to perform similarly.  Therefore `ini(append=)` now can take
+  expressions instead of simply strings and `model(append=)` can also
+  take strings.  Also model piping now can specify the integer line
+  number to be modified just like the `ini()` could.  Also
+  `model(append=FALSE)` has been changed to `model(append=NULL)`.
+  While the behavior is the same when you don't specify the argument,
+  the behavior has changed to align with `ini()` when piping.  Hence
+  `model(append=TRUE)` will append and `model(append=FALSE)` will now
+  pre-pend to the model.  `model(append=NULL)` will modify lines like
+  the behavior of `ini(append=NULL)`.  The default of `model(line)`
+  modifying a line in-place still applies.  While this is a breaking
+  change, most code will perform the same.
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
