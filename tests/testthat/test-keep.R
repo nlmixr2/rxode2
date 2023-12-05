@@ -84,7 +84,7 @@ test_that("Make sure the keep gives the right values", {
   expect_equal(PK.ev_ref2$AGE, PK.ev_ref2$AGE2)
 })
 
-test_that("rxSolve 'keep' maintains character output (#190)", {
+test_that("rxSolve 'keep' maintains character output (#190/#622)", {
 
   one.cmt <- function() {
     ini({
@@ -110,6 +110,7 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
   d$oSEX <- d$fSEX
   class(d$oSEX) <- c("ordered", "factor")
   d$iSEX <- as.integer(d$fSEX)
+  d$lSEX <- as.logical(d$iSEX == 1)
   d$dSEX <- d$iSEX + 0.5
   library(units)
   d$uSEX <- set_units(d$dSEX, kg)
@@ -117,7 +118,7 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
     str2lang(e)
   })
 
-  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "oSEX", "uSEX"))
+  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "oSEX", "uSEX", "lSEX"))
 
   expect_type(sim$SEX, "character")
   expect_s3_class(sim$fSEX, "factor")
@@ -126,6 +127,28 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
   expect_type(sim$dSEX, "double")
   expect_true(inherits(sim$oSEX, "ordered"))
   expect_true(inherits(sim$uSEX, "units"))
+  expect_true(is.logical(sim$lSEX))
+
+  d <- nlmixr2data::theo_sd
+  d$SEX <- ifelse(d$ID < 7, "M", "F")
+  d$SEX[4] <- NA_character_
+  d$fSEX <- factor(d$SEX)
+  d$fSEX[4] <- NA_integer_
+  d$iSEX <- as.integer(d$fSEX)
+  d$iSEX[4] <- NA_integer_
+  d$lSEX <- as.logical(d$iSEX == 1)
+  d$lSEX[4] <- NA
+  d$dSEX <- d$iSEX + 0.5
+  d$eSEX <- lapply(d$SEX, function(e) {
+    str2lang(e)
+  })
+
+  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "lSEX"))
+
+  expect_true(is.na(d$SEX[4]))
+  expect_true(is.na(d$fSEX[4]))
+  expect_true(is.na(d$iSEX[4]))
+  expect_true(is.na(d$lSEX[4]))
 
   expect_error(rxSolve(one.cmt, events = d, keep = c("eSEX")))
 

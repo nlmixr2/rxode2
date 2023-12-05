@@ -296,6 +296,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       df[i] = assign_fkeepAttr(j, NumericVector(rx->nr));
     } else if (curType == 1) {
       df[i] = assign_fkeepAttr(j, StringVector(rx->nr));
+      df[i] = StringVector(rx->nr);
+    } else if (curType == 5) {
+      df[i] = assign_fkeepAttr(j, LogicalVector(rx->nr));
     } else {
       IntegerVector cur(rx->nr);
       if (curType == 2) {
@@ -745,6 +748,10 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind);
             } else if (TYPEOF(tmp) == STRSXP){
               SET_STRING_ELT(tmp, ii, get_fkeepChar(j, get_fkeep(j, curi + ind->ix[i], ind)));
+            } else if (TYPEOF(tmp) == LGLSXP) {
+              // Everything here is double
+              dfi = LOGICAL(tmp);
+              dfi[ii] = (int) (get_fkeep(j, curi + ind->ix[i], ind));
             } else {
               dfi = INTEGER(tmp);
               /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
