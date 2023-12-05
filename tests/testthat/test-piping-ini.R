@@ -145,6 +145,7 @@ test_that(".iniSimplifyAssignArrow", {
 })
 
 test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
+
   mod <- function() {
     ini({
       a <- 1
@@ -157,7 +158,9 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
       b ~ add(addSd)
     })
   }
+
   ui <- rxode2(mod)
+
   # No modification
   expect_equal(ui$iniDf$name, c("a", "b", "c", "addSd"))
   # b to the top by number
@@ -170,6 +173,9 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
   expect_equal(suppressMessages(ini(ui, b <- 1, append = TRUE))$iniDf$name, c("a", "c", "addSd", "b"))
   # b to the bottom by name
   expect_equal(suppressMessages(ini(ui, b <- 1, append = "addSd"))$iniDf$name, c("a", "c", "addSd", "b"))
+
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = addSd))$iniDf$name, c("a", "c", "addSd", "b"))
+
   # b after c
   expect_equal(suppressMessages(ini(ui, b <- 1, append = "c"))$iniDf$name, c("a", "c", "b", "addSd"))
   # a and b after c; counter-intuitive: the order of a and b are reversed
@@ -180,11 +186,16 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
     regexp = "parameter 'b' set to be moved after itself, no change in order made"
   )
 
+  expect_error(
+    ini(ui, b <- 1, append = d/dt(fun)),
+  "append")
+
   # Invalid parameter is correctly caught
   expect_error(
     ini(ui, b <- 1, append = "foo"),
     "append"
   )
+
 })
 
 test_that(".iniAddCovarianceBetweenTwoEtaValues", {
@@ -277,7 +288,7 @@ test_that(".iniHandleAppend", {
   }
   expect_error(
     ini(mod, a <- 1, append=factor("A")),
-    regexp = "'append' must be NULL, logical, numeric, or character"
+    regexp = "'append' must be NULL, logical, numeric, or character/expression of variable in model"
   )
   expect_error(
     ini(mod, q <- 1, append=0),
