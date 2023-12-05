@@ -196,7 +196,7 @@ mod5 <- mod |>
 ```
 
 The last type of insertion you may wish to do is to add lines to the
-beginning of the model by using `append=NA`:
+beginning of the model by using `append=FALSE`:
 
 ```{r prependLines}
 mod6 <- mod5 |>
@@ -206,7 +206,7 @@ mod6 <- mod5 |>
     ec50 <- exp(tec50)
     kin <- exp(tkin)
     kout <- exp(tkout)
-  }, append=NA)
+  }, append=FALSE)
 
 print(mod6)
 ```
@@ -236,7 +236,7 @@ mod7 <- mod5 |>
     ec50 <- exp(tec50)
     kin <- exp(tkin)
     kout <- exp(tkout)
-  }, append=NA)
+  }, append=FALSE)
 
 print(mod7)
 ```
@@ -252,7 +252,7 @@ mod8 <- mod5 |>
     ec50 <- exp(tec50)
     kin <- exp(tkin)
     kout <- exp(tkout)
-  }, append=NA)
+  }, append=FALSE)
 
 print(mod8)
 ```
@@ -277,7 +277,7 @@ mod9 <- mod5 |>
     ec50 <- exp(tec50)
     kin <- exp(tkin)
     kout <- exp(tkout)
-  }, append=NA)
+  }, append=FALSE)
 
 print(mod9)
 ```
@@ -297,7 +297,7 @@ mod10 <- mod5 |>
     ec50 <- exp(tec50)
     kin <- exp(tkin)
     kout <- exp(tkout)
-  }, append=NA)
+  }, append=FALSE)
 ```
 ### Rename parameters in a model
 
