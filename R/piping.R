@@ -295,10 +295,12 @@
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
     } else if (identical(.quoted[[1]], quote(`~`))) {
-      .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
-      if (identical(.quoted[[3]], quote(`fix`)) ||
-            identical(.quoted[[3]], quote(`unfix`))) {
-        .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
+      if (length(.quoted) == 3L) {
+        .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
+        if (identical(.quoted[[3]], quote(`fix`)) ||
+              identical(.quoted[[3]], quote(`unfix`))) {
+          .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
+        }
       }
     } else if (identical(.quoted[[1]], quote(`$`))) {
       .tmp <- try(eval(.quoted), silent=TRUE)

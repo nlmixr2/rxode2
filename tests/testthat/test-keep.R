@@ -27,29 +27,29 @@ test_that("Make sure the keep gives the right values", {
     V2 <- exp(ThetaV2)
     Q <- exp(ThetaQ)
     V3 <- exp(ThetaV3)
-    
+
     K20 <- CL / V2
     K23 <- Q / V2
     K32 <- Q / V3
-    
+
     CP <- A2 / V2
-    
+
     ##
     d / dt(A1) <- -KA * A1
     d / dt(A2) <- KA * transit3 - K23 * A2 + K32 * A3 - K20 * A2
     d / dt(A3) <- K23 * A2 - K32 * A3
-    
+
     d / dt(transit1) <- KA * A1 - KA * transit1
     d / dt(transit2) <- KA * transit1 - KA * transit2
     d / dt(transit3) <- KA * transit2 - KA * transit3
-    
+
     f(A1) <- 1
-    
+
     d / dt(AUC) <- CP
     A1(0) <- 0
     A2(0) <- 0
     A3(0) <- 0
-    
+
     AGE2 <- AGE
   })
 
@@ -84,8 +84,8 @@ test_that("Make sure the keep gives the right values", {
   expect_equal(PK.ev_ref2$AGE, PK.ev_ref2$AGE2)
 })
 
-test_that("rxSolve 'keep' maintains character output (#190)", {
-  
+test_that("rxSolve 'keep' maintains character output (#190/#622)", {
+
   one.cmt <- function() {
     ini({
       tka <- 0.45
@@ -108,19 +108,41 @@ test_that("rxSolve 'keep' maintains character output (#190)", {
   d$SEX <- ifelse(d$ID < 7, "M", "F")
   d$fSEX <- factor(d$SEX)
   d$iSEX <- as.integer(d$fSEX)
+  d$lSEX <- as.logical(d$iSEX == 1)
   d$dSEX <- d$iSEX + 0.5
   d$eSEX <- lapply(d$SEX, function(e) {
-    str2lang(e) 
+    str2lang(e)
   })
 
-  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX"))
-  
+  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "lSEX"))
+
   expect_type(sim$SEX, "character")
   expect_s3_class(sim$fSEX, "factor")
   expect_equal(levels(sim$fSEX), c("F", "M"))
   expect_type(sim$iSEX, "integer")
   expect_type(sim$dSEX, "double")
 
+  d <- nlmixr2data::theo_sd
+  d$SEX <- ifelse(d$ID < 7, "M", "F")
+  d$SEX[4] <- NA_character_
+  d$fSEX <- factor(d$SEX)
+  d$fSEX[4] <- NA_integer_
+  d$iSEX <- as.integer(d$fSEX)
+  d$iSEX[4] <- NA_integer_
+  d$lSEX <- as.logical(d$iSEX == 1)
+  d$lSEX[4] <- NA
+  d$dSEX <- d$iSEX + 0.5
+  d$eSEX <- lapply(d$SEX, function(e) {
+    str2lang(e)
+  })
+
+  sim <- rxSolve(one.cmt, events = d, keep = c("SEX", "fSEX", "iSEX", "dSEX", "lSEX"))
+
+  expect_true(is.na(d$SEX[4]))
+  expect_true(is.na(d$fSEX[4]))
+  expect_true(is.na(d$iSEX[4]))
+  expect_true(is.na(d$lSEX[4]))
+
   expect_error(rxSolve(one.cmt, events = d, keep = c("eSEX")))
-  
+
 })
