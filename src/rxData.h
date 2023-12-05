@@ -7,6 +7,7 @@ extern "C" {
   double get_fkeep(int col, int id, rx_solving_options_ind *ind);
   int get_fkeepType(int col);
   SEXP get_fkeepLevels(int col);
+  SEXP assign_fkeepAttr(int col, SEXP in);
   SEXP get_fkeepChar(int col, double val);
   double *getLlikSave(void);
   SEXP get_fkeepn(void);
@@ -34,7 +35,7 @@ extern "C" {
   int isProgSupported(void);
 
   void updateExtraDoseGlobals(rx_solving_options_ind* ind);
-  
+
 #if defined(__cplusplus)
 }
 #endif

@@ -145,6 +145,11 @@ mu-referencing style to run the optimization.
   duplicate parameters and models without `ini()` blocks (#617 / #573
   / #575).
 
+- `keep` will now also keep attributes of the input data (with special
+  handling for `levels`); This means a broader variety of classes will
+  be kept carrying more information with it (for example ordered
+  factors, data frame columns with unit information, etc)
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-

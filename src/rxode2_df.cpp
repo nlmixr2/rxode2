@@ -293,18 +293,18 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
        i++) {
     int curType = get_fkeepType(j);
     if (curType == 4) {
-      df[i] = NumericVector(rx->nr);
+      df[i] = assign_fkeepAttr(j, NumericVector(rx->nr));
     } else if (curType == 1) {
+      df[i] = assign_fkeepAttr(j, StringVector(rx->nr));
       df[i] = StringVector(rx->nr);
     } else if (curType == 5) {
-      df[i] = LogicalVector(rx->nr);
+      df[i] = assign_fkeepAttr(j, LogicalVector(rx->nr));
     } else {
       IntegerVector cur(rx->nr);
       if (curType == 2) {
         cur.attr("levels") = get_fkeepLevels(j);
-        cur.attr("class") = "factor";
       }
-      df[i] = cur;
+      df[i] = assign_fkeepAttr(j,cur);
     }
     j++;
   }
