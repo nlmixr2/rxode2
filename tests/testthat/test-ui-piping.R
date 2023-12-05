@@ -1428,6 +1428,18 @@ rxTest({
     expect_true("cp1" %in% f2$mv0$lhs)
     expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
+    f <- rxode2(ocmt)
+    f2 <- f %>% model(cp1 <- cp, append=Inf)
+
+    expect_true("cp1" %in% f2$mv0$lhs)
+    expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
+
+    f <- rxode2(ocmt)
+    f2 <- f %>% model(cp1 <- cp, append=100)
+
+    expect_true("cp1" %in% f2$mv0$lhs)
+    expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
+
     f2 <- f %>% model(f2 <- 3 * 2, append=NA)
     expect_true("f2" %in% f2$mv0$lhs)
     expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))

@@ -66,23 +66,30 @@ model.rxModelVars <- model.rxode2
   .varSelect$cov <- cov
   .doAppend <- FALSE
   rxui <- rxUiDecompress(rxui)
+  .ll <- length(rxui$lstExpr)
   if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
-    .ll <- length(rxui$lstExpr)
     if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(Inf))) {
-      .nsEnv$.quoteCallInfoLinesAppend <- TRUE
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- TRUE
     } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(-Inf))) {
-      .nsEnv$.quoteCallInfoLinesAppend <- NA
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- NA
     } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(0))) {
-      .nsEnv$.quoteCallInfoLinesAppend <- NA
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- NA
     } else if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=.ll)) {
-      .nsEnv$.quoteCallInfoLinesAppend <- TRUE
-    } else if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=0, upper=.ll)) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- TRUE
+    }
+  }
+  if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
+    if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=0, upper=.ll)) {
       .nsEnv$.quoteCallInfoLinesAppend <- .getLhs(rxui$lstExpr[[.nsEnv$.quoteCallInfoLinesAppend]])
     } else if (checkmate::testCharacter(.nsEnv$.quoteCallInfoLinesAppend, len=1, any.missing=FALSE,
                                         min.chars = 1)) {
       .tmp <- try(str2lang(.nsEnv$.quoteCallInfoLinesAppend), silent=TRUE)
       if (inherits(.tmp, "try-error")) {
-        stop("'append' must refer to a model line when a character",
+        stop("'append' must refer to a LHS model line when a character",
              call. = FALSE)
       }
       .nsEnv$.quoteCallInfoLinesAppend <- .tmp
