@@ -321,21 +321,24 @@
 #'
 #' @inheritParams .iniHandleLine
 #' @return Nothing, called for side effects
+#' @author Bill Denney & Matthew Fidler
 #' @keywords internal
 #' @noRd
 .iniHandleLabel <- function(expr, rxui, envir) {
-  lhs <- as.character(expr[[2]])
-  newLabel <- expr[[3]][[2]]
-  ini <- rxui$ini
-  .w <- which(ini$name == lhs)
+  .lhs <- as.character(expr[[2]])
+  .newLabel <- expr[[3]][[2]]
+  .ini <- rxui$ini
+  .w <- which(.ini$name == .lhs)
   if (length(.w) != 1) {
-    stop("cannot find parameter '", lhs, "'", call.=FALSE)
-  } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
-    stop("the new label for '", lhs, "' must be a character string",
+    stop("cannot find parameter '", .lhs, "'", call.=FALSE)
+  } else if (is.null(.newLabel)) {
+    .newLabel <- NA_character_
+  } else if (!is.character(.newLabel) || !(length(.newLabel) == 1)) {
+    stop("the new label for '", .lhs, "' must be a character string",
          call.=FALSE)
   }
-  ini$label[.w] <- newLabel
-  assign("iniDf", ini, envir=rxui)
+  .ini$label[.w] <- .newLabel
+  assign("iniDf", .ini, envir=rxui)
   invisible()
 }
 
