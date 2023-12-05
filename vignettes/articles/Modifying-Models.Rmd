@@ -17,7 +17,8 @@ There are two fundamental operations that you may wish to do in
 `rxode2`/`nlmixr2`. First you might want to modify your model (ie add
 covariate effects, add between subject variability, etc).  The second
 thing you may wish to do is change initial estimates, change the
-boundaries of the problem, fix/unfix the initial estimates, etc
+boundaries of the problem, fix/unfix the initial estimates, etc.
+
 
 ## Modifying model
 
@@ -459,3 +460,266 @@ have to modify the ini block first to make it a valid
 In this particular case, using model piping would be easier, but it
 simply demonstrates two different way to extract model information and
 a way to add information to the final model
+
+## Modifying initial estimates
+
+The common items you want to do with initial estimates are:
+
+- Fix/Unfix a parameter
+
+- Change the initial condition values and bounds
+
+- Change the initial condition type
+
+- Change labels and transformations
+
+- Reorder parameters
+
+You may wish to create your own functions; we will discuss this too.
+
+### Fixing or unfixing a parameter
+
+You can fix model estimates in two ways.  The first is to fix the
+value to whatever is in the model function, this is done by piping the
+model parameter name (like `tka`) and setting it equal to `fix` (` %>%
+ini(tka=fix)`).  Below is a full example:
+
+```{r fixEstimate}
+f <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- c(0, 0.7)
+    eta.ka ~ 0.6
+    eta.v ~ 0.1
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl/v * center
+    cp <- center/v
+    cp ~ add(add.sd)
+  })
+}
+
+f2 <- f |>
+  ini(tka=fix)
+
+print(f2)
+```
+
+You can also fix the parameter to a different value if you wish; This
+is very similar you can specify the value to fix inside of a `fix`
+pseudo-function as follows: `%>% ini(tka=fix(0.1))`.  A fully worked
+example is below:
+
+```{r fixEstimate2}
+f <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- c(0, 0.7)
+    eta.ka ~ 0.6
+    eta.v ~ 0.1
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl/v * center
+    cp <- center/v
+    cp ~ add(add.sd)
+  })
+}
+
+f2 <- f |>
+  ini(tka=fix(0.1))
+
+print(f2)
+```
+
+### Unfixing parameters
+
+You an unfix parameters very similarly to fixing.  Instead of using
+the `fix` keyword, you use the `unfix` keyword.  So to unfix a
+parameter (keeping its value) you would pipe the model using (`|>
+ini(tka=unfix)`).  Starting with the fixed model above a fully worked example is:
+
+```{r unfix1}
+print(f2)
+
+f3 <- f2 |> ini(tka=unfix)
+
+print(f3)
+```
+
+You can also unfix and change the initial estimate with
+`ini(parameter=unfix(newEst))`:
+
+```{r unfix1}
+print(f2)
+
+f3 <- f2 |> ini(tka=unfix(10))
+
+print(f3)
+```
+
+### Changing the parameter values and possibly bounds
+
+#### Single parameter assignment
+
+The simplest way to change the initial parameter estimates is to
+simply use `ini(parameter=newValue)`.  You can also use `<-` or `~` to change the value:
+
+A fully worked example showing all three types of initial value modification is:
+
+```{r iniAssign1}
+f3 <- f |>
+  ini(tka <- 0.1)
+
+f4 <- f |>
+  ini(tka=0.1)
+
+f5 <- f |>
+  ini(tka ~ 0.1)
+
+print(f5)
+```
+
+You can change the bounds like you do in the model specification by
+using a numeric vector of `c(low, estimate)` or `c(low, estimate,
+hi)`.  Here is a worked example:
+
+```{r iniAssign2}
+f3 <- f |>
+  ini(tka <- c(0, 0.1, 0.2))
+
+print(f3)
+
+
+f3 <- f |>
+  ini(tka <- c(0, 0.1))
+
+print(f3)
+```
+
+Note by changing the parameters to their default values they might not
+show up in the parameter printout:
+
+```{r iniAssign3}
+f3 <- f |>
+  ini(tka <- c(0, 0.1, 0.2))
+
+print(f3)
+
+# Now reassign
+f4 <- f3 |>
+  ini(tka <- c(-Inf, 0.1, Inf))
+
+print(f4)
+```
+
+#### Multiple parameter assignment
+
+You can also assign multiple parameters by providing them:
+
+- As a vector
+
+- As multiple lines in a piped `ini()` block
+
+- Using a covariance matrix
+
+
+In the case of a vector you can specify them and then pipe the model.
+
+For example:
+```{r pipeModel1}
+
+ini1 <- c(tka=0.1, tcl=1, tv=3)
+
+f4 <- f |> ini(ini1)
+
+print(f4)
+```
+
+This can also be added with multiple lines or commas separating
+estimates:
+
+```{r pipeIni2}
+# commas separating values:
+f4 <- f |> ini(tka=0.1, tcl=1, tv=3)
+print(f4)
+
+# multiple lines in {}
+f4 <- f |>
+  ini({
+    tka <- 0.2
+    tcl <- 2
+    tv <- 6
+  })
+
+print(f4)
+```
+
+You could also use a matrix to specify the covariance:
+
+```{r iniCov}
+ome <- lotri(eta.ka + eta.v ~ c(0.6,
+                                0.01, 10.1))
+
+f4 <- f |> ini(ome)
+
+print(f4)
+
+# or equavialtly use the lotri-type syntax for the omega:
+
+f4 <- f |> ini(eta.ka + eta.v ~ c(0.6,
+                                  0.01, 0.2))
+print(f4)
+```
+
+#### Changing parameter types
+
+You can change the parameter type by two operators either by using
+`-par` to convert the parameter to a covariate or `~par` to toggle
+between population and individual parameters.
+
+Here is an example that does all 3:
+
+```{r parType}
+# Switch population parameter to between subject variability parameter:
+f4 <- f |>
+  ini( ~ tcl)
+
+print(f4)
+
+# Switch back to population parameter
+f5 <- f4 |>
+  ini( ~ tcl)
+
+print(f5)
+
+# Change the variable to a covariate parameter (ie it doesn't have an
+# initial estimate so remove it with the `-` operator):
+
+f6 <- f4 |>
+  ini(-tcl)
+
+print(f6)
+```
+
+#### Changing parameter labels
+
+If you want to change/add a parameter label you assign the parameter
+to `label("label to add")`.  For example:
+
+```{r label0}
+f4 <- f |> ini(tka=label("Typical Ka (1/hr)"))
+
+print(f4)
+```
