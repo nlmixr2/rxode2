@@ -1,4 +1,4 @@
-#'  This copies the rxode2 UI object so it can be modified
+#' This copies the rxode2 UI object so it can be modified
 #'
 #' @param ui Original UI object
 #' @return Copied UI object

@@ -690,8 +690,8 @@
   if (is.null(f)) {
     return(NULL)
   } else if (checkmate::testCharacter(f, len=1, any.missing=FALSE,
-                               pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
-                               min.chars = 1)) {
+                                      pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                      min.chars = 1)) {
     return(f)
   } else if (is.infinite(f)) {
     return(f)

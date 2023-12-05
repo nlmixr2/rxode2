@@ -286,6 +286,7 @@ test_that(".iniHandleAppend", {
       b ~ add(addSd)
     })
   }
+
   expect_error(
     ini(mod, a <- 1, append=factor("A")),
     regexp = "'append' must be NULL, logical, numeric, or character/expression of variable in model"
