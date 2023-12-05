@@ -173,6 +173,7 @@
 <li><p>When printing meta information that happens to be a <code>lotri</code> compatible matrix, use <code>lotri</code> to express it instead of the default R expression.</p></li>
 <li><p>Allow character vectors to be converted to expressions for piping (<a href="https://github.com/nlmixr2/rxode2/issues/552" class="external-link">#552</a>)</p></li>
 <li><p><code><a href="../reference/rxAppendModel.html">rxAppendModel()</a></code> will now take an arbitrary number of models and append them together; It also has better handling of models with duplicate parameters and models without <code><a href="../reference/ini.html">ini()</a></code> blocks (<a href="https://github.com/nlmixr2/rxode2/issues/617" class="external-link">#617</a> / <a href="https://github.com/nlmixr2/rxode2/issues/573" class="external-link">#573</a> / <a href="https://github.com/nlmixr2/rxode2/issues/575" class="external-link">#575</a>).</p></li>
+<li><p><code>keep</code> will now also keep attributes of the input data (with special handling for <code>levels</code>); This means a broader variety of classes will be kept carrying more information with it (for example ordered factors, data frame columns with unit information, etc)</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="internal-new-features-development-version">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-development-version"></a></h3>
