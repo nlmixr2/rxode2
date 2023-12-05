@@ -12,7 +12,7 @@
 \method{model}{`function`}(
   x,
   ...,
-  append = FALSE,
+  append = NULL,
   auto = getOption("rxode2.autoVarPiping", TRUE),
   cov = NULL,
   envir = parent.frame()
@@ -21,7 +21,7 @@
 \method{model}{rxUi}(
   x,
   ...,
-  append = FALSE,
+  append = NULL,
   auto = getOption("rxode2.autoVarPiping", TRUE),
   cov = NULL,
   envir = parent.frame()
@@ -30,7 +30,7 @@
 \method{model}{rxode2}(
   x,
   ...,
-  append = FALSE,
+  append = NULL,
   auto = getOption("rxode2.autoVarPiping", TRUE),
   cov = NULL,
   envir = parent.frame()
@@ -39,7 +39,7 @@
 \method{model}{rxModelVars}(
   x,
   ...,
-  append = FALSE,
+  append = NULL,
   auto = getOption("rxode2.autoVarPiping", TRUE),
   cov = NULL,
   envir = parent.frame()
