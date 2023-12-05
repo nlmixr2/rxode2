@@ -72,8 +72,6 @@ model.rxModelVars <- model.rxode2
       .nsEnv$.quoteCallInfoLinesAppend <- TRUE
     } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(-Inf))) {
       .nsEnv$.quoteCallInfoLinesAppend <- NA
-    } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(FALSE))) {
-      .nsEnv$.quoteCallInfoLinesAppend <- NA
     } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(0))) {
       .nsEnv$.quoteCallInfoLinesAppend <- NA
     } else if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=.ll)) {
@@ -81,9 +79,13 @@ model.rxModelVars <- model.rxode2
     } else if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=0, upper=.ll)) {
       .nsEnv$.quoteCallInfoLinesAppend <- .getLhs(rxui$lstExpr[[.nsEnv$.quoteCallInfoLinesAppend]])
     } else if (checkmate::testCharacter(.nsEnv$.quoteCallInfoLinesAppend, len=1, any.missing=FALSE,
-                                        pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
                                         min.chars = 1)) {
-      .nsEnv$.quoteCallInfoLinesAppend <- str2lang(.nsEnv$.quoteCallInfoLinesAppend)
+      .tmp <- try(str2lang(.nsEnv$.quoteCallInfoLinesAppend), silent=TRUE)
+      if (inherits(.tmp, "try-error")) {
+        stop("'append' must refer to a model line when a character",
+             call. = FALSE)
+      }
+      .nsEnv$.quoteCallInfoLinesAppend <- .tmp
     }
     .w <- which(vapply(seq_len(.ll),
                        function(i) {
@@ -129,7 +131,7 @@ model.rxModelVars <- model.rxode2
              envir=rxui)
     }
     .doAppend <- TRUE
-  } else if (is.logical(append) && length(append) == 1L && is.na(append)) {
+  } else if (is.logical(append) && length(append) == 1L && (is.na(append) || !append)) {
     assign("lstExpr", c(modelLines, rxui$lstExpr), envir=rxui)
     .doAppend <- TRUE
   } else if (isTRUE(append)) {
