@@ -2152,7 +2152,6 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
         _globals.gsigma = NULL;
       }
       _globals.nSigma = 0;
-
     }
     arma::vec in = as<arma::vec>(sigmaLower);
     arma::vec lowerSigmaV = fillVec(in, sigma0.n_rows);
