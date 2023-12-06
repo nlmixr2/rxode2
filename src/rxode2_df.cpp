@@ -768,7 +768,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               } else {
                 dfi[ii] = (int) (curD);
               }
-
             }
             jj++;
           }
