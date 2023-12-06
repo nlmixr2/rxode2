@@ -15,24 +15,23 @@ library(rxode2)
 
 There are two fundamental operations that you may wish to do in
 `rxode2`/`nlmixr2`. First you might want to modify your model (ie add
-covariate effects, add between subject variability, etc).  The second
+covariate effects, add between subject variability, etc). The second
 thing you may wish to do is change initial estimates, change the
 boundaries of the problem, fix/unfix the initial estimates, etc.
-
 
 ## Modifying model
 
 There are a few tasks you might want to do with the overall model:
 
-- Change a line in the model
+-   Change a line in the model
 
-- Add a line to the model
+-   Add a line to the model
 
-- Rename parameters in the model
+-   Rename parameters in the model
 
-- Combine different models
+-   Combine different models
 
-- Create functions to add certain model features to the model
+-   Create functions to add certain model features to the model
 
 We will go over the model piping and other functions that you can use
 to modify models and even add your own functions that modify models
@@ -40,13 +39,13 @@ to modify models and even add your own functions that modify models
 ### Modifying a model line
 
 In my opinion, modifying lines in a model is likely the most common
-task in modifying a model.  We may wish to modify the model to have a
+task in modifying a model. We may wish to modify the model to have a
 between subject variability or add a covariate effects.
 
-To begin of course you need a base model to modify. Let's start with a very simple PK
-example, using the single-dose theophylline dataset generously
-provided by Dr. Robert A. Upton of the University of California, San
-Francisco:
+To begin of course you need a base model to modify. Let's start with a
+very simple PK example, using the single-dose theophylline dataset
+generously provided by Dr. Robert A. Upton of the University of
+California, San Francisco:
 
 ```{r iniModel}
 one.compartment <- function() {
@@ -73,7 +72,7 @@ one.compartment <- function() {
 
 If we believed we did not have enough absorption to support between
 subject variability you can change the line to drop the between
-subject by modifying a single line.  To do this simply type the line
+subject by modifying a single line. To do this simply type the line
 you want in the model piping expression:
 
 ```{r removeEta}
@@ -83,7 +82,7 @@ mod <- one.compartment |>
 print(mod)
 ```
 
-As expected, the line is modified.  Also you can notice that the
+As expected, the line is modified. Also you can notice that the
 initial estimate for the between subject variability is dropped since
 it is no longer part of the model.
 
@@ -105,16 +104,15 @@ The automatic detection of `eta.ka` is because the name follows a
 convention. Parameters starting or ending with the following names are
 assumed to be between subject variability parameters:
 
-- eta (from NONMEM convention)
-- ppv (per patient variability)
-- psv (per subject variability)
-- iiv (inter-individual variability)
-- bsv (between subject variability)
-- bpv (between patient variability)
+-   eta (from NONMEM convention)
+-   ppv (per patient variability)
+-   psv (per subject variability)
+-   iiv (inter-individual variability)
+-   bsv (between subject variability)
+-   bpv (between patient variability)
 
 If this is not functioning correctly you can change it to a covariate
 which you can add a type of initial estimate to later:
-
 
 ```{r addCov}
 mod2 <- mod |>
@@ -133,12 +131,12 @@ In general covariates and typical/population parameters are
 automatically converted to estimated parameters based on the parameter
 name starting with (or ending with):
 
-- tv (for typical value)
-- t (also for typical value)
-- pop (for population parameter)
-- err (for error parameter)
-- eff (for effect parameter)
-- cov (for covariate parameters)
+-   tv (for typical value)
+-   t (also for typical value)
+-   pop (for population parameter)
+-   err (for error parameter)
+-   eff (for effect parameter)
+-   cov (for covariate parameters)
 
 This has a few notable exceptions for parameters like (`wt`, `sex` and
 `crcl`) which are assumed to be covariates.
@@ -158,9 +156,10 @@ are assumed to be parameters in the dataset.
 
 ### Adding model lines
 
-There are three ways to insert lines in a `rxode2`/`nlmixr2` model.
-You can add lines to the end of the model, after an expression or to
-the beginning of the model all controlled by the `append` option.
+There are three ways to insert lines in a `rxode2`/`nlmixr2`
+model. You can add lines to the end of the model, after an expression
+or to the beginning of the model all controlled by the `append`
+option.
 
 Let's assume that there are two different assays that were run with
 the same compound and you have noticed that they both have different
@@ -283,7 +282,7 @@ print(mod9)
 ```
 
 And as requested only the population parameters starting with `te` are
-added to the ini block.
+added to the `ini` block.
 
 If you want to reset the defaults you simply call `rxSetPipingAuto()`
 without any arguments:
@@ -299,12 +298,13 @@ mod10 <- mod5 |>
     kout <- exp(tkout)
   }, append=FALSE)
 ```
+
 ### Rename parameters in a model
 
 You may want to rename parameters in a model, which is easy to do with
 `rxRename()`. When `dplyr` is loaded you can even replace it with
-`rename()`.  The semantics are similar between the two functions, that
-is you assigning `newVar=oldVar`.  For example:
+`rename()`. The semantics are similar between the two functions, that
+is you assigning `newVar=oldVar`. For example:
 
 ```{r rename1}
 mod11 <- mod10 |> rxRename(drug1kout=kout, tv.drug1kout=tkout)
@@ -327,9 +327,9 @@ print(mod12)
 
 ### Combine different models
 
-You can also combine different models with `rxAppendModel()`.  In
-general they need variables in common to combine.  This is because you
-generally want the models to link between each other.  In the below
+You can also combine different models with `rxAppendModel()`. In
+general they need variables in common to combine. This is because you
+generally want the models to link between each other. In the below
 example a pk and pd model this is done by renaming `cp` in the first
 model to `ceff` in the second model:
 
@@ -373,15 +373,14 @@ idr <- function() {
 rxAppendModel(ocmt %>% rxRename(ceff=cp), idr)
 ```
 
-You will get an error if you try to combine models without
-variables in common:
+You will get an error if you try to combine models without variables
+in common:
 
 ```{r append2}
 try(rxAppendModel(ocmt, idr))
 ```
 
-If you want to combine the models without respecting the having the
-variables in common, you can use `common=FALSE`
+If you want to combine the models without respecting the having the variables in common, you can use `common=FALSE`
 
 ```{r append3}
 mod2 <- rxAppendModel(ocmt, idr, common=FALSE) |>
@@ -390,12 +389,10 @@ mod2 <- rxAppendModel(ocmt, idr, common=FALSE) |>
 
 print(mod2)
 ```
+
 ### Creating more complex model modification functions
 
-These are pretty flexible, but you may want to do even more, so there
-are some helper functions to help you create functions to do more.  We
-will discuss how to extract the model from the function and how to
-update it.
+These are pretty flexible, but you may want to do even more, so there are some helper functions to help you create functions to do more. We will discuss how to extract the model from the function and how to update it.
 
 Lets start with a model:
 
@@ -405,7 +402,6 @@ f <- function() {
     tka <- 0.45
     tcl <- 1
     tv <- 3.45
-    add.sd <- c(0, 0.7)
     eta.ka ~ 0.6
     eta.v ~ 0.1
   })
@@ -416,14 +412,11 @@ f <- function() {
     d/dt(depot) <- -ka * depot
     d/dt(center) <- ka * depot - cl/v * center
     cp <- center/v
-    cp ~ add(add.sd)
   })
 }
 ```
 
-Lets assume for a moment you want to remove an eta to `cl`.  First you
-probably want to get all the model lines.  You can do that with
-`modelExtract()`:
+Lets assume for a moment you want to remove an eta to `cl`. First you probably want to get all the model lines. You can do that with `modelExtract()`:
 
 ```{r modelExtract}
 totLines <- modelExtract(f, endpoint=NA) # endpoints should be included
@@ -433,18 +426,20 @@ print(totLines)
 
 Now you want to only worry about the `cl` line, you can subset here:
 
-```{r modelExtract}
+```{r modelExtract2}
 clLine <- modelExtract(f, cl, lines=TRUE)
 line <- attr(clLine, "lines")
 ```
 
-Now I wish to change the line to "cl <- exp(tcl+eta.cl)"
+Now I wish to change the line to "cl \<- exp(tcl+eta.cl)"
 
-```{r}
+```{r modelExtract3}
 totLines[line] <- "cl <- exp(tcl+eta.cl)"
 
 # For now lets remove the entire `ini` block (so you don't have to
-# worry about syncing parameters)
+# worry about syncing parameters).
+
+#
 
 ini(f) <- NULL
 
@@ -453,36 +448,59 @@ model(f) <- totLines
 print(f)
 ```
 
-Note that these functions do not modify the `ini({})` block.  You may
+Note that these functions do not modify the `ini({})` block. You may
 have to modify the ini block first to make it a valid
 `rxode2`/`nlmixr2` model.
 
 In this particular case, using model piping would be easier, but it
 simply demonstrates two different way to extract model information and
-a way to add information to the final model
+a way to add information to the final model.
+
+These methods can be tricky because when using them you have to have
+model that is parsed correctly.  This means you have to make sure the
+parameters and endpoints follow the correct rules
 
 ## Modifying initial estimates
 
 The common items you want to do with initial estimates are:
 
-- Fix/Unfix a parameter
+-   Fix/Unfix a parameter
 
-- Change the initial condition values and bounds
+-   Change the initial condition values and bounds
 
-- Change the initial condition type
+-   Change the initial condition type
 
-- Change labels and transformations
+-   Change labels and transformations
 
-- Reorder parameters
+-   Reorder parameters
 
 You may wish to create your own functions; we will discuss this too.
 
+### Unfixing parameters
+
+You an unfix parameters very similarly to fixing. Instead of using the `fix` keyword, you use the `unfix` keyword. So to unfix a parameter (keeping its value) you would pipe the model using (`|> ini(tka=unfix)`). Starting with the fixed model above a fully worked example is:
+
+```{r unfix0}
+print(f2)
+
+f3 <- f2 |> ini(tka=unfix)
+
+print(f3)
+```
+
+You can also unfix and change the initial estimate with `ini(parameter=unfix(newEst))`:
+
+```{r unfix1}
+print(f2)
+
+f3 <- f2 |> ini(tka=unfix(10))
+
+print(f3)
+```
+
 ### Fixing or unfixing a parameter
 
-You can fix model estimates in two ways.  The first is to fix the
-value to whatever is in the model function, this is done by piping the
-model parameter name (like `tka`) and setting it equal to `fix` (` %>%
-ini(tka=fix)`).  Below is a full example:
+You can fix model estimates in two ways. The first is to fix the value to whatever is in the model function, this is done by piping the model parameter name (like `tka`) and setting it equal to `fix` (`%>% ini(tka=fix)`). Below is a full example:
 
 ```{r fixEstimate}
 f <- function() {
@@ -511,10 +529,7 @@ f2 <- f |>
 print(f2)
 ```
 
-You can also fix the parameter to a different value if you wish; This
-is very similar you can specify the value to fix inside of a `fix`
-pseudo-function as follows: `%>% ini(tka=fix(0.1))`.  A fully worked
-example is below:
+You can also fix the parameter to a different value if you wish; This is very similar you can specify the value to fix inside of a `fix` pseudo-function as follows: `%>% ini(tka=fix(0.1))`. A fully worked example is below:
 
 ```{r fixEstimate2}
 f <- function() {
@@ -543,101 +558,22 @@ f2 <- f |>
 print(f2)
 ```
 
-### Unfixing parameters
-
-You an unfix parameters very similarly to fixing.  Instead of using
-the `fix` keyword, you use the `unfix` keyword.  So to unfix a
-parameter (keeping its value) you would pipe the model using (`|>
-ini(tka=unfix)`).  Starting with the fixed model above a fully worked example is:
-
-```{r unfix1}
-print(f2)
-
-f3 <- f2 |> ini(tka=unfix)
-
-print(f3)
-```
-
-You can also unfix and change the initial estimate with
-`ini(parameter=unfix(newEst))`:
-
-```{r unfix1}
-print(f2)
-
-f3 <- f2 |> ini(tka=unfix(10))
-
-print(f3)
-```
-
 ### Changing the parameter values and possibly bounds
-
-#### Single parameter assignment
-
-The simplest way to change the initial parameter estimates is to
-simply use `ini(parameter=newValue)`.  You can also use `<-` or `~` to change the value:
-
-A fully worked example showing all three types of initial value modification is:
-
-```{r iniAssign1}
-f3 <- f |>
-  ini(tka <- 0.1)
-
-f4 <- f |>
-  ini(tka=0.1)
-
-f5 <- f |>
-  ini(tka ~ 0.1)
-
-print(f5)
-```
-
-You can change the bounds like you do in the model specification by
-using a numeric vector of `c(low, estimate)` or `c(low, estimate,
-hi)`.  Here is a worked example:
-
-```{r iniAssign2}
-f3 <- f |>
-  ini(tka <- c(0, 0.1, 0.2))
-
-print(f3)
-
-
-f3 <- f |>
-  ini(tka <- c(0, 0.1))
-
-print(f3)
-```
-
-Note by changing the parameters to their default values they might not
-show up in the parameter printout:
-
-```{r iniAssign3}
-f3 <- f |>
-  ini(tka <- c(0, 0.1, 0.2))
-
-print(f3)
-
-# Now reassign
-f4 <- f3 |>
-  ini(tka <- c(-Inf, 0.1, Inf))
-
-print(f4)
-```
 
 #### Multiple parameter assignment
 
 You can also assign multiple parameters by providing them:
 
-- As a vector
+-   As a vector
 
-- As multiple lines in a piped `ini()` block
+-   As multiple lines in a piped `ini()` block
 
-- Using a covariance matrix
-
+-   Using a covariance matrix
 
 In the case of a vector you can specify them and then pipe the model.
 
 For example:
+
 ```{r pipeModel1}
 
 ini1 <- c(tka=0.1, tcl=1, tv=3)
@@ -647,8 +583,7 @@ f4 <- f |> ini(ini1)
 print(f4)
 ```
 
-This can also be added with multiple lines or commas separating
-estimates:
+This can also be added with multiple lines or commas separating estimates:
 
 ```{r pipeIni2}
 # commas separating values:
@@ -680,6 +615,60 @@ print(f4)
 
 f4 <- f |> ini(eta.ka + eta.v ~ c(0.6,
                                   0.01, 0.2))
+print(f4)
+```
+
+#### Single parameter assignment
+
+The simplest way to change the initial parameter estimates is to
+simply use `ini(parameter=newValue)`. You can also use `<-` or `~` to
+change the value:
+
+A fully worked example showing all three types of initial value
+modification is:
+
+```{r iniAssign1}
+f3 <- f |>
+  ini(tka <- 0.1)
+
+f4 <- f |>
+  ini(tka=0.1)
+
+f5 <- f |>
+  ini(tka ~ 0.1)
+
+print(f5)
+```
+
+You can change the bounds like you do in the model specification by
+using a numeric vector of `c(low, estimate)` or `c(low, estimate,
+hi)`. Here is a worked example:
+
+```{r iniAssign2}
+f3 <- f |>
+  ini(tka <- c(0, 0.1, 0.2))
+
+print(f3)
+
+
+f3 <- f |>
+  ini(tka <- c(0, 0.1))
+
+print(f3)
+```
+
+Note by changing the parameters to their default values they might not show up in the parameter printout:
+
+```{r iniAssign3}
+f3 <- f |>
+  ini(tka <- c(0, 0.1, 0.2))
+
+print(f3)
+
+# Now reassign
+f4 <- f3 |>
+  ini(tka <- c(-Inf, 0.1, Inf))
+
 print(f4)
 ```
 
@@ -730,14 +719,13 @@ print(f8)
 #### Changing parameter labels
 
 If you want to change/add a parameter label you assign the parameter
-to `label("label to add")`.  For example:
+to `label("label to add")`. For example:
 
 ```{r label0}
 f4 <- f |> ini(tka=label("Typical Ka (1/hr)"))
 
 print(f4)
 ```
-
 
 You can also change the order while performing operations:
 

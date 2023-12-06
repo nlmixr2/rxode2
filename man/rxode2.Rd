@@ -231,6 +231,7 @@ mod <- rxode2(\{
   # time-derivative assignment
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 \})
+#> using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 }\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
@@ -246,6 +247,7 @@ mod <- rxode2(\{
   # time-derivative assignment
   d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
 ")
+#> using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
@@ -323,24 +325,21 @@ creates a parsed \code{rxode2} ui that can be translated to the \code{rxode2}
 compilation model.
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
-}\if{html}{\out{</div>}}
+#> using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
+#> rxode2 2.0.14.9000 model named rx_9fdc50eaae323fc796cc37983003367a model (ready). 
+#> x$state: depot, center
+#> x$stateExtra: cp
+#> x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
+#> x$lhs: ka, cl, v, cp, ipredSim, sim
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_85848c9248e14e8cbf9a9b4a606b2010 model (ready). 
-## x$state: depot, center
-## x$stateExtra: cp
-## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
-## x$lhs: ka, cl, v, cp, ipredSim, sim
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{# or 
+# or 
 mod$simulationIniModel
-}\if{html}{\out{</div>}}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{## rxode2 2.0.14.9000 model named rx_40b4a6f44b577c0e14f674ccc10f618e model (ready). 
-## x$state: depot, center
-## x$stateExtra: cp
-## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
-## x$lhs: ka, cl, v, cp, ipredSim, sim
+#> using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
+#> rxode2 2.0.14.9000 model named rx_effcb10ff346dc2f074562637c573c07 model (ready). 
+#> x$state: depot, center
+#> x$stateExtra: cp
+#> x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
+#> x$lhs: ka, cl, v, cp, ipredSim, sim
 }\if{html}{\out{</div>}}
 
 This is the same type of function required for \code{nlmixr2} estimation and
