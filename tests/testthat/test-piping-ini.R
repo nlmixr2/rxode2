@@ -50,7 +50,7 @@ test_that("back transformation piping", {
   expect_equal(p3$iniDf$backTransform[ui$iniDf$name == "KA"], NA_character_)
 
   expect_error(ui |>
-                 ini(KA <- backTransform(matt)), 'matt')
+                 ini(KA <- backTransform(matt)), "matt")
 
 })
 
