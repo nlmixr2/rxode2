@@ -236,7 +236,8 @@ model.rxModelVars <- model.rxode2
   ret <- NULL
   if (.isEndpoint(expr)) {
     lhs <- .getLhs(expr)
-    if (.matchesLangTemplate(lhs, str2lang("-."))) {
+    if (.matchesLangTemplate(lhs, str2lang("-.")) ||
+          .matchesLangTemplate(lhs, str2lang(". <- NULL"))) {
       # If it is a drop expression with a minus sign, grab the non-minus part
       ret <- lhs[[2]]
     }
@@ -246,7 +247,8 @@ model.rxModelVars <- model.rxode2
 
 .getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {
   .expr3 <- NULL
-  if (.matchesLangTemplate(x = expr, template = str2lang("-d/dt(.name)"))) {
+  if (.matchesLangTemplate(x = expr, template = str2lang("-d/dt(.name)")) ||
+        .matchesLangTemplate(x = expr, template = str2lang("d/dt(.name) <- NULL"))) {
     .expr3 <- expr
     # remove the minus sign from the numerator
     .expr3[[2]] <- .expr3[[2]][[2]]
@@ -521,6 +523,48 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   }
   NULL
 }
+#' This checks the different types of drop assignments
+#'
+#'
+#' @param prefix The prefix of the drop assignment
+#' @param line The line expression to check
+#' @return logical to say if this matches the prefix
+#' @author Matthew L. Fidler
+#' @noRd
+.isDropNullType <- function(prefix, line) {
+  .e1 <- str2lang(paste0(prefix, " <- NULL"))
+  .e2 <- str2lang(paste0(prefix, " = NULL"))
+  .e3 <- str2lang(paste0(prefix, " ~ NULL"))
+  if (.matchesLangTemplate(line, .e1)) return(TRUE)
+  if (.matchesLangTemplate(line, .e3)) return(TRUE)
+  if (.matchesLangTemplate(line, .e2)) return(TRUE)
+  FALSE
+}
+#' This changes NULL assignment line to a -drop line
+#'
+#' @param line Line to change if necessary
+#' @return Drop line normalized to be `-line` instead of  `line <- NULL`
+#' @author Matthew L. Fidler
+#' @noRd
+.changeDropNullLine <- function(line) {
+  if (.isDropNullType("d/dt(.name)", line)) {
+    .ret <- line[[2]]
+    .ret[[2]] <- as.call(list(quote(`-`), .ret[[2]]))
+    return(.ret)
+  }
+  if (.isDropNullType(".name", line) ||
+        .isDropNullType("lag(.name)", line) ||
+        .isDropNullType("alag(.name)", line) ||
+        .isDropNullType("f(.name)", line) ||
+        .isDropNullType("F(.name)", line) ||
+        .isDropNullType("rate(.name)", line) ||
+        .isDropNullType("dur(.name)", line) ||
+        .isDropNullType(".name(0)", line)
+        ) {
+    return(as.call(list(quote(`-`), line[[2]])))
+  }
+  line
+}
 
 #'  Modify the error lines/expression
 #'
@@ -535,6 +579,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   .err <- NULL
   .env <- environment()
   lapply(lines, function(line) {
+    line <- .changeDropNullLine(line)
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
       .iniHandleFixOrUnfix(line, rxui, envir=envir)
     } else {

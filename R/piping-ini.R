@@ -552,10 +552,10 @@
   # downstream operations
   expr <- .iniSimplifyAssignArrow(expr)
 
-  # Capture errors
   if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
-    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense",
-         call. = FALSE)
+    expr <- as.call(list(quote(`-`), expr[[2]]))
+  } else if (.matchesLangTemplate(expr, str2lang(".name ~ NULL"))) {
+    expr <- as.call(list(quote(`-`), expr[[2]]))
   }
 
   # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
