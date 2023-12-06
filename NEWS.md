@@ -164,6 +164,11 @@ mu-referencing style to run the optimization.
   modifying a line in-place still applies.  While this is a breaking
   change, most code will perform the same.
 
+- Labels can now be dropped by `ini(param=label(NULL))`. Also
+  parameters can be dropped with the idiom `model(param=NULL)` or
+  `ini(param=NULL)` changes the parameter to a covariate to align with
+  this idiom of dropping parameters
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
