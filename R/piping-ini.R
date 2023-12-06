@@ -341,6 +341,49 @@
   assign("iniDf", .ini, envir=rxui)
   invisible()
 }
+#' This handles the backTransform() piping calls
+#'
+#' @param expr expression for backTransform() in `ini()` piping
+#' @param rxui rxode2 ui function
+#' @param envir evaluation environment
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleBackTransform <- function(expr, rxui, envir) {
+  .lhs <- as.character(expr[[2]])
+  .newExpr <- expr[[3]][[2]]
+  .ini <- rxui$ini
+  .w <- which(.ini$name == .lhs)
+  .good <- TRUE
+  if (length(.w) != 1) {
+    stop("cannot find parameter '", .lhs, "'", call.=FALSE)
+  } else if (is.null(.newExpr)) {
+    .newExpr <- NA_character_
+  } else if (checkmate::testCharacter(.newExpr, len=1, any.missing=FALSE,
+                                      pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                      min.chars = 1)) {
+  } else {
+    .newExpr <- deparse1(.newExpr)
+    if (!checkmate::testCharacter(.newExpr, len=1, any.missing=FALSE,
+                                 pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                 min.chars = 1)) {
+      .good <- FALSE
+    }
+  }
+  if (!.good) {
+    stop("backTransform specification malformed",
+         call.=FALSE)
+  }
+  if (!is.na(.newExpr)) {
+    if (!exists(.newExpr, envir=envir, mode="function")) {
+      stop("tried use a backTransform(\"", .newExpr, "\") when the function does not exist",
+           call.=FALSE)
+    }
+  }
+  .ini$backTransform[.w] <- .newExpr
+  assign("iniDf", .ini, envir=rxui)
+  invisible()
+}
 
 #' Reorder rows in iniDf
 #'
@@ -567,6 +610,8 @@
 
   if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
+  } else if (.matchesLangTemplate(expr, str2lang(".name <- backTransform(.)"))) {
+    .iniHandleBackTransform(expr=expr, rxui=rxui, envir=envir)
   } else if (.isAssignment(expr) && is.character(expr[[3]])) {
     stop(
       sprintf(

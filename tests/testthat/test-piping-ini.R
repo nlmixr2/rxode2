@@ -1,3 +1,59 @@
+test_that("back transformation piping", {
+
+  mod1 <- function() {
+    ini({
+      # central
+      KA <- 2.94E-01
+      backTransform("exp")
+      CL <- 1.86E+01
+      V2 <- 4.02E+01
+      # peripheral
+      Q <- 1.05E+01
+      V3 <- 2.97E+02
+      # effects
+      Kin <- 1
+      Kout <- 1
+      EC50 <- 200
+    })
+    model({
+      C2 <- centr/V2
+      C3 <- peri/V3
+      d/dt(depot) <- -KA*depot
+      d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+      d/dt(peri)  <- Q*C2 - Q*C3
+      eff(0) <- 1
+      d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    })
+  }
+
+  ui <- rxode(mod1)
+
+  expect_equal(ui$iniDf$backTransform[ui$iniDf$name == "KA"], "exp")
+
+  p1 <- ui %>%
+    ini(
+      KA <- backTransform("log")
+    )
+
+  expect_equal(p1$iniDf$backTransform[ui$iniDf$name == "KA"], "log")
+
+  p2 <-ui %>%
+    ini(
+      KA <- backTransform(log)
+    )
+
+  expect_equal(p2$iniDf$backTransform[ui$iniDf$name == "KA"], "log")
+
+  p3 <- ui |>
+    ini(KA <- backTransform(NULL))
+
+  expect_equal(p3$iniDf$backTransform[ui$iniDf$name == "KA"], NA_character_)
+
+  expect_error(ui |>
+                 ini(KA <- backTransform(matt)), 'matt')
+
+})
+
 test_that("piping with ini can update labels (rxode2/issues#351)", {
   mod <- function() {
     ini({
