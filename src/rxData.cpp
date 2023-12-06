@@ -42,7 +42,7 @@ void resetSolveLinB();
 using namespace Rcpp;
 using namespace arma;
 
-typedef void (*seedEng_t)(uint32_t ncores);
+typedef void (*seedEng_t)(int ncores);
 extern seedEng_t seedEng;
 
 #include "cbindThetaOmega.h"
@@ -4886,7 +4886,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       warning(_("since throwing warning with NA time, change to single threaded"));
       op->cores=1;
     }
-    seedEng((unsigned int)(op->cores));
+    seedEng((int)(op->cores));
     if (_globals.pendingDoses != NULL) {
       int i=0;
       while (_globals.pendingDoses[i] != NULL){
