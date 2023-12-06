@@ -37,6 +37,73 @@ rxTest({
                  list(quote(d/dt(depot))))
   })
 
+  test_that("equivalent drop statements", {
+
+    expect_equal(.changeDropNullLine(quote(a <- NULL)),
+                 quote(-a))
+    expect_equal(.changeDropNullLine(quote(a ~ NULL)),
+                 quote(-a))
+    expect_equal(.changeDropNullLine(str2lang("a = NULL")),
+                 quote(-a))
+
+    expect_equal(.changeDropNullLine(quote(d/dt(a) <- NULL)),
+                 quote(-d/dt(a)))
+    expect_equal(.changeDropNullLine(quote(d/dt(a) ~ NULL)),
+                 quote(-d/dt(a)))
+    expect_equal(.changeDropNullLine(str2lang("d/dt(a) = NULL")),
+                 quote(-d/dt(a)))
+
+    expect_equal(.changeDropNullLine(quote(lag(a) <- NULL)),
+                 quote(-lag(a)))
+    expect_equal(.changeDropNullLine(quote(lag(a) ~ NULL)),
+                 quote(-lag(a)))
+    expect_equal(.changeDropNullLine(str2lang("lag(a) = NULL")),
+                 quote(-lag(a)))
+
+    expect_equal(.changeDropNullLine(quote(alag(a) <- NULL)),
+                 quote(-alag(a)))
+    expect_equal(.changeDropNullLine(quote(alag(a) ~ NULL)),
+                 quote(-alag(a)))
+    expect_equal(.changeDropNullLine(str2lang("alag(a) = NULL")),
+                 quote(-alag(a)))
+
+    expect_equal(.changeDropNullLine(quote(F(a) <- NULL)),
+                 quote(-F(a)))
+    expect_equal(.changeDropNullLine(quote(F(a) ~ NULL)),
+                 quote(-F(a)))
+    expect_equal(.changeDropNullLine(str2lang("F(a) = NULL")),
+                 quote(-F(a)))
+
+    expect_equal(.changeDropNullLine(quote(f(a) <- NULL)),
+                 quote(-f(a)))
+    expect_equal(.changeDropNullLine(quote(f(a) ~ NULL)),
+                 quote(-f(a)))
+    expect_equal(.changeDropNullLine(str2lang("f(a) = NULL")),
+                 quote(-f(a)))
+
+    expect_equal(.changeDropNullLine(quote(rate(a) <- NULL)),
+                 quote(-rate(a)))
+    expect_equal(.changeDropNullLine(quote(rate(a) ~ NULL)),
+                 quote(-rate(a)))
+    expect_equal(.changeDropNullLine(str2lang("rate(a) = NULL")),
+                 quote(-rate(a)))
+
+    expect_equal(.changeDropNullLine(quote(dur(a) <- NULL)),
+                 quote(-dur(a)))
+    expect_equal(.changeDropNullLine(quote(dur(a) ~ NULL)),
+                 quote(-dur(a)))
+    expect_equal(.changeDropNullLine(str2lang("dur(a) = NULL")),
+                 quote(-dur(a)))
+
+    expect_equal(.changeDropNullLine(quote(a(0) <- NULL)),
+                 quote(-a(0)))
+    expect_equal(.changeDropNullLine(quote(a(0) ~ NULL)),
+                 quote(-a(0)))
+    expect_equal(.changeDropNullLine(str2lang("a(0) = NULL")),
+                 quote(-a(0)))
+
+  })
+
   test_that("test fix/unfix for eta", {
     expect_equal(testPipeQuote(a~fix),
                  list(quote(a<-fix)))
@@ -762,7 +829,6 @@ rxTest({
 
     expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-    expect_error(f %>% ini(tka=NULL), "tka")
     expect_error(f %>% ini(tka=c(3,2,1)), "tka")
 
     suppressMessages(
@@ -841,7 +907,6 @@ rxTest({
 
     expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-    expect_error(f %>% ini(tka=NULL), "tka")
     expect_error(f %>% ini(tka=c(3,2,1)), "tka")
 
     suppressMessages(
@@ -912,7 +977,6 @@ rxTest({
 
     expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-    expect_error(f %>% ini(tka=NULL), "tka")
     expect_error(f %>% ini(tka=c(3,2,1)), "tka")
 
     suppressMessages(
@@ -2036,6 +2100,12 @@ test_that("piping append", {
   }
 
   t <- c("-cp","-d/dt(depot)")
+  expect_error(mod |> model(t), NA)
+
+  t <- c("cp <- NULL","d/dt(depot) = NULL")
+  expect_error(mod |> model(t), NA)
+
+  t <- c("cp <- NULL","d/dt(depot) ~ NULL")
   expect_error(mod |> model(t), NA)
 
   mod5 <- mod |>
