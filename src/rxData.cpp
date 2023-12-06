@@ -4886,7 +4886,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       warning(_("since throwing warning with NA time, change to single threaded"));
       op->cores=1;
     }
-    seedEng(op->cores);
+    seedEng((unsigned int)(op->cores));
     if (_globals.pendingDoses != NULL) {
       int i=0;
       while (_globals.pendingDoses[i] != NULL){
