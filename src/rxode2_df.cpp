@@ -758,7 +758,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
               // is this ntimes = nAllTimes or nObs time for this subject...?
               double curD = get_fkeep(j, curi + ind->ix[i], ind);
-              if (ISNA(curD) || isnan(curD)) {
+              if (ISNA(curD) || std::isnan(curD)) {
                 dfi[ii] = NA_REAL;
               } else {
                 dfi[ii] = (int) (curD);
