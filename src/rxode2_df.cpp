@@ -752,7 +752,12 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             } else if (TYPEOF(tmp) == LGLSXP) {
               // Everything here is double
               dfi = LOGICAL(tmp);
-              dfi[ii] = (int) (get_fkeep(j, curi + ind->ix[i], ind));
+              double curD = get_fkeep(j, curi + ind->ix[i], ind);
+              if (ISNA(curD) || std::isnan(curD)) {
+                dfi[ii] = NA_LOGICAL;
+              } else {
+                dfi[ii] = (int) (curD);
+              }
             } else {
               dfi = INTEGER(tmp);
               /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
