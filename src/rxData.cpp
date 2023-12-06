@@ -42,7 +42,7 @@ void resetSolveLinB();
 using namespace Rcpp;
 using namespace arma;
 
-typedef void (*seedEng_t)(uint32_t ncores);
+typedef void (*seedEng_t)(int ncores);
 extern seedEng_t seedEng;
 
 #include "cbindThetaOmega.h"
@@ -2144,15 +2144,22 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
       }
       if (_globals.gsigma != NULL) free(_globals.gsigma);
       rx->neps = sigma0.n_rows;
-      _globals.gsigma = (double*)malloc((rx->neps * rx->neps + 2 * rx->neps)* sizeof(double));
-      std::copy(&sigma0[0], &sigma0[0] + rx->neps * rx->neps, _globals.gsigma + 2 * rx->neps);
+      if (rx->neps > 0) {
+        _globals.gsigma = (double*)malloc((rx->neps * rx->neps + 2 * rx->neps)* sizeof(double));
+        std::copy(&sigma0[0], &sigma0[0] + rx->neps * rx->neps,
+                  _globals.gsigma + 2 * rx->neps);
+      } else {
+        _globals.gsigma = NULL;
+      }
       _globals.nSigma = 0;
     }
     arma::vec in = as<arma::vec>(sigmaLower);
     arma::vec lowerSigmaV = fillVec(in, sigma0.n_rows);
     arma::vec upperSigmaV = fillVec(in, sigma0.n_rows);
-    std::copy(&lowerSigmaV[0], &lowerSigmaV[0] + rx->neps, _globals.gsigma);
-    std::copy(&upperSigmaV[0], &upperSigmaV[0] + rx->neps, _globals.gsigma + rx->neps);
+    if (rx->neps > 0) {
+      std::copy(&lowerSigmaV[0], &lowerSigmaV[0] + rx->neps, _globals.gsigma);
+      std::copy(&upperSigmaV[0], &upperSigmaV[0] + rx->neps, _globals.gsigma + rx->neps);
+    }
     // structure of _globals.gsigma is
     // lower
     // upper
@@ -4886,7 +4893,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       warning(_("since throwing warning with NA time, change to single threaded"));
       op->cores=1;
     }
-    seedEng(op->cores);
+    seedEng((int)(op->cores));
     if (_globals.pendingDoses != NULL) {
       int i=0;
       while (_globals.pendingDoses[i] != NULL){

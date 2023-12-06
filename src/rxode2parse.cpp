@@ -105,6 +105,9 @@ END_RCPP
 
 extern "C" SEXP _rxode2parse_udfEnvSet(SEXP udf) {
 BEGIN_RCPP
+  if (Rf_isNull(udf)) {
+    return R_NilValue;
+  }
   if (Rf_length(udf) == 0 || Rf_length(udf) == 1) {
     return R_NilValue;
   }

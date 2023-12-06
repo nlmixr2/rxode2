@@ -81,7 +81,7 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
     if (op->f2 == 1.0 && op->f1 == 0.0) {
       // use nocb
       // Go forward
-      while (ISNA(ret) && i != ind->n_all_times){
+      while (ISNA(ret) && i != ind->n_all_times-1){
         i++; ret = y[ind->ix[i]];
       }
       if (ISNA(ret)){
@@ -309,4 +309,3 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
 
 /* void doSort(rx_solving_options_ind *ind); */
 void sortInd(rx_solving_options_ind *ind);
-
