@@ -53,6 +53,55 @@ rxTest({
     expect_equal(.changeDropNullLine(str2lang("d/dt(a) = NULL")),
                  quote(-d/dt(a)))
 
+    expect_equal(.changeDropNullLine(quote(lag(a) <- NULL)),
+                 quote(-lag(a)))
+    expect_equal(.changeDropNullLine(quote(lag(a) ~ NULL)),
+                 quote(-lag(a)))
+    expect_equal(.changeDropNullLine(str2lang("lag(a) = NULL")),
+                 quote(-lag(a)))
+
+    expect_equal(.changeDropNullLine(quote(alag(a) <- NULL)),
+                 quote(-alag(a)))
+    expect_equal(.changeDropNullLine(quote(alag(a) ~ NULL)),
+                 quote(-alag(a)))
+    expect_equal(.changeDropNullLine(str2lang("alag(a) = NULL")),
+                 quote(-alag(a)))
+
+    expect_equal(.changeDropNullLine(quote(F(a) <- NULL)),
+                 quote(-F(a)))
+    expect_equal(.changeDropNullLine(quote(F(a) ~ NULL)),
+                 quote(-F(a)))
+    expect_equal(.changeDropNullLine(str2lang("F(a) = NULL")),
+                 quote(-F(a)))
+
+    expect_equal(.changeDropNullLine(quote(f(a) <- NULL)),
+                 quote(-f(a)))
+    expect_equal(.changeDropNullLine(quote(f(a) ~ NULL)),
+                 quote(-f(a)))
+    expect_equal(.changeDropNullLine(str2lang("f(a) = NULL")),
+                 quote(-f(a)))
+
+    expect_equal(.changeDropNullLine(quote(rate(a) <- NULL)),
+                 quote(-rate(a)))
+    expect_equal(.changeDropNullLine(quote(rate(a) ~ NULL)),
+                 quote(-rate(a)))
+    expect_equal(.changeDropNullLine(str2lang("rate(a) = NULL")),
+                 quote(-rate(a)))
+
+    expect_equal(.changeDropNullLine(quote(dur(a) <- NULL)),
+                 quote(-dur(a)))
+    expect_equal(.changeDropNullLine(quote(dur(a) ~ NULL)),
+                 quote(-dur(a)))
+    expect_equal(.changeDropNullLine(str2lang("dur(a) = NULL")),
+                 quote(-dur(a)))
+
+    expect_equal(.changeDropNullLine(quote(a(0) <- NULL)),
+                 quote(-a(0)))
+    expect_equal(.changeDropNullLine(quote(a(0) ~ NULL)),
+                 quote(-a(0)))
+    expect_equal(.changeDropNullLine(str2lang("a(0) = NULL")),
+                 quote(-a(0)))
+
   })
 
   test_that("test fix/unfix for eta", {
