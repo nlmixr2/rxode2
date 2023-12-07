@@ -1220,6 +1220,19 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .rxControl$omega <- NULL
     }
   }
+  if (inherits(.rxControl$omega, "matrix")) {
+    .omega <- .rxControl$omega
+    .v <- vapply(dimnames(.omega)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    .omega <- .omega[.v, .v]
+    if (dim(.omega)[1] == 0) {
+      .rxControl$omega <- NULL
+    } else {
+      .rxControl$omega <- NULL
+    }
+  }
   if (inherits(.rxControl$omega, "matrix") &&
         all(dim(.rxControl$omega) == c(0,0))) {
     .rxControl$omega <- NULL
@@ -1232,6 +1245,19 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
     if (is.na(.rxControl$sigma)) {
       .sigma <- object$simulationSigma
       params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
+      .rxControl$sigma <- NULL
+    }
+  }
+  if (inherits(.rxControl$sigma, "matrix")) {
+    .sigma <- .rxControl$sigma
+    .v <- vapply(dimnames(.sigma)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    .sigma <- .sigma[.v, .v]
+    if (dim(.sigma)[1] == 0) {
+      .rxControl$sigma <- NULL
+    } else {
       .rxControl$sigma <- NULL
     }
   }

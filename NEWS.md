@@ -188,6 +188,9 @@ mu-referencing style to run the optimization.
 
 ## Bug fixes
 
+- Simulating/solving from functions/ui now prefers params over `omega`
+  and `sigma` in the model (#632)
+
 - Piping does not add constants to the initial estimates
 
 - When constants are specified in the `model({})` block (like `k <- 1`), they will not
