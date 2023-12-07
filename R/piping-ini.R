@@ -402,18 +402,18 @@
     # Do nothing
     return()
   } else if (is.logical(append)) {
-    checkmate::assert_logical(append, any.missing = FALSE, len = 1)
+    checkmate::assertLogical(append, any.missing = FALSE, len = 1)
     if (isTRUE(append)) {
       appendClean <- Inf
     } else if (isFALSE(append)) {
       appendClean <- 0
     }
   } else if (is.numeric(append)) {
-    checkmate::assert_number(append, null.ok = FALSE, na.ok = FALSE)
+    checkmate::assertNumber(append, null.ok = FALSE, na.ok = FALSE)
     appendClean <- append
   } else if (is.character(append)) {
-    checkmate::assert_character(append, any.missing = FALSE, len = 1, null.ok = FALSE)
-    checkmate::assert_choice(append, choices = ini$name)
+    checkmate::assertCharacter(append, any.missing = FALSE, len = 1, null.ok = FALSE)
+    checkmate::assertChoice(append, choices = ini$name)
     appendClean <- which(ini$name == append)
   } else {
     stop("'append' must be NULL, logical, numeric, or character/expression of variable in model",
