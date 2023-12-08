@@ -1,5 +1,6 @@
 rxTest({
   test_that("rename for ui makes sense", {
+
     ocmt <- function() {
       ini({
         tka <- exp(0.45)
@@ -147,8 +148,8 @@ rxTest({
     expect_equal(tmp$lstExpr[[6]], quote(rate(dcmt) <- 1))
     expect_equal(tmp$lstExpr[[7]], quote(dur(dcmt) <- 1))
     expect_equal(tmp$lstExpr[[8]], quote(alag(dcmt) <- 1))
-    
 
-    
+
+
   })
 })

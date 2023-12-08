@@ -169,6 +169,8 @@ mu-referencing style to run the optimization.
   `ini(param=NULL)` changes the parameter to a covariate to align with
   this idiom of dropping parameters
 
+- `rxRename` has been refactored to run faster
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
