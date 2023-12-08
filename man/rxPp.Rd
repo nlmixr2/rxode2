@@ -68,8 +68,9 @@ rxPp(10, 1 / 10, gamma = 2, tmax = 10, randomOrder = TRUE)
 ## This uses an arbitrary function to sample a non-homogenous Poisson process
 
 rxPp(10, 1 / 10, prob = function(x) {
-  1 / x
+  1/(1+abs(x))
 })
+
 }
 \author{
 Matthew Fidler

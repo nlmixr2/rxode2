@@ -40,7 +40,7 @@ etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar =
 #' @param c1 character vector of items to be expanded
 #' @param c2 second character vector of items to be expanded
 #' @param type 0 for a typical data frame, 1 for symengine sensitivity expansion
-#' @return data frame (when type = 0) or symengine string (when type=1) 
+#' @return data frame (when type = 0) or symengine string (when type=1)
 #' @export
 #' @keywords internal
 rxExpandGrid_ <- function(c1, c2, type) {
@@ -74,17 +74,18 @@ rxExpandSens2_ <- function(state, s1, s2) {
 #'
 #' @param state is the state to expand
 #' @param neta is the number of etas
-#' @param pred type of prediction 
+#' @param pred type of prediction
+#' @param isTheta logical, is the expansion actually for thetas instead of etas
 #' @keywords internal
 #' @return String of symengine expressions to evaluate to calculate df/deta
 #' @export
-rxExpandFEta_ <- function(state, neta, pred) {
-    .Call(`_rxode2_rxExpandFEta_`, state, neta, pred)
+rxExpandFEta_ <- function(state, neta, pred, isTheta = FALSE) {
+    .Call(`_rxode2_rxExpandFEta_`, state, neta, pred, isTheta)
 }
 
 #' Rep R0 for foce
 #'
-#' @param number ETA to substitute
+#' @param neta ETA to substitute
 #'
 #' @return Returns a string of R code to substitute the rx_r expression in the symengine environment .s
 #'
@@ -260,7 +261,7 @@ rxSetupIni <- function(obj, inits = NULL) {
 #'
 #' @param obj rxode2 object
 #'
-#' @param inits A numeric vector of initial conditions.
+#' @param scale A numeric vector scales
 #'
 #' @param extraArgs A list of extra args to parse for initial conditions.
 #'
@@ -589,7 +590,15 @@ rxErf <- function(v) {
     .Call(`_rxode2_rxErf`, v)
 }
 
-meanProbs_ <- function(x, probs, naRm, useT) {
-    .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT)
+binomProbsPredVec_ <- function(n, m, Y, M, doP = TRUE, tol = 1e-7) {
+    .Call(`_rxode2_binomProbsPredVec_`, n, m, Y, M, doP, tol)
+}
+
+binomProbs_ <- function(x, probs, naRm, nIn, cont) {
+    .Call(`_rxode2_binomProbs_`, x, probs, naRm, nIn, cont)
+}
+
+meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
+    .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
 

@@ -1,4 +1,4 @@
- #' Options, Solving & Simulation of an ODE/solved system
+#' Options, Solving & Simulation of an ODE/solved system
 #'
 #' This uses rxode2 family of objects, file, or model specification to
 #' solve a ODE system.  There are many options for a solved rxode2
@@ -575,6 +575,8 @@
 #'
 #' @inheritParams odeMethodToInt
 #'
+#' @inheritParams rxode2parse::rxode2parse
+#'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
 #'
@@ -720,7 +722,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addlKeepsCov=FALSE,
                     addlDropSs=TRUE,
                     ssAtDoseTime=TRUE,
-                    ss2cancelAllPending=FALSE) {
+                    ss2cancelAllPending=FALSE,
+                    envir=parent.frame()) {
+  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -1123,6 +1127,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ssAtDoseTime=ssAtDoseTime,
       ss2cancelAllPending=ss2cancelAllPending,
       .zeros=unique(.zeros)
+
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -1133,17 +1138,46 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                             theta = NULL, eta = NULL) {
+                             theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
   .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
                        list(...),
-                       list(theta = theta, eta = eta)))
+                       list(theta = theta, eta = eta, envir=envir)))
+}
+
+.uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
+                         theta = NULL, eta = NULL) {
+  .ctl <- rxControl()
+  if (exists("meta", envir=ui)) {
+    .meta <- get("meta", ui)
+  } else {
+    .meta <- new.env(parent=emptyenv())
+  }
+  .lst <- list(...)
+  .nlst <- names(.lst)
+  .w <- which(vapply(names(.ctl), function(x) {
+    !(x %in% .nlst) && exists(x, envir=.meta)
+  }, logical(1), USE.NAMES=FALSE))
+  .extra <- NULL
+  if (length(.w) > 0) {
+    .v <- names(.ctl)[.w]
+    .minfo(paste0("rxControl items read from fun: '",
+                  paste(.v, collapse="', '"), "'"))
+    .extra <- setNames(lapply(.v, function(x) {
+      get(x, envir=.meta)
+    }), .v)
+
+  }
+  do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
+                     .lst, .extra,
+                     list(theta=theta, eta=eta)))
 }
 
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
-  .rxControl <- rxSolve(NULL, params = params, events = events, inits = inits, ...,
-                        theta = theta, eta = eta)
+  .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
+                             theta = theta, eta=eta)
   if (rxIs(params, "rx.event")) {
     if (!is.null(events)) {
       .tmp <- events
@@ -1187,6 +1221,24 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .rxControl$omega <- NULL
     }
   }
+  if (inherits(.rxControl$omega, "matrix")) {
+    .omega <- .rxControl$omega
+    .v <- vapply(dimnames(.omega)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    if (length(.v) == 1L) {
+      if (!.v) .rxControl$omega <- NULL
+    } else {
+      .omega <- .omega[.v, .v]
+      if (all(dim(.omega) == c(0L, 0L))) {
+        .rxControl$omega <- NULL
+      } else {
+        .rxControl$omega <- .omega
+      }
+    }
+
+  }
   if (inherits(.rxControl$omega, "matrix") &&
         all(dim(.rxControl$omega) == c(0,0))) {
     .rxControl$omega <- NULL
@@ -1201,6 +1253,24 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
       .rxControl$sigma <- NULL
     }
+  }
+  if (inherits(.rxControl$sigma, "matrix")) {
+    .sigma <- .rxControl$sigma
+    .v <- vapply(dimnames(.sigma)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    if (length(.v) == 1L) {
+      if (!.v) .rxControl$sigma <- NULL
+    } else {
+      .sigma <- .sigma[.v, .v, drop = FALSE]
+      if (all(dim(.sigma) == c(0L, 0L))) {
+        .rxControl$sigma <- NULL
+      } else {
+        .rxControl$sigma <- .sigma
+      }
+    }
+
   }
   if (inherits(.rxControl$sigma, "matrix") &&
         all(dim(.rxControl$sigma) == c(0,0))) {
@@ -1219,7 +1289,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @rdname rxSolve
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                         theta = NULL, eta = NULL) {
+                         theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxode2parse::.udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
@@ -1238,7 +1309,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
     .pred <- TRUE
     if (!.hasIpred && any(rxModelVars(.lst[[1]])$lhs == "ipredSim")) {
-      .lst$drop <- c(.lst$drop, "ipredSim")      
+      .lst$drop <- c(.lst$drop, "ipredSim")
     }
   }
   .ret <- do.call("rxSolve.default", .lst)
@@ -1266,7 +1337,8 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #' @rdname rxSolve
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                                   theta = NULL, eta = NULL) {
+                                   theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
   .env <- object$env
@@ -1300,7 +1372,8 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @rdname rxSolve
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
-                            theta = NULL, eta = NULL) {
+                            theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
   on.exit({
     .clearPipe()
     .asFunctionEnv$rx <- NULL
@@ -1671,6 +1744,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
+
   if (rxode2.debug) {
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,
@@ -1754,6 +1828,7 @@ predict.function <- function(object, ...) {
 #' @rdname rxSolve
 #' @export
 predict.rxUi <- function(object, ...) {
+  rxode2parse::.udfEnvSet(list(object$meta, parent.frame(1)))
   rxSolve(object, ...)
 }
 
@@ -2004,8 +2079,9 @@ drop_units.rxSolve <- function(x) {
 
 #' @rdname rxSolve
 #' @export
-rxControl <- function(..., params = NULL, events = NULL, inits = NULL) {
-  rxSolve(object = NULL, params = params, events = events, inits = inits, ...)
+rxControl <- function(..., params = NULL, events = NULL, inits = NULL, envir=parent.frame()) {
+  rxSolve(object = NULL, params = params, events = events, inits = inits, ...,
+          envir=envir)
 }
 
 #' @export
@@ -2051,6 +2127,7 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) 
   }
   method
 }
+
 
 
 #' This updates the tolerances based on the sensitivity equations

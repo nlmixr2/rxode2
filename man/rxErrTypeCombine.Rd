@@ -15,7 +15,7 @@ swaps \code{oldErrType} and \code{addTransform} and assigns
 \code{oldErrType} to zero assuming that there is no prior
 distribution.}
 
-\item{newTransform}{This is the new distribution that is being
+\item{newErrType}{This is the new distribution that is being
 "added" to the current transformation.  These assumes the inputs
 are in the preferred distribution name, as determined by
 \code{rxPreferredDistributionName()}}

@@ -1,6 +1,7 @@
 #' @export
 #' @rdname model
-model.function <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
+model.function <- function(x, ..., append=NULL, auto=getOption("rxode2.autoVarPiping", TRUE),
+                           cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(rxode2(x))
   if (length(.modelLines) == 0) return(.ret$modelFun)
@@ -10,7 +11,8 @@ model.function <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=pare
 
 #' @export
 #' @rdname model
-model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
+model.rxUi <- function(x, ..., append=NULL, auto=getOption("rxode2.autoVarPiping", TRUE),
+                       cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   if (length(.modelLines) == 0) return(.ret$modelFun)
@@ -30,7 +32,8 @@ model.rxUi <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.f
 
 #' @export
 #' @rdname model
-model.rxode2 <- function(x, ..., append=FALSE, auto=TRUE, cov=NULL, envir=parent.frame()) {
+model.rxode2 <- function(x, ..., append=NULL, auto=getOption("rxode2.autoVarPiping", TRUE),
+                         cov=NULL, envir=parent.frame()) {
   .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
   x <- as.function(x)
   .ret <- suppressMessages(rxUiDecompress(rxode2(x)))
@@ -53,7 +56,8 @@ model.rxModelVars <- model.rxode2
 #' @return New UI
 #' @author Matthew L. Fidler
 #' @export
-.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=FALSE, auto=TRUE,
+.modelHandleModelLines <- function(modelLines, rxui, modifyIni=FALSE, append=NULL,
+                                   auto=getOption("rxode2.autoVarPiping", TRUE),
                                    cov=NULL, envir) {
   checkmate::assertLogical(modifyIni, any.missing=FALSE, len=1)
   ## checkmate::assertLogical(append, any.missing=TRUE, len=1)
@@ -62,8 +66,34 @@ model.rxModelVars <- model.rxode2
   .varSelect$cov <- cov
   .doAppend <- FALSE
   rxui <- rxUiDecompress(rxui)
+  .ll <- length(rxui$lstExpr)
   if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
-    .ll <- length(rxui$lstExpr)
+    if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(Inf))) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- TRUE
+    } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(-Inf))) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- NA
+    } else if (identical(.nsEnv$.quoteCallInfoLinesAppend, quote(0))) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- NA
+    } else if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=.ll)) {
+      .nsEnv$.quoteCallInfoLinesAppend <- NULL
+      append <- TRUE
+    }
+  }
+  if (!is.null(.nsEnv$.quoteCallInfoLinesAppend)) {
+    if (checkmate::testIntegerish(.nsEnv$.quoteCallInfoLinesAppend, lower=0, upper=.ll)) {
+      .nsEnv$.quoteCallInfoLinesAppend <- .getLhs(rxui$lstExpr[[.nsEnv$.quoteCallInfoLinesAppend]])
+    } else if (checkmate::testCharacter(.nsEnv$.quoteCallInfoLinesAppend, len=1, any.missing=FALSE,
+                                        min.chars = 1)) {
+      .tmp <- try(str2lang(.nsEnv$.quoteCallInfoLinesAppend), silent=TRUE)
+      if (inherits(.tmp, "try-error")) {
+        stop("'append' must refer to a LHS model line when a character",
+             call. = FALSE)
+      }
+      .nsEnv$.quoteCallInfoLinesAppend <- .tmp
+    }
     .w <- which(vapply(seq_len(.ll),
                        function(i) {
                          .lhs <- .getLhs(rxui$lstExpr[[i]])
@@ -108,7 +138,7 @@ model.rxModelVars <- model.rxode2
              envir=rxui)
     }
     .doAppend <- TRUE
-  } else if (is.logical(append) && length(append) == 1L && is.na(append)) {
+  } else if (is.logical(append) && length(append) == 1L && (is.na(append) || !append)) {
     assign("lstExpr", c(modelLines, rxui$lstExpr), envir=rxui)
     .doAppend <- TRUE
   } else if (isTRUE(append)) {
@@ -117,18 +147,27 @@ model.rxModelVars <- model.rxode2
   }
   if (.doAppend) {
     # in pre-pending or appending, lines are only added
-    .lhs <- character()
-    .rhs <- character()
+    .lhs <- character(0)
+    .rhs <- character(0)
+    .lhs0 <- c(rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name)
     for (x in modelLines) {
       .isTilde <- .isEndpoint(x)
       if (.isTilde || .isAssignment(x)) {
         .rhs <- unique(c(.getVariablesFromExpression(.getRhs(x), ignorePipe=.isTilde), .rhs))
         .lhs <- unique(c(.getVariablesFromExpression(.getLhs(x)), .lhs))
       }
-      .rhs <- setdiff(.rhs, c(.lhs, rxui$mv0$lhs, rxui$mv0$state, rxui$allCovs, rxui$iniDf$name))
+      .rhs <- setdiff(.rhs, c(.lhs, .lhs0))
       if (isTRUE(auto)) {
         for (v in .rhs) {
-          .addVariableToIniDf(v, rxui, promote=ifelse(.isTilde,NA, TRUE))
+          .isCov <- grepl(.varSelect$covariateExceptions, tolower(v))
+          .isTheta <- !.isCov && grepl(.varSelect$thetaModelReg, v)
+          .isEta <- !.isCov && grepl(.varSelect$etaModelReg, v)
+          if (.isTilde || .isTheta || .isEta) {
+            .addVariableToIniDf(v, rxui,
+                                promote=ifelse(.isTilde,NA,
+                                               TRUE))
+            .lhs <- c(.lhs, v)
+          }
         }
       }
     }
@@ -167,6 +206,14 @@ model.rxModelVars <- model.rxode2
     .matchesLangTemplate(expr, str2lang(". = ."))
 }
 
+.isTildeExpr <- function(expr) {
+  .matchesLangTemplate(expr, str2lang("~ ."))
+}
+
+.isIniDropExpression <- function(expr) {
+  .matchesLangTemplate(expr, str2lang("- ."))
+}
+
 # get the left hand side of an assignment or endpoint; returns NULL if the input
 # is not an assignment or endpoint
 .getLhs <- function(expr) {
@@ -189,7 +236,8 @@ model.rxModelVars <- model.rxode2
   ret <- NULL
   if (.isEndpoint(expr)) {
     lhs <- .getLhs(expr)
-    if (.matchesLangTemplate(lhs, str2lang("-."))) {
+    if (.matchesLangTemplate(lhs, str2lang("-.")) ||
+          .matchesLangTemplate(lhs, str2lang(". <- NULL"))) {
       # If it is a drop expression with a minus sign, grab the non-minus part
       ret <- lhs[[2]]
     }
@@ -199,7 +247,8 @@ model.rxModelVars <- model.rxode2
 
 .getModelLineEquivalentLhsExpressionDropDdt <- function(expr) {
   .expr3 <- NULL
-  if (.matchesLangTemplate(x = expr, template = str2lang("-d/dt(.name)"))) {
+  if (.matchesLangTemplate(x = expr, template = str2lang("-d/dt(.name)")) ||
+        .matchesLangTemplate(x = expr, template = str2lang("d/dt(.name) <- NULL"))) {
     .expr3 <- expr
     # remove the minus sign from the numerator
     .expr3[[2]] <- .expr3[[2]][[2]]
@@ -474,6 +523,48 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   }
   NULL
 }
+#' This checks the different types of drop assignments
+#'
+#'
+#' @param prefix The prefix of the drop assignment
+#' @param line The line expression to check
+#' @return logical to say if this matches the prefix
+#' @author Matthew L. Fidler
+#' @noRd
+.isDropNullType <- function(prefix, line) {
+  .e1 <- str2lang(paste0(prefix, " <- NULL"))
+  .e2 <- str2lang(paste0(prefix, " = NULL"))
+  .e3 <- str2lang(paste0(prefix, " ~ NULL"))
+  if (.matchesLangTemplate(line, .e1)) return(TRUE)
+  if (.matchesLangTemplate(line, .e3)) return(TRUE)
+  if (.matchesLangTemplate(line, .e2)) return(TRUE)
+  FALSE
+}
+#' This changes NULL assignment line to a -drop line
+#'
+#' @param line Line to change if necessary
+#' @return Drop line normalized to be `-line` instead of  `line <- NULL`
+#' @author Matthew L. Fidler
+#' @noRd
+.changeDropNullLine <- function(line) {
+  if (.isDropNullType("d/dt(.name)", line)) {
+    .ret <- line[[2]]
+    .ret[[2]] <- as.call(list(quote(`-`), .ret[[2]]))
+    return(.ret)
+  }
+  if (.isDropNullType(".name", line) ||
+        .isDropNullType("lag(.name)", line) ||
+        .isDropNullType("alag(.name)", line) ||
+        .isDropNullType("f(.name)", line) ||
+        .isDropNullType("F(.name)", line) ||
+        .isDropNullType("rate(.name)", line) ||
+        .isDropNullType("dur(.name)", line) ||
+        .isDropNullType(".name(0)", line)
+        ) {
+    return(as.call(list(quote(`-`), line[[2]])))
+  }
+  line
+}
 
 #'  Modify the error lines/expression
 #'
@@ -488,6 +579,7 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
   .err <- NULL
   .env <- environment()
   lapply(lines, function(line) {
+    line <- .changeDropNullLine(line)
     if (modifyIni && .isQuotedLineRhsModifiesEstimates(line, rxui)) {
       .iniHandleFixOrUnfix(line, rxui, envir=envir)
     } else {
@@ -693,7 +785,7 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
 #'
 rxSetPipingAuto <- function(thetamodelVars=rex::rex(or("tv", "t", "pop", "POP", "Pop",
                                                      "TV", "T", "cov", "err", "eff")),
-                          covariateExceptions = rex::rex(start, or("wt", "sex", "crcl"), end),
+                          covariateExceptions = rex::rex(start, or("wt", "sex", "crcl", "kout"), end),
                           etaParts=c("eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv",
                                      "bsv", "Bsv", "BSV","bpv", "Bpv", "BPV", "psv", "PSV",
                                      "Psv")
@@ -902,7 +994,6 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
         }
       }
     }
-
     if (all(is.na(.iniDf$ntheta))) {
       .theta <- 1
     } else {

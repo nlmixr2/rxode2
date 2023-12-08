@@ -4,12 +4,12 @@
 \alias{rxAppendModel}
 \title{Append two rxui models together}
 \usage{
-rxAppendModel(model1, model2)
+rxAppendModel(..., common = TRUE)
 }
 \arguments{
-\item{model1}{rxUi model 1}
+\item{...}{models to append together}
 
-\item{model2}{rxUi model 2}
+\item{common}{boolean that determines if you need a common value to bind}
 }
 \value{
 New model with both models appended together

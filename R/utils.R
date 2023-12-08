@@ -747,7 +747,7 @@ is.latex <- function() {
   ret
 }
 #' Print out a table in the documentation
-#'  
+#'
 #' @param table data frame
 #' @param caption a character vector representing the caption for the latex table
 #' @return based on the `knitr` context:
@@ -755,7 +755,7 @@ is.latex <- function() {
 #' - output a `DT::datatable` for html output
 #' - otherwise output a `knitr::kable`
 #' @keywords internal
-#' @export 
+#' @export
 #' @author Matthew L. Fidler
 #' @examples
 #' .rxDocTable(rxReservedKeywords)
@@ -773,11 +773,12 @@ is.latex <- function() {
   }
 }
 
-#' Calculate expected quantiles with normal or t sampling distribution
+#' Calculate expected confidence bands or prediction intreval with normal or t sampling distribution
 #'
-#' The generic function `meanProbs` produces expected quantiles under
-#' either the t distribution or the normal sampling distribution. This
-#' uses `qnorm()` or `qt()` with the mean and standard deviation.
+#' The generic function `meanProbs` produces expected confidence bands
+#' under either the t distribution or the normal sampling
+#' distribution. This uses `qnorm()` or `qt()` with the mean and
+#' standard deviation.
 #'
 #' For a single probability, p, it uses either:
 #'
@@ -796,19 +797,27 @@ is.latex <- function() {
 #' This is meant to perform in the same way as `quantile()` so it can
 #' be a drop in replacement for code using `quantile()` but using
 #' distributional assumptions.
-#'  
+#'
 #' @param x numeric vector whose mean and probability based confidence
 #'   values are wanted, NA and NaN values are not allowed in numeric
 #'   vectors unless ‘na.rm’ is ‘TRUE’.
-#' @param probs numeric vector of probabilities with values in [0,1].
+#' @param probs numeric vector of probabilities with values in the
+#'   interval from 0 to 1 .
 #' @param na.rm logical; if true, any NA and NaN's are removed from
 #'   `x` before the quantiles are computed.
 #' @param names logical; if true, the result has a names attribute.
 #' @param useT logical; if true, use the t-distribution to calculate
 #'   the confidence-based estimates. If false use the normal
 #'   distribution to calculate the confidence based estimates.
-#' @param onlyProbs logical; if true, only return the probability based
-#'   confidence interval estimates, otherwise return
+#' @param onlyProbs logical; if true, only return the probability
+#'   based confidence interval estimates, otherwise return
+#' @param pred logical; if true use the prediction interval instead of
+#'   the confidence interval
+#' @param n integer/integerish; this is the n used to calculate the
+#'   prediction or confidence interval.  When `n=0` (default) use the
+#'   number of non-`NA` observations.
+#' @param ... Arguments passed to default method, allows many
+#'   different methods to be applied.
 #' @return By default the return has the probabilities as names (if
 #'   named) with the points where the expected distribution are
 #'   located given the sampling mean and standard deviation. If
@@ -831,9 +840,9 @@ is.latex <- function() {
 #' quantile(x<- rnorm(42))
 #'
 #' meanProbs(x)
-#' 
+#'
 #' meanProbs(x, useT=FALSE)
-#' 
+#'
 meanProbs <- function(x, ...) {
   UseMethod("meanProbs")
 }
@@ -841,14 +850,18 @@ meanProbs <- function(x, ...) {
 #' @rdname meanProbs
 #' @export
 meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
-                              names=TRUE, useT=TRUE, onlyProbs=TRUE) {
+                              names=TRUE, useT=TRUE, onlyProbs=TRUE, pred=FALSE,
+                              n=0L, ...) {
   checkmate::assertNumeric(x)
   checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
   checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
   checkmate::assertLogical(names, any.missing=FALSE, len=1)
   checkmate::assertLogical(useT, any.missing=FALSE, len=1)
   checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
-  .ret <- .Call(`_rxode2_meanProbs_`, x, probs, na.rm, useT)
+  checkmate::assertLogical(pred, any.missing=FALSE, len=1)
+  checkmate::assertIntegerish(n, min.len=1, max.len=1, any.missing=FALSE, lower=0)
+  n <- as.integer(n)
+  .ret <- .Call(`_rxode2_meanProbs_`, x, probs, na.rm, useT, pred, n)
   .names <- NULL
   if (names) {
     .names <- paste0(probs*100, "%")
@@ -864,3 +877,178 @@ meanProbs.default <- function(x, probs=seq(0, 1, 0.25), na.rm=FALSE,
   .ret
 }
 
+#' Calculate expected confidence bands with binomial sampling distribution
+#'
+#' This is meant to perform in the same way as `quantile()` so it can
+#' be a drop in replacement for code using `quantile()` but using
+#' distributional assumptions.
+#'
+#' It is used for confidence intervals with rxode2 solved objects using
+#' `confint(mean="binom")`
+#'
+#' @param x numeric vector whose mean and probability based confidence
+#'   values are wanted, NA and NaN values are not allowed in numeric
+#'   vectors unless `na.rm` is `TRUE`.
+#'
+#' @param probs numeric vector of probabilities with values in the
+#'   interval 0 to 1, inclusive. When 0, it represents the maximum
+#'   observed, when 1, it represents the maximum observed. When 0.5 it
+#'   represents the expected probability (mean).
+#'
+#' @param na.rm logical; if true, any NA and NaN's are removed from
+#'   `x` before the quantiles are computed.
+#'
+#' @param names logical; if true, the result has a names attribute.
+#'
+#' @param onlyProbs logical; if true, only return the probability
+#'   based confidence interval/prediction interval estimates,
+#'   otherwise return extra statistics.
+#'
+#' @param n integer/integerish; this is the n used to calculate the
+#'   prediction or confidence interval.  When `n=0` (default) use the
+#'   number of non-`NA` observations.  When calculating the prediction
+#'   interval, this represents the number of observations used in the
+#'   input ("true") distribution.
+#'
+#' @param pred Use a prediction interval instead of a confidence
+#'   interval.  By default this is `FALSE`.
+#'
+#' @param m integer.  When using the prediction interval this
+#'   represents the number of samples that will be observed in the
+#'   future for the prediction interval.
+#'
+#' @param piMethod gives the prediction interval method (currently only lim) from Lu 2020
+#'
+#' @param M number of simulations to run for the LIM PI.
+#'
+#' @param tol tolerance of root finding in the LIM prediction interval
+#'
+#' @param ciMethod gives the method for calculating the confidence
+#'   interval.
+#'
+#'  Can be:
+#'
+#'  - "argestiCoull" or "ac" -- Agresti-Coull method. For a 95\% confidence
+#'     interval, this method does not use the concept   of "adding 2
+#'     successes and 2 failures," but rather uses the formulas explicitly
+#'     described in the following link:
+#'
+#' https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Agresti-Coull_Interval.
+#'
+#'   - "wilson" -- Wilson Method
+#'
+#'   - "wilsonCorrect" or "wc" -- Wilson method with continuity correction
+#'
+#'   - "wald" -- Wald confidence interval or standard z approximation.
+#'
+#' @param ... Arguments passed to default method, allows many
+#'   different methods to be applied.
+#'
+#' @return By default the return has the probabilities as names (if
+#'   named) with the points where the expected distribution are
+#'   located given the sampling mean and standard deviation. If
+#'   `onlyProbs=FALSE` then it would prepend mean, variance, standard
+#'   deviation, minimum, maximum and number of non-NA observations.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @references
+#'
+#' - Newcombe, R. G. (1998). "Two-sided confidence intervals for the single
+#'   proportion: comparison of seven methods". Statistics
+#'   in Medicine. 17 (8):
+#'   857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
+#'   9595616.
+#'
+#' - Hezhi Lu, Hua Jin,
+#'   A new prediction interval for binomial random variable based on inferential models,
+#'   Journal of Statistical Planning and Inference,
+#'   Volume 205,
+#'   2020,
+#'   Pages 156-174,
+#'   ISSN 0378-3758,
+#'   https://doi.org/10.1016/j.jspi.2019.07.001.
+#' @examples
+#'
+#' x<- rbinom(7001, p=0.375, size=1)
+#' binomProbs(x)
+#'
+#' # you can also use the prediction interval
+#' \donttest{
+#' binomProbs(x, pred=TRUE)
+#' }
+#'
+#' # Can get some extra statistics if you request onlyProbs=FALSE
+#' binomProbs(x, onlyProbs=FALSE)
+#'
+#' x[2] <- NA_real_
+#'
+#' binomProbs(x, onlyProbs=FALSE)
+#'
+#' binomProbs(x, na.rm=TRUE)
+#'
+binomProbs <- function(x, ...) {
+  UseMethod("binomProbs")
+}
+
+#' @rdname binomProbs
+#' @export
+binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=FALSE,
+                               names=TRUE, onlyProbs=TRUE, n=0L, m=0L,
+                               pred=FALSE,
+                               piMethod=c("lim"), M=500000,
+                               tol=.Machine$double.eps^0.25,
+                               ciMethod=c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"), ...) {
+  checkmate::assertNumeric(x, min.len=1, lower=0.0, upper=1.0)
+  x <- as.double(x)
+  checkmate::assertIntegerish(n, min.len=1, lower=0, any.missing=FALSE)
+  n <- as.integer(n)
+  checkmate::assertIntegerish(m, min.len=1, lower=0, any.missing=FALSE)
+  m <- as.integer(m)
+  checkmate::assertNumeric(probs, min.len=1, any.missing = FALSE, lower=0.0, upper=1.0)
+  checkmate::assertLogical(na.rm, any.missing=FALSE, len=1)
+  checkmate::assertLogical(names, any.missing=FALSE, len=1)
+  checkmate::assertLogical(onlyProbs, any.missing=FALSE, len=1)
+  if (pred) {
+    .m <- mean(x, na.rm=na.rm)
+    if (is.na(.m)) {
+      .ret <- stats::quantile(NULL,probs=probs)
+      if (!onlyProbs) {
+        .ret <- c("mean"=NA_real_,"var"=NA_real_, "sd"=NA_real_, "n"=NA_real_,
+                  .ret)
+      }
+    } else {
+      .nC <- sum(!is.na(x))
+      if (n == 0L) n <- as.integer(.nC)
+      if (m == 0L) m <- as.integer(.nC)
+      .Y <- round(.nC * .m) # number of successes
+      .ret <- stats::quantile(.Call(`_rxode2_binomProbsPredVec_`, n, m, .Y, M, TRUE, tol),
+                       probs=probs)
+      if (!onlyProbs) {
+        .ret <- c("mean"=.m,"var"=.m * (1.0 - .m), "sd"=sqrt(.m * (1.0 - .m)), "n"=.nC,
+                  .ret)
+      }
+    }
+    if (!names) {
+      names(.ret) <- NULL
+    }
+    return(.ret)
+  } else {
+    ciMethod <- match.arg(ciMethod)
+    ciMethod <- setNames(c("wilson"=1L, "wilsonCorrect"=0L, "agrestiCoull"=3L, "wald"=2L, "ac"=3L, "wc"=0L)[ciMethod], NULL)
+    .ret <- .Call(`_rxode2_binomProbs_`, x, probs, na.rm, n, ciMethod)
+    .names <- NULL
+    if (names) {
+      .names <- paste0(probs*100, "%")
+    }
+    if (onlyProbs) {
+      .ret <- .ret[-1L:-4L]
+      if (names) {
+        names(.ret) <- .names
+      }
+    } else if (names) {
+      names(.ret) <- c("mean","var", "sd", "n", .names)
+    }
+    .ret
+  }
+}

@@ -29,7 +29,7 @@ mod1 <- function() {
     d/dt(peri) = Q*C2 - Q*C3
     d/dt(eff) = Kin - Kout*(1-C2/(EC50+C2))*eff
     eff(0) = 1
-  }) 
+  })
 }
 ```
 
@@ -37,7 +37,7 @@ Or you can also specify the end-points for simulation/estimation just
 like `nlmixr2`:
 
 ```{r mod2speed}
-mod2 <- function() {
+mod2f <- function() {
   ini({
     TKA   <- 0.3
     TCL   <- 7
@@ -53,7 +53,7 @@ mod2 <- function() {
     eff.add.sd <- 0.1
   })
   model({
-    KA <- TKA   
+    KA <- TKA
     CL <- TCL*exp(eta.cl)
     V2  <- TV2*exp(eta.v)
     Q   <- TQ
@@ -70,7 +70,7 @@ mod2 <- function() {
     eff(0) = 1
     C2 ~ prop(c2.prop.sd)
     eff ~ add(eff.add.sd)
-  }) 
+  })
 }
 ```
 
@@ -86,7 +86,7 @@ The first step can be done by `rxode2(mod1)` or `mod1()` (or for the second mode
 
 ```{r mod3eval}
 mod1 <- mod1()
-mod2 <- rxode2(mod2)
+mod2f <- rxode2(mod2f)
 ```
 
 The second step is to create the underlying "classic" `rxode2` model,
@@ -100,8 +100,8 @@ You can see the differences below:
 ```{r modSimModel}
 summary(mod1$simulationModel)
 summary(mod1$simulationIniModel)
-summary(mod2$simulationModel)
-summary(mod2$simulationIniModel)
+summary(mod2f$simulationModel)
+summary(mod2f$simulationIniModel)
 ```
 
 If you wish to speed up multiple simualtions from the `rxode2`
@@ -110,7 +110,7 @@ functions, you need to pre-calculate care of the steps above:
 ```{r simModel2}
 mod1 <- mod1$simulationModel
 
-mod2 <- mod2$simulationModel
+mod2 <- mod2f$simulationModel
 ```
 
 These functions then can act like a normal ui model to be solved.  You
@@ -180,7 +180,7 @@ runFor <- function(){
     return(res)
 }
 ```
-## Running with apply 
+## Running with apply
 
 In general for R, the `apply` types of functions perform better than a
 `for` loop, so the tutorial also suggests this speed enhancement
@@ -209,7 +209,7 @@ runSingleThread <- function(){
 
 rxode2 supports multi-threaded solves, so another option is to have `2`
 threads (called `cores` in the solve options, you can see the options
-in `rxControl()` or `rxSolve()`). 
+in `rxControl()` or `rxSolve()`).
 
 ```{r}
 run2Thread <- function(){
@@ -260,9 +260,103 @@ threads. 4 threads is a good number to use without any prior knowledge
 because most systems these days have at least 4 threads (or 2
 processors with 4 threads).
 
+# Increasing speed with compiler options
+
+One of the way that allows faster ODE solving is to make some
+approximations that make some math operators like `exp()` faster but
+not technically accurate enough to follow the IEEE standard for the
+math functions values (there are other implications that I will not
+cover here).
+
+While these are optimizations are [opt-in for
+Julia](https://github.com/JuliaLang/julia/blob/master/base/fastmath.jl)
+since they compile everything each session, CRAN has a more
+conservative approach since individuals do not compile each R function
+before running it.
+
+Still, `rxode2` models can be compiled with this option without
+disturbing CRAN policies.  The key is to set an option.  Here is an
+example:
+
+```{r}
+# Using the first example subset to PK
+mod2f <- function() {
+  ini({
+    TKA   <- 0.3
+    TCL   <- 7
+    TV2   <- 40
+    TQ    <- 10
+    TV3   <- 300
+    TKin  <- 0.2
+    TKout <- 0.2
+    TEC50 <- 8
+    eta.cl + eta.v ~ c(0.09,
+                       0.08, 0.25)
+    c2.prop.sd <- 0.1
+  })
+  model({
+    KA <- TKA
+    CL <- TCL*exp(eta.cl)
+    V2  <- TV2*exp(eta.v)
+    Q   <- TQ
+    V3  <- TV3
+    Kin  <- TKin
+    Kout <- TKout
+    EC50 <- TEC50
+    C2 = centr/V2
+    C3 = peri/V3
+    d/dt(depot) = -KA*depot
+    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri) = Q*C2 - Q*C3
+    C2 ~ prop(c2.prop.sd)
+  })
+}
+
+mod2f <- mod2f()
+
+mod2s <- mod2f$simulationIniModel
+
+ev  <- et(amountUnits="mg", timeUnits="hours") %>%
+  et(amt=10000, addl=9,ii=12,cmt="depot") %>%
+  et(time=120, amt=2000, addl=4, ii=14, cmt="depot") %>%
+  et(0:240) # Add sampling
+
+bench1 <- microbenchmark(standardCompile=rxSolve(mod2s, ev, nSub=1000))
+
+# Now clear the cache of models so we can change the compile options for the same model
+rxClean()
+
+# Use withr to preserve the options
+withr::with_options(list(rxode2.compile.O="fast"), {
+  mod2s <- mod2f$simulationIniModel
+})
+
+bench2 <- microbenchmark(fastCompile=rxSolve(mod2s, ev, nSub=1000))
+
+bench <- rbind(bench1, bench2)
+
+print(bench)
+
+autoplot(bench)
+```
+
+Note compiler settings can be tricky and if you setup your system wide
+`Makevars` it may interact with this setting. For example if you use
+`ccache` the compile may not be produced with the same options since
+it was cached with the other options.
+
+For example, on the github runner (which generates this page), there
+is no advantage to the `"fast"` compile.  However, on my development
+laptop there is [some minimal speed
+increase](https://github.com/nlmixr2/rxode2/issues/583#issuecomment-1834468627).
+You should probably check before using this yourself.
+
+This is disabled by default since there is only minimum increase in
+speed.
+
 # A real life example
 
-Before some of the parallel solving was implemented, the fastest way
+cBefore some of the parallel solving was implemented, the fastest way
 to run `rxode2` was with `lapply`.  This is how Rik Schoemaker created
 the data-set for `nlmixr` comparisons, but reduced to run faster
 automatic building of the pkgdown website.
@@ -277,7 +371,7 @@ library(data.table)
   d/dt(centr)  =  KA*abs-(CL/V)*centr;
   C2=centr/V;
   "
-  
+
 #Create the rxode2 simulation object
 mod1 <- rxode2(model = ode1)
 
@@ -310,7 +404,7 @@ mod1 <- rxode2(model = ode1)
 params.all[, AMT := rep(100 * doses,nsubg)]
 
 Startlapply <- Sys.time()
-  
+
 #Run the simulations using lapply for speed
   s = lapply(1:nsub, function(i) {
 #selects the parameters associated with the subject to be simulated
@@ -331,12 +425,12 @@ Startlapply <- Sys.time()
 #merges the parameters and ID number to the simulation output
     x[, names(params) := params]
   })
-  
+
 #runs the entire sequence of 100 subjects and binds the results to the object res
   res = as.data.table(do.call("rbind", s))
-  
+
 Stoplapply <- Sys.time()
-  
+
 print(Stoplapply - Startlapply)
 ```
 
@@ -374,7 +468,7 @@ ev <- do.call("rbind",
                 et(id=seq(1, nsubg) + (i - 1) * nsubg) %>%
                 ## Convert to data frame to skip sorting the data
                 ## When binding the data together
-                as.data.frame 
+                as.data.frame
         }))
 ## To better compare, use the same output, that is data.table
 res <- rxSolve(rx, ev, omega=omega, returnType="data.table")
@@ -388,12 +482,12 @@ things to keep in mind:
  - `rxode2` use the thread-safe sitmo `threefry` routines for simulation of `eta`
    values. Therefore the results are expected to be different (also the random
    samples are taken in a different order which would be different)
-   
+
  - This prior simulation was run in R 3.5, which has a different
    random number generator so the results in this simulation will be
    different from the actual nlmixr comparison when using the slower
    simulation.
-   
+
  - This speed comparison used `data.table`.  `rxode2` uses `data.table`
    internally (when available) try to speed up sorting, so this would
    be different than installations where `data.table` is not

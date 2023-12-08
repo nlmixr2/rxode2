@@ -13,6 +13,19 @@ rxTest({
     expect_equal(testPipeQuote(tmp),
                  list(quote(d/dt(depot))))
 
+
+    t <- c("-d/dt(peripheral1)", "-d/dt(peripheral2)")
+    expect_equal(testPipeQuote(t),
+                 list(quote(-d/dt(peripheral1)),
+                      quote(-d/dt(peripheral2))))
+
+    t <- c(a="x", b="y")
+
+    expect_equal(testPipeQuote(t),
+                 list(quote(a <- x), quote(b <- y)))
+
+
+
     tmp <- list(tmp="d/dt(depot)")
 
     expect_equal(testPipeQuote(tmp$tmp),
@@ -22,6 +35,73 @@ rxTest({
 
     expect_equal(testPipeQuote(tmp$tmp$tmp),
                  list(quote(d/dt(depot))))
+  })
+
+  test_that("equivalent drop statements", {
+
+    expect_equal(.changeDropNullLine(quote(a <- NULL)),
+                 quote(-a))
+    expect_equal(.changeDropNullLine(quote(a ~ NULL)),
+                 quote(-a))
+    expect_equal(.changeDropNullLine(str2lang("a = NULL")),
+                 quote(-a))
+
+    expect_equal(.changeDropNullLine(quote(d/dt(a) <- NULL)),
+                 quote(-d/dt(a)))
+    expect_equal(.changeDropNullLine(quote(d/dt(a) ~ NULL)),
+                 quote(-d/dt(a)))
+    expect_equal(.changeDropNullLine(str2lang("d/dt(a) = NULL")),
+                 quote(-d/dt(a)))
+
+    expect_equal(.changeDropNullLine(quote(lag(a) <- NULL)),
+                 quote(-lag(a)))
+    expect_equal(.changeDropNullLine(quote(lag(a) ~ NULL)),
+                 quote(-lag(a)))
+    expect_equal(.changeDropNullLine(str2lang("lag(a) = NULL")),
+                 quote(-lag(a)))
+
+    expect_equal(.changeDropNullLine(quote(alag(a) <- NULL)),
+                 quote(-alag(a)))
+    expect_equal(.changeDropNullLine(quote(alag(a) ~ NULL)),
+                 quote(-alag(a)))
+    expect_equal(.changeDropNullLine(str2lang("alag(a) = NULL")),
+                 quote(-alag(a)))
+
+    expect_equal(.changeDropNullLine(quote(F(a) <- NULL)),
+                 quote(-F(a)))
+    expect_equal(.changeDropNullLine(quote(F(a) ~ NULL)),
+                 quote(-F(a)))
+    expect_equal(.changeDropNullLine(str2lang("F(a) = NULL")),
+                 quote(-F(a)))
+
+    expect_equal(.changeDropNullLine(quote(f(a) <- NULL)),
+                 quote(-f(a)))
+    expect_equal(.changeDropNullLine(quote(f(a) ~ NULL)),
+                 quote(-f(a)))
+    expect_equal(.changeDropNullLine(str2lang("f(a) = NULL")),
+                 quote(-f(a)))
+
+    expect_equal(.changeDropNullLine(quote(rate(a) <- NULL)),
+                 quote(-rate(a)))
+    expect_equal(.changeDropNullLine(quote(rate(a) ~ NULL)),
+                 quote(-rate(a)))
+    expect_equal(.changeDropNullLine(str2lang("rate(a) = NULL")),
+                 quote(-rate(a)))
+
+    expect_equal(.changeDropNullLine(quote(dur(a) <- NULL)),
+                 quote(-dur(a)))
+    expect_equal(.changeDropNullLine(quote(dur(a) ~ NULL)),
+                 quote(-dur(a)))
+    expect_equal(.changeDropNullLine(str2lang("dur(a) = NULL")),
+                 quote(-dur(a)))
+
+    expect_equal(.changeDropNullLine(quote(a(0) <- NULL)),
+                 quote(-a(0)))
+    expect_equal(.changeDropNullLine(quote(a(0) ~ NULL)),
+                 quote(-a(0)))
+    expect_equal(.changeDropNullLine(str2lang("a(0) = NULL")),
+                 quote(-a(0)))
+
   })
 
   test_that("test fix/unfix for eta", {
@@ -749,7 +829,6 @@ rxTest({
 
     expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-    expect_error(f %>% ini(tka=NULL), "tka")
     expect_error(f %>% ini(tka=c(3,2,1)), "tka")
 
     suppressMessages(
@@ -828,7 +907,6 @@ rxTest({
 
     expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-    expect_error(f %>% ini(tka=NULL), "tka")
     expect_error(f %>% ini(tka=c(3,2,1)), "tka")
 
     suppressMessages(
@@ -899,7 +977,6 @@ rxTest({
 
     expect_error(f %>% ini(tka=c(0, 0.5, 1, 4)), "tka")
 
-    expect_error(f %>% ini(tka=NULL), "tka")
     expect_error(f %>% ini(tka=c(3,2,1)), "tka")
 
     suppressMessages(
@@ -1415,6 +1492,18 @@ rxTest({
     expect_true("cp1" %in% f2$mv0$lhs)
     expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
 
+    f <- rxode2(ocmt)
+    f2 <- f %>% model(cp1 <- cp, append=Inf)
+
+    expect_true("cp1" %in% f2$mv0$lhs)
+    expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
+
+    f <- rxode2(ocmt)
+    f2 <- f %>% model(cp1 <- cp, append=100)
+
+    expect_true("cp1" %in% f2$mv0$lhs)
+    expect_equal(f2$lstExpr[[length(f2$lstExpr)]], quote(cp1 <- cp))
+
     f2 <- f %>% model(f2 <- 3 * 2, append=NA)
     expect_true("f2" %in% f2$mv0$lhs)
     expect_equal(f2$lstExpr[[1]], quote(f2 <- 3 * 2))
@@ -1921,12 +2010,12 @@ test_that("piping with append=lhs", {
 
 
 test_that("test ui appending of derived variables like `sim` can work", {
-  
+
   one.compartment <- function() {
     ini({
       tka <- 0.45
-      tcl <- 1 
-      tv <- 3.45 
+      tcl <- 1
+      tv <- 3.45
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -1946,5 +2035,182 @@ test_that("test ui appending of derived variables like `sim` can work", {
   f <- rxode2(one.compartment)
 
   expect_error(model(f$simulationModel, sim2=sim+1, append=sim), NA)
-  
+
+})
+
+
+test_that("off-diagonal piping issue #518", {
+
+  mod <- function() {
+    ini({
+      a <- 1
+      b <- 2
+      etaa + etab ~ c(3, 0.1, 4)
+      c <- 5
+      etac ~ 6
+      d <- 7
+      f <- 9
+      etad + etaf ~ c(8, 0.2, 10)
+    })
+    model({
+      g <- (a + etaa)/(b + etab)
+      h <- (c + etac)
+      i <- (d + etad)
+      j <- f + etaf
+    })
+  }
+
+  modNew <-
+    ini(
+      rxode2(mod),
+      etab + etac + etad ~
+        c(7,
+          0.2, 8,
+          0.3, 0.4, 9),
+      etaa ~ 0
+    )
+
+  expect_error(modNew$omega, NA)
+
+})
+
+test_that("piping append", {
+
+  mod <- function() {
+    ini({
+      tka <- 0.45
+      label("Ka")
+      tcl <- 1
+      label("Cl")
+      tv <- 3.45
+      label("V")
+      add.sd <- c(0, 0.7)
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+    })
+    model({
+      ka <- exp(tka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl/v * center
+      cp = center/v
+      cp ~ add(add.sd)
+    })
+  }
+
+  t <- c("-cp","-d/dt(depot)")
+  expect_error(mod |> model(t), NA)
+
+  t <- c("cp <- NULL","d/dt(depot) = NULL")
+  expect_error(mod |> model(t), NA)
+
+  t <- c("cp <- NULL","d/dt(depot) ~ NULL")
+  expect_error(mod |> model(t), NA)
+
+  mod5 <- mod |>
+    model({
+      PD <- 1-emax*cp/(ec50+cp)
+      ##
+      effect(0) <- e0
+      kin <- e0*kout
+      d/dt(effect) <- kin*PD -kout*effect
+    }, append=d/dt(center))
+
+  expect_equal(mod5$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7))
+
+  mod5 <- mod |>
+    model({
+      PD <- 1-emax*cp/(ec50+cp)
+      ##
+      effect(0) <- e0
+      kin <- e0*kout
+      d/dt(effect) <- kin*PD -kout*effect
+    }, append="d/dt(center)")
+
+  expect_equal(mod5$theta, c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7))
+
+  mod6 <- mod5 |>
+    model({
+      emax <- exp(temax)
+      e0 <- exp(te0 + eta.e0)
+      ec50 <- exp(tec50)
+      kin <- exp(tkin)
+      kout <- exp(tkout)
+    }, append=NA)
+
+  expect_equal(mod6$theta,
+               c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7, temax = 1, te0 = 1, tec50 = 1, tkin = 1, tkout = 1))
+
+  expect_equal(
+    mod6$omega,
+    lotri({
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      eta.e0 ~ 1
+    }))
+
+  mod6 <- mod5 |>
+    model({
+      emax <- exp(temax)
+      e0 <- exp(te0 + eta.e0)
+      ec50 <- exp(tec50)
+      kin <- exp(tkin)
+      kout <- exp(tkout)
+    }, append=FALSE)
+
+  expect_equal(
+    mod6$omega,
+    lotri({
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      eta.e0 ~ 1
+    }))
+
+  expect_equal(mod6$theta,
+               c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7, temax = 1, te0 = 1, tec50 = 1, tkin = 1, tkout = 1))
+
+  mod6 <- mod5 |>
+    model({
+      emax <- exp(temax)
+      e0 <- exp(te0 + eta.e0)
+      ec50 <- exp(tec50)
+      kin <- exp(tkin)
+      kout <- exp(tkout)
+    }, append=0)
+
+  expect_equal(
+    mod6$omega,
+    lotri({
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      eta.e0 ~ 1
+    }))
+
+  expect_equal(mod6$theta,
+               c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7, temax = 1, te0 = 1, tec50 = 1, tkin = 1, tkout = 1))
+
+  # make sure auto model piping turns off
+
+  withr::with_options(list(rxode2.autoVarPiping=FALSE),
+                      mod7 <- mod5 |>
+                        model({
+                          emax <- exp(temax)
+                          e0 <- exp(te0 + eta.e0)
+                          ec50 <- exp(tec50)
+                          kin <- exp(tkin)
+                          kout <- exp(tkout)
+                        }, append=NA))
+
+  expect_equal(mod7$theta,
+               c(tka = 0.45, tcl = 1, tv = 3.45, add.sd = 0.7))
+
+  expect_equal(
+    mod7$omega,
+    lotri({
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+    }))
+
+
 })

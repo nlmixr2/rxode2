@@ -20,6 +20,7 @@ rxTest({
     suppressMessages(
       expect_equal(.rxReplaceCommentWithLabel(cmt), eq)
     )
+
     # Leave comment labels in here as they are required for equality testing below
     one.cmt <- function() {
       ini({
@@ -89,6 +90,7 @@ rxTest({
   })
 
   test_that("meta information parsing", {
+
     one.cmt <- function() {
       meta1 <- "meta"
       ini({

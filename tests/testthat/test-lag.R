@@ -1,8 +1,10 @@
 rxTest({
+
   et <- et(1:10)
   et$b <- 1:10
 
   test_that("lag()", {
+
     suppressMessages(expect_error(rxode2({
       a <- lag()
     })))

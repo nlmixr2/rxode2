@@ -553,4 +553,12 @@ rxTest({
     expect_equal(rxToSE("tad"), "(t-tlast())")
     expect_equal(rxFromSE("tlast(NaN)"), "tlast()")
   })
+
+  test_that("parsing errors", {
+
+    test <- "E0=THETA[1];\nEm=0.5;\nE50=THETA[2];\ng=2;\nv=E0+Em*t^g/(E50^g+t^g);\nrx_yj_~152;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_r_~0;\nrx_pred_~DV*v-log(1+exp(v));\n"
+
+    expect_error(rxS(test), NA)
+
+  })
 })

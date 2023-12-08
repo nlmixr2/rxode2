@@ -1,4 +1,4 @@
-#'  This copies the rxode2 UI object so it can be modified
+#' This copies the rxode2 UI object so it can be modified
 #'
 #' @param ui Original UI object
 #' @return Copied UI object
@@ -141,9 +141,22 @@
     .cur <- NULL
     if (length(.bracketExpression) == 1) {
       # evaulate expression
-      .cur <- eval(.bracketExpression, envir=envir)
-      if (length(.cur) > 1) {
-        if (identical(.cur[[1]], quote(`{`))) {
+      .cur <- try(eval(.bracketExpression, envir=envir), silent=TRUE)
+      if (inherits(.cur, "try-error")) {
+      } else if (length(.cur) > 1) {
+        if (inherits(.cur, "character")) {
+          if (is.null(names(.cur))) {
+            .cur <- lapply(.cur, function(x) {
+              str2lang(x)
+            })
+          } else {
+            .cur <- lapply(names(.cur), function(x) {
+              str2lang(paste0(x, "<-", .cur[[x]]))
+            })
+          }
+          .cur <- as.call(c(list(quote(`{`)),.cur))
+          .bracketExpression <- .cur
+        } else if (identical(.cur[[1]], quote(`{`))) {
           .bracketExpression <- .cur
         }
       }
@@ -282,10 +295,12 @@
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
     } else if (identical(.quoted[[1]], quote(`~`))) {
-      .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
-      if (identical(.quoted[[3]], quote(`fix`)) ||
-            identical(.quoted[[3]], quote(`unfix`))) {
-        .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
+      if (length(.quoted) == 3L) {
+        .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
+        if (identical(.quoted[[3]], quote(`fix`)) ||
+              identical(.quoted[[3]], quote(`unfix`))) {
+          .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
+        }
       }
     } else if (identical(.quoted[[1]], quote(`$`))) {
       .tmp <- try(eval(.quoted), silent=TRUE)
