@@ -174,7 +174,7 @@ In the last example with this option enabled none of the variables
 starting with `t` will be added to the model
 
 ```{r option1ignore}
-mod7 <- mod5 |>
+mod7 <- mod3 |>
   model({
     emax <- exp(temax)
     e0 <- exp(te0 + eta.e0)
@@ -190,7 +190,7 @@ Of course you could use it and then turn it back on:
 
 ```{r option1resume}
 options(rxode2.autoVarPiping=TRUE)
-mod8 <- mod5 |>
+mod8 <- mod |>
   model({
     emax <- exp(temax)
     e0 <- exp(te0 + eta.e0)
@@ -215,7 +215,7 @@ you can change this with:
 ```{r autoVarsChange}
 rxSetPipingAuto(thetamodelVars = rex::rex("te"))
 
-mod9 <- mod5 |>
+mod9 <- mod |>
   model({
     emax <- exp(temax)
     e0 <- exp(te0 + eta.e0)
@@ -235,7 +235,7 @@ without any arguments:
 
 ```{r autoVarsReset}
 rxSetPipingAuto()
-mod10 <- mod5 |>
+mod10 <- mod |>
   model({
     emax <- exp(temax)
     e0 <- exp(te0 + eta.e0)
@@ -606,11 +606,11 @@ print(f3)
 
 You can also assign multiple parameters by providing them:
 
--   As a vector
+- As a vector/list
 
--   As multiple lines in a piped `ini()` block
+- As multiple lines in a piped `ini()` block
 
--   Using a covariance matrix
+- Using a covariance matrix
 
 In the case of a vector you can specify them and then pipe the model.
 
@@ -620,6 +620,14 @@ For example:
 ini1 <- c(tka=0.1, tcl=1, tv=3)
 
 f4 <- f |> ini(ini1)
+
+print(f4)
+
+# or equivalently
+
+ini1 <- list(tka=0.1, tcl=1, tv=3)
+
+f4a <- f |> ini(ini1)
 
 print(f4)
 ```
