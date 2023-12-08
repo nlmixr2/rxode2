@@ -272,3 +272,7 @@ rxode2parse::.getLastIdLvl
 #' @importFrom rxode2random .expandPars
 #' @export
 rxode2random::.expandPars
+
+#' @importFrom rxode2et toTrialDuration
+#' @export
+rxode2et::toTrialDuration

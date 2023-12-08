@@ -176,8 +176,8 @@ rxTheme <- function(base_size = 11, base_family = "",
   stopifnot(length(log) == 1)
   stopifnot(is.character(log))
   stopifnot(log %in% c("", "x", "y", "xy", "yx"))
-  useLogX <- nchar(log) == 2 | log == "x"
-  useLogY <- nchar(log) == 2 | log == "y"
+  useLogX <- nchar(log) == 2L || log == "x"
+  useLogY <- nchar(log) == 2L || log == "y"
   useXgxr <-
     getOption("rxode2.xgxr", TRUE) &&
     requireNamespace("xgxr", quietly = TRUE)
