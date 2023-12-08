@@ -146,6 +146,7 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxRenameAll <- function(rxui, lst) {
+  rxui <- rxUiDecompress(rxui)
   .iniDf <- rxui$iniDf
   .iniDf$name <- vapply(seq_along(.iniDf$name),
                         function(i) {
@@ -174,10 +175,10 @@
   if (exists("meta", rxui)) {
     .meta <- get("meta", rxui)
     if (exists("sigma", .meta)) {
-      assign("sigma", .rxRenameAllMat(get("sigma", envir=rxui), lst), envir=.meta)
+      assign("sigma", .rxRenameAllMat(get("sigma", envir=.meta), lst), envir=.meta)
     }
     if (exists("thetaMat", .meta)) {
-      assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir=rxui), lst), envir=.meta)
+      assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir=.meta), lst), envir=.meta)
     }
   }
   rxui$lstExpr <- lapply(seq_along(rxui$lstExpr),
