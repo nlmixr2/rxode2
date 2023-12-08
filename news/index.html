@@ -27,7 +27,8 @@
   <div class="dropdown-menu" aria-labelledby="dropdown--articles">
     <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
     <a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a>
-    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 with piping ie %&gt;%</a>
+    <a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a>
+    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a>
     <a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
     <a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a>
     <a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a>
@@ -176,6 +177,7 @@
 <li><p><code>keep</code> will now also keep attributes of the input data (with special handling for <code>levels</code>); This means a broader variety of classes will be kept carrying more information with it (for example ordered factors, data frame columns with unit information, etc)</p></li>
 <li><p>Piping arguments <code>append</code> for <code><a href="../reference/ini.html">ini()</a></code> and <code><a href="../reference/model.html">model()</a></code> have been aligned to perform similarly. Therefore <code>ini(append=)</code> now can take expressions instead of simply strings and <code>model(append=)</code> can also take strings. Also model piping now can specify the integer line number to be modified just like the <code><a href="../reference/ini.html">ini()</a></code> could. Also <code>model(append=FALSE)</code> has been changed to <code>model(append=NULL)</code>. While the behavior is the same when you don’t specify the argument, the behavior has changed to align with <code><a href="../reference/ini.html">ini()</a></code> when piping. Hence <code>model(append=TRUE)</code> will append and <code>model(append=FALSE)</code> will now pre-pend to the model. <code>model(append=NULL)</code> will modify lines like the behavior of <code>ini(append=NULL)</code>. The default of <code>model(line)</code> modifying a line in-place still applies. While this is a breaking change, most code will perform the same.</p></li>
 <li><p>Labels can now be dropped by <code>ini(param=label(NULL))</code>. Also parameters can be dropped with the idiom <code>model(param=NULL)</code> or <code>ini(param=NULL)</code> changes the parameter to a covariate to align with this idiom of dropping parameters</p></li>
+<li><p><code>rxRename</code> has been refactored to run faster</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="internal-new-features-development-version">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-development-version"></a></h3>
@@ -186,7 +188,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li><p>Piping does not add constants to the initial estimates</p></li>
+<ul><li><p>Simulating/solving from functions/ui now prefers params over <code>omega</code> and <code>sigma</code> in the model (<a href="https://github.com/nlmixr2/rxode2/issues/632" class="external-link">#632</a>)</p></li>
+<li><p>Piping does not add constants to the initial estimates</p></li>
 <li><p>When constants are specified in the <code>model({})</code> block (like <code>k &lt;- 1</code>), they will not be to the <code>ini</code> block</p></li>
 <li><p>Bug fix for <code><a href="../reference/stat_amt.html">geom_amt()</a></code> when the <code>aes</code> transformation has <code>x</code></p></li>
 <li><p>Bug fix for some covariate updates that may affect multiple compartment models (like issue <a href="https://github.com/nlmixr2/rxode2/issues/581" class="external-link">#581</a>)</p></li>

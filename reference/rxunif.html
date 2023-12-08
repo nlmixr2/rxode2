@@ -37,7 +37,8 @@ engine threefry and then run the code."><meta property="og:image" content="https
   <div class="dropdown-menu" aria-labelledby="dropdown--articles">
     <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
     <a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a>
-    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 with piping ie %&gt;%</a>
+    <a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a>
+    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a>
     <a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
     <a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a>
     <a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a>
@@ -198,14 +199,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxunif</span><span class="op">(</span>min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxunif you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.7631016 2.6851648 3.0860625 1.3022634 1.2201000 3.0864868 0.4182675</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 1.5944236 2.7563326 2.1750763</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.985897 1.810562 2.741885 3.605333 1.630692 2.426971 3.717619 3.358209</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 3.895437 1.078868</span>
 <span class="r-in"><span><span class="fu">rxunif</span><span class="op">(</span>min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 2.4623442 1.5162939 2.9984341 1.7171981 0.8054088 2.9866117 3.3534121</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 2.5598199 2.8962921 2.2770003</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.22866192 1.48929103 2.41409592 3.69540518 1.55756879 2.65531673</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] 0.05665094 3.69993597 0.24393437 0.02669097</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxunif</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03835789</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3303751</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxunif` directly in the model</span></span></span>

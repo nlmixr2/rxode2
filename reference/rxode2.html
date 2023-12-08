@@ -29,7 +29,8 @@ into fast C code"><meta property="og:image" content="https://nlmixr2.github.io/r
   <div class="dropdown-menu" aria-labelledby="dropdown--articles">
     <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
     <a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a>
-    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 with piping ie %&gt;%</a>
+    <a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a>
+    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a>
     <a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
     <a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a>
     <a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a>
@@ -457,14 +458,14 @@ object of class <code>rxode2</code> which consists of a list-like structure
 creates a parsed <code>rxode2</code> ui that can be translated to the <code>rxode2</code>
 compilation model.</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">mod</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_85848c9248e14e8cbf9a9b4a606b2010 model (ready). </span></span>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_22699ef487579a63baec999e5bee4f82 model (ready). </span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
 <p></p><div class="sourceCode r"><pre><code><span><span class="co"># or </span></span>
 <span><span class="va">mod</span><span class="op">$</span><span class="va">simulationIniModel</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_40b4a6f44b577c0e14f674ccc10f618e model (ready). </span></span>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.0.14.9000 model named rx_85bfff7e67355fe5de08b65b7a424b1e model (ready). </span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>

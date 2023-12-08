@@ -51,7 +51,8 @@
   <div class="dropdown-menu" aria-labelledby="dropdown--articles">
     <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
     <a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a>
-    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 with piping ie %&gt;%</a>
+    <a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a>
+    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a>
     <a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
     <a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a>
     <a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a>
@@ -157,7 +158,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 in a pipeline</h1>
             
-            <h4 data-toc-skip class="date">2023-12-06</h4>
+            <h4 data-toc-skip class="date">2023-12-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-pipeline.Rmd" class="external-link"><code>vignettes/rxode2-pipeline.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-pipeline.Rmd</code></div>
@@ -314,7 +315,7 @@ model-based parameters:</p>
 <span>    <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">pstar</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> omega has too many items, ignored: 'eta.kqp'</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: multi-subject simulation without without 'omega'</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
 <p>Note there are two different things that were added to this
 simulation: - <code>nSub</code> to specify how many subjects are in the
@@ -334,7 +335,7 @@ variability.</p>
 <span>  <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span>nSub<span class="op">=</span><span class="fl">3</span>, omega<span class="op">=</span><span class="va">omega</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">sim</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> omega has too many items, ignored: 'eta.kqp'</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: multi-subject simulation without without 'omega'</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-9-1.png" width="700"></p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
@@ -365,7 +366,7 @@ matrix would be <code>95</code>, and the degrees of freedom of the
 <span>          dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">sim</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> omega has too many items, ignored: 'eta.kqp'</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: multi-subject simulation without without 'omega'</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
 <p>Often in simulations we have a full covariance matrix for the fixed
 effect parameters. In this case, we do not have the matrix, but it could
@@ -442,7 +443,7 @@ or a numeric vector matching the number of parameters specified in the
 <span>          dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">pt</span>, <span class="va">q</span>, <span class="va">qp</span>, <span class="va">sim</span><span class="op">)</span> <span class="co"># Plot it, plotting the variables of interest</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> omega has too many items, ignored: 'eta.kqp'</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: multi-subject simulation without without 'omega'</span></span></code></pre></div>
 <p><img src="rxode2-pipeline_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
 </div>
 </div>
@@ -468,7 +469,7 @@ or a numeric vector matching the number of parameters specified in the
 <span>          dfSub<span class="op">=</span><span class="fl">760</span>, dfObs<span class="op">=</span><span class="fl">95</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="co"># Solve the simulation</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pt"</span>,<span class="st">"q"</span>,<span class="st">"qp"</span>,<span class="st">"sim"</span><span class="op">)</span>,level<span class="op">=</span><span class="fl">0.90</span><span class="op">)</span>; <span class="co"># Create Simulation intervals</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `prop.sd` to `0.05`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> omega has too many items, ignored: 'eta.kqp'</span></span>
+<span><span class="co">#&gt; Warning: multi-subject simulation without without 'omega'</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> in order to put confidence bands around the intervals, you need at least 2500 simulations</span></span>
 <span><span class="co">#&gt; summarizing data...done</span></span>
 <span></span>
@@ -514,20 +515,20 @@ new parameters is exported too.</p>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">tkde</span> <span class="op">&gt;</span> <span class="va">tlambdap</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">## You could also simulate more and bind them together to a data frame.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2,220 × 17</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2,100 × 17</span></span></span>
 <span><span class="co">#&gt;        k  tkde   tkpq tkqpp tlambdap tgamma tdeltaqp  tpt0   tq0 rxerr.pstar</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>   100  1.50 0.029<span style="text-decoration: underline;">5</span> 0.121    0.780  0.850     1.39  8.04  41.2           1</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 2,210 more rows</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>   100  1.29 0.029<span style="text-decoration: underline;">5</span>  1.94    0.254   1.44    0.626  8.56  42.1           1</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 2,090 more rows</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables: eta.pt0 &lt;dbl&gt;, eta.q0 &lt;dbl&gt;, eta.lambdap &lt;dbl&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   eta.kqp &lt;dbl&gt;, eta.kqpp &lt;dbl&gt;, eta.deltaqp &lt;dbl&gt;, eta.tkde &lt;dbl&gt;</span></span></span>
 <span><span class="co">## Quick check to make sure that all the parameters are OK.</span></span>

@@ -15,7 +15,7 @@ lotri
 
 
   rxode2et
-.clearPipe, .collectWarnings, .s3register, add.dosing, add.sampling, as.et, as.rxEvid, as.rxRateDur, et, etExpand, etRbind, etRep, etSeq, eventTable, rxCbindStudyIndividual, rxEtDispatchSolve, rxEvid, rxRateDur, rxReq, rxStack
+.clearPipe, .collectWarnings, .s3register, add.dosing, add.sampling, as.et, as.rxEvid, as.rxRateDur, et, etExpand, etRbind, etRep, etSeq, eventTable, rxCbindStudyIndividual, rxEtDispatchSolve, rxEvid, rxRateDur, rxReq, rxStack, toTrialDuration
 
 
   rxode2parse
@@ -42,7 +42,7 @@ lotri
 
 
   rxode2et
-.clearPipe, .collectWarnings, .s3register, add.dosing, add.sampling, as.et, as.rxEvid, as.rxRateDur, et, etExpand, etRbind, etRep, etSeq, eventTable, rxCbindStudyIndividual, rxEtDispatchSolve, rxEvid, rxRateDur, rxReq, rxStack
+.clearPipe, .collectWarnings, .s3register, add.dosing, add.sampling, as.et, as.rxEvid, as.rxRateDur, et, etExpand, etRbind, etRep, etSeq, eventTable, rxCbindStudyIndividual, rxEtDispatchSolve, rxEvid, rxRateDur, rxReq, rxStack, toTrialDuration
 
 
   rxode2parse
@@ -81,7 +81,8 @@ lotri
   <div class="dropdown-menu" aria-labelledby="dropdown--articles">
     <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
     <a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a>
-    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 with piping ie %&gt;%</a>
+    <a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a>
+    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a>
     <a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
     <a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a>
     <a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a>
@@ -198,7 +199,7 @@ below to see their documentation.</p>
 
 
   <dt>rxode2et</dt>
-<dd><p><code>.clearPipe</code>, <code>.collectWarnings</code>, <code>.s3register</code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/add.dosing.html">add.dosing</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/add.sampling.html">add.sampling</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/as.et.html">as.et</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxEvid.html">as.rxEvid</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxRateDur.html">as.rxRateDur</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etExpand.html">etExpand</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etRbind.html">etRbind</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etRep.html">etRep</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etSeq.html">etSeq</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxCbindStudyIndividual.html">rxCbindStudyIndividual</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxEtDispatchSolve.html">rxEtDispatchSolve</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxEvid.html">rxEvid</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxRateDur.html">rxRateDur</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxReq.html">rxReq</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxStack.html">rxStack</a></code></p></dd>
+<dd><p><code>.clearPipe</code>, <code>.collectWarnings</code>, <code>.s3register</code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/add.dosing.html">add.dosing</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/add.sampling.html">add.sampling</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/as.et.html">as.et</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxEvid.html">as.rxEvid</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxRateDur.html">as.rxRateDur</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etExpand.html">etExpand</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etRbind.html">etRbind</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etRep.html">etRep</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/etSeq.html">etSeq</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/eventTable.html">eventTable</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxCbindStudyIndividual.html">rxCbindStudyIndividual</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxEtDispatchSolve.html">rxEtDispatchSolve</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxEvid.html">rxEvid</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxRateDur.html">rxRateDur</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxReq.html">rxReq</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/rxStack.html">rxStack</a></code>, <code><a href="https://nlmixr2.github.io/rxode2et/reference/toTrialDuration.html">toTrialDuration</a></code></p></dd>
 
 
   <dt>rxode2parse</dt>

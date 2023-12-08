@@ -3,6 +3,7 @@ pkgdown: 2.0.7
 pkgdown_sha: ~
 articles:
   Integrating-User-Defined-Functions-into-rxode2: Integrating-User-Defined-Functions-into-rxode2.html
+  Modifying-Models: Modifying-Models.html
   rxode2-cmt: rxode2-cmt.html
   rxode2-covariates: rxode2-covariates.html
   rxode2-data-frame: rxode2-data-frame.html
@@ -26,7 +27,7 @@ articles:
   rxode2-transit-compartments: rxode2-transit-compartments.html
   rxode2-tutorials: rxode2-tutorials.html
   rxode2-wt: rxode2-wt.html
-last_built: 2023-12-06T19:13Z
+last_built: 2023-12-08T17:11Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles

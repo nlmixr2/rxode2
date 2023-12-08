@@ -37,7 +37,8 @@ engine threefry and then run the code."><meta property="og:image" content="https
   <div class="dropdown-menu" aria-labelledby="dropdown--articles">
     <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
     <a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a>
-    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 with piping ie %&gt;%</a>
+    <a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a>
+    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a>
     <a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
     <a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a>
     <a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a>
@@ -198,14 +199,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxcauchy you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.81720146  0.36121239  0.08393623  0.85066082 -2.86075581  0.20979953</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  2.34104315 -4.23288369 17.42981281  5.46294663</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -0.4069109  0.1192950  0.4754142  0.9571905  0.0983608  1.3813917</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.6836310  2.4333546 -1.1489059  2.9722643</span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.6589732 -0.8089336  1.1503405 -1.9544615 23.9610453  3.4763836</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.1552186 -1.7466302  1.4354384  0.6817185</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -9.5280509  0.6010900 -1.8802521  0.7105852  0.2877165  0.6302723</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.4993219  4.3667217  4.9689086  1.9303478</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxcauchy</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] -13.09229</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.91117</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxcauchy` directly in the model</span></span></span>
