@@ -109,6 +109,34 @@
     stop("unknown expression", call.=FALSE)
   }
 }
+#' Rename all items in matrix dimnames
+#'
+#' @param mat matrix
+#' @param lst list for renaming
+#' @return renamed matrix
+#' @noRd
+#' @author Matthew L. Fidler
+.rxRenameAllMat <- function(mat, lst) {
+  .d <- dimnames(mat)[[1]]
+  .d <- vapply(seq_along(.d), function(i) {
+    .env <- new.env(parent=emptyenv())
+    .env$new <- NULL
+    .cur <- .d[i]
+    lapply(seq_along(lst),
+           function(j) {
+             if (!is.null(.env$new)) return(NULL)
+             .curLst <- lst[[j]]
+             .old <- .curLst[[4]]
+             if (.cur == .old) {
+               .env$new <- .curLst[[3]]
+             }
+           })
+    if (!is.null(.env$new)) return(.env$new)
+    return(.cur)
+  }, character(1), USE.NAMES=FALSE)
+  dimnames(mat) <- list(.d, .d)
+  mat
+}
 
 #' Rename all the items in the initialization data frame and model
 #'
@@ -137,6 +165,21 @@
                           return(.cur)
                         }, character(1), USE.NAMES=FALSE)
   rxui$iniDf <- .iniDf
+  if (exists("sigma", rxui)) {
+    assign("sigma", .rxRenameAllMat(get("sigma", envir=rxui), lst), envir=rxui)
+  }
+  if (exists("thetaMat", rxui)) {
+    assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir=rxui), lst), envir=rxui)
+  }
+  if (exists("meta", rxui)) {
+    .meta <- get("meta", rxui)
+    if (exists("sigma", .meta)) {
+      assign("sigma", .rxRenameAllMat(get("sigma", envir=rxui), lst), envir=.meta)
+    }
+    if (exists("thetaMat", .meta)) {
+      assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir=rxui), lst), envir=.meta)
+    }
+  }
   rxui$lstExpr <- lapply(seq_along(rxui$lstExpr),
                          function(i) {
                            .rxRenameRecursiveAll(rxui$lstExpr[[i]], lst=lst)
