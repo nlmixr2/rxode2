@@ -459,7 +459,7 @@
 
 .iniHandleRecalc <- function(rxui) {
   .fun <- rxUiDecompress(rxui$fun())
-  for (.i in ls(.fun, all=TRUE)) {
+  for (.i in ls(.fun, all.names=TRUE)) {
     if (.i != "meta") {
       assign(.i, get(.i, envir=.fun), envir=rxui)
     }
