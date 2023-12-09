@@ -10,7 +10,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -129,15 +129,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="2.1.0" id="rxode2-210">rxode2 2.1.0<a class="anchor" aria-label="anchor" href="#rxode2-210"></a></h2>
 <div class="section level3">
-<h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
+<h3 id="breaking-changes-2-1-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-2-1-0"></a></h3>
 <ul><li><p>Steady state with lag times are no longer shifted by the lag time and then solved to steady state by default. In addition the steady state at the original time of dosing is also back-calculated. If you want the old behavior you can bring back the option with <code>ssAtDoseTime=FALSE</code>.</p></li>
 <li><p>“dop853” now uses the <code>hmax</code>/<code>h0</code> values from the <code><a href="../reference/rxSolve.html">rxControl()</a></code> or <code><a href="../reference/rxSolve.html">rxSolve()</a></code>. This may change some ODE solving using “dop853”</p></li>
 <li><p>When not specified (and xgxr is available), the x axis is no longer assumed to be in hours</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<h3 id="new-features-2-1-0">New features<a class="anchor" aria-label="anchor" href="#new-features-2-1-0"></a></h3>
 <ul><li><p>User defined functions can now be R functions. For many of these R functions they can be converted to C with <code><a href="../reference/rxFun.html">rxFun()</a></code> (you can see the C code afterwards with <code>rxC("funName")</code>)</p></li>
 <li><p>Parallel solving of models that require sorting (like modeled lag times, modeled duration etc) now solve in parallel instead of downgrading to single threaded solving</p></li>
 <li><p>Steady state infusions with a duration of infusions greater than the inter-dose interval are now supported.</p></li>
@@ -180,14 +180,14 @@
 <li><p><code>rxRename</code> has been refactored to run faster</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="internal-new-features-development-version">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-development-version"></a></h3>
+<h3 id="internal-new-features-2-1-0">Internal new features<a class="anchor" aria-label="anchor" href="#internal-new-features-2-1-0"></a></h3>
 <ul><li><p>Add <code><a href="../reference/as.model.html">as.model()</a></code> for list expressions, which implies <code>model(ui) &lt;-   ui$lstExpr</code> will assign model components. It will also more robustly work with character vectors</p></li>
 <li><p>Simulated objects from <code>rxSolve</code> now can access the model variables with <code>$rxModelVars</code></p></li>
 <li><p>Simulation models from the UI now use <code>rxerr.endpoint</code> instead of <code>err.endpoint</code> for the <code>sigma</code> residual error. This is to align with the convention that internally generated variables start with <code>rx</code> or <code>nlmixr</code></p></li>
 <li><p>Sorting only uses timsort now, and was upgraded to the latest version from Morwenn</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<h3 id="bug-fixes-2-1-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-2-1-0"></a></h3>
 <ul><li><p>Simulating/solving from functions/ui now prefers params over <code>omega</code> and <code>sigma</code> in the model (<a href="https://github.com/nlmixr2/rxode2/issues/632" class="external-link">#632</a>)</p></li>
 <li><p>Piping does not add constants to the initial estimates</p></li>
 <li><p>When constants are specified in the <code>model({})</code> block (like <code>k &lt;- 1</code>), they will not be to the <code>ini</code> block</p></li>
@@ -195,7 +195,7 @@
 <li><p>Bug fix for some covariate updates that may affect multiple compartment models (like issue <a href="https://github.com/nlmixr2/rxode2/issues/581" class="external-link">#581</a>)</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="maintenance-fixes-development-version">Maintenance fixes<a class="anchor" aria-label="anchor" href="#maintenance-fixes-development-version"></a></h3>
+<h3 id="maintenance-fixes-2-1-0">Maintenance fixes<a class="anchor" aria-label="anchor" href="#maintenance-fixes-2-1-0"></a></h3>
 <ul><li>Modify plot code to work with development <code>xgxr</code>
 </li>
 </ul></div>

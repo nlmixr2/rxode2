@@ -20,7 +20,7 @@ engine threefry and then run the code."><meta property="og:image" content="https
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -199,14 +199,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxt you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  0.36559854 -0.37573827 -1.16568124 -1.52389449  1.25390681  0.84384628</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.51674370  1.69463636  0.21853408 -0.01332328</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -1.0361714  0.7461080  1.1317649  0.8421187 -0.2184327 -0.8482227</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.4488530 -1.4261289  0.3260870 -0.2434912</span>
 <span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span>df <span class="op">=</span> <span class="fl">3</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -1.11803047  0.36964184  0.95672839  0.85361285  4.55956497  1.23479568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] -1.48934924 -0.49721995 -0.01752544 -1.90537459</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -1.8782628 -2.5833542  0.4845129 -0.7371453 -1.6152453 -0.2134478</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  1.2034447 -0.2624628  1.1026393  0.7498808</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxt</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span> <span class="co">## The first argument is the df parameter</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5458301</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.436877</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxt` directly in the model</span></span></span>

@@ -20,7 +20,7 @@ engine threefry and then run the code."><meta property="og:image" content="https
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -199,14 +199,14 @@ results do not depend on the number of cores used.</p>
 <span class="r-in"><span><span class="co">## Use threefry engine</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.5</span>, n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="co"># with rxf you have to explicitly state n</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 1.734361e-01 1.516891e-02 8.449532e-01 6.234737e-01 1.174733e+03</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 1.324715e-01 2.153956e+00 7.367045e-02 8.145163e+08 1.664461e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  1.74143558  0.41752442  0.14350277  4.78013155 11.08767851  0.01132420</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  0.01737011  0.01844442  0.16690269  0.40798343</span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">5</span>, <span class="fl">1</span>, n <span class="op">=</span> <span class="fl">10</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># You can parallelize the simulation using openMP</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]   1.0607510  44.9815031   0.7051302   0.4995319 134.5444581   1.1667658</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]   0.1183522  80.0821353  14.0427921   0.4227031</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]    1.0543185    1.5345958   19.4246831    2.6404494    0.9663006</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] 1575.0611871    0.2392862   33.1169954    9.4410324 6069.0102224</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxf</span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2.104148</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 5.706554</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## This example uses `rxf` directly in the model</span></span></span>
