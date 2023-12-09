@@ -65,33 +65,38 @@ Lets change this a bit with model piping to include initial estimates and a resi
 
 ```{r pipeFull}
 m2 <- m1 |>
-  model(KA <- exp(tka+eta.ka),append=NA) |>
-  model(CL <- exp(tcl+eta.cl + covClWt*WT), append=NA, cov="WT") |>
-  model(V2 <- exp(tv2), append=NA) |>
-  model(Q <-exp(tq), append=NA) |>
-  model(V3 <- exp(tv3), append=NA) |>
-  model(fdepot <- expit(tfdepot), append=NA) |>
-  model(durDepot <- exp(tDurDepot), append=NA) |>
-  model(rateDepot <- exp(tRateDepot), append=NA) |>
-  model(C2 ~ pow(c2.pow.sd, c2.pow), append=TRUE) |>
-  model(eff ~ add(eff.sd), append=TRUE) |>
-  ini({tka   <- log(2.94E-01)
-      tcl   <- log(1.86E+01)
-      tv2   <- log(4.02E+01)
-      tq    <- log(1.05E+01)
-      tv3   <- log(2.97E+02)
-      Kin <- 1
-      Kout <- 1
-      EC50 <- 5
-      tfdepot <- logit(0.99)
-      tDurDepot <- log(8)
-      tRateDepot <- log(1250)
-      c2.pow.sd <- 0.1
-      c2.pow <- c(0.1, 1, 10)
-      eff.sd <- 0.1
-      eta.ka ~ 0.01
-      eta.cl ~ 0.01
-      })
+  model({
+    KA <- exp(tka+eta.ka)
+    CL <- exp(tcl+eta.cl + covClWt*WT)
+    V2 <- exp(tv2)
+    Q <-exp(tq)
+    V3 <- exp(tv3)
+    fdepot <- expit(tfdepot)
+    durDepot <- exp(tDurDepot)
+    rateDepot <- exp(tRateDepot)
+    },append=FALSE, cov="WT") |>
+  model({
+    C2 ~ pow(c2.pow.sd, c2.pow)
+    eff ~ add(eff.sd)
+  }, append=TRUE) |>
+  ini({
+    tka   <- log(2.94E-01)
+    tcl   <- log(1.86E+01)
+    tv2   <- log(4.02E+01)
+    tq    <- log(1.05E+01)
+    tv3   <- log(2.97E+02)
+    Kin <- 1
+    Kout <- 1
+    EC50 <- 5
+    tfdepot <- logit(0.99)
+    tDurDepot <- log(8)
+    tRateDepot <- log(1250)
+    c2.pow.sd <- 0.1
+    c2.pow <- c(0.1, 1, 10)
+    eff.sd <- 0.1
+    eta.ka ~ 0.01
+    eta.cl ~ 0.01
+  })
 
 # Now you can see information in both $iniDf and $predDf
 m2$iniDf
@@ -122,7 +127,7 @@ You can see the two properties we queried are low level objects inside of the `r
 The initialization data frame comes from the `lotri` package and converts the `ini({})` a data-frame that is easier to use in R code. This data frame has the following columns:
 
 | Column          | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-|------------------|------------------------------------------------------|
+|-----------|-------------------------------------------------------------|
 | `ntheta`        | (Integer) this represents the fixed/population effect parameter number (ie. `theta`) This should start with 1 and end at the largest value. It includes the error parameter estimates. When not part of the residual errors or population estimates, it should be `NA_integer_`                                                                                                                                                                                                                   |
 | `neta1`         | (Real Number) this represents the row of the between subject variability matrix (ie `omega`). If not a between subject variability it should be a `NA_real_`                                                                                                                                                                                                                                                                                                                                      |
 | `neta2`         | (Real Number) this represent the column of the between subject variability matrix (ie `oomega`). If not a between subject variability it should be a `NA_real_`                                                                                                                                                                                                                                                                                                                                   |
@@ -138,10 +143,10 @@ The initialization data frame comes from the `lotri` package and converts the `i
 
 ## `$predDf` endpoint/residual data.frame
 
-Inside the parsed `rxode2` function, there is another element called `$predDf`. This
+Inside the parsed `rxode2` function, there is another element called `$predDf`. This describes the endpoints in the model defined by lines like `endPoint ~ add(add.sd)`. In this data frame the following columns are defined:
 
 | Column         | Description                                                                                                                                                                                                                                                                                                                              |
-|-----------------|-------------------------------------------------------|
+|------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
 | `cond`         | (Character) This is the condition in the expression `var ~ add(add.sd) | cond`                                                                                                                                                                                                                                                           |
 | `var`          | (Character) This is the left-hand sided variable in `var ~ add(add.sd) | cond`                                                                                                                                                                                                                                                           |
 | `dvid`         | (Integer) This an integer that represents the `dvid` that needs to be used in multiple endpoint/residual models                                                                                                                                                                                                                          |
@@ -173,4 +178,14 @@ To get the lower-level functions for linear compartmental models, a `rxode2` mod
 
 ## Covariates
 
-The parameters that are not defined in the model and are not defined as an input parameters are covariates. You can access them directly with `ui$covariates` or use the alias `ui$allCovs`
+The parameters that are not defined in the model and are not defined as an input parameters are covariates. You can access them directly with `ui$covariates` or use the alias `ui$allCovs`.
+
+There are a few data-frames that relate to the covariates alone (mu referencing will be discussed later)
+
+### `$covLhsDf:` covariate relationship with left handed assignment
+
+The data frame `$covLhsDf` lists the left handed assignments where a covariate is found. In the model `m2` it defines a covariate line `CL <- exp(tcl + eta.cl + covClWt * WT)`, you can see the relation with the two columns in this dataset `lhs` (for the lefthand sided value) and `cov` (for the covariate):
+
+```{r showCovLhsDf}
+m2$covLhsDf
+```
