@@ -1,7 +1,5 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
-#include <R.h>
-#include <Rinternals.h>
 #include <stdio.h>
 #include <math.h>
 #include "lsoda.h"
@@ -15,6 +13,10 @@
 #else
 #define _(String) (String)
 #endif
+
+#include <R.h>
+#include <Rinternals.h>
+
 
 void RSprintf(const char *format, ...);
 
@@ -80,4 +82,3 @@ int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
 		dky[i] *= r;
 	return 0;
 }				/* end intdy   */
-

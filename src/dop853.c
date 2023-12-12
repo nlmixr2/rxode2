@@ -3,12 +3,12 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h> /* dj: malloc.h */
-#include <R.h>
-#include <Rinternals.h>
-/* #include <malloc.h> */
 #include <limits.h>
 #include <memory.h>
+/* #include <malloc.h> */
 #include "dop853.h"
+#include <R.h>
+#include <Rinternals.h>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -390,13 +390,13 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
   nfcn += 2;
   reject = 0;
   xold = x;
-  
+
   if (iout)
     {
       irtrn = 1;
       hout = 1.0;
       xout = x;
-      solout (naccpt+1, xold, x, y, nptr, &irtrn); 
+      solout (naccpt+1, xold, x, y, nptr, &irtrn);
       if (irtrn < 0)
         {
           /* if (fileout) */
@@ -482,7 +482,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
             b10*k10[i] + b11*k2[i] + b12*k3[i];
           k5[i] = y[i] + h * k4[i];
         }
-     
+
       /* error estimation */
       err = 0.0;
       err2 = 0.0;
@@ -531,7 +531,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
           naccpt++;
           fcn (nptr, xph, k5, k4);
           nfcn++;
-      
+
           /* stiffness detection */
           if (!(naccpt % nstiff) || (iasti > 0))
             {
@@ -552,7 +552,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                   iasti++;
                   if (iasti == 15)
                     {
-		      Rprintf (_("the problem seems to become stiff at x = %.16e\n"), x); 
+		      Rprintf (_("the problem seems to become stiff at x = %.16e\n"), x);
 		      xout = x;
 		      hout = h;
 		      return -4;
@@ -565,7 +565,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                     iasti = 0;
                 }
             }
-       
+
           /* final preparation for dense output */
           if (iout == 2)
             {
@@ -654,7 +654,7 @@ static int dopcor (int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                   }
             }
 
-          memcpy (k1, k4, n * sizeof(double)); 
+          memcpy (k1, k4, n * sizeof(double));
           memcpy (y, k5, n * sizeof(double));
           xold = x;
           x = xph;

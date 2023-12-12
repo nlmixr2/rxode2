@@ -4,17 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <R.h>
-#include <Rinternals.h>
 #include <string>
-#include <Rmath.h> //Rmath includes math.
-#include <R_ext/Rdynload.h>
-#include "../inst/include/rxode2.h"
 #include "strncmp.h"
-#include <rxode2parseHandleEvid.h>
-#include <rxode2parseGetTime.h>
 //#include "seed.h"
 #include <timsort.h>
+#include "../inst/include/rxode2.h"
+#include <rxode2parseHandleEvid.h>
+#include <rxode2parseGetTime.h>
 #define SORT gfx::timsort
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
 // dop853 is same time
