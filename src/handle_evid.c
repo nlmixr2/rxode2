@@ -3,13 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <R.h>
-#include <Rinternals.h>
-#include <Rmath.h> //Rmath includes math.
-#include <R_ext/Rdynload.h>
-#include "../inst/include/rxode2.h"
 #include "strncmp.h"
-#include <rxode2parseHandleEvid.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #define _(String) dgettext ("rxode2", String)
@@ -17,6 +11,8 @@
 #else
 #define _(String) (String)
 #endif
+#include "../inst/include/rxode2.h"
+#include <rxode2parseHandleEvid.h>
 
 
 int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind) {

@@ -1,9 +1,6 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
-#include <R.h>
-#include <Rversion.h>
-#include <Rinternals.h>
 #include <algorithm>
 #include "../inst/include/rxode2.h"
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -93,7 +90,7 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle) {
   // this is the main getter used by all parallel regions; they specify num_threads(n, true|false).
   // Keep this light, simple and robust. rxSetThreads() ensures 1 <= rxThreads <= omp_get_num_proc()
   // throttle introduced in 1.12.10 (see NEWS item); #4484
-  // throttle==true  : a number of iterations per thread (rxThrottle) is applied before a second thread is utilized 
+  // throttle==true  : a number of iterations per thread (rxThrottle) is applied before a second thread is utilized
   // throttle==false : parallel region is already pre-chunked such as in fread; e.g. two batches intended for two threads
   if (n<1) return 1; // 0 or negative could be deliberate in calling code for edge cases where loop is not intended to run at all
   int64_t ans = throttle ? 1+(n-1)/rxThrottle :  // 1 thread for n<=2, 2 thread for n<=4, etc

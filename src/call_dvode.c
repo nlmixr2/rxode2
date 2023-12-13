@@ -6,14 +6,8 @@
 #include "dop853.h"
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define STRICT_R_HEADERS
-#include <R.h>
-#include <Rinternals.h>
-#include <Rmath.h> //Rmath includes math.
-#include <R_ext/Rdynload.h>
 #include <PreciseSums.h>
 #include "../inst/include/rxode2.h"
-
-
 
 //--------------------------------------------------------------------------
 
@@ -39,7 +33,7 @@ extern void rxode2_assign_fn_pointers(SEXP mv){
   if (rxode2_current_fn_pointer_id_ != cur){
     rxAssignPtrC(mv);
     rxode2_current_fn_pointer_id_ = cur;
-  } 
+  }
 }
 
 SEXP rxModelVarsC(char *ptr);
