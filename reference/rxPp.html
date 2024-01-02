@@ -206,14 +206,14 @@ dropout is equal to or after tmax.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample homogenous Poisson process of rate 1/10</span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 12.69455 13.64908 16.99899 33.88761 46.29724 48.39211 48.98097 59.86760</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 60.29813 63.33849</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]   6.293892  12.051761  32.410308  71.962185  73.042227  80.495931</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7]  84.648286  99.789907 108.159114 110.047603</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Sample inhomogenous Poisson rate of 1/10</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, gamma <span class="op">=</span> <span class="fl">2</span>, tmax <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 25.89109 33.34534 37.16711 46.49394 59.34874 60.35835 64.33962 67.14535</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 67.21669 70.07038</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 11.13421 14.73015 19.03577 45.78889 66.46641 76.99014 79.55279 87.42530</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 91.27547 97.49948</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## Typically the Poisson process times are in a sequential order,</span></span></span>
 <span class="r-in"><span><span class="co">## using randomOrder gives the Poisson process in random order</span></span></span>
@@ -226,8 +226,8 @@ dropout is equal to or after tmax.</p>
 <span class="r-in"><span><span class="fu">rxPp</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span>, prob <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  128.0708  246.2927  352.8525  441.3401  541.4793  637.0570  776.0234</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  960.3736 1143.3765 1226.1467</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1]  75.76565 191.90024 227.16931 391.15328 470.30456 541.56977 654.81331</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] 772.40454 779.57992 856.92800</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
