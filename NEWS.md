@@ -1,3 +1,9 @@
+# rxode2 (development version)
+
+## Other changes
+
+- `rxUi` compression now defaults to fast compression
+
 # rxode2 2.1.0
 
 ## Breaking changes
