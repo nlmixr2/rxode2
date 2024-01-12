@@ -95,7 +95,7 @@ rxUiGet.params <- function(x, ...) {
     }
   }
   .predDf <- .x$predDf
-  if (!.lin & any(.predDf$linCmt)) {
+  if (!.lin && any(.predDf$linCmt)) {
     .lin <- TRUE
     if (.mv$flags["ka"] == 1L) {
       .doseExtra <- c("depot", "central")
