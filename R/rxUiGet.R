@@ -105,11 +105,22 @@ rxUiGet.params <- function(x, ...) {
   }
   .dose <- c(.doseExtra, .x$state)
   names(.var) <- .cnds
+  .lhs <- .mv$lhs
+  .end <- .x$predDf$var
+  .end <- .end[.end %in% .lhs]
+  .lhs <- .lhs[!(.lhs %in% .end)]
+  .varLhs <- .x$varLhs
+  .primary <- .lhs[.lhs %in% .varLhs]
+  .secondary <- .lhs[!(.lhs %in% .primary)]
   list(pop=.pop,
        resid=.resid,
        group=.var,
        linCmt=.lin,
-       cmt=.dose)
+       cmt=.dose,
+       output=list(primary=.primary,
+                   secondary=.secondary,
+                   endpoint=.end,
+                   state=.x$state))
 }
 attr(rxUiGet.params, "desc") <- "Parameter names"
 
