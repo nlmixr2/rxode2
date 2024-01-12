@@ -119,17 +119,6 @@ test_that("ui params", {
                                   state = character(0))))
 
   expect_equal(obj_odes$params,
-               list(pop = c("lfdepot", "lka", "lcl", "lv", "lvp", "lq", "allocl", "allov"),
-                    resid = "prop.err",
-                    group = list(id = c("etafdepot", "etaka", "etacl", "etav", "etavp", "etaq")),
-                    linCmt = TRUE,
-                    cmt = c("depot", "central"),
-                    output = list(primary = c("fdepot", "ka", "wtnorm", "cl", "q", "v", "vp"),
-                                  secondary = character(0),
-                                  endpoint = "Cc",
-                                  state = character(0))))
-
-  expect_equal(obj_odes$params,
                list(pop = c("lvc", "lke", "lkcp", "Mpc", "lka", "lMTT", "lVm", "Km", "lfdepot", "e_wt_vc"),
                     resid = c("cppropSd", "cpaddSd"),
                     group = list(id = c("etalvc", "etalke", "etalka", "etalvm", "etamtt")),
