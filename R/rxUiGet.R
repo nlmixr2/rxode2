@@ -67,6 +67,65 @@ attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.params <- function(x, ...) {
+  .x <- x[[1]]
+  .ini <- .x$iniDf
+  .w <- !is.na(.ini$ntheta) & is.na(.ini$err)
+  .pop <- .ini$name[.w]
+  .w <- !is.na(.ini$ntheta) & !is.na(.ini$err)
+  .resid <- .ini$name[.w]
+  .w <- !is.na(.ini$neta1)
+  .cnds <- unique(.ini$condition[.w])
+  .var <- lapply(.cnds,
+                 function(cnd) {
+                   .w <- which(.ini$condition == cnd &
+                                 .ini$neta1 == .ini$neta2)
+                   .ini$name[.w]
+                 })
+  .mv <- rxGetModel(.x)
+  .lin <- FALSE
+  .doseExtra <- character(0)
+  .mv <- rxModelVars(.x)
+  if (!is.null(.x$.linCmtM)) {
+    .lin <- TRUE
+    if (.mv$extraCmt == 2L) {
+      .doseExtra <- c("depot", "central")
+    } else if (.mv$extramt == 1L) {
+      .doseExtra <- "central"
+    }
+  }
+  .predDf <- .x$predDf
+  if (!.lin && any(.predDf$linCmt)) {
+    .lin <- TRUE
+    if (.mv$flags["ka"] == 1L) {
+      .doseExtra <- c("depot", "central")
+    } else {
+      .doseExtra <- "central"
+    }
+  }
+  .dose <- c(.doseExtra, .x$state)
+  names(.var) <- .cnds
+  .lhs <- .mv$lhs
+  .end <- .x$predDf$var
+  .end <- .end[.end %in% .lhs]
+  .lhs <- .lhs[!(.lhs %in% .end)]
+  .varLhs <- .x$varLhs
+  .primary <- .lhs[.lhs %in% .varLhs]
+  .secondary <- .lhs[!(.lhs %in% .primary)]
+  list(pop=.pop,
+       resid=.resid,
+       group=.var,
+       linCmt=.lin,
+       cmt=.dose,
+       output=list(primary=.primary,
+                   secondary=.secondary,
+                   endpoint=.end,
+                   state=.x$state))
+}
+attr(rxUiGet.params, "desc") <- "Parameter names"
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.theta <- function(x, ...) {
   .x <- x[[1]]
   .ini <- .x$iniDf
