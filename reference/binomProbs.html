@@ -14,7 +14,7 @@ distributional assumptions."><meta property="og:image" content="https://nlmixr2.
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.1.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -283,21 +283,21 @@ https://doi.org/10.1016/j.jspi.2019.07.001.</p></li>
 <span class="r-in"><span><span class="va">x</span><span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="fl">7001</span>, p<span class="op">=</span><span class="fl">0.375</span>, size<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      2.5%        5%       50%       95%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3665161 0.3683210 0.3778032 0.3873798 0.3892243 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3747489 0.3765628 0.3860877 0.3957007 0.3975514 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># you can also use the prediction interval</span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span>, pred<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      2.5%        5%       50%       95%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3618055 0.3643765 0.3778032 0.3913727 0.3939437 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3700900 0.3726610 0.3860877 0.3996572 0.4022283 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Can get some extra statistics if you request onlyProbs=FALSE</span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span>, onlyProbs<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         mean          var           sd            n         2.5%           5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3778032    0.2350679    0.4848381 7001.0000000    0.3665161    0.3683210 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3860877    0.2370240    0.4868511 7001.0000000    0.3747489    0.3765628 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          50%          95%        97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3778032    0.3873798    0.3892243 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    0.3860877    0.3957007    0.3975514 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA_real_</span></span></span>
 <span class="r-in"><span></span></span>
@@ -307,7 +307,7 @@ https://doi.org/10.1016/j.jspi.2019.07.001.</p></li>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">binomProbs</span><span class="op">(</span><span class="va">x</span>, na.rm<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      2.5%        5%       50%       95%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3664270 0.3682319 0.3777143 0.3872912 0.3891358 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.3746610 0.3764748 0.3860000 0.3956133 0.3974641 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

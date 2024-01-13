@@ -33,7 +33,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.1.9000</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -170,7 +170,7 @@
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 2.1.1 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt; rxode2 2.1.1.9000 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
 <p>When defining models you may have wished to write a small R function
 or make a function integrate into <code>rxode2</code> somehow. This
@@ -250,8 +250,8 @@ Lets see how this very simple function performs:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;      expr      min       lq     mean   median       uq       max neval</span></span>
-<span><span class="co">#&gt;  withoutC 7.635993 7.714364 8.278289 7.774367 7.884742 13.510839   100</span></span>
-<span><span class="co">#&gt;     withC 2.054675 2.215486 2.795561 2.734725 3.191132  9.749729   100</span></span></code></pre></div>
+<span><span class="co">#&gt;  withoutC 7.586729 7.697535 8.204868 7.753209 7.850320 13.194738   100</span></span>
+<span><span class="co">#&gt;     withC 2.065592 2.104801 2.438837 2.199186 2.731018  6.478162   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
