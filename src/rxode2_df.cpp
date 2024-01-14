@@ -215,7 +215,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   if (op->badSolve){
     if (op->naTime){
       rxSolveFreeC();
-      Rf_errorcall(R_NilValue, _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
+      Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
       for (int solveid = 0; solveid < rx->nsub * rx->nsim; solveid++){
@@ -225,7 +225,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
       }
       rxSolveFreeC();
-      Rf_errorcall(R_NilValue, _("could not solve the system"));
+      Rf_errorcall(R_NilValue, "%s", _("could not solve the system"));
     } else {
       warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
     }

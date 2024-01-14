@@ -3,6 +3,7 @@
 ## Other changes
 
 - `rxUi` compression now defaults to fast compression
+- Fixes String literal formatting issues as identified by CRAN (#643)
 
 # rxode2 2.1.0
 
