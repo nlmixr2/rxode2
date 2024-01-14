@@ -1244,13 +1244,13 @@ rxDllLoaded <- rxIsLoaded
 #'
 #' @return An rxDll object that has the following components
 #'
-#' * `dll`{DLL path}
-#' * `model`{model specification}
-#' * `.c`{A function to call C code in the correct context from the DLL
-#'          using the [.C()] function.}
-#' * `.call`{A function to call C code in the correct context from the DLL
-#'          using the [.Call()] function.}
-#' * `args`{A list of the arguments used to create the rxDll object.}
+#' * `dll` DLL path
+#' * `model` model specification
+#' * `.c` A function to call C code in the correct context from the DLL
+#'          using the [.C()] function.
+#' * `.call` A function to call C code in the correct context from the DLL
+#'          using the [.Call()] function.
+#' * `args` A list of the arguments used to create the rxDll object.
 #' @inheritParams rxode2
 #' @seealso [rxode2()]
 #' @author Matthew L.Fidler
@@ -1776,17 +1776,17 @@ rxModels_ <- # nolint
 #'
 #' @return A list of rxode2 model properties including:
 #'
-#' * `params`{ a character vector of names of the model parameters}
-#' * `lhs`{ a character vector of the names of the model calculated parameters}
-#' * `state`{ a character vector of the compartments in rxode2 object}
-#' * `trans`{ a named vector of translated model properties
+#' * `params`  a character vector of names of the model parameters
+#' * `lhs` a character vector of the names of the model calculated parameters
+#' * `state` a character vector of the compartments in rxode2 object
+#' * `trans` a named vector of translated model properties
 #'       including what type of jacobian is specified, the `C` function prefixes,
-#'       as well as the `C` functions names to be called through the compiled model.}
-#' * `md5`{a named vector that gives the digest of the model (`file_md5`) and the parsed model
-#'      (`parsed_md5`)}
-#' * `model`{ a named vector giving the input model (`model`),
+#'       as well as the `C` functions names to be called through the compiled model.
+#' * `md5` a named vector that gives the digest of the model (`file_md5`) and the parsed model
+#'      (`parsed_md5`)
+#' * `model`  a named vector giving the input model (`model`),
 #'    normalized model (no comments and standard syntax for parsing, `normModel`),
-#'    and interim code that is used to generate the final C file `parseModel`}
+#'    and interim code that is used to generate the final C file `parseModel`
 #'
 #' @keywords internal
 #' @family Query model information

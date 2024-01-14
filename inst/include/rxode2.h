@@ -4,13 +4,13 @@
 #define __rxode2_H__
 #define rxLlikSaveSize 9
 
-
+#include <stdbool.h>
+#include <rxode2parse.h>
 #include <R.h>
 #include <Rinternals.h>
+#include <Rversion.h>
 #include <Rmath.h>
-#include <stdbool.h>
 #include <R_ext/Rdynload.h>
-#include <rxode2parse.h>
 
 #define rc_buf_read _rxode2_rc_buf_read
 #define sIniTo _rxode2_sIniTo
@@ -73,7 +73,7 @@ typedef void (*t_dydt_lsoda_dum)(int *neq, double *t, double *A, double *DADT);
 typedef void (*t_jdum_lsoda)(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd);
 typedef int (*t_dydt_liblsoda)(double t, double *y, double *ydot, void *data);
 typedef void (*t_ode_current)(void);
-  
+
 typedef void (*t_set_solve)(rx_solve *);
 typedef rx_solve *(*t_get_solve)(void);
 
@@ -123,7 +123,7 @@ static inline void _splitYj(int *yj, int *dist,  int *trans) {
   *trans = *yj - *dist*10;
   *dist  = *dist + 1;
 }
-// Inverse 
+// Inverse
 static inline double _powerDi(double x, double lambda, int yj0, double low, double high)  __attribute__((unused));
 static inline double _powerDi(double x, double lambda, int yj0, double low, double high){
   if (!R_finite(x)) return NA_REAL;
@@ -165,7 +165,7 @@ static inline double _powerDi(double x, double lambda, int yj0, double low, doub
     return (high-low)/(1+exp(-x))+low; // expit
   case 3:
     return exp(x);
-  case 2: 
+  case 2:
     return x;
   case 0:
     if (lambda == 1.0) return (x+1.0);
@@ -346,7 +346,7 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
   case 3:
     if (x <= _eps) x0 = _eps;
     return -1/(x0*x0);
-  case 2: 
+  case 2:
     return 0;
   case 0:
     if (lambda == 1.0) return 0;
@@ -391,7 +391,7 @@ static inline double _powerL(double x, double lambda, int yj0, double low, doubl
     if (xl <= _eps) hl2 = _eps;
     return log(hl)-log(xl)-log(hl2);
     /* return 0; */
-  case 3: 
+  case 3:
     if (x <= _eps) x0 = _eps;
     return -log(x0);
   case 2:
@@ -410,12 +410,12 @@ static inline double _powerL(double x, double lambda, int yj0, double low, doubl
   // logLik approximation
   // y^(lambda)/lambda - 1/lambda
   // dh/dy = y^(lambda-1)
-  // log(dh/dy) = (lambda-1)*log(y) + log(lambda) 
+  // log(dh/dy) = (lambda-1)*log(y) + log(lambda)
   //
   // (x + 1.0)^(lambda)/lambda - 1/lambda
   // dh/dy = (x+1.0)^(lambda-1)
   // log(dh/dy) = (lambda-1)*log(x+1.0)
-  
+
   // For negative values yj becomes
   // (-x+1)^(2-lambda)/(2-lambda) - 1/(2-lambda)
   // dh/dy = (-x+1)^(1-lambda)
@@ -459,12 +459,12 @@ static inline double _powerDL(double x, double lambda, int yj0, double low, doub
   // logLik approximation
   // y^(lambda)/lambda - 1/lambda
   // dh/dy = y^(lambda-1)
-  // log(dh/dy) = (lambda-1)*log(y) + log(lambda) 
+  // log(dh/dy) = (lambda-1)*log(y) + log(lambda)
   //
   // (x + 1.0)^(lambda)/lambda - 1/lambda
   // dh/dy = (x+1.0)^(lambda-1)
   // log(dh/dy) = (lambda-1)*log(x+1.0)
-  
+
   // For negative values yj becomes
   // (-x+1)^(2-lambda)/(2-lambda) - 1/(2-lambda)
   // dh/dy = (-x+1)^(1-lambda)

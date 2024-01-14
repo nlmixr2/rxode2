@@ -321,20 +321,67 @@
 #'
 #' @inheritParams .iniHandleLine
 #' @return Nothing, called for side effects
+#' @author Bill Denney & Matthew Fidler
 #' @keywords internal
 #' @noRd
 .iniHandleLabel <- function(expr, rxui, envir) {
-  lhs <- as.character(expr[[2]])
-  newLabel <- expr[[3]][[2]]
-  ini <- rxui$ini
-  .w <- which(ini$name == lhs)
+  .lhs <- as.character(expr[[2]])
+  .newLabel <- expr[[3]][[2]]
+  .ini <- rxui$ini
+  .w <- which(.ini$name == .lhs)
   if (length(.w) != 1) {
-    stop("cannot find parameter '", lhs, "'", call.=FALSE)
-  } else if (!is.character(newLabel) || !(length(newLabel) == 1)) {
-    stop("the new label for '", lhs, "' must be a character string")
+    stop("cannot find parameter '", .lhs, "'", call.=FALSE)
+  } else if (is.null(.newLabel)) {
+    .newLabel <- NA_character_
+  } else if (!is.character(.newLabel) || !(length(.newLabel) == 1)) {
+    stop("the new label for '", .lhs, "' must be a character string",
+         call.=FALSE)
   }
-  ini$label[.w] <- newLabel
-  assign("iniDf", ini, envir=rxui)
+  .ini$label[.w] <- .newLabel
+  assign("iniDf", .ini, envir=rxui)
+  invisible()
+}
+#' This handles the backTransform() piping calls
+#'
+#' @param expr expression for backTransform() in `ini()` piping
+#' @param rxui rxode2 ui function
+#' @param envir evaluation environment
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleBackTransform <- function(expr, rxui, envir) {
+  .lhs <- as.character(expr[[2]])
+  .newExpr <- expr[[3]][[2]]
+  .ini <- rxui$ini
+  .w <- which(.ini$name == .lhs)
+  .good <- TRUE
+  if (length(.w) != 1) {
+    stop("cannot find parameter '", .lhs, "'", call.=FALSE)
+  } else if (is.null(.newExpr)) {
+    .newExpr <- NA_character_
+  } else if (checkmate::testCharacter(.newExpr, len=1, any.missing=FALSE,
+                                      pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                      min.chars = 1)) {
+  } else {
+    .newExpr <- deparse1(.newExpr)
+    if (!checkmate::testCharacter(.newExpr, len=1, any.missing=FALSE,
+                                 pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                 min.chars = 1)) {
+      .good <- FALSE
+    }
+  }
+  if (!.good) {
+    stop("backTransform specification malformed",
+         call.=FALSE)
+  }
+  if (!is.na(.newExpr)) {
+    if (!exists(.newExpr, envir=envir, mode="function")) {
+      stop("tried use a backTransform(\"", .newExpr, "\") when the function does not exist",
+           call.=FALSE)
+    }
+  }
+  .ini$backTransform[.w] <- .newExpr
+  assign("iniDf", .ini, envir=rxui)
   invisible()
 }
 
@@ -355,21 +402,22 @@
     # Do nothing
     return()
   } else if (is.logical(append)) {
-    checkmate::assert_logical(append, any.missing = FALSE, len = 1)
+    checkmate::assertLogical(append, any.missing = FALSE, len = 1)
     if (isTRUE(append)) {
       appendClean <- Inf
     } else if (isFALSE(append)) {
       appendClean <- 0
     }
   } else if (is.numeric(append)) {
-    checkmate::assert_number(append, null.ok = FALSE, na.ok = FALSE)
+    checkmate::assertNumber(append, null.ok = FALSE, na.ok = FALSE)
     appendClean <- append
   } else if (is.character(append)) {
-    checkmate::assert_character(append, any.missing = FALSE, len = 1, null.ok = FALSE)
-    checkmate::assert_choice(append, choices = ini$name)
+    checkmate::assertCharacter(append, any.missing = FALSE, len = 1, null.ok = FALSE)
+    checkmate::assertChoice(append, choices = ini$name)
     appendClean <- which(ini$name == append)
   } else {
-    stop("'append' must be NULL, logical, numeric, or character", call. = FALSE)
+    stop("'append' must be NULL, logical, numeric, or character/expression of variable in model",
+         call. = FALSE)
   }
 
   lhs <- as.character(expr[[2]])
@@ -409,6 +457,126 @@
   invisible()
 }
 
+.iniHandleRecalc <- function(rxui) {
+  .fun <- rxUiDecompress(rxui$fun())
+  for (.i in ls(.fun, all.names=TRUE)) {
+    if (.i != "meta") {
+      assign(.i, get(.i, envir=.fun), envir=rxui)
+    }
+  }
+  invisible()
+}
+
+#' Handle switching theta to eta and vice versa
+#'
+#' This is coded as model |> ini(~par)
+#'
+#' @param expr Expression, this would be the ~par expression
+#' @param rxui rxui uncompressed environment
+#' @param envir Environment for evaluation (if needed)
+#' @return Nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleSwitchType <- function(expr, rxui, envir=parent.frame()) {
+  .var <- as.character(expr[[2]])
+  .iniDf <- rxui$iniDf
+  .w <- which(.iniDf$name == .var)
+  if (length(.w) != 1L) stop("cannot switch parameter type for '", .var, "'", call.=FALSE)
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  if (is.na(.iniDf$ntheta[.w])) {
+    # switch eta to theta
+    .neta <- .iniDf$neta1[.w]
+    .eta <- .eta[.eta$neta1 != .neta,, drop = FALSE]
+    .eta <- .eta[.eta$neta2 != .neta,, drop = FALSE]
+    .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
+    .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
+    .newTheta <- .iniDf[.w, ]
+    .newTheta$neta1 <- NA_integer_
+    .newTheta$neta2 <- NA_integer_
+    if (length(.theta$ntheta) == 0L) {
+      .newTheta$ntheta <- 1L
+    } else {
+      .newTheta$ntheta <- max(.theta$ntheta) + 1L
+    }
+    .minfo(paste0("convert '", .var, "' from between subject variability to population parameter"))
+    .theta <- rbind(.theta, .newTheta)
+  } else {
+    # switch theta to eta
+    if (!is.na(.iniDf$err[.w])) {
+      stop("cannot switch error parameter '", .var,
+           "' to a different type", call. = FALSE)
+    }
+    .ntheta <- .iniDf$ntheta[.w]
+    .theta <- .theta[.theta$ntheta != .ntheta,, drop = FALSE]
+    .theta$ntheta <- .theta$ntheta - ifelse(.theta$ntheta < .ntheta, 0L, 1L)
+    .newEta <- .iniDf[.w, ]
+    .newEta$ntheta <- NA_integer_
+    if (length(.eta$neta1) == 0L) {
+      .newEta$neta1 <- .newEta$neta2 <- 1L
+    } else {
+      .newEta$neta1 <- .newEta$neta2 <- max(.eta$neta1) + 1L
+    }
+    .minfo(paste0("convert '", .var, "' from population parameter to between subject variability"))
+    if (.newEta$est == 0) {
+      .minfo("old initial estimate is zero, changing to 1")
+      .newEta$est <- 1
+    } else if (.newEta$est < 0) {
+      .minfo("old initial estimate was negative, changing to positive")
+      .newEta$est <- -.newEta$est
+    }
+    .newEta$lower <- -Inf
+    .newEta$upper <- Inf
+    .newEta$condition <- "id"
+    .eta <- rbind(.eta, .newEta)
+  }
+  .ini <- rbind(.theta, .eta)
+  assign("iniDf", .ini, envir=rxui)
+  .iniHandleRecalc(rxui)
+  invisible()
+}
+
+#' Handle dropping parameter and treating as if it is a covariate
+#'
+#' This is coded as model |> ini(-par)
+#'
+#' @param expr Expression, this would be the ~par expression
+#' @param rxui rxui uncompressed environment
+#' @param envir Environment for evaluation (if needed)
+#' @return Nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.iniHandleDropType <- function(expr, rxui, envir=parent.frame()) {
+  .var <- as.character(expr[[2]])
+  .iniDf <- rxui$iniDf
+  .w <- which(.iniDf$name == .var)
+  if (length(.w) != 1L) stop("no initial estimates for '", .var, "', cannot change to covariate", call.=FALSE)
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  if (is.na(.iniDf$ntheta[.w])) {
+    .minfo(paste0("changing between subject variability parameter '", .var, "' to covariate parameter"))
+    .neta <- .iniDf$neta1[.w]
+    .eta <- .eta[.eta$neta1 != .neta,, drop = FALSE]
+    .eta <- .eta[.eta$neta2 != .neta,, drop = FALSE]
+    .eta$neta1 <- .eta$neta1 - ifelse(.eta$neta1 < .neta, 0L, 1L)
+    .eta$neta2 <- .eta$neta2 - ifelse(.eta$neta2 < .neta, 0L, 1L)
+  } else {
+    if (!is.na(.iniDf$err[.w])) {
+      stop("cannot switch error parameter '", .var,
+           "' to a covariate", call. = FALSE)
+    }
+    .minfo(paste0("changing population parameter '", .var, "' to covariate parameter"))
+    .ntheta <- .iniDf$ntheta[.w]
+    .theta <- .theta[.theta$ntheta != .ntheta,, drop = FALSE]
+    .theta$ntheta <- .theta$ntheta - ifelse(.theta$ntheta < .ntheta, 0L, 1L)
+  }
+  .ini <- rbind(.theta, .eta)
+  assign("iniDf", .ini, envir=rxui)
+  # This will change covariates, recalculate everything
+  .iniHandleRecalc(rxui)
+  invisible()
+}
+
 #' Update the iniDf of a model
 #'
 #' @param expr Expression for parsing
@@ -427,10 +595,10 @@
   # downstream operations
   expr <- .iniSimplifyAssignArrow(expr)
 
-  # Capture errors
   if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
-    stop("a NULL value for '", as.character(expr[[2]]), "' piping does not make sense",
-         call. = FALSE)
+    expr <- as.call(list(quote(`-`), expr[[2]]))
+  } else if (.matchesLangTemplate(expr, str2lang(".name ~ NULL"))) {
+    expr <- as.call(list(quote(`-`), expr[[2]]))
   }
 
   # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
@@ -442,6 +610,8 @@
 
   if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
+  } else if (.matchesLangTemplate(expr, str2lang(".name <- backTransform(.)"))) {
+    .iniHandleBackTransform(expr=expr, rxui=rxui, envir=envir)
   } else if (.isAssignment(expr) && is.character(expr[[3]])) {
     stop(
       sprintf(
@@ -464,6 +634,10 @@
     expr[[3]] <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))),
                       envir=envir)[1, 1]
     .iniHandleFixOrUnfixEqual(expr=expr, rxui=rxui, envir=envir, maxLen=1L)
+  } else if (.isTildeExpr(expr)) {
+    .iniHandleSwitchType(expr=expr, rxui=rxui, envir=envir)
+  } else if (.isIniDropExpression(expr)) {
+    .iniHandleDropType(expr=expr, rxui=rxui, envir=envir)
   } else {
     # Can this error be improved to clarify what is the expression causing the
     # issue?  It needs a single character string representation of something
@@ -474,6 +648,24 @@
   # (Maybe) update parameter order; this must be at the end so that the
   # parameter exists in case it is promoted from a covariate
   .iniHandleAppend(expr = expr, rxui = rxui, envir = envir, append = append)
+
+  # now take out ETAs that no longer exist
+  .iniDf <- get("iniDf", envir=rxui)
+  .w <- which(is.na(.iniDf$neta1) & !is.na(.iniDf$neta2))
+  .reassign <- FALSE
+  if (length(.w) > 0) {
+    .iniDf <- .iniDf[-.w, ]
+    .reassign <- TRUE
+  }
+  .iniDf <- get("iniDf", envir=rxui)
+  .w <- which(!is.na(.iniDf$neta1) & is.na(.iniDf$neta2))
+  if (length(.w) > 0) {
+    .iniDf <- .iniDf[-.w, ]
+    .reassign <- TRUE
+  }
+  if (.reassign) {
+    assign("iniDf", .iniDf, envir=rxui)
+  }
 }
 
 # TODO: while nlmixr2est is changed
@@ -525,16 +717,59 @@
   }
   expr
 }
+#' This gets the append arg for the ini({}) piping
+#'
+#' @param f this is the `try(force(append))` argument,
+#' @param s this is the `as.character(substitute(append))` argument
+#' @return corrected ini piping argument
+#'
+#' This is exported for creating new ini methods that have the same
+#' requirements for piping
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+.iniGetAppendArg <- function(f, s) {
+  if (inherits(f, "try-error") &&
+        checkmate::testCharacter(s, len=1, any.missing=FALSE,
+                                 pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                 min.chars = 1)) {
+    return(s)
+  }
+  if (is.null(f)) {
+    return(NULL)
+  } else if (checkmate::testCharacter(f, len=1, any.missing=FALSE,
+                                      pattern="^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+                                      min.chars = 1)) {
+    return(f)
+  } else if (is.infinite(f)) {
+    return(f)
+  } else if (checkmate::testIntegerish(f, len=1, any.missing=FALSE)) {
+    if (f < 0) {
+      stop("'append' cannot be a negative integer", call.=FALSE)
+    }
+    return(f)
+  } else if (checkmate::testLogical(f, len=1)) {
+    # NA for model piping prepends
+    if (is.na(f)) return(FALSE)
+    return(f)
+  }
+  stop("'append' must be NULL, logical, numeric, or character/expression of variable in model",
+       call.=FALSE)
+}
 
 #' @export
 #' @rdname ini
 ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
+  .s  <- as.character(substitute(append))
+  .f <- try(force(append), silent=TRUE)
+  append <- .iniGetAppendArg(.f, .s)
   .ret <- rxUiDecompress(.copyUi(x)) # copy so (as expected) old UI isn't affected by the call
   .iniDf <- .ret$iniDf
   .iniLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir, iniDf= .iniDf)
   if (length(.iniLines) == 0L) return(.ret$iniFun)
   lapply(.iniLines, function(line) {
-    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append = append)
+    .iniHandleLine(expr = line, rxui = .ret, envir = envir, append=append)
   })
   if (inherits(x, "rxUi")) {
     .x <- rxUiDecompress(x)
@@ -553,6 +788,9 @@ ini.rxUi <- function(x, ..., envir=parent.frame(), append = NULL) {
 #' @rdname ini
 #' @export
 ini.default <- function(x, ..., envir=parent.frame(), append = NULL) {
+  .s  <- as.character(substitute(append))
+  .f <- try(force(append), silent=TRUE)
+  append <- .iniGetAppendArg(.f, .s)
   .ret <- try(as.rxUi(x), silent = TRUE)
   if (inherits(.ret, "try-error")) {
     stop("cannot figure out what to do with the ini({}) function", call.=FALSE)

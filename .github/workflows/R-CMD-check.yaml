@@ -50,7 +50,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          cache-version: 5
+          cache-version: 6
           pak-version: stable
           extra-packages: |
             any::rcmdcheck

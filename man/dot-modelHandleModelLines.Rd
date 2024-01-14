@@ -8,8 +8,8 @@
   modelLines,
   rxui,
   modifyIni = FALSE,
-  append = FALSE,
-  auto = TRUE,
+  append = NULL,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
   cov = NULL,
   envir
 )

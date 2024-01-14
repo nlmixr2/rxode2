@@ -1,16 +1,12 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>   /* dj: import intptr_t */
 #include <errno.h>
-#include <R.h>
-#include <Rinternals.h>
-#include <R_ext/Rdynload.h>
-#include <Rmath.h>
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #define _(String) dgettext ("rxode2", String)
@@ -46,7 +42,7 @@ extern void RSprintf(const char *format, ...) {
       va_start(args, format);
       Rvprintf(format, args);
       va_end(args);
-    } 
+    }
   }
 }
 
@@ -242,7 +238,7 @@ SEXP _uppergamma(SEXP a, SEXP z) {
   } else {
     Rf_errorcall(R_NilValue, _("'z' needs to be a number"));
   }
-  
+
   if (lena == lenz) {
     ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
     double *retD = REAL(ret);
@@ -299,7 +295,7 @@ SEXP _gammapDer(SEXP a, SEXP z) {
   } else {
     Rf_errorcall(R_NilValue, _("'z' needs to be a number"));
   }
-  
+
   if (lena == lenz) {
     ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
     double *retD = REAL(ret);
@@ -355,7 +351,7 @@ SEXP _gammapInv(SEXP a, SEXP z) {
   } else {
     Rf_errorcall(R_NilValue, _("'z' needs to be a number"));
   }
-  
+
   if (lena == lenz) {
     ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
     double *retD = REAL(ret);
@@ -411,7 +407,7 @@ SEXP _gammapInva(SEXP a, SEXP z) {
   } else {
     Rf_errorcall(R_NilValue, _("'z' needs to be a number"));
   }
-  
+
   if (lena == lenz) {
     ret = PROTECT(Rf_allocVector(REALSXP, lena));pro++;
     double *retD = REAL(ret);

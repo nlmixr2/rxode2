@@ -2,14 +2,11 @@
 #define STRICT_R_HEADERS
 #include <stdio.h>
 #include <stdarg.h>
-#include <R.h>
-#include <Rinternals.h>
-#include <Rmath.h>
-#include <R_ext/Rdynload.h>
 #include "../inst/include/rxode2.h"
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
 #include "seed.h"
+
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)
 #define _as_dbleps(a) (fabs(a) < sqrt(DBL_EPSILON) ? ((a) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : a)
@@ -81,7 +78,7 @@ static inline double getValue(int idx, double *y, rx_solving_options_ind *ind, r
     if (op->f2 == 1.0 && op->f1 == 0.0) {
       // use nocb
       // Go forward
-      while (ISNA(ret) && i != ind->n_all_times){
+      while (ISNA(ret) && i != ind->n_all_times-1){
         i++; ret = y[ind->ix[i]];
       }
       if (ISNA(ret)){

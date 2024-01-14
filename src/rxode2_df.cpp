@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <climits>
+#include <cmath>
 #include "checkmate.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #include "../inst/include/rxode2.h"
@@ -214,7 +215,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   if (op->badSolve){
     if (op->naTime){
       rxSolveFreeC();
-      Rf_errorcall(R_NilValue, _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
+      Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
       for (int solveid = 0; solveid < rx->nsub * rx->nsim; solveid++){
@@ -224,7 +225,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
       }
       rxSolveFreeC();
-      Rf_errorcall(R_NilValue, _("could not solve the system"));
+      Rf_errorcall(R_NilValue, "%s", _("could not solve the system"));
     } else {
       warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
     }
@@ -293,16 +294,18 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
        i++) {
     int curType = get_fkeepType(j);
     if (curType == 4) {
-      df[i] = NumericVector(rx->nr);
+      df[i] = assign_fkeepAttr(j, NumericVector(rx->nr));
     } else if (curType == 1) {
+      df[i] = assign_fkeepAttr(j, StringVector(rx->nr));
       df[i] = StringVector(rx->nr);
+    } else if (curType == 5) {
+      df[i] = assign_fkeepAttr(j, LogicalVector(rx->nr));
     } else {
       IntegerVector cur(rx->nr);
       if (curType == 2) {
         cur.attr("levels") = get_fkeepLevels(j);
-        cur.attr("class") = "factor";
       }
-      df[i] = cur;
+      df[i] = assign_fkeepAttr(j,cur);
     }
     j++;
   }
@@ -747,11 +750,25 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind);
             } else if (TYPEOF(tmp) == STRSXP){
               SET_STRING_ELT(tmp, ii, get_fkeepChar(j, get_fkeep(j, curi + ind->ix[i], ind)));
+            } else if (TYPEOF(tmp) == LGLSXP) {
+              // Everything here is double
+              dfi = LOGICAL(tmp);
+              double curD = get_fkeep(j, curi + ind->ix[i], ind);
+              if (ISNA(curD) || std::isnan(curD)) {
+                dfi[ii] = NA_LOGICAL;
+              } else {
+                dfi[ii] = (int) (curD);
+              }
             } else {
               dfi = INTEGER(tmp);
               /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
               // is this ntimes = nAllTimes or nObs time for this subject...?
-              dfi[ii] = (int) (get_fkeep(j, curi + ind->ix[i], ind));
+              double curD = get_fkeep(j, curi + ind->ix[i], ind);
+              if (ISNA(curD) || std::isnan(curD)) {
+                dfi[ii] = NA_INTEGER;
+              } else {
+                dfi[ii] = (int) (curD);
+              }
             }
             jj++;
           }
@@ -952,7 +969,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       jj++;kk++;
     }
     // Put in state names
-    CharacterVector stateNames2 = rxStateNames(op->modNamePtr); 
+    CharacterVector stateNames2 = rxStateNames(op->modNamePtr);
     if (nPrnState){
       for (j = 0; j < neq[0]; j++){
         if (!rmState[j]){

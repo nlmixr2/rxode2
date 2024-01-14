@@ -1146,10 +1146,38 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
                        list(theta = theta, eta = eta, envir=envir)))
 }
 
+.uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
+                         theta = NULL, eta = NULL) {
+  .ctl <- rxControl()
+  if (exists("meta", envir=ui)) {
+    .meta <- get("meta", ui)
+  } else {
+    .meta <- new.env(parent=emptyenv())
+  }
+  .lst <- list(...)
+  .nlst <- names(.lst)
+  .w <- which(vapply(names(.ctl), function(x) {
+    !(x %in% .nlst) && exists(x, envir=.meta)
+  }, logical(1), USE.NAMES=FALSE))
+  .extra <- NULL
+  if (length(.w) > 0) {
+    .v <- names(.ctl)[.w]
+    .minfo(paste0("rxControl items read from fun: '",
+                  paste(.v, collapse="', '"), "'"))
+    .extra <- setNames(lapply(.v, function(x) {
+      get(x, envir=.meta)
+    }), .v)
+
+  }
+  do.call(rxSolve, c(list(NULL, params = NULL, events = NULL, inits = NULL),
+                     .lst, .extra,
+                     list(theta=theta, eta=eta)))
+}
+
 .rxSolveFromUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                            theta = NULL, eta = NULL) {
-  .rxControl <- rxSolve(NULL, params = params, events = events, inits = inits, ...,
-                        theta = theta, eta = eta)
+  .rxControl <- .uiRxControl(object, params = params, events = events, inits = inits, ...,
+                             theta = theta, eta=eta)
   if (rxIs(params, "rx.event")) {
     if (!is.null(events)) {
       .tmp <- events
@@ -1193,6 +1221,24 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       .rxControl$omega <- NULL
     }
   }
+  if (inherits(.rxControl$omega, "matrix")) {
+    .omega <- .rxControl$omega
+    .v <- vapply(dimnames(.omega)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    if (length(.v) == 1L) {
+      if (!.v) .rxControl$omega <- NULL
+    } else {
+      .omega <- .omega[.v, .v]
+      if (all(dim(.omega) == c(0L, 0L))) {
+        .rxControl$omega <- NULL
+      } else {
+        .rxControl$omega <- .omega
+      }
+    }
+
+  }
   if (inherits(.rxControl$omega, "matrix") &&
         all(dim(.rxControl$omega) == c(0,0))) {
     .rxControl$omega <- NULL
@@ -1207,6 +1253,24 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
       params <- c(params, setNames(rep(0, dim(.sigma)[1]), dimnames(.sigma)[[2]]))
       .rxControl$sigma <- NULL
     }
+  }
+  if (inherits(.rxControl$sigma, "matrix")) {
+    .sigma <- .rxControl$sigma
+    .v <- vapply(dimnames(.sigma)[[1]],
+                 function(v) {
+                   !(v %in% names(params))
+                 }, logical(1), USE.NAMES = FALSE)
+    if (length(.v) == 1L) {
+      if (!.v) .rxControl$sigma <- NULL
+    } else {
+      .sigma <- .sigma[.v, .v, drop = FALSE]
+      if (all(dim(.sigma) == c(0L, 0L))) {
+        .rxControl$sigma <- NULL
+      } else {
+        .rxControl$sigma <- .sigma
+      }
+    }
+
   }
   if (inherits(.rxControl$sigma, "matrix") &&
         all(dim(.rxControl$sigma) == c(0,0))) {
@@ -2063,6 +2127,7 @@ odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) 
   }
   method
 }
+
 
 
 #' This updates the tolerances based on the sensitivity equations

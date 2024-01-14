@@ -10,6 +10,7 @@
 \alias{rxUiGet.symengineModelPrune}
 \alias{rxUiGet.simulationIniModel}
 \alias{rxUiGet}
+\alias{rxUiGet.params}
 \alias{rxUiGet.theta}
 \alias{rxUiGet.lstChr}
 \alias{rxUiGet.omega}
@@ -23,6 +24,7 @@
 \alias{rxUiGet.ini}
 \alias{rxUiGet.iniFun}
 \alias{rxUiGet.modelFun}
+\alias{rxUiGet.model}
 \alias{rxUiGet.modelDesc}
 \alias{rxUiGet.thetaLower}
 \alias{rxUiGet.thetaUpper}
@@ -55,6 +57,8 @@
 
 rxUiGet(x, ...)
 
+\method{rxUiGet}{params}(x, ...)
+
 \method{rxUiGet}{theta}(x, ...)
 
 \method{rxUiGet}{lstChr}(x, ...)
@@ -80,6 +84,8 @@ rxUiGet(x, ...)
 \method{rxUiGet}{iniFun}(x, ...)
 
 \method{rxUiGet}{modelFun}(x, ...)
+
+\method{rxUiGet}{model}(x, ...)
 
 \method{rxUiGet}{modelDesc}(x, ...)
 

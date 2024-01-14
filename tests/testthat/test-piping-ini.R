@@ -1,3 +1,59 @@
+test_that("back transformation piping", {
+
+  mod1 <- function() {
+    ini({
+      # central
+      KA <- 2.94E-01
+      backTransform("exp")
+      CL <- 1.86E+01
+      V2 <- 4.02E+01
+      # peripheral
+      Q <- 1.05E+01
+      V3 <- 2.97E+02
+      # effects
+      Kin <- 1
+      Kout <- 1
+      EC50 <- 200
+    })
+    model({
+      C2 <- centr/V2
+      C3 <- peri/V3
+      d/dt(depot) <- -KA*depot
+      d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+      d/dt(peri)  <- Q*C2 - Q*C3
+      eff(0) <- 1
+      d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    })
+  }
+
+  ui <- rxode(mod1)
+
+  expect_equal(ui$iniDf$backTransform[ui$iniDf$name == "KA"], "exp")
+
+  p1 <- ui %>%
+    ini(
+      KA <- backTransform("log")
+    )
+
+  expect_equal(p1$iniDf$backTransform[ui$iniDf$name == "KA"], "log")
+
+  p2 <-ui %>%
+    ini(
+      KA <- backTransform(log)
+    )
+
+  expect_equal(p2$iniDf$backTransform[ui$iniDf$name == "KA"], "log")
+
+  p3 <- ui |>
+    ini(KA <- backTransform(NULL))
+
+  expect_equal(p3$iniDf$backTransform[ui$iniDf$name == "KA"], NA_character_)
+
+  expect_error(ui |>
+                 ini(KA <- backTransform(matt)), "matt")
+
+})
+
 test_that("piping with ini can update labels (rxode2/issues#351)", {
   mod <- function() {
     ini({
@@ -14,6 +70,25 @@ test_that("piping with ini can update labels (rxode2/issues#351)", {
   expect_equal(ui$iniDf$label[ui$iniDf$name == "a"], "foo")
   newLabelUi <- ini(ui, a = label("bar"))
   expect_equal(newLabelUi$iniDf$label[newLabelUi$iniDf$name == "a"], "bar")
+})
+
+test_that("piping with ini can remove labels (#627)", {
+
+  mod <- function() {
+    ini({
+      a <- 1
+      label("foo")
+      addSd <- 2
+    })
+    model({
+      b <- a
+      b ~ add(addSd)
+    })
+  }
+  ui <- rxode2(mod)
+  expect_equal(ui$iniDf$label[ui$iniDf$name == "a"], "foo")
+  newLabelUi <- ini(ui, a = label(NULL))
+  expect_equal(newLabelUi$iniDf$label[ui$iniDf$name == "a"], NA_character_)
 })
 
 test_that("piping with ini gives an error pointing the user to use label for character rhs (rxode2/issues#351)", {
@@ -145,6 +220,7 @@ test_that(".iniSimplifyAssignArrow", {
 })
 
 test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
+
   mod <- function() {
     ini({
       a <- 1
@@ -157,7 +233,9 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
       b ~ add(addSd)
     })
   }
+
   ui <- rxode2(mod)
+
   # No modification
   expect_equal(ui$iniDf$name, c("a", "b", "c", "addSd"))
   # b to the top by number
@@ -170,6 +248,9 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
   expect_equal(suppressMessages(ini(ui, b <- 1, append = TRUE))$iniDf$name, c("a", "c", "addSd", "b"))
   # b to the bottom by name
   expect_equal(suppressMessages(ini(ui, b <- 1, append = "addSd"))$iniDf$name, c("a", "c", "addSd", "b"))
+
+  expect_equal(suppressMessages(ini(ui, b <- 1, append = addSd))$iniDf$name, c("a", "c", "addSd", "b"))
+
   # b after c
   expect_equal(suppressMessages(ini(ui, b <- 1, append = "c"))$iniDf$name, c("a", "c", "b", "addSd"))
   # a and b after c; counter-intuitive: the order of a and b are reversed
@@ -180,11 +261,16 @@ test_that("piping with ini can update reorder parameters (rxode2/issues#352)", {
     regexp = "parameter 'b' set to be moved after itself, no change in order made"
   )
 
+  expect_error(
+    ini(ui, b <- 1, append = d/dt(fun)),
+  "append")
+
   # Invalid parameter is correctly caught
   expect_error(
     ini(ui, b <- 1, append = "foo"),
     "append"
   )
+
 })
 
 test_that(".iniAddCovarianceBetweenTwoEtaValues", {
@@ -275,9 +361,10 @@ test_that(".iniHandleAppend", {
       b ~ add(addSd)
     })
   }
+
   expect_error(
     ini(mod, a <- 1, append=factor("A")),
-    regexp = "'append' must be NULL, logical, numeric, or character"
+    regexp = "'append' must be NULL, logical, numeric, or character/expression of variable in model"
   )
   expect_error(
     ini(mod, q <- 1, append=0),
@@ -568,4 +655,172 @@ test_that("append allows promoting from covariate (#472)", {
       )
   )
   expect_equal(newmod$iniDf$name, c("lka", "ka_dose", "lcl", "lvc", "propSd"))
+})
+
+test_that("change ini type with ~", {
+
+  mod <- function() {
+    ini({
+      lka <- 0.45
+      lcl <- 1
+      lvc  <- 3.45
+      propSd <- 0.5
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+      cp ~ prop(propSd)
+    })
+  }
+
+  mod1 <- mod |> ini( ~ lka)
+  expect_equal(mod1$omega, lotri(lka ~ 0.45))
+
+  mod2 <- mod1 |> ini( ~ lka)
+  expect_equal(mod2$omega, NULL)
+
+  expect_error(mod1 |> ini( ~ propSd))
+
+  expect_error(mod1 |> ini( ~ matt))
+
+  ## all etas
+
+  mod <- function() {
+    ini({
+      lka ~ 0.45
+      lcl ~ 1
+      lvc ~ 3.45
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini( ~ lka)
+
+  expect_equal(mod2$omega, lotri(lcl ~ 1, lvc ~ 3.45))
+
+  # remove correlated eta
+
+  mod <- function() {
+    ini({
+      lka + lcl + lvc ~
+        c(0.45,
+          0.01, 1,
+          0.01, -0.01, 3.45)
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini( ~ lka)
+
+  expect_equal(mod2$omega, lotri(lcl + lvc ~ c(1,
+                                               -0.01, 3.45)))
+
+
+  # negative and zero
+
+  mod <- function() {
+    ini({
+      lka <- 0.45
+      lcl <- -1
+      lvc <- 0
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini( ~ lcl)
+
+  expect_equal(mod2$omega, lotri(lcl ~ 1))
+
+  mod2 <- mod |> ini( ~ lvc)
+
+  expect_equal(mod2$omega, lotri(lvc ~ 1))
+
+  mod3 <- mod2 |> ini( ~ lvc)
+
+  expect_equal(mod3$omega, NULL)
+
+  mod4 <- mod3 |> ini( ~ lvc)
+
+  expect_equal(mod4$omega, lotri(lvc ~ 1))
+
+})
+
+
+
+test_that("change ini variable to covariate with -", {
+
+  mod <- function() {
+    ini({
+      lka + lcl + lvc ~
+        c(0.45,
+          0.01, 1,
+          0.01, -0.01, 3.45)
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini(-lka)
+
+  expect_equal(mod2$allCovs, "lka")
+  expect_equal(mod2$omega, lotri(lcl + lvc ~ c(1, -0.01, 3.45)))
+
+  mod <- function() {
+    ini({
+      lka ~ 0.45
+      lcl ~ 1
+      lvc ~ 3.45
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+  mod2 <- mod |> ini(-lka)
+
+  expect_equal(mod2$allCovs, "lka")
+
+
 })

@@ -1,9 +1,6 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
-#include <R.h>
-#include <Rversion.h>
-#include <Rinternals.h>
 #include <algorithm>
 #include "../inst/include/rxode2.h"
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -93,7 +90,7 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle) {
   // this is the main getter used by all parallel regions; they specify num_threads(n, true|false).
   // Keep this light, simple and robust. rxSetThreads() ensures 1 <= rxThreads <= omp_get_num_proc()
   // throttle introduced in 1.12.10 (see NEWS item); #4484
-  // throttle==true  : a number of iterations per thread (rxThrottle) is applied before a second thread is utilized 
+  // throttle==true  : a number of iterations per thread (rxThrottle) is applied before a second thread is utilized
   // throttle==false : parallel region is already pre-chunked such as in fread; e.g. two batches intended for two threads
   if (n<1) return 1; // 0 or negative could be deliberate in calling code for edge cases where loop is not intended to run at all
   int64_t ans = throttle ? 1+(n-1)/rxThrottle :  // 1 thread for n<=2, 2 thread for n<=4, etc
@@ -103,10 +100,10 @@ extern "C" int getRxThreads(const int64_t n, const bool throttle) {
 
 extern "C" SEXP getRxThreads_R(SEXP verbose) {
   if (!isLogical(verbose) || LENGTH(verbose)!=1 || INTEGER(verbose)[0]==NA_LOGICAL)
-    Rf_errorcall(R_NilValue, _("'verbose' must be TRUE or FALSE"));
+    Rf_errorcall(R_NilValue, "%s", _("'verbose' must be TRUE or FALSE"));
   if (LOGICAL(verbose)[0]) {
 #ifndef _OPENMP
-    Rprintf(_("This installation of data.table has not been compiled with OpenMP support.\n"));
+    Rprintf("%s", _("This installation of data.table has not been compiled with OpenMP support.\n"));
 #endif
     // this output is captured, paste0(collapse="; ")'d, and placed at the end of test.data.table() for display in the last 13 lines of CRAN check logs
     // it is also printed at the start of test.data.table() so that we can trace any Killed events on CRAN before the end is reached
@@ -128,7 +125,7 @@ extern "C" SEXP getRxThreads_R(SEXP verbose) {
 extern "C" SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle) {
   if (length(throttle)) {
     if (!isInteger(throttle) || LENGTH(throttle)!=1 || INTEGER(throttle)[0]<1)
-      error(_("'throttle' must be a single number, non-NA, and >=1"));
+      error("%s", _("'throttle' must be a single number, non-NA, and >=1"));
     rxThrottle = INTEGER(throttle)[0];
   }
   int old = rxThreads;
@@ -142,11 +139,11 @@ extern "C" SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle) {
   } else if (length(threads)) {
     int n=0;
     if (length(threads)!=1 || !isInteger(threads) || (n=INTEGER(threads)[0]) < 0) {  // <0 catches NA too since NA is negative (INT_MIN)
-      Rf_errorcall(R_NilValue, _("threads= must be either NULL or a single number >= 0 See ?setRxthreads"));
+      Rf_errorcall(R_NilValue, "%s", _("threads= must be either NULL or a single number >= 0 See ?setRxthreads"));
     }
     int num_procs = imax(omp_get_num_procs(), 1); // max just in case omp_get_num_procs() returns <= 0 (perhaps error, or unsupported)
     if (!isLogical(percent) || length(percent)!=1 || LOGICAL(percent)[0]==NA_LOGICAL) {
-      Rf_errorcall(R_NilValue, _("internal error: percent= must be TRUE or FALSE at C level"));  // # nocov
+      Rf_errorcall(R_NilValue, "%s", _("internal error: percent= must be TRUE or FALSE at C level"));  // # nocov
     }
     if (LOGICAL(percent)[0]) {
       if (n<2 || n>100) error(_("internal error: threads==%d should be between 2 and 100 (percent=TRUE at C level)"), n);  // # nocov

@@ -1,5 +1,12 @@
 # rxode2 (development version)
 
+## Other changes
+
+- `rxUi` compression now defaults to fast compression
+- Fixes String literal formatting issues as identified by CRAN (#643)
+
+# rxode2 2.1.0
+
 ## Breaking changes
 
 - Steady state with lag times are no longer shifted by the lag time
@@ -10,6 +17,9 @@
 
 - "dop853" now uses the `hmax`/`h0` values from the `rxControl()` or
   `rxSolve()`.  This may change some ODE solving using "dop853"
+
+- When not specified (and xgxr is available), the x axis is no longer
+  assumed to be in hours
 
 ## New features
 
@@ -122,6 +132,52 @@ mu-referencing style to run the optimization.
   `plot(ci, Cc)` which will only plot the variable `Cc` that you
   summarized even if you also summarized `eff` (for instance).
 
+- When the rxode2 ui is a compressed ui object, you can modify the ini
+  block with `$ini <-` or modify the model block with `$model <-`.
+  These are equivalent to `ini(model) <-` and `model(model) <-`,
+  respectively. Otherwise, the object is added to the user defined
+  components in the function (ie `$meta`).  When the object is
+  uncompressed, it simply assigns it to the environment instead (just
+  like before).
+
+- When printing meta information that happens to be a `lotri`
+  compatible matrix, use `lotri` to express it instead of the default
+  R expression.
+
+- Allow character vectors to be converted to expressions for piping
+  (#552)
+
+- `rxAppendModel()` will now take an arbitrary number of models and
+  append them together; It also has better handling of models with
+  duplicate parameters and models without `ini()` blocks (#617 / #573
+  / #575).
+
+- `keep` will now also keep attributes of the input data (with special
+  handling for `levels`); This means a broader variety of classes will
+  be kept carrying more information with it (for example ordered
+  factors, data frame columns with unit information, etc)
+
+- Piping arguments `append` for `ini()` and `model()` have been
+  aligned to perform similarly.  Therefore `ini(append=)` now can take
+  expressions instead of simply strings and `model(append=)` can also
+  take strings.  Also model piping now can specify the integer line
+  number to be modified just like the `ini()` could.  Also
+  `model(append=FALSE)` has been changed to `model(append=NULL)`.
+  While the behavior is the same when you don't specify the argument,
+  the behavior has changed to align with `ini()` when piping.  Hence
+  `model(append=TRUE)` will append and `model(append=FALSE)` will now
+  pre-pend to the model.  `model(append=NULL)` will modify lines like
+  the behavior of `ini(append=NULL)`.  The default of `model(line)`
+  modifying a line in-place still applies.  While this is a breaking
+  change, most code will perform the same.
+
+- Labels can now be dropped by `ini(param=label(NULL))`. Also
+  parameters can be dropped with the idiom `model(param=NULL)` or
+  `ini(param=NULL)` changes the parameter to a covariate to align with
+  this idiom of dropping parameters
+
+- `rxRename` has been refactored to run faster
+
 ## Internal new features
 
 - Add `as.model()` for list expressions, which implies `model(ui) <-
@@ -141,6 +197,9 @@ mu-referencing style to run the optimization.
 
 ## Bug fixes
 
+- Simulating/solving from functions/ui now prefers params over `omega`
+  and `sigma` in the model (#632)
+
 - Piping does not add constants to the initial estimates
 
 - When constants are specified in the `model({})` block (like `k <- 1`), they will not
@@ -150,6 +209,10 @@ mu-referencing style to run the optimization.
 
 - Bug fix for some covariate updates that may affect multiple compartment
   models (like issue #581)
+
+## Maintenance fixes
+
+- Modify plot code to work with development `xgxr`
 
 # rxode2 2.0.14
 

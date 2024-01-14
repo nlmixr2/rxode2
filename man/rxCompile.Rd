@@ -92,13 +92,13 @@ function.}
 \value{
 An rxDll object that has the following components
 \itemize{
-\item \code{dll}{DLL path}
-\item \code{model}{model specification}
-\item \code{.c}{A function to call C code in the correct context from the DLL
-using the \code{\link[=.C]{.C()}} function.}
-\item \code{.call}{A function to call C code in the correct context from the DLL
-using the \code{\link[=.Call]{.Call()}} function.}
-\item \code{args}{A list of the arguments used to create the rxDll object.}
+\item \code{dll} DLL path
+\item \code{model} model specification
+\item \code{.c} A function to call C code in the correct context from the DLL
+using the \code{\link[=.C]{.C()}} function.
+\item \code{.call} A function to call C code in the correct context from the DLL
+using the \code{\link[=.Call]{.Call()}} function.
+\item \code{args} A list of the arguments used to create the rxDll object.
 }
 }
 \description{

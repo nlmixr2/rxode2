@@ -4,19 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <R.h>
-#include <Rinternals.h>
 #include <string>
-#include <Rmath.h> //Rmath includes math.
-#include <R_ext/Rdynload.h>
-#include "../inst/include/rxode2.h"
 #include "strncmp.h"
+//#include "seed.h"
+#include <timsort.h>
+#include "../inst/include/rxode2.h"
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
 #include <rxode2parseHandleSs.h>
 #include <rxode2parseSortInd.h>
-//#include "seed.h"
-#include <timsort.h>
 #define SORT gfx::timsort
 // dop853 is same time
 
@@ -275,7 +271,7 @@ extern "C" SEXP _rxProgressAbort(SEXP str){
   par_progress_0=0;
   if (rxt.d != rxt.n || rxt.cur != rxt.n){
     rxSolveFreeC();
-    Rf_errorcall(R_NilValue, CHAR(STRING_ELT(str,0)));
+    Rf_errorcall(R_NilValue, "%s", CHAR(STRING_ELT(str,0)));
   }
   return R_NilValue;
 }

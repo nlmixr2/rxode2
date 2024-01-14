@@ -67,6 +67,65 @@ attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.params <- function(x, ...) {
+  .x <- x[[1]]
+  .ini <- .x$iniDf
+  .w <- !is.na(.ini$ntheta) & is.na(.ini$err)
+  .pop <- .ini$name[.w]
+  .w <- !is.na(.ini$ntheta) & !is.na(.ini$err)
+  .resid <- .ini$name[.w]
+  .w <- !is.na(.ini$neta1)
+  .cnds <- unique(.ini$condition[.w])
+  .var <- lapply(.cnds,
+                 function(cnd) {
+                   .w <- which(.ini$condition == cnd &
+                                 .ini$neta1 == .ini$neta2)
+                   .ini$name[.w]
+                 })
+  .mv <- rxGetModel(.x)
+  .lin <- FALSE
+  .doseExtra <- character(0)
+  .mv <- rxModelVars(.x)
+  if (!is.null(.x$.linCmtM)) {
+    .lin <- TRUE
+    if (.mv$extraCmt == 2L) {
+      .doseExtra <- c("depot", "central")
+    } else if (.mv$extramt == 1L) {
+      .doseExtra <- "central"
+    }
+  }
+  .predDf <- .x$predDf
+  if (!.lin && any(.predDf$linCmt)) {
+    .lin <- TRUE
+    if (.mv$flags["ka"] == 1L) {
+      .doseExtra <- c("depot", "central")
+    } else {
+      .doseExtra <- "central"
+    }
+  }
+  .dose <- c(.doseExtra, .x$state)
+  names(.var) <- .cnds
+  .lhs <- .mv$lhs
+  .end <- .x$predDf$var
+  .end <- .end[.end %in% .lhs]
+  .lhs <- .lhs[!(.lhs %in% .end)]
+  .varLhs <- .x$varLhs
+  .primary <- .lhs[.lhs %in% .varLhs]
+  .secondary <- .lhs[!(.lhs %in% .primary)]
+  list(pop=.pop,
+       resid=.resid,
+       group=.var,
+       linCmt=.lin,
+       cmt=.dose,
+       output=list(primary=.primary,
+                   secondary=.secondary,
+                   endpoint=.end,
+                   state=.x$state))
+}
+attr(rxUiGet.params, "desc") <- "Parameter names"
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.theta <- function(x, ...) {
   .x <- x[[1]]
   .ini <- .x$iniDf
@@ -185,7 +244,22 @@ rxUiGet.funPrint <- function(x, ...) {
   .ret <- vector("list", length(.ls) + ifelse(.hasIni, 3, 2))
   .ret[[1]] <- quote(`{`)
   for (.i in seq_along(.ls)) {
-    .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .ls[.i], "<-", deparse1(.x$meta[[.ls[.i]]]), ")")))
+    .var <- .ls[.i]
+    .val <- .x$meta[[.ls[.i]]]
+    .isLotri <- FALSE
+    if (checkmate::testMatrix(.val, any.missing=FALSE, row.names="strict", col.names="strict")) {
+      .dn <- dimnames(.val)
+      if (identical(.dn[[1]], .dn[[2]]) && isSymmetric(.val)) {
+        class(.val) <- c("lotriFix", class(.val))
+        .val <- as.expression(.val)
+        .val <- bquote(.(str2lang(.var)) <- .(.val))
+        .ret[[.i + 1]] <- .val
+        .isLotri <- TRUE
+      }
+    }
+    if (!.isLotri) {
+      .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .var, "<-", deparse1(.val), ")")))
+    }
   }
   .theta <- x$theta
   .omega <- x$omega
@@ -235,6 +309,7 @@ rxUiGet.iniFun <- function(x, ...) {
 }
 attr(rxUiGet.iniFun, "desc") <- "normalized, quoted `ini()` block"
 
+
 #' @export
 #' @rdname rxUiGet
 rxUiGet.modelFun <- function(x, ...) {
@@ -242,6 +317,11 @@ rxUiGet.modelFun <- function(x, ...) {
   bquote(model(.(as.call(c(quote(`{`),.x$lstExpr)))))
 }
 attr(rxUiGet.modelFun, "desc") <- "normalized, quoted `model()` block"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.model <- rxUiGet.modelFun
+
 
 #' @export
 #' @rdname rxUiGet
@@ -365,8 +445,15 @@ attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
 #' @rdname rxUiGet
 rxUiGet.default <- function(x, ...) {
   .arg <- class(x)[1]
-  if (!exists(.arg, envir=x[[1]])) return(NULL)
-  get(.arg, x[[1]])
+  .ui <- x[[1]]
+  if (!exists(.arg, envir=.ui)) {
+    .meta <- get("meta", envir=.ui)
+    if (exists(.arg, envir=.meta)) {
+      return(get(.arg, envir=.meta))
+    }
+    return(NULL)
+  }
+  get(.arg, .ui)
 }
 
 .rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)",

@@ -7,7 +7,7 @@
 rxSetPipingAuto(
   thetamodelVars = rex::rex(or("tv", "t", "pop", "POP", "Pop", "TV", "T", "cov", "err",
     "eff")),
-  covariateExceptions = rex::rex(start, or("wt", "sex", "crcl"), end),
+  covariateExceptions = rex::rex(start, or("wt", "sex", "crcl", "kout"), end),
   etaParts = c("eta", "ETA", "Eta", "ppv", "PPV", "Ppv", "iiv", "Iiv", "bsv", "Bsv",
     "BSV", "bpv", "Bpv", "BPV", "psv", "PSV", "Psv")
 )

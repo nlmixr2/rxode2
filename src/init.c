@@ -3,14 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <R.h>
-#include <Rinternals.h>
 #include <stdlib.h> // for NULL
-#include <R_ext/Rdynload.h>
-#include "../inst/include/rxode2.h"
 #define __DOINIT__
 #include "cbindThetaOmega.h"
 //#include "seed.h"
+#include "../inst/include/rxode2.h"
 #include <rxode2parseGetTime.h>
 
 double getTime(int idx, rx_solving_options_ind *ind);
