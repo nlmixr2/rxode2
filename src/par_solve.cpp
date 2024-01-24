@@ -800,6 +800,7 @@ extern "C" void solveSSinf_iter(double *yp,
                                 double *dur,
                                 double *dur2,
                                 int *canBreak,
+                                double *curLagExtra,
                                 solveWith1Pt_fn solveWith1Pt) {
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
