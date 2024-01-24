@@ -1444,13 +1444,10 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->extraSorted = 0;
     ind->extraDoseNewXout = NA_REAL;
     ind->on = _globals.gon + ncmt*omp_get_thread_num();
-    ind->solveSave = _globals.gSolveSave + (op->neq+ op->extraCmt)*omp_get_thread_num();
-    ind->solveLast = _globals.gSolveLast + (op->neq + op->extraCmt) *omp_get_thread_num();
-    ind->solveLast2 = _globals.gSolveLast2 + (op->neq+ op->extraCmt)*omp_get_thread_num();
-    ind->linCmtLag  = _globals.linCmtLag + omp_get_thread_num()*2;
-    ind->linCmtF    = _globals.linCmtF + omp_get_thread_num()*2;
-    ind->linCmtDur  = _globals.linCmtDur + omp_get_thread_num()*2; // [n9]
-    ind->linCmtRate  = _globals.linCmtRate + omp_get_thread_num()*2; // [n9]
+    int nsave = ssSolveN();
+    ind->solveSave = _globals.gSolveSave + nsave*omp_get_thread_num();
+    ind->solveLast = _globals.gSolveLast + nsave*omp_get_thread_num();
+    ind->solveLast2 = _globals.gSolveLast2 + nsave*omp_get_thread_num();
   } else {
     ind->alag = NULL;
     ind->cRate =NULL;
@@ -1464,7 +1461,6 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveSave = NULL;
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
-    ind->linCmtLag = NULL;
   }
   ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
   ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
@@ -5308,7 +5304,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->nlinR = 0;
     int n0 = rx->nall*state.size()*rx->nsim;
-    int nsave = (op->neq+op->extraCmt)*op->cores;
+    int nsave = (ssSolveN())*op->cores;
     int nLin = op->nlin;
     if (nLin != 0) {
       op->nlinR = 1+linKa;
