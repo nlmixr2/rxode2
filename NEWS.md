@@ -3,7 +3,11 @@
 ## Other changes
 
 - `rxUi` compression now defaults to fast compression
+
 - Fixes String literal formatting issues as identified by CRAN (#643)
+
+- Removes linear compartment solutions with gradients for intel c++
+  compiler (since they crash the compiler).
 
 # rxode2 2.1.0
 
