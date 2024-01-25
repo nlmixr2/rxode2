@@ -303,6 +303,3 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   }
   ind->_update_par_ptr_in = 0;
 }
-
-/* void doSort(rx_solving_options_ind *ind); */
-void sortInd(rx_solving_options_ind *ind);

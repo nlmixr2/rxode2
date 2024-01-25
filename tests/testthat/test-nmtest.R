@@ -1,10 +1,10 @@
-if (file.exists(test_path("test-nmtest.qs"))) {
-
+rxTest({
+  
   ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse", dep=FALSE); devtools::install("~/src/rxode2random", dep=FALSE); devtools::load_all();rxClean();#devtools::test()
 
   ## devtools::load_all()
   
-  d <- qs::qread(test_path("test-nmtest.qs"))
+  d <- nlmixr2data::nmtest
   # internally rxode2 treats lag time evids differently than
   # non-lagged events
   
@@ -83,7 +83,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
                    hasModeledRate=hasModeledRate,
                    hasModeledDur= hasModeledDur,
                    hasChangedF=hasChangedF))
-       }
+      }
       return(invisible())
     }
     if (plot) {
@@ -105,9 +105,9 @@ if (file.exists(test_path("test-nmtest.qs"))) {
         s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov, addlDropSs=addlDropSs,
                       ss2cancelAllPending=ss2cancelAllPending)
         return(plot(s1, cp) +
-                geom_point(data=d, aes(x=time, y=cp), col="red") +
-                geom_line(data=s2, aes(x=time, y=cp), col="blue", alpha=0.5, linewidth=2) +
-                ggtitle(paste0("id=", id, "(nolag)")))
+                 geom_point(data=d, aes(x=time, y=cp), col="red") +
+                 geom_line(data=s2, aes(x=time, y=cp), col="blue", alpha=0.5, linewidth=2) +
+                 ggtitle(paste0("id=", id, "(nolag)")))
       }
       ## print(etTrans(d, fl))
     } else {
@@ -129,7 +129,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
                        d[d$id == id & d$evid == 0 & d$time >= sub,]$cp,
                        tolerance = 0.1)
         })
-       }
+      }
       test_that(paste0("nmtest id:", id, " alag; method: ", meth, "; modifyData:", modifyData,"; addlDropSs: ", addlDropSs),
       {
         s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov, addlDropSs=addlDropSs)
@@ -166,5 +166,4 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   ## Need to check steady state infusion as well as infusions where ii=dur with lag times
 
   ## modeled equivalents of 425, 525
-
-}
+})

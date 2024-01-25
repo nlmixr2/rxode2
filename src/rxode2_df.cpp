@@ -31,6 +31,7 @@
 #include <rxode2parseVer.h>
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
+#include <rxode2parseHandleSs.h>
 #include "par_solve.h"
 #include <Rcpp.h>
 #include "strncmp.h"
@@ -123,7 +124,6 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 
 extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx, rx_solving_options op);
 
-extern "C" void printErr(int err, int id);
 extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   _rxode2random_assignSolveOnly2(rx_global, op_global);
   rx_solve *rx;
@@ -365,6 +365,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         }
         if (nlhs){
           calc_lhs(neq[1], curT, getSolve(i), ind->lhs);
+          updateExtraDoseGlobals(ind);
         }
         if (subsetEvid == 1){
           if (isObs(evid) && evid >= 10) continue;

@@ -68,7 +68,7 @@ Suggests:
     rsconnect,
     devtools,
     patchwork,
-    nlmixr2data,
+    nlmixr2data (>= 2.0.8),
     lifecycle,
     kableExtra
 Imports:
