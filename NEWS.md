@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 2.1.2
 
 ## Other changes
 
