@@ -619,7 +619,8 @@ mu-referencing style to run the optimization.
 * Added function `rxSetSeed()` to set the internal RxODE seed instead
   of grabbing it from a uniform random number tied to the original R
   seed.  This will avoid the possibility of [duplicate
-  seeds](https://tinyurl.com/m62v3kv9) and is the best practice.
+  seeds](https://www.johndcook.com/blog/2016/01/29/random-number-generator-seed-mistakes/)
+  and is the best practice.
 
 * Updating parameter pointers is done once per ID and locked based on
   ID to remove the recursion in #399, but still have the correct
