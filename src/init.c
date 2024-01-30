@@ -116,6 +116,7 @@ SEXP _linCmtParse(SEXP vars, SEXP inStr, SEXP verbose);
 SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 
 SEXP _rxode2_rxordSelect(SEXP, SEXP);
+SEXP _rxode2_isIntel(void);
 
 static R_NativePrimitiveArgType rxode2_Sum_t[] = {
   REALSXP, INTSXP
@@ -359,6 +360,7 @@ extern SEXP chin(SEXP x, SEXP table);
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_isIntel", (DL_FUNC) &_rxode2_isIntel, 0},
     {"_rxode2_binomProbsPredVec_", (DL_FUNC) &_rxode2_binomProbsPredVec_, 6},
     {"_rxode2_binomProbs_", (DL_FUNC) &_rxode2_binomProbs_, 5},
     {"_rxode2_meanProbs_", (DL_FUNC) &_rxode2_meanProbs_, 6},
