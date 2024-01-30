@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 2.1.1.9000
+Version: 2.1.2
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler",
@@ -111,7 +111,7 @@ VignetteBuilder: knitr
 License: GPL (>= 3)
 URL: https://nlmixr2.github.io/rxode2/,
     https://github.com/nlmixr2/rxode2/
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.1
 Biarch: true
 LinkingTo:
     rxode2parse (>= 2.0.12),

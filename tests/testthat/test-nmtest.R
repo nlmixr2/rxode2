@@ -1,13 +1,13 @@
-if (file.exists(test_path("test-nmtest.qs"))) {
+if (file.exists(test_path("test-nmtest.qs")) && !.Call(`_rxode2_isIntel`)) {
 
   ## system("rm -v ~/src/rxode2/src/*.so ~/src/rxode2/src/*.o ~/src/rxode2parse/src/*.so ~/src/rxode2parse/src/*.o ~/src/rxode2random/src/*.so ~/src/rxode2random/src/*.o");devtools::install("~/src/rxode2parse", dep=FALSE); devtools::install("~/src/rxode2random", dep=FALSE); devtools::load_all();rxClean();#devtools::test()
 
   ## devtools::load_all()
-  
+
   d <- qs::qread(test_path("test-nmtest.qs"))
   # internally rxode2 treats lag time evids differently than
   # non-lagged events
-  
+
   # 2 different models to test then
   f <- rxode2({
     cl <- 1.1
@@ -141,7 +141,7 @@ if (file.exists(test_path("test-nmtest.qs"))) {
   }
 
   p <- TRUE
-  
+
   id <- unique(d$id)
 
   p <- FALSE

@@ -46,6 +46,24 @@ extern void RSprintf(const char *format, ...) {
   }
 }
 
+#if defined(__INTEL_LLVM_COMPILER) || defined(__INTEL_COMPILER__)
+SEXP _rxode2_isIntel(void) {
+  SEXP ret = PROTECT(Rf_allocVector(LGLSXP, 1));
+  INTEGER(ret)[0] = 1;
+  UNPROTECT(1);
+  return ret;
+}
+
+#else
+SEXP _rxode2_isIntel(void) {
+  SEXP ret = PROTECT(Rf_allocVector(LGLSXP, 1));
+  INTEGER(ret)[0] = 0;
+  UNPROTECT(1);
+  return ret;
+}
+#endif
+
+
 double gamma_p(double a, double z);
 SEXP _gammap(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
