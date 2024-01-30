@@ -17,7 +17,9 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
         return(invisible())
       }
     }
-    rxUnloadAll()
+    if (!.Call(`_rxode2_isIntel`)) {
+      rxUnloadAll()
+    }
     return(force(type))
   }
   pt <- proc.time()

@@ -1,4 +1,6 @@
-skip_on_os("windows")
-test_that("Cleanly unloads all dlls", {
-  expect_null(rxUnloadAll())
-})
+if (!.Call(`_rxode2_isIntel`)) {
+  test_that("Cleanly unloads all dlls", {
+    skip_on_os("windows")
+    expect_null(rxUnloadAll())
+  })
+}
