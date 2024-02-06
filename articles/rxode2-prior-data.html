@@ -158,7 +158,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Using Prior Data for ODE solving</h1>
             
-            <h4 data-toc-skip class="date">2024-01-31</h4>
+            <h4 data-toc-skip class="date">2024-02-06</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-prior-data.Rmd" class="external-link"><code>vignettes/rxode2-prior-data.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-prior-data.Rmd</code></div>
@@ -296,18 +296,19 @@ frame</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 122 more rows</span></span></span>
 <span></span>
 <span><span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdatatable.gitlab.io/data.table/reference/data.table.html" class="external-link">data.table</a></span><span class="op">(</span><span class="va">solveData</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      id  time        ka       cl        v       cp        depot    center</span></span>
-<span><span class="co">#&gt;   1:  1  0.00 1.7436838 1.698932 29.04946 0.000000 3.199920e+02   0.00000</span></span>
-<span><span class="co">#&gt;   2:  1  0.25 1.7436838 1.698932 29.04946 3.861730 2.069289e+02 112.18117</span></span>
-<span><span class="co">#&gt;   3:  1  0.57 1.7436838 1.698932 29.04946 6.805372 1.184389e+02 197.69240</span></span>
-<span><span class="co">#&gt;   4:  1  1.12 1.7436838 1.698932 29.04946 9.058196 4.539354e+01 263.13572</span></span>
-<span><span class="co">#&gt;   5:  1  2.02 1.7436838 1.698932 29.04946 9.791088 9.450361e+00 284.42585</span></span>
-<span><span class="co">#&gt;  ---                                                                     </span></span>
-<span><span class="co">#&gt; 128: 12  5.07 0.9268162 2.437566 25.81614 8.442535 2.919432e+00 217.95370</span></span>
-<span><span class="co">#&gt; 129: 12  7.07 0.9268162 2.437566 25.81614 7.074251 4.573778e-01 182.62989</span></span>
-<span><span class="co">#&gt; 130: 12  9.03 0.9268162 2.437566 25.81614 5.892253 7.436222e-02 152.11524</span></span>
-<span><span class="co">#&gt; 131: 12 12.05 0.9268162 2.437566 25.81614 4.432614 4.526550e-03 114.43300</span></span>
-<span><span class="co">#&gt; 132: 12 24.15 0.9268162 2.437566 25.81614 1.414179 6.154773e-08  36.50865</span></span></code></pre></div>
+<span><span class="co">#&gt;         id  time        ka       cl        v       cp        depot    center</span></span>
+<span><span class="co">#&gt;      &lt;int&gt; &lt;num&gt;     &lt;num&gt;    &lt;num&gt;    &lt;num&gt;    &lt;num&gt;        &lt;num&gt;     &lt;num&gt;</span></span>
+<span><span class="co">#&gt;   1:     1  0.00 1.7436838 1.698932 29.04946 0.000000 3.199920e+02   0.00000</span></span>
+<span><span class="co">#&gt;   2:     1  0.25 1.7436838 1.698932 29.04946 3.861730 2.069289e+02 112.18117</span></span>
+<span><span class="co">#&gt;   3:     1  0.57 1.7436838 1.698932 29.04946 6.805372 1.184389e+02 197.69240</span></span>
+<span><span class="co">#&gt;   4:     1  1.12 1.7436838 1.698932 29.04946 9.058196 4.539354e+01 263.13572</span></span>
+<span><span class="co">#&gt;   5:     1  2.02 1.7436838 1.698932 29.04946 9.791088 9.450361e+00 284.42585</span></span>
+<span><span class="co">#&gt;  ---                                                                        </span></span>
+<span><span class="co">#&gt; 128:    12  5.07 0.9268162 2.437566 25.81614 8.442535 2.919432e+00 217.95370</span></span>
+<span><span class="co">#&gt; 129:    12  7.07 0.9268162 2.437566 25.81614 7.074251 4.573778e-01 182.62989</span></span>
+<span><span class="co">#&gt; 130:    12  9.03 0.9268162 2.437566 25.81614 5.892253 7.436222e-02 152.11524</span></span>
+<span><span class="co">#&gt; 131:    12 12.05 0.9268162 2.437566 25.81614 4.432614 4.526550e-03 114.43300</span></span>
+<span><span class="co">#&gt; 132:    12 24.15 0.9268162 2.437566 25.81614 1.414179 6.154773e-08  36.50865</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
