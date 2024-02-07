@@ -249,9 +249,9 @@ Lets see how this very simple function performs:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr      min       lq     mean   median       uq       max neval</span></span>
-<span><span class="co">#&gt;  withoutC 7.616237 7.700068 8.197508 7.750146 7.847278 13.307355   100</span></span>
-<span><span class="co">#&gt;     withC 2.044331 2.083223 2.416547 2.170196 2.701121  6.648202   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr      min       lq     mean   median       uq      max neval</span></span>
+<span><span class="co">#&gt;  withoutC 7.706002 7.870057 8.540468 7.976771 8.101824 13.99876   100</span></span>
+<span><span class="co">#&gt;     withC 2.075821 2.121476 2.476192 2.207606 2.740786  7.66749   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
