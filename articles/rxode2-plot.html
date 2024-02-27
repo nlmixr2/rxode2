@@ -160,7 +160,7 @@
                         <h4 data-toc-skip class="author">Matthew
 Fidler</h4>
             
-            <h4 data-toc-skip class="date">2024-02-07</h4>
+            <h4 data-toc-skip class="date">2024-02-27</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-plot.Rmd" class="external-link"><code>vignettes/rxode2-plot.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-plot.Rmd</code></div>
@@ -273,7 +273,9 @@ function. For instance:</p>
 simply need to use <code>log="y"</code></p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s</span>, <span class="va">C2</span>, log<span class="op">=</span><span class="st">"y"</span>, ylab<span class="op">=</span><span class="st">"Concentration"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Transformation introduced infinite values in continuous y-axis</span></span></code></pre>
+<pre><code><span><span class="co">## Warning in ggplot2::scale_y_log10(..., breaks = breaks, minor_breaks =</span></span>
+<span><span class="co">## minor_breaks, : <span style="color: #00BB00;">log-10</span> transformation introduced infinite</span></span>
+<span><span class="co">## values.</span></span></code></pre>
 <p><img src="rxode2-plot_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
 <p>This uses the <code><a href="https://rdrr.io/pkg/xgxr/man/xgx_scale_y_log10.html" class="external-link">xgx_scale_y_log10()</a></code> when available to more
 clearly show the semi-log nature of the plot.</p>
@@ -336,7 +338,9 @@ legend.</p>
 similar plot:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s</span>, <span class="va">C2</span>, log<span class="op">=</span><span class="st">"y"</span>, ylab<span class="op">=</span><span class="st">"Concentration"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Transformation introduced infinite values in continuous y-axis</span></span></code></pre>
+<pre><code><span><span class="co">## Warning in ggplot2::scale_y_log10(..., breaks = breaks, minor_breaks =</span></span>
+<span><span class="co">## minor_breaks, : <span style="color: #00BB00;">log-10</span> transformation introduced infinite</span></span>
+<span><span class="co">## values.</span></span></code></pre>
 <p><img src="rxode2-plot_files/figure-html/unnamed-chunk-7-1.png" width="700"></p>
 <p>Notice that this plot each individual is labeled by an attached id to
 let you know where the individual comes from. This is done by
@@ -356,7 +360,9 @@ retained.</p>
 <span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">m2</span>, <span class="va">ev</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">s</span>, <span class="va">C2</span>, log<span class="op">=</span><span class="st">"y"</span>, ylab<span class="op">=</span><span class="st">"Concentration"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Transformation introduced infinite values in continuous y-axis</span></span></code></pre>
+<pre><code><span><span class="co">## Warning in ggplot2::scale_y_log10(..., breaks = breaks, minor_breaks =</span></span>
+<span><span class="co">## minor_breaks, : <span style="color: #00BB00;">log-10</span> transformation introduced infinite</span></span>
+<span><span class="co">## values.</span></span></code></pre>
 <p><img src="rxode2-plot_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
 <p>In this case, all the individuals are put on the plot in transparent
 grayscale and plot on the same pane. This allows the places where more

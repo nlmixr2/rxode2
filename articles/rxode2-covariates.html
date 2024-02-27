@@ -158,7 +158,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Covariates</h1>
             
-            <h4 data-toc-skip class="date">2024-02-07</h4>
+            <h4 data-toc-skip class="date">2024-02-27</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-covariates.Rmd" class="external-link"><code>vignettes/rxode2-covariates.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-covariates.Rmd</code></div>
@@ -249,7 +249,9 @@ specify it by the <code>iCov</code> dataset:</p>
 <span><span class="co">## <span style="color: #949494;"># ℹ 4 more variables: central &lt;dbl&gt;, peri &lt;dbl&gt;, eff &lt;dbl&gt;, WT &lt;dbl&gt;</span></span></span></code></pre>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">r1</span>, <span class="va">C2</span>, log<span class="op">=</span><span class="st">"y"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Transformation introduced infinite values in continuous y-axis</span></span></code></pre>
+<pre><code><span><span class="co">## Warning in ggplot2::scale_y_log10(..., breaks = breaks, minor_breaks =</span></span>
+<span><span class="co">## minor_breaks, : <span style="color: #00BB00;">log-10</span> transformation introduced infinite</span></span>
+<span><span class="co">## values.</span></span></code></pre>
 <p><img src="rxode2-covariates_files/figure-html/individual-covariates-1.png" width="700"></p>
 </div>
 <div class="section level2">
