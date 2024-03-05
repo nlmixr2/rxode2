@@ -158,7 +158,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 in a pipeline</h1>
             
-            <h4 data-toc-skip class="date">2024-02-27</h4>
+            <h4 data-toc-skip class="date">2024-03-05</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-pipeline.Rmd" class="external-link"><code>vignettes/rxode2-pipeline.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-pipeline.Rmd</code></div>
@@ -275,10 +275,10 @@ patients with the same treatments. In this case, we will use the
 <span></span>
 <span><span class="va">lognCv</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="op">(</span><span class="va">x</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">+</span><span class="fl">1</span><span class="op">)</span><span class="op">}</span></span>
 <span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/nlmixr2/lotri" class="external-link">lotri</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/lotri/" class="external-link">lotri</a></span><span class="op">)</span></span>
 <span><span class="co">## Now create omega matrix</span></span>
 <span><span class="co">## I'm using lotri to quickly specify names/diagonals</span></span>
-<span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.pt0</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">94</span><span class="op">)</span>,</span>
+<span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.pt0</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">94</span><span class="op">)</span>,</span>
 <span>               <span class="va">eta.q0</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">54</span><span class="op">)</span>,</span>
 <span>               <span class="va">eta.lambdap</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">72</span><span class="op">)</span>,</span>
 <span>               <span class="va">eta.kqp</span> <span class="op">~</span> <span class="fu">lognCv</span><span class="op">(</span><span class="fl">76</span><span class="op">)</span>,</span>
@@ -379,7 +379,7 @@ the model paper. These can be converted as follows:</p>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">est</span><span class="op">*</span><span class="va">rse</span><span class="op">/</span><span class="fl">100</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">tpt0</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">7.13</span>,<span class="fl">25</span><span class="op">)</span>,</span>
+<span><span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">tpt0</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">7.13</span>,<span class="fl">25</span><span class="op">)</span>,</span>
 <span>                  <span class="va">tq0</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">41.2</span>,<span class="fl">7</span><span class="op">)</span>,</span>
 <span>                  <span class="va">tlambdap</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.121</span>, <span class="fl">16</span><span class="op">)</span>,</span>
 <span>                  <span class="va">tkqpp</span> <span class="op">~</span> <span class="fu">rseVar</span><span class="op">(</span><span class="fl">0.0031</span>, <span class="fl">35</span><span class="op">)</span>,</span>

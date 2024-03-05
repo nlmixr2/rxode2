@@ -160,7 +160,7 @@
                         <h4 data-toc-skip class="author">Matthew
 Fidler</h4>
             
-            <h4 data-toc-skip class="date">2024-02-27</h4>
+            <h4 data-toc-skip class="date">2024-03-05</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-rxUse.Rmd" class="external-link"><code>vignettes/rxode2-rxUse.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-rxUse.Rmd</code></div>
@@ -338,15 +338,15 @@ included in the model’s dll. This is done by:</li>
 <p>If this is a R package with rxode2 models and you do not intend to
 add any other compiled sources (recommended), you can add the following
 configure scripts</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/bin/sh</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># This should be used for both configure and configure.win</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">"unlink('src', recursive=TRUE);rxode2::rxUse()"</span> <span class="op">&gt;</span> build.R</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="va">${R_HOME}</span><span class="ex">/bin/Rscript</span> build.R</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span> build.R</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co">#!/bin/sh</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co"># This should be used for both configure and configure.win</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="bu">echo</span> <span class="st">"unlink('src', recursive=TRUE);rxode2::rxUse()"</span> <span class="op">&gt;</span> build.R</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="va">${R_HOME}</span><span class="ex">/bin/Rscript</span> build.R</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="fu">rm</span> build.R</span></code></pre></div>
 <p>Depending on the <code>check</code> you may need a dummy autoconf
 script,</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">## dummy autoconf script</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co">## It is saved to configure.ac</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co">## dummy autoconf script</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co">## It is saved to configure.ac</span></span></code></pre></div>
 <p>If you want to integrate with other sources in your <code>Rcpp</code>
 or <code>C</code>/<code>Fortan</code> based packages, you need to
 include <code>rxModels-compiled.h</code> and: - Add the define macro

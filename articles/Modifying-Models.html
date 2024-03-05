@@ -1418,7 +1418,7 @@ subset here:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55f94dfd5938&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x55795de71978&gt;</span></span></code></pre></div>
 <p>Note that these functions do not modify the <code>ini({})</code>
 block. You may have to modify the ini block first to make it a valid
 <code>rxode2</code>/<code>nlmixr2</code> model.</p>
@@ -1996,7 +1996,7 @@ estimates:</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>You could also use a matrix to specify the covariance:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ome</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.ka</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>,</span>
+<code class="sourceCode R"><span><span class="va">ome</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.ka</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>,</span>
 <span>                                <span class="fl">0.01</span>, <span class="fl">10.1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">ome</span><span class="op">)</span></span>

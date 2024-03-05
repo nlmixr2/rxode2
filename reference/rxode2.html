@@ -303,70 +303,70 @@ print only when calculating the <code>d/dt</code></p></dd>
 consisting of the following list of strings and functions:</p>
 
 
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="sc">*</span> <span class="st">`</span><span class="at">model</span><span class="st">`</span> a character string holding the source model specification.</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="sc">*</span> <span class="st">`</span><span class="at">get.modelVars</span><span class="st">`</span>a <span class="cf">function</span> that returns a list with <span class="dv">3</span> character</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    vectors, <span class="st">`</span><span class="at">params</span><span class="st">`</span>, <span class="st">`</span><span class="at">state</span><span class="st">`</span>, and <span class="st">`</span><span class="at">lhs</span><span class="st">`</span> of variable names used <span class="cf">in</span> the model</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    specification. These will be output when the model is <span class="fu">computed</span> (i.e., the ODE solved by integration).</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">solve</span><span class="st">`</span>{this <span class="cf">function</span> <span class="fu">solves</span> (integrates) the ODE. This</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      is done by passing the code to [<span class="fu">rxSolve</span>()].</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      This is as <span class="cf">if</span> you called <span class="st">`</span><span class="at">rxSolve(rxode2object, ...)</span><span class="st">`</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      but returns a matrix instead of a rxSolve object.</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">params</span><span class="st">`</span><span class="sc">:</span> a numeric named vector with values <span class="cf">for</span> every parameter</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      <span class="cf">in</span> the ODE system; the names must correspond to the parameter</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      identifiers used <span class="cf">in</span> the ODE specification;</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">events</span><span class="st">`</span><span class="sc">:</span> an <span class="st">`</span><span class="at">eventTable</span><span class="st">`</span> object describing the</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">input</span> (e.g., doses) to the dynamic system and observation</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      sampling time <span class="fu">points</span> (see  [<span class="fu">eventTable</span>()]);</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">inits</span><span class="st">`</span><span class="sc">:</span> a vector of initial values of the state variables</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>      (e.g., amounts <span class="cf">in</span> each compartment), and the order <span class="cf">in</span> this vector</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      must be the same as the state <span class="fu">variables</span> (e.g., PK<span class="sc">/</span>PD compartments);</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">stiff</span><span class="st">`</span><span class="sc">:</span> a <span class="fu">logical</span> (<span class="st">`</span><span class="at">TRUE</span><span class="st">`</span> by default) indicating whether</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>      the ODE system is stiff or not.</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>      For stiff ODE <span class="fu">systems</span> (<span class="st">`</span><span class="at">stiff = TRUE</span><span class="st">`</span>), <span class="st">`</span><span class="at">rxode2</span><span class="st">`</span> uses</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>      the <span class="fu">LSODA</span> (Livermore Solver <span class="cf">for</span> Ordinary Differential Equations)</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>      Fortran package, which implements an automatic method switching</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>      <span class="cf">for</span> stiff and non<span class="sc">-</span>stiff problems along the integration interval,</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>      authored by Hindmarsh and <span class="fu">Petzold</span> (<span class="dv">2003</span>).</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>      For non<span class="sc">-</span>stiff <span class="fu">systems</span> (<span class="st">`</span><span class="at">stiff = FALSE</span><span class="st">`</span>), <span class="st">`</span><span class="at">rxode2</span><span class="st">`</span> uses <span class="st">`</span><span class="at">DOP853</span><span class="st">`</span>,</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>      an explicit Runge<span class="sc">-</span>Kutta method of order <span class="dv">8</span>(<span class="dv">5</span>, <span class="dv">3</span>) of Dormand and Prince</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>      as implemented <span class="cf">in</span> C by Hairer and <span class="fu">Wanner</span> (<span class="dv">1993</span>).</span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">trans_abs</span><span class="st">`</span><span class="sc">:</span> a <span class="fu">logical</span> (<span class="st">`</span><span class="at">FALSE</span><span class="st">`</span> by default) indicating</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>      whether to fit a transit absorption term</span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>      (TODO<span class="sc">:</span> need further documentation and example);</span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">atol</span><span class="st">`</span><span class="sc">:</span> a numeric absolute <span class="fu">tolerance</span> (<span class="fl">1e-08</span> by default);</span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">rtol</span><span class="st">`</span><span class="sc">:</span> a numeric relative <span class="fu">tolerance</span> (<span class="fl">1e-06</span> by default).</span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>      The output of \dQuote{solve} is a matrix with as many rows as there</span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>      are sampled time points and as many columns as system variables</span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>      (as defined by the ODEs and additional assignments <span class="cf">in</span> the rxode2 model</span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>          code).}</span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">isValid</span><span class="st">`</span> a <span class="cf">function</span> <span class="fu">that</span> (naively) checks <span class="cf">for</span> model validity,</span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>      namely that the C object code reflects the latest model</span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>      specification.</span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">version</span><span class="st">`</span> a string with the version of the <span class="st">`</span><span class="at">rxode2</span><span class="st">`</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>      <span class="fu">object</span> (not the package).</span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">dynLoad</span><span class="st">`</span> a <span class="cf">function</span> with one <span class="st">`</span><span class="at">force = FALSE</span><span class="st">`</span> argument</span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>      that dynamically loads the object code <span class="cf">if</span> needed.</span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">dynUnload</span><span class="st">`</span> a <span class="cf">function</span> with no argument that unloads</span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>      the model object code.</span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">delete</span><span class="st">`</span> removes all created model files, including C and DLL files.</span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>      The model object is no longer valid and should be removed, e.g.,</span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">rm(m1)</span><span class="st">`</span>.</span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">run</span><span class="st">`</span> deprecated, use <span class="st">`</span><span class="at">solve</span><span class="st">`</span>.</span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">get.index</span><span class="st">`</span> deprecated.</span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">getObj</span><span class="st">`</span> <span class="fu">internal</span> (not user callable) function.</span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="sc">*</span> <span class="st">`</span><span class="at">model</span><span class="st">`</span> a character string holding the source model specification.</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="sc">*</span> <span class="st">`</span><span class="at">get.modelVars</span><span class="st">`</span>a <span class="cf">function</span> that returns a list with <span class="dv">3</span> character</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>    vectors, <span class="st">`</span><span class="at">params</span><span class="st">`</span>, <span class="st">`</span><span class="at">state</span><span class="st">`</span>, and <span class="st">`</span><span class="at">lhs</span><span class="st">`</span> of variable names used <span class="cf">in</span> the model</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>    specification. These will be output when the model is <span class="fu">computed</span> (i.e., the ODE solved by integration).</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">solve</span><span class="st">`</span>{this <span class="cf">function</span> <span class="fu">solves</span> (integrates) the ODE. This</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>      is done by passing the code to [<span class="fu">rxSolve</span>()].</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>      This is as <span class="cf">if</span> you called <span class="st">`</span><span class="at">rxSolve(rxode2object, ...)</span><span class="st">`</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>      but returns a matrix instead of a rxSolve object.</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>      <span class="st">`</span><span class="at">params</span><span class="st">`</span><span class="sc">:</span> a numeric named vector with values <span class="cf">for</span> every parameter</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>      <span class="cf">in</span> the ODE system; the names must correspond to the parameter</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>      identifiers used <span class="cf">in</span> the ODE specification;</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>      <span class="st">`</span><span class="at">events</span><span class="st">`</span><span class="sc">:</span> an <span class="st">`</span><span class="at">eventTable</span><span class="st">`</span> object describing the</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>      <span class="fu">input</span> (e.g., doses) to the dynamic system and observation</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>      sampling time <span class="fu">points</span> (see  [<span class="fu">eventTable</span>()]);</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>      <span class="st">`</span><span class="at">inits</span><span class="st">`</span><span class="sc">:</span> a vector of initial values of the state variables</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>      (e.g., amounts <span class="cf">in</span> each compartment), and the order <span class="cf">in</span> this vector</span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>      must be the same as the state <span class="fu">variables</span> (e.g., PK<span class="sc">/</span>PD compartments);</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>      <span class="st">`</span><span class="at">stiff</span><span class="st">`</span><span class="sc">:</span> a <span class="fu">logical</span> (<span class="st">`</span><span class="at">TRUE</span><span class="st">`</span> by default) indicating whether</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>      the ODE system is stiff or not.</span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a></span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>      For stiff ODE <span class="fu">systems</span> (<span class="st">`</span><span class="at">stiff = TRUE</span><span class="st">`</span>), <span class="st">`</span><span class="at">rxode2</span><span class="st">`</span> uses</span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a>      the <span class="fu">LSODA</span> (Livermore Solver <span class="cf">for</span> Ordinary Differential Equations)</span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a>      Fortran package, which implements an automatic method switching</span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a>      <span class="cf">for</span> stiff and non<span class="sc">-</span>stiff problems along the integration interval,</span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a>      authored by Hindmarsh and <span class="fu">Petzold</span> (<span class="dv">2003</span>).</span>
+<span id="cb1-32"><a href="#cb1-32" tabindex="-1"></a></span>
+<span id="cb1-33"><a href="#cb1-33" tabindex="-1"></a>      For non<span class="sc">-</span>stiff <span class="fu">systems</span> (<span class="st">`</span><span class="at">stiff = FALSE</span><span class="st">`</span>), <span class="st">`</span><span class="at">rxode2</span><span class="st">`</span> uses <span class="st">`</span><span class="at">DOP853</span><span class="st">`</span>,</span>
+<span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a>      an explicit Runge<span class="sc">-</span>Kutta method of order <span class="dv">8</span>(<span class="dv">5</span>, <span class="dv">3</span>) of Dormand and Prince</span>
+<span id="cb1-35"><a href="#cb1-35" tabindex="-1"></a>      as implemented <span class="cf">in</span> C by Hairer and <span class="fu">Wanner</span> (<span class="dv">1993</span>).</span>
+<span id="cb1-36"><a href="#cb1-36" tabindex="-1"></a></span>
+<span id="cb1-37"><a href="#cb1-37" tabindex="-1"></a>      <span class="st">`</span><span class="at">trans_abs</span><span class="st">`</span><span class="sc">:</span> a <span class="fu">logical</span> (<span class="st">`</span><span class="at">FALSE</span><span class="st">`</span> by default) indicating</span>
+<span id="cb1-38"><a href="#cb1-38" tabindex="-1"></a>      whether to fit a transit absorption term</span>
+<span id="cb1-39"><a href="#cb1-39" tabindex="-1"></a>      (TODO<span class="sc">:</span> need further documentation and example);</span>
+<span id="cb1-40"><a href="#cb1-40" tabindex="-1"></a></span>
+<span id="cb1-41"><a href="#cb1-41" tabindex="-1"></a>      <span class="st">`</span><span class="at">atol</span><span class="st">`</span><span class="sc">:</span> a numeric absolute <span class="fu">tolerance</span> (<span class="fl">1e-08</span> by default);</span>
+<span id="cb1-42"><a href="#cb1-42" tabindex="-1"></a></span>
+<span id="cb1-43"><a href="#cb1-43" tabindex="-1"></a>      <span class="st">`</span><span class="at">rtol</span><span class="st">`</span><span class="sc">:</span> a numeric relative <span class="fu">tolerance</span> (<span class="fl">1e-06</span> by default).</span>
+<span id="cb1-44"><a href="#cb1-44" tabindex="-1"></a></span>
+<span id="cb1-45"><a href="#cb1-45" tabindex="-1"></a>      The output of \dQuote{solve} is a matrix with as many rows as there</span>
+<span id="cb1-46"><a href="#cb1-46" tabindex="-1"></a>      are sampled time points and as many columns as system variables</span>
+<span id="cb1-47"><a href="#cb1-47" tabindex="-1"></a>      (as defined by the ODEs and additional assignments <span class="cf">in</span> the rxode2 model</span>
+<span id="cb1-48"><a href="#cb1-48" tabindex="-1"></a>          code).}</span>
+<span id="cb1-49"><a href="#cb1-49" tabindex="-1"></a></span>
+<span id="cb1-50"><a href="#cb1-50" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">isValid</span><span class="st">`</span> a <span class="cf">function</span> <span class="fu">that</span> (naively) checks <span class="cf">for</span> model validity,</span>
+<span id="cb1-51"><a href="#cb1-51" tabindex="-1"></a>      namely that the C object code reflects the latest model</span>
+<span id="cb1-52"><a href="#cb1-52" tabindex="-1"></a>      specification.</span>
+<span id="cb1-53"><a href="#cb1-53" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">version</span><span class="st">`</span> a string with the version of the <span class="st">`</span><span class="at">rxode2</span><span class="st">`</span></span>
+<span id="cb1-54"><a href="#cb1-54" tabindex="-1"></a>      <span class="fu">object</span> (not the package).</span>
+<span id="cb1-55"><a href="#cb1-55" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">dynLoad</span><span class="st">`</span> a <span class="cf">function</span> with one <span class="st">`</span><span class="at">force = FALSE</span><span class="st">`</span> argument</span>
+<span id="cb1-56"><a href="#cb1-56" tabindex="-1"></a>      that dynamically loads the object code <span class="cf">if</span> needed.</span>
+<span id="cb1-57"><a href="#cb1-57" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">dynUnload</span><span class="st">`</span> a <span class="cf">function</span> with no argument that unloads</span>
+<span id="cb1-58"><a href="#cb1-58" tabindex="-1"></a>      the model object code.</span>
+<span id="cb1-59"><a href="#cb1-59" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">delete</span><span class="st">`</span> removes all created model files, including C and DLL files.</span>
+<span id="cb1-60"><a href="#cb1-60" tabindex="-1"></a>      The model object is no longer valid and should be removed, e.g.,</span>
+<span id="cb1-61"><a href="#cb1-61" tabindex="-1"></a>      <span class="st">`</span><span class="at">rm(m1)</span><span class="st">`</span>.</span>
+<span id="cb1-62"><a href="#cb1-62" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">run</span><span class="st">`</span> deprecated, use <span class="st">`</span><span class="at">solve</span><span class="st">`</span>.</span>
+<span id="cb1-63"><a href="#cb1-63" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">get.index</span><span class="st">`</span> deprecated.</span>
+<span id="cb1-64"><a href="#cb1-64" tabindex="-1"></a>  <span class="sc">*</span> <span class="st">`</span><span class="at">getObj</span><span class="st">`</span> <span class="fu">internal</span> (not user callable) function.</span></code></pre><p></p></div>
 
 
     </div>
@@ -388,15 +388,15 @@ drug-disease modeling, etc.</p>
 <span>  <span class="co"># time-derivative assignment</span></span>
 <span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from rx_80ab028288eddd16733200578a7fac4b_.c:117:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="do">##       |      ^</span></span></code></pre><p></p></div><ul><li><p>Inside a <code>rxode2("")</code> string statement:</p></li>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="do">##                  from rx_80ab028288eddd16733200578a7fac4b_.c:117:</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">##       |      ^</span></span></code></pre><p></p></div><ul><li><p>Inside a <code>rxode2("")</code> string statement:</p></li>
 </ul><p><!-- end list --></p>
 
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="st">"</span></span>
@@ -406,15 +406,15 @@ drug-disease modeling, etc.</p>
 <span><span class="st">  # time-derivative assignment</span></span>
 <span><span class="st">  d/dt(centr) &lt;- F*KA*depot - CL*C2 - Q*C2 + Q*C3;</span></span>
 <span><span class="st">"</span><span class="op">)</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from rx_16fc28e9f2ad308e65c8fb7a9b53fdc1_.c:117:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="do">##       |      ^</span></span></code></pre><p></p></div><ul><li><p>In a file name to be loaded by rxode2:</p></li>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="do">##                  from rx_16fc28e9f2ad308e65c8fb7a9b53fdc1_.c:117:</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">##       |      ^</span></span></code></pre><p></p></div><ul><li><p>In a file name to be loaded by rxode2:</p></li>
 </ul><p><!-- end list --></p>
 
 <p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"</span></span>
@@ -476,38 +476,38 @@ object of class <code>rxode2</code> which consists of a list-like structure
 creates a parsed <code>rxode2</code> ui that can be translated to the <code>rxode2</code>
 compilation model.</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">mod</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from rx_e3306ec84cb8151ac51b0c27ef3dbbe7_.c:117:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="do">##       |      ^</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.1.2 model named rx_e3306ec84cb8151ac51b0c27ef3dbbe7 model (ready). </span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="do">##                  from rx_e3306ec84cb8151ac51b0c27ef3dbbe7_.c:117:</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">##       |      ^</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="do">## rxode2 2.1.2 model named rx_e3306ec84cb8151ac51b0c27ef3dbbe7 model (ready). </span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
 <p></p><div class="sourceCode r"><pre><code><span><span class="co"># or </span></span>
 <span><span class="va">mod</span><span class="op">$</span><span class="va">simulationIniModel</span></span></code></pre><p></p></div>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="do">##                  from rx_6f91c3aeabfdac8ced143f492e648867_.c:117:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="do">##       |      ^</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="do">## rxode2 2.1.2 model named rx_6f91c3aeabfdac8ced143f492e648867 model (ready). </span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="do">## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="do">## In file included from /usr/share/R/include/R.h:71,</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="do">##                  from /home/matt/src/rxode2/inst/include/rxode2.h:9,</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">##                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="do">##                  from rx_6f91c3aeabfdac8ced143f492e648867_.c:117:</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">##    80 |     };</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">##       |      ^</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="do">## rxode2 2.1.2 model named rx_6f91c3aeabfdac8ced143f492e648867 model (ready). </span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="do">## x$state: depot, center</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="do">## x$stateExtra: cp</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="do">## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="do">## x$lhs: ka, cl, v, cp, ipredSim, sim</span></span></code></pre><p></p></div>
 <p>This is the same type of function required for <code>nlmixr2</code> estimation and
 can be extended and modified by model piping. For this reason will be
 focused on in the documentation.</p>
@@ -556,11 +556,11 @@ by the order they are parsed. This is useful for keeping the
 parameter order the same when using 2 different ODE models. These
 are specified by <code>param(par1, par2,...)</code></p></li>
 </ul><p>An example model is shown below:</p>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>   <span class="co"># simple assignment</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>   C2 <span class="ot">&lt;-</span> centr<span class="sc">/</span>V2</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>   <span class="co"># time-derivative assignment</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>   d<span class="sc">/</span><span class="fu">dt</span>(centr) <span class="ot">&lt;-</span> F<span class="sc">*</span>KA<span class="sc">*</span>depot <span class="sc">-</span> CL<span class="sc">*</span>C2 <span class="sc">-</span> Q<span class="sc">*</span>C2 <span class="sc">+</span> Q<span class="sc">*</span>C3;</span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>   <span class="co"># simple assignment</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>   C2 <span class="ot">&lt;-</span> centr<span class="sc">/</span>V2</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>   <span class="co"># time-derivative assignment</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>   d<span class="sc">/</span><span class="fu">dt</span>(centr) <span class="ot">&lt;-</span> F<span class="sc">*</span>KA<span class="sc">*</span>depot <span class="sc">-</span> CL<span class="sc">*</span>C2 <span class="sc">-</span> Q<span class="sc">*</span>C2 <span class="sc">+</span> Q<span class="sc">*</span>C3;</span></code></pre><p></p></div>
 <p>Expressions in assignment and <code>if</code> statements can be numeric or logical.</p>
 <p>Numeric expressions can include the following numeric operators <code>+, -, *, /, ^</code> and those mathematical functions defined in the C or the R math
 libraries (e.g., <code>fabs</code>, <code>exp</code>, <code>log</code>, <code>sin</code>, <code>abs</code>).</p>
@@ -616,7 +616,7 @@ use these variables starting with either the <code>rx</code> or <code>nlmixr</co
 <code>&gt;</code> and <code>&lt;</code>. Like R these can be in <code>if()</code> or <code>while()</code> statements,
 <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code> expressions. Additionally they can be in a standard
 assignment. For instance, the following is valid:</p>
-<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>cov1 <span class="ot">=</span> covm<span class="sc">*</span>(sexf <span class="sc">==</span> <span class="st">"female"</span>) <span class="sc">+</span> covm<span class="sc">*</span>(sexf <span class="sc">!=</span> <span class="st">"female"</span>)</span></code></pre><p></p></div>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>cov1 <span class="ot">=</span> covm<span class="sc">*</span>(sexf <span class="sc">==</span> <span class="st">"female"</span>) <span class="sc">+</span> covm<span class="sc">*</span>(sexf <span class="sc">!=</span> <span class="st">"female"</span>)</span></code></pre><p></p></div>
 <p>Notice that you can also use character expressions in comparisons. This
 convenience comes at a cost since character comparisons are slower than
 numeric expressions. Unlike R, <code>as.numeric</code> or <code>as.integer</code> for these

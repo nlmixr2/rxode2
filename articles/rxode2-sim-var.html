@@ -158,7 +158,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Simulation</h1>
             
-            <h4 data-toc-skip class="date">2024-02-27</h4>
+            <h4 data-toc-skip class="date">2024-03-05</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-sim-var.Rmd" class="external-link"><code>vignettes/rxode2-sim-var.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-sim-var.Rmd</code></div>
@@ -567,9 +567,9 @@ would like to use the more free-form style from the classic
 <span>           <span class="co">## Note that since we are using the separation strategy the ETA variances are here too</span></span>
 <span>           eta.cl<span class="op">=</span><span class="fl">7.30E-02</span>,  eta.v<span class="op">=</span><span class="fl">3.80E-02</span>, eta.ka<span class="op">=</span><span class="fl">1.91E+00</span><span class="op">)</span></span></code></pre></div>
 <p>And also their covariances; To me, the easiest way to create a named
-covariance matrix is to use <code><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri()</a></code>:</p>
+covariance matrix is to use <code><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri()</a></code>:</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lotri/man/lotri.html" class="external-link">lotri</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">thetaMat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span></span>
 <span>    <span class="va">tcl</span> <span class="op">+</span> <span class="va">tv</span> <span class="op">+</span> <span class="va">tka</span> <span class="op">+</span> <span class="va">tlag</span> <span class="op">+</span> <span class="va">prop.sd</span> <span class="op">+</span> <span class="va">add.sd</span> <span class="op">+</span> <span class="va">crcl.cl</span> <span class="op">+</span> <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">+</span> <span class="va">eta.ka</span> <span class="op">~</span></span>
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7.95E-01</span>,</span>
 <span>          <span class="fl">2.05E-02</span>, <span class="fl">1.92E-03</span>,</span>
