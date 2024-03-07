@@ -1149,6 +1149,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 .uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL) {
   .ctl <- rxControl()
+  ui <- rxUiDecompress(ui)
   if (exists("meta", envir=ui)) {
     .meta <- get("meta", ui)
   } else {
