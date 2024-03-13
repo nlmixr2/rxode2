@@ -6,18 +6,20 @@ NONMEM, Monolix and nlmixr, described in the [rxode2 types](rxode2-event-types.h
 Classically, RxODE supported event coding in a single event id `evid` described in the following table.
 
 
-| 100+ cmt | Infusion/Event Flag           | <99 Cmt  | SS flag & Turning off Compartment                         |
-|----------|-------------------------------|----------|-----------------------------------------------------------|
-| 100+ cmt | 0 = bolus dose                | < 99 cmt | 01 = dose                                                 |
-|          | 1 = infusion (rate)           |          | 08 = Turn off Steady state infusion with lag time         |
-|          | 2 = infusion (dur)            |          | 09 = Steady state 1 at dose time with alag (SS=1)         |
-|          | 6 = turn off modeled duration |          | 10 = Steady state 1 (equivalent to SS=1) without alag()   |
-|          | 7 = turn off modeled rate     |          | 09 = Steady state 1/2 at dose+ alag()                     |
-|          | 8 = turn on modeled duration  |          | 19 = Steady state 2 at dose time with alag (SS=2)         |
-|          | 9 = turn on modeled rate      |          | 20 = Steady state 2 (equivalent to SS=2)                  |
-|          | 4 = replace event             |          | 30 = Turn off a compartment (equivalent to -CMT w/EVID=2) | 
-|          | 5 = multiply event            |          | 40 = Steady state constant infusion                       |
-|          |                               |          | 50 = Phantom event, used for transit compartments doses   |
+| 100+ cmt | Infusion/Event Flag           | \<99 Cmt  | SS flag & Turning off Compartment                                                                                            |
+|----------|-------------------------------|-----------|-----------------------------------------------|
+| 100+ cmt | 0 = bolus dose                | \< 99 cmt | 01 = dose                                                                                                                    |
+|          | 1 = infusion (rate)           |           | 08 = Turn off Steady state infusion with lag time                                                                            |
+|          | 2 = infusion (dur)            |           | 09 = Steady state 1 at dose time with alag (SS=1)                                                                            |
+|          | 6 = turn off modeled duration |           | 10 = Steady state 1 (equivalent to SS=1) without alag()                                                                      |
+|          | 7 = turn off modeled rate     |           | 09 = Steady state 1/2 at dose+ alag()                                                                                        |
+|          | 8 = turn on modeled duration  |           | 19 = Steady state 2 at dose time with alag (SS=2)                                                                            |
+|          | 9 = turn on modeled rate      |           | 20 = Steady state 2 (equivalent to SS=2)                                                                                     |
+|          | 4 = replace event             |           | 30 = Turn off a compartment (equivalent to -CMT w/EVID=2)                                                                    |
+|          | 5 = multiply event            |           | 40 = Steady state constant infusion                                                                                          |
+|          |                               |           | 50 = Phantom event, used for transit compartments doses                                                                      |
+|          |                               |           | 60 = Non-tracking dose, a dose that is not counted for time after dose and related numbers. Used for turning on compartments |
+
 
 The classic EVID concatenate the numbers in the above table, so an
 infusion would to compartment 1 would be `10101` and an infusion to compartment 199 would be `119901`.
@@ -186,8 +188,8 @@ compartments under 100, this is coded as:
    - The infusion rate is captured in the `amt` column
    - The infusion is turned off by subtracting `amt` with the same
      `evid` at the stop of the infusion.
-	 
-	 
+
+
 For compartments greater or equal to 100, the 100s place and above
 digits are transferred to the 100,000th place digit. For doses to the
 99th compartment the `evid` for a bolus dose would be `9901` and the
@@ -195,5 +197,3 @@ digits are transferred to the 100,000th place digit. For doses to the
 `199`th compartment the `evid` for the bolus dose would be
 `109901`. An infusion dosing record for the `199`th compartment would
 be `119901`.
-
-
