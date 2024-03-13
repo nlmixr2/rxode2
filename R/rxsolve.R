@@ -1149,10 +1149,8 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 .uiRxControl <- function(ui, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL) {
   .ctl <- rxControl()
-  ui <- rxUiDecompress(assertRxUi(uii))
-  if (exists("meta", envir=ui)) {
-    .meta <- get("meta", ui)
-  } else {
+  .meta <- try(ui$meta, silent=TRUE)
+  if (!is.environment(.meta))  {
     .meta <- new.env(parent=emptyenv())
   }
   .lst <- list(...)
