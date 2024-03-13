@@ -1,3 +1,9 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+
 # rxode2 2.1.2
 
 ## Other changes
