@@ -2,7 +2,12 @@
 
 ## Bug fixes
 
-- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+
+## New features
+
+- Create a function to see if a rxode2 solve is loaded in memory
+  (`rxode2::rxSolveSetup()`)
 
 # rxode2 2.1.2
 
