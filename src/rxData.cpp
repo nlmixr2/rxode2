@@ -1362,6 +1362,8 @@ struct rx_globals {
 
   // time per thread
   double *timeThread = NULL;
+
+  bool alloc=false;
 };
 
 
@@ -1554,6 +1556,7 @@ extern "C" void gFree(){
   _globals.gcov=NULL;
   if (_rxGetErrs != NULL) free(_rxGetErrs);
   _rxGetErrs=NULL;
+  _globals.alloc = false;
 }
 
 extern "C" double *rxGetErrs(){
@@ -4049,11 +4052,23 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
         }
       }
     }
+    _globals.alloc = true;
     break;
   default:
     rxSolveFree();
     stop(_("Something is wrong"));
   }
+}
+
+//' See if the memory is installed for a solve
+//'
+//' @return boolean saying if the memnory is currently free for rxode2
+//' @keywords internal
+//' @export
+//' @author Matthew L. Fidler
+//[[Rcpp::export]]
+LogicalVector rxSolveSetup() {
+  return _globals.alloc;
 }
 
 // This creates the final dataset from the currently solved object.
