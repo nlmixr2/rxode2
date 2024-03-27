@@ -445,6 +445,27 @@ namespace rxode2 {
         return Rcpp::as<LogicalVector >(rcpp_result_gen);
     }
 
+    inline LogicalVector rxSolveSetup() {
+        typedef SEXP(*Ptr_rxSolveSetup)();
+        static Ptr_rxSolveSetup p_rxSolveSetup = NULL;
+        if (p_rxSolveSetup == NULL) {
+            validateSignature("LogicalVector(*rxSolveSetup)()");
+            p_rxSolveSetup = (Ptr_rxSolveSetup)R_GetCCallable("rxode2", "_rxode2_rxSolveSetup");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxSolveSetup();
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<LogicalVector >(rcpp_result_gen);
+    }
+
     inline SEXP rxSolve_(const RObject& obj, const List& rxControl, const Nullable<CharacterVector>& specParams, const Nullable<List>& extraArgs, const RObject& params, const RObject& events, const RObject& inits, const int setupOnly) {
         typedef SEXP(*Ptr_rxSolve_)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_rxSolve_ p_rxSolve_ = NULL;

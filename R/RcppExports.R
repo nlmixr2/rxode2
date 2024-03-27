@@ -311,6 +311,16 @@ rxSolveFree <- function() {
     .Call(`_rxode2_rxSolveFree`)
 }
 
+#' See if the memory is installed for a solve
+#'
+#' @return boolean saying if the memnory is currently free for rxode2
+#' @keywords internal
+#' @export
+#' @author Matthew L. Fidler
+rxSolveSetup <- function() {
+    .Call(`_rxode2_rxSolveSetup`)
+}
+
 rxSolve_ <- function(obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly) {
     .Call(`_rxode2_rxSolve_`, obj, rxControl, specParams, extraArgs, params, events, inits, setupOnly)
 }

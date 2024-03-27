@@ -357,9 +357,12 @@ extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 SEXP _rxode2_getEtRxsolve(SEXP e);
 extern SEXP chin(SEXP x, SEXP table);
 
+SEXP _rxode2_rxSolveSetup(void);
+
 SEXP _rxode2_RcppExport_registerCCallable(void);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxSolveSetup", (DL_FUNC) &_rxode2_rxSolveSetup, 0},
     {"_rxode2_isIntel", (DL_FUNC) &_rxode2_isIntel, 0},
     {"_rxode2_binomProbsPredVec_", (DL_FUNC) &_rxode2_binomProbsPredVec_, 6},
     {"_rxode2_binomProbs_", (DL_FUNC) &_rxode2_binomProbs_, 5},
