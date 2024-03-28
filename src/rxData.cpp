@@ -2488,6 +2488,7 @@ void resetFkeep();
 LogicalVector rxSolveFree(){
   _rxode2parse_udfReset();
   resetFkeep();
+  if (!_globals.alloc) return true;
   rx_solve* rx = getRxSolve_();
   // Free the solve id order
   if (rx->par_sample != NULL) free(rx->par_sample);
