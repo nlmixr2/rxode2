@@ -3292,6 +3292,9 @@ static inline void rxSolve_simulate(const RObject &obj,
     if (!cbindPar1) {
       params0 = as<Nullable<NumericVector>>(rxSolveDat->par1);
     }
+    curObs++; // sometimes there is trailing non-observation evids
+              // (though this is an edge case, probably related to NA
+              // times; See #670)
     List lst = rxSimThetaOmega(params0,
                                omega,
                                omegaDf,
