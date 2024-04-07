@@ -355,7 +355,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
         if (updateErr){
           for (j=0; j < errNcol; j++){
             // The error pointer is updated if needed
-            par_ptr[svar[j]] = errs[errNrow*j+kk];
+            par_ptr[svar[j]] = errs[errNrow*j+min2(kk, errNrow-1)];
           }
           if ((doDose && evid!= 9) || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)){
             // Only increment if this is an observation or of this a

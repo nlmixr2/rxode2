@@ -200,7 +200,6 @@ test_that("Simulate Error, issue #670", {
               row.names = c(NA, -218L),
               class = "data.frame")
 
-  crsh <- rxSolve(object = m,
-                  events = d)
+  expect_error(rxSolve(object = m, events = d), NA)
 
 })
