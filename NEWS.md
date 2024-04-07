@@ -2,7 +2,14 @@
 
 ## Bug fixes
 
-- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+
+- Ensure the residual simulation includes one simulation above the
+  number of observations; this allows trailing doses to access the
+  extra simulated residuals without accessing memory that has not been
+  allocated.  This fixes the R crashed observed in #670.  This did no
+  happen often and likely does not affect much code since the
+  `etTrans()` typically drops trailing doses.
 
 ## New features
 
