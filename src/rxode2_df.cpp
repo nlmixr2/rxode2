@@ -360,7 +360,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           if ((doDose && evid!= 9) || (evid0 == 0 && isObs(evid)) || (evid0 == 1 && evid==0)){
             // Only increment if this is an observation or of this a
             // simulation that requests dosing information too.
-            kk++;
+            kk=min2(kk+1, errNrow-1);
           }
         }
         if (nlhs){

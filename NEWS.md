@@ -2,7 +2,11 @@
 
 ## Bug fixes
 
-- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+- Make sure that the object is a uncompressed rxode2 ui for solving with `rxSolve` (See #661)
+
+- Fix #670 by using the last simulated observation residual when there
+  are trailing doses.
+
 
 ## New features
 
