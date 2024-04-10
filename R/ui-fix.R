@@ -61,7 +61,11 @@
 #' Apply the fixed population estimated parameters
 #'
 #' @param ui rxode2 ui function
-#' @return NULL if nothing was changed, or the model UI
+#' @param returnNull boolean for if unchanged values should return the
+#'   original ui (`FALSE`) or null (`TRUE`)
+#' @return when `returnNull` is TRUE, NULL if nothing was changed, or
+#'   the changed model ui.  When `returnNull` is FALSE, return a ui no
+#'   matter if it is changed or not.
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -109,6 +113,7 @@
 #' rxFixPop(m, returnNull=TRUE)
 #'
 rxFixPop <- function(ui, returnNull=FALSE) {
+  checkmate::assertLogical(returnNull, any.missing = FALSE, len=1, null.ok=FALSE)
   .model <- rxUiDecompress(assertRxUi(ui))
   .model <- .copyUi(.model)
   .iniDf <- .model$iniDf

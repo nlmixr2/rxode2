@@ -8,9 +8,14 @@ rxFixPop(ui, returnNull = FALSE)
 }
 \arguments{
 \item{ui}{rxode2 ui function}
+
+\item{returnNull}{boolean for if unchanged values should return the
+original ui (\code{FALSE}) or null (\code{TRUE})}
 }
 \value{
-NULL if nothing was changed, or the model UI
+when \code{returnNull} is TRUE, NULL if nothing was changed, or
+the changed model ui.  When \code{returnNull} is FALSE, return a ui no
+matter if it is changed or not.
 }
 \description{
 Apply the fixed population estimated parameters
