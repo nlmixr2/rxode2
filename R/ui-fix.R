@@ -32,10 +32,10 @@
       lapply(seq_along(var),
              function(i) {
                if (!is.null(.env$new)) return(NULL)
-               .curVar <- var[[i]]
-               .old <- .curVar[[2]]
+               .curVal <- setNames(var[i], NULL)
+               .old <- str2lang(names(var[i]))
                if (identical(item[[1]], .old)) {
-                 .env$new <- .curVar[[1]]
+                 .env$new <- .curVal
                }
                return(NULL)
              })
