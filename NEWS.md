@@ -13,6 +13,9 @@
 - Create a function to see if a rxode2 solve is loaded in memory
   (`rxode2::rxSolveSetup()`)
 
+- Create a new function that fixes the rxode2 population values in the
+  model (and drops them in the initial estimates); `rxFixPop()`
+
 # rxode2 2.1.2
 
 ## Other changes

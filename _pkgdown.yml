@@ -38,6 +38,7 @@ reference:
   - zeroRe
   - assertRxUi
   - rxAppendModel
+  - rxFixPop
   - rxRename
   - update.rxUi
   - as.rxUi
