@@ -156,8 +156,9 @@ You will also have to install system dependencies like `udunits` and the
 [symengine
 dependencies](https://github.com/symengine/symengine.R?tab=readme-ov-file#installation)
 for the complete installation to work in linux. You could also have this
-done by system packages in your package manager like
-[r2u](https://github.com/eddelbuettel/r2u).
+done by system packages in your package manager if you add the
+appropriate repositories. This is the point of the
+[r2u](https://github.com/eddelbuettel/r2u) project.
 
 ### R versions 4.0 and 4.1
 
@@ -281,9 +282,9 @@ x <- mod1 %>% rxSolve(ev)
 #> using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 #> In file included from /usr/share/R/include/R.h:71,
 #>                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,
-#>                  from /tmp/RtmphtTWwd/temp_libpath88b647871505/rxode2/include/rxode2.h:9,
+#>                  from /tmp/RtmpMKFh3q/temp_libpath2b2b3c8645df/rxode2/include/rxode2.h:9,
 #>                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_4aa816533c8b8cace860e80ff47441d6_.c:117:
+#>                  from rx_f5e1c8d22ddcc3e6890ad688a5f37e59_.c:117:
 #> /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
 #>    80 |     };
 #>       |      ^

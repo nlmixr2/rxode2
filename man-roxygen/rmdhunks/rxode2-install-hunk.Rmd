@@ -106,8 +106,9 @@ You will also have to install system dependencies like `udunits` and
 the [symengine
 dependencies](https://github.com/symengine/symengine.R?tab=readme-ov-file#installation)
 for the complete installation to work in linux.  You could also have
-this done by system packages in your package manager like
-[r2u](https://github.com/eddelbuettel/r2u).
+this done by system packages in your package manager if you add the
+appropriate repositories.  This is the point of the
+[r2u](https://github.com/eddelbuettel/r2u) project.
 
 
 ### R versions 4.0 and 4.1
