@@ -1,4 +1,5 @@
 rxTest({
+
   warn1 <- function(code) {
     if (rxCores() == 1L) {
       x <- force(code)
@@ -70,6 +71,7 @@ rxTest({
   })
 
   test_that("rbinom", {
+
     rx <- rxode2({
       x1 <- rbinom(4, 0.5)
       x2 <- rxbinom(10, 0.75)
@@ -125,6 +127,7 @@ rxTest({
   })
 
   test_that("rcauchy", {
+
     rxWithSeed(1024, {
       rx <- rxode2({
         x1 <- rcauchy()
@@ -162,6 +165,7 @@ rxTest({
   })
 
   test_that("rchisq", {
+
     rx <- rxode2({
       x1 <- rchisq(15)
       x2 <- rxchisq(20)
@@ -209,6 +213,7 @@ rxTest({
   })
 
   test_that("rexp tests", {
+
     rx <- rxode2({
       x1 <- rexp(0.5)
       x2 <- rxexp()
@@ -251,12 +256,13 @@ rxTest({
   })
 
   test_that("rf tests", {
+
     rx <- rxode2({
       x1 <- rf(10, 20)
       x2 <- rxf(30, 40)
     })
 
-    ev <- et(1, id = 1:30000)
+    ev <- et(1, id = 1:40000)
 
     rxWithSeed(1024, {
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
@@ -304,10 +310,12 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rf()
       })))
+
     })
   })
 
   test_that("rgamma tests", {
+
     rx <- rxode2({
       x1 <- rgamma(9, 0.5)
       x2 <- rxgamma(7.5)
@@ -356,6 +364,7 @@ rxTest({
   })
 
   test_that("rbeta tests", {
+
     rx <- rxode2({
       x1 <- rbeta(2, 5)
       x2 <- rxbeta(2, 2)
@@ -415,6 +424,7 @@ rxTest({
   })
 
   test_that("rgeom tests", {
+
     rx <- rxode2({
       # x1 <- rgeom(0.5)
       x2 <- rxgeom(0.1)
@@ -450,10 +460,12 @@ rxTest({
       suppressMessages(expect_error(rxode2({
         x1 <- rgeom(a, b)
       })))
+
     })
   })
 
   test_that("rpois", {
+
     rx <- rxode2({
       x1 <- rpois(1)
       x2 <- rxpois(2)
@@ -499,6 +511,7 @@ rxTest({
   })
 
   test_that("rt", {
+
     rx <- rxode2({
       x1 <- rt(15)
       x2 <- rxt(20)
@@ -546,7 +559,9 @@ rxTest({
   })
 
   test_that("runif", {
+
     rxWithSeed(1024, {
+
       rx <- rxode2({
         x1 <- runif()
         x2 <- rxunif(a)
@@ -597,11 +612,13 @@ rxTest({
       f2 <- suppressMessages(rxSolve(rx, ev, c(a = 3, b = 5, c = 2), cores = 1))
 
       expect_false(isTRUE(all.equal(as.data.frame(f), as.data.frame(f2))))
+
     })
   })
 
 
   test_that("rweibull tests", {
+
     rx <- rxode2({
       x1 <- rweibull(9, 0.5)
       x2 <- rxweibull(7.5)
