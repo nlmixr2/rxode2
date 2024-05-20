@@ -88,9 +88,9 @@ Imports:
     tools,
     utils,
     rxode2ll(>= 2.0.9),
-    rxode2et (>= 2.0.9),
-    rxode2parse (> 2.0.16),
-    rxode2random (> 2.0.11),
+    rxode2et (>= 2.0.13),
+    rxode2parse (>= 2.0.19),
+    rxode2random (>= 2.1.0),
     data.table (>= 1.12.4),
     qs
 Description: Facilities for running simulations from ordinary
