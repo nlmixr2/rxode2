@@ -158,7 +158,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Using Prior Data for ODE solving</h1>
             
-            <h4 data-toc-skip class="date">2024-05-14</h4>
+            <h4 data-toc-skip class="date">2024-05-20</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-prior-data.Rmd" class="external-link"><code>vignettes/rxode2-prior-data.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-prior-data.Rmd</code></div>
@@ -178,8 +178,9 @@ frame</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; rxode2 2.1.2.9000 using 2 threads (see ?getRxThreads)</span></span>
-<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/nlmixr2data/" class="external-link">nlmixr2data</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/nlmixr2data/" class="external-link">nlmixr2data</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co">## Load data from nlmixr</span></span>
 <span><span class="va">d</span> <span class="op">&lt;-</span> <span class="va">theo_sd</span></span>
@@ -213,8 +214,9 @@ frame</p>
 <span><span class="co">#&gt;     filter, lag</span></span>
 <span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
-<span><span class="va">parsDf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tribble.html" class="external-link">tribble</a></span><span class="op">(</span></span>
+<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">parsDf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tribble.html" class="external-link">tribble</a></span><span class="op">(</span></span>
 <span>  <span class="op">~</span> <span class="va">eta.ka</span>, <span class="op">~</span> <span class="va">eta.cl</span>, <span class="op">~</span> <span class="va">eta.v</span>, </span>
 <span>  <span class="fl">0.105</span>, <span class="op">-</span><span class="fl">0.487</span>, <span class="op">-</span><span class="fl">0.080</span>,</span>
 <span>  <span class="fl">0.221</span>, <span class="fl">0.144</span>, <span class="fl">0.021</span>,</span>
@@ -233,11 +235,12 @@ frame</p>
 <span><span class="co">## Now solve the dataset</span></span>
 <span><span class="va">solveData</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">theo</span>, <span class="va">parsDf</span>, <span class="va">d</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">solveData</span>, <span class="va">cp</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-prior-data_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">solveData</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">── Solved rxode2 object ──</span></span></span>
@@ -270,14 +273,16 @@ frame</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1  1.12  1.74  1.70  29.0  9.06  45.4     263.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1  2.02  1.74  1.70  29.0  9.79   9.45    284.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1  3.82  1.74  1.70  29.0  9.10   0.410   264.</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 126 more rows</span></span></span>
-<span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 126 more rows</span></span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co">## Of course the fasest way to solve if you don't care about the rxode2 extra parameters is</span></span>
 <span></span>
 <span><span class="va">solveData</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">theo</span>, <span class="va">parsDf</span>, <span class="va">d</span>, returnType<span class="op">=</span><span class="st">"data.frame"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co">## solved data</span></span>
 <span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="va">solveData</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 132 × 8</span></span></span>
@@ -293,8 +298,9 @@ frame</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     1  7.03  1.74  1.70  29.0  7.56   0.001<span style="text-decoration: underline;">52</span>       219.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     1  9.05  1.74  1.70  29.0  6.71   0.000<span style="text-decoration: underline;">044</span>9     195.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     1 12.1   1.74  1.70  29.0  5.61   0.000<span style="text-decoration: underline;">000</span>212   163.</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 122 more rows</span></span></span>
-<span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 122 more rows</span></span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdatatable.gitlab.io/data.table/reference/data.table.html" class="external-link">data.table</a></span><span class="op">(</span><span class="va">solveData</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         id  time        ka       cl        v       cp        depot    center</span></span>
 <span><span class="co">#&gt;      &lt;int&gt; &lt;num&gt;     &lt;num&gt;    &lt;num&gt;    &lt;num&gt;    &lt;num&gt;        &lt;num&gt;     &lt;num&gt;</span></span>

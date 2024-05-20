@@ -164,7 +164,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 ODE solving syntax</h1>
             
-            <h4 data-toc-skip class="date">2024-05-14</h4>
+            <h4 data-toc-skip class="date">2024-05-20</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-syntax.Rmd" class="external-link"><code>vignettes/rxode2-syntax.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-syntax.Rmd</code></div>
@@ -191,8 +191,9 @@ places:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; rxode2 2.1.2.9000 using 2 threads (see ?getRxThreads)</span></span>
-<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
-<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="co"># simple assignment</span></span>
 <span>  <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
 <span></span>
@@ -203,7 +204,7 @@ places:</p>
 <ul>
 <li>Inside a <code>rxode2("")</code> string statement:</li>
 </ul>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="st">"</span></span>
 <span><span class="st">  # simple assignment</span></span>
 <span><span class="st">  C2 &lt;- centr/V2</span></span>
@@ -215,7 +216,7 @@ places:</p>
 <ul>
 <li>In a file name to be loaded by rxode2:</li>
 </ul>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"</span></span>
 <span><span class="st">  # simple assignment</span></span>
 <span><span class="st">  C2 &lt;- centr/V2</span></span>
@@ -228,7 +229,7 @@ places:</p>
 <ul>
 <li>In a model function which can be parsed by <code>rxode2</code>:</li>
 </ul>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="co"># simple assignment</span></span>
@@ -277,19 +278,20 @@ member functions.</p>
 <p>For the last type of model (a model function), a call to
 <code>rxode2</code> creates a parsed <code>rxode2</code> ui that can be
 translated to the <code>rxode2</code> compilation model.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span><span class="op">$</span><span class="va">simulationModel</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_f6e3cee9d0e3378747fad35cee2f9ca2</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_de893b9ca808284980c72803be29809f</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: cp</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$lhs</span>: ka, cl, v, cp, ipredSim, sim</span></span>
-<span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$lhs</span>: ka, cl, v, cp, ipredSim, sim</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co"># or </span></span>
 <span><span class="va">mod</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_ab7369d401ab12358b4a2eddd45a1757</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_e3412f9ef1aa7f7c48e17de886e50d29</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: cp</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp</span></span>
@@ -481,14 +483,14 @@ output, it also is used to specify a residual output or endpoint when
 the input is an <code>rxode2</code> model function (that includes the
 residual in the <code>model({})</code> block).</p>
 <p>These specifications are of the form:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span></span></code></pre></div>
 <p>Indicating the variable <code>var</code> is the variable that
 represents the individual central tendencies of the model and it also
 represents the compartment specification in the data-set.</p>
 <p>You can also change the compartment name using the <code>|</code>
 syntax, that is:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">|</span> <span class="va">cmt</span></span></code></pre></div>
 <p>In the above case <code>var</code> represents the central tendency
 and <code>cmt</code> represents the compartment or <code>dvid</code>
@@ -558,19 +560,19 @@ can describe the data possibly even better than
 </h3>
 <p>For residuals that are not related to normal, t-distribution or
 cauchy, often the residual specification is of the form:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmt</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Beta.html" class="external-link">dbeta</a></span><span class="op">(</span><span class="va">alpha</span>, <span class="va">beta</span><span class="op">)</span></span></code></pre></div>
 <p>Where the compartment specification is on the left handed side of the
 specification.</p>
 <p>For generalized likelihood you can specify:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">ll</span>(cmt) <span class="sc">~</span> llik specification</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">ll</span>(cmt) <span class="sc">~</span> llik specification</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="ordinal-likelihoods">Ordinal likelihoods<a class="anchor" aria-label="anchor" href="#ordinal-likelihoods"></a>
 </h3>
 <p>Finally, ordinal likelihoods/simulations can be specified in 2 ways.
 The first is:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">p0</span>, <span class="va">p1</span>, <span class="va">p2</span><span class="op">)</span></span></code></pre></div>
 <p>Here <code>err</code> represents the compartment and <code>p0</code>
 is the probability of being in a specific category:</p>
@@ -604,7 +606,7 @@ arbitrary number of categories in the ordinal model described above.</p>
 <p>It seems a little off that <code>p0</code> is the probability for
 category <code>1</code> and sometimes scores are in non-whole numbers.
 This can be modeled as follows:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>p0<span class="op">=</span><span class="fl">0</span>, p1<span class="op">=</span><span class="fl">1</span>, p2<span class="op">=</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <p>Here the numeric categories are specified explicitly, and the
 probabilities remain the same:</p>
@@ -664,7 +666,7 @@ open source tool , Plevyak (2015).</p>
 <div class="section level2">
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    </span>

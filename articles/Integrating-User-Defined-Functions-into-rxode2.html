@@ -204,15 +204,16 @@ simple example here to simply illustrate the concepts.</p>
 <span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">newAbs</span><span class="op">(</span><span class="va">time</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="op">-</span><span class="fl">10</span>, <span class="fl">10</span>, length.out<span class="op">=</span><span class="fl">40</span><span class="op">)</span></span></code></pre></div>
 <p>Now that the ODE has been compiled the R functions will be called
 while solving the ODE. Since this is calling R, this forces the
 parallization to be turned off since R is single-threaded. It also takes
 more time to solve since it is shuttling back and forth between R and C.
 Lets see how this very simple function performs:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mb1</span> <span class="op">&lt;-</span> <span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span>withoutC<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">f</span>,<span class="va">e</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
@@ -220,7 +221,7 @@ Lets see how this very simple function performs:</p>
 <p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/benmchmark1-1.png" width="700"></p>
 <p>Not terribly bad, even though it is shuffling between R and C.</p>
 <p>You can make it a better by converting the functions to C:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Create C functions automatically with `rxFun()`</span></span>
 <span><span class="fu"><a href="../reference/rxFun.html">rxFun</a></span><span class="op">(</span><span class="va">newAbs</span><span class="op">)</span></span>
 <span><span class="co">#&gt; → finding duplicate expressions in d(newAbs)/d(x)...</span></span>
@@ -229,16 +230,18 @@ Lets see how this very simple function performs:</p>
 <span><span class="co">#&gt; [====|====|====|====|====|====|====|====|====|====] 0:00:00</span></span>
 <span><span class="co">#&gt; converted R function 'newAbs' to C (will now use in rxode2)</span></span>
 <span><span class="co">#&gt; converted R function 'rx_newAbs_d_x' to C (will now use in rxode2)</span></span>
-<span><span class="co">#&gt; Added derivative table for 'newAbs'</span></span>
-<span><span class="co"># Recompile to use the C functions</span></span>
+<span><span class="co">#&gt; Added derivative table for 'newAbs'</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Recompile to use the C functions</span></span>
 <span><span class="co"># Note it would recompile anyway if you didn't do this step,</span></span>
 <span><span class="co"># it just makes sure that it doesn't recompile every step in</span></span>
 <span><span class="co"># the benchmark</span></span>
 <span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">newAbs</span><span class="op">(</span><span class="va">time</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">mb2</span> <span class="op">&lt;-</span> <span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span>withC<span class="op">=</span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">f</span>,<span class="va">e</span>, cores<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">mb1</span>, <span class="va">mb2</span><span class="op">)</span></span>
@@ -246,12 +249,12 @@ Lets see how this very simple function performs:</p>
 <span><span class="co">#&gt; Scale for <span style="color: #00BB00;">y</span> is already present.</span></span>
 <span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">y</span>, which will replace the existing scale.</span></span></code></pre></div>
 <p><img src="Integrating-User-Defined-Functions-into-rxode2_files/figure-html/convertC-1.png" width="700"></p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr      min       lq     mean   median       uq       max neval</span></span>
-<span><span class="co">#&gt;  withoutC 7.002231 7.124019 7.761865 7.208330 7.355490 12.752687   100</span></span>
-<span><span class="co">#&gt;     withC 1.973371 2.045952 2.380917 2.155952 2.660563  7.036035   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr      min       lq    mean   median       uq       max neval</span></span>
+<span><span class="co">#&gt;  withoutC 6.870988 6.921597 7.39344 6.969096 7.075109 11.957429   100</span></span>
+<span><span class="co">#&gt;     withC 1.958190 2.019610 2.32712 2.130967 2.615170  6.127462   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -266,7 +269,7 @@ simply let R return the last value instead of explictly calling out the
 <p>Even if there is a <code>return</code> function, the function could
 be converted to <code>C</code>. In the github issue, they used a
 function that would not convert the derivatives:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Light</span></span>
 <span><span class="va">f_R</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">actRad</span>, <span class="va">k_0</span>, <span class="va">a_k</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">photfac</span> <span class="op">&lt;-</span> <span class="va">a_k</span> <span class="op">*</span> <span class="va">actRad</span> <span class="op">+</span> <span class="va">k_0</span></span>
@@ -285,12 +288,12 @@ calculated be non-optimized finite differences when this occurs. While
 this gets into the internals of <code>rxode2</code> and
 <code>nlmixr2</code> you can see this more easily when calculating the
 derivatives:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxToSE.html">rxFromSE</a></span><span class="op">(</span><span class="st">"Derivative(f_R(actRad, k_0, a_k),k_0)"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "(f_R(actRad,(k_0)+6.05545445239334e-06,a_k)-f_R(actRad,k_0,a_k))/6.05545445239334e-06"</span></span></code></pre></div>
 <p>Whereas the originally defined function <code>newAbs()</code> would
 use the new derivatives calculated as well:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxToSE.html">rxFromSE</a></span><span class="op">(</span><span class="st">"Derivative(newAbs(x),x)"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "rx_newAbs_d_x(x)"</span></span></code></pre></div>
 <p>In some circumstances, the conversion to C is not possible, though
@@ -332,7 +335,7 @@ not updated.</p></li>
 </h2>
 <p>You can add your own C functions directly into rxode2 as well using
 <code><a href="../reference/rxFun.html">rxFun()</a></code>:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fun</span> <span class="op">&lt;-</span> <span class="st">"</span></span>
 <span><span class="st"> double fun(double a, double b, double c) {</span></span>
 <span><span class="st">   return a*a+b*a+c;</span></span>
@@ -342,7 +345,7 @@ not updated.</p></li>
 <span><span class="fu"><a href="../reference/rxFun.html">rxFun</a></span><span class="op">(</span><span class="st">"fun"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span><span class="op">)</span>, <span class="va">fun</span><span class="op">)</span></span></code></pre></div>
 <p>If you wanted you could also use C functions or expressions for the
 derivatives by using the <code><a href="../reference/rxD.html">rxD()</a></code> function:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxD.html">rxD</a></span><span class="op">(</span><span class="st">"fun"</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>   <span class="kw">function</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">c</span><span class="op">)</span> <span class="op">{</span> <span class="co"># derivative of arg1: a</span></span>
 <span>     <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"2*"</span>, <span class="va">a</span>, <span class="st">"+"</span>, <span class="va">b</span><span class="op">)</span></span>
@@ -356,7 +359,7 @@ derivatives by using the <code><a href="../reference/rxD.html">rxD()</a></code> 
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Removing the function with <code><a href="../reference/rxFun.html">rxRmFun()</a></code> will also remove
 the derivative table:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxFun.html">rxRmFun</a></span><span class="op">(</span><span class="st">"fun"</span><span class="op">)</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>

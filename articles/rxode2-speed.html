@@ -160,7 +160,7 @@
                         <h4 data-toc-skip class="author">Matthew
 Fidler</h4>
             
-            <h4 data-toc-skip class="date">2024-05-14</h4>
+            <h4 data-toc-skip class="date">2024-05-20</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-speed.Rmd" class="external-link"><code>vignettes/rxode2-speed.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-speed.Rmd</code></div>
@@ -179,8 +179,9 @@ estimating, and it takes some computation time to get to the underlying
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; rxode2 2.1.2.9000 using 2 threads (see ?getRxThreads)</span></span>
-<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span>
-<span></span>
+<span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">KA</span>   <span class="op">&lt;-</span> <span class="fl">0.3</span></span>
@@ -204,7 +205,7 @@ estimating, and it takes some computation time to get to the underlying
 <span><span class="op">}</span></span></code></pre></div>
 <p>Or you can also specify the end-points for simulation/estimation just
 like <code>nlmixr2</code>:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod2f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">TKA</span>   <span class="op">&lt;-</span> <span class="fl">0.3</span></span>
@@ -250,7 +251,7 @@ steps:</p>
 </ul>
 <p>The first step can be done by <code>rxode2(mod1)</code> or
 <code>mod1()</code> (or for the second model too).</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu">mod1</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">mod2f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">mod2f</span><span class="op">)</span></span></code></pre></div>
 <p>The second step is to create the underlying “classic”
@@ -261,10 +262,10 @@ provide the simulation code without the initial conditions pre-pended,
 the <code>$simulationIniModel</code> will pre-pend the values. When the
 endpoints are specified, the simulation code for each endpoint is also
 output. You can see the differences below:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod1</span><span class="op">$</span><span class="va">simulationModel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_7b62ca0fec5ace18475cfc6ff8ffc53e</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpJWY2Sf/rxode2/rx_7b62ca0fec5ace18475cfc6ff8ffc53e__.rxd/rx_7b62ca0fec5ace18475cfc6ff8ffc53e_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_4b036220aea38c2b9f22e95fa5c78d95</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/Rtmp1pAHgC/rxode2/rx_4b036220aea38c2b9f22e95fa5c78d95__.rxd/rx_4b036220aea38c2b9f22e95fa5c78d95_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -279,11 +280,12 @@ output. You can see the differences below:</p>
 <span><span class="co">#&gt;     d/dt(peri) = Q * C2 - Q * C3</span></span>
 <span><span class="co">#&gt;     d/dt(eff) = Kin - Kout * (1 - C2/(EC50 + C2)) * eff</span></span>
 <span><span class="co">#&gt;     eff(0) = 1</span></span>
-<span><span class="co">#&gt; })</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod1</span><span class="op">$</span><span class="va">simulationIniModel</span><span class="op">)</span></span>
+<span><span class="co">#&gt; })</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod1</span><span class="op">$</span><span class="va">simulationIniModel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_7d3e5dac2f297d0ef61795361b9bd2f9</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpJWY2Sf/rxode2/rx_7d3e5dac2f297d0ef61795361b9bd2f9__.rxd/rx_7d3e5dac2f297d0ef61795361b9bd2f9_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_a9641a9f6db781a0a105e83e560ce1b0</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/Rtmp1pAHgC/rxode2/rx_a9641a9f6db781a0a105e83e560ce1b0__.rxd/rx_a9641a9f6db781a0a105e83e560ce1b0_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -306,11 +308,12 @@ output. You can see the differences below:</p>
 <span><span class="co">#&gt;     d/dt(peri) = Q * C2 - Q * C3</span></span>
 <span><span class="co">#&gt;     d/dt(eff) = Kin - Kout * (1 - C2/(EC50 + C2)) * eff</span></span>
 <span><span class="co">#&gt;     eff(0) = 1</span></span>
-<span><span class="co">#&gt; })</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod2f</span><span class="op">$</span><span class="va">simulationModel</span><span class="op">)</span></span>
+<span><span class="co">#&gt; })</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod2f</span><span class="op">$</span><span class="va">simulationModel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_6c9e2a0cdd996e0b5ebe4b7dba793825</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpJWY2Sf/rxode2/rx_6c9e2a0cdd996e0b5ebe4b7dba793825__.rxd/rx_6c9e2a0cdd996e0b5ebe4b7dba793825_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_5d1b73bd7523112ad6a4305f005f2ef8</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/Rtmp1pAHgC/rxode2/rx_5d1b73bd7523112ad6a4305f005f2ef8__.rxd/rx_5d1b73bd7523112ad6a4305f005f2ef8_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -363,11 +366,12 @@ output. You can see the differences below:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     cmt(C2)</span></span>
 <span><span class="co">#&gt;     dvid(5, 4)</span></span>
-<span><span class="co">#&gt; })</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod2f</span><span class="op">$</span><span class="va">simulationIniModel</span><span class="op">)</span></span>
+<span><span class="co">#&gt; })</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod2f</span><span class="op">$</span><span class="va">simulationIniModel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_6ec8205c91f5cdf63e7f064228993610</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpJWY2Sf/rxode2/rx_6ec8205c91f5cdf63e7f064228993610__.rxd/rx_6ec8205c91f5cdf63e7f064228993610_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>2.1.2.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_103243f1d562d21f69982415ceb8c41c</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/Rtmp1pAHgC/rxode2/rx_103243f1d562d21f69982415ceb8c41c__.rxd/rx_103243f1d562d21f69982415ceb8c41c_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -438,7 +442,7 @@ output. You can see the differences below:</p>
 <p>If you wish to speed up multiple simualtions from the
 <code>rxode2</code> functions, you need to pre-calculate care of the
 steps above:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="va">mod1</span><span class="op">$</span><span class="va">simulationModel</span></span>
 <span></span>
 <span><span class="va">mod2</span> <span class="op">&lt;-</span> <span class="va">mod2f</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre></div>
@@ -460,7 +464,7 @@ discussion on <code>rxode2</code> speed enhancements.</p>
 allowed an ODE solve for a single subject. This flexibility is still
 supported.</p>
 <p>The original code from the <code>rxode2</code> tutorial is below:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/joshuaulrich/microbenchmark/" class="external-link">microbenchmark</a></span><span class="op">)</span></span>
@@ -475,8 +479,9 @@ supported.</p>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span> <span class="op">=</span> <span class="va">Kin</span> <span class="op">-</span> <span class="va">Kout</span><span class="op">*</span><span class="op">(</span><span class="fl">1</span><span class="op">-</span><span class="va">C2</span><span class="op">/</span><span class="op">(</span><span class="va">EC50</span><span class="op">+</span><span class="va">C2</span><span class="op">)</span><span class="op">)</span><span class="op">*</span><span class="va">eff</span></span>
 <span>    <span class="fu">eff</span><span class="op">(</span><span class="fl">0</span><span class="op">)</span> <span class="op">=</span> <span class="fl">1</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co">## Create an event table</span></span>
 <span></span>
 <span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
@@ -496,7 +501,7 @@ supported.</p>
 </h3>
 <p>The slowest way to code this is to use a <code>for</code> loop. In
 this example we will enclose it in a function to compare timing.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runFor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>    <span class="va">res</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
 <span>    <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">nsub</span><span class="op">)</span> <span class="op">{</span></span>
@@ -514,7 +519,7 @@ this example we will enclose it in a function to compare timing.</p>
 <p>In general for R, the <code>apply</code> types of functions perform
 better than a <code>for</code> loop, so the tutorial also suggests this
 speed enhancement</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runSapply</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>    <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">params.all</span>, <span class="fl">1</span>, <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
 <span>        <span class="va">mod1</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span><span class="va">theta</span>, <span class="va">ev</span><span class="op">)</span><span class="op">[</span>, <span class="st">"eff"</span><span class="op">]</span><span class="op">)</span></span>
@@ -527,7 +532,7 @@ speed enhancement</p>
 collecting the results in R, using a single threaded solve.</p>
 <p>The data output is slightly different here, but still gives the same
 information:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runSingleThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -539,7 +544,7 @@ information:</p>
 <code>2</code> threads (called <code>cores</code> in the solve options,
 you can see the options in <code><a href="../reference/rxSolve.html">rxControl()</a></code> or
 <code><a href="../reference/rxSolve.html">rxSolve()</a></code>).</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">run2Thread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="fl">2</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -548,21 +553,21 @@ you can see the options in <code><a href="../reference/rxSolve.html">rxControl()
 <h3 id="compare-the-times-between-all-the-methods">Compare the times between all the methods<a class="anchor" aria-label="anchor" href="#compare-the-times-between-all-the-methods"></a>
 </h3>
 <p>Now the moment of truth, the timings:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">runFor</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSapply</span><span class="op">(</span><span class="op">)</span>, <span class="fu">runSingleThread</span><span class="op">(</span><span class="op">)</span>,<span class="fu">run2Thread</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;               expr       min        lq      mean    median        uq       max</span></span>
-<span><span class="co">#&gt;           runFor() 262.49852 269.44611 278.30839 271.69307 275.80914 441.87181</span></span>
-<span><span class="co">#&gt;        runSapply() 266.09474 268.14130 279.92573 272.40403 276.13480 405.83361</span></span>
-<span><span class="co">#&gt;  runSingleThread()  27.34520  27.53661  29.12253  27.73073  28.20122  48.23905</span></span>
-<span><span class="co">#&gt;       run2Thread()  16.04034  16.25652  17.13697  16.40414  16.73143  28.12977</span></span>
+<span><span class="co">#&gt;           runFor() 261.45992 266.02321 277.78247 268.14017 275.22954 385.51656</span></span>
+<span><span class="co">#&gt;        runSapply() 261.07292 266.58550 276.77251 268.76677 271.49014 393.99401</span></span>
+<span><span class="co">#&gt;  runSingleThread()  27.53760  27.67621  28.59138  27.79100  28.08012  47.69874</span></span>
+<span><span class="co">#&gt;       run2Thread()  16.22651  16.40262  17.95183  16.58698  16.86483  30.46658</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
 <p>It is clear that the <strong>largest</strong> jump in performance
@@ -572,7 +577,7 @@ either a <code>for</code> or a <code>sapply</code>. The number of
 cores/threads applied to the solve also plays a role in the solving.</p>
 <p>We can explore the number of threads further with the following
 code:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">runThread</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">{</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">mod1</span>, <span class="va">params.all</span>, <span class="va">ev</span>, cores<span class="op">=</span><span class="va">n</span><span class="op">)</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sim.id"</span>, <span class="st">"time"</span>, <span class="st">"eff"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="op">}</span></span>
@@ -583,11 +588,11 @@ code:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;          expr      min       lq     mean   median       uq      max neval</span></span>
-<span><span class="co">#&gt;  runThread(1) 27.49500 27.90022 28.99120 28.22635 29.26543 48.08091   100</span></span>
-<span><span class="co">#&gt;  runThread(2) 16.19232 16.63565 17.80915 17.17428 17.50289 31.87039   100</span></span>
-<span><span class="co">#&gt;  runThread(3) 17.59751 19.49426 20.09412 20.06262 20.52070 25.32712   100</span></span>
-<span><span class="co">#&gt;  runThread(4) 15.77604 16.31672 18.23625 16.71507 17.14390 36.30061   100</span></span></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<span><span class="co">#&gt;  runThread(1) 27.44572 27.60719 28.54382 27.85049 29.16115 33.52632   100</span></span>
+<span><span class="co">#&gt;  runThread(2) 16.23047 16.44323 18.36644 17.12811 17.28818 27.43816   100</span></span>
+<span><span class="co">#&gt;  runThread(3) 17.56047 19.10636 19.56464 19.38168 19.96518 24.94724   100</span></span>
+<span><span class="co">#&gt;  runThread(4) 15.59849 15.77106 18.41424 16.37176 16.55563 42.15661   100</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
 <p>There can be a suite spot in speed vs number or cores. The system
@@ -613,7 +618,7 @@ function before running it.</p>
 <p>Still, <code>rxode2</code> models can be compiled with this option
 without disturbing CRAN policies. The key is to set an option. Here is
 an example:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Using the first example subset to PK</span></span>
 <span><span class="va">mod2f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -650,8 +655,9 @@ an example:</p>
 <span><span class="va">mod2f</span> <span class="op">&lt;-</span> <span class="fu">mod2f</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mod2s</span> <span class="op">&lt;-</span> <span class="va">mod2f</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">ev</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>amountUnits<span class="op">=</span><span class="st">"mg"</span>, timeUnits<span class="op">=</span><span class="st">"hours"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>amt<span class="op">=</span><span class="fl">10000</span>, addl<span class="op">=</span><span class="fl">9</span>,ii<span class="op">=</span><span class="fl">12</span>,cmt<span class="op">=</span><span class="st">"depot"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://nlmixr2.github.io/rxode2et/reference/et.html">et</a></span><span class="op">(</span>time<span class="op">=</span><span class="fl">120</span>, amt<span class="op">=</span><span class="fl">2000</span>, addl<span class="op">=</span><span class="fl">4</span>, ii<span class="op">=</span><span class="fl">14</span>, cmt<span class="op">=</span><span class="st">"depot"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
@@ -666,18 +672,20 @@ an example:</p>
 <span><span class="fu">withr</span><span class="fu">::</span><span class="fu"><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">with_options</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>rxode2.compile.O<span class="op">=</span><span class="st">"fast"</span><span class="op">)</span>, <span class="op">{</span></span>
 <span>  <span class="va">mod2s</span> <span class="op">&lt;-</span> <span class="va">mod2f</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">bench2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span>fastCompile<span class="op">=</span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod2s</span>, <span class="va">ev</span>, nSub<span class="op">=</span><span class="fl">1000</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">bench1</span>, <span class="va">bench2</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;             expr      min      lq     mean   median       uq      max neval</span></span>
-<span><span class="co">#&gt;  standardCompile 174.1083 181.307 221.4728 186.7425 298.0532 353.3594   100</span></span>
-<span><span class="co">#&gt;      fastCompile 174.8646 178.849 216.0817 182.1517 236.4543 352.0065   100</span></span>
-<span></span>
+<span><span class="co">#&gt;             expr      min       lq     mean   median       uq      max neval</span></span>
+<span><span class="co">#&gt;  standardCompile 176.4904 183.7606 219.9522 193.4690 233.4537 354.1951   100</span></span>
+<span><span class="co">#&gt;      fastCompile 175.5074 180.9043 215.1667 184.1717 242.3921 346.4870   100</span></span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-13-1.png" width="700"></p>
 <p>Note compiler settings can be tricky and if you setup your system
@@ -699,7 +707,7 @@ speed.</p>
 to run <code>rxode2</code> was with <code>lapply</code>. This is how Rik
 Schoemaker created the data-set for <code>nlmixr</code> comparisons, but
 reduced to run faster automatic building of the pkgdown website.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-datatable.com" class="external-link">data.table</a></span><span class="op">)</span></span>
 <span><span class="co">#Define the rxode2 model</span></span>
@@ -711,8 +719,9 @@ reduced to run faster automatic building of the pkgdown website.</p>
 <span></span>
 <span><span class="co">#Create the rxode2 simulation object</span></span>
 <span><span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode1</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co">#Population parameter values on log-scale</span></span>
 <span>  <span class="va">paramsl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>CL <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>,</span>
 <span>               V <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">70</span><span class="op">)</span>,</span>
@@ -770,10 +779,10 @@ reduced to run faster automatic building of the pkgdown website.</p>
 <span><span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 11.99185 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 10.19504 secs</span></span></code></pre></div>
 <p>By applying some of the new parallel solving concepts you can simply
 run the same simulation both with less code and faster:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">CL</span> <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span></span>
 <span>    <span class="va">V</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">70</span><span class="op">)</span></span>
@@ -785,8 +794,9 @@ run the same simulation both with less code and faster:</p>
 <span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span>  <span class="op">=</span>  <span class="va">KA</span><span class="op">*</span><span class="va">abs</span><span class="op">-</span><span class="op">(</span><span class="va">CL</span><span class="op">/</span><span class="va">V</span><span class="op">)</span><span class="op">*</span><span class="va">centr</span>;</span>
 <span>    <span class="va">C2</span><span class="op">=</span><span class="va">centr</span><span class="op">/</span><span class="va">V</span>;</span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span>
-<span></span>
+<span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.CL</span> <span class="op">~</span> <span class="fl">0.09</span>,</span>
 <span>               <span class="va">eta.V</span> <span class="op">~</span> <span class="fl">0.09</span>,</span>
 <span>               <span class="va">eta.KA</span> <span class="op">~</span> <span class="fl">0.09</span><span class="op">)</span></span>
@@ -811,7 +821,7 @@ run the same simulation both with less code and faster:</p>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span></span>
 <span><span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 0.1276391 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 0.1125531 secs</span></span></code></pre></div>
 <p>You can see a striking time difference between the two methods; A few
 things to keep in mind:</p>
 <ul>
@@ -851,7 +861,7 @@ simulation vignette</a>.</p>
 <h3 id="session-information">Session Information<a class="anchor" aria-label="anchor" href="#session-information"></a>
 </h3>
 <p>The session information:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.4.0 (2024-04-24)</span></span>
 <span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu</span></span>
@@ -878,29 +888,29 @@ simulation vignette</a>.</p>
 <span><span class="co">#&gt; [4] microbenchmark_1.4.10 rxode2_2.1.2.9000    </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span><span class="co">#&gt;  [1] gtable_0.3.5            xfun_0.43               bslib_0.7.0            </span></span>
-<span><span class="co">#&gt;  [4] htmlwidgets_1.6.4       RApiSerialize_0.1.2     lattice_0.22-6         </span></span>
-<span><span class="co">#&gt;  [7] vctrs_0.6.5             tools_4.4.0             generics_0.1.3         </span></span>
-<span><span class="co">#&gt; [10] tibble_3.2.1            symengine_0.2.6         fansi_1.0.6            </span></span>
-<span><span class="co">#&gt; [13] highr_0.10              pkgconfig_2.0.3         checkmate_2.3.1        </span></span>
-<span><span class="co">#&gt; [16] desc_1.4.3              RcppParallel_5.1.7      lifecycle_1.0.4        </span></span>
-<span><span class="co">#&gt; [19] compiler_4.4.0          farver_2.1.1            textshaping_0.3.7      </span></span>
-<span><span class="co">#&gt; [22] munsell_0.5.1           qs_0.26.1               htmltools_0.5.8.1      </span></span>
-<span><span class="co">#&gt; [25] sys_3.4.2               sass_0.4.9              yaml_2.3.8             </span></span>
-<span><span class="co">#&gt; [28] lazyeval_0.2.2          pillar_1.9.0            pkgdown_2.0.9          </span></span>
-<span><span class="co">#&gt; [31] crayon_1.5.2            jquerylib_0.1.4         cachem_1.0.8           </span></span>
-<span><span class="co">#&gt; [34] nlme_3.1-164            tidyselect_1.2.1        digest_0.6.35          </span></span>
-<span><span class="co">#&gt; [37] lotri_0.4.4             dplyr_1.1.4             purrr_1.0.2            </span></span>
-<span><span class="co">#&gt; [40] labeling_0.4.3          rxode2ll_2.0.11.9000    fastmap_1.1.1          </span></span>
-<span><span class="co">#&gt; [43] grid_4.4.0              colorspace_2.1-0        rxode2parse_2.0.18.9000</span></span>
-<span><span class="co">#&gt; [46] cli_3.6.2               dparser_1.3.1-11        magrittr_2.0.3         </span></span>
-<span><span class="co">#&gt; [49] utf8_1.2.4              withr_3.0.0             scales_1.3.0           </span></span>
-<span><span class="co">#&gt; [52] backports_1.4.1         rmarkdown_2.26          ragg_1.3.1             </span></span>
-<span><span class="co">#&gt; [55] stringfish_0.16.0       memoise_2.0.1           evaluate_0.23          </span></span>
-<span><span class="co">#&gt; [58] knitr_1.46              rex_1.2.1               rxode2et_2.0.12.9000   </span></span>
-<span><span class="co">#&gt; [61] rxode2random_2.1.0      PreciseSums_0.6         rlang_1.1.3            </span></span>
-<span><span class="co">#&gt; [64] Rcpp_1.0.12             glue_1.7.0              jsonlite_1.8.8         </span></span>
-<span><span class="co">#&gt; [67] R6_2.5.1                systemfonts_1.0.6       fs_1.6.4               </span></span>
+<span><span class="co">#&gt;  [1] gtable_0.3.5         xfun_0.44            bslib_0.7.0         </span></span>
+<span><span class="co">#&gt;  [4] htmlwidgets_1.6.4    RApiSerialize_0.1.3  lattice_0.22-6      </span></span>
+<span><span class="co">#&gt;  [7] vctrs_0.6.5          tools_4.4.0          generics_0.1.3      </span></span>
+<span><span class="co">#&gt; [10] tibble_3.2.1         symengine_0.2.6      fansi_1.0.6         </span></span>
+<span><span class="co">#&gt; [13] highr_0.10           pkgconfig_2.0.3      checkmate_2.3.1     </span></span>
+<span><span class="co">#&gt; [16] desc_1.4.3           RcppParallel_5.1.7   lifecycle_1.0.4     </span></span>
+<span><span class="co">#&gt; [19] compiler_4.4.0       farver_2.1.2         textshaping_0.3.7   </span></span>
+<span><span class="co">#&gt; [22] munsell_0.5.1        qs_0.26.3            htmltools_0.5.8.1   </span></span>
+<span><span class="co">#&gt; [25] sys_3.4.2            sass_0.4.9           yaml_2.3.8          </span></span>
+<span><span class="co">#&gt; [28] lazyeval_0.2.2       pillar_1.9.0         pkgdown_2.0.9       </span></span>
+<span><span class="co">#&gt; [31] crayon_1.5.2         jquerylib_0.1.4      cachem_1.1.0        </span></span>
+<span><span class="co">#&gt; [34] nlme_3.1-164         tidyselect_1.2.1     digest_0.6.35       </span></span>
+<span><span class="co">#&gt; [37] lotri_0.4.4          dplyr_1.1.4          purrr_1.0.2         </span></span>
+<span><span class="co">#&gt; [40] labeling_0.4.3       rxode2ll_2.0.11.9000 fastmap_1.2.0       </span></span>
+<span><span class="co">#&gt; [43] grid_4.4.0           colorspace_2.1-0     rxode2parse_2.0.19  </span></span>
+<span><span class="co">#&gt; [46] cli_3.6.2            dparser_1.3.1-11     magrittr_2.0.3      </span></span>
+<span><span class="co">#&gt; [49] utf8_1.2.4           withr_3.0.0          scales_1.3.0        </span></span>
+<span><span class="co">#&gt; [52] backports_1.4.1      rmarkdown_2.27       ragg_1.3.2          </span></span>
+<span><span class="co">#&gt; [55] stringfish_0.16.0    memoise_2.0.1        evaluate_0.23       </span></span>
+<span><span class="co">#&gt; [58] knitr_1.46           rex_1.2.1            rxode2et_2.0.13     </span></span>
+<span><span class="co">#&gt; [61] rxode2random_2.1.0   PreciseSums_0.6      rlang_1.1.3         </span></span>
+<span><span class="co">#&gt; [64] Rcpp_1.0.12          glue_1.7.0           jsonlite_1.8.8      </span></span>
+<span><span class="co">#&gt; [67] R6_2.5.1             systemfonts_1.1.0    fs_1.6.4            </span></span>
 <span><span class="co">#&gt; [70] units_0.8-5</span></span></code></pre></div>
 </div>
 </div>

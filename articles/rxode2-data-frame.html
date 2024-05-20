@@ -158,7 +158,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>rxode2 Data Frames</h1>
             
-            <h4 data-toc-skip class="date">2024-05-14</h4>
+            <h4 data-toc-skip class="date">2024-05-20</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/rxode2-data-frame.Rmd" class="external-link"><code>vignettes/rxode2-data-frame.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-data-frame.Rmd</code></div>
@@ -322,8 +322,9 @@ changing <code>t</code> or <code>time</code>. For example:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.789  38.9 0.615   <span style="text-decoration: underline;">7</span>929. <span style="text-decoration: underline;">1</span>562. 183.   1.06</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.05   45.5 1.00    <span style="text-decoration: underline;">7</span>338. <span style="text-decoration: underline;">1</span>830. 298.   1.09</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1.32   50.1 1.44    <span style="text-decoration: underline;">6</span>792. <span style="text-decoration: underline;">2</span>013. 427.   1.12</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># i 14 more rows</span></span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># i 14 more rows</span></span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-data-frame_files/figure-html/unnamed-chunk-8-1.png" width="100%"></p>
 </div>
 <div class="section level3">
@@ -331,11 +332,11 @@ changing <code>t</code> or <code>time</code>. For example:</p>
 </h3>
 <p>You can also access or change parameters by the <code>$</code>
 operator. For example, accessing <code>KA</code> can be done by:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">$</span><span class="va">KA</span></span>
 <span><span class="co">#&gt; [1] 0.294</span></span></code></pre></div>
 <p>And you may change it by assigning it to a new value.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">$</span><span class="va">KA</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
@@ -355,8 +356,9 @@ operator. For example, accessing <code>KA</code> can be done by:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 0.789  99.8 1.75   <span style="text-decoration: underline;">4</span>541. <span style="text-decoration: underline;">4</span>010.  519.   1.15</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 1.05  106.  2.69   <span style="text-decoration: underline;">3</span>490. <span style="text-decoration: underline;">4</span>273.  800.   1.21</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 1.32  106.  3.66   <span style="text-decoration: underline;">2</span>683. <span style="text-decoration: underline;">4</span>272. <span style="text-decoration: underline;">1</span>086.   1.26</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># i 14 more rows</span></span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># i 14 more rows</span></span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-data-frame_files/figure-html/unnamed-chunk-10-1.png" width="100%"></p>
 <p>You can access/change all the parameters, initialization(s) or events
 with the <code>$params</code>, <code>$inits</code>, <code>$events</code>
