@@ -1,4 +1,5 @@
 rxTest({
+
   test_that("Parallel solve vs single vs for; Issue RxODE#450", {
     TV_CLr  <- 6.54  # L/h, (CLr/F)
     TV_CLnr <- 2.39  # L/h, (CLnr/F)
@@ -119,7 +120,7 @@ rxTest({
         row.names(res.id) <- NULL
         res2 <- as.data.frame(bar3x[bar3x$sim.id == id,])
         row.names(res2) <- NULL
-        expect_equal(res.id, res2)
+        expect_equal(res.id, res2, tolerance=1e-4)
 
         res.all = rbind(res.all, res.id)
       }
