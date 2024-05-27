@@ -1,3 +1,4 @@
+#define R_NO_REMAP
 #define USE_FC_LEN_T
 //#undef NDEBUG
 #define STRICT_R_HEADERS

@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define ARMA_WARN_LEVEL 1
 #define STRICT_R_HEADER
 #include <RcppArmadillo.h>
@@ -44,7 +47,7 @@ unsigned int rxNearPdChol(Rcpp::NumericMatrix &ret, Rcpp::NumericMatrix x, bool 
     ret.attr("dimnames") =  x.attr("dimnames");
     return rxNearPdChol_sympd_bad_chol;
   }
-  mat tmpMS = 0.5*(tmpM+tmpM.t());  
+  mat tmpMS = 0.5*(tmpM+tmpM.t());
   if (rxNearPD(reta, tmpMS)) {
     if (chol(tmpM, reta)) {
       ret = wrap(tmpM);

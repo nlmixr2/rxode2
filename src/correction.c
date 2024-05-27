@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #include <math.h>
 #include "lsoda.h"
@@ -72,7 +75,7 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 		   In the case of the chord method, compute the corrector error,
 		   and solve the linear system with that as right-hand side and
 		   P as coefficient matrix.
-		 */ 
+		 */
 		else {
 			for (i = 1; i <= neq; i++)
 				y[i] = _rxC(h) * _rxC(savf)[i] - (_rxC(yh)[2][i] + _rxC(acor)[i]);
@@ -149,4 +152,3 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 	}			/* end while   */
 	return 0;
 }				/* end correction   */
-

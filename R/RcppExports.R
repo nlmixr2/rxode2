@@ -25,7 +25,7 @@
 #'     For added rxode2 event records (if seen), last observation carried forward will be used.
 #'
 #' @inheritParams rxode2parse::etTransParse
-#' 
+#'
 #' @return Object for solving in rxode2
 #'
 #' @keywords internal
@@ -114,11 +114,11 @@ rxExpandNesting <- function(obj, nestingInfo, compile = FALSE) {
 #'    When doIndLin == 0, cache > 0 = nInf-1
 #' @param ME the rxode2 matrix exponential function
 #' @param IndF The rxode2 Inductive Linearization function F
-#' 
+#'
 #' @return Returns a status for solving
-#' 
+#'
 #'   1 = Successful solve
-#' 
+#'
 #'   -1 = Maximum number of iterations reached when doing
 #'        inductive linearization
 #' @name rxIndLin_

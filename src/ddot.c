@@ -1,10 +1,13 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 /**********
  * ddot.c *
  **********/
 
 double ddot0(int n, double *dx, int incx, double *dy, int incy) {
-  
+
 /*
    Purpose : Inner product dx . dy
 

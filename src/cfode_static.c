@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define STRICT_R_HEADERS
 #include "lsoda.h"
 #include "common.h"
