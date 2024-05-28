@@ -1330,6 +1330,7 @@ struct rx_globals {
   int *gsvar;
   int *govar;
   int *gsiV;
+  int *gsi;
   //
   int *slvr_counter;
   int *dadt_counter;
@@ -3448,8 +3449,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     CharacterVector dfNames = dataf.names();
     int dfN = dfNames.size();
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
+    IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
     if (_globals.gevid != NULL) free(_globals.gevid);
-    _globals.gevid = (int*)calloc(3*evid.size()+dfN, sizeof(int));
+    _globals.gevid = (int*)calloc(3*evid.size()+dfN+si.size(), sizeof(int));
     if (_globals.gevid == NULL){
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
@@ -3458,6 +3460,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     _globals.gidose = _globals.gevid + evid.size();
     _globals.gcens = _globals.gidose + evid.size();
     _globals.gpar_cov = _globals.gidose + evid.size();//[dfN];
+    _globals.gsi = _globals.gpar_cov + dfN;//[si.size()];
+    std::copy(si.begin(),si.end(), &_globals.gsi[0]);
 
     int ntot = 1;
 
@@ -4106,8 +4110,7 @@ List rxSolve_df(const RObject &obj,
       doDose = 0;
     }
   }
-  IntegerVector si = rxSolveDat->mv[RxMv_state_ignore];
-  rx->stateIgnore = &si[0];
+  rx->stateIgnore = _globals.gsi;
   int doTBS = (rx->matrix == 3);
   if (doTBS) rx->matrix=2;
   if (rx->matrix == 4 || rx->matrix == 5) rx->matrix=2;
