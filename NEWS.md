@@ -19,6 +19,8 @@
 
 - Pendantic no-remap (as requested by CRAN)
 
+- gcc USBAN fix (as requested by CRAN)
+
 # rxode2 2.1.2
 
 ## Other changes
