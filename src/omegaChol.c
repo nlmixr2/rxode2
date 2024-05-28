@@ -2,6 +2,7 @@
 #ifndef R_NO_REMAP
 #define R_NO_REMAP
 #endif
+#define warning Rf_warning
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <R.h>
@@ -16,6 +17,7 @@ if (dm == 0){
   UNPROTECT(1);
   return(ret);
 }else if (dm == 1) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -61,6 +63,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 2) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -126,6 +129,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 3) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -226,6 +230,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 4) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -380,6 +385,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 5) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -611,6 +617,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 6) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -946,6 +953,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 7) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -1416,6 +1424,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 8) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -2056,6 +2065,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 9) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -2905,6 +2915,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 10) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -4006,6 +4017,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 11) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];
@@ -5406,6 +5418,7 @@ if (theta_n == -2){
   }
 }
 else if (dm == 12) {
+#define warning Rf_warning
 #define Rx_pow_di R_pow_di
 #define Rx_pow R_pow
   int theta_n = INTEGER(tn)[0];

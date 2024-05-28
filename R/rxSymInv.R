@@ -220,7 +220,7 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
       force(x)
       return(rxFromSE(x))
     }), d)
-    ret <- paste0("#define Rx_pow_di R_pow_di\n#define Rx_pow R_pow\n", src)
+    ret <- paste0("#define warning Rf_warning\n#define Rx_pow_di R_pow_di\n#define Rx_pow R_pow\n", src)
     ret <- list(ret, fmat)
     if (allow.cache) {
       save(ret, file = cache.file)
