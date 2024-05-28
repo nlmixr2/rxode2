@@ -33,10 +33,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -3 || theta_n > 1){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 1){
-    error("requires vector with 1 arguments");
+    Rf_error("requires vector with 1 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 1, 1));for (int i = 0; i < 1; i++){REAL(ret)[i]=0;}
@@ -80,10 +80,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -5 || theta_n > 3){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 3){
-    error("requires vector with 3 arguments");
+    Rf_error("requires vector with 3 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 2, 2));for (int i = 0; i < 4; i++){REAL(ret)[i]=0;}
@@ -148,10 +148,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -8 || theta_n > 6){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 6){
-    error("requires vector with 6 arguments");
+    Rf_error("requires vector with 6 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 3, 3));for (int i = 0; i < 9; i++){REAL(ret)[i]=0;}
@@ -252,10 +252,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -12 || theta_n > 10){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 10){
-    error("requires vector with 10 arguments");
+    Rf_error("requires vector with 10 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 4, 4));for (int i = 0; i < 16; i++){REAL(ret)[i]=0;}
@@ -411,10 +411,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -17 || theta_n > 15){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 15){
-    error("requires vector with 15 arguments");
+    Rf_error("requires vector with 15 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 5, 5));for (int i = 0; i < 25; i++){REAL(ret)[i]=0;}
@@ -648,10 +648,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -23 || theta_n > 21){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 21){
-    error("requires vector with 21 arguments");
+    Rf_error("requires vector with 21 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 6, 6));for (int i = 0; i < 36; i++){REAL(ret)[i]=0;}
@@ -990,10 +990,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -30 || theta_n > 28){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 28){
-    error("requires vector with 28 arguments");
+    Rf_error("requires vector with 28 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 7, 7));for (int i = 0; i < 49; i++){REAL(ret)[i]=0;}
@@ -1468,10 +1468,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -38 || theta_n > 36){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 36){
-    error("requires vector with 36 arguments");
+    Rf_error("requires vector with 36 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 8, 8));for (int i = 0; i < 64; i++){REAL(ret)[i]=0;}
@@ -2117,10 +2117,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -47 || theta_n > 45){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 45){
-    error("requires vector with 45 arguments");
+    Rf_error("requires vector with 45 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 9, 9));for (int i = 0; i < 81; i++){REAL(ret)[i]=0;}
@@ -2976,10 +2976,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -57 || theta_n > 55){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 55){
-    error("requires vector with 55 arguments");
+    Rf_error("requires vector with 55 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 10, 10));for (int i = 0; i < 100; i++){REAL(ret)[i]=0;}
@@ -4088,10 +4088,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -68 || theta_n > 66){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 66){
-    error("requires vector with 66 arguments");
+    Rf_error("requires vector with 66 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 11, 11));for (int i = 0; i < 121; i++){REAL(ret)[i]=0;}
@@ -5500,10 +5500,10 @@ if (theta_n == -2){
     return ret;
   }
   else if (theta_n < -80 || theta_n > 78){
-    error("d(Omega^-1) derivative outside bounds");
+    Rf_error("d(Omega^-1) derivative outside bounds");
   }
   else if (Rf_length(theta) != 78){
-    error("requires vector with 78 arguments");
+    Rf_error("requires vector with 78 arguments");
   }
   if (theta_n >= -1){
     SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, 12, 12));for (int i = 0; i < 144; i++){REAL(ret)[i]=0;}
