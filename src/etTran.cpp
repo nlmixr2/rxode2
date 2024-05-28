@@ -1,4 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 //#undef NDEBUG
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
@@ -61,7 +64,7 @@ extern "C" SEXP assignRxode2ParsePtrs(void);
 //'     For added rxode2 event records (if seen), last observation carried forward will be used.
 //'
 //' @inheritParams rxode2parse::etTransParse
-//' 
+//'
 //' @return Object for solving in rxode2
 //'
 //' @keywords internal

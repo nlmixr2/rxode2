@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <R.h>
@@ -78,4 +81,3 @@ int prja(struct lsoda_context_t * ctx, double *y)
 	}
 	return 1;
 }				/* end prja   */
-

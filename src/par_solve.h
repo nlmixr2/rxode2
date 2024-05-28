@@ -1,4 +1,7 @@
 // -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #ifndef __PAR_SOLVE_H___
 #define __PAR_SOLVE_H___
 

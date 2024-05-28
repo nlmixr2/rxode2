@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
@@ -52,7 +55,7 @@ extern "C" void setRstudioPrint(int rstudio);
 extern "C" void RSprintf(const char *format, ...);
 
 extern "C" SEXP _rxHasOpenMp(){
-  SEXP ret = PROTECT(allocVector(LGLSXP,1));
+  SEXP ret = PROTECT(Rf_allocVector(LGLSXP,1));
 #ifdef _OPENMP
   INTEGER(ret)[0] = 1;
 #else
@@ -319,7 +322,7 @@ rx_tick rxt;
 
 extern "C" SEXP _rxTick(){
   rxt.cur++;
-  SEXP ret = PROTECT(allocVector(INTSXP, 1));
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
   rxt.d =par_progress(rxt.cur, rxt.n, rxt.d, rxt.cores, rxt.t0, 0);
   INTEGER(ret)[0]=rxt.d;
   UNPROTECT(1);

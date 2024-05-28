@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #ifdef _OPENMP
 #include <pthread.h>
 #include <omp.h>
@@ -30,5 +33,5 @@ static inline int omp_get_thread_num(void) {
 static inline int rx_get_thread(int mx) {
   return 0;
 }
- 
+
 #endif

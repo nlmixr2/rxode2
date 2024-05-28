@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 2.1.3
 
 ## Bug fixes
 
@@ -7,7 +7,6 @@
 - Fix #670 by using the last simulated observation residual when there
   are trailing doses.
 
-
 ## New features
 
 - Create a function to see if a rxode2 solve is loaded in memory
@@ -15,6 +14,10 @@
 
 - Create a new function that fixes the rxode2 population values in the
   model (and drops them in the initial estimates); `rxFixPop()`
+
+## Other changes
+
+- Pendantic no-remap (as requested by CRAN)
 
 # rxode2 2.1.2
 

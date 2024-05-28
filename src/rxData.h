@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #ifndef __RXDATA_H__
 #define __RXDATA_H__
 

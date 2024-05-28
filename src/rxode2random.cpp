@@ -1,3 +1,6 @@
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <Rcpp.h>
@@ -440,7 +443,7 @@ extern "C" SEXP _rxode2_rxt__(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
       rxode2random = loadNamespace("rxode2random");
     }
   Function fun = as<Function>(rxode2random["rxt__"]);
-  return fun(dfSEXP, nSEXP, ncoresSEXP);  
+  return fun(dfSEXP, nSEXP, ncoresSEXP);
   END_RCPP
 }
 
@@ -496,7 +499,7 @@ extern "C" SEXP _rxode2_rpp_(SEXP nSSEXP, SEXP lambdaSSEXP, SEXP gammaSSEXP, SEX
     rxode2random = loadNamespace("rxode2random");
   }
   Function fun = as<Function>(rxode2random["rpp_"]);
-  return fun(nSSEXP, lambdaSSEXP, gammaSSEXP, probSSEXP, t0SSEXP, tmaxSSEXP, randomOrderSSEXP);  
+  return fun(nSSEXP, lambdaSSEXP, gammaSSEXP, probSSEXP, t0SSEXP, tmaxSSEXP, randomOrderSSEXP);
   END_RCPP
 }
 
@@ -567,4 +570,3 @@ extern "C" SEXP _rxode2_assignSeedInfo(void) {
   return R_NilValue;
   END_RCPP
 }
-
