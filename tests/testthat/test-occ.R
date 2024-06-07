@@ -289,4 +289,69 @@ rxTest({
 
       .en <- rxExpandNesting(mod, .ni)
   })
+
+  test_that("nesting test from https://github.com/nlmixr2/rxode2random/issues/25", {
+
+    mod <- rxode2({
+      TABS = TV_TABS * exp(eta.TABS + iov.TABS)
+      TR_Fbio = TV_TR_Fbio + eta.TR_Fbio + iov.TR_Fbio
+      CL = TV_CL * exp(eta.CL)
+      V1 = TV_V1 * exp(eta.V1)
+      V2 = TV_V2 * exp(eta.V2)
+      CLD = TV_CLD * exp(eta.CLD)
+      KA = log(2) / (TABS/60)
+      FBIO = 1 / (exp(-TR_Fbio) + 1)
+      DC1 = AMT1/V1
+      DC2 = AMT2/V2
+      d/dt(AMTa) =       -KA * AMTa
+      d/dt(AMT1) = FBIO * KA * AMTa - CLD * DC1 + CLD * DC2 - CL * DC1
+      d/dt(AMT2) =                  + CLD * DC1 - CLD * DC2
+      d/dt(AUC) = DC1
+    })
+
+    n <- 10
+
+    theta <- c("TV_TABS" = 45,
+              "TV_TR_Fbio" = logit(x = 0.85),
+              "TV_CL" = 10,
+              "TV_V1" = 10,
+              "TV_V2" = 65,
+              "TV_CLD" = 25)
+
+
+    omega <- lotri::lotri(
+      lotri::lotri(eta.TABS~0.25,
+                   eta.TR_Fbio~0.20,
+                   eta.CL~0.30,
+                   eta.V1~0.30,
+                   eta.V2~0.45,
+                   eta.CLD~0.15) | id(nu=n),
+      lotri::lotri(iov.TABS~0.15,
+                   iov.TR_Fbio~0.15) | occ(nu=n*2))
+
+    dosing <- et(amt=1000,
+                addl=6,
+                ii=24,
+                evid=1,
+                cmt="AMTa",
+                time=0) %>%
+      et(amt=1000,
+         addl=6,
+         ii=24,
+         evid=4,
+         cmt="AMTa",
+         time = 336) %>%
+      et(seq(0,168,0.5)) %>%
+      et(seq(336,672,0.5)) %>%
+      et(id=seq(1,n))
+
+    dosing <- mutate(dosing, occ = 1) %>%
+      mutate(occ = ifelse(time>=336,2,occ))
+
+    expect_error(rxSolve(object = mod,
+                             theta,
+                             omega=omega,
+                             ev=dosing,
+                             nDisplayProgress=100L), NA)
+  })
 })
