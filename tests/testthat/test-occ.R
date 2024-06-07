@@ -345,8 +345,8 @@ rxTest({
       et(seq(336,672,0.5)) %>%
       et(id=seq(1,n))
 
-    dosing <- mutate(dosing, occ = 1) %>%
-      mutate(occ = ifelse(time>=336,2,occ))
+    dosing <- dplyr::mutate(dosing, occ = 1) %>%
+      dplyr::mutate(occ = ifelse(time>=336,2,occ))
 
     expect_error(rxSolve(object = mod,
                              theta,
