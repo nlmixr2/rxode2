@@ -3,6 +3,8 @@
 ## New feaures
 
 - Empty arguments to `rxRename()` give a warning (#688)
+- Promoting from covariates to parameters with model piping (via `ini()`) now
+  allows setting bounds (#692)
 
 # rxode2 2.1.3
 
