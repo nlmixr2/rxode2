@@ -826,3 +826,23 @@ if (!.Call(`_rxode2_isIntel`)) {
 
   })
 }
+
+test_that("empty arguments to rxRename() give a warning (#688)", {
+  mod1 <- function() {
+    ini({
+      Kin=1
+    })
+    model({
+      eff <- Kin
+    })
+  }
+
+  expect_warning(
+    rxRename(mod1, ),
+    "empty argument ignored"
+  )
+  expect_warning(
+    rxRename(mod1, foo = eff, ),
+    "empty argument ignored"
+  )
+})
