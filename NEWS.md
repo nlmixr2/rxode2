@@ -1,5 +1,9 @@
 # rxode2 (development version)
 
+## New feaures
+
+- Empty arguments to `rxRename()` give a warning (#688)
+
 # rxode2 2.1.3
 
 ## Bug fixes
