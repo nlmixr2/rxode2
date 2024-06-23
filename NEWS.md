@@ -1,5 +1,9 @@
 # rxode2 (development version)
 
+## Bug fixes
+
+- Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
+
 # rxode2 2.1.3
 
 ## Bug fixes
