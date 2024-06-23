@@ -90,7 +90,7 @@ rxUiGet.params <- function(x, ...) {
     .lin <- TRUE
     if (.mv$extraCmt == 2L) {
       .doseExtra <- c("depot", "central")
-    } else if (.mv$extramt == 1L) {
+    } else if (.mv$extraCmt == 1L) {
       .doseExtra <- "central"
     }
   }
