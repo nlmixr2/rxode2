@@ -183,4 +183,24 @@ if (!.Call(`_rxode2_isIntel`)) {
                                     state = character(0))))
 
   })
+
+  test_that("linCmt single compartment parses correctly", {
+
+    mod <- function() {
+      ini({
+        cl <- 0.1
+        vc <- 4
+        err.sd <- 0.1
+      })
+      model({
+        Cc <- linCmt(cl, vc)
+        Cc ~ add(err.sd)
+      })
+    }
+
+    mod <- mod()
+
+    expect_error(mod$params, NA)
+
+  })
 }
