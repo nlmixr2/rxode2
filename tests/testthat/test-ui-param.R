@@ -202,5 +202,16 @@ if (!.Call(`_rxode2_isIntel`)) {
 
     expect_error(mod$params, NA)
 
+    expect_equal(mod$params,
+                 list(pop = c("cl", "vc"),
+                      resid = "err.sd",
+                      group = structure(list(), names = character(0)),
+                      linCmt = TRUE,
+                      cmt = "central",
+                      output = list(primary = character(0),
+                                    secondary = character(0),
+                                    endpoint = "Cc",
+                                    state = character(0))))
+
   })
 }
