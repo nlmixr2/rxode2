@@ -1,5 +1,11 @@
 rxTest({
 
+  test_that("error with wd specified but modName not specified", {
+
+expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q/vc*cent+q/vp*pericp-((vmax*cp)/vc)/(km+cp);d/dt(pericp)<-cent*q/vc-q/vp*pericp;f(gutcp)=bio;alag(gutcp)<-lag;gutcp(0)<-0;cent(0)<-0;pericp(0)<-0;", wd=getwd()))
+
+  })
+
   ## Dynmodel routines
   ode <- "
    dose=200;

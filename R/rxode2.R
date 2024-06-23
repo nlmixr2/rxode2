@@ -277,6 +277,10 @@ rxode2 <- # nolint
            verbose = FALSE,
            fullPrint=getOption("rxode2.fullPrint", FALSE),
            envir=parent.frame()) {
+    if (!missing(wd) && missing(modName)) {
+      stop("working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`",
+              call.=FALSE)
+    }
     rxode2parse::.udfEnvSet(envir)
     assignInMyNamespace(".rxFullPrint", fullPrint)
     rxSuppressMsg()

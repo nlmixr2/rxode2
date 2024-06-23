@@ -1,5 +1,9 @@
 # rxode2 (development version)
 
+## Breaking Changes
+
+- Error when specifying `wd` without `modName`
+
 # rxode2 2.1.3
 
 ## Bug fixes
