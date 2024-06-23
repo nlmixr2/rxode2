@@ -846,3 +846,32 @@ test_that("empty arguments to rxRename() give a warning (#688)", {
     "empty argument ignored"
   )
 })
+
+test_that("parameters can be promoted from covariate to parameter with bounds (#692)", {
+  mod1 <- function() {
+    model({
+      eff <- Kin
+    })
+  }
+
+  expect_message(
+    mod1 %>% ini(Kin = 2),
+    "promote `Kin` to population parameter with initial estimate 2"
+  )
+  expect_message(
+    expect_message(
+      mod1 %>% ini(Kin = c(1, 2)),
+      "promote `Kin` to population parameter with initial estimate 2"
+    ),
+    regexp = "change initial estimate (2) and lower bound (1) of `Kin`",
+    fixed = TRUE
+  )
+  expect_message(
+    expect_message(
+      mod1 %>% ini(Kin = c(1, 2, 3)),
+      "promote `Kin` to population parameter with initial estimate 2"
+    ),
+    regexp = "change initial estimate (2) and upper/lower bound (1 to 3) of `Kin`",
+    fixed = TRUE
+  )
+})
