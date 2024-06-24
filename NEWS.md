@@ -5,6 +5,10 @@
 - Empty arguments to `rxRename()` give a warning (#688)
 - Promoting from covariates to parameters with model piping (via `ini()`) now
   allows setting bounds (#692)
+  
+## Bug fixes
+
+- Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
 
 # rxode2 2.1.3
 
