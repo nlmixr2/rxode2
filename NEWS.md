@@ -1,5 +1,10 @@
 # rxode2 (development version)
 
+
+## Breaking Changes
+
+- Error when specifying `wd` without `modName`
+
 ## New feaures
 
 - Empty arguments to `rxRename()` give a warning (#688)
