@@ -284,7 +284,11 @@
       }
     }
     .quoted <- eval(call("quote", callInfo[[i]]))
-    if (length(.quoted) == 1) {
+    if (missing(.quoted)) {
+      # Capture empty arguments (rxode2#688)
+      warning("empty argument ignored")
+      return(NULL)
+    } else if (length(.quoted) == 1) {
       .bracket[i] <- TRUE
       assign(".bracket", .bracket, envir=.env)
     } else if (identical(.quoted[[1]], quote(`{`)) ||

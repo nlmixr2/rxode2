@@ -935,6 +935,11 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
     } else if (toEta) {
       checkmate::assertNumeric(value, len=1, any.missing=TRUE)
     } else {
+      if (length(value) %in% c(2, 3)) {
+        # This is for promotion to parameter, only.  Additional bound setting
+        # happens elsewhere.
+        value <- value[2]
+      }
       checkmate::assertNumeric(value, len=1, any.missing=FALSE)
     }
   } else {
