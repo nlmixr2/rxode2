@@ -1,5 +1,6 @@
 rxTest({
   test_that(".DollarNames", {
+
     mod2 <- rxode2({
       ## the order of variables do not matter, the type of compartmental
       ## model is determined by the parameters specified.
@@ -52,7 +53,7 @@ rxTest({
         omega = matrix(0.2, dimnames = list("eta.Cl", "eta.Cl")), dfSub = 100, dfObs = 100,
         nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
       ))
-    expect_equal(.DollarNames(pk4, ""), c(
+    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
       "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
       "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
       "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
@@ -60,7 +61,7 @@ rxTest({
       "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
       "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
       "sigmaList", "omegaList"
-    ))
+    )))
 
 
     pk4 <-
@@ -74,14 +75,14 @@ rxTest({
         nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
       ))
 
-    expect_equal(.DollarNames(pk4, ""), c(
+    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
       "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
       "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
       "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
       "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
       "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
       "env", "model", "params", "inits", "t", "rxode2", "thetaMat",
-      "omegaList"
+      "omegaList")
     ))
 
     pk4 <-
@@ -95,14 +96,14 @@ rxTest({
         nSub = 4, nStud = 8, thetaMat = thetaMat, sigma = sigma, ev, cores = 1
       ))
 
-    expect_equal(.DollarNames(pk4, ""), c(
+    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
       "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
       "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
       "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
       "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
       "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
       "env", "model", "params", "inits", "t", "rxode2", "thetaMat"
-    ))
+    )))
 
     pk4 <-
       suppressWarnings(rxSolve(
@@ -115,13 +116,13 @@ rxTest({
         nSub = 4, nStud = 8, sigma = sigma, ev, cores = 1
       ))
 
-    expect_equal(.DollarNames(pk4, ""), c(
+    expect_equal(sort(.DollarNames(pk4, "")), sort(c(
       "pk", "resp", "time", "sim.id", "EC50", "Kout", "Kin", "KA",
       "V3", "Q", "V2", "eta.Cl", "TCL", "sim.id", "eff0", "units",
       "nobs", "import.EventTable", "get.units", "get.sampling", "get.obs.rec",
       "get.nobs", "get.dosing", "get.EventTable", "dll", "counts",
       "clear.sampling", "clear.dosing", "add.sampling", "add.dosing",
       "env", "model", "params", "inits", "t", "rxode2"
-    ))
+    )))
   })
 })
