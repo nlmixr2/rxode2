@@ -270,7 +270,8 @@ RObject rxSymInvCholEnvCalculate(List obj, std::string what, Nullable<NumericVec
         CharacterVector sym = ls2(_["envir"]=e,
                                   _["all.names"]=true,
                                   _["sorted"]=false);
-	// Clear the cache
+
+        // Clear the cache
         for (int i = 0; i < sym.size(); i++){
           if (sym[i] != "invobj" && sym[i] != "ntheta") {
             e.remove(as<std::string>(sym[i]));
