@@ -1208,6 +1208,12 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
     return(.rxToSETransit(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`abs`)) ||
+               identical(x[[1]], quote(`fabs`)) ||
+               identical(x[[1]], quote(`abs0`))) {
+    if (length(x) != 2) stop("abs only takes 1 argument", call.=FALSE)
+    .r <- .rxToSE(x[[2]], envir = envir)
+    return(paste0("(2.0*(", .r, ")*rxGt(", .r, ",0.0)-(", .r, "))"))
   } else {
     if (length(x[[1]]) == 1) {
       .x1 <- as.character(x[[1]])
