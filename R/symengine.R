@@ -1155,14 +1155,14 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .av <- suppressWarnings(as.numeric(.x2[1]))
   .bv <- suppressWarnings(as.numeric(.x2[2]))
   if (identical(.av, 0)) {
-    return(paste0("(", .b, ")*", .cmp, "(", .b, ",0)"))
+    return(paste0("((", .b, ")*", .cmp, "(", .b, ",0))"))
   }
   if (identical(.bv, 0)) {
-    return(paste0("(", .a, ")*", .cmp, "(", .a,", 0)"))
+    return(paste0("((", .a, ")*", .cmp, "(", .a,",0))"))
   }
   .ret <- paste0("(((", .a, ")-(", .b, "))*", .cmp, "(", .a, ",", .b, ")+(", .b, "))")
   if (length(.xrest) == 0) return(.ret)
-  return(.rxToSEMax(c(.ret, .xrest)))
+  return(.rxToSEMax(c(.ret, .xrest), min=min))
 }
 
 .rxToSECall <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
