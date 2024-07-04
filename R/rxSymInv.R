@@ -497,7 +497,6 @@ rxSymInvCholCreate <- function(mat,
   }
 }
 
-
 #' @export
 `$.rxSymInvCholEnv` <- function(obj, arg, exact = TRUE) {
   return(.Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, NULL))

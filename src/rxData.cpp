@@ -5728,7 +5728,12 @@ CharacterVector rxSolveDollarNames(RObject obj){
   NumericVector ini = NumericVector(e[".init.dat"]);
   CharacterVector nmi = ini.names();
 
-  CharacterVector envl = e.ls(false);
+  Function ls2("ls", R_BaseNamespace);
+
+  CharacterVector envl = ls2(_["envir"]=e,
+                             _["all.names"]=false,
+                             _["sorted"]=false);
+
 
   CharacterVector ret(nExtra + names1.size() +
                       pn.size() + nmi.size() + envl.size());
@@ -6446,7 +6451,11 @@ RObject rxUnloadAll_(){
   getRxModels();
   Function dynUnload("dyn.unload", R_BaseNamespace);
   Function shouldUnloadDll = getRxFn(".rxShouldUnload");
-  CharacterVector vars = _rxModels.ls(true);
+  Function ls2("ls", R_BaseNamespace);
+
+  CharacterVector vars = ls2(_["envir"]=_rxModels,
+                             _["all.names"]=true,
+                             _["sorted"]=false);
   std::string exclude = ".rxSolveDat.";
   for (unsigned int i = vars.size(); i--;) {
     std::string varC = as<std::string>(vars[i]);
