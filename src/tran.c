@@ -544,14 +544,14 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   set_d_rdebug_grammar_level(0);
   set_d_verbose_level(0);
 
-  if (isString(prefix) && length(prefix) == 1){
+  if (isString(prefix) && Rf_length(prefix) == 1){
     model_prefix = CHAR(STRING_ELT(prefix,0));
   } else {
     _rxode2parse_unprotect();
     err_trans("model prefix must be specified");
   }
 
-  if (isString(inME) && length(inME) == 1){
+  if (isString(inME) && Rf_length(inME) == 1){
     me_code = CHAR(STRING_ELT(inME,0));
   } else {
     freeP();
@@ -559,7 +559,7 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
     err_trans("extra ME code must be specified");
   }
 
-  if (isString(model_md5) && length(model_md5) == 1){
+  if (isString(model_md5) && Rf_length(model_md5) == 1){
     md5 = CHAR(STRING_ELT(model_md5,0));
     badMd5 = 0;
     if (strlen(md5)!= 32){

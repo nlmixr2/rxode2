@@ -53,7 +53,7 @@ SEXP generateModelVars(void) {
 
 
   INTEGER(sLinCmt)[5] = tb.hasCmt;
-  tb.ini_i = length(ini);
+  tb.ini_i = Rf_length(ini);
 
   SET_STRING_ELT(names,0,mkChar("params"));
   SET_VECTOR_ELT(lst,  0,params);

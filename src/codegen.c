@@ -553,11 +553,11 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     _rxode2parse_unprotect();
     err_trans("nothing in output queue to write");
   }
-  if (!isString(c_file) || length(c_file) != 1){
+  if (!isString(c_file) || Rf_length(c_file) != 1){
     _rxode2parse_unprotect();
     err_trans("c_file should only be 1 file");
   }
-  if (length(libname) != 2){
+  if (Rf_length(libname) != 2){
     _rxode2parse_unprotect();
     err_trans("libname needs 2 elements");
   }

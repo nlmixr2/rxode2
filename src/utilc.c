@@ -819,7 +819,7 @@ SEXP _vecDF(SEXP cv, SEXP n_) {
   }
   if (n <= 0) Rf_errorcall(R_NilValue, _("'n' must be greater than 0"));
   int pro = 0;
-  int len = length(cv);
+  int len = Rf_length(cv);
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, len)); pro++;
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, len)); pro++;
   SEXP cvN = getAttrib(cv, R_NamesSymbol);
@@ -847,10 +847,10 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
   int n = INTEGER(n_)[0];
   if (n <= 0) Rf_errorcall(R_NilValue, _("'n' must be greater than 0"));
 
-  int len1 = length(et_);
+  int len1 = Rf_length(et_);
   int len1a = 0;
   if (len1 > 0) {
-    len1a = length(VECTOR_ELT(et_,0));
+    len1a = Rf_length(VECTOR_ELT(et_,0));
   }
   SEXP etN = getAttrib(et_, R_NamesSymbol);
 
