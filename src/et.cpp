@@ -45,7 +45,7 @@ static inline bool rxIsCleanList(RObject obj) {
 Environment rxode2env ();
 Function getRxFn(std::string name);
 
-Function getForder();
+extern "C" SEXP getForder(void);
 extern "C" int useForder(void);
 
 RObject evCur;

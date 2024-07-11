@@ -72,7 +72,7 @@ extern "C" SEXP _rxode2_udfEnvSet(SEXP udf);
 extern "C" SEXP _rxode2_udfReset();
 extern "C" SEXP _rxode2_rxC(SEXP in);
 
-Function getForder();
+extern "C" SEXP getForder(void);
 extern "C" int useForder(void);
 
 #include "../inst/include/rxode2_as.h"
