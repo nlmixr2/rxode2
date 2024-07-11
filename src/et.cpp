@@ -14,9 +14,7 @@ extern "C" rx_solving_options op_global;
 
 using namespace Rcpp;
 
-// NEED these funs
-extern "C" SEXP convertId_(SEXP id);
-// END
+SEXP convertId_(SEXP id);
 
 extern "C" int _rxIsEt(SEXP objSexp);
 #include "../inst/include/rxode2_as.h"
