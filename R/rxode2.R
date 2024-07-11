@@ -419,7 +419,7 @@ rxode2 <- # nolint
           .rx$.clearME()
         })
         .rx$.rxWithWd(wd, {
-          .extraC(extraC)
+          rxode2::.extraC(extraC)
           if (missing.modName) {
             .rxDll <- .rx$rxCompile(.mv,
                                     debug = debug,
@@ -440,7 +440,7 @@ rxode2 <- # nolint
         })
       })
     }))
-    .extraC(extraC)
+    rxode2::.extraC(extraC)
     .env$compile()
     .env$get.modelVars <- eval(bquote(function() {
       with(.(.env), {
@@ -1475,7 +1475,7 @@ rxCompile.rxModelVars <- function(model, # Model
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(.extraCnow())
+        cat(rxode2::.extraCnow())
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))
