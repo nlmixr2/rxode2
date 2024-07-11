@@ -433,13 +433,10 @@ extern "C" void cliAlert(const char *format, ...) {
 }
 
 extern "C" SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP isCholSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP);
+
 SEXP rxRmvn0(NumericMatrix& A_, arma::rowvec mu, arma::mat sigma,
              arma::vec lower, arma::vec upper, int ncores=1, bool isChol=false,
-             double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100) {
-  return _rxode2_rxRmvn0(wrap(A_), wrap(mu), wrap(sigma),
-                         wrap(lower), wrap(upper), wrap(ncores), wrap(isChol),
-                         wrap(a), wrap(tol), wrap(nlTol), wrap(nlMaxiter));
-}
+             double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100);
 
 Function getRxFn(std::string name);
 RObject rxSimSigma(const RObject &sigma,
@@ -1835,14 +1832,6 @@ arma::vec getLowerVec(int type, rx_solve* rx) {
   }
 }
 
-extern "C" SEXP getLowerVecSexp(int type, rx_solve* rx) {
-  if (type == 0) { // eps
-    return wrap(arma::vec(_globals.gsigma, rx->neps, false, true));
-  } else { // eta
-    return wrap(arma::vec(_globals.gomega, rx->neta, false, true));
-  }
-}
-
 arma::vec getUpperVec(int type, rx_solve* rx) {
   if (type == 0) { // eps
     return arma::vec(_globals.gsigma + rx->neps, rx->neps, false, true);
@@ -1850,15 +1839,6 @@ arma::vec getUpperVec(int type, rx_solve* rx) {
     return arma::vec(_globals.gomega + rx->neta, rx->neta, false, true);
   }
 }
-
-extern "C" SEXP getUpperVecSexp(int type, rx_solve* rx) {
-  if (type == 0) { // eps
-    return wrap(arma::vec(_globals.gsigma + rx->neps, rx->neps, false, true));
-  } else { // eta
-    return wrap(arma::vec(_globals.gomega + rx->neta, rx->neta, false, true));
-  }
-}
-
 
 arma::mat getArmaMat(int type, int csim, rx_solve* rx) {
   if (type == 0) { // eps
@@ -1875,23 +1855,6 @@ arma::mat getArmaMat(int type, int csim, rx_solve* rx) {
     }
   }
 }
-
-extern "C" SEXP getArmaMatSexp(int type, int csim, rx_solve* rx) {
-  if (type == 0) { // eps
-    if (_globals.nSigma == 1) {
-      return wrap(arma::mat(_globals.gsigma + 2 * rx->neps + csim * rx->neps * rx->neps, rx->neps, rx->neps, false, true));
-    } else {
-      return wrap(arma::mat(_globals.gsigma + 2 * rx->neps, rx->neps, rx->neps, false, true));
-    }
-  } else { // eta
-    if (_globals.nOmega == 1) {
-      return wrap(arma::mat(_globals.gomega + 2 * rx->neta  + csim * rx->neta * rx->neta, rx->neta,  rx->neta, false, true));
-    } else {
-      return wrap(arma::mat(_globals.gomega + 2 * rx->neta, rx->neta,  rx->neta, false, true));
-    }
-  }
-}
-
 
 //' Simulate Parameters from a Theta/Omega specification
 //'

@@ -836,7 +836,7 @@ SEXP _vecDF(SEXP cv, SEXP n_) {
   INTEGER(sexp_rownames)[1] = -n;
   setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
   SEXP sexp_class = PROTECT(allocVector(STRSXP, 1)); pro++;
-  SET_STRING_ELT(sexp_class,0,mkChar("data.frame"));
+  SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   setAttrib(ret, R_ClassSymbol, sexp_class);
   setAttrib(ret, R_NamesSymbol, retN);
   UNPROTECT(pro);
@@ -903,7 +903,7 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
   INTEGER(sexp_rownames)[1] = -lenOut;
   setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
   SEXP sexp_class = PROTECT(allocVector(STRSXP, 1)); pro++;
-  SET_STRING_ELT(sexp_class,0,mkChar("data.frame"));
+  SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   setAttrib(ret, R_ClassSymbol, sexp_class);
   setAttrib(ret, R_NamesSymbol, retN);
   UNPROTECT(pro);

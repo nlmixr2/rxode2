@@ -39,34 +39,15 @@ extern "C" {
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
 
-  typedef SEXP (*getLowerVec_t)(int type, rx_solve* rx);
-  typedef SEXP (*getUpperVec_t)(int type, rx_solve* rx);
-  typedef SEXP (*getArmaMat_t)(int type, int csim, rx_solve* rx);
-
-
-  getLowerVec_t getLowerVecSexp;
-  getUpperVec_t getUpperVecSexp;
-  getArmaMat_t getArmaMatSexp;
 }
 
 extern "C" uint32_t getRxSeed1(int ncores);
 extern "C" void setSeedEng1(uint32_t seed);
 extern "C" void setRxSeedFinal(uint32_t seed);
 
-
-
-arma::vec getLowerVec(int type, rx_solve* rx) {
-  return as<arma::vec>(getLowerVecSexp(type, rx));
-}
-arma::vec getUpperVec(int type, rx_solve* rx) {
-  return as<arma::vec>(getUpperVecSexp(type, rx));
-
-}
-arma::mat getArmaMat(int type, int csim, rx_solve* rx) {
-  return as<arma::mat>(getArmaMatSexp(type, csim, rx));
-}
-
-
+arma::vec getLowerVec(int type, rx_solve* rx);
+arma::vec getUpperVec(int type, rx_solve* rx);
+arma::mat getArmaMat(int type, int csim, rx_solve* rx);
 
 //[[Rcpp::export]]
 SEXP rxRmvn_(NumericMatrix A_, arma::rowvec mu, arma::mat sigma,

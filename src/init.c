@@ -228,7 +228,7 @@ const char *rxGetId(int id);
 
 
 double phi(double q);
-SEXP _phi(SEXP q);
+SEXP _rxode2_phi(SEXP q);
 SEXP _calcDerived(SEXP transSXP, SEXP ncmt, SEXP inp, SEXP dig);
 
 double gamma_p(double, double z);
@@ -274,8 +274,7 @@ SEXP _rxode2_parseModel(SEXP type);
 SEXP _rxode2_isLinCmt(void);
 SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
-SEXP _rxode2_assignSeedInfo(void);
-SEXP _rxSetSeed(SEXP);
+SEXP _rxode2_rxSetSeed(SEXP);
 SEXP _rxode2_meanProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP useT, SEXP pred, SEXP inN);
 SEXP _rxode2_binomProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP inN, SEXP cont);
 SEXP _rxode2_binomProbsPredVec_(SEXP n, SEXP m, SEXP Y, SEXP M, SEXP doP, SEXP tol);
@@ -296,17 +295,11 @@ typedef void (*rxModelsAssignC_t)(const char* str, SEXP assign);
 typedef SEXP (*rxModelVars_SEXP_t)(SEXP);
 typedef SEXP (*rxExpandNestingSexp_t)(SEXP, SEXP, SEXP);
 typedef SEXP (*chin_t)(SEXP x, SEXP table);
-typedef SEXP (*getLowerVec_t)(int type, rx_solve* rx);
-typedef SEXP (*getUpperVec_t)(int type, rx_solve* rx);
-typedef SEXP (*getArmaMat_t)(int type, int csim, rx_solve* rx);
 
 extern rx_solve rx_global;
 extern rx_solving_options op_global;
 extern void setZeroMatrix(int which);
 extern void rxModelsAssignC(const char *str0, SEXP assign);
-extern SEXP getLowerVecSexp(int type, rx_solve* rx);
-extern SEXP getUpperVecSexp(int type, rx_solve* rx);
-extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
 extern SEXP chin(SEXP x, SEXP table);
 
@@ -336,7 +329,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_binomProbsPredVec_", (DL_FUNC) &_rxode2_binomProbsPredVec_, 6},
     {"_rxode2_binomProbs_", (DL_FUNC) &_rxode2_binomProbs_, 5},
     {"_rxode2_meanProbs_", (DL_FUNC) &_rxode2_meanProbs_, 6},
-    {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
     {"_rxTick", (DL_FUNC) &_rxTick, 0},
     {"_rxProgressStop", (DL_FUNC) &_rxProgressStop, 1},
@@ -435,7 +427,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_expandPars_", (DL_FUNC) _rxode2_expandPars_, 4},
     {"_rxode2_convertId_", (DL_FUNC) _rxode2_convertId_, 1},
     {"_rxode2_nestingInfo_", (DL_FUNC) _rxode2_nestingInfo_, 2},
-    {"_phi", (DL_FUNC) _phi, 1},
+    {"_phi", (DL_FUNC) _rxode2_phi, 1},
     {"_rxode2_expandTheta_", (DL_FUNC) _rxode2_expandTheta_, 6},
     {"_gammap", (DL_FUNC) _gammap, 2},
     {"_gammaq", (DL_FUNC) _gammaq, 2},
@@ -461,7 +453,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},
-    {"_rxSetSeed", (DL_FUNC) _rxSetSeed, 1},
+    {"_rxSetSeed", (DL_FUNC) _rxode2_rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {NULL, NULL, 0}

@@ -12,6 +12,9 @@
 #include "../inst/include/rxode2_as.h"
 
 extern "C"{
+
+  extern "C" SEXP chin(SEXP a, SEXP b);
+
   typedef int (*get_sexp_uniqueL_type)(SEXP s);
   get_sexp_uniqueL_type get_sexp_uniqueL;
   typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
@@ -40,15 +43,7 @@ extern "C"{
   rxModelVars_SEXP_t rxModelVars_;
   typedef SEXP (*rxExpandNestingSexp_t)(SEXP, SEXP, SEXP);
   rxExpandNestingSexp_t rxExpandNestingSexp;
-  typedef SEXP (*chin_t)(SEXP x, SEXP table);
-  chin_t chin;
-  typedef SEXP (*getLowerVec_t)(int type, rx_solve* rx);
-  typedef SEXP (*getUpperVec_t)(int type, rx_solve* rx);
   typedef SEXP (*getArmaMat_t)(int type, int csim, rx_solve* rx);
-  extern getLowerVec_t getLowerVecSexp;
-  extern getUpperVec_t getUpperVecSexp;
-  extern getArmaMat_t getArmaMatSexp;
-
 }
 List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
