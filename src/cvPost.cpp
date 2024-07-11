@@ -29,13 +29,13 @@ extern "C"{
   typedef SEXP (*lotriMaxNu_type) (SEXP);
   lotriMaxNu_type lotriMaxNu;
 }
-List etTrans(List inData, const RObject &obj, bool addCmt=false,
-             bool dropUnits=false, bool allTimeVar=false,
-             bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
-             CharacterVector keep = CharacterVector(0),
-             bool addlKeepsCov=false,
-             bool addlDropSs = true,
-             bool ssAtDoseTime = true);
+List etTrans(List inData, List mv, bool addCmt,
+             bool dropUnits, bool allTimeVar,
+             bool keepDosingOnly, Nullable<LogicalVector> combineDvid,
+             CharacterVector keep,
+             bool addlKeepsCov,
+             bool addlDropSs,
+             bool ssAtDoseTime);
 SEXP nestingInfo_(SEXP omega, List data);
 
 List rxExpandNesting(const RObject& obj, List& nestingInfo,

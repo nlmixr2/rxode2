@@ -822,7 +822,7 @@ SEXP _vecDF(SEXP cv, SEXP n_) {
   int len = Rf_length(cv);
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, len)); pro++;
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, len)); pro++;
-  SEXP cvN = getAttrib(cv, R_NamesSymbol);
+  SEXP cvN = Rf_getAttrib(cv, R_NamesSymbol);
   for (int i = len; i--;) {
     SEXP tmp = PROTECT(Rf_allocVector(REALSXP, n)); pro++;
     for (int j = n; j--;) {
@@ -852,7 +852,7 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
   if (len1 > 0) {
     len1a = Rf_length(VECTOR_ELT(et_,0));
   }
-  SEXP etN = getAttrib(et_, R_NamesSymbol);
+  SEXP etN = Rf_getAttrib(et_, R_NamesSymbol);
 
   SEXP matD;
   SEXP matDN;
@@ -861,8 +861,8 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
   int lenItem;
   int isNullEt = Rf_isNull(et_) || Rf_length(et_) == 0;
   if (!Rf_isNull(mat_) && !isNullEt) {
-    matD = getAttrib(mat_, install("dim"));
-    matDN = VECTOR_ELT(getAttrib(mat_, R_DimNamesSymbol), 1);
+    matD = Rf_getAttrib(mat_, Rf_install("dim"));
+    matDN = VECTOR_ELT(Rf_getAttrib(mat_, R_DimNamesSymbol), 1);
     len2 = INTEGER(matD)[1];
     lenOut = INTEGER(matD)[0];
     lenItem = lenOut/len1a;
@@ -871,8 +871,8 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
     lenOut = n*len1a;
     lenItem = n;
   } else {
-    matD = getAttrib(mat_, install("dim"));;
-    matDN = VECTOR_ELT(getAttrib(mat_, R_DimNamesSymbol), 1);
+    matD = Rf_getAttrib(mat_, Rf_install("dim"));;
+    matDN = VECTOR_ELT(Rf_getAttrib(mat_, R_DimNamesSymbol), 1);
     len2 = INTEGER(matD)[1];
     lenOut = INTEGER(matD)[0];
     lenItem = n;
