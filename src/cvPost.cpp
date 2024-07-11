@@ -555,7 +555,7 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
 }
 
 
-extern void setZeroMatrix(int which);
+extern "C" void setZeroMatrix(int which);
 
 //[[Rcpp::export]]
 SEXP expandTheta_(SEXP thetaS, SEXP thetaMatS,

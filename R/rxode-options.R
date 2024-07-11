@@ -44,17 +44,6 @@
   } else {
     requireNamespace("PreciseSums", quietly=TRUE)
   }
-  if (!identical(.rxode2parseMd5, rxode2parse::rxode2parseMd5())) {
-    stop("rxode2 compiled with rxode2parse with a different solving structure",
-         "\ncan try: install.packages('rxode2', type='source')",
-         call. = FALSE)
-  } else {
-    requireNamespace("rxode2parse", quietly=TRUE)
-  }
-
-  requireNamespace("rxode2random", quietly=TRUE)
-  .Call(`_rxode2_assignSeedInfo`)
-
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")

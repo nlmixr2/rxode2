@@ -367,7 +367,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_getProgSupported", (DL_FUNC) &_rxode2_getProgSupported, 0},
     {"_rxode2_rxUpdateTrans_", (DL_FUNC) &_rxode2_rxUpdateTrans_, 3},
     {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 11},
-    {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
     {"_rxode2_atolRtolFactor_", (DL_FUNC) &_rxode2_atolRtolFactor_, 1},
