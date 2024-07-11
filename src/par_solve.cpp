@@ -9,7 +9,7 @@
 #include <time.h>
 #include <string>
 #include "strncmp.h"
-#include <timsort.h>
+#include "timsort.h"
 #include "../inst/include/rxode2.h"
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
@@ -522,23 +522,6 @@ double *global_rwork(unsigned int mx){
   return global_rworkp;
 }
 
-extern "C" {
-  typedef void (*_rxode__assignFuns2_t)(rx_solve rx,
-                                        rx_solving_options op,
-                                        t_F f,
-                                        t_LAG lag,
-                                        t_RATE rate,
-                                        t_DUR dur,
-                                        t_calc_mtime mtime,
-                                        t_ME me,
-                                        t_IndF indf,
-                                        t_getTime gettime,
-                                        t_locateTimeIndex timeindex,
-                                        t_handle_evidL handleEvid,
-                                        t_getDur getdur);
-}
-
-
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
 void rxUpdateFuns(SEXP trans){
@@ -597,20 +580,6 @@ void rxUpdateFuns(SEXP trans){
   rx->op = op;
   char s_assignFuns2[300];
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
-  _rxode__assignFuns2_t f2 = (_rxode__assignFuns2_t) R_GetCCallable(lib, s_assignFuns2);
-  f2(rx_global,
-     op_global,
-     AMT,
-     LAG,
-     RATE,
-     DUR,
-     calc_mtime,
-     ME,
-     IndF,
-     getTime,
-     _locateTimeIndex,
-     handle_evidL,
-     _getDur);
 }
 
 extern "C" void rxClearFuns(){

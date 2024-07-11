@@ -117,7 +117,11 @@ LinkingTo:
     PreciseSums (>= 0.3),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),
-    BH
+    BH,
+    RcppParallel,
+    RcppEigen (>= 0.3.3.9.2),
+    StanHeaders (>= 2.21.0.7),
+    dparser
 Encoding: UTF-8
 LazyData: true
 Language: en-US

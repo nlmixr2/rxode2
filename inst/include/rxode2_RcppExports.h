@@ -6,6 +6,7 @@
 #ifndef RCPP_rxode2_RCPPEXPORTS_H_GEN_
 #define RCPP_rxode2_RCPPEXPORTS_H_GEN_
 
+#include <RcppEigen.h>
 #include <Rcpp.h>
 
 namespace rxode2 {

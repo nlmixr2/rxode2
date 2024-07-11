@@ -116,11 +116,47 @@ etRep_ <- function(curEt, times, wait, ids, handleSamples, waitType, ii) {
     .Call(`_rxode2_etRep_`, curEt, times, wait, ids, handleSamples, waitType, ii)
 }
 
+#' Force using base order for rxode2 radix sorting
+#'
+#' @param forceBase boolean indicating if rxode2 should use R's
+#'   [order()] for radix sorting instead of
+#'   `data.table`'s parallel radix sorting.
+#'
+#' @return NILL; called for side effects
+#'
+#' @examples
+#' \donttest{
+#' forderForceBase(TRUE) # Use base `order` for rxode2 sorts
+#' forderForceBase(FALSE) # Use `data.table` for rxode2 sorts
+#' }
+#' @export
+#' @keywords internal
+forderForceBase <- function(forceBase = FALSE) {
+    .Call(`_rxode2_forderForceBase`, forceBase)
+}
+
+#' Set Initial conditions to time zero instead of the first observed/dosed time
+#'
+#' @param ini0 When `TRUE` (default), set initial conditions to time
+#'   zero. Otherwise the initial conditions are the first observed
+#'   time.
+#'
+#' @return the boolean ini0, though this is called for its side effects
+#'
+#' @export
+rxSetIni0 <- function(ini0 = TRUE) {
+    .Call(`_rxode2_rxSetIni0`, ini0)
+}
+
+etTransEvidIsObs <- function(isObsSexp) {
+    .Call(`_rxode2_etTransEvidIsObs`, isObsSexp)
+}
+
 #' Event translation for rxode2
 #'
 #' @param inData Data frame to translate
 #'
-#' @param obj Model to translate data
+#' @param mv Model variables to translate data
 #'
 #' @param addCmt Add compartment to data frame (default `FALSE`).
 #'
@@ -139,15 +175,29 @@ etRep_ <- function(curEt, times, wait, ids, handleSamples, waitType, ii) {
 #' @param keep This is a named vector of items you want to keep in the final rxode2 dataset.
 #'     For added rxode2 event records (if seen), last observation carried forward will be used.
 #'
-#' @inheritParams rxode2parse::etTransParse
+#' @param addlKeepsCov This determines if the additional dosing items
+#'   repeats the dose only (`FALSE`) or keeps the covariates at the
+#'   record of the dose (`TRUE`)
+#'
+#' @param addlDropSs When there are steady state doses with an `addl`
+#'   specification the steady state flag is dropped with repeated
+#'   doses (when `TRUE`) or retained (when `FALSE`)
+#'
+#' @param ssAtDoseTime Boolean that when `TRUE` back calculates the
+#'   steady concentration at the actual time of dose, otherwise when
+#'   `FALSE` the doses are shifted
 #'
 #' @return Object for solving in rxode2
 #'
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime)
+etTransParse <- function(inData, mv, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE) {
+    .Call(`_rxode2_etTransParse`, inData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime)
+}
+
+rxEtTransAsDataFrame_ <- function(inData1) {
+    .Call(`_rxode2_rxEtTransAsDataFrame_`, inData1)
 }
 
 #' Expand grid internal function
@@ -241,6 +291,33 @@ NULL
 
 rxIndLin_ <- function(states) {
     .Call(`_rxode2_rxIndLin_`, states)
+}
+
+convertId_ <- function(x) {
+    .Call(`_rxode2_convertId_`, x)
+}
+
+rxQs <- function(x) {
+    .Call(`_rxode2_rxQs`, x)
+}
+
+rxQr <- function(encoded_string) {
+    .Call(`_rxode2_rxQr`, encoded_string)
+}
+
+rxode2parseSetRstudio <- function(isRstudio = FALSE) {
+    .Call(`_rxode2_rxode2parseSetRstudio`, isRstudio)
+}
+
+#' Silence some of rxode2's C/C++ messages
+#'
+#' @param silent can be 0L "noisy"  or 1L "silent"
+#'
+#' @keywords internal
+#' @return TRUE; called for side effects
+#' @export
+rxParseSetSilentErr <- function(silent) {
+    .Call(`_rxode2_rxParseSetSilentErr`, silent)
 }
 
 #' Check the type of an object using Rcpp

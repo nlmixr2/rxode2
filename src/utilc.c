@@ -940,3 +940,42 @@ SEXP _rxode2_phi(SEXP q) {
   UNPROTECT(pro);
   return ret;
 }
+
+SEXP _rxode2parse_getWh(SEXP in) {
+  int wh, cmt, wh100, whI, wh0;
+  getWh(INTEGER(in)[0], &wh, &cmt, &wh100, &whI, &wh0);
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 5));
+  int *retI = INTEGER(ret);
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 5));
+  retI[0] = wh;
+  SET_STRING_ELT(retN, 0,Rf_mkChar("wh"));
+  retI[1] = cmt;
+  SET_STRING_ELT(retN, 1,Rf_mkChar("cmt"));
+  retI[2] = wh100;
+  SET_STRING_ELT(retN, 2,Rf_mkChar("wh100"));
+  retI[3] = whI;
+  SET_STRING_ELT(retN, 3,Rf_mkChar("whI"));
+  retI[4] = wh0;
+  SET_STRING_ELT(retN, 4,Rf_mkChar("wh0"));
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
+  UNPROTECT(2);
+  return ret;
+}
+
+SEXP _rxode2parse_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
+                                 SEXP durS, SEXP iiS, SEXP evidS, SEXP ssS) {
+  int *cmt= INTEGER(cmtS);
+  double *amt = REAL(amtS);
+  double *dur = REAL(durS);
+  double *rate = REAL(rateS);
+  double *ii = REAL(iiS);
+  int *evid = INTEGER(evidS);
+  double *ss = REAL(ssS);
+  SEXP retS = PROTECT(Rf_allocVector(INTSXP, Rf_length(cmtS)));
+  int *ret = INTEGER(retS);
+  for (int i = Rf_length(cmtS); i--;) {
+    ret[i] = getEvidClassic(cmt[i], amt[i], rate[i], dur[i], ii[i], evid[i], ss[i]);
+  }
+  UNPROTECT(1);
+  return retS;
+}

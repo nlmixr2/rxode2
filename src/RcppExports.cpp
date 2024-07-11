@@ -4,6 +4,7 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include "../inst/include/rxode2.h"
+#include <RcppEigen.h>
 #include <Rcpp.h>
 #include <string>
 #include <set>
@@ -250,14 +251,47 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// etTrans
-List etTrans(List inData, const RObject& obj, bool addCmt, bool dropUnits, bool allTimeVar, bool keepDosingOnly, Nullable<LogicalVector> combineDvid, CharacterVector keep, bool addlKeepsCov, bool addlDropSs, bool ssAtDoseTime);
-RcppExport SEXP _rxode2_etTrans(SEXP inDataSEXP, SEXP objSEXP, SEXP addCmtSEXP, SEXP dropUnitsSEXP, SEXP allTimeVarSEXP, SEXP keepDosingOnlySEXP, SEXP combineDvidSEXP, SEXP keepSEXP, SEXP addlKeepsCovSEXP, SEXP addlDropSsSEXP, SEXP ssAtDoseTimeSEXP) {
+// forderForceBase
+RObject forderForceBase(bool forceBase);
+RcppExport SEXP _rxode2_forderForceBase(SEXP forceBaseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type forceBase(forceBaseSEXP);
+    rcpp_result_gen = Rcpp::wrap(forderForceBase(forceBase));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxSetIni0
+bool rxSetIni0(bool ini0);
+RcppExport SEXP _rxode2_rxSetIni0(SEXP ini0SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type ini0(ini0SEXP);
+    rcpp_result_gen = Rcpp::wrap(rxSetIni0(ini0));
+    return rcpp_result_gen;
+END_RCPP
+}
+// etTransEvidIsObs
+RObject etTransEvidIsObs(SEXP isObsSexp);
+RcppExport SEXP _rxode2_etTransEvidIsObs(SEXP isObsSexpSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type isObsSexp(isObsSexpSEXP);
+    rcpp_result_gen = Rcpp::wrap(etTransEvidIsObs(isObsSexp));
+    return rcpp_result_gen;
+END_RCPP
+}
+// etTransParse
+List etTransParse(List inData, List mv, bool addCmt, bool dropUnits, bool allTimeVar, bool keepDosingOnly, Nullable<LogicalVector> combineDvid, CharacterVector keep, bool addlKeepsCov, bool addlDropSs, bool ssAtDoseTime);
+RcppExport SEXP _rxode2_etTransParse(SEXP inDataSEXP, SEXP mvSEXP, SEXP addCmtSEXP, SEXP dropUnitsSEXP, SEXP allTimeVarSEXP, SEXP keepDosingOnlySEXP, SEXP combineDvidSEXP, SEXP keepSEXP, SEXP addlKeepsCovSEXP, SEXP addlDropSsSEXP, SEXP ssAtDoseTimeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< List >::type inData(inDataSEXP);
-    Rcpp::traits::input_parameter< const RObject& >::type obj(objSEXP);
+    Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
     Rcpp::traits::input_parameter< bool >::type addCmt(addCmtSEXP);
     Rcpp::traits::input_parameter< bool >::type dropUnits(dropUnitsSEXP);
     Rcpp::traits::input_parameter< bool >::type allTimeVar(allTimeVarSEXP);
@@ -267,7 +301,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type addlKeepsCov(addlKeepsCovSEXP);
     Rcpp::traits::input_parameter< bool >::type addlDropSs(addlDropSsSEXP);
     Rcpp::traits::input_parameter< bool >::type ssAtDoseTime(ssAtDoseTimeSEXP);
-    rcpp_result_gen = Rcpp::wrap(etTrans(inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime));
+    rcpp_result_gen = Rcpp::wrap(etTransParse(inData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxEtTransAsDataFrame_
+List rxEtTransAsDataFrame_(List inData1);
+RcppExport SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type inData1(inData1SEXP);
+    rcpp_result_gen = Rcpp::wrap(rxEtTransAsDataFrame_(inData1));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -493,6 +538,61 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< CharacterVector >::type states(statesSEXP);
     rcpp_result_gen = Rcpp::wrap(rxIndLin_(states));
+    return rcpp_result_gen;
+END_RCPP
+}
+// convertId_
+SEXP convertId_(SEXP x);
+RcppExport SEXP _rxode2_convertId_(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(convertId_(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxQs
+Rcpp::CharacterVector rxQs(SEXP const x);
+RcppExport SEXP _rxode2_rxQs(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP const >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxQs(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxQr
+SEXP rxQr(const std::string& encoded_string);
+RcppExport SEXP _rxode2_rxQr(SEXP encoded_stringSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type encoded_string(encoded_stringSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxQr(encoded_string));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxode2parseSetRstudio
+SEXP rxode2parseSetRstudio(bool isRstudio);
+RcppExport SEXP _rxode2_rxode2parseSetRstudio(SEXP isRstudioSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type isRstudio(isRstudioSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxode2parseSetRstudio(isRstudio));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxParseSetSilentErr
+bool rxParseSetSilentErr(int silent);
+RcppExport SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type silent(silentSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxParseSetSilentErr(silent));
     return rcpp_result_gen;
 END_RCPP
 }

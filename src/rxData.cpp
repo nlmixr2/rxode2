@@ -41,6 +41,7 @@
 #endif
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
+#define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 void resetSolveLinB();
 using namespace Rcpp;
 using namespace arma;

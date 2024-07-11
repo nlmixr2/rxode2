@@ -31,6 +31,20 @@ if (length(w) >= 1) {
 .in <- gsub("@ARMA@", file.path(find.package("RcppArmadillo"),"include"), .in)
 .in <- gsub("@BH@", file.path(find.package("BH"),"include"), .in)
 .in <- gsub("@RCPP@", file.path(find.package("Rcpp"),"include"), .in)
+.in <- gsub("@EG@", file.path(find.package("RcppEigen"),"include"), .in)
+
+.in <- gsub("@SL@", paste(capture.output(StanHeaders:::LdFlags()), capture.output(RcppParallel:::RcppParallelLibs())), #nolint
+            .in)
+
+
+.badStan <- ""
+.in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",
+                         paste(capture.output(StanHeaders:::CxxFlags()), # nolint
+                               capture.output(RcppParallel:::CxxFlags()), # nolint
+                               paste0("-@ISYSTEM@'", system.file('include', 'src', package = 'StanHeaders', mustWork = TRUE), "'"),
+                               .badStan)),
+            .in)
+
 
 
 
