@@ -21,6 +21,20 @@
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
+  requireNamespace("rxode2random", quietly=TRUE)
+  requireNamespace("data.table", quietly=TRUE)
+  if (requireNamespace("pillar", quietly = TRUE)) {
+    .s3register("pillar::type_sum", "rxEvid")
+    .s3register("pillar::type_sum", "rxRateDur")
+    .s3register("pillar::pillar_shaft", "rxEvid")
+    .s3register("pillar::pillar_shaft", "rxRateDur")
+  }
+  if (requireNamespace("tibble", quietly = TRUE)) {
+    .s3register("tibble::as_tibble", "rxEt")
+  }
+  if (requireNamespace("data.table", quietly = TRUE)) {
+    .s3register("data.table::as.data.table", "rxEt")
+  }
   if (!identical(.PreciseSumsVersion, utils::packageVersion("PreciseSums"))) {
     stop("rxode2 compiled with PreciseSums '", as.character(.PreciseSumsVersion),
       "' but PreciseSums '", as.character(utils::packageVersion("PreciseSums")),
@@ -30,7 +44,6 @@
   } else {
     requireNamespace("PreciseSums", quietly=TRUE)
   }
-
   if (!identical(.rxode2parseMd5, rxode2parse::rxode2parseMd5())) {
     stop("rxode2 compiled with rxode2parse with a different solving structure",
          "\ncan try: install.packages('rxode2', type='source')",
@@ -41,8 +54,7 @@
 
   requireNamespace("rxode2random", quietly=TRUE)
   .Call(`_rxode2_assignSeedInfo`)
-  
-  rxode2et::.setRxode2()
+
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
@@ -53,6 +65,10 @@
     .s3register("nlme::fixef", "function")
   }
   if (requireNamespace("units", quietly = TRUE)) {
+    .s3register("units::set_units", "rxEt")
+    .s3register("units::set_units", "rxRateDur")
+    .s3register("units::drop_units", "rxEt")
+    .s3register("units::units<-", "rxEvid")
     .s3register("units::drop_units", "rxSolve")
     assignInMyNamespace(".hasUnits", TRUE)
   } else {

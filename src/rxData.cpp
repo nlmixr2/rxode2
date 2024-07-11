@@ -91,11 +91,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool addlKeepsCov=false,
              bool addlDropSs = true,
              bool ssAtDoseTime = true);
-extern "C" SEXP _rxode2_et_(SEXP x1, SEXP x2);
 
-RObject et_(List input, List et__) {
-  return as<RObject>(_rxode2_et_(wrap(input), wrap(et__)));
-}
+RObject et_(List input, List et__);
+
 extern "C" SEXP _rxode2_setEvCur(SEXP x1);
 
 extern "C" SEXP _rxode2_cvPost_(SEXP nuS, SEXP omega, SEXP n, SEXP omegaIsChol, SEXP returnChol,
@@ -2249,13 +2247,13 @@ Nullable<Environment> rxrxode2env(RObject obj);
 std::string rxDll(RObject obj);
 
 bool rxDynLoad(RObject obj);
-
+extern RObject evCur;
 List getEtRxsolve(Environment e){
   if (!e.exists(".et")){
     RObject eventso = e[".args.events"];
     List emptyLst(0);
     RObject et = et_(emptyLst, emptyLst);
-    _rxode2_setEvCur(et);
+    evCur = et;
     et_(List::create(_["data"] = eventso), List::create("importQuiet"));
     e[".et"] = et;
     Function parse2("parse", R_BaseNamespace);
@@ -2295,10 +2293,6 @@ List getEtRxsolve(Environment e){
     // Note event.copy doesn't really make sense...?  The create.eventTable does basically the same thing.
   }
   return e[".et"];
-}
-
-extern "C" SEXP _rxode2_getEtRxsolve(SEXP e) {
-  return(wrap(getEtRxsolve(as<Environment>(e))));
 }
 
 inline void updateParNames0(CharacterVector &ret, Environment &e,

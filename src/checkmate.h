@@ -1,6 +1,3 @@
-#ifndef R_NO_REMAP
-#define R_NO_REMAP
-#endif
 #ifndef _checkmate_h_inrxode2__
 #define _checkmate_h_inrxode2__
 #if defined(__cplusplus)

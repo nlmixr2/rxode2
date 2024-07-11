@@ -20,13 +20,8 @@ SEXP _rxode2_dropUnitsRxSolve(SEXP);
 SEXP _rxode2_atolRtolFactor_(SEXP);
 SEXP _rxode2_etRep_(SEXP, SEXP, SEXP, SEXP, SEXP,
                     SEXP, SEXP);
-SEXP _rxode2_etSeq_(SEXP, SEXP, SEXP, SEXP, SEXP,
-                    SEXP, SEXP, SEXP, SEXP, SEXP,
-                    SEXP);
 SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                          SEXP, SEXP, SEXP);
-SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
-SEXP _rxode2_et_(SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
                      SEXP, SEXP, SEXP, SEXP, SEXP,
                      SEXP);
@@ -157,7 +152,6 @@ SEXP _rxode2_cvPost_(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_expandPars_(SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rinvchisq(SEXP, SEXP, SEXP);
 
-SEXP _rxode2_getRxFn(SEXP);
 SEXP _rxode2_setProgSupported(SEXP);
 SEXP _rxode2_getProgSupported(void);
 SEXP _rxode2_rxSetSilentErr(SEXP silentSEXP);
@@ -357,20 +351,34 @@ extern SEXP getLowerVecSexp(int type, rx_solve* rx);
 extern SEXP getUpperVecSexp(int type, rx_solve* rx);
 extern SEXP getArmaMatSexp(int type, int csim, rx_solve* rx);
 
-SEXP _rxode2_getEtRxsolve(SEXP e);
 extern SEXP chin(SEXP x, SEXP table);
 
 SEXP _rxode2_rxSolveSetup(void);
 
+SEXP _rxode2_etDollarNames(SEXP);
+SEXP _rxode2_rxIsEt2(SEXP);
+SEXP _rxode2_et_(SEXP, SEXP);
+SEXP _rxode2_etUpdate(SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_etSeq_(SEXP, SEXP, SEXP, SEXP, SEXP,
+                    SEXP, SEXP, SEXP, SEXP, SEXP,
+                    SEXP);
+SEXP _rxode2_etRep_(SEXP, SEXP, SEXP, SEXP, SEXP,
+                    SEXP, SEXP);
 SEXP _rxode2_RcppExport_registerCCallable(void);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
+    {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
+    {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
+    {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
+    {"_rxode2_rxIsEt2", (DL_FUNC) &_rxode2_rxIsEt2, 1},
+    {"_rxode2_etDollarNames", (DL_FUNC) &_rxode2_etDollarNames, 1},
     {"_rxode2_rxSolveSetup", (DL_FUNC) &_rxode2_rxSolveSetup, 0},
     {"_rxode2_isIntel", (DL_FUNC) &_rxode2_isIntel, 0},
     {"_rxode2_binomProbsPredVec_", (DL_FUNC) &_rxode2_binomProbsPredVec_, 6},
     {"_rxode2_binomProbs_", (DL_FUNC) &_rxode2_binomProbs_, 5},
     {"_rxode2_meanProbs_", (DL_FUNC) &_rxode2_meanProbs_, 6},
-    {"_rxode2_getEtRxsolve", (DL_FUNC) &_rxode2_getEtRxsolve, 1},
     {"_rxode2_assignSeedInfo", (DL_FUNC) &_rxode2_assignSeedInfo, 0},
     {"_rxProgress", (DL_FUNC) &_rxProgress, 2},
     {"_rxTick", (DL_FUNC) &_rxTick, 0},
@@ -414,14 +422,10 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSolveFree", (DL_FUNC) &_rxode2_rxSolveFree, 0},
     {"_rxode2_setRstudio", (DL_FUNC) &_rxode2_setRstudio, 1},
     {"_rxode2_RcppExport_registerCCallable", (DL_FUNC) &_rxode2_RcppExport_registerCCallable, 0},
-    {"_rxode2_getRxFn", (DL_FUNC) &_rxode2_getRxFn, 1},
     {"_rxode2_setProgSupported", (DL_FUNC) &_rxode2_setProgSupported, 1},
     {"_rxode2_getProgSupported", (DL_FUNC) &_rxode2_getProgSupported, 0},
     {"_rxode2_rxUpdateTrans_", (DL_FUNC) &_rxode2_rxUpdateTrans_, 3},
     {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 11},
-    {"_rxode2_et_", (DL_FUNC) &_rxode2_et_, 2},
-    {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},
-    {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
     {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
