@@ -45,5 +45,4 @@ docs/
 /Meta/
 *.gcda
 revdep/
-/src/sbuf.c
 docs
