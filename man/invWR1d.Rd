@@ -10,6 +10,9 @@ invWR1d(d, nu, omegaIsChol = FALSE)
 \item{d}{The dimension of the correlation matrix}
 
 \item{nu}{Degrees of freedom of the Wishart distribution}
+
+\item{omegaIsChol}{is an indicator of if the omega matrix is in
+the Cholesky decomposition. This is only used when \code{type="invWishart"}}
 }
 \value{
 One correlation sample from the inverse wishart
