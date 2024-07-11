@@ -48,7 +48,7 @@ void _rxode2parse_unprotect(void) {
 
 #include "codegen2.h"
 
-SEXP _rxode2parse_rxQs(SEXP);
+SEXP _rxode2_rxQs(SEXP);
 SEXP _rxode2parse_rxQr(SEXP);
 SEXP getRxode2ParseDf(void);
 SEXP getRxode2ParseGetPointerAssignment(void);
@@ -616,7 +616,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     sPrint(&buf, "%sIndF", curPrefix);
     SET_STRING_ELT(trans, 21, mkChar(buf.s)); // IndF
   }
-  sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2parse_rxQs(mvLast)), 0))); pro++;
+  sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
   UNPROTECT(pro);
   sFree(&buf);
   //SET_STRING_ELT(tran, 0, mkChar());
