@@ -16,6 +16,7 @@
 #include <Rcpp.h>
 
 #include "../inst/include/rxode2parse.h"
+#include "../inst/include/rxode2parseHandleEvid.h"
 
 extern "C" rx_solve rx_global;
 extern "C" rx_solving_options op_global;

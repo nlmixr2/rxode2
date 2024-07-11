@@ -941,7 +941,8 @@ SEXP _rxode2_phi(SEXP q) {
   return ret;
 }
 
-SEXP _rxode2parse_getWh(SEXP in) {
+#include "../inst/include/rxode2parseHandleEvid.h"
+SEXP _rxode2_getWh(SEXP in) {
   int wh, cmt, wh100, whI, wh0;
   getWh(INTEGER(in)[0], &wh, &cmt, &wh100, &whI, &wh0);
   SEXP ret = PROTECT(Rf_allocVector(INTSXP, 5));

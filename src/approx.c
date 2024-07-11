@@ -33,8 +33,6 @@ double log1mex(double a){
   return(log1p(-exp(-a)));
 }
 
-void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0);
-
 extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   // Uses bisection for slightly faster lookup of dose index.
   int i, j, ij;
