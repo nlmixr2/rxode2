@@ -1695,14 +1695,14 @@ SEXP derived1(int trans, SEXP inp, double dig) {
 
   SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(sexp_class,0,mkChar("data.frame"));
-  setAttrib(ret, R_ClassSymbol, sexp_class);
+  Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
 
   SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
-  setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
+  Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
 
-  setAttrib(ret, R_NamesSymbol, retN);
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
 
   unsigned int ncmta=0;
 
@@ -1846,14 +1846,14 @@ SEXP derived2(int trans, SEXP inp, double dig) {
 
   SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(sexp_class,0,mkChar("data.frame"));
-  setAttrib(ret, R_ClassSymbol, sexp_class);
+  Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
 
   SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
-  setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
+  Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
 
-  setAttrib(ret, R_NamesSymbol, retN);
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
 
   unsigned int ncmta=0;
 
@@ -2059,14 +2059,14 @@ SEXP derived3(int trans, SEXP inp, double dig) {
 
   SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(sexp_class,0,mkChar("data.frame"));
-  setAttrib(ret, R_ClassSymbol, sexp_class);
+  Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
 
   SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
-  setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
+  Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
 
-  setAttrib(ret, R_NamesSymbol, retN);
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
 
   unsigned int ncmta=0;
 

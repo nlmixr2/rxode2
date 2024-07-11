@@ -226,9 +226,9 @@ SEXP generateModelVars(void) {
   SEXP udf = PROTECT(_rxode2parse_getUdf());pro++;
   SET_VECTOR_ELT(lst,   20, udf);
 
-  setAttrib(tran,  R_NamesSymbol, trann);
-  setAttrib(lst,   R_NamesSymbol, names);
-  setAttrib(model, R_NamesSymbol, modeln);
+  Rf_setAttrib(tran,  R_NamesSymbol, trann);
+  Rf_setAttrib(lst,   R_NamesSymbol, names);
+  Rf_setAttrib(model, R_NamesSymbol, modeln);
   SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
   SET_STRING_ELT(cls, 0, mkChar("rxModelVars"));
   classgets(lst, cls);

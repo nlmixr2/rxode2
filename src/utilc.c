@@ -834,11 +834,11 @@ SEXP _vecDF(SEXP cv, SEXP n_) {
   SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -n;
-  setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
+  Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
   SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
-  setAttrib(ret, R_ClassSymbol, sexp_class);
-  setAttrib(ret, R_NamesSymbol, retN);
+  Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
   UNPROTECT(pro);
   return ret;
 }
@@ -901,11 +901,11 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
   SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
-  setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
+  Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
   SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
-  setAttrib(ret, R_ClassSymbol, sexp_class);
-  setAttrib(ret, R_NamesSymbol, retN);
+  Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
   UNPROTECT(pro);
   return ret;
 }

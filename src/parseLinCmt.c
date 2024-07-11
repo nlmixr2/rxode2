@@ -65,7 +65,7 @@ static inline SEXP linCmtParseSEXP(linCmtStruct *lin) {
   SET_STRING_ELT(lstN, 2, mkChar("trans"));
   SET_VECTOR_ELT(lst,  2, transSXP);
 
-  setAttrib(lst, R_NamesSymbol, lstN);
+  Rf_setAttrib(lst, R_NamesSymbol, lstN);
   sFree(&(lin->ret0));
   sFree(&(lin->ret));
   UNPROTECT(pro);

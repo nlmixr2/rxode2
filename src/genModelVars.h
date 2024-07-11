@@ -51,7 +51,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 9, mkChar("simflg"));
   SET_STRING_ELT(sLinCmtN, 10, mkChar("thread"));
   SET_STRING_ELT(sLinCmtN, 11, mkChar("nLlik"));
-  setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
+  Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   UNPROTECT(2);
   return(sLinCmt);
 }
@@ -67,7 +67,7 @@ static inline SEXP calcVersionInfo(void) {
   SET_STRING_ELT(version,0,mkChar(__VER_ver__));
   SET_STRING_ELT(version,1,mkChar(__VER_repo__));
   SET_STRING_ELT(version,2,mkChar(__VER_md5__));
-  setAttrib(version,   R_NamesSymbol, versionn);
+  Rf_setAttrib(version,   R_NamesSymbol, versionn);
   UNPROTECT(2);
   return version;
 }
@@ -188,7 +188,7 @@ static inline SEXP calcIniVals(void) {
   }
   tb.ini_i = ini_i;
 
-  setAttrib(ini,   R_NamesSymbol, inin);
+  Rf_setAttrib(ini,   R_NamesSymbol, inin);
   UNPROTECT(pro);
   return ini;
 }
