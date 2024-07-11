@@ -266,7 +266,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 
 #' Add/Create C functions for use in rxode2
 #'
-#' @inheritParams rxode2parse::rxFunParse
+#' @inheritParams rxFunParse
 #'
 #' @param name This can either give the name of the user function or
 #'   be a simple R function that you wish to convert to C.  If you
@@ -407,13 +407,13 @@ rxFun <- function(name, args, cCode) {
     }
     return(invisible())
   }
-  rxode2parse::rxFunParse(name, args, cCode)
+  rxFunParse(name, args, cCode)
 }
 
 #' @rdname rxFun
 #' @export
 rxRmFun <- function(name) {
-  rxode2parse::rxRmFunParse(name)
+  rxRmFunParse(name)
 }
 
 .SE1p <- c(
@@ -533,7 +533,7 @@ rxD <- function(name, derivatives) {
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
-  rxode2parse::.udfEnvSet(parent)
+  .udfEnvSet(parent)
   .rxToSE.envir$parent <- parent
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
@@ -1442,7 +1442,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
                      parent=parent.frame()) {
   rxReq("symengine")
-  rxode2parse::.udfEnvSet(parent)
+  .udfEnvSet(parent)
   .rxFromSE.envir$parent <- parent
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   assignInMyNamespace(".rxFromNumDer", .unknown[match.arg(unknownDerivatives)])
@@ -2231,7 +2231,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 #' @author Matthew Fidler
 #' @export
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(envir)
+  .udfEnvSet(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
   .env <- new.env(parent = loadNamespace("symengine"))
@@ -2245,9 +2245,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .env$..lhs <- NULL
   .env$..lhs0 <- NULL
   .env$..doConst <- doConst
-  .rxD <- rxode2parse::rxode2parseD()
+  .rxD <- rxode2parseD()
   for (.f in c(
-    ls(rxode2parse::.symengineFs()),
+    ls(.symengineFs()),
     ls(.rxD), "linCmtA", "linCmtB", "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
     "rxTBSi"
@@ -2278,8 +2278,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .env$rx_yj_ <- symengine::S("2")
   .env$rx_low_ <- symengine::S("0")
   .env$rx_hi_ <- symengine::S("1")
-  if (!is.null(rxode2parse::.rxSEeqUsr())) {
-    sapply(names(rxode2parse::.rxSEeqUsr()), function(x) {
+  if (!is.null(.rxSEeqUsr())) {
+    sapply(names(.rxSEeqUsr()), function(x) {
       assign(x, .rxFunction(x), envir = .env)
     })
   }
@@ -3159,7 +3159,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
   .ret <- c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
-    "linCmt", names(.rxOnly), ls(rxode2parse::.symengineFs())
+    "linCmt", names(.rxOnly), ls(.symengineFs())
   )
   if (extra) {
     .ret <- c(.ret, c(
@@ -3472,7 +3472,7 @@ rxSupportedFuns <- function() {
       return(paste0(.pre, "return (", .rxFun2c(x[[2]], envir=envir), ");\n"))
     }
     .ret0 <- lapply(x, .stripP)
-    .FunEq <- c(.rxFunEq, rxode2parse::.rxSEeqUsr())
+    .FunEq <- c(.rxFunEq, .rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .FunEq[.curName]
     if (!is.na(.nargs)) {

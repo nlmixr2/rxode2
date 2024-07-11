@@ -724,7 +724,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtDoseTime=TRUE,
                     ss2cancelAllPending=FALSE,
                     envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -1139,7 +1139,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
                        list(...),
@@ -1289,7 +1289,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(object$meta, envir, parent.frame(1)))
+  .udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
@@ -1337,7 +1337,7 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                                    theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
   .env <- object$env
@@ -1372,7 +1372,7 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   on.exit({
     .clearPipe()
     .asFunctionEnv$rx <- NULL
@@ -1827,7 +1827,7 @@ predict.function <- function(object, ...) {
 #' @rdname rxSolve
 #' @export
 predict.rxUi <- function(object, ...) {
-  rxode2parse::.udfEnvSet(list(object$meta, parent.frame(1)))
+  .udfEnvSet(list(object$meta, parent.frame(1)))
   rxSolve(object, ...)
 }
 

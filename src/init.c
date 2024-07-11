@@ -307,9 +307,11 @@ SEXP _rxode2_etSeq_(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_etRep_(SEXP, SEXP, SEXP, SEXP, SEXP,
                     SEXP, SEXP);
 SEXP _rxode2_RcppExport_registerCCallable(void);
+SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP);
 
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},
     {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
     {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
     {"_rxode2_etUpdate", (DL_FUNC) &_rxode2_etUpdate, 4},

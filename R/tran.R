@@ -23,7 +23,6 @@
 #' @importFrom stats setNames
 #' @importFrom methods is
 #' @importFrom utils assignInMyNamespace
-#' @eval rxode2parseFuns()
 #' @examples
 #' rxode2parse("a=3")
 rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB", "linCmtC"), verbose=FALSE,
@@ -40,7 +39,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
   fullPrint <- FALSE
   md5 <-   digest::digest(model)
   .ret <- .Call(
-    `_rxode2parse_trans`, model, modelPrefix, md5, .isStr,
+    `_rxode2_trans`, model, modelPrefix, md5, .isStr,
     as.integer(crayon::has_color()),
     "", .parseEnv$.parseFuns,
     fullPrint
@@ -75,7 +74,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
     ## Now update trans.
     .prefix <- paste0("rx_", md5["parsed_md5"], "_", .Platform$r_arch, "_")
     .libName <- substr(.prefix, 0, nchar(.prefix) - 1)
-    .ret <- .Call(`_rxode2parse_rxUpdateTrans_`, .ret, .prefix, .libName)
+    .ret <- .Call(`_rxode2_rxUpdateTrans_`, .ret, .prefix, .libName)
   }
   ## dparser::dpReload();
   ## rxReload()

@@ -1,7 +1,7 @@
 #pragma once
 #ifndef __rxode2_control_H__
 #define __rxode2_control_H__
-#include <rxode2parse_control.h>
+#include "rxode2parse_control.h"
 #define Rxc_scale 0
 #define Rxc_method 1
 #define Rxc_atol 2

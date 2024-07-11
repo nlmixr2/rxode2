@@ -83,7 +83,7 @@ NA_LOGICAL <- NA # nolint
 #'   print on every step (except ME/indLin), otherwise when `FALSE`
 #'   print only when calculating the `d/dt`
 #'
-#' @inheritParams rxode2parse::rxode2parse
+#' @inheritParams rxode2parse
 #'
 #' @details
 #'
@@ -254,6 +254,7 @@ NA_LOGICAL <- NA # nolint
 #' @concept Pharmacokinetics (PK)
 #' @concept Pharmacodynamics (PD)
 #' @useDynLib rxode2, .registration=TRUE
+#' @eval .rxodeBuildCode()
 #' @importFrom PreciseSums fsum
 #' @importFrom Rcpp evalCpp
 #' @importFrom checkmate qassert
@@ -1474,7 +1475,7 @@ rxCompile.rxModelVars <- function(model, # Model
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(rxode2parse::.extraCnow())
+        cat(.extraCnow())
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))
