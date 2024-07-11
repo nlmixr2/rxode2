@@ -692,7 +692,7 @@ is.latex <- function() {
 
 
 .nsToLoad <- function() {
-  vapply(rxode2parse::rxode2parseGetPackagesToLoad(),
+  vapply(rxode2parseGetPackagesToLoad(),
          function(pkg) {
            requireNamespace(pkg, quietly = TRUE)
          }, logical(1))
@@ -1065,7 +1065,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
 #' @examples
 #' .convertId("a")
 .convertId <- function(a) {
-  .Call(`_rxode2parse_convertId_`, a)
+  .Call(`_rxode2_convertId_`, a)
 }
 
 #' Get the internal breakdown of an evid
@@ -1082,7 +1082,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
 #'
 .getWh <- function(i) {
   checkmate::assertIntegerish(i,len=1, any.missing=FALSE)
-  .Call(`_rxode2parse_getWh`, as.integer(i))
+  .Call(`_rxode2_getWh`, as.integer(i))
 }
 
 #' This converts NONMEM-style EVIDs to classic RxODE events
@@ -1126,7 +1126,7 @@ binomProbs.default <- function(x, probs=c(0.025, 0.05, 0.5, 0.95, 0.975), na.rm=
                     rate=as.double(rate), dur=as.double(dur),
                     ii=as.double(ii),
                     ss=as.double(ss))
-  .Call(`_rxode2parse_getClassicEvid`,
+  .Call(`_rxode2_getClassicEvid`,
         .df$cmt, .df$amt, .df$rate, .df$dur,
         .df$ii, .df$evid, .df$ss)
 }

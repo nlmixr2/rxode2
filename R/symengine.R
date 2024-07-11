@@ -1927,7 +1927,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         }
       }
       .ret0 <- lapply(lapply(x, .stripP), .rxFromSE)
-      .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
+      .SEeq <- c(.rxSEeq, .rxSEeqUsr())
       .nargs <- .SEeq[paste(.ret0[[1]])]
       if (!is.na(.nargs)) {
         if (.nargs == length(.ret0) - 1) {
@@ -2103,7 +2103,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (any(.fun[1] == c("lead", "lag"))) {
             return("0")
           }
-          .rxD <- rxode2parse::rxode2parseD()
+          .rxD <- rxode2parseD()
           if (exists(.fun[1], envir = .rxD)) {
             .funLst <- get(.fun[1], envir = .rxD)
             if (length(.funLst) < .with) {
@@ -2176,7 +2176,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         .fun <- paste(.ret0[[1]])
         .g <- try(get(.fun, envir=.rxFromSE.envir$parent, mode="function"), silent=TRUE)
         if (inherits(.g, "try-error")) {
-          .g <- try(get(.fun, envir=rxode2parse::.udfEnvSet(NULL),
+          .g <- try(get(.fun, envir=.udfEnvSet(NULL),
                         mode="function"), silent=TRUE)
         }
         if (inherits(.g, "try-error")) {

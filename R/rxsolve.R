@@ -575,7 +575,7 @@
 #'
 #' @inheritParams odeMethodToInt
 #'
-#' @inheritParams rxode2parse::rxode2parse
+#' @inheritParams rxode2parse
 #'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
