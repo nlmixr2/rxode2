@@ -258,13 +258,13 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
 }
 
 void _assignFuns0(void) {
-  _evalUdf = (_udf_type) R_GetCCallable("rxode2parse", "_rxode2parse_evalUdf");
+  _evalUdf = (_udf_type) R_GetCCallable("rxode2", "_rxode2_evalUdf");
   _getRxSolve_ = (_getRxSolve_t) R_GetCCallable("rxode2","getRxSolve_");
   _assign_ptr=(rxode2_assign_ptr) R_GetCCallable("rxode2","rxode2_assign_fn_pointers");
   _rxRmModelLib=(_rxRmModelLibType) R_GetCCallable("rxode2","rxRmModelLib");
   _rxGetModelLib=(_rxGetModelLibType) R_GetCCallable("rxode2","rxGetModelLib");
   _rxode2_rxAssignPtr=(_rx_asgn)R_GetCCallable("rxode2","_rxode2_rxAssignPtr");
-  _rxQr=(_rx_asgn)R_GetCCallable("rxode2parse","_rxode2parse_rxQr");
+  _rxQr=(_rx_asgn)R_GetCCallable("rxode2","_rxode2_rxQr");
   _rxIsCurrentC = (_rxIsCurrentC_type)R_GetCCallable("rxode2","rxIsCurrentC");
   _sumPS  = (_rxSumType) R_GetCCallable("PreciseSums","PreciseSums_sum_r");
   _prodPS = (_rxProdType) R_GetCCallable("PreciseSums","PreciseSums_prod_r");
@@ -275,41 +275,41 @@ void _assignFuns0(void) {
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
   // dynamic start
-  linCmtA=(linCmtA_p)R_GetCCallable("rxode2parse", "linCmtA");
-  linCmtB=(linCmtB_p)R_GetCCallable("rxode2parse", "linCmtB");
-  linCmtC=(linCmtA_p)R_GetCCallable("rxode2parse", "linCmtC");
+  linCmtA=(linCmtA_p)R_GetCCallable("rxode2", "linCmtA");
+  linCmtB=(linCmtB_p)R_GetCCallable("rxode2", "linCmtB");
+  linCmtC=(linCmtA_p)R_GetCCallable("rxode2", "linCmtC");
 
-  rxnorm = (rxode2i_fn2)R_GetCCallable("rxode2random", "rxnorm");
-  rxbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2random","rxbinom");
-  rxnbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2random","rxnbinom");
-  rxnbinomMu = (rxode2i_rxbinom)R_GetCCallable("rxode2random","rxnbinomMu");
-  rxcauchy = (rxode2i_fn2)R_GetCCallable("rxode2random","rxcauchy") ;
-  rxchisq = (rxode2i_fn)R_GetCCallable("rxode2random","rxchisq") ;
-  rxexp = (rxode2i_fn)R_GetCCallable("rxode2random","rxexp");
-  rxf = (rxode2i_fn2)R_GetCCallable("rxode2random","rxf");
-  rxgeom = (rxode2i_ifn)R_GetCCallable("rxode2random","rxgeom");
-  rxgamma = (rxode2i_fn2)R_GetCCallable("rxode2random","rxgamma");
-  rxbeta = (rxode2i_fn2)R_GetCCallable("rxode2random","rxbeta");
-  rxpois = (rxode2i_ifn)R_GetCCallable("rxode2random","rxpois");
-  rxt_ = (rxode2i_fn)R_GetCCallable("rxode2random","rxt_");
-  rxunif = (rxode2i_fn2)R_GetCCallable("rxode2random","rxunif");
-  rxweibull = (rxode2i_fn2)R_GetCCallable("rxode2random","rxweibull");
-  rinorm = (rxode2i2_fn2)R_GetCCallable("rxode2random", "rinorm");
-  ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2random","ribinom");
-  rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2random","rinbinom");
-  rinbinomMu = (rxode2i2_ribinom)R_GetCCallable("rxode2random","rinbinomMu");
-  ricauchy = (rxode2i2_fn2)R_GetCCallable("rxode2random","ricauchy");
-  richisq = (rxode2i2_fn)R_GetCCallable("rxode2random","richisq");
-  riexp = (rxode2i2_fn)R_GetCCallable("rxode2random","riexp");
-  rif = (rxode2i2_fn2)R_GetCCallable("rxode2random","rif");
-  rigeom = (rxode2i2_ifn)R_GetCCallable("rxode2random","rigeom");
-  rigamma = (rxode2i2_fn2)R_GetCCallable("rxode2random","rigamma");
-  ribeta = (rxode2i2_fn2)R_GetCCallable("rxode2random","ribeta");
-  ripois = (rxode2i2_ifn)R_GetCCallable("rxode2random","ripois");
-  rit_ = (rxode2i2_fn)R_GetCCallable("rxode2random","rit_");
-  riunif = (rxode2i2_fn2)R_GetCCallable("rxode2random","riunif");
-  riweibull = (rxode2i2_fn2)R_GetCCallable("rxode2random","riweibull");
-  phi = (rxode2_fn)R_GetCCallable("rxode2random","phi");
+  rxnorm = (rxode2i_fn2)R_GetCCallable("rxode2", "rxnorm");
+  rxbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxbinom");
+  rxnbinom = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxnbinom");
+  rxnbinomMu = (rxode2i_rxbinom)R_GetCCallable("rxode2","rxnbinomMu");
+  rxcauchy = (rxode2i_fn2)R_GetCCallable("rxode2","rxcauchy") ;
+  rxchisq = (rxode2i_fn)R_GetCCallable("rxode2","rxchisq") ;
+  rxexp = (rxode2i_fn)R_GetCCallable("rxode2","rxexp");
+  rxf = (rxode2i_fn2)R_GetCCallable("rxode2","rxf");
+  rxgeom = (rxode2i_ifn)R_GetCCallable("rxode2","rxgeom");
+  rxgamma = (rxode2i_fn2)R_GetCCallable("rxode2","rxgamma");
+  rxbeta = (rxode2i_fn2)R_GetCCallable("rxode2","rxbeta");
+  rxpois = (rxode2i_ifn)R_GetCCallable("rxode2","rxpois");
+  rxt_ = (rxode2i_fn)R_GetCCallable("rxode2","rxt_");
+  rxunif = (rxode2i_fn2)R_GetCCallable("rxode2","rxunif");
+  rxweibull = (rxode2i_fn2)R_GetCCallable("rxode2","rxweibull");
+  rinorm = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinorm");
+  ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom");
+  rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom");
+  rinbinomMu = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinomMu");
+  ricauchy = (rxode2i2_fn2)R_GetCCallable("rxode2","ricauchy");
+  richisq = (rxode2i2_fn)R_GetCCallable("rxode2","richisq");
+  riexp = (rxode2i2_fn)R_GetCCallable("rxode2","riexp");
+  rif = (rxode2i2_fn2)R_GetCCallable("rxode2","rif");
+  rigeom = (rxode2i2_ifn)R_GetCCallable("rxode2","rigeom");
+  rigamma = (rxode2i2_fn2)R_GetCCallable("rxode2","rigamma");
+  ribeta = (rxode2i2_fn2)R_GetCCallable("rxode2","ribeta");
+  ripois = (rxode2i2_ifn)R_GetCCallable("rxode2","ripois");
+  rit_ = (rxode2i2_fn)R_GetCCallable("rxode2","rit_");
+  riunif = (rxode2i2_fn2)R_GetCCallable("rxode2","riunif");
+  riweibull = (rxode2i2_fn2)R_GetCCallable("rxode2","riweibull");
+  phi = (rxode2_fn)R_GetCCallable("rxode2","phi");
 
   gammap = (rxode2_fn2) R_GetCCallable("rxode2","gammap");
   gammaq = (rxode2_fn2) R_GetCCallable("rxode2","gammaq");
@@ -322,8 +322,8 @@ void _assignFuns0(void) {
   gammapDer  = (rxode2_fn2) R_GetCCallable("rxode2","gammapDer");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");
-  simeta =(_simfun) R_GetCCallable("rxode2random", "simeta");
-  simeps =(_simfun) R_GetCCallable("rxode2random", "simeps");
+  simeta =(_simfun) R_GetCCallable("rxode2", "simeta");
+  simeps =(_simfun) R_GetCCallable("rxode2", "simeps");
 
   _llikNorm=(rxode2_llikNormFun) R_GetCCallable("rxode2ll","rxLlikNorm");
   _llikNormDmean=(rxode2_llikNormFun) R_GetCCallable("rxode2ll","rxLlikNormDmean");
@@ -402,7 +402,7 @@ void __assignFuns2(rx_solve rx,
                    t_getDur getdur) {
   // assign start
   static rxode2_assignFuns2 rxode2parse_assignFuns2 = NULL;
-  if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2parse", "_rxode2parse_assignFuns2"));
+  if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
   rxode2parse_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
   // assign stop
 }
