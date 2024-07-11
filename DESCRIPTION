@@ -88,7 +88,6 @@ Imports:
     tools,
     utils,
     rxode2ll(>= 2.0.9),
-    rxode2parse (>= 2.0.19),
     data.table (>= 1.12.4),
     qs (>= 0.26.3)
 Description: Facilities for running simulations from ordinary
@@ -113,7 +112,6 @@ RoxygenNote: 7.3.1
 Biarch: true
 LinkingTo:
     sitmo,
-    rxode2parse (>= 2.0.12),
     PreciseSums (>= 0.3),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),
