@@ -48,7 +48,7 @@ d/dt(blood)     = a*intestine - b*blood
 
   et <- structure(list(time = c(0, 0.05, 0.1, 0.2, 0.3, 0.5), cmt = c("(default)", "(obs)", "intestine", "-intestine", "intestine", "out"), amt = c(0.0833333333333333, NA, 3, NA, 3, 3), rate = c(2, 0, 0, 0, 0, 0), ii = c(1, 0, 3, 0, 3, 0), addl = c(9L, 0L, 0L, 0L, 0L, 0L), evid = c(1L, 2L, 1L, 2L, 1L, 1L), ss = c(0L, 0L, 1L, 0L, 2L, 0L)), class = "data.frame", row.names = c(NA, -6L))
 
-  ett1 <- etTransParse(et, mod, keepDosingOnly=TRUE)
+  ett1 <- etTrans(et, mod, keepDosingOnly=TRUE)
   .n <- gsub("[.]", "_", names(attr(class(ett1), ".rxode2")))
 
   cat(paste(paste0("#define RxTrans_", .n, " ", seq_along(.n)-1),collapse="\n"))
