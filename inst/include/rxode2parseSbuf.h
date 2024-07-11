@@ -77,7 +77,6 @@ void addLine(vLines *sbb, const char *format, ...);
 void curLineProp(vLines *sbb, int propId);
 
 void curLineType(vLines *sbb, int propId);
-
 void doDot(sbuf *out, char *buf);
 
 void doDot2(sbuf *sb, sbuf *sbDt, char *buf);

@@ -36,6 +36,8 @@ using namespace Rcpp;
 
 extern int fastFactorDataHasNa;
 
+SEXP convertId_(SEXP x);
+
 static inline bool rxIsNumInt(RObject obj) {
   int type = obj.sexp_type();
   if (type == REALSXP || type == 13) {
@@ -169,7 +171,6 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   }
   return id;
 }
-#define getForder _rxode2parse_getForder
 extern "C" SEXP getForder(void) {
   if (!getForder_b){
     Function fn = getRxFn(".getDTEnv");
@@ -198,13 +199,11 @@ Function getChin() {
   return b["%in%"];
 }
 
-#define chin _rxode2parse_chin
 extern "C" SEXP chin(SEXP x, SEXP table) {
   Function chin_ = getChin();
   return chin_(x, table);
 }
 
-#define useForder _rxode2parse_useForder
 extern "C" int useForder(void){
   return (int)(getForder_b);
 }
@@ -436,10 +435,62 @@ bool rxSetIni0(bool ini0 = true) {
   return _ini0;
 }
 
-#include "../inst/include/rxode2parseConvertMethod.h"
+IntegerVector convertMethod(RObject method) {
+  IntegerVector oldEvid;
+  if (rxIsChar(method)){
+    CharacterVector tmp = asCv(method, "method");
+    oldEvid = IntegerVector(tmp.size());
+    for (int jj = tmp.size(); jj--;){
+      std::string cur = (as<std::string>(tmp[jj])).substr(0,1);
+      // (1 = replace, 2 = add, 3 = multiply)
+      if (cur == "A" || cur == "a" || cur == "2"){
+        oldEvid[jj] = 1;
+      } else if (cur == "m" || cur == "M" || cur == "3"){
+        oldEvid[jj] = 6;
+      } else if (cur == "r" || cur == "R" || cur == "1"){
+        oldEvid[jj] = 5;
+      } else {
+        stop(_("unknown method: '%s'"), (as<std::string>(tmp[jj])).c_str());
+      }
+    }
+  } else if (Rf_inherits(method, "factor")){
+    IntegerVector tmp = asIv(method, "method");
+    oldEvid = IntegerVector(tmp.size());
+    CharacterVector lvl = tmp.attr("levels");
+    IntegerVector trans(lvl.size());
+    for (int jj = lvl.size(); jj--;){
+      std::string cur = (as<std::string>(lvl[jj])).substr(0,1);
+      if (cur == "A" || cur == "a" || cur == "2"){
+        trans[jj] = 1;
+      } else if (cur == "m" || cur == "M" || cur == "3"){
+        trans[jj] = 6;
+      } else if (cur == "r" || cur == "R" || cur == "1"){
+        trans[jj] = 5;
+      } else {
+        stop(_("unknown method: '%s'"), (as<std::string>(lvl[jj])).c_str());
+      }
+    }
+    for (int jj = tmp.size(); jj--;){
+      oldEvid[jj] = trans[tmp[jj]-1];
+    }
+  } else if (rxIsNumInt(method)){
+    IntegerVector tmp = as<IntegerVector>(method);
+    oldEvid = IntegerVector(tmp.size());
+    for (int jj = tmp.size(); jj--;){
+      // (1 = replace, 2 = add, 3 = multiply)
+      if (tmp[jj] == 1.){
+        oldEvid[jj] = 5;
+      } else if (tmp[jj] == 2.){
+        oldEvid[jj] = 1;
+      } else if (tmp[jj] == 3.){
+        oldEvid[jj] = 6;
+      }
+    }
+  }
+  return oldEvid;
+}
 
 extern "C" SEXP _rxode2parse_convertId_(SEXP id);
-#define convertId_ _rxode2parse_convertId_
 
 bool warnedNeg=false;
 bool evid2isObs=true;
@@ -523,13 +574,13 @@ RObject etTranGetAttrKeep(SEXP in) {
 //'
 //' @export
 //[[Rcpp::export]]
-List etTransParse(List inData, List mv, bool addCmt=false,
-                  bool dropUnits=false, bool allTimeVar=false,
-                  bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
-                  CharacterVector keep = CharacterVector(0),
-                  bool addlKeepsCov=false,
-                  bool addlDropSs = true,
-                  bool ssAtDoseTime=true) {
+List etTrans(List inData, List mv, bool addCmt=false,
+             bool dropUnits=false, bool allTimeVar=false,
+             bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
+             CharacterVector keep = CharacterVector(0),
+             bool addlKeepsCov=false,
+             bool addlDropSs = true,
+             bool ssAtDoseTime=true) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -791,7 +842,7 @@ List etTransParse(List inData, List mv, bool addCmt=false,
     List newInData = clone(inData);
     Function convDate = rx[".convertExtra"];
     newInData =  convDate(newInData);
-    return etTransParse(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid);
+    return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;

@@ -19,6 +19,7 @@
 #define _(String) (String)
 #endif
 #include "../inst/include/rxode2parse.h"
+#include "../inst/include/rxode2_control.h"
 #include "tran.h"
 #include "../inst/include/rxode2parseSbuf.h"
 
@@ -261,7 +262,7 @@ static inline void printCModelVars(const char *prefix) {
   sAppend(&sbOut, "extern SEXP %smodel_vars(void){\n  int pro=0;\n", prefix);
   sAppend(&sbOut, "  SEXP _mv = PROTECT(_rxGetModelLib(\"%smodel_vars\"));pro++;\n", prefix);
   sAppendN(&sbOut, "  if (!_rxIsCurrentC(_mv)){\n", 28);
-  sAppendN(&sbOut, "    SEXP hash    = PROTECT(allocVector(STRSXP, 1));pro++;\n", 58);
+  sAppendN(&sbOut, "    SEXP hash    = PROTECT(Rf_allocVector(STRSXP, 1));pro++;\n", 61);
   sAppend(&sbOut, "#define __doBuf__  snprintf(buf, __doBufN__, \"", _mv.o+1);
   int off=0;
   int off2 = 0;
@@ -355,7 +356,7 @@ void writeSb(sbuf *sbb, FILE *fp);
 	  CHAR(STRING_ELT(libname, 1)));					\
   writeSb(&sbOut, fpIO);
 
-SEXP _rxode2parse_codegen(SEXP c_file, SEXP prefix, SEXP libname,
+SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast, SEXP goodFuns);
 
 extern int fullPrint;

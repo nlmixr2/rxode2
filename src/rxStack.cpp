@@ -2,13 +2,14 @@
 //#undef NDEBUG
 #define STRICT_R_HEADERS
 #include <Rcpp.h>
-#include <rxode2parse.h>
+#include "../inst/include/rxode2parse.h"
 
 using namespace Rcpp;
 
 #define rxModelVars(a) rxModelVars_(a)
 
-extern "C" SEXP rxModelVars_(SEXP);
+
+List rxModelVars(const RObject &obj);
 
 bool hasElement(CharacterVector one, std::string what){
   for (unsigned int i = one.size(); i--;){

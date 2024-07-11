@@ -37,40 +37,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "rxode2parse_control.h"
+#include "rxode2_control.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 
-#ifdef _isrxode2parse_
-#define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-#define isSameTime(xout, xp) (fabs((xout)-(xp))  <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
-// use ~dop853 definition of same time
-#define isSameTimeDop(xout, xp) (0.1 * fabs((xout)-(xp)) <= fabs(xout) * 2.3E-16)
-#define _linCmtParse _rxode2parse_linCmtParse
-#define _rxode2_linCmtGen _rxode2parse_linCmtGen
-#define rc_buf_read _rxode2parse_rc_buf_read
-#define sIniTo _rxode2parse_sIniTo
-#define sFree _rxode2parse_sFree
-#define sFreeIni _rxode2parse_sFreeIni
-#define sAppendN _rxode2parse_sAppendN
-#define sAppend _rxode2parse_sAppend
-#define sPrint _rxode2parse_sPrint
-#define lineIni _rxode2parse_lineIni
-#define lineFree _rxode2parse_lineFree
-#define addLine _rxode2parse_addLine
-#define curLineProp _rxode2parse_curLineProp
-#define curLineType _rxode2parse_curLineType
-#define doDot _rxode2parse_doDot
-#define doDot2 _rxode2parse_doDot2
-#define _setSilentErr _rxode2parse__setSilentErr
-#define _isRstudio2 _rxode2parse_isRstudio2
-#define setSilentErr _rxode2parse_setSilentErr
-#define setRstudioPrint _rxode2parse_setRstudioPrint
-#define getSilentErr _rxode2parse_getSilentErr
-#define getRstudioPrint _rxode2parse_getRstudioPrint
-#define RSprintf _rxode2parse_RSprintf
-#define parseFree _rxode2parse_parseFree
-#define parseFreeLast _rxode2parse_parseFreeLast
-#define reset _rxode2parse_reset
-#endif
 #include "rxode2parseStruct.h"
 #endif

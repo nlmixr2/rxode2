@@ -545,7 +545,7 @@ void writeSb(sbuf *sbb, FILE *fp){
 
 extern SEXP _goodFuns;
 
-SEXP _rxode2parse_codegen(SEXP c_file, SEXP prefix, SEXP libname,
+SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast,
                           SEXP goodFuns){
   _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;

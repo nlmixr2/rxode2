@@ -25,7 +25,7 @@
 #include "../inst/include/rxode2parseVer.h"
 
 static inline SEXP calcSLinCmt(void) {
-  SEXP sLinCmt = PROTECT(allocVector(INTSXP,12));
+  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,12));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -38,7 +38,7 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[10]= tb.thread;
   INTEGER(sLinCmt)[11]= tb.nLlik;
 
-  SEXP sLinCmtN = PROTECT(allocVector(STRSXP, 12));
+  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 12));
   SET_STRING_ELT(sLinCmtN, 0, mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, mkChar("linB"));
@@ -57,8 +57,8 @@ static inline SEXP calcSLinCmt(void) {
 }
 
 static inline SEXP calcVersionInfo(void) {
-  SEXP version  = PROTECT(allocVector(STRSXP, 3));
-  SEXP versionn = PROTECT(allocVector(STRSXP, 3));
+  SEXP version  = PROTECT(Rf_allocVector(STRSXP, 3));
+  SEXP versionn = PROTECT(Rf_allocVector(STRSXP, 3));
 
   SET_STRING_ELT(versionn,0,mkChar("version"));
   SET_STRING_ELT(versionn,1,mkChar("repo"));
@@ -147,8 +147,8 @@ static inline void calcExtracmt(void) {
 
 static inline SEXP calcIniVals(void) {
   int pro=0;
-  SEXP inin  = PROTECT(allocVector(STRSXP, tb.isPi + tb.ini_i)); pro++;
-  SEXP ini   = PROTECT(allocVector(REALSXP, tb.isPi + tb.ini_i)); pro++;
+  SEXP inin  = PROTECT(Rf_allocVector(STRSXP, tb.isPi + tb.ini_i)); pro++;
+  SEXP ini   = PROTECT(Rf_allocVector(REALSXP, tb.isPi + tb.ini_i)); pro++;
   char *buf;
   for (int i=tb.isPi + tb.ini_i;i--;) REAL(ini)[i] = NA_REAL;
   int ini_i=0;
@@ -169,8 +169,8 @@ static inline SEXP calcIniVals(void) {
     SET_STRING_ELT(inin,ini_i,mkChar("pi"));
     REAL(ini)[ini_i++] = M_PI;
   } else if (redo){
-    inin  = PROTECT(allocVector(STRSXP, tb.ini_i));pro++;
-    ini   = PROTECT(allocVector(REALSXP, tb.ini_i));pro++;
+    inin  = PROTECT(Rf_allocVector(STRSXP, tb.ini_i));pro++;
+    ini   = PROTECT(Rf_allocVector(REALSXP, tb.ini_i));pro++;
     for (int i = tb.ini_i; i--;) REAL(ini)[i] = NA_REAL;
     ini_i=0;
     for (int i = 0; i < NV; i++){

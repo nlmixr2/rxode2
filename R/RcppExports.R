@@ -192,8 +192,8 @@ etTransEvidIsObs <- function(isObsSexp) {
 #' @keywords internal
 #'
 #' @export
-etTransParse <- function(inData, mv, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE) {
-    .Call(`_rxode2_etTransParse`, inData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime)
+etTrans <- function(inData, mv, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE) {
+    .Call(`_rxode2_etTrans`, inData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime)
 }
 
 rxEtTransAsDataFrame_ <- function(inData1) {

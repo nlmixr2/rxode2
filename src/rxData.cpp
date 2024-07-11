@@ -29,7 +29,7 @@
 #include "checkmate.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #include "../inst/include/rxode2.h"
-#include <rxode2parseVer.h>
+#include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
 #ifdef ENABLE_NLS
@@ -50,7 +50,7 @@ typedef void (*seedEng_t)(int ncores);
 extern seedEng_t seedEng;
 
 #include "cbindThetaOmega.h"
-#include <rxode2parseHandleEvid.h>
+#include "../inst/include/rxode2parseHandleEvid.h"
 #include "rxThreadData.h"
 //#include "seed.h"
 
@@ -67,17 +67,13 @@ extern "C" int getThrottle();
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
-extern "C" SEXP _rxode2parse_assignUdf(SEXP in);
-extern "C" SEXP _rxode2parse_udfEnvSet(SEXP udf);
-extern "C" SEXP _rxode2parse_udfReset();
-extern "C" SEXP _rxode2parse_rxC(SEXP in);
+extern "C" SEXP _rxode2_assignUdf(SEXP in);
+extern "C" SEXP _rxode2_udfEnvSet(SEXP udf);
+extern "C" SEXP _rxode2_udfReset();
+extern "C" SEXP _rxode2_rxC(SEXP in);
 
-extern "C" {
-  typedef SEXP (*_rxode2parse_getForder_type)(void);
-  extern _rxode2parse_getForder_type getForder;
-  typedef int (*_rxode2parse_useForder_type)(void);
-  extern _rxode2parse_useForder_type useForder;
-}
+Function getForder();
+extern "C" int useForder(void);
 
 #include "../inst/include/rxode2_as.h"
 
@@ -808,7 +804,7 @@ List rxModelVars_character(const RObject &obj){
   return f(obj);
 }
 
-List rxModelVars_list(const RObject &obj){
+List rxModelVars_list(const RObject &obj) {
   bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, dfdy=false;
   List lobj  = asList(obj, "rxModelVars_list");
   CharacterVector nobj = lobj.names();
@@ -2448,7 +2444,7 @@ void resetFkeep();
 //' @export
 // [[Rcpp::export]]
 LogicalVector rxSolveFree(){
-  _rxode2parse_udfReset();
+  _rxode2_udfReset();
   resetFkeep();
   if (!_globals.alloc) return true;
   rx_solve* rx = getRxSolve_();
@@ -4745,8 +4741,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
   }
 
-  _rxode2parse_udfEnvSet(rxSolveDat->mv[RxMv_udf]);
-  LogicalVector recompileUdf = _rxode2parse_assignUdf(rxSolveDat->mv[RxMv_udf]);
+  _rxode2_udfEnvSet(rxSolveDat->mv[RxMv_udf]);
+  LogicalVector recompileUdf = _rxode2_assignUdf(rxSolveDat->mv[RxMv_udf]);
 
   if (recompileUdf[0]) {
     Function rxode2 = getRxFn("rxode2");
@@ -6236,7 +6232,7 @@ CharacterVector rxC(RObject obj){
   } else if (rxIs(obj, "rxDll")){
     rets = as<std::string>(as<List>(obj)["c"]);
   } else if (rxIs(obj, "character")) {
-    Nullable<CharacterVector> rxCp = _rxode2parse_rxC(obj);
+    Nullable<CharacterVector> rxCp = _rxode2_rxC(obj);
     if (!rxCp.isNull()) {
       return as<CharacterVector>(rxCp);
     }

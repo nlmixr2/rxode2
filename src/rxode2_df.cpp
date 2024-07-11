@@ -31,9 +31,9 @@
 #include "checkmate.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #include "../inst/include/rxode2.h"
-#include <rxode2parseVer.h>
-#include <rxode2parseHandleEvid.h>
-#include <rxode2parseGetTime.h>
+#include "../inst/include/rxode2parseVer.h"
+#include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h"
 #include "par_solve.h"
 #include <Rcpp.h>
 #include "strncmp.h"

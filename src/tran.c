@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdint.h>   /* dj: import intptr_t */
 //#include "ode.h"
+#include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseSbuf.h"
 #include "getOption.h"
 #include "parseLinCmt.h"
@@ -605,7 +606,7 @@ static inline void finalizeSyntaxError(void) {
 void _rxode2parse_assignTranslation(SEXP df);
 SEXP getRxode2ParseDf(void);
 
-SEXP _rxode2parse_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
+SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn){
   const char *in = NULL;
   _rxode2parse_assignTranslation(getRxode2ParseDf());
@@ -619,7 +620,7 @@ SEXP _rxode2parse_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parse
   return lst;
 }
 
-SEXP _rxode2parse_parseModel(SEXP type){
+SEXP _rxode2_parseModel(SEXP type){
   if (!sbPm.o){
     _rxode2parse_unprotect();
     err_trans("model no longer loaded in memory");
@@ -628,14 +629,14 @@ SEXP _rxode2parse_parseModel(SEXP type){
   SEXP pm;
   switch (iT){
   case 1:
-    pm = PROTECT(allocVector(STRSXP, sbPmDt.n));
+    pm = PROTECT(Rf_allocVector(STRSXP, sbPmDt.n));
     for (int i = 0; i < sbPmDt.n; i++){
       SET_STRING_ELT(pm, i, mkChar(sbPmDt.line[i]));
     }
     break;
 
   default:
-    pm = PROTECT(allocVector(STRSXP, sbPm.n));
+    pm = PROTECT(Rf_allocVector(STRSXP, sbPm.n));
     for (int i = 0; i < sbPm.n; i++){
       SET_STRING_ELT(pm, i, mkChar(sbPm.line[i]));
     }
@@ -645,8 +646,8 @@ SEXP _rxode2parse_parseModel(SEXP type){
   return pm;
 }
 
-SEXP _rxode2parse_codeLoaded(void){
-  SEXP pm = PROTECT(allocVector(INTSXP, 1));
+SEXP _rxode2_codeLoaded(void){
+  SEXP pm = PROTECT(Rf_allocVector(INTSXP, 1));
   if (!sbPm.o || !sbNrm.o){
     INTEGER(pm)[0]=0;
   } else {
@@ -656,8 +657,8 @@ SEXP _rxode2parse_codeLoaded(void){
   return pm;
 }
 
-SEXP _rxode2parse_isLinCmt(void) {
-  SEXP ret = PROTECT(allocVector(INTSXP, 1));
+SEXP _rxode2_isLinCmt(void) {
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
   INTEGER(ret)[0]=tb.linCmt;
   UNPROTECT(1);
   return ret;

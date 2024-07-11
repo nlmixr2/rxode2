@@ -820,22 +820,22 @@ SEXP _vecDF(SEXP cv, SEXP n_) {
   if (n <= 0) Rf_errorcall(R_NilValue, _("'n' must be greater than 0"));
   int pro = 0;
   int len = length(cv);
-  SEXP ret = PROTECT(allocVector(VECSXP, len)); pro++;
-  SEXP retN = PROTECT(allocVector(STRSXP, len)); pro++;
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, len)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, len)); pro++;
   SEXP cvN = getAttrib(cv, R_NamesSymbol);
   for (int i = len; i--;) {
-    SEXP tmp = PROTECT(allocVector(REALSXP, n)); pro++;
+    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, n)); pro++;
     for (int j = n; j--;) {
       REAL(tmp)[j] = REAL(cv)[i];
     }
     SET_VECTOR_ELT(ret, i, tmp);
     SET_STRING_ELT(retN, i, STRING_ELT(cvN, i));
   }
-  SEXP sexp_rownames = PROTECT(allocVector(INTSXP,2)); pro++;
+  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -n;
   setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
-  SEXP sexp_class = PROTECT(allocVector(STRSXP, 1)); pro++;
+  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   setAttrib(ret, R_ClassSymbol, sexp_class);
   setAttrib(ret, R_NamesSymbol, retN);
@@ -878,10 +878,10 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
     lenItem = n;
   }
   int pro = 0;
-  SEXP ret = PROTECT(allocVector(VECSXP, len1+len2)); pro++;
-  SEXP retN = PROTECT(allocVector(STRSXP, len1+len2)); pro++;
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, len1+len2)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, len1+len2)); pro++;
   for (int i = len1; i--; ) {
-    SEXP tmp = PROTECT(allocVector(REALSXP, lenOut)); pro++;
+    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
     SEXP in = VECTOR_ELT(et_, i);
     int l = lenOut;
     for (int j = len1a; j--;) {
@@ -893,16 +893,16 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
     SET_STRING_ELT(retN, i, STRING_ELT(etN, i));
   }
   for (int i = len2; i--; ) {
-    SEXP tmp = PROTECT(allocVector(REALSXP, lenOut)); pro++;
+    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
     memcpy(&(REAL(tmp)[0]), &(REAL(mat_)[lenOut*i]), lenOut*sizeof(double));
     SET_VECTOR_ELT(ret, i+len1, tmp);
     SET_STRING_ELT(retN, i+len1, STRING_ELT(matDN, i));
   }
-  SEXP sexp_rownames = PROTECT(allocVector(INTSXP,2)); pro++;
+  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
   INTEGER(sexp_rownames)[0] = NA_INTEGER;
   INTEGER(sexp_rownames)[1] = -lenOut;
   setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
-  SEXP sexp_class = PROTECT(allocVector(STRSXP, 1)); pro++;
+  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
   SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
   setAttrib(ret, R_ClassSymbol, sexp_class);
   setAttrib(ret, R_NamesSymbol, retN);

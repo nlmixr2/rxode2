@@ -10,7 +10,7 @@
 #define __DOINIT__
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2.h"
-#include <rxode2parseGetTime.h>
+#include "../inst/include/rxode2parseGetTime.h"
 
 SEXP _rxHasOpenMp(void);
 
@@ -288,14 +288,6 @@ typedef SEXP (*isLotri_type) (SEXP);
 typedef SEXP (*lotriMaxNu_type) (SEXP);
 typedef SEXP (*rxSolveFreeSexp_t)(void);
 extern void setZeroMatrix(int which);
-typedef SEXP (*etTrans_t)(SEXP, SEXP, SEXP, SEXP, SEXP,
-                          SEXP, SEXP, SEXP, SEXP, SEXP,
-                          SEXP);
-typedef void (*rxModelsAssignC_t)(const char* str, SEXP assign);
-typedef SEXP (*rxModelVars_SEXP_t)(SEXP);
-typedef SEXP (*rxExpandNestingSexp_t)(SEXP, SEXP, SEXP);
-typedef SEXP (*chin_t)(SEXP x, SEXP table);
-
 extern rx_solve rx_global;
 extern rx_solving_options op_global;
 extern void setZeroMatrix(int which);

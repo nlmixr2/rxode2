@@ -4,7 +4,7 @@
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 #include <RcppArmadillo.h>
 #include "../inst/include/rxode2.h"
-#include <rxode2parse.h>
+#include "../inst/include/rxode2parse.h"
 #include <threefry.h>
 #include <R.h>
 #include "checkmate.h"

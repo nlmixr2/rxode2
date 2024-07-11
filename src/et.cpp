@@ -5,10 +5,10 @@
 #include <Rcpp.h>
 #include <R.h>
 #include "timsort.h"
-#include <rxode2parse.h>
+#include "../inst/include/rxode2parse.h"
 extern "C" rx_solve rx_global;
 extern "C" rx_solving_options op_global;
-#include <rxode2parseHandleEvid.h>
+#include "../inst/include/rxode2parseHandleEvid.h"
 #include "checkmate.h"
 #define SORT gfx::timsort
 
@@ -48,7 +48,7 @@ Environment rxode2env ();
 Function getRxFn(std::string name);
 
 Function getForder();
-bool useForder();
+extern "C" int useForder(void);
 
 RObject evCur;
 RObject curSolve;
@@ -948,7 +948,8 @@ CharacterVector deparseUnit(NumericVector nv){
   }
 }
 
-#include <rxode2parseConvertMethod.h>
+
+IntegerVector convertMethod(RObject method);
 
 List etImportEventTable(List inData, bool warnings = true){
   CharacterVector lName0 = asCv(inData.attr("names"), "names");

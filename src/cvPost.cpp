@@ -8,18 +8,15 @@
 #include <libintl.h>
 #include "checkmate.h"
 #include <boost/algorithm/string/predicate.hpp>
-#include <rxode2parse.h>
+#include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2_as.h"
 
 extern "C"{
 
   extern "C" SEXP chin(SEXP a, SEXP b);
-
-  typedef int (*get_sexp_uniqueL_type)(SEXP s);
-  get_sexp_uniqueL_type get_sexp_uniqueL;
   typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
   lotriMat_type lotriMat;
-  typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
+   typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
   asLotriMat_type asLotriMat;
   typedef SEXP (*lotriSep_type) (SEXP, SEXP, SEXP, SEXP, SEXP);
   lotriSep_type lotriSep;
@@ -31,19 +28,6 @@ extern "C"{
   isLotri_type isLotri;
   typedef SEXP (*lotriMaxNu_type) (SEXP);
   lotriMaxNu_type lotriMaxNu;
-  typedef SEXP (*rxSolveFreeSexp_t)(void);
-  rxSolveFreeSexp_t rxSolveFree;
-  typedef SEXP (*etTrans_t)(SEXP, SEXP, SEXP, SEXP, SEXP,
-                            SEXP, SEXP, SEXP, SEXP, SEXP,
-                            SEXP);
-  etTrans_t etTransSexp;
-  typedef void (*rxModelsAssignC_t)(const char* str, SEXP assign);
-  rxModelsAssignC_t rxModelsAssign;
-  typedef SEXP (*rxModelVars_SEXP_t)(SEXP);
-  rxModelVars_SEXP_t rxModelVars_;
-  typedef SEXP (*rxExpandNestingSexp_t)(SEXP, SEXP, SEXP);
-  rxExpandNestingSexp_t rxExpandNestingSexp;
-  typedef SEXP (*getArmaMat_t)(int type, int csim, rx_solve* rx);
 }
 List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
@@ -57,39 +41,23 @@ SEXP nestingInfo_(SEXP omega, List data);
 List rxExpandNesting(const RObject& obj, List& nestingInfo,
                      bool compile=false);
 
+List rxModelVars_(const RObject &obj);
+
+extern "C" int get_sexp_uniqueL( SEXP s );
+
 extern "C" SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_);
 
 extern "C" SEXP _vecDF(SEXP cv, SEXP n_);
-
-typedef SEXP (*convertId_type)(SEXP x);
-
-bool convertId_assigned = false;
-convertId_type convertId_;
-
-extern Function loadNamespace;
-extern bool rxode2parse_loaded;
-extern Environment rxode2parse;
-
-
-SEXP assignConvertId(void) {
-  BEGIN_RCPP
-  if (!rxode2parse_loaded) {
-    rxode2parse = loadNamespace("rxode2parse");
-    rxode2parse_loaded = true;
-    Function funPtrs = rxode2parse[".rxode2parseFunPtrs"];
-    List ptr = as<List>(funPtrs());
-    convertId_ = (convertId_type)(R_ExternalPtrAddr(ptr[0]));
-    get_sexp_uniqueL = (get_sexp_uniqueL_type)(R_ExternalPtrAddr(ptr[6]));
-  }
-  END_RCPP
-}
+SEXP convertId_(SEXP x);
 
 SEXP rxRmvnSEXP(SEXP nS, SEXP muS, SEXP sigmaS,
                 SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS,
                 SEXP keepNamesS,
                 SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS);
 
+void rxModelsAssign(std::string str, SEXP assign);
 
+LogicalVector rxSolveFree();
 
 bool gotLotriMat=false;
 
@@ -1131,10 +1099,6 @@ int factor2( IntegerVector col, IntegerVector id) {
 
 
 SEXP nestingInfoSingle_(SEXP col, IntegerVector id) {
-  if (!convertId_assigned) {
-    assignConvertId();
-    convertId_assigned=true;
-  }
   SEXP f2 = PROTECT(convertId_(col));
   int l1 = factor2(f2, id);
   int lid = Rf_length(Rf_getAttrib(id, R_LevelsSymbol));
@@ -1174,10 +1138,6 @@ SEXP nestingInfoSingle_(SEXP col, IntegerVector id) {
 //[[Rcpp::export]]
 SEXP nestingInfo_(SEXP omega, List data) {
   // Might need to clone...
-  if (!convertId_assigned) {
-    assignConvertId();
-    convertId_assigned=true;
-  }
   int pro = 0;
   CharacterVector lName = data.names();
   int wid = -1;

@@ -15,36 +15,19 @@
 #endif
 #include <Rcpp.h>
 
-
-#define op_global _rxode2parse_op_global
-#define rx_global _rxode2parse_rx_global
-#define AMT _rxode2parse_AMT
-#define LAG _rxode2parse_LAG
-#define RATE _rxode2parse_RATE
-#define DUR _rxode2parse_DUR
-#define calc_mtime _rxode2parse_calc_mtime
-#define getTime_ _rxode2parse_getTime_
-#define getTime _rxode2parse_getTime
-#define _locateTimeIndex _rxode2parse_locateTimeIndex
-
 #include "../inst/include/rxode2parse.h"
-extern "C" void _rxode2parse_unprotect();
 
-extern "C" {
-  rx_solving_options _rxode2parse_op_global;
-  rx_solve _rxode2parse_rx_global;
-  t_F AMT = NULL;
-  t_LAG LAG = NULL;
-  t_RATE RATE = NULL;
-  t_DUR DUR = NULL;
-  t_calc_mtime calc_mtime = NULL;
+extern "C" rx_solve rx_global;
+extern "C" rx_solving_options op_global;
+extern "C" t_F AMT;
+extern "C" t_LAG LAG;
+extern "C" t_RATE RATE;
+extern "C" t_DUR DUR;
+extern "C" t_calc_mtime calc_mtime;
 
-  t_ME ME = NULL;
-  t_IndF IndF = NULL;
-
-  t_getTime _rxode2parse_getTime;
-  t_locateTimeIndex _rxode2parse_locateTimeIndex;
-}
+extern "C" t_ME ME;
+extern "C" t_IndF IndF;
+extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
 extern "C" void RSprintf(const char *format, ...);
 
@@ -84,18 +67,22 @@ extern "C" SEXP _rxode2parse_linCmtB() {
 #include <Rcpp.h>
 #include <RcppEigen.h>
 
-#define op_global _rxode2parse_op_global
-#define rx_global _rxode2parse_rx_global
-#define AMT _rxode2parse_AMT
-#define LAG _rxode2parse_LAG
-#define RATE _rxode2parse_RATE
-#define DUR _rxode2parse_DUR
-#define calc_mtime _rxode2parse_calc_mtime
-#define getTime_ _rxode2parse_getTime_
-#define getTime _rxode2parse_getTime
-#define _locateTimeIndex _rxode2parse_locateTimeIndex
-
 #include "../inst/include/rxode2parse.h"
+
+extern "C" rx_solve rx_global;
+extern "C" rx_solving_options op_global;
+extern "C" t_F AMT;
+extern "C" t_LAG LAG;
+extern "C" t_RATE RATE;
+extern "C" t_DUR DUR;
+extern "C" t_calc_mtime calc_mtime;
+
+extern "C" t_ME ME;
+extern "C" t_IndF IndF;
+extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
+
+extern "C" void RSprintf(const char *format, ...);
+
 
 extern "C" SEXP _rxode2parse_linCmtB() {
   SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
@@ -103,23 +90,17 @@ extern "C" SEXP _rxode2parse_linCmtB() {
   UNPROTECT(1);
   return ret;
 }
-extern "C" void _rxode2parse_unprotect();
 
-extern "C" {
-  rx_solving_options _rxode2parse_op_global;
-  rx_solve _rxode2parse_rx_global;
-  t_F AMT = NULL;
-  t_LAG LAG = NULL;
-  t_RATE RATE = NULL;
-  t_DUR DUR = NULL;
-  t_calc_mtime calc_mtime = NULL;
+extern "C" rx_solve rx_global;
+extern "C" rx_solving_options op_global;
+extern "C" t_F AMT;
+extern "C" t_LAG LAG;
+extern "C" t_RATE RATE;
+extern "C" t_DUR DUR;
+extern "C" t_calc_mtime calc_mtime;
 
-  t_ME ME = NULL;
-  t_IndF IndF = NULL;
-
-  t_locateTimeIndex _rxode2parse_locateTimeIndex;
-  t_getDur _rxode2parse_getDur;
-}
+extern "C" t_ME ME;
+extern "C" t_IndF IndF;
 extern "C" void RSprintf(const char *format, ...);
 
 #include "../inst/include/rxode2parseHandleEvid.h"
@@ -2974,7 +2955,6 @@ extern "C" double linCmtB(rx_solve *rx, unsigned int id,
 		   dd_rate, dd_dur, dd_ka, dd_tlag2, dd_F2,
 		   dd_rate2, dd_dur2);
   default:
-    _rxode2parse_unprotect();
     Rf_errorcall(R_NilValue, "unsupported sensitivity");
   }
 }

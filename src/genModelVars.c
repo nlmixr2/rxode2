@@ -9,45 +9,45 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(allocVector(VECSXP, 21));pro++;
-  SEXP names = PROTECT(allocVector(STRSXP, 21));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 21));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 21));pro++;
 
-  SEXP sNeedSort = PROTECT(allocVector(INTSXP,1));pro++;
+  SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
   iNeedSort[0] = needSort;
 
   SEXP sLinCmt =PROTECT(calcSLinCmt());pro++;
 
-  SEXP sMtime = PROTECT(allocVector(INTSXP,1));pro++;
+  SEXP sMtime = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iMtime  = INTEGER(sMtime);
   iMtime[0] = (int)nmtime;
 
-  SEXP tran  = PROTECT(allocVector(STRSXP, 22));pro++;
-  SEXP trann = PROTECT(allocVector(STRSXP, 22));pro++;
+  SEXP tran  = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
+  SEXP trann = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
 
-  SEXP state      = PROTECT(allocVector(STRSXP,tb.statei-tb.nExtra));pro++;
-  SEXP stateRmS   = PROTECT(allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
+  SEXP state      = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.nExtra));pro++;
+  SEXP stateRmS   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
   int *stateRm    = INTEGER(stateRmS);
-  SEXP extraState = PROTECT(allocVector(STRSXP,tb.nExtra));pro++;
-  SEXP sens     = PROTECT(allocVector(STRSXP,tb.sensi));pro++;
-  SEXP normState= PROTECT(allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
+  SEXP extraState = PROTECT(Rf_allocVector(STRSXP,tb.nExtra));pro++;
+  SEXP sens     = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
+  SEXP normState= PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
 
   populateStateVectors(state, sens, normState, stateRm, extraState);
 
-  SEXP dfdy = PROTECT(allocVector(STRSXP,tb.ndfdy));pro++;
+  SEXP dfdy = PROTECT(Rf_allocVector(STRSXP,tb.ndfdy));pro++;
   populateDfdy(dfdy);
 
 
-  SEXP params = PROTECT(allocVector(STRSXP, tb.pi));pro++;
-  SEXP lhs    = PROTECT(allocVector(STRSXP, tb.li));pro++;
-  SEXP slhs   = PROTECT(allocVector(STRSXP, tb.sli));pro++;
+  SEXP params = PROTECT(Rf_allocVector(STRSXP, tb.pi));pro++;
+  SEXP lhs    = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
+  SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
 
   SEXP version = PROTECT(calcVersionInfo());pro++;
   SEXP ini = PROTECT(calcIniVals()); pro++;
 
 
-  SEXP model  = PROTECT(allocVector(STRSXP,2));pro++;
-  SEXP modeln = PROTECT(allocVector(STRSXP,2));pro++;
+  SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
+  SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;
 
   populateParamsLhsSlhs(params, lhs, slhs);
 
@@ -95,7 +95,7 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst,  12,sMtime);
 
   SET_STRING_ELT(names, 13, mkChar("extraCmt"));
-  SEXP sExtraCmt = PROTECT(allocVector(INTSXP,1));pro++;
+  SEXP sExtraCmt = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   INTEGER(sExtraCmt)[0] = extraCmt;
   SET_VECTOR_ELT(lst, 13, sExtraCmt);
 
@@ -103,12 +103,12 @@ SEXP generateModelVars(void) {
   SET_VECTOR_ELT(lst,   14, extraState);
 
   SET_STRING_ELT(names, 15, mkChar("dvid"));
-  SEXP sDvid = PROTECT(allocVector(INTSXP,tb.dvidn));pro++;
+  SEXP sDvid = PROTECT(Rf_allocVector(INTSXP,tb.dvidn));pro++;
   for (int i = 0; i < tb.dvidn; i++) INTEGER(sDvid)[i]=tb.dvid[i];
   SET_VECTOR_ELT(lst,  15, sDvid);
 
   SET_STRING_ELT(names, 16, mkChar("indLin"));
-  SEXP matLst = PROTECT(allocVector(VECSXP, 0));pro++;
+  SEXP matLst = PROTECT(Rf_allocVector(VECSXP, 0));pro++;
   SET_VECTOR_ELT(lst,  16, matLst);
 
   SET_STRING_ELT(names, 17, mkChar("flags"));
@@ -117,7 +117,7 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(names, 18, mkChar("slhs"));
   SET_VECTOR_ELT(lst,   18, slhs);
 
-  SEXP alagVarSexp = PROTECT(allocVector(INTSXP, tb.alagn));pro++;
+  SEXP alagVarSexp = PROTECT(Rf_allocVector(INTSXP, tb.alagn));pro++;
   int *alagVar = INTEGER(alagVarSexp);
   for (int i = 0; i < tb.alagn; ++i) {
     alagVar[i] = tb.alag[i];
@@ -229,7 +229,7 @@ SEXP generateModelVars(void) {
   setAttrib(tran,  R_NamesSymbol, trann);
   setAttrib(lst,   R_NamesSymbol, names);
   setAttrib(model, R_NamesSymbol, modeln);
-  SEXP cls = PROTECT(allocVector(STRSXP, 1));pro++;
+  SEXP cls = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
   SET_STRING_ELT(cls, 0, mkChar("rxModelVars"));
   classgets(lst, cls);
 
