@@ -6,7 +6,7 @@
 \usage{
 etTrans(
   inData,
-  obj,
+  mv,
   addCmt = FALSE,
   dropUnits = FALSE,
   allTimeVar = FALSE,
@@ -21,7 +21,7 @@ etTrans(
 \arguments{
 \item{inData}{Data frame to translate}
 
-\item{obj}{Model to translate data}
+\item{mv}{Model variables to translate data}
 
 \item{addCmt}{Add compartment to data frame (default \code{FALSE}).}
 

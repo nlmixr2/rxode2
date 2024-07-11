@@ -17,11 +17,9 @@
 }
 .hasUnits <- FALSE
 .PreciseSumsVersion <- utils::packageVersion("PreciseSums")
-.rxode2parseMd5 <- rxode2parse::rxode2parseMd5()
 
 ## nocov start
 .onLoad <- function(libname, pkgname) {
-  requireNamespace("rxode2random", quietly=TRUE)
   requireNamespace("data.table", quietly=TRUE)
   if (requireNamespace("pillar", quietly = TRUE)) {
     .s3register("pillar::type_sum", "rxEvid")

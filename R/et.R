@@ -147,8 +147,6 @@
 #' @importFrom stats simulate end setNames start
 #' @importFrom utils assignInMyNamespace
 #' @importFrom methods is
-#' @importFrom rxode2random rxnorm
-#' @importFrom rxode2parse rxode2parse
 #' @export
 et <- function(x, ..., envir = parent.frame()) {
   UseMethod("et")

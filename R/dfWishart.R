@@ -87,12 +87,12 @@ dfWishart <- function(omega, n, rse, upper, totN=1000, diag=TRUE, seed=1234) {
 swapMatListWithCube <- function(matrixListOrCube) {
   .dim <- dim(matrixListOrCube)
   if (length(.dim) == 3L) {
-    return(.Call(`_rxode2random_swapMatListWithCube_`, matrixListOrCube))
+    return(.Call(`_rxode2_swapMatListWithCube_`, matrixListOrCube))
   } else if (length(.dim) > 0L) {
   } else if (inherits(matrixListOrCube, "list") && length(matrixListOrCube) > 0L) {
     .m0 <- matrixListOrCube[[1]]
     .dim <- dim(.m0)
-    if (length(.dim) == 2L)     return(.Call(`_rxode2random_swapMatListWithCube_`, matrixListOrCube))
+    if (length(.dim) == 2L)     return(.Call(`_rxode2_swapMatListWithCube_`, matrixListOrCube))
   }
   stop("The input must be a cube or a list of matrices", call.=FALSE)
 }

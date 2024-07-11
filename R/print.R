@@ -484,3 +484,28 @@ print.rxSymInvCholEnv <- function(x, ...) {
     cat("\nThis allows accessing $omegaInv, $omega, etc. For a full list see str(.)\n")
   }
 }
+
+#' @inherit base::print
+#' @return This returns invisibly the model variables object
+#' @export
+print.rxModelVars <- function(x, ...) {
+  .bound <- .getBound(x, parent.frame(2))
+  cat("rxode2 model variables (see str to see all variables)\n")
+  .cur <- x$state
+  if (length(.cur) > 0) {
+    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$state"), ": ", paste(.cur, collapse = ", "), "\n"))
+  }
+  .cur <- x$stateExtra
+  if (length(.cur) > 0) {
+    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$stateExtra"), ": ", paste(.cur, collapse = ", "), "\n"))
+  }
+  .cur <- x$params
+  if (length(.cur) > 0) {
+    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$params"), ": ", paste(.cur, collapse = ", "), "\n"))
+  }
+  .cur <- x$lhs
+  if (length(.cur) > 0) {
+    cat(paste0(crayon::yellow(.bound), crayon::blue$bold("$lhs"), ": ", paste(.cur, collapse = ", "), "\n"))
+  }
+  invisible(x)
+}
