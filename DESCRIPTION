@@ -89,7 +89,6 @@ Imports:
     utils,
     rxode2ll(>= 2.0.9),
     rxode2parse (>= 2.0.19),
-    rxode2random (>= 2.1.0),
     data.table (>= 1.12.4),
     qs (>= 0.26.3)
 Description: Facilities for running simulations from ordinary
@@ -113,8 +112,8 @@ URL: https://nlmixr2.github.io/rxode2/,
 RoxygenNote: 7.3.1
 Biarch: true
 LinkingTo:
+    sitmo,
     rxode2parse (>= 2.0.12),
-    rxode2random,
     PreciseSums (>= 0.3),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),

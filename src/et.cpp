@@ -6,8 +6,8 @@
 #include <R.h>
 #include "timsort.h"
 #include <rxode2parse.h>
-extern rx_solve rx_global;
-extern rx_solving_options op_global;
+extern "C" rx_solve rx_global;
+extern "C" rx_solving_options op_global;
 #include <rxode2parseHandleEvid.h>
 #include "checkmate.h"
 #define SORT gfx::timsort

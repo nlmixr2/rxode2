@@ -8,7 +8,6 @@
 #include "../inst/include/rxode2.h"
 #include <rxode2parseHandleEvid.h>
 #include <rxode2parseGetTime.h>
-#include "seed.h"
 
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)

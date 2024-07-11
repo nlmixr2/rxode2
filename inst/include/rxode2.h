@@ -3,6 +3,7 @@
 #define STRICT_R_HEADERS
 #ifndef __rxode2_H__
 #define __rxode2_H__
+
 #define rxLlikSaveSize 9
 
 #include <stdbool.h>
@@ -492,9 +493,16 @@ static inline double dabs2(double x) {
   return 0.0;
 }
 
-extern rx_solve rx_global;
-extern rx_solving_options op_global;
-extern rx_solving_options_ind *inds_global;
+#if defined(__cplusplus)
+  extern "C" rx_solve rx_global;
+  extern "C" rx_solving_options op_global;
+  extern "C" rx_solving_options_ind *inds_global;
+#else
+  extern rx_solve rx_global;
+  extern rx_solving_options op_global;
+  extern rx_solving_options_ind *inds_global;
+#endif
+
 
 
 #endif

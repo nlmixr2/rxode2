@@ -15,6 +15,166 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// rinvchisq
+NumericVector rinvchisq(const int n, const double& nu, const double& scale);
+RcppExport SEXP _rxode2_rinvchisq(SEXP nSEXP, SEXP nuSEXP, SEXP scaleSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const double& >::type nu(nuSEXP);
+    Rcpp::traits::input_parameter< const double& >::type scale(scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(rinvchisq(n, nu, scale));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rLKJ1
+arma::mat rLKJ1(int d, double eta, bool cholesky);
+RcppExport SEXP _rxode2_rLKJ1(SEXP dSEXP, SEXP etaSEXP, SEXP choleskySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type d(dSEXP);
+    Rcpp::traits::input_parameter< double >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< bool >::type cholesky(choleskySEXP);
+    rcpp_result_gen = Rcpp::wrap(rLKJ1(d, eta, cholesky));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rLKJcv1
+arma::mat rLKJcv1(arma::vec sd, double eta);
+RcppExport SEXP _rxode2_rLKJcv1(SEXP sdSEXP, SEXP etaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type sd(sdSEXP);
+    Rcpp::traits::input_parameter< double >::type eta(etaSEXP);
+    rcpp_result_gen = Rcpp::wrap(rLKJcv1(sd, eta));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rLKJcvLsd1
+arma::mat rLKJcvLsd1(arma::vec logSd, arma::vec logSdSD, double eta);
+RcppExport SEXP _rxode2_rLKJcvLsd1(SEXP logSdSEXP, SEXP logSdSDSEXP, SEXP etaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type logSd(logSdSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type logSdSD(logSdSDSEXP);
+    Rcpp::traits::input_parameter< double >::type eta(etaSEXP);
+    rcpp_result_gen = Rcpp::wrap(rLKJcvLsd1(logSd, logSdSD, eta));
+    return rcpp_result_gen;
+END_RCPP
+}
+// invWR1d
+arma::mat invWR1d(int d, double nu, bool omegaIsChol);
+RcppExport SEXP _rxode2_invWR1d(SEXP dSEXP, SEXP nuSEXP, SEXP omegaIsCholSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type d(dSEXP);
+    Rcpp::traits::input_parameter< double >::type nu(nuSEXP);
+    Rcpp::traits::input_parameter< bool >::type omegaIsChol(omegaIsCholSEXP);
+    rcpp_result_gen = Rcpp::wrap(invWR1d(d, nu, omegaIsChol));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rcvC1
+arma::mat rcvC1(arma::vec sdEst, double nu, int diagXformType, int rType, bool returnChol);
+RcppExport SEXP _rxode2_rcvC1(SEXP sdEstSEXP, SEXP nuSEXP, SEXP diagXformTypeSEXP, SEXP rTypeSEXP, SEXP returnCholSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type sdEst(sdEstSEXP);
+    Rcpp::traits::input_parameter< double >::type nu(nuSEXP);
+    Rcpp::traits::input_parameter< int >::type diagXformType(diagXformTypeSEXP);
+    Rcpp::traits::input_parameter< int >::type rType(rTypeSEXP);
+    Rcpp::traits::input_parameter< bool >::type returnChol(returnCholSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcvC1(sdEst, nu, diagXformType, rType, returnChol));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cvPost_
+SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS, SEXP returnCholS, SEXP typeS, SEXP diagXformTypeS);
+RcppExport SEXP _rxode2_cvPost_(SEXP nuSSEXP, SEXP omegaSSEXP, SEXP nSSEXP, SEXP omegaIsCholSSEXP, SEXP returnCholSSEXP, SEXP typeSSEXP, SEXP diagXformTypeSSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type nuS(nuSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type omegaS(omegaSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type nS(nSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type omegaIsCholS(omegaIsCholSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type returnCholS(returnCholSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type typeS(typeSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type diagXformTypeS(diagXformTypeSSEXP);
+    rcpp_result_gen = Rcpp::wrap(cvPost_(nuS, omegaS, nS, omegaIsCholS, returnCholS, typeS, diagXformTypeS));
+    return rcpp_result_gen;
+END_RCPP
+}
+// expandTheta_
+SEXP expandTheta_(SEXP thetaS, SEXP thetaMatS, SEXP thetaLowerS, SEXP thetaUpperS, SEXP nStudS, SEXP nCoresRVS);
+RcppExport SEXP _rxode2_expandTheta_(SEXP thetaSSEXP, SEXP thetaMatSSEXP, SEXP thetaLowerSSEXP, SEXP thetaUpperSSEXP, SEXP nStudSSEXP, SEXP nCoresRVSSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type thetaS(thetaSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type thetaMatS(thetaMatSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type thetaLowerS(thetaLowerSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type thetaUpperS(thetaUpperSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type nStudS(nStudSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type nCoresRVS(nCoresRVSSEXP);
+    rcpp_result_gen = Rcpp::wrap(expandTheta_(thetaS, thetaMatS, thetaLowerS, thetaUpperS, nStudS, nCoresRVS));
+    return rcpp_result_gen;
+END_RCPP
+}
+// expandPars_
+SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS);
+RcppExport SEXP _rxode2_expandPars_(SEXP objectSSEXP, SEXP paramsSSEXP, SEXP eventsSSEXP, SEXP controlSSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type objectS(objectSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type paramsS(paramsSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type eventsS(eventsSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type controlS(controlSSEXP);
+    rcpp_result_gen = Rcpp::wrap(expandPars_(objectS, paramsS, eventsS, controlS));
+    return rcpp_result_gen;
+END_RCPP
+}
+// nestingInfo_
+SEXP nestingInfo_(SEXP omega, List data);
+RcppExport SEXP _rxode2_nestingInfo_(SEXP omegaSEXP, SEXP dataSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type omega(omegaSEXP);
+    Rcpp::traits::input_parameter< List >::type data(dataSEXP);
+    rcpp_result_gen = Rcpp::wrap(nestingInfo_(omega, data));
+    return rcpp_result_gen;
+END_RCPP
+}
+// swapMatListWithCube_
+RObject swapMatListWithCube_(RObject inO);
+RcppExport SEXP _rxode2_swapMatListWithCube_(SEXP inOSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< RObject >::type inO(inOSEXP);
+    rcpp_result_gen = Rcpp::wrap(swapMatListWithCube_(inO));
+    return rcpp_result_gen;
+END_RCPP
+}
+// omegaListRse
+Rcpp::List omegaListRse(RObject omegaIn);
+RcppExport SEXP _rxode2_omegaListRse(SEXP omegaInSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< RObject >::type omegaIn(omegaInSEXP);
+    rcpp_result_gen = Rcpp::wrap(omegaListRse(omegaIn));
+    return rcpp_result_gen;
+END_RCPP
+}
 // etDollarNames
 CharacterVector etDollarNames(RObject obj);
 RcppExport SEXP _rxode2_etDollarNames(SEXP objSEXP) {
@@ -1885,6 +2045,397 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< RObject >::type x(xSEXP);
     rcpp_result_gen = Rcpp::wrap(rxModelVarsStack(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxRmvn_
+SEXP rxRmvn_(NumericMatrix A_, arma::rowvec mu, arma::mat sigma, int ncores, bool isChol);
+RcppExport SEXP _rxode2_rxRmvn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP ncoresSEXP, SEXP isCholSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type A_(A_SEXP);
+    Rcpp::traits::input_parameter< arma::rowvec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    Rcpp::traits::input_parameter< bool >::type isChol(isCholSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxRmvn_(A_, mu, sigma, ncores, isChol));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxMvnrnd
+List rxMvnrnd(int n, arma::mat& L, arma::vec& l, arma::vec& u, arma::vec mu, double a, double tol);
+RcppExport SEXP _rxode2_rxMvnrnd(SEXP nSEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP, SEXP muSEXP, SEXP aSEXP, SEXP tolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type L(LSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type l(lSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< double >::type a(aSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxMvnrnd(n, L, l, u, mu, a, tol));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxCholperm
+List rxCholperm(arma::mat Sig, arma::vec l, arma::vec u, double eps);
+RcppExport SEXP _rxode2_rxCholperm(SEXP SigSEXP, SEXP lSEXP, SEXP uSEXP, SEXP epsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type Sig(SigSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type l(lSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type u(uSEXP);
+    Rcpp::traits::input_parameter< double >::type eps(epsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxCholperm(Sig, l, u, eps));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxGradpsi
+List rxGradpsi(arma::vec y, arma::mat L, arma::vec l, arma::vec u);
+RcppExport SEXP _rxode2_rxGradpsi(SEXP ySEXP, SEXP LSEXP, SEXP lSEXP, SEXP uSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type L(LSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type l(lSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type u(uSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxGradpsi(y, L, l, u));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxNleq
+NumericVector rxNleq(arma::vec l, arma::vec u, arma::mat L);
+RcppExport SEXP _rxode2_rxNleq(SEXP lSEXP, SEXP uSEXP, SEXP LSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type l(lSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type L(LSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxNleq(l, u, L));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxMvrandn_
+arma::mat rxMvrandn_(NumericMatrix A_, arma::rowvec mu, arma::mat sigma, arma::vec lower, arma::vec upper, int ncores, double a, double tol, double nlTol, int nlMaxiter);
+RcppExport SEXP _rxode2_rxMvrandn_(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type A_(A_SEXP);
+    Rcpp::traits::input_parameter< arma::rowvec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type lower(lowerSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type upper(upperSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    Rcpp::traits::input_parameter< double >::type a(aSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type nlTol(nlTolSEXP);
+    Rcpp::traits::input_parameter< int >::type nlMaxiter(nlMaxiterSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxMvrandn_(A_, mu, sigma, lower, upper, ncores, a, tol, nlTol, nlMaxiter));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxSeedEng
+RObject rxSeedEng(int ncores);
+RcppExport SEXP _rxode2_rxSeedEng(SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxSeedEng(ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxnbinomMu_
+IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores);
+RcppExport SEXP _rxode2_rxnbinomMu_(SEXP sizeSEXP, SEXP muSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxnbinomMu_(size, mu, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxnbinom_
+IntegerVector rxnbinom_(int size, double prob, int n, int ncores);
+RcppExport SEXP _rxode2_rxnbinom_(SEXP sizeSEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< double >::type prob(probSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxnbinom_(size, prob, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxbinom_
+IntegerVector rxbinom_(int n0, double prob, int n, int ncores);
+RcppExport SEXP _rxode2_rxbinom_(SEXP n0SEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n0(n0SEXP);
+    Rcpp::traits::input_parameter< double >::type prob(probSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxbinom_(n0, prob, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxcauchy_
+NumericVector rxcauchy_(double location, double scale, int n, int ncores);
+RcppExport SEXP _rxode2_rxcauchy_(SEXP locationSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type location(locationSEXP);
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxcauchy_(location, scale, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxchisq_
+NumericVector rxchisq_(double df, int n, int ncores);
+RcppExport SEXP _rxode2_rxchisq_(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type df(dfSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxchisq_(df, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxexp_
+NumericVector rxexp_(double rate, int n, int ncores);
+RcppExport SEXP _rxode2_rxexp_(SEXP rateSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type rate(rateSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxexp_(rate, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxf_
+NumericVector rxf_(double df1, double df2, int n, int ncores);
+RcppExport SEXP _rxode2_rxf_(SEXP df1SEXP, SEXP df2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type df1(df1SEXP);
+    Rcpp::traits::input_parameter< double >::type df2(df2SEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxf_(df1, df2, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxgamma_
+NumericVector rxgamma_(double shape, double rate, int n, int ncores);
+RcppExport SEXP _rxode2_rxgamma_(SEXP shapeSEXP, SEXP rateSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type shape(shapeSEXP);
+    Rcpp::traits::input_parameter< double >::type rate(rateSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxgamma_(shape, rate, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxbeta_
+NumericVector rxbeta_(double shape1, double shape2, int n, int ncores);
+RcppExport SEXP _rxode2_rxbeta_(SEXP shape1SEXP, SEXP shape2SEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type shape1(shape1SEXP);
+    Rcpp::traits::input_parameter< double >::type shape2(shape2SEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxbeta_(shape1, shape2, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxgeom_
+IntegerVector rxgeom_(double prob, int n, int ncores);
+RcppExport SEXP _rxode2_rxgeom_(SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type prob(probSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxgeom_(prob, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxnorm_
+NumericVector rxnorm_(double mean, double sd, int n, int ncores);
+RcppExport SEXP _rxode2_rxnorm_(SEXP meanSEXP, SEXP sdSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< double >::type sd(sdSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxnorm_(mean, sd, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxpois_
+IntegerVector rxpois_(double lambda, int n, int ncores);
+RcppExport SEXP _rxode2_rxpois_(SEXP lambdaSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxpois_(lambda, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxt__
+NumericVector rxt__(double df, int n, int ncores);
+RcppExport SEXP _rxode2_rxt__(SEXP dfSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type df(dfSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxt__(df, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxunif_
+NumericVector rxunif_(double low, double hi, int n, int ncores);
+RcppExport SEXP _rxode2_rxunif_(SEXP lowSEXP, SEXP hiSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type low(lowSEXP);
+    Rcpp::traits::input_parameter< double >::type hi(hiSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxunif_(low, hi, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxweibull_
+NumericVector rxweibull_(double shape, double scale, int n, int ncores);
+RcppExport SEXP _rxode2_rxweibull_(SEXP shapeSEXP, SEXP scaleSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type shape(shapeSEXP);
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxweibull_(shape, scale, n, ncores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxRmvn0
+SEXP rxRmvn0(NumericMatrix& A_, arma::rowvec mu, arma::mat sigma, arma::vec lower, arma::vec upper, int ncores, bool isChol, double a, double tol, double nlTol, int nlMaxiter);
+RcppExport SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP isCholSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix& >::type A_(A_SEXP);
+    Rcpp::traits::input_parameter< arma::rowvec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type lower(lowerSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type upper(upperSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    Rcpp::traits::input_parameter< bool >::type isChol(isCholSEXP);
+    Rcpp::traits::input_parameter< double >::type a(aSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type nlTol(nlTolSEXP);
+    Rcpp::traits::input_parameter< int >::type nlMaxiter(nlMaxiterSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxRmvn0(A_, mu, sigma, lower, upper, ncores, isChol, a, tol, nlTol, nlMaxiter));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxRmvnSEXP
+SEXP rxRmvnSEXP(SEXP nS, SEXP muS, SEXP sigmaS, SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS, SEXP keepNamesS, SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS);
+RcppExport SEXP _rxode2_rxRmvnSEXP(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSSEXP, SEXP upperSSEXP, SEXP ncoresSSEXP, SEXP isCholSSEXP, SEXP keepNamesSSEXP, SEXP aSSEXP, SEXP tolSSEXP, SEXP nlTolSSEXP, SEXP nlMaxiterSSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type nS(nSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type muS(muSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type sigmaS(sigmaSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type lowerS(lowerSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type upperS(upperSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type ncoresS(ncoresSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type isCholS(isCholSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type keepNamesS(keepNamesSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type aS(aSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type tolS(tolSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type nlTolS(nlTolSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type nlMaxiterS(nlMaxiterSSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxRmvnSEXP(nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rpp_
+NumericVector rpp_(SEXP nS, SEXP lambdaS, SEXP gammaS, SEXP probS, SEXP t0S, SEXP tmaxS, SEXP randomOrderS);
+RcppExport SEXP _rxode2_rpp_(SEXP nSSEXP, SEXP lambdaSSEXP, SEXP gammaSSEXP, SEXP probSSEXP, SEXP t0SSEXP, SEXP tmaxSSEXP, SEXP randomOrderSSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type nS(nSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type lambdaS(lambdaSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type gammaS(gammaSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type probS(probSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type t0S(t0SSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type tmaxS(tmaxSSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type randomOrderS(randomOrderSSEXP);
+    rcpp_result_gen = Rcpp::wrap(rpp_(nS, lambdaS, gammaS, probS, t0S, tmaxS, randomOrderS));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxordSelect
+double rxordSelect(double u, NumericVector cs);
+RcppExport SEXP _rxode2_rxordSelect(SEXP uSEXP, SEXP csSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type u(uSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type cs(csSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxordSelect(u, cs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxGetSeed
+int rxGetSeed();
+RcppExport SEXP _rxode2_rxGetSeed() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(rxGetSeed());
     return rcpp_result_gen;
 END_RCPP
 }

@@ -30,7 +30,7 @@
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 #include "../inst/include/rxode2.h"
 #include <rxode2parseVer.h>
-#include <rxode2random_fillVec.h>
+#include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
 #ifdef ENABLE_NLS
 #include <libintl.h>
