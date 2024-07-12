@@ -533,6 +533,7 @@ RObject etTranGetAttrKeep(SEXP in) {
   return as<RObject>(ret);
 }
 
+List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
 //'
 //' @param inData Data frame to translate
@@ -574,7 +575,7 @@ RObject etTranGetAttrKeep(SEXP in) {
 //'
 //' @export
 //[[Rcpp::export]]
-List etTrans(List inData, List mv, bool addCmt=false,
+List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool dropUnits=false, bool allTimeVar=false,
              bool keepDosingOnly=false, Nullable<LogicalVector> combineDvid=R_NilValue,
              CharacterVector keep = CharacterVector(0),
@@ -584,6 +585,7 @@ List etTrans(List inData, List mv, bool addCmt=false,
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
+  List mv = rxModelVars_(obj);
   Environment rx = rxode2parseenv();
   bool combineDvidB = false;
   Environment b=Rcpp::Environment::base_namespace();

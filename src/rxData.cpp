@@ -80,7 +80,7 @@ SEXP qassertS(SEXP in, const char *test, const char *what);
 
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
-List etTrans(List inData, List mv, bool addCmt,
+List etTrans(List inData, const RObject &obj, bool addCmt,
              bool dropUnits, bool allTimeVar,
              bool keepDosingOnly, Nullable<LogicalVector> combineDvid,
              CharacterVector keep,
@@ -2820,7 +2820,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       if (rxSolveDat->hasICov) {
         Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
       }
-      List ev1a = etTrans(as<List>(ev1), as<List>(obj), rxSolveDat->hasCmt,
+      List ev1a = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                           false, false, true, R_NilValue,
                           rxControl[Rxc_keepF],
                           rxControl[Rxc_addlKeepsCov],
@@ -2897,7 +2897,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     }
   }
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")){
-    ev1 = as<List>(etTrans(as<List>(ev1), as<List>(obj), rxSolveDat->hasCmt,
+    ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                            false, false, true, R_NilValue,
                            rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                            rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime]));
