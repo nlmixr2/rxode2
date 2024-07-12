@@ -341,8 +341,11 @@ double linCmtB(rx_solve *rx, unsigned int id, double t, int linCmt,
 
 SEXP _rxode2_rxQr(SEXP);
 
+SEXP _rxode2_parse_strncmpci(void);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_parse_strncmpci",(DL_FUNC) & _rxode2_parse_strncmpci, 0},
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},
     {"_rxode2_etRep_", (DL_FUNC) &_rxode2_etRep_, 7},
     {"_rxode2_etSeq_", (DL_FUNC) &_rxode2_etSeq_, 11},
