@@ -750,7 +750,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
 #' @author Matthew Fidler
 #' @export
 .cbindOme <- function(et, mat, n) {
-  .Call(`_rxode2_cbindOme`, et, mat, as.integer(n)) # nolint
+  .Call(`_cbindOme`, et, mat, as.integer(n)) # nolint
 }
 
 
@@ -784,7 +784,7 @@ phi <- function(q) {
 #' @author Matthew Fidler
 #' @export
 .vecDf <- function(vec, n) {
-  .Call(`_rxode2_vecDF`, vec, as.integer(n)) # nolint
+  .Call(`_vecDF`, vec, as.integer(n)) # nolint
 }
 
 
