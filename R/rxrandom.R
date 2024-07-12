@@ -773,7 +773,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
 #' # This is provided for NONMEM-like compatibility in rxode2 models
 #' @export
 phi <- function(q) {
-  .Call(`_rxode2_phi`, q)
+  .Call(`_phi`, q)
 }
 
 #' Convert numeric vector to repeated data.frame
