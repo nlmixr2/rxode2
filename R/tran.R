@@ -46,7 +46,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
   )
   if (linear && .isLinCmt()) {
     .vars <- c(.ret$params, .ret$lhs, .ret$slhs)
-    .ret <- .Call(`_rxode2parse_linCmtGen`,length(.ret$state), .vars,
+    .ret <- .Call(`_rxode2_linCmtGen`,length(.ret$state), .vars,
                   setNames(
                     c(
                       "linCmtA" = 1L, "linCmtB" = 2L,
@@ -55,7 +55,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
                     NULL
                   ), verbose)
     md5 <- digest::digest(.ret)
-    .ret <- .Call(`_rxode2parse_trans`, .ret, modelPrefix, md5, .isStr,
+    .ret <- .Call(`_rxode2_trans`, .ret, modelPrefix, md5, .isStr,
                   as.integer(crayon::has_color()),
                   "", .parseEnv$.parseFuns,
                   fullPrint)
