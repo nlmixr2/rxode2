@@ -167,7 +167,7 @@ rxode2parseAssignPackagesToLoad <- function(pkgs=rxode2parseGetPackagesToLoad())
 }
 
 
-.parseEnv$.rxode2parsePointerAssignment <- "rxode2parse"
+.parseEnv$.rxode2parsePointerAssignment <- "rxode2"
 
 #' This function gets the currently assigned function pointer assignments
 #'

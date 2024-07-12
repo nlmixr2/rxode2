@@ -5,9 +5,7 @@
 
 Rcpp::Function loadNamespaceQs("loadNamespace", R_BaseNamespace);
 Rcpp::Environment qsNs;
-Rcpp::Environment rxode2parseNs;
 bool loadQsC = false;
-bool loadRxode2parse = false;
 
 
 static void loadQs() {
@@ -15,27 +13,25 @@ static void loadQs() {
     qsNs = loadNamespaceQs("qs");
     loadQsC = true;
   }
-  if (!loadRxode2parse) {
-    rxode2parseNs = loadNamespaceQs("rxode2parse");
-    loadRxode2parse=true;
-  }
 }
+
+Rcpp::Function getRxFn(std::string name);
 
 extern "C" SEXP getRxode2ParseDf(void) {
   loadQs();
-  Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(rxode2parseNs["rxode2parseGetTranslation"]);
+  Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetTranslation"));
   return getTran();
 }
 
 extern "C" SEXP getRxode2ParseDfBuiltin(void) {
   loadQs();
-  Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(rxode2parseNs["rxode2parseGetTranslationBuiltin"]);
+  Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetTranslationBuiltin"));
   return getTran();
 }
 
 extern "C" SEXP getRxode2ParseGetPointerAssignment(void) {
   loadQs();
-  Rcpp::Function getPtr = Rcpp::as<Rcpp::Function>(rxode2parseNs["rxode2parseGetPointerAssignment"]);
+  Rcpp::Function getPtr = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetPointerAssignment"));
   return getPtr();
 }
 

@@ -11,6 +11,7 @@
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseGetTime.h"
+#include "rxthreefry.h"
 
 SEXP _rxHasOpenMp(void);
 
@@ -309,6 +310,37 @@ SEXP _rxode2_etRep_(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_RcppExport_registerCCallable(void);
 SEXP _rxode2_rxParseSetSilentErr(SEXP silentSEXP);
 
+double _rxode2_evalUdf(const char *fun, int n, const double *args);
+
+double linCmtA(rx_solve *rx, unsigned int id, double t, int linCmt,
+               int ncmt, int trans, double d_ka,
+               double p1, double v1,
+               double p2, double p3,
+               double p4, double p5,
+               double d_tlag, double d_tlag2, double d_F, double d_F2,
+               double d_rate, double d_dur, double d_rate2, double d_dur2);
+
+double linCmtC(rx_solve *rx, unsigned int id, double t, int linCmt,
+               int ncmt, int trans, double d_ka,
+               double p1, double v1,
+               double p2, double p3,
+               double p4, double p5,
+               double d_tlag, double d_tlag2, double d_F, double d_F2,
+               double d_rate, double d_dur, double d_rate2, double d_dur2);
+
+double linCmtB(rx_solve *rx, unsigned int id, double t, int linCmt,
+               int i_cmt, int trans, int val,
+               double dd_p1, double dd_v1,
+               double dd_p2, double dd_p3,
+               double dd_p4, double dd_p5,
+               double dd_ka,
+               double dd_tlag, double dd_tlag2,
+               double dd_F, double dd_F2,
+               double dd_rate, double dd_dur,
+               double dd_rate2, double dd_dur2);
+
+SEXP _rxode2_rxQr(SEXP);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},
@@ -452,6 +484,14 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
+  R_RegisterCCallable("rxode2", "_rxode2_evalUdf", (DL_FUNC) &_rxode2_evalUdf);
+  R_RegisterCCallable("rxode2", "_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr);
+
+  R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
+  R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
+  R_RegisterCCallable("rxode2", "linCmtC", (DL_FUNC) &linCmtC);
+
+
   R_RegisterCCallable("rxode2", "_rxode2_rxModelVars_", (DL_FUNC) &_rxode2_rxModelVars_);
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
@@ -502,6 +542,39 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
   R_RegisterCCallable("rxode2", "rxGetId", (DL_FUNC) &rxGetId);
   R_RegisterCCallable("rxode2", "getTime", (DL_FUNC) &getTime);
+  R_RegisterCCallable("rxode2", "phi", (DL_FUNC) &phi);
+  R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
+  R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);
+  R_RegisterCCallable("rxode2", "ricauchy", (DL_FUNC) &ricauchy);
+  R_RegisterCCallable("rxode2", "richisq", (DL_FUNC) &richisq);
+  R_RegisterCCallable("rxode2", "riexp", (DL_FUNC) &riexp);
+  R_RegisterCCallable("rxode2", "rif", (DL_FUNC) &rif);
+  R_RegisterCCallable("rxode2", "rigamma", (DL_FUNC) &rigamma);
+  R_RegisterCCallable("rxode2", "rigeom", (DL_FUNC) &rigeom);
+  R_RegisterCCallable("rxode2", "rinbinom", (DL_FUNC) &rinbinom);
+  R_RegisterCCallable("rxode2", "rinbinomMu", (DL_FUNC) &rinbinomMu);
+  R_RegisterCCallable("rxode2", "rinorm", (DL_FUNC) &rinorm);
+  R_RegisterCCallable("rxode2", "ripois", (DL_FUNC) &ripois);
+  R_RegisterCCallable("rxode2", "rit_", (DL_FUNC) &rit_);
+  R_RegisterCCallable("rxode2", "riunif", (DL_FUNC) &riunif);
+  R_RegisterCCallable("rxode2", "riweibull", (DL_FUNC) &riweibull);
+  R_RegisterCCallable("rxode2", "rxbeta", (DL_FUNC) &rxbeta);
+  R_RegisterCCallable("rxode2", "rxbinom", (DL_FUNC) &rxbinom);
+  R_RegisterCCallable("rxode2", "rxcauchy", (DL_FUNC) &rxcauchy);
+  R_RegisterCCallable("rxode2", "rxchisq", (DL_FUNC) &rxchisq);
+  R_RegisterCCallable("rxode2", "rxexp", (DL_FUNC) &rxexp);
+  R_RegisterCCallable("rxode2", "rxf", (DL_FUNC) &rxf);
+  R_RegisterCCallable("rxode2", "rxgamma", (DL_FUNC) &rxgamma);
+  R_RegisterCCallable("rxode2", "rxgeom", (DL_FUNC) &rxgeom);
+  R_RegisterCCallable("rxode2", "rxnbinom", (DL_FUNC) &rxnbinom);
+  R_RegisterCCallable("rxode2", "rxnbinomMu", (DL_FUNC) &rxnbinomMu);
+  R_RegisterCCallable("rxode2", "rxnorm", (DL_FUNC) &rxnorm);
+  R_RegisterCCallable("rxode2", "rxpois", (DL_FUNC) &rxpois);
+  R_RegisterCCallable("rxode2", "rxt_", (DL_FUNC) &rxt_);
+  R_RegisterCCallable("rxode2", "rxunif", (DL_FUNC) &rxunif);
+  R_RegisterCCallable("rxode2", "rxweibull", (DL_FUNC) &rxweibull);
+  R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
+  R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
   // log likelihoods used in calculations
   static const R_CMethodDef cMethods[] = {
     {"rxode2_sum",               (DL_FUNC) &rxode2_sum, 2, rxode2_Sum_t},

@@ -987,10 +987,8 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
       NULL
     )
   }
-  .ret <- .Call(`_rxode2random_cvPost_`, nu, omega, n,
-                omegaIsChol, returnChol, .type, .xform,
-                PACKAGE = "rxode2random"
-                )
+  .ret <- .Call(`_rxode2_cvPost_`, nu, omega, n,
+                omegaIsChol, returnChol, .type, .xform)
   return(.ret)
 }
 
@@ -1074,7 +1072,7 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
 #'
 #' @export
 rxSetSeed <- function(seed) {
-  .Call(`_rxode2random_rxSetSeed`, seed)
+  .Call(`_rxode2_rxSetSeed`, seed)
   invisible()
 }
 
@@ -1277,7 +1275,7 @@ rxWithPreserveSeed <- function(code) {
 rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, isChol = FALSE,
                    keepNames = TRUE, a = 0.4, tol = 2.05, nlTol = 1e-10, nlMaxiter = 100L) {
   .ret <- .Call(
-    `_rxode2random_rxRmvnSEXP`, n, mu, sigma, lower, upper, ncores,
+    `_rxode2_rxRmvnSEXP`, n, mu, sigma, lower, upper, ncores,
     isChol, keepNames, a, tol, nlTol, nlMaxiter
   )
   if (is.matrix(n)) {

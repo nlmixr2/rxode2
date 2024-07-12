@@ -49,7 +49,7 @@ void _rxode2parse_unprotect(void) {
 #include "codegen2.h"
 
 SEXP _rxode2_rxQs(SEXP);
-SEXP _rxode2parse_rxQr(SEXP);
+SEXP _rxode2_rxQr(SEXP);
 SEXP getRxode2ParseDf(void);
 SEXP getRxode2ParseGetPointerAssignment(void);
 
@@ -177,8 +177,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       writeBody2();
       for (int i = Rf_length(_rxode2parse_packages); i--;) {
         const char* cur = R_CHAR(STRING_ELT(_rxode2parse_packages, i));
-        sAppend(&sbOut,"    static rxode2_assignFuns2 %s_assignFuns2 = NULL;\n", cur);
-        sAppend(&sbOut,"    if (%s_assignFuns2 == NULL) %s_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
+        sAppend(&sbOut,"    static rxode2_assignFuns2_t %s_assignFuns2 = NULL;\n", cur);
+        sAppend(&sbOut,"    if (%s_assignFuns2 == NULL) %s_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable(\"%s\", \"_%s_assignFuns2\"));\n",
                 cur, cur, cur, cur);
         sAppend(&sbOut,"    %s_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);\n",
                 cur);
