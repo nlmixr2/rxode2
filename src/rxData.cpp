@@ -46,8 +46,7 @@ void resetSolveLinB();
 using namespace Rcpp;
 using namespace arma;
 
-typedef void (*seedEng_t)(int ncores);
-extern seedEng_t seedEng;
+extern "C" void seedEng(int ncores);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
