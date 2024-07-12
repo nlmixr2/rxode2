@@ -348,9 +348,11 @@ SEXP _rxode2_forderForceBase(SEXP);
 SEXP _rxode2_rxSetIni0(SEXP ini0SEXP);
 SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP);
 SEXP _rxode2_swapMatListWithCube_(SEXP inOSEXP);
+SEXP _rxode2_omegaListRse(SEXP omegaInSEXP);
 
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_omegaListRse", &_rxode2_omegaListRse, &_rxode2_omegaListRse, 1},
     {"_rxode2_swapMatListWithCube_", (DL_FUNC) &_rxode2_swapMatListWithCube_, 1},
     {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) &_rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
