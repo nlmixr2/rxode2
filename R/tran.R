@@ -83,7 +83,7 @@ rxode2parse <- function(model, linear=FALSE, linCmtSens = c("linCmtA", "linCmtB"
     .libname <- c(.libname, .libname)
     .ret[[17]] <- list()
     .Call(
-      `_rxode2parse_codegen`, code, .prefix, .libname,
+      `_rxode2_codegen`, code, .prefix, .libname,
             md5["parsed_md5"], "-1",
             .ret, .parseEnv$.parseFuns)
   }
