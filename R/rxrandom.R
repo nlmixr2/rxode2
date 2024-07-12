@@ -1072,7 +1072,7 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
 #'
 #' @export
 rxSetSeed <- function(seed) {
-  .Call(`_rxode2_rxSetSeed`, seed)
+  .Call(`_rxSetSeed`, seed)
   invisible()
 }
 
