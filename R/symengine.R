@@ -394,7 +394,7 @@ rxFun <- function(name, args, cCode) {
     .env$d <- list()
     lapply(seq_along(.lst), function(i) {
       .cur <- .lst[[i]]
-      do.call(rxode2parse::rxFunParse, .cur[1:3])
+      do.call(rxode2::rxFunParse, .cur[1:3])
       message("converted R function '", .cur$name, "' to C (will now use in rxode2)")
       ## message(.cur$cCode)
       if (length(.cur) == 4L) {
@@ -493,7 +493,7 @@ rxD <- function(name, derivatives) {
   if (!all(sapply(derivatives, function(x) (inherits(x, "function") || is.null(x))))) {
     stop("derivatives must be a list of functions with at least 1 element", call. = FALSE)
   }
-  .rxD <- rxode2parse::rxode2parseD()
+  .rxD <- rxode2::rxode2parseD()
   if (exists(name, envir = .rxD)) {
     warning(sprintf(gettext("replacing defined derivatives for '%s'"), name), call. = FALSE)
   }
@@ -1231,7 +1231,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     }
     .ret0 <- c(list(as.character(x[[1]])), lapply(x[-1], .rxToSE, envir = envir))
     if (isEnv) envir$..curCall <- .lastCall
-    .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
+    .SEeq <- c(.rxSEeq, rxode2::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
     if (.promoteLinB && .curName == "linCmtA") {
@@ -1379,7 +1379,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       } else {
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
-          .udf <- try(get(.fun, envir = rxode2parse::.udfEnvSet(NULL), mode="function"), silent =TRUE)
+          .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
         }
         if (inherits(.udf, "try-error")) {
           stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
