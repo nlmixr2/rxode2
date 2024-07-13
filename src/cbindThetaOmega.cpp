@@ -113,3 +113,12 @@ List cbindThetaOmega(RObject inputParameters, List &individualParameters) {
   ret[1] = individualParameters;
   return ret;
 }
+
+
+extern "C" SEXP _rxode2_rxCbindStudyIndividual(SEXP inputParameters, SEXP individualParameters) {
+  RObject ip = as<RObject>(inputParameters);
+  List ip2 = as<List>(individualParameters);
+  SEXP ret = PROTECT(as<SEXP>(cbindThetaOmega(ip, ip2)[0]));
+  UNPROTECT(1);
+  return ret;
+}

@@ -350,9 +350,12 @@ SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP);
 SEXP _rxode2_swapMatListWithCube_(SEXP inOSEXP);
 SEXP _rxode2_omegaListRse(SEXP omegaInSEXP);
 
+SEXP _rxode2_rxCbindStudyIndividual(SEXP inputParameters, SEXP individualParameters);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
-    {"_rxode2_omegaListRse", &_rxode2_omegaListRse, &_rxode2_omegaListRse, 1},
+    {"_rxode2_rxCbindStudyIndividual", (DL_FUNC) &_rxode2_rxCbindStudyIndividual, 2},
+    {"_rxode2_omegaListRse", (DL_FUNC) &_rxode2_omegaListRse, 1},
     {"_rxode2_swapMatListWithCube_", (DL_FUNC) &_rxode2_swapMatListWithCube_, 1},
     {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) &_rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
