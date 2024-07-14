@@ -2207,8 +2207,8 @@ std::string rxDll(RObject obj);
 
 bool rxDynLoad(RObject obj);
 extern RObject evCur;
-List getEtRxsolve(Environment e){
-  if (!e.exists(".et")){
+List getEtRxsolve(Environment e) {
+  if (!e.exists(".et")) {
     RObject eventso = e[".args.events"];
     List emptyLst(0);
     RObject et = et_(emptyLst, emptyLst);

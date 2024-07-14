@@ -2251,7 +2251,9 @@ RObject et_(List input, List et__) {
       curEt = as<RObject>(et__);
     } else if (Rf_inherits(et__, "rxSolve")){
       foundEt=true;
-      curEt = getEtRxsolve(as<Rcpp::Environment>(et__));
+      RObject c = et__.attr("class");
+      c = c.attr(".rxode2.env");
+      curEt = getEtRxsolve(as<Rcpp::Environment>(c));
       inputSolve=true;
       curSolve=et__;
     }
