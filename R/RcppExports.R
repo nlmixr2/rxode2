@@ -156,7 +156,7 @@ etTransEvidIsObs <- function(isObsSexp) {
 #'
 #' @param inData Data frame to translate
 #'
-#' @param mv Model variables to translate data
+#' @param obj object where model variables can be extracted from
 #'
 #' @param addCmt Add compartment to data frame (default `FALSE`).
 #'

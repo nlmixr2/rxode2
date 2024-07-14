@@ -16,7 +16,7 @@ Nothing, called for side effects
 This sets function gets the currently assigned function pointer assignments
 }
 \examples{
-rxode2parseAssignPointerTranslation("rxode2parse")
+rxode2parseAssignPointerTranslation("rxode2")
 }
 \author{
 Matthew L. Fidler

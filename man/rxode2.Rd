@@ -238,15 +238,10 @@ mod <- rxode2(\{
 ##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_39f1c131c76df13bcaaf4cf42f04a721_.c:117:
+##                  from rx_a91c5b4e7e600ae7861e7e5af932aeb9_.c:117:
 ## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
 ##    80 |     \};
 ##       |      ^
-
-## Error in (function (x, local = TRUE, now = TRUE, ...)  : 
-##   function 'simeps' not provided by package 'rxode2random'
-
-## Warning: unloaded all rxode2 dlls before loading the current DLL
 }\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
@@ -269,15 +264,10 @@ mod <- rxode2(\{
 ##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_5fed791a4af7a23d2212c53cfbc72861_.c:117:
+##                  from rx_ed493bc26d5c5ee71ac99b8e40f25984_.c:117:
 ## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
 ##    80 |     \};
 ##       |      ^
-
-## Error in (function (x, local = TRUE, now = TRUE, ...)  : 
-##   function 'simeps' not provided by package 'rxode2random'
-
-## Warning: unloaded all rxode2 dlls before loading the current DLL
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
@@ -362,17 +352,12 @@ compilation model.
 ##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_5391156000ea6124b72b12d6c340f706_.c:117:
+##                  from rx_22d14e89ab7730bd6dca42971ed8af3b_.c:117:
 ## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
 ##    80 |     \};
 ##       |      ^
 
-## Error in (function (x, local = TRUE, now = TRUE, ...)  : 
-##   function 'simeps' not provided by package 'rxode2random'
-
-## Warning: unloaded all rxode2 dlls before loading the current DLL
-
-## rxode2 2.1.3.9000 model named rx_5391156000ea6124b72b12d6c340f706 model (ready). 
+## rxode2 2.1.3.9000 model named rx_22d14e89ab7730bd6dca42971ed8af3b model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -388,17 +373,12 @@ mod$simulationIniModel
 ##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
 ##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_b9d67cce5ce0faa4586f5604304e4cba_.c:117:
+##                  from rx_61d303c55a893dfb26db9a29242f5ea4_.c:117:
 ## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
 ##    80 |     \};
 ##       |      ^
 
-## Error in (function (x, local = TRUE, now = TRUE, ...)  : 
-##   function 'simeps' not provided by package 'rxode2random'
-
-## Warning: unloaded all rxode2 dlls before loading the current DLL
-
-## rxode2 2.1.3.9000 model named rx_b9d67cce5ce0faa4586f5604304e4cba model (ready). 
+## rxode2 2.1.3.9000 model named rx_61d303c55a893dfb26db9a29242f5ea4 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp

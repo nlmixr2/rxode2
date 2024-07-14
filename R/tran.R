@@ -190,7 +190,7 @@ rxode2parseGetPointerAssignment <- function() {
 #' @keywords internal
 #' @export
 #' @examples
-#' rxode2parseAssignPointerTranslation("rxode2parse")
+#' rxode2parseAssignPointerTranslation("rxode2")
 rxode2parseAssignPointerTranslation <- function(var) {
   checkmate::assertCharacter(var)
   assign(".rxode2parsePointerAssignment", var, envir=.parseEnv)
