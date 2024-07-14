@@ -87,6 +87,7 @@ Imports:
     sys,
     tools,
     utils,
+    dparser,
     rxode2ll(>= 2.0.9),
     data.table (>= 1.12.4),
     qs (>= 0.26.3)

@@ -10,6 +10,7 @@
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define isSameTime(xout, xp) (fabs((xout)-(xp))  <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 
+void _rxode2parse_unprotect(void);
 
 #include "../inst/include/rxode2parse.h"
 
