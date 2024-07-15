@@ -3385,12 +3385,12 @@ static inline void rxSolve_parSetup(const RObject &obj,
     rxSolveDat->parType = 2;
     rxSolveDat->nmP = rxSolveDat->parDf.names();
     rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
-  } else if (rxSolveDat->par1cbind) {
-    List tmp = as<List>(rxSolveDat->par1);
-    rxSolveDat->parDf = as<DataFrame>(tmp[0]);
-    rxSolveDat->parType = 2;
-    rxSolveDat->nmP = rxSolveDat->parDf.names();
-    rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
+  // } else if (rxSolveDat->par1cbind) {
+  //   List tmp = as<List>(rxSolveDat->par1);
+  //   rxSolveDat->parDf = as<DataFrame>(tmp[0]);
+  //   rxSolveDat->parType = 2;
+  //   rxSolveDat->nmP = rxSolveDat->parDf.names();
+  //   rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
   } else if (rxIs(rxSolveDat->par1, "matrix")) {
     rxSolveDat->parMat = as<NumericMatrix>(rxSolveDat->par1);
     rxSolveDat->nPopPar = rxSolveDat->parMat.nrow();
@@ -3765,6 +3765,9 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
     mvCov1N = tmpCov1.attr("names");
   }
   int i, j;
+
+  REprintf("rxSolveDat->parMat:\n");
+  Rcpp::print(rxSolveDat->parMat);
   for (i = rxSolveDat->npars; i--;) {
     curPar = false;
     const char *p0 = CHAR(pars[i]);
@@ -5929,7 +5932,7 @@ RObject rxSolveUpdate(RObject obj,
           CharacterVector nmc;
           nmc = events.names();
           nc = (as<NumericVector>(events[0])).size();
-          ////////////////////////////////////////////////////////
+          /////////////////////////////////////////////////////////
           // Update Parameters by name
           n = pars.size();
           for (i = n; i--; ) {

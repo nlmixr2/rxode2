@@ -32,8 +32,6 @@ using namespace Rcpp;
 #define asBool rx2parseAsBool
 #define asCv rx2parseAsCv
 
-#define getRxFn getRxParseFn
-
 extern int fastFactorDataHasNa;
 
 SEXP convertId_(SEXP x);
@@ -119,21 +117,8 @@ static inline bool asBool(SEXP in, const char *what) {
   return as<bool>(in);
 }
 
-bool _rxode2parse_found = false;
-Environment _rxode2parse;
-
-Environment rxode2parseenv(){
-  Function loadNamespace("loadNamespace", R_BaseNamespace);
-  _rxode2parse = loadNamespace("rxode2parse");
-  _rxode2parse_found = true;
-  return _rxode2parse;
-}
-
-Function getRxFn(std::string name) {
-  Environment rx = rxode2parseenv();
-  return as<Function>(rx[name]);
-}
-
+Function getRxFn(std::string name);
+Environment rxode2env();
 
 Environment dataTable;
 bool getForder_b=false;
@@ -279,7 +264,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
     } else {
       if (isDvid){
         // This converts DVID to cmt; Things that don't match become -9999
-        Environment rx = rxode2parseenv();
+        Environment rx = rxode2env();
         IntegerVector in = convertDvid_(inCmt, curDvid.length());
         IntegerVector out(in.size());
         IntegerVector conv = curDvid;
@@ -501,7 +486,7 @@ RObject etTransEvidIsObs(SEXP isObsSexp) {
   return R_NilValue;
 }
 bool rxode2parseIsIntegerish(SEXP in) {
-  Environment rx = rxode2parseenv();
+  Environment rx = rxode2env();
   Function isIntegerish = rx[".isIntegerish"];
   return as<bool>(isIntegerish(in));
 }
@@ -586,7 +571,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   clock_t _lastT0 = clock();
 #endif
   List mv = rxModelVars_(obj);
-  Environment rx = rxode2parseenv();
+  Environment rx = rxode2env();
   bool combineDvidB = false;
   Environment b=Rcpp::Environment::base_namespace();
   if (!combineDvid.isNull()){

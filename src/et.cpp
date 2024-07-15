@@ -2233,9 +2233,9 @@ RObject et_(List input, List et__) {
   RObject curEt;
   bool foundEt = false;
   bool inputSolve = false;
-  if (et__.size() > 0){
-    if (rxIsChar(et__[0])){
-      if (as<std::string>(et__[0]) == "last"){
+  if (et__.size() > 0) {
+    if (rxIsChar(et__[0])) {
+      if (as<std::string>(et__[0]) == "last") {
         doUpdateObj=true;
         curEt = evCur;
         foundEt=true;
