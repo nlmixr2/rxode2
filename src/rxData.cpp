@@ -3766,8 +3766,6 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
   }
   int i, j;
 
-  REprintf("rxSolveDat->parMat:\n");
-  Rcpp::print(rxSolveDat->parMat);
   for (i = rxSolveDat->npars; i--;) {
     curPar = false;
     const char *p0 = CHAR(pars[i]);
