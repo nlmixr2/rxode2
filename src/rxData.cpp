@@ -3385,12 +3385,12 @@ static inline void rxSolve_parSetup(const RObject &obj,
     rxSolveDat->parType = 2;
     rxSolveDat->nmP = rxSolveDat->parDf.names();
     rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
-  // } else if (rxSolveDat->par1cbind) {
-  //   List tmp = as<List>(rxSolveDat->par1);
-  //   rxSolveDat->parDf = as<DataFrame>(tmp[0]);
-  //   rxSolveDat->parType = 2;
-  //   rxSolveDat->nmP = rxSolveDat->parDf.names();
-  //   rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
+  } else if (rxSolveDat->par1cbind) {
+    List tmp = as<List>(rxSolveDat->par1);
+    rxSolveDat->parDf = as<DataFrame>(tmp[0]);
+    rxSolveDat->parType = 2;
+    rxSolveDat->nmP = rxSolveDat->parDf.names();
+    rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
   } else if (rxIs(rxSolveDat->par1, "matrix")) {
     rxSolveDat->parMat = as<NumericMatrix>(rxSolveDat->par1);
     rxSolveDat->nPopPar = rxSolveDat->parMat.nrow();
@@ -3990,7 +3990,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
   rx_solving_options* op = rx->op;
   rx_solving_options_ind* ind;
   int curEvent = 0, curIdx = 0, curSolve=0;
-  switch(rxSolveDat->parType){
+  switch(rxSolveDat->parType) {
   case 1: // NumericVector
     {
       if (rxSolveDat->nPopPar != 1) {
