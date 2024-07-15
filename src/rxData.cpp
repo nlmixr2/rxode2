@@ -98,7 +98,6 @@ extern "C" SEXP _rxode2_cvPost_(SEXP nuS, SEXP omega, SEXP n, SEXP omegaIsChol, 
 RObject rxUnlock(RObject obj);
 RObject rxLock(RObject obj);
 
-
 RObject setupOnlyObj = R_NilValue;
 
 int rxcEvid  = -1;
@@ -270,6 +269,19 @@ bool rxIs_list(const RObject &obj, std::string cls){
 
 bool rxDropB = false;
 
+//' This handles the drop list
+//'
+//' @param drop a character vector representing the list of items to
+//'   drop from the output
+//'
+//' @param input The input data frame (technically a data.frame is a
+//'   special list)
+//'
+//' @param warnDrop is a boolean that will determine if nonsense drops
+//'   should be warned about in R.
+//'
+//' @return a data-frame with the requested items dropped.
+//'
 List rxDrop(CharacterVector drop, List input, bool warnDrop) {
   rxDropB=false;
   CharacterVector inNames = input.attr("names");
@@ -311,11 +323,15 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
 //' Check the type of an object using Rcpp
 //'
 //' @param obj Object to check
-//' @param cls Type of class.  Only s3 classes for lists/environments and primitive classes are checked.
-//'    For matrix types they are distinguished as `numeric.matrix`, `integer.matrix`,
-//'    `logical.matrix`, and `character.matrix` as well as the traditional `matrix`
-//'    class. Additionally checks for `event.data.frame` which is an `data.frame` object
-//'    with `time`,  `evid` and `amt`. (UPPER, lower or Title cases accepted)
+//'
+//' @param cls Type of class.  Only s3 classes for lists/environments
+//'   and primitive classes are checked.  For matrix types they are
+//'   distinguished as `numeric.matrix`, `integer.matrix`,
+//'   `logical.matrix`, and `character.matrix` as well as the
+//'   traditional `matrix` class. Additionally checks for
+//'   `event.data.frame` which is an `data.frame` object with `time`,
+//'   `evid` and `amt`. (UPPER, lower or Title cases accepted)
+//'
 //'
 //' @return A boolean indicating if the object is a member of the class.
 //'
@@ -414,7 +430,9 @@ bool rxIs(const RObject &obj, std::string cls){
 }
 
 Function loadNamespace("loadNamespace", R_BaseNamespace);
+
 Function requireNamespace("requireNamespace", R_BaseNamespace);
+
 
 Environment cliNS = loadNamespace("cli");
 Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
@@ -428,13 +446,18 @@ extern "C" void cliAlert(const char *format, ...) {
   va_end (args);
 }
 
-extern "C" SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP, SEXP isCholSEXP, SEXP aSEXP, SEXP tolSEXP, SEXP nlTolSEXP, SEXP nlMaxiterSEXP);
+extern "C" SEXP _rxode2_rxRmvn0(SEXP A_SEXP, SEXP muSEXP, SEXP sigmaSEXP,
+                                SEXP lowerSEXP, SEXP upperSEXP, SEXP ncoresSEXP,
+                                SEXP isCholSEXP, SEXP aSEXP, SEXP tolSEXP,
+                                SEXP nlTolSEXP, SEXP nlMaxiterSEXP);
 
 SEXP rxRmvn0(NumericMatrix& A_, arma::rowvec mu, arma::mat sigma,
              arma::vec lower, arma::vec upper, int ncores=1, bool isChol=false,
-             double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100);
+             double a=0.4, double tol = 2.05, double nlTol=1e-10,
+             int nlMaxiter=100);
 
 Function getRxFn(std::string name);
+
 RObject rxSimSigma(const RObject &sigma,
                    const RObject &df,
                    int ncores,
@@ -443,7 +466,8 @@ RObject rxSimSigma(const RObject &sigma,
                    const bool checkNames = true,
                    NumericVector lowerIn =NumericVector::create(R_NegInf),
                    NumericVector upperIn = NumericVector::create(R_PosInf),
-                   double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100){
+                   double a=0.4, double tol = 2.05, double nlTol=1e-10,
+                   int nlMaxiter=100){
 
   if (nObs < 1){
     rxSolveFree();
@@ -567,12 +591,13 @@ Environment _rxModels;
 bool _rxode2_found = false;
 Environment _rxode2;
 
-Environment rxode2env(){
+Environment rxode2env() {
   Function loadNamespace("loadNamespace", R_BaseNamespace);
   _rxode2 = loadNamespace("rxode2");
   _rxode2_found = true;
   return _rxode2;
 }
+
 // Export for C.
 //[[Rcpp::export]]
 Function getRxFn(std::string name) {
@@ -580,7 +605,11 @@ Function getRxFn(std::string name) {
   return as<Function>(rx[name]);
 }
 
-void getRxModels(){
+//' This gets the rxModels_ environment from the rxode2 namespace
+//'
+//' @return `rxModels_` environment
+//'
+void getRxModels() {
   if (!foundEnv){ // minimize R call
     Function f = getRxFn("rxModels_");
     _rxModels = f();
@@ -594,13 +623,26 @@ extern "C" void rxModelsAssignC(const char *str0, SEXP assign) {
   _rxModels[str] = assign;
 }
 
-
+//' This allows assignment inside the `rxModels_` environment
+//'
+//' @param string that should be assigned
+//'
+//' @param a R/S expression (SEXP) to assign in the `rxModels_`
+//'   environment
+//'
+//' @return nothing, called for side effects
+//'
 void rxModelsAssign(std::string str, SEXP assign){
   getRxModels();
   _rxModels[str] = assign;
 }
 
-//
+//' Returns (unsurprisingly) if the file exists
+//'
+//' @param file name
+//'
+//' @return boolean of if the file exists
+//'
 inline bool fileExists(const std::string& name) {
   struct stat buffer;
   return (stat (name.c_str(), &buffer) == 0);
@@ -616,13 +658,27 @@ SEXP dynLoad(std::string dll){
   return ret;
 }
 
+// This declares the `rxModelVars_` interface
 List rxModelVars_(const RObject &obj); // model variables section
 
+//' If nothing else works, try dispatching the `rxModelVarsS3`
+//' dispatch
+//'
+//' @param obj is the R object trying to get the model variables from
+//'
+//' @return model variables (or error from `rxModelVarsS3` default method)
+//'
 List rxModelVars_lastChance(const RObject &obj) {
   Function getMV = getRxFn("rxModelVarsS3");
   return getMV(obj);
 }
 
+//' Get the rxModelVars from an rxode2 object
+//'
+//' @param obj is the rxode2 object to get the model variables from
+//'
+//' @return model variables
+//'
 List rxModelVars_rxode2(const RObject &obj){
   Environment e = asEnv(obj, "obj");
   List rxDll = asList(e["rxDll"], "e[\"rxDll\"]");
@@ -674,7 +730,11 @@ List rxModelVars_rxode2(const RObject &obj){
     }
   }
 }
-List rxModelVars_blank(){
+
+//' This gives a blank model variables object
+//'
+//' @return blank model variables object (though has same structure)
+List rxModelVars_blank() {
   List ret(20);
   CharacterVector retN(20);
   ret[0]  = CharacterVector::create(); // params
@@ -720,6 +780,11 @@ List rxModelVars_blank(){
   return ret;
 }
 
+//' Get the model variables object from a character object
+//'
+//' @param obj character vector to convert to model variables object
+//'
+//' @return model variables
 List rxModelVars_character(const RObject &obj){
   CharacterVector modList = asCv(obj, "rxModelVars_character(obj)");
   if (modList.size() == 1){
@@ -803,6 +868,11 @@ List rxModelVars_character(const RObject &obj){
   return f(obj);
 }
 
+//' List to convert Model variables object into
+//'
+//' @param obj R list to extract model variable from.
+//'
+//' @return model variable object
 List rxModelVars_list(const RObject &obj) {
   bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, dfdy=false;
   List lobj  = asList(obj, "rxModelVars_list");
@@ -832,7 +902,11 @@ List rxModelVars_list(const RObject &obj) {
   }
   return rxModelVars_lastChance(obj);
 }
-
+//' Get the model variables for an object
+//'
+//' @param obj the R object to try to extract the model variable object from.
+//'
+//' @return model variable object or error
 // [[Rcpp::export]]
 List rxModelVars_(const RObject &obj){
   if (obj == NULL) return rxModelVars_blank();
@@ -2663,6 +2737,7 @@ struct rxSolve_t {
   List covUnits;
   RObject par1;
   bool usePar1 = false;
+  bool par1cbind = false;
   bool finalPar1 = false;
   bool par1Keep = false;
   bool swappedEvents = false;
@@ -3272,6 +3347,9 @@ static inline void rxSolve_simulate(const RObject &obj,
                                simVariability);
     if (cbindPar1) {
       lst = cbindThetaOmega(rxSolveDat->par1, lst);
+      rxSolveDat->par1cbind = true;
+    } else {
+      rxSolveDat->par1cbind = false;
     }
     rxSolveDat->warnIdSort = false;
     rxSolveDat->par1 =  as<RObject>(lst);
@@ -3292,7 +3370,7 @@ static inline void rxSolve_parSetup(const RObject &obj,
                                     const RObject &inits,
                                     rxSolve_t* rxSolveDat){
   //  determine which items will be sampled from
-  if (rxIsNumInt(rxSolveDat->par1)){
+  if (rxIsNumInt(rxSolveDat->par1)) {
     rxSolveDat->parNumeric = as<NumericVector>(rxSolveDat->par1);
     if (rxSolveDat->parNumeric.hasAttribute("names")){
       rxSolveDat->nmP = rxSolveDat->parNumeric.names();
@@ -3304,6 +3382,12 @@ static inline void rxSolve_parSetup(const RObject &obj,
     }
   } else if (rxIs(rxSolveDat->par1, "data.frame")) {
     rxSolveDat->parDf = as<DataFrame>(rxSolveDat->par1);
+    rxSolveDat->parType = 2;
+    rxSolveDat->nmP = rxSolveDat->parDf.names();
+    rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
+  } else if (rxSolveDat->par1cbind) {
+    List tmp = as<List>(rxSolveDat->par1);
+    rxSolveDat->parDf = as<DataFrame>(tmp[0]);
     rxSolveDat->parType = 2;
     rxSolveDat->nmP = rxSolveDat->parDf.names();
     rxSolveDat->nPopPar = rxSolveDat->parDf.nrows();
@@ -3660,7 +3744,8 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   if (_globals.gParPos != NULL) free(_globals.gParPos);
-  _globals.gParPos = (int*)calloc(rxSolveDat->npars*2 + rxSolveDat->sigmaN.size() + rxSolveDat->omegaN.size(), sizeof(int));// [npars]
+  _globals.gParPos = (int*)calloc(rxSolveDat->npars*2 +
+                                  rxSolveDat->sigmaN.size() + rxSolveDat->omegaN.size(), sizeof(int));// [npars]
   if (_globals.gParPos == NULL){
     rxSolveFree();
     stop(_("cannot allocate enough memory to sort input parameters"));
@@ -3680,18 +3765,21 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
     mvCov1N = tmpCov1.attr("names");
   }
   int i, j;
-  for (i = rxSolveDat->npars; i--;){
+  for (i = rxSolveDat->npars; i--;) {
     curPar = false;
+    const char *p0 = CHAR(pars[i]);
     // Check for the omega-style simulated parameters.
-    for (j = rxSolveDat->omegaN.size(); j--;){
-      if (rxSolveDat->omegaN[j] == pars[i]){
+    for (j = rxSolveDat->omegaN.size(); j--;) {
+      const char *p1 = CHAR(rxSolveDat->omegaN[j]);
+      if (!strcmp(p0, p1)){
         _globals.govar[j] = i;
+        curPar = true;
         break;
       }
     }
     // Check to see if this is a covariate.
-    for (j = op->ncov; j--;){
-      if (_globals.gpar_cov[j] == (int)(i + 1)){
+    for (j = op->ncov; j--;) {
+      if (_globals.gpar_cov[j] == (int)(i + 1)) {
         _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
         curPar = true;
         rxSolveDat->eGparPos[i]=_globals.gParPos[i];
@@ -3700,8 +3788,9 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
     }
     // Check for the sigma-style simulated parameters.
     if (!curPar){
-      for (j = rxSolveDat->sigmaN.size(); j--;){
-        if (rxSolveDat->sigmaN[j] == pars[i]){
+      for (j = rxSolveDat->sigmaN.size(); j--;) {
+        const char *p1 = CHAR(rxSolveDat->sigmaN[j]);
+        if (!strcmp(p0, p1)){
           _globals.gsvar[j] = i;
           rxSolveDat->nsvar++;
           _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
@@ -3714,7 +3803,8 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
     // Next, check to see if this is a user-specified parameter
     if (!curPar){
       for (j = rxSolveDat->nmP.size(); j--;){
-        if (rxSolveDat->nmP[j] == pars[i]){
+        const char *p1 = CHAR(rxSolveDat->nmP[j]);
+        if (!strcmp(p0, p1)){
           curPar = true;
           _globals.gParPos[i] = j + 1;
           rxSolveDat->eGparPos[i]=_globals.gParPos[i];
@@ -3725,7 +3815,8 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
     // last, check for $ini values
     if (!curPar){
       for (j = mvIniN.size(); j--;){
-        if (mvIniN[j] == pars[i]){
+        const char *p1 = CHAR(mvIniN[j]);
+        if (!strcmp(p0, p1)) {
           curPar = true;
           _globals.gParPos[i] = -j - 1;
           rxSolveDat->eGparPos[i]=_globals.gParPos[i];
@@ -3734,8 +3825,9 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
       }
     }
     if (!curPar){
-      for (j = 1; j < mvCov1N.size(); j++){
-        if (mvCov1N[j] == pars[i]){
+      for (j = 1; j < mvCov1N.size(); j++) {
+        const char *p1 = CHAR(mvCov1N[j]);
+        if (!strcmp(p0, p1)){
           // These are setup once and don't need to be updated
           _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
           curPar = true;

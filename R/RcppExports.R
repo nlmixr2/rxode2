@@ -320,14 +320,94 @@ rxParseSetSilentErr <- function(silent) {
     .Call(`_rxode2_rxParseSetSilentErr`, silent)
 }
 
+#' This handles the drop list
+#'
+#' @param drop a character vector representing the list of items to
+#'   drop from the output
+#'
+#' @param input The input data frame (technically a data.frame is a
+#'   special list)
+#'
+#' @param warnDrop is a boolean that will determine if nonsense drops
+#'   should be warned about in R.
+#'
+#' @return a data-frame with the requested items dropped.
+#'
+NULL
+
+#' This gets the rxModels_ environment from the rxode2 namespace
+#'
+#' @return `rxModels_` environment
+#'
+NULL
+
+#' This allows assignment inside the `rxModels_` environment
+#'
+#' @param string that should be assigned
+#'
+#' @param a R/S expression (SEXP) to assign in the `rxModels_`
+#'   environment
+#'
+#' @return nothing, called for side effects
+#'
+NULL
+
+#' Returns (unsurprisingly) if the file exists
+#'
+#' @param file name
+#'
+#' @return boolean of if the file exists
+#'
+NULL
+
+#' If nothing else works, try dispatching the `rxModelVarsS3`
+#' dispatch
+#'
+#' @param obj is the R object trying to get the model variables from
+#'
+#' @return model variables (or error from `rxModelVarsS3` default method)
+#'
+NULL
+
+#' Get the rxModelVars from an rxode2 object
+#'
+#' @param obj is the rxode2 object to get the model variables from
+#'
+#' @return model variables
+#'
+NULL
+
+#' This gives a blank model variables object
+#'
+#' @return blank model variables object (though has same structure)
+NULL
+
+#' Get the model variables object from a character object
+#'
+#' @param obj character vector to convert to model variables object
+#'
+#' @return model variables
+NULL
+
+#' List to convert Model variables object into
+#'
+#' @param obj R list to extract model variable from.
+#'
+#' @return model variable object
+NULL
+
 #' Check the type of an object using Rcpp
 #'
 #' @param obj Object to check
-#' @param cls Type of class.  Only s3 classes for lists/environments and primitive classes are checked.
-#'    For matrix types they are distinguished as `numeric.matrix`, `integer.matrix`,
-#'    `logical.matrix`, and `character.matrix` as well as the traditional `matrix`
-#'    class. Additionally checks for `event.data.frame` which is an `data.frame` object
-#'    with `time`,  `evid` and `amt`. (UPPER, lower or Title cases accepted)
+#'
+#' @param cls Type of class.  Only s3 classes for lists/environments
+#'   and primitive classes are checked.  For matrix types they are
+#'   distinguished as `numeric.matrix`, `integer.matrix`,
+#'   `logical.matrix`, and `character.matrix` as well as the
+#'   traditional `matrix` class. Additionally checks for
+#'   `event.data.frame` which is an `data.frame` object with `time`,
+#'   `evid` and `amt`. (UPPER, lower or Title cases accepted)
+#'
 #'
 #' @return A boolean indicating if the object is a member of the class.
 #'
@@ -349,6 +429,11 @@ dynLoad <- function(dll) {
     .Call(`_rxode2_dynLoad`, dll)
 }
 
+#' Get the model variables for an object
+#'
+#' @param obj the R object to try to extract the model variable object from.
+#'
+#' @return model variable object or error
 rxModelVars_ <- function(obj) {
     .Call(`_rxode2_rxModelVars_`, obj)
 }
