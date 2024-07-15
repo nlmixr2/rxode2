@@ -354,8 +354,11 @@ SEXP _rxode2_rxCbindStudyIndividual(SEXP inputParameters, SEXP individualParamet
 SEXP _rxode2_rxModelVarsStack(SEXP xSEXP);
 SEXP _rxode2_rxStack_(SEXP DataSEXP, SEXP varsSEXP);
 
+SEXP _rxode2parse_linCmtB(void);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2parse_linCmtB", (DL_FUNC) &_rxode2parse_linCmtB, 0},
     {"_rxode2_rxStack_", (DL_FUNC) &_rxode2_rxStack_, 2},
     {"_rxode2_rxCbindStudyIndividual", (DL_FUNC) &_rxode2_rxCbindStudyIndividual, 2},
     {"_rxode2_rxModelVarsStack", (DL_FUNC) &_rxode2_rxModelVarsStack, 1},

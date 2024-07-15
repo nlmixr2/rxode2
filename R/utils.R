@@ -1351,6 +1351,6 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 #' @examples
 #' .linCmtSens()
 .linCmtSens <- function() {
-  as.logical(.Call(`_rxode2_linCmtB`))
+  as.logical(.Call(`_rxode2parse_linCmtB`))
 }
 ## nocov end
