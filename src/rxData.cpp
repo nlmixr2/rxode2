@@ -2354,7 +2354,7 @@ CharacterVector updateParNames(CharacterVector parNames, Environment e){
 // This updates the evironment post solve after running.  Defers some
 // computational cost until the rxSolve is looked at by the user.
 void updateSolveEnvPost(Environment e){
-  if (!e.exists(".params.dat")){
+  if (!e.exists(".params.dat")) {
     List mv = rxModelVars(as<RObject>(e));
     NumericVector mvIni = mv[RxMv_ini];
     CharacterVector pars = mv[RxMv_params];
@@ -4301,7 +4301,32 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".args.object"] = object;
   e["dll"] = rxDll(object);
   e[".args.par0"] = rxSolveDat->par1ini;
-  if (!rxSolveDat->swappedEvents){
+  if (rxSolveDat->par1cbind) {
+    List tmp = as<List>(rxSolveDat->par1);
+    List in = as<List>(tmp[0]);
+    if (rx->neps == 0) {
+      e[".params.dat"] = in;
+    } else {
+      List in2(in.size() - rx->neps);
+      CharacterVector in2n(in.size() - rx->neps);
+      CharacterVector inn = in.attr("names");
+      for (int m = 0; m < in2.size(); ++m) {
+        in2n[m] = inn[m];
+        in2[m] = in[m];
+      }
+      in2.attr("names")  = in2n;
+      in2.attr("class") = "data.frame";
+      in2.attr("row.names") = in.attr("row.names");
+      e[".params.dat"] = in2;
+    }
+    if (!rxSolveDat->swappedEvents){
+      e[".args.params"] = params;
+      e[".args.events"] = events;
+    } else {
+      e[".args.params"] = events;
+      e[".args.events"] = params;
+    }
+  } else if (!rxSolveDat->swappedEvents){
     if (rxSolveDat->usePar1){
       e[".args.params"] = rxSolveDat->par1;
     } else {
@@ -5818,7 +5843,7 @@ CharacterVector rxSolveDollarNames(RObject obj){
 RObject rxSolveGet(RObject obj, RObject arg, LogicalVector exact = true){
   std::string sarg;
   int i, n;
-  if (rxIs(obj, "data.frame")){
+  if (rxIs(obj, "data.frame")) {
     List lst = as<List>(obj);
     if (rxIsChar(arg)){
       sarg = as<std::string>(arg);
@@ -5833,7 +5858,7 @@ RObject rxSolveGet(RObject obj, RObject arg, LogicalVector exact = true){
       }
       unsigned int slen2;
       int possible = -1;
-      for (i = 0; i < n; i++){
+      for (i = 0; i < n; i++) {
         slen2 = strlen((as<std::string>(nm[i])).c_str());
         if (slen <= slen2 &&
             (strncmp((as<std::string>(nm[i])).c_str(), sarg.c_str(), slen)  == 0 ) &&
@@ -5845,21 +5870,21 @@ RObject rxSolveGet(RObject obj, RObject arg, LogicalVector exact = true){
           }
         }
       }
-      if (possible != -1){
-        if (dexact == -1){
+      if (possible != -1) {
+        if (dexact == -1) {
           warning(_("partial match of '%s' to '%s'"),sarg.c_str(),
                   (as<std::string>(nm[possible])).c_str());
         }
         return lst[possible];
       }
-      if (rxIs(obj, "rxSolve")){
+      if (rxIs(obj, "rxSolve")) {
         RObject ret0 = rxSolveGet_rxSolve(obj, sarg, exact, lst);
-        if (!rxIsNull(ret0)){
+        if (!rxIsNull(ret0)) {
           return ret0;
         }
       }
     } else {
-      if (rxIsNumInt(arg)){
+      if (rxIsNumInt(arg)) {
         int iarg = as<int>(arg);
         if (iarg <= lst.size()){
           return lst[iarg-1];
@@ -5874,9 +5899,9 @@ RObject rxSolveGet(RObject obj, RObject arg, LogicalVector exact = true){
 RObject rxSolveUpdate(RObject obj,
                       RObject arg = R_NilValue,
                       RObject value = R_NilValue){
-  if (rxIs(obj,"rxSolve")){
+  if (rxIs(obj,"rxSolve")) {
     rxCurObj = obj;
-    if (rxIsChar(arg)){
+    if (rxIsChar(arg)) {
       CharacterVector what = CharacterVector(arg);
       CharacterVector classattr = obj.attr("class");
       Environment e = as<Environment>(classattr.attr(".rxode2.env"));
