@@ -38,7 +38,7 @@ rxTest({
 
 })
 
-if (rxode2::.linCmtSens()) {
+if (rxode2::.linCmtSensB()) {
   rxTest({
     tol <- 5e-5 ## Current difference for all equations
     types <- 1:4

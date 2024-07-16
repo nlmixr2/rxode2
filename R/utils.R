@@ -1350,7 +1350,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 #' @keywords internal
 #' @examples
 #' .linCmtSens()
-.linCmtSens <- function() {
+.linCmtSensB <- function() {
   as.logical(.Call(`_rxode2parse_linCmtB`))
 }
 ## nocov end
