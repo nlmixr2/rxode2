@@ -4303,27 +4303,10 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".args.par0"] = rxSolveDat->par1ini;
   if (rxSolveDat->par1cbind) {
     List tmp = as<List>(rxSolveDat->par1);
-    List in = as<List>(tmp[0]);
-    if (rx->neps == 0) {
-      e[".params.dat"] = in;
-    } else {
-      List in2(in.size() - rx->neps);
-      CharacterVector in2n(in.size() - rx->neps);
-      CharacterVector inn = in.attr("names");
-      for (int m = 0; m < in2.size(); ++m) {
-        in2n[m] = inn[m];
-        in2[m] = in[m];
-      }
-      in2.attr("names")  = in2n;
-      in2.attr("class") = "data.frame";
-      in2.attr("row.names") = in.attr("row.names");
-      e[".params.dat"] = in2;
-    }
+    e[".args.params"] = tmp[0];
     if (!rxSolveDat->swappedEvents){
-      e[".args.params"] = params;
       e[".args.events"] = events;
     } else {
-      e[".args.params"] = events;
       e[".args.events"] = params;
     }
   } else if (!rxSolveDat->swappedEvents){
