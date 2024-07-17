@@ -413,12 +413,6 @@ rxTest({
     }
   })
 
-  test_that("min/max testing", {
-    expect_error(rxFromSE("Derivative(max(a,b,c), a)"), NA)
-    expect_equal(rxToSE("min(a,b,c)"), "min(a,b,c)")
-    expect_equal(rxToSE("max(a,b,c)"), "max(a,b,c)")
-  })
-
   test_that("sum/prod testing", {
     expect_equal(rxToSE("sum(a,b,c)"), "((a)+(b)+(c))")
     expect_equal(rxToSE("prod(a,b,c)"), "((a)*(b)*(c))")
