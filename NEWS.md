@@ -4,11 +4,19 @@
 
 - Error when specifying `wd` without `modName`
 
-## New feaures
+## New features
 
 - Empty arguments to `rxRename()` give a warning (#688)
+
 - Promoting from covariates to parameters with model piping (via `ini()`) now
   allows setting bounds (#692)
+
+  * Added `assertCompartmentName()`, `assertCompartmentExists()`,
+  `assertVariableName()`, and `assertParameterValue()` to verify that
+  a value is a valid nlmixr2 compartment name, nlmixr2 compartment
+  exists in the model, variable name, or parameter value,
+  respectively (#726)
+
 
 ## Bug fixes
 

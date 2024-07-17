@@ -96,6 +96,12 @@ assertRxUi(one.cmt)
 assertRxUiSingleEndpoint(one.cmt)
 }
 }
+\seealso{
+Other Assertions: 
+\code{\link{assertCompartmentExists}()},
+\code{\link{assertCompartmentName}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Assertions}
