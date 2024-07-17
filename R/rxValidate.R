@@ -1,4 +1,3 @@
-
 #' Validate rxode2
 #' This allows easy validation/qualification of nlmixr by running the
 #' testing suite on your system.
@@ -46,9 +45,9 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
     path <- file.path(system.file("tests", package = "rxode2"), "testthat")
     .rxWithWd(path, {
       try(devtools::test(path, filter = .filter))
-      message("================================================================================")
+      message("=================================================================================")
       print(proc.time() - pt)
-      message("================================================================================")
+      message("=================================================================================")
     })
   })
 }

@@ -57,9 +57,6 @@ jobs:
             nlmixr2/dparser-R
             nlmixr2/lotri
             nlmixr2/rxode2ll
-            nlmixr2/rxode2parse
-            nlmixr2/rxode2random
-            nlmixr2/rxode2et
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2

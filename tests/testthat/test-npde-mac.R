@@ -1,6 +1,6 @@
 rxTest({
   test_that("npde simulation works on mac nlmixr #460", {
-    skip_if_not(rxode2parse::.linCmtSens())
+    skip_if_not(rxode2::.linCmtSensB())
     # This test requires a lot of RAM (approximately 16GiB), so skip it if there
     # is not enough RAM available.  This skip only works on Windows because
     # `memory.limit()` returns Inf (with a warning) on other platforms.

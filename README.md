@@ -67,8 +67,7 @@ development version for MacOS and for Windows so you don’t have to wait
 for package compilation:
 
 ``` r
-install.packages(c("dparser", "rxode2ll", "rxode2parse",
-                   "rxode2random", "rxode2et", "rxode2"),
+install.packages(c("dparser", "rxode2ll", "rxode2"),
                  repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
                          CRAN="https://cloud.r-project.org"))
 ```
@@ -76,9 +75,6 @@ install.packages(c("dparser", "rxode2ll", "rxode2parse",
 If this doesn’t work you install the development version of rxode2 with
 
 ``` r
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
@@ -182,9 +178,6 @@ with:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("nlmixr2/rxode2parse")
-devtools::install_github("nlmixr2/rxode2random")
-devtools::install_github("nlmixr2/rxode2et")
 devtools::install_github("nlmixr2/rxode2ll")
 devtools::install_github("nlmixr2/rxode2")
 ```
@@ -200,7 +193,7 @@ To load `rxode2` package and compile the model:
 
 ``` r
 library(rxode2)
-#> rxode2 2.1.2.9000 using 8 threads (see ?getRxThreads)
+#> rxode2 2.1.3.9000 using 8 threads (see ?getRxThreads)
 #>   no cache: create with `rxCreateCache()`
 
 mod1 <- function() {
@@ -280,14 +273,6 @@ The ODE can now be solved using `rxSolve`:
 ``` r
 x <- mod1 %>% rxSolve(ev)
 #> using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-#> In file included from /usr/share/R/include/R.h:71,
-#>                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2parse.h:33,
-#>                  from /tmp/RtmpMKFh3q/temp_libpath2b2b3c8645df/rxode2/include/rxode2.h:9,
-#>                  from /home/matt/R/x86_64-pc-linux-gnu-library/4.3/rxode2parse/include/rxode2_model_shared.h:3,
-#>                  from rx_f5e1c8d22ddcc3e6890ad688a5f37e59_.c:117:
-#> /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
-#>    80 |     };
-#>       |      ^
 x
 #> ── Solved rxode2 object ──
 #> ── Parameters (x$params): ──

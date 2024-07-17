@@ -21,7 +21,7 @@ etTrans(
 \arguments{
 \item{inData}{Data frame to translate}
 
-\item{obj}{Model to translate data}
+\item{obj}{object where model variables can be extracted from}
 
 \item{addCmt}{Add compartment to data frame (default \code{FALSE}).}
 

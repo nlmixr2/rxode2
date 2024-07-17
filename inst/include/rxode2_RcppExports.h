@@ -6,6 +6,7 @@
 #ifndef RCPP_rxode2_RCPPEXPORTS_H_GEN_
 #define RCPP_rxode2_RCPPEXPORTS_H_GEN_
 
+#include <RcppEigen.h>
 #include <Rcpp.h>
 
 namespace rxode2 {
@@ -171,27 +172,6 @@ namespace rxode2 {
         if (rcpp_result_gen.inherits("try-error"))
             throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
         return Rcpp::as<bool >(rcpp_result_gen);
-    }
-
-    inline Function getRxFn(std::string name) {
-        typedef SEXP(*Ptr_getRxFn)(SEXP);
-        static Ptr_getRxFn p_getRxFn = NULL;
-        if (p_getRxFn == NULL) {
-            validateSignature("Function(*getRxFn)(std::string)");
-            p_getRxFn = (Ptr_getRxFn)R_GetCCallable("rxode2", "_rxode2_getRxFn");
-        }
-        RObject rcpp_result_gen;
-        {
-            RNGScope RCPP_rngScope_gen;
-            rcpp_result_gen = p_getRxFn(Shield<SEXP>(Rcpp::wrap(name)));
-        }
-        if (rcpp_result_gen.inherits("interrupted-error"))
-            throw Rcpp::internal::InterruptedException();
-        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
-            throw Rcpp::LongjumpException(rcpp_result_gen);
-        if (rcpp_result_gen.inherits("try-error"))
-            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
-        return Rcpp::as<Function >(rcpp_result_gen);
     }
 
     inline SEXP dynLoad(std::string dll) {

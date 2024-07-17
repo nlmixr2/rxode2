@@ -279,7 +279,7 @@ model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", T
     if (inherits(.funName, "try-error")) {
       .funName <- NULL
     } else if (length(.funName) == 1L && exists(.funName, envir=parent.env(envir))) {
-      rxode2parse::.udfEnvSet(parent.env(envir))
+      .udfEnvSet(parent.env(envir))
     }
     .ini <- .lastIni
     .iniQ <- .lastIniQ

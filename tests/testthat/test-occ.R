@@ -1,7 +1,7 @@
 rxTest({
   test_that("occasions", {
 
-    .rxr <- loadNamespace("rxode2random")
+    .rxr <- loadNamespace("rxode2")
 
     # Nesting tests
 

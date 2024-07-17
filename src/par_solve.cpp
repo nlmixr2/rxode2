@@ -9,11 +9,10 @@
 #include <time.h>
 #include <string>
 #include "strncmp.h"
-//#include "seed.h"
-#include <timsort.h>
+#include "timsort.h"
 #include "../inst/include/rxode2.h"
-#include <rxode2parseHandleEvid.h>
-#include <rxode2parseGetTime.h>
+#include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h"
 #define SORT gfx::timsort
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
 // dop853 is same time
@@ -523,34 +522,6 @@ double *global_rwork(unsigned int mx){
   return global_rworkp;
 }
 
-extern "C" void _rxode2random_assignSolveOnly2(rx_solve rx,
-                                               rx_solving_options op) {
-  static void (*fun)(rx_solve,
-                     rx_solving_options)=NULL;
-  if (fun == NULL) {
-    fun = (void (*)(rx_solve,
-                    rx_solving_options))  R_GetCCallable("rxode2random","_rxode2random_assignSolveOnly");
-  }
-  fun(rx, op);
-}
-
-extern "C" {
-  typedef void (*_rxode__assignFuns2_t)(rx_solve rx,
-                                        rx_solving_options op,
-                                        t_F f,
-                                        t_LAG lag,
-                                        t_RATE rate,
-                                        t_DUR dur,
-                                        t_calc_mtime mtime,
-                                        t_ME me,
-                                        t_IndF indf,
-                                        t_getTime gettime,
-                                        t_locateTimeIndex timeindex,
-                                        t_handle_evidL handleEvid,
-                                        t_getDur getdur);
-}
-
-
 extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind);
 
 void rxUpdateFuns(SEXP trans){
@@ -609,21 +580,6 @@ void rxUpdateFuns(SEXP trans){
   rx->op = op;
   char s_assignFuns2[300];
   snprintf(s_assignFuns2, 300, "%s2", s_assignFuns);
-  _rxode__assignFuns2_t f2 = (_rxode__assignFuns2_t) R_GetCCallable(lib, s_assignFuns2);
-  f2(rx_global,
-     op_global,
-     AMT,
-     LAG,
-     RATE,
-     DUR,
-     calc_mtime,
-     ME,
-     IndF,
-     getTime,
-     _locateTimeIndex,
-     handle_evidL,
-     _getDur);
-  _rxode2random_assignSolveOnly2(rx_global, op_global);
 }
 
 extern "C" void rxClearFuns(){
@@ -2342,14 +2298,9 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
-typedef uint32_t (*getRxSeed1_t)(int ncores);
-extern getRxSeed1_t getRxSeed1;
-
-typedef void (*setSeedEng1_t)(uint32_t seed);
-extern setSeedEng1_t setSeedEng1;
-
-typedef void (*setRxSeedFinal_t)(uint32_t seed);
-extern setRxSeedFinal_t setRxSeedFinal;
+extern "C" uint32_t getRxSeed1(int ncores);
+extern "C" void setSeedEng1(uint32_t seed);
+extern "C" void setRxSeedFinal(uint32_t seed);
 
 extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
                              t_dydt_liblsoda dydt, t_update_inis u_inis){

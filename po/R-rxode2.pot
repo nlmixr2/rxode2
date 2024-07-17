@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: rxode2 2.0.14.9000\n"
-"POT-Creation-Date: 2023-10-30 08:03\n"
+"Project-Id-Version: rxode2 2.1.3.9000\n"
+"POT-Creation-Date: 2024-07-11 16:40\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -100,6 +100,24 @@ msgstr ""
 msgid "summarizing data..."
 msgstr ""
 
+msgid "cannot take a second derivative"
+msgstr ""
+
+msgid "bad 'linCmtB' derivative"
+msgstr ""
+
+msgid "can only specify `n` or `rse` not both"
+msgstr ""
+
+msgid "need to match rse with some metric"
+msgstr ""
+
+msgid "omega must be a square matrix"
+msgstr ""
+
+msgid "The input must be a cube or a list of matrices"
+msgstr ""
+
 msgid "rxode2 doesn't support '%s' translation for 'omega' translation"
 msgstr ""
 
@@ -184,6 +202,69 @@ msgstr ""
 msgid "a rxode2 ui model must have more than error definition(s) in the `model({})` block"
 msgstr ""
 
+msgid "cannot supply both 'by' and 'length.out'"
+msgstr ""
+
+msgid "improper arguments to 'et'"
+msgstr ""
+
+msgid "when supplying vectors of 'time', 'amt' they need to be the same size"
+msgstr ""
+
+msgid "only a single evid 'evid' can be specified ('%s')"
+msgstr ""
+
+msgid "', '"
+msgstr ""
+
+msgid "only a single compartment 'cmt' can be specified ('%s')"
+msgstr ""
+
+msgid "only a single rate 'rate' can be specified ('%s')"
+msgstr ""
+
+msgid "only a single duration 'dur' can be specified ('%s')"
+msgstr ""
+
+msgid "need 'rxode2' loaded for piping to a simulation"
+msgstr ""
+
+msgid "'nsim' is ignored when simulating event tables"
+msgstr ""
+
+msgid "requires package 'units'"
+msgstr ""
+
+msgid "the only valid number defining a unit is '1', signifying a unitless unit"
+msgstr ""
+
+msgid "clearing both amount and time units\nfor more precise control use 'et(amountUnits=\"\")' or 'et(timeUnits=\"\")'"
+msgstr ""
+
+msgid "'deparse.level' not used with rxode2 event tables"
+msgstr ""
+
+msgid "'length.out' makes no sense with event tables"
+msgstr ""
+
+msgid "'each' makes no sense with event tables"
+msgstr ""
+
+msgid "'evid' is unitless"
+msgstr ""
+
+msgid "dates can only be specified by one of: 'DATE', 'DAT1', 'DAT2', 'DAT3' / 'TIME'"
+msgstr ""
+
+msgid "dates formatted as MONTH-DAY or DAY alone are not supported in this conversion"
+msgstr ""
+
+msgid "date/time format was not correctly specified"
+msgstr ""
+
+msgid "cannot figure out numeric time"
+msgstr ""
+
 msgid "install.packages('shiny') to use genShinyApp.template()"
 msgstr ""
 
@@ -265,7 +346,16 @@ msgstr ""
 msgid "' must be a character string"
 msgstr ""
 
-msgid "'append' must be NULL, logical, numeric, or character"
+msgid "backTransform specification malformed"
+msgstr ""
+
+msgid "tried use a backTransform(\""
+msgstr ""
+
+msgid "\") when the function does not exist"
+msgstr ""
+
+msgid "'append' must be NULL, logical, numeric, or character/expression of variable in model"
 msgstr ""
 
 msgid "Cannot find parameter '"
@@ -283,10 +373,22 @@ msgstr ""
 msgid "' is not a theta parameter"
 msgstr ""
 
-msgid "a NULL value for '"
+msgid "cannot switch parameter type for '"
 msgstr ""
 
-msgid "' piping does not make sense"
+msgid "cannot switch error parameter '"
+msgstr ""
+
+msgid "' to a different type"
+msgstr ""
+
+msgid "no initial estimates for '"
+msgstr ""
+
+msgid "', cannot change to covariate"
+msgstr ""
+
+msgid "' to a covariate"
 msgstr ""
 
 msgid "to assign a new label, use '%s <- label(\"%s\")'"
@@ -295,7 +397,13 @@ msgstr ""
 msgid "invalid expr for ini() modification"
 msgstr ""
 
+msgid "'append' cannot be a negative integer"
+msgstr ""
+
 msgid "cannot figure out what to do with the ini({}) function"
+msgstr ""
+
+msgid "'append' must refer to a LHS model line when a character"
 msgstr ""
 
 msgid "cannot find '"
@@ -337,6 +445,9 @@ msgstr ""
 msgid "vectors and list need to be named numeric expression"
 msgstr ""
 
+msgid "empty argument ignored"
+msgstr ""
+
 msgid "the `sim` endpoints requested in the plot do not exist in the solved object:"
 msgstr ""
 
@@ -353,6 +464,63 @@ msgid "some requested items do not exist in the solved object and were ignored:"
 msgstr ""
 
 msgid "needs \"ggplot2\" 3.3.0"
+msgstr ""
+
+msgid "name argument must be a length-one character vector"
+msgstr ""
+
+msgid "a new function requires a C function so it can be used in rxode2"
+msgstr ""
+
+msgid "already defined user function '"
+msgstr ""
+
+msgid "', remove it fist ('rxRmFun')"
+msgstr ""
+
+msgid "no user function '"
+msgstr ""
+
+msgid "' to remove"
+msgstr ""
+
+msgid "compiled with R user function '"
+msgstr ""
+
+msgid "'; now there is a clashing C user function"
+msgstr ""
+
+msgid "triggered a recompile to use the C user function (they are always preferred)"
+msgstr ""
+
+msgid "there is both C and R user functions '"
+msgstr ""
+
+msgid "' with a different number of arguments\n  since rxode2 prefers C, you will need to rename your R user function to use it"
+msgstr ""
+
+msgid "' had"
+msgstr ""
+
+msgid "arguments when model was compiled, now it has"
+msgstr ""
+
+msgid "arguments"
+msgstr ""
+
+msgid "environment were user functions were defined is no longer present"
+msgstr ""
+
+msgid "needs to return a length 1 numeric"
+msgstr ""
+
+msgid "'individualParameters' must  be a data frame"
+msgstr ""
+
+msgid "'studyParameters' must be matrix with named columns"
+msgstr ""
+
+msgid "'studyParameters' needs to be either a data frame or a matrix"
 msgstr ""
 
 msgid "'rxIndLinState' list element '%s' must be a unnamed character vector"
@@ -382,7 +550,13 @@ msgstr ""
 msgid "unsupported expression"
 msgstr ""
 
+msgid "package \"%s\" needed for this function to work"
+msgstr ""
+
 msgid "using the first solved parameters for rxShiny"
+msgstr ""
+
+msgid "this data cannot be used with `rxStack`"
 msgstr ""
 
 msgid "this has to be a matrix of all 1s or 0s"
@@ -424,12 +598,6 @@ msgstr ""
 msgid "' is loaded\nRecompile rxode2 with the this version of PreciseSums"
 msgstr ""
 
-msgid "rxode2 compiled with rxode2parse with a different solving structure"
-msgstr ""
-
-msgid "can try: install.packages('rxode2', type='source')"
-msgstr ""
-
 msgid "rxode2"
 msgstr ""
 
@@ -464,6 +632,9 @@ msgid "; To get best performance enable OpenMP"
 msgstr ""
 
 msgid "detected new version of rxode2, cleaning cache"
+msgstr ""
+
+msgid "working directory specified, but modName not declared, need to specify modName to create rxode2 c-files as a sub-directory of `wd`"
 msgstr ""
 
 msgid "'modName' has to be a single length character"
@@ -622,9 +793,6 @@ msgstr ""
 msgid "'iCov' has information contained in parameters/event data\nduplicate columns: '%s'"
 msgstr ""
 
-msgid "', '"
-msgstr ""
-
 msgid "'theta' cannot be a data.frame"
 msgstr ""
 
@@ -676,22 +844,13 @@ msgstr ""
 msgid "'rxControl' must be a rxode2 control options list"
 msgstr ""
 
-msgid "name argument must be a length-one character vector"
+msgid "converted R function '"
 msgstr ""
 
-msgid "a new function requires a C function so it can be used in rxode2"
+msgid "' to C (will now use in rxode2)"
 msgstr ""
 
-msgid "already defined user function '"
-msgstr ""
-
-msgid "', remove it fist ('rxRmFun')"
-msgstr ""
-
-msgid "no user function '"
-msgstr ""
-
-msgid "' to remove"
+msgid "Added derivative table for '"
 msgstr ""
 
 msgid "derivatives must be a list of functions with at least 1 element"
@@ -877,6 +1036,45 @@ msgstr ""
 msgid "'."
 msgstr ""
 
+msgid "d/dt("
+msgstr ""
+
+msgid ") not supported in functions for translation"
+msgstr ""
+
+msgid "df("
+msgstr ""
+
+msgid ")/dy("
+msgstr ""
+
+msgid ") statements are not supported in translation"
+msgstr ""
+
+msgid "cannot assign argument '"
+msgstr ""
+
+msgid "' in functions converted to C"
+msgstr ""
+
+msgid "bracket expressions (ie ret[3]) are not supported in translation"
+msgstr ""
+
+msgid "cannot translate function '"
+msgstr ""
+
+msgid "functions with ... in them are not supported"
+msgstr ""
+
+msgid "function contains return statement; derivatives not calculated"
+msgstr ""
+
+msgid "this requires devtools"
+msgstr ""
+
+msgid "rebuild parseFuns.R from rxode2"
+msgstr ""
+
 msgid "cannot figure out what to do with model assignment"
 msgstr ""
 
@@ -892,10 +1090,16 @@ msgstr ""
 msgid "do not know how to assign this"
 msgstr ""
 
-msgid "the first model does not have variables that are used by the second model"
+msgid "' is a fixed UI component and should not be overwritten"
 msgstr ""
 
-msgid "there needs to be at least one population parameter in 'model1'"
+msgid "not all the models have variables in common (use `common=FALSE` to allow this)"
+msgstr ""
+
+msgid "duplicated parameter has covariance, will not append models: '"
+msgstr ""
+
+msgid "unknown expression"
 msgstr ""
 
 msgid "cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'"
@@ -932,9 +1136,6 @@ msgid "the old variable '"
 msgstr ""
 
 msgid "' is not present in the model and cannot be renamed to '"
-msgstr ""
-
-msgid "unknown expression"
 msgstr ""
 
 msgid "rxode2 model function can only have one 'ini({})' block"
@@ -974,6 +1175,15 @@ msgid "percent=="
 msgstr ""
 
 msgid "but should be a number between 2 and 100"
+msgstr ""
+
+msgid "parameters:"
+msgstr ""
+
+msgid "cannot figure out PK parameters to convert"
+msgstr ""
+
+msgid "cannot figure out PK parameters to use"
 msgstr ""
 
 msgid "%s%s"
