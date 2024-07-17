@@ -281,7 +281,7 @@ bool rxDropB = false;
 //'   should be warned about in R.
 //'
 //' @return a data-frame with the requested items dropped.
-//'
+//' @noRd
 List rxDrop(CharacterVector drop, List input, bool warnDrop) {
   rxDropB=false;
   CharacterVector inNames = input.attr("names");
@@ -606,7 +606,7 @@ Function getRxFn(std::string name) {
 //' This gets the rxModels_ environment from the rxode2 namespace
 //'
 //' @return `rxModels_` environment
-//'
+//' @noRd
 void getRxModels() {
   if (!foundEnv){ // minimize R call
     Function f = getRxFn("rxModels_");
@@ -630,6 +630,7 @@ extern "C" void rxModelsAssignC(const char *str0, SEXP assign) {
 //'
 //' @return nothing, called for side effects
 //'
+//' @noRd
 void rxModelsAssign(std::string str, SEXP assign){
   getRxModels();
   _rxModels[str] = assign;
@@ -640,7 +641,7 @@ void rxModelsAssign(std::string str, SEXP assign){
 //' @param file name
 //'
 //' @return boolean of if the file exists
-//'
+//' @noRd
 inline bool fileExists(const std::string& name) {
   struct stat buffer;
   return (stat (name.c_str(), &buffer) == 0);
@@ -665,7 +666,7 @@ List rxModelVars_(const RObject &obj); // model variables section
 //' @param obj is the R object trying to get the model variables from
 //'
 //' @return model variables (or error from `rxModelVarsS3` default method)
-//'
+//' @noRd
 List rxModelVars_lastChance(const RObject &obj) {
   Function getMV = getRxFn("rxModelVarsS3");
   return getMV(obj);
@@ -676,7 +677,7 @@ List rxModelVars_lastChance(const RObject &obj) {
 //' @param obj is the rxode2 object to get the model variables from
 //'
 //' @return model variables
-//'
+//' @noRd
 List rxModelVars_rxode2(const RObject &obj){
   Environment e = asEnv(obj, "obj");
   List rxDll = asList(e["rxDll"], "e[\"rxDll\"]");
@@ -732,6 +733,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //' This gives a blank model variables object
 //'
 //' @return blank model variables object (though has same structure)
+//'
+//' @noRd
 List rxModelVars_blank() {
   List ret(20);
   CharacterVector retN(20);
@@ -783,6 +786,8 @@ List rxModelVars_blank() {
 //' @param obj character vector to convert to model variables object
 //'
 //' @return model variables
+//'
+//' @noRd
 List rxModelVars_character(const RObject &obj){
   CharacterVector modList = asCv(obj, "rxModelVars_character(obj)");
   if (modList.size() == 1){
@@ -871,6 +876,7 @@ List rxModelVars_character(const RObject &obj){
 //' @param obj R list to extract model variable from.
 //'
 //' @return model variable object
+//' @noRd
 List rxModelVars_list(const RObject &obj) {
   bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, dfdy=false;
   List lobj  = asList(obj, "rxModelVars_list");
@@ -905,6 +911,8 @@ List rxModelVars_list(const RObject &obj) {
 //' @param obj the R object to try to extract the model variable object from.
 //'
 //' @return model variable object or error
+//'
+//' @noRd
 // [[Rcpp::export]]
 List rxModelVars_(const RObject &obj){
   if (obj == NULL) return rxModelVars_blank();

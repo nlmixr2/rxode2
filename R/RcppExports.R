@@ -287,6 +287,7 @@ rxExpandNesting <- function(obj, nestingInfo, compile = FALSE) {
 #'   -1 = Maximum number of iterations reached when doing
 #'        inductive linearization
 #' @name rxIndLin_
+#' @noRd
 NULL
 
 rxIndLin_ <- function(states) {
@@ -332,13 +333,13 @@ rxParseSetSilentErr <- function(silent) {
 #'   should be warned about in R.
 #'
 #' @return a data-frame with the requested items dropped.
-#'
+#' @noRd
 NULL
 
 #' This gets the rxModels_ environment from the rxode2 namespace
 #'
 #' @return `rxModels_` environment
-#'
+#' @noRd
 NULL
 
 #' This allows assignment inside the `rxModels_` environment
@@ -350,6 +351,7 @@ NULL
 #'
 #' @return nothing, called for side effects
 #'
+#' @noRd
 NULL
 
 #' Returns (unsurprisingly) if the file exists
@@ -357,7 +359,7 @@ NULL
 #' @param file name
 #'
 #' @return boolean of if the file exists
-#'
+#' @noRd
 NULL
 
 #' If nothing else works, try dispatching the `rxModelVarsS3`
@@ -366,7 +368,7 @@ NULL
 #' @param obj is the R object trying to get the model variables from
 #'
 #' @return model variables (or error from `rxModelVarsS3` default method)
-#'
+#' @noRd
 NULL
 
 #' Get the rxModelVars from an rxode2 object
@@ -374,12 +376,14 @@ NULL
 #' @param obj is the rxode2 object to get the model variables from
 #'
 #' @return model variables
-#'
+#' @noRd
 NULL
 
 #' This gives a blank model variables object
 #'
 #' @return blank model variables object (though has same structure)
+#'
+#' @noRd
 NULL
 
 #' Get the model variables object from a character object
@@ -387,6 +391,8 @@ NULL
 #' @param obj character vector to convert to model variables object
 #'
 #' @return model variables
+#'
+#' @noRd
 NULL
 
 #' List to convert Model variables object into
@@ -394,6 +400,7 @@ NULL
 #' @param obj R list to extract model variable from.
 #'
 #' @return model variable object
+#' @noRd
 NULL
 
 #' Check the type of an object using Rcpp
@@ -430,6 +437,8 @@ dynLoad <- function(dll) {
 #' @param obj the R object to try to extract the model variable object from.
 #'
 #' @return model variable object or error
+#'
+#' @noRd
 rxModelVars_ <- function(obj) {
     .Call(`_rxode2_rxModelVars_`, obj)
 }

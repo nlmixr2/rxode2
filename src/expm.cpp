@@ -315,6 +315,7 @@ int meOnly(int cSub, double *yc_, double *yp_, double tp, double tf, double tcov
 //'   -1 = Maximum number of iterations reached when doing
 //'        inductive linearization
 //' @name rxIndLin_
+//' @noRd
 extern "C" int indLin(int cSub, rx_solving_options *op, double tp, double *yp_, double tf,
 		      double *InfusionRate_, int *on_,
 		      t_ME ME, t_IndF  IndF){
