@@ -1349,7 +1349,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @examples
-#' .linCmtSens()
+#' .linCmtSensB()
 .linCmtSensB <- function() {
   as.logical(.Call(`_rxode2parse_linCmtB`))
 }

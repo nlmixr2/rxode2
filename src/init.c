@@ -360,8 +360,8 @@ SEXP _rxode2parse_linCmtB(void);
 SEXP _rxode2_getWh(SEXP in);
 
 SEXP _rxode2parse_parseFreeSexp(SEXP last);
-SEXP _rxode2parse_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
-                                 SEXP, SEXP);
+SEXP _rxode2_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
+                            SEXP, SEXP);
 SEXP _rxode2_rxQs(SEXP);
 
 void R_init_rxode2(DllInfo *info){
@@ -369,7 +369,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxode2parseSetRstudio", (DL_FUNC) &_rxode2_rxode2parseSetRstudio, 1},
     {"_rxode2_rxQs", (DL_FUNC) &_rxode2_rxQs, 1},
     {"_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr, 1},
-    {"_rxode2parse_getClassicEvid", (DL_FUNC) &_rxode2parse_getClassicEvid, 1},
+    {"_rxode2_getClassicEvid", (DL_FUNC) &_rxode2_getClassicEvid, 7},
     {"_rxode2parse_parseFreeSexp", (DL_FUNC) &_rxode2parse_parseFreeSexp, 1},
     {"_rxode2_getWh", (DL_FUNC) &_rxode2_getWh, 1},
     {"_rxode2parse_linCmtB", (DL_FUNC) &_rxode2parse_linCmtB, 0},

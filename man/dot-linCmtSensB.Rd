@@ -14,7 +14,7 @@ built-in. (FALSE) if the solves systems with gradients are absent
 Is the linear systems with gradients built-in
 }
 \examples{
-.linCmtSens()
+.linCmtSensB()
 }
 \author{
 Matthew L. Fidler

@@ -234,14 +234,6 @@ mod <- rxode2(\{
 }\if{html}{\out{</div>}}
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-## In file included from /usr/share/R/include/R.h:71,
-##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
-##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
-##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_a91c5b4e7e600ae7861e7e5af932aeb9_.c:117:
-## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
-##    80 |     \};
-##       |      ^
 }\if{html}{\out{</div>}}
 \itemize{
 \item Inside a \code{rxode2("")} string statement:
@@ -260,14 +252,6 @@ mod <- rxode2(\{
 }\if{html}{\out{</div>}}
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-## In file included from /usr/share/R/include/R.h:71,
-##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
-##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
-##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_ed493bc26d5c5ee71ac99b8e40f25984_.c:117:
-## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
-##    80 |     \};
-##       |      ^
 }\if{html}{\out{</div>}}
 \itemize{
 \item In a file name to be loaded by rxode2:
@@ -348,16 +332,8 @@ compilation model.
 }\if{html}{\out{</div>}}
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-## In file included from /usr/share/R/include/R.h:71,
-##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
-##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
-##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_22d14e89ab7730bd6dca42971ed8af3b_.c:117:
-## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
-##    80 |     \};
-##       |      ^
 
-## rxode2 2.1.3.9000 model named rx_22d14e89ab7730bd6dca42971ed8af3b model (ready). 
+## rxode2 2.1.3.9000 model named rx_8db87409aefaed1a0249e12fb3a5a4e9 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -369,16 +345,8 @@ mod$simulationIniModel
 }\if{html}{\out{</div>}}
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
-## In file included from /usr/share/R/include/R.h:71,
-##                  from /home/matt/src/rxode2/inst/include/rxode2parse.h:33,
-##                  from /home/matt/src/rxode2/inst/include/rxode2.h:10,
-##                  from /home/matt/src/rxode2/inst/include/rxode2_model_shared.h:3,
-##                  from rx_61d303c55a893dfb26db9a29242f5ea4_.c:117:
-## /usr/share/R/include/R_ext/Complex.h:80:6: warning: ISO C99 doesn’t support unnamed structs/unions [-Wpedantic]
-##    80 |     \};
-##       |      ^
 
-## rxode2 2.1.3.9000 model named rx_61d303c55a893dfb26db9a29242f5ea4 model (ready). 
+## rxode2 2.1.3.9000 model named rx_241d06cde00c959bc388da98d2b10d63 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp

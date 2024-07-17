@@ -963,8 +963,8 @@ SEXP _rxode2_getWh(SEXP in) {
   return ret;
 }
 
-SEXP _rxode2parse_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
-                                 SEXP durS, SEXP iiS, SEXP evidS, SEXP ssS) {
+SEXP _rxode2_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
+                            SEXP durS, SEXP iiS, SEXP evidS, SEXP ssS) {
   int *cmt= INTEGER(cmtS);
   double *amt = REAL(amtS);
   double *dur = REAL(durS);
