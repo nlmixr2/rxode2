@@ -283,7 +283,7 @@ void parseFree(int last) {
   }
 }
 
-SEXP _rxode2parse_parseFreeSexp(SEXP last) {
+SEXP _rxode2_parseFreeSexp(SEXP last) {
   parseFree(INTEGER(last)[0]);
   return R_NilValue;
 }
