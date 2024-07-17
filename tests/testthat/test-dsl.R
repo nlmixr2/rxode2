@@ -413,12 +413,6 @@ rxTest({
     }
   })
 
-  test_that("min/max testing", {
-    expect_error(rxFromSE("Derivative(max(a,b,c), a)"), NA)
-    expect_equal(rxToSE("min(a,b,c)"), "min(a,b,c)")
-    expect_equal(rxToSE("max(a,b,c)"), "max(a,b,c)")
-  })
-
   test_that("sum/prod testing", {
     expect_equal(rxToSE("sum(a,b,c)"), "((a)+(b)+(c))")
     expect_equal(rxToSE("prod(a,b,c)"), "((a)*(b)*(c))")
@@ -552,6 +546,29 @@ rxTest({
     expect_equal(rxFromSE("tlast()"), "tlast()")
     expect_equal(rxToSE("tad"), "(t-tlast())")
     expect_equal(rxFromSE("tlast(NaN)"), "tlast()")
+  })
+
+  test_that("max/min tests", {
+    expect_equal(rxToSE("max(a)"), "(a)")
+    expect_equal(rxToSE("max(a,0)"), "((a)*rxGt(a,0))")
+    expect_equal(rxToSE("max(0,a)"), "((a)*rxGt(a,0))")
+    expect_equal(rxToSE("max(a,b)"), "(((a)-(b))*rxGt(a,b)+(b))")
+    expect_equal(rxToSE("max(a,b,c)"),
+                 "((((((a)-(b))*rxGt(a,b)+(b)))-(c))*rxGt((((a)-(b))*rxGt(a,b)+(b)),c)+(c))")
+    expect_equal(rxToSE("max()"), "")
+    expect_equal(rxToSE("min(a)"), "(a)")
+    expect_equal(rxToSE("min(a,0)"), "((a)*rxLt(a,0))")
+    expect_equal(rxToSE("min(0,a)"), "((a)*rxLt(a,0))")
+    expect_equal(rxToSE("min(a,b)"), "(((a)-(b))*rxLt(a,b)+(b))")
+    expect_equal(rxToSE("min(a,b,c)"),
+                 "((((((a)-(b))*rxLt(a,b)+(b)))-(c))*rxLt((((a)-(b))*rxLt(a,b)+(b)),c)+(c))")
+    expect_equal(rxToSE("min()"), "")
+  })
+
+  test_that("abs tests", {
+    expect_equal(rxToSE("abs(a)"), "(2.0*(a)*rxGt(a,0.0)-(a))")
+    expect_equal(rxToSE("fabs(a)"), "(2.0*(a)*rxGt(a,0.0)-(a))")
+    expect_equal(rxToSE("abs0(a)"), "(2.0*(a)*rxGt(a,0.0)-(a))")
   })
 
   test_that("parsing errors", {

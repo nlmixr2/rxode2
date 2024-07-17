@@ -1142,6 +1142,28 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
+.rxToSEMax <- function(x, min=FALSE) {
+  # Based on https://stackoverflow.com/questions/30738923/max-implemented-with-basic-operators
+  if (length(x) == 0) return("")
+  if (length(x) == 1) return(paste0("(", x[1], ")"))
+  .x2 <- x[1:2]
+  .xrest <- x[-(1:2)]
+  .a <- paste0(.x2[1])
+  .b <- paste0(.x2[2])
+  .cmp <- ifelse(min, "rxLt", "rxGt")
+  .av <- suppressWarnings(as.numeric(.x2[1]))
+  .bv <- suppressWarnings(as.numeric(.x2[2]))
+  if (identical(.av, 0)) {
+    return(paste0("((", .b, ")*", .cmp, "(", .b, ",0))"))
+  }
+  if (identical(.bv, 0)) {
+    return(paste0("((", .a, ")*", .cmp, "(", .a,",0))"))
+  }
+  .ret <- paste0("(((", .a, ")-(", .b, "))*", .cmp, "(", .a, ",", .b, ")+(", .b, "))")
+  if (length(.xrest) == 0) return(.ret)
+  return(.rxToSEMax(c(.ret, .xrest), min=min))
+}
+
 .rxToSECall <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (identical(x[[1]], quote(`(`))) {
     return(paste0("(", .rxToSE(x[[2]], envir = envir), ")"))
@@ -1185,6 +1207,12 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEPnorm(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`transit`))) {
     return(.rxToSETransit(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`abs`)) ||
+               identical(x[[1]], quote(`fabs`)) ||
+               identical(x[[1]], quote(`abs0`))) {
+    if (length(x) != 2) stop("abs only takes 1 argument", call.=FALSE)
+    .r <- .rxToSE(x[[2]], envir = envir)
+    return(paste0("(2.0*(", .r, ")*rxGt(", .r, ",0.0)-(", .r, "))"))
   } else {
     if (length(x[[1]]) == 1) {
       .x1 <- as.character(x[[1]])
@@ -1275,8 +1303,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         return(paste0("rx_", .fun, "_ini_0__"))
       } else if (any(.fun == c("cmt", "dvid"))) {
         return("")
-      } else if (any(.fun == c("max", "min"))) {
-        .ret <- paste0(.fun, "(", paste(unlist(.ret0), collapse = ","), ")")
+      } else if (.fun == "max") {
+        .ret <- .rxToSEMax(unlist(.ret0), min=FALSE)
+      } else if (.fun == "min") {
+        .ret <- .rxToSEMax(unlist(.ret0), min=TRUE)
       } else if (.fun == "sum") {
         .ret <- paste0("(", paste(paste0("(", unlist(.ret0), ")"), collapse = "+"), ")")
       } else if (.fun == "prod") {
