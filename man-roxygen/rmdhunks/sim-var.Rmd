@@ -44,7 +44,7 @@ mod <- function() {
 ```
 
 
-### Simulating 
+### Simulating
 
 The next step to simulate is to create the dosing regimen for overall simulation:
 
@@ -85,7 +85,7 @@ library(ggplot2)
 ## The plots from rxode2 are ggplots so they can be modified with
 ## standard ggplot commands.
 plot(sim, C2, log="y") +
-    ylab("Central Compartment") 
+    ylab("Central Compartment")
 ```
 
 Of course this additional parameter could also be a state value, like `eff`:
@@ -118,10 +118,10 @@ Since the `rxode2` solve object is a type of [data
 frame](rxode2-data-frame.html)
 
 It is now straightforward to perform calculations and generate plots
-with the simulated data. You can 
+with the simulated data. You can
 
 Below, the 5th, 50th, and 95th percentiles
-of the simulated data are plotted. 
+of the simulated data are plotted.
 
 ```{r}
 confint(sim, "C2", level=0.95) %>%
@@ -243,7 +243,7 @@ of these studies samples a realization of fixed effect parameters and
 covariance matrices for the between subject variability(`omega`) and
 unexplained variabilities (`sigma`). Depending on the information you
 have from the models, there are a few strategies for simulating a
-realization of the `omega` and `sigma` matrices. 
+realization of the `omega` and `sigma` matrices.
 
 The first strategy occurs when either there is not any standard errors
 for standard deviations (or related parameters), or there is a modeled
@@ -304,7 +304,7 @@ head(sim$sigmaList)
 
 You can also see the parameter realizations from the `$params` data frame.
 
-## Simulate using variance/standard deviation standard errors
+## Simulate using covariance inputs
 
 Lets assume we wish to simulate from [the nonmem run included in
 xpose](https://github.com/UUPharmacometrics/xpose/blob/master/inst/extdata/run001.lst)
@@ -319,7 +319,7 @@ rx1 <- rxode2({
   v <- tv * WT * exp(eta.v)
   ka <- tka * exp(eta.ka)
   ipred <- linCmt()
-  obs <- ipred * (1 + prop.sd) + add.sd 
+  obs <- ipred * (1 + prop.sd) + add.sd
 })
 ```
 
@@ -365,7 +365,7 @@ evw <- et(amount.units="mg", time.units="hours") %>%
 sim  <- rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
                 thetaMat=thetaMat,
                 ## Match boundaries of problem
-                thetaLower=0, 
+                thetaLower=0,
                 sigma=c("prop.sd", "add.sd"), ## Sigmas are standard deviations
                 sigmaXform="identity", # default sigma xform="identity"
                 omega=c("eta.cl", "eta.v", "eta.ka"), ## etas are variances
@@ -385,7 +385,7 @@ evw <- et(amount.units="mg", time.units="hours") %>%
 sim  <- rxSolve(rx1, theta, evw,  nSub=100, nStud=10,
                 thetaMat=thetaMat,
                 ## Match boundaries of problem
-                thetaLower=0, 
+                thetaLower=0,
                 sigma=c("prop.sd", "add.sd"), ## Sigmas are standard deviations
                 sigmaXform="identity", # default sigma xform="identity"
                 omega=c("eta.cl", "eta.v", "eta.ka"), ## etas are variances
@@ -416,4 +416,3 @@ plot(s)
 
 Note since realizations of `omega` and `sigma` were not simulated,
 `$omegaList` and `$sigmaList` both return `NULL`.
-
