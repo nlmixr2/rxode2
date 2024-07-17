@@ -173,7 +173,7 @@ d/dt(blood)     = a*intestine - b*blood
   message("saved!")
   message("Generating parseFuns.R")
   .var <- deparse(rxode2::rxSupportedFuns())
-  .num <- deparse(rxode2:::.rxSEeq)
+  .num <- deparse(rxode2::.rxSEeq)
   .var[1] <- paste0(".parseEnv$.parseFuns <- ", .var[1])
   .num[1] <- paste0(".parseEnv$.parseNum <- ", .num[1])
   .pf <- devtools::package_file("R/parseFuns.R")

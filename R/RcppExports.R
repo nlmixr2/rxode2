@@ -421,10 +421,6 @@ rxIs <- function(obj, cls) {
     .Call(`_rxode2_rxIs`, obj, cls)
 }
 
-getRxFn <- function(name) {
-    .Call(`_rxode2_getRxFn`, name)
-}
-
 dynLoad <- function(dll) {
     .Call(`_rxode2_dynLoad`, dll)
 }

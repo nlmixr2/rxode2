@@ -339,6 +339,7 @@ double linCmtB(rx_solve *rx, unsigned int id, double t, int linCmt,
                double dd_rate, double dd_dur,
                double dd_rate2, double dd_dur2);
 
+SEXP _rxode2_rxode2parseSetRstudio(SEXP isRstudioSEXP);
 SEXP _rxode2_rxQr(SEXP);
 
 SEXP _rxode2_parse_strncmpci(void);
@@ -356,8 +357,21 @@ SEXP _rxode2_rxStack_(SEXP DataSEXP, SEXP varsSEXP);
 
 SEXP _rxode2parse_linCmtB(void);
 
+SEXP _rxode2_getWh(SEXP in);
+
+SEXP _rxode2parse_parseFreeSexp(SEXP last);
+SEXP _rxode2parse_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
+                                 SEXP, SEXP);
+SEXP _rxode2_rxQs(SEXP);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxode2parseSetRstudio", (DL_FUNC) &_rxode2_rxode2parseSetRstudio, 1},
+    {"_rxode2_rxQs", (DL_FUNC) &_rxode2_rxQs, 1},
+    {"_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr, 1},
+    {"_rxode2parse_getClassicEvid", (DL_FUNC) &_rxode2parse_getClassicEvid, 1},
+    {"_rxode2parse_parseFreeSexp", (DL_FUNC) &_rxode2parse_parseFreeSexp, 1},
+    {"_rxode2_getWh", (DL_FUNC) &_rxode2_getWh, 1},
     {"_rxode2parse_linCmtB", (DL_FUNC) &_rxode2parse_linCmtB, 0},
     {"_rxode2_rxStack_", (DL_FUNC) &_rxode2_rxStack_, 2},
     {"_rxode2_rxCbindStudyIndividual", (DL_FUNC) &_rxode2_rxCbindStudyIndividual, 2},
@@ -617,7 +631,6 @@ void R_init_rxode2(DllInfo *info){
   _rxode2_RcppExport_registerCCallable();
   /* rxOptionsIniFocei(); */
 }
-
 void parseFree(int last);
 void rxOptionsFree(void);
 void gFree(void);

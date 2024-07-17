@@ -1311,7 +1311,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   .w <- which(regexpr(.rxDerivedReg, .namesU) != -1)
   if (length(.w) > 1L) {
     .linCmt <- .Call(
-      `_rxode2_linCmtParse`, .args[.w],
+      `_linCmtParse`, .args[.w],
       c(
         "", "", "tlag, F, rate1, dur1, ",
         ", tlag2, F2, rate2, dur2"

@@ -20,7 +20,7 @@
 }
 
 .linCmtParse <- function(vars, inStr, verbose) {
-  .Call(`_rxode2_linCmtParse`, vars, inStr, verbose)
+  .Call(`_linCmtParse`, vars, inStr, verbose)
 }
 
 .linCmtGen <- function(linCmt, vars, linCmtSens, verbose) {
@@ -32,5 +32,5 @@
 }
 
 .calcDerived <- function(ncmtSXP, transSXP, inp, sigdigSXP) {
-  .Call(`_rxode2_calcDerived`, ncmtSXP, transSXP, inp, sigdigSXP)
+  .Call(`_calcDerived`, ncmtSXP, transSXP, inp, sigdigSXP)
 }

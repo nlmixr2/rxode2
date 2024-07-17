@@ -631,40 +631,6 @@ RcppExport SEXP _rxode2_rxIs(SEXP objSEXP, SEXP clsSEXP) {
     UNPROTECT(1);
     return rcpp_result_gen;
 }
-// getRxFn
-Function getRxFn(std::string name);
-static SEXP _rxode2_getRxFn_try(SEXP nameSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< std::string >::type name(nameSEXP);
-    rcpp_result_gen = Rcpp::wrap(getRxFn(name));
-    return rcpp_result_gen;
-END_RCPP_RETURN_ERROR
-}
-RcppExport SEXP _rxode2_getRxFn(SEXP nameSEXP) {
-    SEXP rcpp_result_gen;
-    {
-        Rcpp::RNGScope rcpp_rngScope_gen;
-        rcpp_result_gen = PROTECT(_rxode2_getRxFn_try(nameSEXP));
-    }
-    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
-    if (rcpp_isInterrupt_gen) {
-        UNPROTECT(1);
-        Rf_onintr();
-    }
-    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
-    if (rcpp_isLongjump_gen) {
-        Rcpp::internal::resumeJump(rcpp_result_gen);
-    }
-    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
-    if (rcpp_isError_gen) {
-        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
-        UNPROTECT(1);
-        Rf_error("%s", CHAR(rcpp_msgSEXP_gen));
-    }
-    UNPROTECT(1);
-    return rcpp_result_gen;
-}
 // dynLoad
 SEXP dynLoad(std::string dll);
 static SEXP _rxode2_dynLoad_try(SEXP dllSEXP) {
@@ -2735,7 +2701,6 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("std::string(*rxRepR0_)(int)");
         signatures.insert("List(*rxExpandNesting)(const RObject&,List&,bool)");
         signatures.insert("bool(*rxIs)(const RObject&,std::string)");
-        signatures.insert("Function(*getRxFn)(std::string)");
         signatures.insert("SEXP(*dynLoad)(std::string)");
         signatures.insert("List(*rxModelVars_)(const RObject&)");
         signatures.insert("RObject(*rxState)(const RObject&,RObject)");
@@ -2795,7 +2760,6 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxRepR0_", (DL_FUNC)_rxode2_rxRepR0__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxExpandNesting", (DL_FUNC)_rxode2_rxExpandNesting_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxIs", (DL_FUNC)_rxode2_rxIs_try);
-    R_RegisterCCallable("rxode2", "_rxode2_getRxFn", (DL_FUNC)_rxode2_getRxFn_try);
     R_RegisterCCallable("rxode2", "_rxode2_dynLoad", (DL_FUNC)_rxode2_dynLoad_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxModelVars_", (DL_FUNC)_rxode2_rxModelVars__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxState", (DL_FUNC)_rxode2_rxState_try);
