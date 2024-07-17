@@ -2427,8 +2427,8 @@ void updateSolveEnvPost(Environment e){
       }
       if (nsub > 1) extran++;
       if (nsim > 1) extran++;
-      CharacterVector prsn(ppos.size()-nrm+extran);
-      List prsl(ppos.size()-nrm+extran);
+      CharacterVector prsn(ppos.size() - nrm + extran);
+      List prsl(ppos.size() - nrm + extran);
       unsigned int i, j=0;
       if (nsim > 1) {
         IntegerVector tmp(parsdf.nrow());
@@ -2453,7 +2453,7 @@ void updateSolveEnvPost(Environment e){
         j++;
       }
       for (i = 0; i < ppos.size();i++){
-        if (ppos[i] > 0){ // User specified parameter
+        if (ppos[i] > 0) { // User specified parameter
           prsl[j] = parsdf[ppos[i]-1];
           prsn[j] = pars[i];
           j++;
@@ -3774,7 +3774,6 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
       const char *p1 = CHAR(rxSolveDat->omegaN[j]);
       if (!strcmp(p0, p1)){
         _globals.govar[j] = i;
-        curPar = true;
         break;
       }
     }
