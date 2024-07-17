@@ -27,29 +27,29 @@ Add/Create C functions for use in rxode2
 }
 \examples{
 \donttest{
-## Right now rxode2 is not aware of the function fun
-## Therefore it cannot translate it to symengine or
-## Compile a model with it.
+# Right now rxode2 is not aware of the function fun
+# Therefore it cannot translate it to symengine or
+# Compile a model with it.
 
 try(rxode2("a=fun(a,b,c)"))
 
-## Note for this approach to work, it cannot interfere with C
-## function names or reserved rxode2 special terms.  Therefore
-## f(x) would not work since f is an alias for bioavailability.
+# Note for this approach to work, it cannot interfere with C
+# function names or reserved rxode2 special terms.  Therefore
+# f(x) would not work since f is an alias for bioavailability.
 
 fun <- "
 double fun(double a, double b, double c) {
   return a*a+b*a+c;
 }
-" ## C-code for function
+" # C-code for function
 
 rxFun("fun", c("a", "b", "c"), fun) ## Added function
 
-## Now rxode2 knows how to translate this function to symengine
+# Now rxode2 knows how to translate this function to symengine
 
 rxToSE("fun(a,b,c)")
 
-## And will take a central difference when calculating derivatives
+# And will take a central difference when calculating derivatives
 
 rxFromSE("Derivative(fun(a,b,c),a)")
 
@@ -132,7 +132,6 @@ message(rxC("fun"))
 # derivatives with rxRmFun("fun")
 
 rxRmFun("fun")
-
 
 }
 }

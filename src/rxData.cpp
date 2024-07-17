@@ -6337,7 +6337,8 @@ CharacterVector rxC(RObject obj){
   } else if (rxIs(obj, "rxDll")){
     rets = as<std::string>(as<List>(obj)["c"]);
   } else if (rxIs(obj, "character")) {
-    Nullable<CharacterVector> rxCp = _rxode2_rxC(obj);
+    Function rxC2 = getRxFn(".rxC");
+    Nullable<CharacterVector> rxCp = rxC2(obj);
     if (!rxCp.isNull()) {
       return as<CharacterVector>(rxCp);
     }
