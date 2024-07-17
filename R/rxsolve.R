@@ -575,7 +575,7 @@
 #'
 #' @inheritParams odeMethodToInt
 #'
-#' @inheritParams rxode2parse::rxode2parse
+#' @inheritParams rxode2parse
 #'
 #' @param useStdPow This uses C's `pow` for exponentiation instead of
 #'   R's `R_pow` or `R_pow_di`.  By default this is `FALSE`
@@ -724,7 +724,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtDoseTime=TRUE,
                     ss2cancelAllPending=FALSE,
                     envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
     .xtra <- list(...)
     .nxtra <- names(.xtra)
@@ -1139,7 +1139,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
                        list(...),
@@ -1289,7 +1289,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(object$meta, envir, parent.frame(1)))
+  .udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
   }
@@ -1337,7 +1337,7 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                                    theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
   .env <- object$env
@@ -1372,7 +1372,7 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             theta = NULL, eta = NULL, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(list(envir, parent.frame(1)))
+  .udfEnvSet(list(envir, parent.frame(1)))
   on.exit({
     .clearPipe()
     .asFunctionEnv$rx <- NULL
@@ -1385,60 +1385,60 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         call. = FALSE
       )
     }
-    if (is.null(rxode2et::.pipeRx(NA))) {
+    if (is.null(rxode2::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
         call. = FALSE
       )
     } else {
       events <- object
-      object <- rxode2et::.pipeRx(NA)
+      object <- rxode2::.pipeRx(NA)
     }
   } else if (rxIs(object, "rxParams")) {
     .applyParams <- TRUE
     if (is.null(params) && !is.null(object$params)) {
       params <- object$params
     }
-    if (is.null(rxode2et::.pipeRx(NA))) {
+    if (is.null(rxode2::.pipeRx(NA))) {
       stop("need an rxode2 compiled model as the start of the pipeline",
         call. = FALSE
       )
     } else {
       .rxParams <- object
-      object <- rxode2et::.pipeRx(NA)
+      object <- rxode2::.pipeRx(NA)
     }
-    if (is.null(rxode2et::.pipeEvents(NA))) {
+    if (is.null(rxode2::.pipeEvents(NA))) {
       stop("need an rxode2 events as a part of the pipeline",
         call. = FALSE
       )
     } else {
-      events <- rxode2et::.pipeEvents(NA)
-      rxode2et::.pipeEvents(NULL)
+      events <- rxode2::.pipeEvents(NA)
+      rxode2::.pipeEvents(NULL)
     }
   }
-  if (!is.null(rxode2et::.pipeEvents(NA)) && is.null(events) && is.null(params)) {
-    events <- rxode2et::.pipeEvents(NA)
-  } else if (!is.null(rxode2et::.pipeEvents(NA)) && !is.null(events)) {
+  if (!is.null(rxode2::.pipeEvents(NA)) && is.null(events) && is.null(params)) {
+    events <- rxode2::.pipeEvents(NA)
+  } else if (!is.null(rxode2::.pipeEvents(NA)) && !is.null(events)) {
     stop("'events' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
-  } else if (!is.null(rxode2et::.pipeEvents(NA)) && !is.null(params) &&
+  } else if (!is.null(rxode2::.pipeEvents(NA)) && !is.null(params) &&
     rxIs(params, "event.data.frame")) {
     stop("'events' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
   }
 
-  if (!is.null(rxode2et::.pipeParams(NA)) && is.null(params)) {
-    params <- rxode2et::.pipeParams(NA)
-  } else if (!is.null(rxode2et::.pipeParams(NA)) && !is.null(params)) {
+  if (!is.null(rxode2::.pipeParams(NA)) && is.null(params)) {
+    params <- rxode2::.pipeParams(NA)
+  } else if (!is.null(rxode2::.pipeParams(NA)) && !is.null(params)) {
     stop("'params' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
   }
 
-  if (!is.null(rxode2et::.pipeInits(NA)) && is.null(inits)) {
-    inits <- rxode2et::.pipeInits(NA)
-  } else if (!is.null(rxode2et::.pipeInits(NA)) && !is.null(inits)) {
+  if (!is.null(rxode2::.pipeInits(NA)) && is.null(inits)) {
+    inits <- rxode2::.pipeInits(NA)
+  } else if (!is.null(rxode2::.pipeInits(NA)) && !is.null(inits)) {
     stop("'inits' in pipeline AND in solving arguments, please provide just one",
       call. = FALSE
     )
@@ -1491,32 +1491,32 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       paste(.n1, collapse = "', '")
     ), call. = FALSE)
   }
-  if (!is.null(rxode2et::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
-    .ctl$thetaMat <- rxode2et::.pipeThetaMat(NA)
+  if (!is.null(rxode2::.pipeThetaMat(NA)) && is.null(.ctl$thetaMat)) {
+    .ctl$thetaMat <- rxode2::.pipeThetaMat(NA)
   }
-  if (!is.null(rxode2et::.pipeOmega(NA)) && is.null(.ctl$omega)) {
-    .ctl$omega <- rxode2et::.pipeOmega(NA)
+  if (!is.null(rxode2::.pipeOmega(NA)) && is.null(.ctl$omega)) {
+    .ctl$omega <- rxode2::.pipeOmega(NA)
   }
-  if (!is.null(rxode2et::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
-    .ctl$sigma <- rxode2et::.pipeSigma(NA)
+  if (!is.null(rxode2::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    .ctl$sigma <- rxode2::.pipeSigma(NA)
   }
-  if (!is.null(rxode2et::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
-    .ctl$sigma <- rxode2et::.pipeSigma(NA)
+  if (!is.null(rxode2::.pipeSigma(NA)) && is.null(.ctl$sigma)) {
+    .ctl$sigma <- rxode2::.pipeSigma(NA)
   }
-  if (!is.null(rxode2et::.pipeDfObs(NA)) && .ctl$dfObs == 0) {
-    .ctl$dfObs <- rxode2et::.pipeDfObs(NA)
+  if (!is.null(rxode2::.pipeDfObs(NA)) && .ctl$dfObs == 0) {
+    .ctl$dfObs <- rxode2::.pipeDfObs(NA)
   }
-  if (!is.null(rxode2et::.pipeDfSub(NA)) && .ctl$dfSub == 0) {
-    .ctl$dfSub <- rxode2et::.pipeDfSub(NA)
+  if (!is.null(rxode2::.pipeDfSub(NA)) && .ctl$dfSub == 0) {
+    .ctl$dfSub <- rxode2::.pipeDfSub(NA)
   }
-  if (!is.null(rxode2et::.pipeNSub(NA)) && .ctl$nSub == 1) {
-    .ctl$nSub <- rxode2et::.pipeNSub(NA)
+  if (!is.null(rxode2::.pipeNSub(NA)) && .ctl$nSub == 1) {
+    .ctl$nSub <- rxode2::.pipeNSub(NA)
   }
-  if (!is.null(rxode2et::.pipeNStud(NA)) && .ctl$nStud == 1) {
-    .ctl$nStud <- rxode2et::.pipeNStud(NA)
+  if (!is.null(rxode2::.pipeNStud(NA)) && .ctl$nStud == 1) {
+    .ctl$nStud <- rxode2::.pipeNStud(NA)
   }
-  if (!is.null(rxode2et::.pipeKeep(NA)) && is.null(.ctl$keep)) {
-    .ctl$keep <- rxode2et::.pipeKeep(NA)
+  if (!is.null(rxode2::.pipeKeep(NA)) && is.null(.ctl$keep)) {
+    .ctl$keep <- rxode2::.pipeKeep(NA)
   }
   if (.applyParams) {
     if (!is.null(.rxParams$thetaMat) && is.null(.ctl$thetaMat)) {
@@ -1827,7 +1827,7 @@ predict.function <- function(object, ...) {
 #' @rdname rxSolve
 #' @export
 predict.rxUi <- function(object, ...) {
-  rxode2parse::.udfEnvSet(list(object$meta, parent.frame(1)))
+  .udfEnvSet(list(object$meta, parent.frame(1)))
   rxSolve(object, ...)
 }
 
@@ -2088,10 +2088,6 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
   .lst <- x
   class(.lst) <- NULL
   do.call(rxSolve, .lst)
-}
-
-.getEtRxSolve <- function(x) {
-  .Call(`_rxode2_getEtRxsolve`, x)
 }
 
 #' Conversion between character and integer ODE integration methods for rxode2

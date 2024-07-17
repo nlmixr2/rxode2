@@ -740,3 +740,546 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
   }
   .Call(`_rxode2_rpp_`, n, lambda, gamma, prob, t0, tmax, randomOrder, PACKAGE = "rxode2")
 }
+
+#' cbind Ome
+#'
+#' @param et The theta data frame
+#' @param mat The full matrix simulation from omegas
+#' @param n number of subject simulated
+#' @return data frame with et combined with simulated omega matrix values
+#' @author Matthew Fidler
+#' @export
+.cbindOme <- function(et, mat, n) {
+  .Call(`_cbindOme`, et, mat, as.integer(n)) # nolint
+}
+
+
+#' Cumulative distribution of standard normal
+#'
+#' @param q vector of quantiles
+#'
+#' @return cumulative distribution of standard normal distribution
+#'
+#' @author Matthew Fidler
+#'
+#' @examples
+#'
+#' # phi is equivalent to pnorm(x)
+#' phi(3)
+#'
+#' # See
+#' pnorm(3)
+#'
+#' # This is provided for NONMEM-like compatibility in rxode2 models
+#' @export
+phi <- function(q) {
+  .Call(`_phi`, q)
+}
+
+#' Convert numeric vector to repeated data.frame
+#'
+#' @param vec Named input vector
+#' @param n Number of columns
+#' @return Data frame with repeated vec
+#' @author Matthew Fidler
+#' @export
+.vecDf <- function(vec, n) {
+  .Call(`_vecDF`, vec, as.integer(n)) # nolint
+}
+
+
+
+#' Expand parameters
+#'
+#'
+#' @param object rxode2 model variables object
+#' @param params parameters to expand
+#' @param events event table to help with the expansion
+#' @param control control structure to help with the parameter generation
+#' @return Expanded parameters for simulation
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+.expandPars <- function(object, params, events, control) {
+  .Call(`_rxode2_expandPars_`, object, params, events, control)
+}
+
+
+#' Sample a covariance Matrix from the Posterior Inverse Wishart
+#' distribution.
+#'
+#' Note this Inverse wishart rescaled to match the original scale of
+#' the covariance matrix.
+#'
+#' If your covariance matrix is a 1x1 matrix, this uses an scaled
+#' inverse chi-squared which is equivalent to the Inverse Wishart
+#' distribution in the uni-directional case.
+#'
+#' @param nu Degrees of Freedom (Number of Observations) for
+#'        covariance matrix simulation.
+#'
+#' @param omega Either the estimate of covariance matrix or the
+#'     estimated standard deviations in matrix form each row forming
+#'     the standard deviation simulated values
+#'
+#' @param n Number of Matrices to sample.  By default this is 1.
+#'     This is only useful when `omega` is a matrix.  Otherwise
+#'     it is determined by the number of rows in the input
+#'     `omega` matrix of standard deviations
+#'
+#' @param omegaIsChol is an indicator of if the omega matrix is in
+#'   the Cholesky decomposition. This is only used when \code{type="invWishart"}
+#'
+#' @param returnChol Return the Cholesky decomposition of the
+#'   covariance matrix sample. This is only used when \code{type="invWishart"}
+#'
+#' @param diagXformType Diagonal transformation type.  These could be:
+#'
+#' * `log` The standard deviations are log transformed, so the
+#'   actual standard deviations are exp(omega)
+#'
+#' * `identity` The standard deviations are not transformed. The
+#' standard deviations are not transformed;  They should be positive.
+#'
+#' * `variance` The variances are specified in the `omega`
+#' matrix; They are transformed into standard deviations.
+#'
+#' * `nlmixrSqrt` These standard deviations come from an nlmixr
+#' omega matrix where diag(chol(inv(omega))) = x^2
+#'
+#' * `nlmixrLog` These standard deviations come from a nlmixr
+#' omega matrix omega matrix where diag(chol(solve(omega))) = exp(x)
+#'
+#' * `nlmixrIdentity` These standard deviations come from a nlmixr
+#' omega matrix omega matrix where diag(chol(solve(omega))) = x
+#'
+#'
+#'  The nlmixr transformations only make sense when there is no
+#'  off-diagonal correlations modeled.
+#'
+#' @param type The type of covariance posterior that is being
+#'     simulated.  This can be:
+#'
+#'
+#' * `invWishart` The posterior is an inverse wishart; This allows
+#' for correlations between parameters to be modeled.  All the
+#' uncertainty in the parameter is captured in the degrees of freedom
+#' parameter.
+#'
+#' * `lkj` The posterior separates the standard deviation
+#' estimates (modeled outside and provided in the `omega`
+#' argument) and the correlation estimates. The correlation estimate
+#' is simulated with the [rLKJ1()].  This simulation uses
+#' the relationship `eta=(nu-1)/2`.  This is relationship based
+#' on the proof of the relationship between the restricted
+#' LKJ-distribution and inverse wishart distribution (XXXXXX).  Once
+#' the correlation posterior is calculated, the estimated standard
+#' deviations are then combined with the simulated correlation matrix
+#' to create the covariance matrix.
+#'
+#' * `separation` Like the `lkj` option, this separates out
+#' the estimation of the correlation and standard deviation.  Instead
+#' of using the `LKJ` distribution to simulate the correlation,
+#' it simulates the inverse wishart of the identity matrix and
+#' converts the result to a correlation matrix.  This correlation
+#' matrix is then used with the standard deviation to calculate the
+#' simulated covariance matrix.
+#'
+#'
+#' @return a matrix (n=1) or a list of matrices  (n > 1)
+#'
+#' @details
+#'
+#' In general, the separation strategy is preferred for diagonal
+#' matrices.  If the dimension of the matrix is below 10, `lkj`
+#' is numerically faster than `separation` method.  However, the
+#' `lkj` method has densities too close to zero (XXXX) when the
+#' dimension is above 10.  In that case, though computationally more
+#' expensive `separation` method performs better.
+#'
+#' For matrices with modeled covariances, the easiest method to use
+#' is the inverse Wishart which allows the simulation of correlation
+#' matrices (XXXX).  This method is more well suited for well behaved
+#' matrices, that is the variance components are not too low or too
+#' high.  When modeling nonlinear mixed effects modeling matrices
+#' with too high or low variances are considered sub-optimal in
+#' describing a system.  With these rules in mind, it is reasonable
+#' to use the inverse Wishart.
+#'
+#' @author Matthew L.Fidler & Wenping Wang
+#'
+#' @references
+#'
+#' Alvarez I, Niemi J and Simpson M. (2014) *Bayesian Inference for a
+#' Covariance Matrix*. Conference on Applied Statistics in Agriculture.
+#'
+#' Wang1 Z, Wu Y, and Chu H. (2018) *On Equivalence of the LKJ
+#' distribution and the restricted Wishart
+#' distribution*. <doi:10.48550/arXiv.1809.047463
+#'
+#' @examples
+#'
+#' ## Sample a single covariance.
+#' draw1 <- cvPost(3, matrix(c(1, .3, .3, 1), 2, 2))
+#'
+#' ## Sample 3 covariances
+#' set.seed(42)
+#' draw3 <- cvPost(3, matrix(c(1, .3, .3, 1), 2, 2), n = 3)
+#'
+#' ## Sample 3 covariances, but return the cholesky decomposition
+#' set.seed(42)
+#' draw3c <- cvPost(3, matrix(c(1, .3, .3, 1), 2, 2), n = 3, returnChol = TRUE)
+#'
+#' ## Sample 3 covariances with lognormal standard deviations via LKJ
+#' ## correlation sample
+#' cvPost(3, sapply(1:3, function(...) {
+#'   rnorm(10)
+#' }), type = "lkj")
+#'
+#' ## or return cholesky decomposition
+#' cvPost(3, sapply(1:3, function(...) {
+#'   rnorm(10)
+#' }),
+#' type = "lkj",
+#' returnChol = TRUE
+#' )
+#'
+#' ## Sample 3 covariances with lognormal standard deviations via separation
+#' ## strategy using inverse Wishart correlation sample
+#' cvPost(3, sapply(1:3, function(...) {
+#'   rnorm(10)
+#' }), type = "separation")
+#'
+#' ## or returning the cholesky decomposition
+#' cvPost(3, sapply(1:3, function(...) {
+#'   rnorm(10)
+#' }),
+#' type = "separation",
+#' returnChol = TRUE
+#' )
+#' @export
+cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
+                   type = c("invWishart", "lkj", "separation"),
+                   diagXformType = c("log", "identity", "variance", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity")) {
+  if (is.null(nu) && n == 1L) {
+    return(omega)
+  }
+  if (inherits(type, "numeric") || inherits(type, "integer")) {
+    .type <- as.integer(type)
+  } else {
+    .type <- as.vector(c(
+      "invWishart" = 1L, "lkj" = 2L,
+      "separation" = 3L
+    )[match.arg(type)])
+  }
+  if (.type == 1L) {
+    .xform <- 1L
+  } else if (inherits(diagXformType, "numeric") || inherits(diagXformType, "integer")) {
+    .xform <- as.integer(diagXformType)
+  } else {
+    .xform <- setNames(
+      c(
+        "variance" = 6L, "log" = 5L,
+        "identity" = 4L, "nlmixrSqrt" = 1L,
+        "nlmixrLog" = 2L,
+        "nlmixrIdentity" = 3L
+      )[match.arg(diagXformType)],
+      NULL
+    )
+  }
+  .ret <- .Call(`_rxode2_cvPost_`, nu, omega, n,
+                omegaIsChol, returnChol, .type, .xform)
+  return(.ret)
+}
+
+#' Set the parallel seed for rxode2 random number generation
+#'
+#' This sets the seed for the rxode2 parallel random number generation.
+#' If set, then whenever a seed is set for the threefry or
+#' vandercorput simulation engine, it will use this seed, increment
+#' for the number of seeds and continue with the sequence the next
+#' time the random number generator is called.
+#'
+#' In contrast, when this is not called, the time that the
+#' vandercorput or threefry simulation engines are seeded it comes
+#' from a uniform random number generated from the standard R random
+#' seed.  This may cause a duplicate seed based on the R seed state.
+#' This means that there could be correlations between simulations
+#' that do not exist This will avoid the birthday problem picking
+#' exactly the same seed using the seed state of the R random number
+#' generator.  The more times the seed is called, the more likely this
+#' becomes.
+#'
+#' @param seed An integer that represents the rxode2 parallel and
+#'   internal random number generator seed.  When positive, use this
+#'   seed for random number generation and increment and reseed any
+#'   parallel or new engines that are being called. When negative,
+#'   turn off the rxode2 seed and generate a seed from the R's uniform
+#'   random number generator.  Best practice is to set this seed.
+#'
+#' @return Nothing, called for its side effects
+#'
+#' @author Matthew Fidler
+#'
+#' @examples
+#'
+#' rxSetSeed(42)
+#'
+#' # seed with generator 42
+#' rxnorm()
+#'
+#' # Use R's random number generator
+#' rnorm(1)
+#'
+#' rxSetSeed(42)
+#'
+#' # reproduces the same number
+#' rxnorm()
+#'
+#' # But R's random number is not the same
+#'
+#' rnorm(1)
+#'
+#' # If we reset this to use the R's seed
+#' # (internally rxode2 uses a uniform random number to span seeds)
+#' # This can lead to duplicate sequences and seeds
+#'
+#' rxSetSeed(-1)
+#'
+#' # Now set seed works for both.
+#'
+#' # This is not recommended, but illustrates the different types of
+#' # seeds that can be generated.
+#'
+#' set.seed(42)
+#'
+#' rxnorm()
+#'
+#' rnorm(1)
+#'
+#' set.seed(42)
+#'
+#' rxnorm()
+#'
+#' rnorm(1)
+#'
+#' @seealso rxGetSeed, rxWithSeed, rxWithPreserveSeed
+#'
+#' @references
+#'
+#' JD Cook. (2016). Random number generator seed mistakes.
+#' \url{https://www.johndcook.com/blog/2016/01/29/random-number-generator-seed-mistakes/}
+#'
+#' @export
+rxSetSeed <- function(seed) {
+  .Call(`_rxSetSeed`, seed)
+  invisible()
+}
+
+.rmRseed <- function() {
+  if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
+    return(NULL)
+  }
+  set.seed(seed = NULL)
+  rm(".Random.seed", envir = globalenv())
+}
+
+.rxGetSeed <- function() {
+  if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
+    return(list(seed=NULL, kind=NULL, rxseed=rxGetSeed()))
+  }
+  list(seed = get(".Random.seed", globalenv(), mode = "integer",
+                  inherits = FALSE), kind = RNGkind(), rxseed=rxGetSeed())
+}
+
+.rxSetSeed <- function(seed) {
+  if (is.null(seed$seed)) {
+    .rxGetSeed()
+  } else {
+    do.call(RNGkind, args = as.list(seed$kind))
+    set.seed(seed$seed)
+  }
+  rxSetSeed(seed$rxseed)
+}
+#' Preserved seed and possibly set the seed
+#'
+#' @param seed R seed to use for the session
+#'
+#' @param code Is the code to evaluate
+#'
+#' @param rxseed is the rxode2 seed that is being preserved
+#'
+#' @return returns whatever the code is returning
+#'
+#' @inheritParams base::RNGkind
+#'
+#' @seealso rxGetSeed, rxSetSeed
+#'
+#' @examples
+#'
+#' rxGetSeed()
+#' rxWithSeed(1, {
+#'    print(rxGetSeed())
+#'    rxnorm()
+#'    print(rxGetSeed())
+#'    rxnorm()
+#' }, rxseed=3)
+#'
+#' @export
+rxWithSeed <- function(seed, code, rxseed=rxGetSeed(), kind = "default", normal.kind = "default",
+                       sample.kind = "default") {
+  force(seed)
+  force(rxseed)
+  force(kind)
+  force(normal.kind)
+  force(sample.kind)
+  .rxSeed <- .rxGetSeed()
+  .origSeed <- .rxGetSeed()
+  .newSeed <- .origSeed
+  .newSeed$seed <- seed
+  .newSeed$kind <- c(kind, normal.kind, sample.kind)
+  .newSeed$rxseed <- rxseed
+  on.exit(.rxSetSeed(.origSeed), add = TRUE)
+  .rxSetSeed(.newSeed)
+  force(code)
+}
+
+#' @rdname rxWithSeed
+#' @export
+rxWithPreserveSeed <- function(code) {
+  .origSeed <- .rxGetSeed()
+  on.exit(.rxSetSeed(.origSeed), add = TRUE)
+  force(code)
+}
+
+
+#' Simulate from a (truncated) multivariate normal
+#'
+#' This is simulated with the fast, thread-safe threefry simulator
+#' and can use multiple cores to generate the random deviates.
+#'
+#' @param n Number of random row vectors to be simulated OR the
+#'     matrix to use for simulation (faster).
+#'
+#' @param mu mean vector
+#'
+#' @param sigma Covariance matrix for multivariate normal or a list
+#'   of covariance matrices. If a list of covariance matrix, each
+#'   matrix will simulate `n` matrices and combine them to a full
+#'   matrix
+#'
+#' @param lower is a vector of the lower bound for the truncated
+#'     multivariate norm
+#'
+#' @param upper is a vector of the upper bound for the truncated
+#'     multivariate norm
+#'
+#' @param ncores Number of cores used in the simulation
+#'
+#' @param isChol A boolean indicating if `sigma` is a cholesky
+#'     decomposition of the covariance matrix.
+#'
+#' @param keepNames Keep the names from either the mean or covariance
+#'     matrix.
+#'
+#' @param a threshold for switching between methods; They can be
+#'   tuned for maximum speed;  There are three cases that are considered:
+#'
+#'  case 1: a < l < u
+#'
+#'  case 2: l < u < -a
+#'
+#'  case 3: otherwise
+#'
+#' where l=lower and u = upper
+#'
+#' @param tol When case 3 is used from the above possibilities, the
+#'   tol value controls the acceptance rejection and
+#'   inverse-transformation;
+#'
+#' When abs(u-l)>tol, uses accept-reject from randn
+#'
+#' @param nlTol Tolerance for newton line-search
+#'
+#' @param nlMaxiter Maximum iterations for newton line-search
+#'
+#' @return
+#'
+#' If `n==integer` (default) the output is an (n x d) matrix
+#' where the i-th row is the i-th simulated vector.
+#'
+#' If `is.matrix(n)` then the random vector are store in `n`,
+#' which is provided by the user, and the function returns
+#' `NULL` invisibly.
+#'
+#' @references John K. Salmon, Mark A. Moraes, Ron O. Dror, and David
+#'     E. Shaw (2011). Parallel Random Numbers: As Easy as 1, 2, 3.
+#'     D. E. Shaw Research, New York, NY 10036, USA.
+#'
+#' @examples
+#'
+#' ## From mvnfast
+#' ## Unlike mvnfast, uses threefry simulation
+#'
+#' d <- 5
+#' mu <- 1:d
+#'
+#' # Creating covariance matrix
+#' tmp <- matrix(rnorm(d^2), d, d)
+#' mcov <- tcrossprod(tmp, tmp)
+#'
+#'
+#' set.seed(414)
+#' rxRmvn(4, 1:d, mcov)
+#'
+#' set.seed(414)
+#' rxRmvn(4, 1:d, mcov)
+#'
+#' set.seed(414)
+#' rxRmvn(4, 1:d, mcov, ncores = 2) # r.v. generated on the second core are different
+#'
+#' ###### Here we create the matrix that will hold the simulated
+#' #  random variables upfront.
+#' A <- matrix(NA, 4, d)
+#' class(A) <- "numeric" # This is important. We need the elements of A to be of class "numeric".
+#'
+#' set.seed(414)
+#' rxRmvn(A, 1:d, mcov, ncores = 2) # This returns NULL ...
+#' A # ... but the result is here
+#'
+#' ## You can also simulate from a truncated normal:
+#'
+#' rxRmvn(10, 1:d, mcov, lower = 1:d - 1, upper = 1:d + 1)
+#'
+#'
+#' # You can also simulate from different matrices (if they match
+#' # dimensions) by using a list of matrices.
+#'
+#' matL <- lapply(1:4, function(...) {
+#'   tmp <- matrix(rnorm(d^2), d, d)
+#'   tcrossprod(tmp, tmp)
+#' })
+#'
+#'
+#' rxRmvn(4, setNames(1:d, paste0("a", 1:d)), matL)
+#' @author Matthew Fidler, Zdravko Botev and some from Matteo Fasiolo
+#'
+#' @references The thread safe multivariate normal was inspired from the `mvnfast` package by Matteo Fasiolo <https://CRAN.R-project.org/package=mvnfast>
+#'
+#' @references The concept of the truncated multivariate normal was
+#'   taken from Zdravko Botev Botev (2017) \doi{10.1111/rssb.12162}
+#'   and Botev and L'Ecuyer (2015) \doi{10.1109/WSC.2015.7408180} and
+#'   converted to thread safe simulation;
+#'
+#' @export
+rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, isChol = FALSE,
+                   keepNames = TRUE, a = 0.4, tol = 2.05, nlTol = 1e-10, nlMaxiter = 100L) {
+  .ret <- .Call(
+    `_rxode2_rxRmvnSEXP`, n, mu, sigma, lower, upper, ncores,
+    isChol, keepNames, a, tol, nlTol, nlMaxiter
+  )
+  if (is.matrix(n)) {
+    return(invisible())
+  }
+  return(.ret)
+}

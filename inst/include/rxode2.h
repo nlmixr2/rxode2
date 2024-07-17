@@ -3,32 +3,18 @@
 #define STRICT_R_HEADERS
 #ifndef __rxode2_H__
 #define __rxode2_H__
+
 #define rxLlikSaveSize 9
 
 #include <stdbool.h>
-#include <rxode2parse.h>
+#include "rxode2parse.h"
 #include <R.h>
 #include <Rinternals.h>
 #include <Rversion.h>
 #include <Rmath.h>
 #include <R_ext/Rdynload.h>
 
-#define rc_buf_read _rxode2_rc_buf_read
-#define sIniTo _rxode2_sIniTo
-#define sFree _rxode2_sFree
-#define sFreeIni _rxode2_sFreeIni
-#define sAppendN _rxode2_sAppendN
-#define sAppend _rxode2_sAppend
-#define sPrint _rxode2_sPrint
-#define lineIni _rxode2_lineIni
-#define lineFree _rxode2_lineFree
-#define addLine _rxode2_addLine
-#define curLineProp _rxode2_curLineProp
-#define curLineType _rxode2_curLineType
-#define doDot _rxode2_doDot
-#define doDot2 _rxode2_doDot2
-
-#include <rxode2parseSbuf.h>
+#include "rxode2parseSbuf.h"
 
 #include <float.h>
 #include <stdio.h>
@@ -492,9 +478,16 @@ static inline double dabs2(double x) {
   return 0.0;
 }
 
-extern rx_solve rx_global;
-extern rx_solving_options op_global;
-extern rx_solving_options_ind *inds_global;
+#if defined(__cplusplus)
+  extern "C" rx_solve rx_global;
+  extern "C" rx_solving_options op_global;
+  extern "C" rx_solving_options_ind *inds_global;
+#else
+  extern rx_solve rx_global;
+  extern rx_solving_options op_global;
+  extern rx_solving_options_ind *inds_global;
+#endif
+
 
 
 #endif

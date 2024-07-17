@@ -266,7 +266,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 
 #' Add/Create C functions for use in rxode2
 #'
-#' @inheritParams rxode2parse::rxFunParse
+#' @inheritParams rxFunParse
 #'
 #' @param name This can either give the name of the user function or
 #'   be a simple R function that you wish to convert to C.  If you
@@ -278,29 +278,29 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' @export
 #' @examples
 #' \donttest{
-#' ## Right now rxode2 is not aware of the function fun
-#' ## Therefore it cannot translate it to symengine or
-#' ## Compile a model with it.
+#' # Right now rxode2 is not aware of the function fun
+#' # Therefore it cannot translate it to symengine or
+#' # Compile a model with it.
 #'
 #' try(rxode2("a=fun(a,b,c)"))
 #'
-#' ## Note for this approach to work, it cannot interfere with C
-#' ## function names or reserved rxode2 special terms.  Therefore
-#' ## f(x) would not work since f is an alias for bioavailability.
+#' # Note for this approach to work, it cannot interfere with C
+#' # function names or reserved rxode2 special terms.  Therefore
+#' # f(x) would not work since f is an alias for bioavailability.
 #'
 #' fun <- "
 #' double fun(double a, double b, double c) {
 #'   return a*a+b*a+c;
 #' }
-#' " ## C-code for function
+#' " # C-code for function
 #'
 #' rxFun("fun", c("a", "b", "c"), fun) ## Added function
 #'
-#' ## Now rxode2 knows how to translate this function to symengine
+#' # Now rxode2 knows how to translate this function to symengine
 #'
 #' rxToSE("fun(a,b,c)")
 #'
-#' ## And will take a central difference when calculating derivatives
+#' # And will take a central difference when calculating derivatives
 #'
 #' rxFromSE("Derivative(fun(a,b,c),a)")
 #'
@@ -384,7 +384,6 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #'
 #' rxRmFun("fun")
 #'
-#'
 #' }
 rxFun <- function(name, args, cCode) {
   if (missing(args) && missing(cCode)) {
@@ -394,7 +393,7 @@ rxFun <- function(name, args, cCode) {
     .env$d <- list()
     lapply(seq_along(.lst), function(i) {
       .cur <- .lst[[i]]
-      do.call(rxode2parse::rxFunParse, .cur[1:3])
+      do.call(rxode2::rxFunParse, .cur[1:3])
       message("converted R function '", .cur$name, "' to C (will now use in rxode2)")
       ## message(.cur$cCode)
       if (length(.cur) == 4L) {
@@ -407,13 +406,13 @@ rxFun <- function(name, args, cCode) {
     }
     return(invisible())
   }
-  rxode2parse::rxFunParse(name, args, cCode)
+  rxFunParse(name, args, cCode)
 }
 
 #' @rdname rxFun
 #' @export
 rxRmFun <- function(name) {
-  rxode2parse::rxRmFunParse(name)
+  rxRmFunParse(name)
 }
 
 .SE1p <- c(
@@ -493,7 +492,7 @@ rxD <- function(name, derivatives) {
   if (!all(sapply(derivatives, function(x) (inherits(x, "function") || is.null(x))))) {
     stop("derivatives must be a list of functions with at least 1 element", call. = FALSE)
   }
-  .rxD <- rxode2parse::rxode2parseD()
+  .rxD <- rxode2::rxode2parseD()
   if (exists(name, envir = .rxD)) {
     warning(sprintf(gettext("replacing defined derivatives for '%s'"), name), call. = FALSE)
   }
@@ -533,7 +532,7 @@ rxD <- function(name, derivatives) {
 #' @export
 rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
-  rxode2parse::.udfEnvSet(parent)
+  .udfEnvSet(parent)
   .rxToSE.envir$parent <- parent
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
@@ -1259,7 +1258,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     }
     .ret0 <- c(list(as.character(x[[1]])), lapply(x[-1], .rxToSE, envir = envir))
     if (isEnv) envir$..curCall <- .lastCall
-    .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
+    .SEeq <- c(.rxSEeq, rxode2::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
     if (.promoteLinB && .curName == "linCmtA") {
@@ -1409,7 +1408,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       } else {
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
-          .udf <- try(get(.fun, envir = rxode2parse::.udfEnvSet(NULL), mode="function"), silent =TRUE)
+          .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
         }
         if (inherits(.udf, "try-error")) {
           stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
@@ -1472,7 +1471,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
                      parent=parent.frame()) {
   rxReq("symengine")
-  rxode2parse::.udfEnvSet(parent)
+  .udfEnvSet(parent)
   .rxFromSE.envir$parent <- parent
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   assignInMyNamespace(".rxFromNumDer", .unknown[match.arg(unknownDerivatives)])
@@ -1957,7 +1956,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         }
       }
       .ret0 <- lapply(lapply(x, .stripP), .rxFromSE)
-      .SEeq <- c(.rxSEeq, rxode2parse::.rxSEeqUsr())
+      .SEeq <- c(.rxSEeq, .rxSEeqUsr())
       .nargs <- .SEeq[paste(.ret0[[1]])]
       if (!is.na(.nargs)) {
         if (.nargs == length(.ret0) - 1) {
@@ -2133,7 +2132,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
           if (any(.fun[1] == c("lead", "lag"))) {
             return("0")
           }
-          .rxD <- rxode2parse::rxode2parseD()
+          .rxD <- rxode2parseD()
           if (exists(.fun[1], envir = .rxD)) {
             .funLst <- get(.fun[1], envir = .rxD)
             if (length(.funLst) < .with) {
@@ -2206,7 +2205,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         .fun <- paste(.ret0[[1]])
         .g <- try(get(.fun, envir=.rxFromSE.envir$parent, mode="function"), silent=TRUE)
         if (inherits(.g, "try-error")) {
-          .g <- try(get(.fun, envir=rxode2parse::.udfEnvSet(NULL),
+          .g <- try(get(.fun, envir=.udfEnvSet(NULL),
                         mode="function"), silent=TRUE)
         }
         if (inherits(.g, "try-error")) {
@@ -2261,7 +2260,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
 #' @author Matthew Fidler
 #' @export
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame()) {
-  rxode2parse::.udfEnvSet(envir)
+  .udfEnvSet(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
   .env <- new.env(parent = loadNamespace("symengine"))
@@ -2275,9 +2274,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .env$..lhs <- NULL
   .env$..lhs0 <- NULL
   .env$..doConst <- doConst
-  .rxD <- rxode2parse::rxode2parseD()
+  .rxD <- rxode2parseD()
   for (.f in c(
-    ls(rxode2parse::.symengineFs()),
+    ls(.symengineFs()),
     ls(.rxD), "linCmtA", "linCmtB", "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
     "rxTBSi"
@@ -2308,8 +2307,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .env$rx_yj_ <- symengine::S("2")
   .env$rx_low_ <- symengine::S("0")
   .env$rx_hi_ <- symengine::S("1")
-  if (!is.null(rxode2parse::.rxSEeqUsr())) {
-    sapply(names(rxode2parse::.rxSEeqUsr()), function(x) {
+  if (!is.null(.rxSEeqUsr())) {
+    sapply(names(.rxSEeqUsr()), function(x) {
       assign(x, .rxFunction(x), envir = .env)
     })
   }
@@ -3189,7 +3188,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 .rxSupportedFuns <- function(extra = .rxSupportedFunsExtra) {
   .ret <- c(
     names(.rxSEsingle), names(.rxSEdouble), names(.rxSEeq),
-    "linCmt", names(.rxOnly), ls(rxode2parse::.symengineFs())
+    "linCmt", names(.rxOnly), ls(.symengineFs())
   )
   if (extra) {
     .ret <- c(.ret, c(
@@ -3502,7 +3501,7 @@ rxSupportedFuns <- function() {
       return(paste0(.pre, "return (", .rxFun2c(x[[2]], envir=envir), ");\n"))
     }
     .ret0 <- lapply(x, .stripP)
-    .FunEq <- c(.rxFunEq, rxode2parse::.rxSEeqUsr())
+    .FunEq <- c(.rxFunEq, .rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .FunEq[.curName]
     if (!is.na(.nargs)) {

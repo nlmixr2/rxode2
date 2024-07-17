@@ -1,6 +1,5 @@
 # rxode2 (development version)
 
-
 ## Breaking Changes
 
 - Error when specifying `wd` without `modName`
@@ -10,10 +9,247 @@
 - Empty arguments to `rxRename()` give a warning (#688)
 - Promoting from covariates to parameters with model piping (via `ini()`) now
   allows setting bounds (#692)
-  
+
 ## Bug fixes
 
 - Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
+
+## Big change
+
+- At the request of CRAN, combine `rxode2parse`, `rxode2random`, and
+ `rxode2et` into this package; The changes in each of the packages are
+ now placed here:
+
+### rxode2et (no changes before merge)
+
+#### rxode2et 2.0.13
+
+* Fix import of data where there are NA times
+
+#### rxode2et 2.0.12
+
+* Fix formatting issues identified by m1mac, as requested by CRAN
+
+#### rxode2et 2.0.11
+
+* Make the stacking more flexible to help rxode2 have more types of plots
+
+* Add `toTrialDuration` by Omar Elashkar to convert event data to trial duration data
+
+* Fix Issue #23 and prefer variable values over NSE values
+
+#### rxode2et 2.0.10
+
+* Fix dollar sign accessing of objects (like data frames), as pointed
+  out by @frbrz (issue #16)
+
+* Use `rxode2parse` functions for internal event table creation (where
+  they were moved to).
+
+* Dropped C++14 and let the system decide.
+
+#### rxode2et 2.0.9
+
+* Split off `et()`, `eventTable()` and related functions.
+
+* Also split off `rxStack()` and `rxCbindStudyIndividual()` in this
+  package.
+
+* Added a `NEWS.md` file to track changes to the package.
+
+### rxode2random (before merge)
+
+- Fix a bug when simulating nested variables (#25)
+
+#### rxode2random 2.1.0
+
+- **Breaking Change** changed distributions from the standard C++
+  `<random>` to `boost::random`.  Since this is not dependent on the
+  compiler, it makes the random numbers generated from Mac, Windows
+  and Linux the same for every distribution.  Unfortunately with a new
+  random number transformation, the simulation results will likely be
+  different than they were before.  The exception to this is the
+  uniform number, which was always the same between platforms.
+
+#### rxode2random 2.0.13
+
+- Fixed formatting issues (as requested by CRAN and identified on `m1mac`)
+
+#### rxode2random 2.0.12
+
+- Added function `dfWishart` which gives (by simulation) an
+  approximation of the degrees of freedom of a Wishart to match a
+  `rse` value.
+
+- Added function `swapMatListWithCube` which swaps omegaList with
+  omegaCube values
+
+- Ensure that the outputs are integers (instead of long integers) as
+  requested by CRAN for some checking functions.
+
+#### rxode2random 2.0.11
+
+- Fix qassert LTO
+
+#### rxode2random 2.0.10
+
+- Moved fast factor to `rxode2parse` to allow `etTrans` to be moved there
+
+#### rxode2random 2.0.9
+
+* Initial release of `rxode2random`, which separates the parallel
+  safe, random number generation from 'rxode2' into a separate package to
+  reduce 'rxode2' compilation time. This should make CRAN maintenance
+  a bit easier.
+
+* Added a `NEWS.md` file to track changes to the package.
+
+
+### rxode2parse (fixed before merging)
+
+* As requested by CRAN remove the C code `SET_TYPEOF` which is no
+  longer part of the C R API.
+
+#### rxode2parse 2.0.19
+
+* Added a evid suffix of 60 for cases where evid=2 adds an on event
+  (fixes tad() calculation in certain edge cases)
+
+* Initialize all variables to `NA`
+
+#### rxode2parse 2.0.18
+
+* Removed linear compartment solutions with gradients from rxode2parse
+  (and rxode2) when compiled with intel c++ compiler (since it crashes
+  while compiling).
+
+* Fixed `m1mac` string issues as requested by CRAN
+
+#### rxode2parse 2.0.17
+
+* Added ability to query R user functions in a rxode2 model (will
+  force single threaded solve)
+
+* Moved core `rxFunParse` and `rxRmFunParse` here so that C and R user
+  function clashes can be handled
+
+* Model variables now tracks which compartments have a lag-time
+  defined
+
+* For compartment with steady state doses (NONMEM equivalent SS=1,
+  SS=2), an additional tracking time-point is added at to track the
+  time when the lagged dose is given.  As an upshot, the lagged dose
+  will start at the steady state concentration shifted by + ii - lag
+  in `rxode2` (currently for ode systems only)
+
+* This release calculates non bio-availability adjusted duration for
+  all rates instead of trying to figure the rate duration during
+  solving.
+
+* Make double assignment an error, ie  `a <- b <-`
+
+* `NA` times are ignored (with warning)
+
+* Steady state bolus doses with `addl` are treated as non steady state
+  events (like what is observed in `NONMEM`)
+
+* Timsort was upgraded; drop radix support in rxode2 structure
+
+* `etTrans` now supports keeping logical vectors (with the appropriate
+  version of `rxode2`).
+
+* Security fixes were applied as requested by CRAN
+
+#### rxode2parse 2.0.16
+
+* Import `data.table` explicitly in the R code (before was imported only in C/C++ code)
+
+#### rxode2parse 2.0.15
+
+* Updates the make flags to support CXX17.
+
+#### rxode2parse 2.0.14
+
+* 'linCmt()' translations of 'alpha', 'beta', 'gamma', 'k21', 'k31',
+  'vc' now error instead of ignoring 'gamma' and 'k31' to give 2 cmt
+  solution
+
+* transit compartment internal code now changes dose to 0.0 when no
+  dose has been administered to the depot compartment. This way dosing
+  to the central compartment (without dosing to the transit
+  compartment) will not give a `NA` for the depot compartment (and
+  consequently for the central compartment)
+
+* Moved `rxDerived` here and added tests for it here as well.
+
+* Moved `etTransParse` here and added tests for it here as well (makes
+  up most of `etTrans`). In addition the following changes were made
+  to `etTransParse()`/`etTrans()`:
+
+  * The internal translation (`etTrans()`) will not drop times when
+    infusions stop. Before, if the infusion stopped after the last
+    observation the time when the infusion stopped would be dropped.
+    This interferes with `linCmt()` models.
+
+  * Breaking change/bug fix `evid=2` are considered observations when
+    translating data to internal `rxode2` event structure
+
+  * Fix edge case to find infusion duration when it is the first item
+    of the dosing record at time 0.
+
+ * Fixed a bug for certain infusions where the `rate`, `ii` and/or
+   `ss` data items were dropped from the output when `addDosing=TRUE`
+
+
+* Also have internal functions to convert between classic NONMEM
+  events and rxode2 events
+
+* Have an internal function that gives information on the linear
+  compartmental model translation type, which could be useful for
+  babelmixr2
+
+* 'time' in model is now case insensitive
+
+* Use function declaration in `rxode2parseGetTranslation()` to
+  determine thread safety of functions available to rxode2
+
+* Add check for correct number of function arguments to parser.
+
+* Like R, known functions can be assigned as a variable and the
+  function can still be called (while not changing the variable
+  value).  For example you can have a variable `gamma` as well as a
+  function `gamma()`.
+
+* Fix garbled error messages that occur with certain messages.
+
+* Fixed errors that occurred when using capitalized AMT variables in
+  the model.
+
+#### rxode2parse 2.0.13
+
+* Version bump for dparser (so binaries will be built correctly)
+
+#### rxode2parse 2.0.12
+
+* Bug fix for strict prototypes
+
+* Removed `sprintf` as noted by CRAN
+
+* Made `rxode2parse` dll binary independent of `rxode2()`
+
+#### rxode2parse 2.0.11
+
+* Bug fix for strict aliasing as requested by CRAN
+
+#### rxode2parse 2.0.10
+
+* Use strict aliasing as requested by CRAN
+
+#### rxode2parse 2.0.9
+
+* Initial release to split of rxode2parse from rxode2 to reduce
+  compilation time of 'rxode2'
+
 
 # rxode2 2.1.3
 

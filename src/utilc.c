@@ -808,3 +808,175 @@ SEXP _expit(SEXP xS, SEXP lowS, SEXP highS) {
   UNPROTECT(1);
   return ret;
 }
+
+SEXP _vecDF(SEXP cv, SEXP n_) {
+  int n=0;
+  int typ = TYPEOF(n_);
+  if (typ == REALSXP) {
+    n = (int)(REAL(n_)[0]);
+  } else if (typ == INTSXP) {
+    n = INTEGER(n_)[0];
+  }
+  if (n <= 0) Rf_errorcall(R_NilValue, _("'n' must be greater than 0"));
+  int pro = 0;
+  int len = Rf_length(cv);
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, len)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, len)); pro++;
+  SEXP cvN = Rf_getAttrib(cv, R_NamesSymbol);
+  for (int i = len; i--;) {
+    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, n)); pro++;
+    for (int j = n; j--;) {
+      REAL(tmp)[j] = REAL(cv)[i];
+    }
+    SET_VECTOR_ELT(ret, i, tmp);
+    SET_STRING_ELT(retN, i, STRING_ELT(cvN, i));
+  }
+  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
+  INTEGER(sexp_rownames)[0] = NA_INTEGER;
+  INTEGER(sexp_rownames)[1] = -n;
+  Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
+  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
+  Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
+  UNPROTECT(pro);
+  return ret;
+}
+
+SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
+  int n = INTEGER(n_)[0];
+  if (n <= 0) Rf_errorcall(R_NilValue, _("'n' must be greater than 0"));
+
+  int len1 = Rf_length(et_);
+  int len1a = 0;
+  if (len1 > 0) {
+    len1a = Rf_length(VECTOR_ELT(et_,0));
+  }
+  SEXP etN = Rf_getAttrib(et_, R_NamesSymbol);
+
+  SEXP matD;
+  SEXP matDN;
+  int len2;
+  int lenOut;
+  int lenItem;
+  int isNullEt = Rf_isNull(et_) || Rf_length(et_) == 0;
+  if (!Rf_isNull(mat_) && !isNullEt) {
+    matD = Rf_getAttrib(mat_, Rf_install("dim"));
+    matDN = VECTOR_ELT(Rf_getAttrib(mat_, R_DimNamesSymbol), 1);
+    len2 = INTEGER(matD)[1];
+    lenOut = INTEGER(matD)[0];
+    lenItem = lenOut/len1a;
+  } else if (!isNullEt) {
+    len2 = 0;
+    lenOut = n*len1a;
+    lenItem = n;
+  } else {
+    matD = Rf_getAttrib(mat_, Rf_install("dim"));;
+    matDN = VECTOR_ELT(Rf_getAttrib(mat_, R_DimNamesSymbol), 1);
+    len2 = INTEGER(matD)[1];
+    lenOut = INTEGER(matD)[0];
+    lenItem = n;
+  }
+  int pro = 0;
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, len1+len2)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, len1+len2)); pro++;
+  for (int i = len1; i--; ) {
+    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+    SEXP in = VECTOR_ELT(et_, i);
+    int l = lenOut;
+    for (int j = len1a; j--;) {
+      for (int k = lenItem; k--; ) {
+        REAL(tmp)[--l] = REAL(in)[j];
+      }
+    }
+    SET_VECTOR_ELT(ret, i, tmp);
+    SET_STRING_ELT(retN, i, STRING_ELT(etN, i));
+  }
+  for (int i = len2; i--; ) {
+    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, lenOut)); pro++;
+    memcpy(&(REAL(tmp)[0]), &(REAL(mat_)[lenOut*i]), lenOut*sizeof(double));
+    SET_VECTOR_ELT(ret, i+len1, tmp);
+    SET_STRING_ELT(retN, i+len1, STRING_ELT(matDN, i));
+  }
+  SEXP sexp_rownames = PROTECT(Rf_allocVector(INTSXP,2)); pro++;
+  INTEGER(sexp_rownames)[0] = NA_INTEGER;
+  INTEGER(sexp_rownames)[1] = -lenOut;
+  Rf_setAttrib(ret, R_RowNamesSymbol, sexp_rownames);
+  SEXP sexp_class = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SET_STRING_ELT(sexp_class,0,Rf_mkChar("data.frame"));
+  Rf_setAttrib(ret, R_ClassSymbol, sexp_class);
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
+  UNPROTECT(pro);
+  return ret;
+}
+
+double phi(double q) {
+  return pnorm(q, 0.0, 1.0, 1, 0);
+}
+
+SEXP _rxode2_phi(SEXP q) {
+  int type = TYPEOF(q);
+  SEXP ret;
+  int pro = 0;
+  if (type == REALSXP) {
+    int len = Rf_length(q);
+    ret= PROTECT(Rf_allocVector(REALSXP, len));pro++;
+    double *retD = REAL(ret);
+    double *inD = REAL(q);
+    for (int j = len; j--;){
+      retD[j] = phi(inD[j]);
+    }
+  } else if (type == INTSXP){
+    int len = Rf_length(q);
+    ret= PROTECT(Rf_allocVector(REALSXP, len));pro++;
+    double *retD = REAL(ret);
+    int *inD = INTEGER(q);
+    for (int j = len; j--;){
+      retD[j] = phi((double)(inD[j]));
+    }
+  } else {
+    Rf_errorcall(R_NilValue, _("'phi' requires numeric values"));
+  }
+  UNPROTECT(pro);
+  return ret;
+}
+
+#include "../inst/include/rxode2parseHandleEvid.h"
+SEXP _rxode2_getWh(SEXP in) {
+  int wh, cmt, wh100, whI, wh0;
+  getWh(INTEGER(in)[0], &wh, &cmt, &wh100, &whI, &wh0);
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 5));
+  int *retI = INTEGER(ret);
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 5));
+  retI[0] = wh;
+  SET_STRING_ELT(retN, 0,Rf_mkChar("wh"));
+  retI[1] = cmt;
+  SET_STRING_ELT(retN, 1,Rf_mkChar("cmt"));
+  retI[2] = wh100;
+  SET_STRING_ELT(retN, 2,Rf_mkChar("wh100"));
+  retI[3] = whI;
+  SET_STRING_ELT(retN, 3,Rf_mkChar("whI"));
+  retI[4] = wh0;
+  SET_STRING_ELT(retN, 4,Rf_mkChar("wh0"));
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
+  UNPROTECT(2);
+  return ret;
+}
+
+SEXP _rxode2_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
+                            SEXP durS, SEXP iiS, SEXP evidS, SEXP ssS) {
+  int *cmt= INTEGER(cmtS);
+  double *amt = REAL(amtS);
+  double *dur = REAL(durS);
+  double *rate = REAL(rateS);
+  double *ii = REAL(iiS);
+  int *evid = INTEGER(evidS);
+  double *ss = REAL(ssS);
+  SEXP retS = PROTECT(Rf_allocVector(INTSXP, Rf_length(cmtS)));
+  int *ret = INTEGER(retS);
+  for (int i = Rf_length(cmtS); i--;) {
+    ret[i] = getEvidClassic(cmt[i], amt[i], rate[i], dur[i], ii[i], evid[i], ss[i]);
+  }
+  UNPROTECT(1);
+  return retS;
+}

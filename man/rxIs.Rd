@@ -9,11 +9,13 @@ rxIs(obj, cls)
 \arguments{
 \item{obj}{Object to check}
 
-\item{cls}{Type of class.  Only s3 classes for lists/environments and primitive classes are checked.
-For matrix types they are distinguished as \code{numeric.matrix}, \code{integer.matrix},
-\code{logical.matrix}, and \code{character.matrix} as well as the traditional \code{matrix}
-class. Additionally checks for \code{event.data.frame} which is an \code{data.frame} object
-with \code{time},  \code{evid} and \code{amt}. (UPPER, lower or Title cases accepted)}
+\item{cls}{Type of class.  Only s3 classes for lists/environments
+and primitive classes are checked.  For matrix types they are
+distinguished as \code{numeric.matrix}, \code{integer.matrix},
+\code{logical.matrix}, and \code{character.matrix} as well as the
+traditional \code{matrix} class. Additionally checks for
+\code{event.data.frame} which is an \code{data.frame} object with \code{time},
+\code{evid} and \code{amt}. (UPPER, lower or Title cases accepted)}
 }
 \value{
 A boolean indicating if the object is a member of the class.

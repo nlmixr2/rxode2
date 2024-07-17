@@ -181,7 +181,6 @@
 #' @param envir environment where the assignment ocurs
 #' @param value the value that will be assigned
 #' @return The rxode2 ui/function
-#' @eval .rxodeBuildCode()
 #' @export
 #' @examples
 #'

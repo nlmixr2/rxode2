@@ -32,6 +32,7 @@ inst/doc
 /tests/testthat/.Rhistory
 /inst/.Rhistory
 /src/roxde2.so
+/inst/include/rxode2parseVer.h
 /R/roxde2_md5.R
 /.github/workflows/.Rhistory
 docs/

@@ -6,9 +6,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "../inst/include/rxode2.h"
-#include <rxode2parseHandleEvid.h>
-#include <rxode2parseGetTime.h>
-#include "seed.h"
+#include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h"
 
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)
@@ -28,13 +27,13 @@
 
 void handleTlast(double *time, rx_solving_options_ind *ind);
 
+double rxunif(rx_solving_options_ind* ind, double low, double hi);
+
 // From https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
 double log1mex(double a){
   if (a < M_LN2) return log(-expm1(-a));
   return(log1p(-exp(-a)));
 }
-
-void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0);
 
 extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   // Uses bisection for slightly faster lookup of dose index.
@@ -241,7 +240,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = round(rxodeUnif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
+              ind->cov_sample[k] = round(rxunif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
@@ -270,7 +269,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = (int)rxodeUnif(ind, (double)1, (double)(rx->nsub*rx->nsim+1));
+              ind->cov_sample[k] = (int)(rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1)));
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
