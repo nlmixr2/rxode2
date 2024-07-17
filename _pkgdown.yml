@@ -9,15 +9,16 @@ template:
 reference:
 - title: Creating/Deleting/Loading rxode2 compiled objects
   contents:
-  - rxode2
   - rxClean
   - rxCompile
   - rxCreateCache
   - rxDelete
   - rxUnloadAll
+  - rxode2
 - title: Creating rxode2 event tables/data frames
   contents:
   - et
+  - toTrialDuration
   - etRbind
   - etRep
   - etSeq
@@ -68,6 +69,7 @@ reference:
   contents:
   - binomProbs
   - cvPost
+  - dfWishart
   - meanProbs
   - rinvchisq
   - rxGetSeed
@@ -104,18 +106,18 @@ reference:
   - rxValidate
 - title: Special Functions for rxode2
   contents:
+    - erf
+    - forderForceBase
     - gammap
     - gammapDer
     - gammapInv
     - gammaq
     - gammaqInv
-    - forderForceBase
     - logit
     - lowergamma
     - phi
     - probit
     - rxRmvn
-    - erf
 - title: log likelihood functions supporting generalized likelihoods for focei methods
   contents:
     - llikBeta
@@ -148,9 +150,12 @@ reference:
   - rxProgress
   - rxState
   - rxSymInvChol
+  - swapMatListWithCube
   - uppergamma
 - title: Internal Functions
   contents:
+  - .cbindOme
+  - .collectWarnings
   - .copyUi
   - .handleSingleErrTypeNormOrTFoceiBase
   - .matchesLangTemplate
@@ -159,8 +164,12 @@ reference:
   - .rxLinCmtGen
   - .rxWithOptions
   - .rxWithWd
+  - .toClassicEvid
+  - .vecDf
   - invWR1d
+  - is.rxStackData
   - odeMethodToInt
+  - print.rxModelVars
   - rLKJ1
   - rxAllowUnload
   - rxAssignControlValue
@@ -168,6 +177,7 @@ reference:
   - rxChain
   - rxControlUpdateSens
   - rxDfdy
+  - rxEtDispatchSolve
   - rxEvid
   - rxFun
   - rxGetControl
@@ -176,7 +186,7 @@ reference:
   - rxHtml
   - rxIndLinState
   - rxIndLinStrategy
-  - rxIndLin_
+  - rxParseSuppressMsg
   - rxPreferredDistributionName
   - rxRateDur
   - rxRemoveControl
@@ -195,6 +205,12 @@ reference:
   - rxToSE
   - rxTrans
   - rxUiGet
+  - rxode2parse
+  - rxode2parseAssignTranslation
+  - rxode2parseD
+  - rxode2parseGetPackagesToLoad
+  - rxode2parseGetPointerAssignment
+  - rxode2parseGetTranslation
   - summary.rxode2
 - title: Rxode2 data sets
   contents:
