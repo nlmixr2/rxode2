@@ -238,42 +238,36 @@ namespace stan {
               Eigen::Matrix<T, 2, 2>& C1,
               Eigen::Matrix<T, 2, 2>& C2) {
 
-    T sum = k10 + k12 + k21;
-    T disc= sqrt(sum*sum - 4.0 * k10 * k21);
-
     Eigen::Matrix<T, 2, 1> div;
 
-    L(0, 0) = 0.5 * (sum + disc);
-    L(1, 0) = 0.5 * (sum - disc);
-
+    T sum = (k10) + (k12) + (k21);
+    T disc= sqrt(sum*sum - 4.0* (k10)*(k21));
+    T tmp;
+    L(0, 0) = 0.5*(sum + disc);
+    L(1, 0) = 0.5*(sum - disc);
     div(0, 0) = L(1, 0) - L(0, 0);
     div(1, 0) = L(0, 0) - L(1, 0);
-
     if (div(0, 0)*div(1, 0) == 0) return 0;
+    // c[0] = (0, 0)
+    // c[1] = (1, 0)
+    // c[2] = (0, 1)
+    // c[3] = (1, 1)
 
-    C1(0, 0) = k21 - L(0, 0);
-    C1(0, 1) = k21 - L(1, 0);
-
-    C2(0, 0) = C2(0, 1) = k21;
-    C1(1, 0) = C1(1, 1) = k12;
-
-    T tmp = k10 + k12;
-
+    C1(0, 0) = (k21) - L(0, 0);
+    C1(0, 1) = (k21) - L(1, 0);
+    C2(0, 0) = C2(0, 1) = (k21);
+    C1(1, 0) = C1(1, 1) = (k12);
+    tmp = (k10) + (k12);
     C2(1, 0) = tmp - L(0, 0);
-    C2(0, 1) = tmp - L(1, 0);
-
+    C2(1, 1) = tmp - L(1, 0);
     C1(0, 0) = C1(0, 0)/div(0, 0);
     C1(1, 0) = C1(1, 0)/div(0, 0);
-
     C2(0, 0) = C2(0, 0)/div(0, 0);
     C2(1, 0) = C2(1, 0)/div(0, 0);
-
     C1(0, 1) = C1(0, 1)/div(1, 0);
     C1(1, 1) = C1(1, 1)/div(1, 0);
-
     C2(0, 1) = C2(0, 1)/div(1, 0);
     C2(1, 1) = C2(1, 1)/div(1, 0);
-
     return 1;
   }
 
@@ -375,4 +369,27 @@ namespace stan {
 
     return 1;
   }
+
+  // now write R interfaces to check the solutions
+}
+
+using namespace Rcpp;
+extern "C" SEXP _rxode2_solComp2cpp(SEXP k10s, SEXP k12s, SEXP k21s) {
+  double k10d = as<double>(k10s);
+  double k12d = as<double>(k12s);
+  double k21d = as<double>(k21s);
+  Eigen::Matrix<double, Eigen::Dynamic, 2> g(2, 2);
+  v = 1.0;
+  k10 = k10d;
+  k12 = k12d;
+  k21 = k21d;
+  Eigen::Matrix<double, 2, 1> L;
+  Eigen::Matrix<double, 2, 2> C1;
+  Eigen::Matrix<double, 2, 2> C2;
+  if (stan::solComp2Cpp(g, L, C1, C2) == 1) {
+    return Rcpp::List::create(Rcpp::_["L"]=Rcpp::wrap(L),
+                              Rcpp::_["C1"]=Rcpp::wrap(C1),
+                              Rcpp::_["C2"]=Rcpp::wrap(C2));
+  }
+  return R_NilValue;
 }

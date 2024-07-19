@@ -3,6 +3,7 @@
 #' @param k10 elimination rate
 #' @param k12 rate from central to peripheral compartment
 #' @param k21 rate from peripheral to central compartment
+#' @param cpp boolean; call the c++ interface used for stan gradients
 #' @return List with `L` vector and matrices `C1` and `C2`
 #' @export
 #' @keywords internal
@@ -10,11 +11,16 @@
 #'   in C/C++
 #' @examples
 #' .solComp2(k10=0.1, k12=3, k21=1)
-.solComp2 <- function(k10, k12, k21) {
+.solComp2 <- function(k10, k12, k21, cpp=FALSE) {
   checkmate::assertNumeric(k10, lower=0, len=1, any.missing=FALSE)
   checkmate::assertNumeric(k12, lower=0, len=1, any.missing=FALSE)
   checkmate::assertNumeric(k21, lower=0, len=1, any.missing=FALSE)
-  .ret <- .Call(`_rxode2_solComp2`, k10, k12, k21)
+  checkmate::assertLogical(cpp, len=1, any.missing = FALSE)
+  if (cpp) {
+    .ret <- .Call(`_rxode2_solComp2cpp`, k10, k12, k21)
+  } else {
+    .ret <- .Call(`_rxode2_solComp2`, k10, k12, k21)
+  }
   if (is.null(.ret)) {
     stop("roots must be distinct real values", call.=FALSE)
   }
