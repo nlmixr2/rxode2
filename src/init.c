@@ -364,8 +364,13 @@ SEXP _rxode2_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
                             SEXP, SEXP);
 SEXP _rxode2_rxQs(SEXP);
 
+SEXP _rxode2_solComp2(SEXP, SEXP, SEXP);
+SEXP _rxode2_solComp3(SEXP, SEXP, SEXP, SEXP, SEXP);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
+    {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_rxode2parseSetRstudio", (DL_FUNC) &_rxode2_rxode2parseSetRstudio, 1},
     {"_rxode2_rxQs", (DL_FUNC) &_rxode2_rxQs, 1},
     {"_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr, 1},
