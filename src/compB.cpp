@@ -393,3 +393,31 @@ extern "C" SEXP _rxode2_solComp2cpp(SEXP k10s, SEXP k12s, SEXP k21s) {
   }
   return R_NilValue;
 }
+
+using namespace Rcpp;
+extern "C" SEXP _rxode2_solComp3cpp(SEXP sK10, SEXP sK12, SEXP sK21,
+                                    SEXP sK13, SEXP sK31) {
+  double k10d = as<double>(sK10);
+  double k12d = as<double>(sK12);
+  double k21d = as<double>(sK21);
+  double k13d = as<double>(sK13);
+  double k31d = as<double>(sK31);
+  Eigen::Matrix<double, Eigen::Dynamic, 2> g(3, 2);
+  v = 1.0;
+  k10 = k10d;
+  k12 = k12d;
+  k21 = k21d;
+  k13 = k13d;
+  k31 = k31d;
+  Eigen::Matrix<double, 3, 1> L;
+  Eigen::Matrix<double, 3, 3> C1;
+  Eigen::Matrix<double, 3, 3> C2;
+  Eigen::Matrix<double, 3, 3> C3;
+  if (stan::solComp3Cpp(g, L, C1, C2, C3) == 1) {
+    return Rcpp::List::create(Rcpp::_["L"]=Rcpp::wrap(L),
+                              Rcpp::_["C1"]=Rcpp::wrap(C1),
+                              Rcpp::_["C2"]=Rcpp::wrap(C2),
+                              Rcpp::_["C3"]=Rcpp::wrap(C3));
+  }
+  return R_NilValue;
+}

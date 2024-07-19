@@ -371,10 +371,12 @@ SEXP _rxode2_comp1c(SEXP, SEXP, SEXP, SEXP, SEXP,
                     SEXP);
 
 SEXP _rxode2_solComp2cpp(SEXP, SEXP, SEXP);
+SEXP _rxode2_solComp3cpp(SEXP, SEXP, SEXP, SEXP, SEXP);
 
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
     {"_rxode2_solComp2cpp", (DL_FUNC) &_rxode2_solComp2cpp, 3},
+    {"_rxode2_solComp3cpp", (DL_FUNC) &_rxode2_solComp3cpp, 5},
     {"_rxode2_comp1c", (DL_FUNC) &_rxode2_comp1c, 6},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},

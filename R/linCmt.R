@@ -37,13 +37,18 @@
 #' @keywords internal
 #' @examples
 #' .solComp3(k10=0.1, k12=3, k21=1, k13=2, k31=0.5)
-.solComp3 <- function(k10, k12, k21, k13, k31) {
+.solComp3 <- function(k10, k12, k21, k13, k31, cpp=FALSE) {
   checkmate::assertNumeric(k10, lower=0, len=1, any.missing=FALSE)
   checkmate::assertNumeric(k12, lower=0, len=1, any.missing=FALSE)
   checkmate::assertNumeric(k21, lower=0, len=1, any.missing=FALSE)
   checkmate::assertNumeric(k13, lower=0, len=1, any.missing=FALSE)
   checkmate::assertNumeric(k31, lower=0, len=1, any.missing=FALSE)
-  .ret <- .Call(`_rxode2_solComp3`, k10, k12, k21, k13, k31)
+  checkmate::assertLogical(cpp, len=1, any.missing = FALSE)
+  if (cpp) {
+    .ret <- .Call(`_rxode2_solComp3cpp`, k10, k12, k21, k13, k31)
+  } else {
+    .ret <- .Call(`_rxode2_solComp3`, k10, k12, k21, k13, k31)
+  }
   if (is.null(.ret)) {
     stop("roots must be distinct real values", call.=FALSE)
   }
