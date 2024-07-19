@@ -7,11 +7,9 @@
 #include <Rmath.h>
 #include <R_ext/Rdynload.h>
 
-#define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-#define isSameTime(xout, xp) (fabs((xout)-(xp))  <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
-
 void _rxode2parse_unprotect(void);
 
+#include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parse.h"
 
 extern rx_solve rx_global;

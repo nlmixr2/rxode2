@@ -13,8 +13,6 @@
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)
 #define _as_dbleps(a) (fabs(a) < sqrt(DBL_EPSILON) ? ((a) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : a)
 
-#define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
-
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #define _(String) dgettext ("rxode2", String)
