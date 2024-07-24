@@ -8,7 +8,7 @@
 
 #' Assert properties of the rxUi models
 #'
-#' @param model Model to check
+#' @param ui Model to check
 #'
 #' @param extra Extra text to append to the error message (like
 #'   "for focei")
@@ -77,127 +77,127 @@
 #'
 #' assertRxUiSingleEndpoint(one.cmt)
 #' }
-assertRxUi <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUi <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- try(as.rxUi(model), silent = TRUE)
-  if (inherits(model, "try-error")) {
+  ui <- try(as.rxUi(ui), silent = TRUE)
+  if (inherits(ui, "try-error")) {
     stop("'", .var.name, "' needs to be a rxUi model", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiPrediction <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiPrediction <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  .predDf <- model$predDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .predDf <- ui$predDf
   if (is.null(.predDf)) {
     stop("there must be at least one prediction in the model({}) block", extra, ".  Use `~` for predictions",
          call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiSingleEndpoint <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiSingleEndpoint <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  assertRxUiPrediction(model)
-  .predDf <- model$predDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(ui)
+  .predDf <- ui$predDf
   .err <- FALSE
   if (length(.predDf$cond) > 1L) {
     stop("'", .var.name, "' needs to be a single endpoint model", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiTransformNormal <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiTransformNormal <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  assertRxUiPrediction(model)
-  .predDf <- model$predDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(ui)
+  .predDf <- ui$predDf
   if (!all(.predDf$distribution == "norm")) {
     stop("'", .var.name, "' needs to be a (transformably) normal model", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiNormal <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiNormal <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  assertRxUiPrediction(model)
-  .predDf <- model$predDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(ui)
+  .predDf <- ui$predDf
   if (!all(.predDf$distribution == "norm" & .predDf$transform == "untransformed")) {
     stop("'", .var.name, "' needs to be a normal model", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiMuRefOnly <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiMuRefOnly <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  if (length(model$nonMuEtas) != 0) {
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  if (length(ui$nonMuEtas) != 0) {
     stop("'", .var.name, "' needs to be a completely mu-referenced model (ie tcl+eta.cl)", extra, call.=FALSE)
   }
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiEstimatedResiduals <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiEstimatedResiduals <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  assertRxUiPrediction(model)
-  .predDf <- model$predDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  assertRxUiPrediction(ui)
+  .predDf <- ui$predDf
   if (!all(is.na(unlist(.predDf[ ,c("a", "b", "c", "d", "e", "f", "lambda")], use.names=FALSE)))) {
     stop("'", .var.name, "' residual parameters cannot depend on the model calculated parameters", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiPopulationOnly <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiPopulationOnly <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  .iniDf <- model$iniDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .iniDf <- ui$iniDf
   if (any(!is.na(.iniDf$neta1))) {
     stop("'", .var.name, "' can only have population estimates", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiMixedOnly <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiMixedOnly <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  .iniDf <- model$iniDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .iniDf <- ui$iniDf
   if (all(is.na(.iniDf$neta1))) {
     stop("'", .var.name, "' needs to be a mixed effect model", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' @export
 #' @rdname assertRxUi
-assertRxUiRandomOnIdOnly <- function(model, extra="", .var.name=.vname(model)) {
+assertRxUiRandomOnIdOnly <- function(ui, extra="", .var.name=.vname(ui)) {
   force(.var.name)
-  model <- assertRxUi(model, extra=extra, .var.name=.var.name)
-  .iniDf <- model$iniDf
+  ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .iniDf <- ui$iniDf
   .eta <- .iniDf[!is.na(.iniDf$neta1), "condition"]
   if (!all(.eta == "id")) {
     stop("'", .var.name, "' can only have random effects on ID", extra, call.=FALSE)
   }
-  invisible(model)
+  invisible(ui)
 }
 
 #' Verify that a value is a valid nlmixr2 compartment name
@@ -218,7 +218,7 @@ assertCompartmentName <- function(x) {
   )
 }
 
-#' Verify that a value is a valid nlmixr2 compartment name in a model
+#' Verify that a value is a valid nlmixr2 compartment name in a ui
 #'
 #' @param ui is the model to test that a model paramet exists
 #' @param x The value to test
@@ -228,6 +228,12 @@ assertCompartmentName <- function(x) {
 #' @export
 assertCompartmentExists <- function(ui, x) {
   .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
   checkmate::assertCharacter(
     .vn,
     pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
