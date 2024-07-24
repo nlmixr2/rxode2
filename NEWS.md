@@ -11,12 +11,13 @@
 - Promoting from covariates to parameters with model piping (via `ini()`) now
   allows setting bounds (#692)
 
-  * Added `assertCompartmentName()`, `assertCompartmentExists()`,
-  `assertVariableName()`, and `assertParameterValue()` to verify that
-  a value is a valid nlmixr2 compartment name, nlmixr2 compartment
-  exists in the model, variable name, or parameter value,
-  respectively (#726)
-
+ - Added `assertCompartmentName()`, `assertCompartmentExists()`,
+  `assertCompartmentNew()`, `testCompartmentExists()`,
+  `assertVariableExists()` `testVariableExists()`,
+  `assertVariableNew()`, `assertVariableName()`, and
+  `assertParameterValue()` to verify that a value is a valid nlmixr2
+  compartment name, nlmixr2 compartment/variable exists in the model,
+  variable name, or parameter value (#726; #733)
 
 ## Bug fixes
 

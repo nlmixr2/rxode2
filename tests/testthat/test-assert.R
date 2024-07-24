@@ -23,7 +23,7 @@ if (!.Call(`_rxode2_isIntel`)) {
     )
   })
 
-  test_that("assertCompartmentExists", {
+  test_that("assert/test Compartment/Var", {
 
     mod <- function() {
       ini({
@@ -44,11 +44,42 @@ if (!.Call(`_rxode2_isIntel`)) {
     mod <- mod()
 
     expect_error(assertCompartmentExists(mod, "central"), NA)
+    expect_error(assertCompartmentNew(mod, "central"),
+                 "compartment 'central' already exists in the model")
+    expect_true(testCompartmentExists(mod, "central"))
     expect_error(assertCompartmentExists(mod, "funny"),
                  "'funny' compartment is not in the model")
+    expect_error(assertCompartmentNew(mod, "funny"), NA)
+    expect_false(testCompartmentExists(mod, "funny"))
     expect_error(assertCompartmentExists(mod, funny),
                  "'funny' compartment is not in the model")
+    expect_error(assertCompartmentNew(mod, funny), NA)
+    expect_false(testCompartmentExists(mod, funny))
     expect_error(assertCompartmentExists(mod, central), NA)
+    expect_error(assertCompartmentNew(mod, central),
+                 "compartment 'central' already exists in the model")
+    expect_true(testCompartmentExists(mod, central))
+
+    # now variables
+    expect_error(assertVariableExists(mod, "cp"), NA)
+    expect_true(testVariableExists(mod, "cp"))
+    expect_error(assertVariableNew(mod, "cp"),
+                 "variable 'cp' is already in the model")
+
+    expect_error(assertVariableExists(mod, cp), NA)
+    expect_true(testVariableExists(mod, cp))
+    expect_error(assertVariableNew(mod, cp),
+                 "variable 'cp' is already in the model")
+
+    expect_error(assertVariableExists(mod,"funny"),
+                 "variable 'funny' is not in the model")
+    expect_false(testVariableExists(mod, "funny"))
+    expect_error(assertVariableNew(mod, "funny"),NA)
+
+    expect_error(assertVariableExists(mod,funny),
+                 "variable 'funny' is not in the model")
+    expect_false(testVariableExists(mod, funny))
+    expect_error(assertVariableNew(mod, funny),NA)
   })
 
   test_that("assertCompartmentName", {
