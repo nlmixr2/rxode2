@@ -33,7 +33,10 @@ nlmixr2 parameter value
 \seealso{
 Other Assertions: 
 \code{\link{assertCompartmentExists}()},
-\code{\link{assertRxUi}()}
+\code{\link{assertCompartmentNew}()},
+\code{\link{assertRxUi}()},
+\code{\link{assertVariableExists}()},
+\code{\link{assertVariableNew}()}
 }
 \author{
 Bill Denney

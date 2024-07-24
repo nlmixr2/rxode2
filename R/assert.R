@@ -218,11 +218,44 @@ assertCompartmentName <- function(x) {
   )
 }
 
-#' Verify that a value is a valid nlmixr2 compartment name in a ui
+#' Verify that a compartment would be new to the model
 #'
 #' @param ui is the model to test that a model paramet exists
 #' @param x The value to test
 #' @return The value or an error
+#' @family Assertions
+#' @author Matthew Fidler & Bill Denney
+#' @export
+assertCompartmentNew <- function(ui, x) {
+  .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
+  checkmate::assertCharacter(
+    .vn,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    len = 1,
+    any.missing = FALSE,
+    min.chars = 1,
+    .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
+  )
+
+  .ui <-rxode2::assertRxUi(ui)
+  if (.vn %in% c(rxode2::rxModelVars(.ui)$state)) {
+    stop("compartment '", .vn, "' already exists in the model",
+         call.=FALSE)
+  }
+  return(invisible())
+}
+
+#' Verify that the compartment exists in a model
+#'
+#' @param ui is the model to test that a model paramet exists
+#' @param x The value to test
+#' @return nothing, called for side effect of the error
 #' @family Assertions
 #' @author Matthew Fidler & Bill Denney
 #' @export
@@ -249,10 +282,123 @@ assertCompartmentExists <- function(ui, x) {
        call.=FALSE)
 }
 
+#' @describeIn assertCompartmentExists Test if compartment exists
+#' @export
+testCompartmentExists <- function(ui, x) {
+  .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
+  checkmate::assertCharacter(
+    .vn,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    len = 1,
+    any.missing = FALSE,
+    min.chars = 1,
+    .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
+  )
+
+  .ui <-rxode2::assertRxUi(ui)
+  (.vn %in% c(rxode2::rxModelVars(.ui)$state))
+}
 #' @describeIn assertCompartmentName Verify that a value is a valid
 #'   nlmixr2 variable name
 #' @export
 assertVariableName <- assertCompartmentName
+
+#' Assert a variable exists in the model
+#'
+#' @param ui rxode2 ui model
+#' @param x does the `x` variable exist in the model
+#' @return nothing, but will error if `x` isn't in the model in some
+#'   way
+#' @export
+#' @family Assertions
+#' @author Matthew L. Fidler
+assertVariableExists <- function(ui, x) {
+  .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
+  checkmate::assertCharacter(
+    .vn,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    len = 1,
+    any.missing = FALSE,
+    min.chars = 1,
+    .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
+  )
+
+  .ui <-rxode2::assertRxUi(ui)
+  .mv <- rxode2::rxModelVars(.ui)
+  if (.vn %in% c(.mv$lhs, .mv$params)) return(invisible())
+  stop("variable '", .vn, "' is not in the model",
+       call.=FALSE)
+}
+
+#' @describeIn assertVariableExists Test if variable exists
+#' @export
+testVariableExists <- function(ui, x) {
+  .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
+  checkmate::assertCharacter(
+    .vn,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    len = 1,
+    any.missing = FALSE,
+    min.chars = 1,
+    .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
+  )
+
+  .ui <-rxode2::assertRxUi(ui)
+  .mv <- rxode2::rxModelVars(.ui)
+  (.vn %in% c(.mv$lhs, .mv$params))
+}
+
+#' Assert a variable would be new to the model
+#'
+#' @param ui rxode2 ui model
+#' @param x would the variable `x` variable be new in the model
+#' @return nothing, but will error if `x` would not be new
+#' @export
+#' @family Assertions
+#' @author Matthew L. Fidler
+assertVariableNew <- function(ui, x) {
+  .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
+  checkmate::assertCharacter(
+    .vn,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    len = 1,
+    any.missing = FALSE,
+    min.chars = 1,
+    .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
+  )
+
+  .ui <-rxode2::assertRxUi(ui)
+  .mv <- rxode2::rxModelVars(.ui)
+  if (.vn %in% c(.mv$lhs, .mv$params))  {
+    stop("variable '", .vn, "' is already in the model",
+         call.=FALSE)
+  }
+  invisible()
+}
 
 #' @describeIn assertCompartmentName Verify that a value is a valid
 #'   nlmixr2 parameter value
