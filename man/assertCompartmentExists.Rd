@@ -10,12 +10,13 @@ assertCompartmentExists(ui, x)
 testCompartmentExists(ui, x)
 }
 \arguments{
-\item{ui}{is the model to test that a model paramet exists}
+\item{ui}{is the model to test}
 
-\item{x}{The value to test}
+\item{x}{The value to test (can be a vector of strings)}
 }
 \value{
-nothing, called for side effect of the error
+the value of the compartment that exists; if it is a vector
+returns the first item that matches
 }
 \description{
 Verify that the compartment exists in a model
