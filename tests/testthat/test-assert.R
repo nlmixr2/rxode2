@@ -62,7 +62,9 @@ if (!.Call(`_rxode2_isIntel`)) {
 
     # now variables
     expect_error(assertVariableExists(mod, "cp"), NA)
+    expect_error(assertExists(mod, "cp"), NA)
     expect_true(testVariableExists(mod, "cp"))
+    expect_true(testExists(mod, "cp"))
     expect_error(assertVariableNew(mod, "cp"),
                  "variable 'cp' is already in the model")
 

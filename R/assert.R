@@ -412,3 +412,54 @@ assertParameterValue <- function(x) {
     .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
   )
 }
+
+#' @describeIn assertCompartmentName Assert compartment/variable exists
+#' @export
+assertExists <- function(ui, x) {
+  .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
+  checkmate::assertCharacter(
+    .vn,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    len = 1,
+    any.missing = FALSE,
+    min.chars = 1,
+    .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
+  )
+
+  .ui <-rxode2::assertRxUi(ui)
+  .mv <- rxode2::rxModelVars(.ui)
+  if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) return(invisible())
+  stop("'", .vn, "' is not in the model",
+       call.=FALSE)
+}
+
+#' @describeIn assertCompartmentName Test compartment/variable exists
+#' @export
+testExists <- function(ui, x) {
+  .vn <- as.character(substitute(x))
+  .tmp <- try(force(x), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(x)) {
+      .vn <- x
+    }
+  }
+  checkmate::assertCharacter(
+    .vn,
+    pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$",
+    len = 1,
+    any.missing = FALSE,
+    min.chars = 1,
+    .var.name = paste0(deparse(eval.parent(substitute(substitute(x))), width.cutoff = 500L), collapse = "\n")
+  )
+
+  .ui <-rxode2::assertRxUi(ui)
+  .mv <- rxode2::rxModelVars(.ui)
+  if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) return(TRUE)
+  FALSE
+}
