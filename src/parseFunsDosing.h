@@ -23,8 +23,18 @@ static inline int handleFunctionDosenum(transFunctions *tf) {
 }
 
 static inline int isFunctionTadType(transFunctions *tf) {
-	return (tf->isTad = !strcmp("tad", tf->v)) || (tf->isTafd = !strcmp("tafd", tf->v)) ||
-		(tf->isTlast = !strcmp("tlast", tf->v)) || (tf->isTfirst = !strcmp("tfirst", tf->v)) ||
+	return (tf->isTad = !strcmp("tad", tf->v)) ||
+		(tf->isTad0 = !strcmp("tad0", tf->v)) ||
+
+		(tf->isTafd = !strcmp("tafd", tf->v)) ||
+		(tf->isTafd0 = !strcmp("tafd0", tf->v)) ||
+
+		(tf->isTlast = !strcmp("tlast", tf->v)) ||
+		(tf->isTlast0 = !strcmp("tlast0", tf->v)) ||
+
+		(tf->isTfirst = !strcmp("tfirst", tf->v)) ||
+    (tf->isTfirst0 = !strcmp("tfirst0", tf->v)) ||
+
 		(tf->isDose = !strcmp("dose", tf->v)) ||
 		(tf->isPodo = !strcmp("podo", tf->v));
 }
@@ -39,7 +49,7 @@ static inline int handleFunctionTadEmptyCcode(transFunctions *tf,char *v2) {
 			sAppend(&sbDt, "_%s0()", tf->v);
 		}
 		return 1;
-	} 
+	}
 	return 0;
 }
 
