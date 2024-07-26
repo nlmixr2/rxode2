@@ -43,6 +43,21 @@ if (!.Call(`_rxode2_isIntel`)) {
 
     mod <- mod()
 
+    expect_equal(assertVariableExists(mod, c("ka", "cl")), "ka")
+
+    expect_equal(assertVariableExists(mod, c("cl", "ka")), "cl")
+
+    expect_error(assertVariableExists(mod, c("depot", "central")),
+                 "variable 'depot', 'central' not in the model")
+
+    expect_equal(assertCompartmentExists(mod, c("depot", "central")), "depot")
+    expect_equal(assertCompartmentExists(mod, c("central", "depot")), "central")
+    expect_equal(assertCompartmentExists(mod, c("ack", "central")), "central")
+
+    expect_equal(assertExists(mod, c("depot", "ka")), "depot")
+
+    expect_equal(assertExists(mod, c("ka", "depot")), "ka")
+
     expect_error(assertCompartmentExists(mod, "central"), NA)
     expect_error(assertCompartmentNew(mod, "central"),
                  "compartment 'central' already exists in the model")
@@ -74,12 +89,12 @@ if (!.Call(`_rxode2_isIntel`)) {
                  "variable 'cp' is already in the model")
 
     expect_error(assertVariableExists(mod,"funny"),
-                 "variable 'funny' is not in the model")
+                 "variable 'funny' not in the model")
     expect_false(testVariableExists(mod, "funny"))
     expect_error(assertVariableNew(mod, "funny"),NA)
 
     expect_error(assertVariableExists(mod,funny),
-                 "variable 'funny' is not in the model")
+                 "variable 'funny' not in the model")
     expect_false(testVariableExists(mod, funny))
     expect_error(assertVariableNew(mod, funny),NA)
   })

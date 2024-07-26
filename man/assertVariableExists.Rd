@@ -12,11 +12,13 @@ testVariableExists(ui, x)
 \arguments{
 \item{ui}{rxode2 ui model}
 
-\item{x}{does the \code{x} variable exist in the model}
+\item{x}{does the \code{x} variable exist in the model.  If it is a
+vector of variable check to see if any exists, but all must be
+valid nlmixr2 variable names}
 }
 \value{
-nothing, but will error if \code{x} isn't in the model in some
-way
+variable that matches, in the case of multiple variables,
+the first that matches.  If nothing matches return error
 }
 \description{
 Assert a variable exists in the model

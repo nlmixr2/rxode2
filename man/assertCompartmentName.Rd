@@ -20,6 +20,8 @@ testExists(ui, x)
 }
 \arguments{
 \item{x}{The value to test}
+
+\item{ui}{when needed, this is the rxode2/nlmixr2 model}
 }
 \value{
 The value or an error
