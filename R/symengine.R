@@ -598,7 +598,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(x)
 }
 
-.rxToSEDualVarFunction <- c("tlast", "tad", "tafd", "dose", "podo")
+.rxToSEDualVarFunction <- c("tlast", "tlast0", "tad", "tad0", "tafd", "tafd0",
+                            "dose", "podo")
 
 #' Change rxode2 syntax to symengine syntax for symbols and numbers
 #'
@@ -938,6 +939,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
+.rxToSETad0 <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  .len <- length(x)
+  if (.len == 1L) {
+  } else if (.len == 2L) {
+    if (length(x[[2]]) != 1) {
+      stop(as.character(x[[1]]), "() must be used with a state", call. = FALSE)
+    }
+    return(paste0("(t-tlast0(", as.character(x[[2]]), "))"))
+  } else {
+    stop(as.character(x[[1]]), "() can have 0-1 arguments", call. = FALSE)
+  }
+  return(paste0("(t-tlast0())"))
+}
+
 .rxToSETad <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .len <- length(x)
   if (.len == 1L) {
@@ -991,6 +1006,20 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     stop(as.character(x[[1]]), "() can have 0-1 arguments", call. = FALSE)
   }
   return(paste0("(t-tfirst())"))
+}
+
+.rxToSETlastOrTafd0 <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
+  .len <- length(x)
+  if (.len == 1L) {
+  } else if (.len == 2L) {
+    if (length(x[[2]]) != 1) {
+      stop(as.character(x[[1]]), "() must be used with a state", call. = FALSE)
+    }
+    return(paste0("(t-tfirst0(", as.character(x[[2]]), "))"))
+  } else {
+    stop(as.character(x[[1]]), "() can have 0-1 arguments", call. = FALSE)
+  }
+  return(paste0("(t-tfirst0())"))
 }
 
 .rxToSETlastOrTfirst <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
@@ -1183,13 +1212,19 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSESquareBracket(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tad`))) {
     return(.rxToSETad(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`tad0`))) {
+    return(.rxToSETad(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`lag`)) ||
                identical(x[[1]], quote(`lead`))) {
     return(.rxToSELagOrLead(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tafd`))) {
     return(.rxToSETlastOrTafd(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`tafd0`))) {
+    return(.rxToSETlastOrTafd0(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`tlast`)) ||
                identical(x[[1]], quote(`tfirst`)) ||
+               identical(x[[1]], quote(`last0`)) ||
+               identical(x[[1]], quote(`first0`)) ||
                identical(x[[1]], quote(`dose`)) ||
                identical(x[[1]], quote(`podo`))) {
     return(.rxToSETlastOrTfirst(x, envir = envir, progress = progress, isEnv=isEnv))
