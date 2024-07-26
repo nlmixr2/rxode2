@@ -186,12 +186,12 @@
 #define _dose1(x) (_solveData->subjects[_cSub].curDoseS[x])
 #define _tad0() (t-_solveData->subjects[_cSub].tlast)
 #define _tad1(x) (t-_solveData->subjects[_cSub].tlastS[x])
-#define _tad00() (t-(ISNA(_solveData->subjects[_cSub].tlast) ? 0 : _solveData->subjects[_cSub].tlast))
-#define _tad01(x) (t-(ISNA(_solveData->subjects[_cSub].tlastS[x] ? 0 : _solveData->subjects[_cSub].tlastS[x]))
+#define _tad00() (ISNA(_solveData->subjects[_cSub].tlast)? 0 : (t- _solveData->subjects[_cSub].tlast))
+#define _tad01(x) (ISNA(_solveData->subjects[_cSub].tlastS[x]) ? 0 : (t- _solveData->subjects[_cSub].tlastS[x]))
 #define _tafd0()  (t-_solveData->subjects[_cSub].tfirst)
-#define _tafd00()  (t-(ISNA(_solveData->subjects[_cSub].tfirst) ? 0 : ISNA(_solveData->subjects[_cSub].tfirst))
+#define _tafd00()  (ISNA(_solveData->subjects[_cSub].tfirst) ? 0 : (t- _solveData->subjects[_cSub].tfirst))
 #define _tafd1(x) (t-_solveData->subjects[_cSub].tfirstS[x])
-#define _tafd01(x) (t-(ISNA(_solveData->subjects[_cSub].tfirstS[x]) ? 0 : _solveData->subjects[_cSub].tfirstS[x]))
+#define _tafd01(x) (ISNA(_solveData->subjects[_cSub].tfirstS[x]) ? 0 : (t- _solveData->subjects[_cSub].tfirstS[x]))
 #define _tlast0() _solveData->subjects[_cSub].tlast
 #define _tlast1(x) _solveData->subjects[_cSub].tlastS[x]
 #define _tlast00() (ISNA(_solveData->subjects[_cSub].tlast) ? 0 : _solveData->subjects[_cSub].tlast)

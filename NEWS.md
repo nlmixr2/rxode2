@@ -19,6 +19,12 @@
   compartment name, nlmixr2 compartment/variable exists in the model,
   variable name, or parameter value (#726; #733)
 
+- Added functions `tad0()`, `tafd0()`, `tlast0()` and `tfirst0()` that
+  will give `0` instead of `NA` when the dose has not been
+  administered yet.  This is useful for use in ODEs since `NA`s will
+  break the solving (so can be used a bit more robustly with models
+  like Weibull absorption).
+
 ## Bug fixes
 
 - Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
