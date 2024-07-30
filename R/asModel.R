@@ -5,7 +5,7 @@
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
-#' 
+#'
 #' model <- quote(model({
 #'   ka <- exp(tka + eta.ka)
 #'   cl <- exp(tcl + eta.cl)
@@ -15,7 +15,7 @@
 #'   cp = center / v
 #'   cp ~ add(add.sd)
 #' }))
-#'  
+#'
 #' as.model(model)
 #'
 #' one.compartment <- function() {
@@ -40,7 +40,7 @@
 #' }
 #'
 #' as.model(one.compartment)
-#'  
+#'
 #' ui <- one.compartment()
 #'
 #' as.model(ui)
@@ -93,6 +93,9 @@ as.model.call <- function(x) {
 #' @rdname as.model
 #' @export
 as.model.list <- function(x) {
+  if (inherits(x, "rxUi")) {
+    return(model(as.rxUi(x)))
+  }
   .lst <- lapply(seq_along(x), function(i) {
     if (is.language(x[[i]])) return(x[[i]])
     if (is.character(x[[i]])) return(str2lang(x[[i]]))

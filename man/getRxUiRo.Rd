@@ -4,7 +4,7 @@
 \alias{getRxUiRo}
 \title{Helper function to get objects from UI that are lists or environments}
 \usage{
-getRxUiRo(x, ui)
+getRxUiRo(x, envir)
 }
 \arguments{
 \item{x}{object to get}
