@@ -293,8 +293,7 @@
 
 #' @export
 `$<-.rxUi` <- function(x, name, value) {
-  .raw <- inherits(x, "raw")
-  if (!.raw) {
+  if (is.environment(x)) {
     assign(name, value, envir=x)
     return(x)
   }

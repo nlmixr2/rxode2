@@ -436,7 +436,21 @@ print.rxUi <-function(x, ...) {
 #'
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
-  if (is.environment(ui))  return(ui)
+  if (is.environment(ui)) {
+    if (!exists("meta", envir=ui)) {
+      .m <- list()
+    } else {
+      .m <- get("meta", envir=ui)
+    }
+    if (is.list(.m)) {
+      .meta <- new.env(parent=emptyenv())
+      lapply(names(.m), function(x) {
+        assign(x, .m[[x]], .meta)
+      })
+      assign("meta", .meta, ui)
+    }
+    return(ui)
+  }
   if (is.raw(ui)) {
     .ret <- try(qs::qdeserialize(ui), silent=TRUE)
     if (inherits(.ret, "try-error")) {
@@ -455,8 +469,9 @@ rxUiDecompress <- function(ui) {
     lapply(names(ui), function(x) {
       if (x == "meta") {
         assign(x, .meta, .ret)
+      } else {
+        assign(x, ui[[x]], .ret)
       }
-      assign(x, ui[[x]], .ret)
     })
     class(.ret) <- "rxUi"
     return(.ret)
