@@ -198,7 +198,7 @@
         .unlistedBrackets <- lapply(names(.cur), function(.n) {
           bquote(.(str2lang(.n)) <- .(setNames(.cur[.n], NULL)))
         })
-      } else if (inherits(.cur, "list")) {
+      } else if (!inherits(.cur, "rxUi") && inherits(.cur, "list")) {
         if (is.null(names(.cur))) {
           stop("cannot figure out what to do with the unnamed list", call.=FALSE)
         }
