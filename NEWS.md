@@ -8,9 +8,6 @@
 
 - Empty arguments to `rxRename()` give a warning (#688)
 
-- In addition to base R's `ifelse`, now support `if_else` from
-  `tidyverse`, though it does the same thing inside `rxode2`.
-
 - Promoting from covariates to parameters with model piping (via `ini()`) now
   allows setting bounds (#692)
 

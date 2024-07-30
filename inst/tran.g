@@ -1,7 +1,7 @@
 //loop
 statement_list : (statement)+ ;
 
-statement
+statement 
   : assignment end_statement
   | ini        end_statement
   | ini0       end_statement
@@ -9,7 +9,7 @@ statement
   | fbio       end_statement
   | alag       end_statement
   | rate       end_statement
-  | dur        end_statement
+  | dur        end_statement 
   | derivative end_statement
   | dfdy       end_statement
   | mtime      end_statement
@@ -29,10 +29,8 @@ statement
 
 compound_statement : '{' statement_list? '}' ;
 
-ifelse2: 'ifelse' | 'if_else';
-
 ifelse_statement
-    : ifelse2 '(' logical_or_expression ','  statement ',' statement ')' end_statement;
+   : 'ifelse' '(' logical_or_expression ','  statement ',' statement ')' end_statement;
 
 selection_statement
   :   "(if|while)" '(' logical_or_expression ')' statement ('else' statement)?;
@@ -88,10 +86,10 @@ matF: '_rxF' '=' logical_or_expression;
 
 mtime     : 'mtime' '(' identifier_r_no_output ')' ('=' | '<-' | '~') logical_or_expression;
 
-logical_or_expression : logical_and_expression
+logical_or_expression : logical_and_expression 
     (('||' | '|')  logical_and_expression)* ;
 
-logical_and_expression : equality_expression0
+logical_and_expression : equality_expression0 
     (('&&' | '&') equality_expression0)* ;
 
 equality_expression0 : equality_expression |
@@ -101,14 +99,14 @@ equality_expression0 : equality_expression |
     '(' equality_str ')' |
     '!' '(' equality_str ')' |
     '(' '!' identifier_r ')' |
-    '!' identifier_r |
+    '!' identifier_r | 
     '!' function ;
 
 equality_str : equality_str1 | equality_str2;
 equality_str1 : string ('!=' | '==' ) identifier_r;
 equality_str2 : identifier_r ('!=' | '==' ) string;
 
-equality_expression : relational_expression
+equality_expression : relational_expression 
     (('!=' | '==' ) relational_expression)* ;
 
 relational_expression : additive_expression
@@ -117,7 +115,7 @@ relational_expression : additive_expression
 additive_expression : multiplicative_expression
     (('+' | '-') multiplicative_expression)* ;
 
-multiplicative_expression : unary_expression
+multiplicative_expression : unary_expression 
     (mult_part)* ;
 
 mult_part : ('*' | '/') unary_expression ;
@@ -130,7 +128,7 @@ power_expression : primary_expression power_operator exponent_expression;
 
 power_operator   : ('^' | '**');
 
-primary_expression
+primary_expression 
   : constant
   | identifier_r
   | theta0
@@ -143,7 +141,7 @@ primary_expression
   | '(' logical_or_expression ')'
   ;
 
-ifelse : ifelse2 '(' logical_or_expression ',' logical_or_expression ',' logical_or_expression ')' ;
+ifelse : 'ifelse' '(' logical_or_expression ',' logical_or_expression ',' logical_or_expression ')' ;
 
 function : function_name '(' (logical_or_expression)* (',' logical_or_expression)* ')' ;
 
@@ -181,3 +179,4 @@ identifier_r_no_output_2: "[.]+[a-zA-Z_][a-zA-Z0-9_.]*" $term -4;
 identifier: "[a-zA-Z][a-zA-Z0-9_.]*" $term -4;
 whitespace: ( "[ \t\r\n]+" | singleLineComment )*;
 singleLineComment: '#' "[^\n]*";
+
