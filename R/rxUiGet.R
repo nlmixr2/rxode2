@@ -32,15 +32,17 @@ rxUiExists <- function(x, envir) {
 #' @export
 #' @keywords internal
 #' @author Matthew L. Fidler
-getRxUiRo <- function(x, ui) {
-  if (is.environment(ui)) {
-    get(x, envir=ui)
-  } else if (is.list(ui)) {
-    .ui <- ui
+getRxUiRo <- function(x, envir) {
+  if (is.environment(envir)) {
+    if (exists(x, envir=envir)) {
+      get(x, envir=envir)
+    } else {
+      NULL
+    }
+  } else if (is.list(envir)) {
+    .ui <- envir
     class(.ui) <- NULL
     .ui[[x]]
-  } else {
-    stop("ui must be an environment or list for getRxUiRo()")
   }
 }
 
@@ -489,6 +491,9 @@ rxUiGet.default <- function(x, ...) {
   .ui <- x[[1]]
   if (!rxUiExists(.arg, envir=.ui)) {
     .meta <- getRxUiRo("meta", envir=.ui)
+    if (is.null(.meta)) {
+      return(NULL)
+    }
     if (is.environment(.meta)) {
       if (exists(.arg, envir=.meta)) {
         return(getRxUiRo(.arg, envir=.meta))

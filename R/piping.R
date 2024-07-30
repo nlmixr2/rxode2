@@ -8,10 +8,20 @@
   if (inherits(ui, "raw")) {
     return(rxUiDecompress(ui))
   }
-  .ret <- new.env(parent=emptyenv())
-  lapply(ls(envir=ui, all.names=TRUE), function(item){
-    assign(item, get(item, envir=ui), envir=.ret)
-  })
+  if (is.environment(ui)) {
+    .ret <- new.env(parent=emptyenv())
+    lapply(ls(envir=ui, all.names=TRUE), function(item){
+      assign(item, get(item, envir=ui), envir=.ret)
+    })
+  } else if (is.list(ui)) {
+    .n <- names(ui)
+    .ret <- lapply(.n, function(item){
+      ui[[item]]
+    })
+    names(.ret) <- .n
+  } else {
+    stop("ui must be a list or environment")
+  }
   class(.ret) <- class(ui)
   .ret
 }

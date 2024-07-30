@@ -508,6 +508,9 @@ rxUiCompress <- function(ui, type=c("list","qs")) {
   }
   if (is.environment(ui) && type=="list") {
     .m <- get("meta", envir=ui)
+    if (is.null(.m)) {
+      .m <- new.env(parent=emptyenv())
+    }
     .n <- ls(get("meta", envir=ui), all=TRUE)
     .meta <- lapply(.n, function(x) {
       get(x, .m)
