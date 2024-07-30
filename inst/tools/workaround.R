@@ -1,3 +1,15 @@
+message("Update Parser h file");
+dparser::mkdparse("inst/tran.g",
+                  "src/",
+                  grammar_ident="rxode2parse")
+file <- gsub("^([#]line [0-9]+ )\".*(src)/+(.*)\"","\\1\"\\2/\\3\"",
+             readLines("src/tran.g.d_parser.c"))
+file.out <- file("src/tran.g.d_parser.h", "wb")
+writeLines(file, file.out)
+close(file.out)
+unlink("src/tran.g.d_parser.c")
+
+
 ## This is only for rxode2
 for (f in c("inst/include/rxode2_RcppExports.h", "src/RcppExports.cpp")) {
   l <- readLines(f)
@@ -36,6 +48,17 @@ if (length(w) >= 1) {
 .in <- gsub("@SL@", paste(capture.output(StanHeaders:::LdFlags()), capture.output(RcppParallel:::RcppParallelLibs())), #nolint
             .in)
 
+
+message("Update Parser h file");
+dparser::mkdparse("inst/tran.g",
+                  "src/",
+                  grammar_ident="rxode2parse")
+file <- gsub("^([#]line [0-9]+ )\".*(src)/+(.*)\"","\\1\"\\2/\\3\"",
+             readLines("src/tran.g.d_parser.c"))
+file.out <- file("src/tran.g.d_parser.h", "wb")
+writeLines(file, file.out)
+close(file.out)
+unlink("src/tran.g.d_parser.c")
 
 .badStan <- ""
 .in <- gsub("@SH@", gsub("-I", "-@ISYSTEM@",

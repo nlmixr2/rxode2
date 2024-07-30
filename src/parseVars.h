@@ -26,7 +26,8 @@ static inline int assertForbiddenVariables(const char *s) {
     tb.ix=-2;
     return 0;
   }
-  if (!strcmp("ifelse", s)){
+  if (!strcmp("ifelse", s) ||
+      !strcmp("if_else", s)){
     updateSyntaxCol();
     _rxode2parse_unprotect();
     err_trans("'ifelse' cannot be a state in an rxode2 model");
