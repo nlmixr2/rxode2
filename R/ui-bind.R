@@ -8,6 +8,8 @@
 #' @author Matthew L. Fidler
 .combineModelLines <- function(model1, model2, ini) {
   # Add the meta information from model2 into the meta information of new model
+  model1 <- rxUiDecompress(model1)
+  model2 <- rxUiDecompress(model2)
   .ls <- ls(model2$meta, all.names=TRUE)
   for (.i in seq_along(.ls)) {
     assign(.ls[.i], model2$meta[[.ls[.i]]], envir=model1$meta)
