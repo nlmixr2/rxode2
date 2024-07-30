@@ -7,10 +7,16 @@
 \usage{
 rxUiDecompress(ui)
 
-rxUiCompress(ui)
+rxUiCompress(ui, type = c("list", "qs"))
 }
 \arguments{
 \item{ui}{rxode2 ui object}
+
+\item{type}{type can either be:
+\itemize{
+\item \code{"list"} (default) for a list object, which changes the environment to a list object
+\item \code{"qs"} for a raw object, which uses the qs package to serialize the object
+}}
 }
 \value{
 A compressed or decompressed rxui object
@@ -19,6 +25,7 @@ A compressed or decompressed rxui object
 Compress/Decompress \code{rxode2} ui
 }
 \examples{
+
 one.cmt <- function() {
   ini({
     ## You may label each parameter with a comment

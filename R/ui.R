@@ -394,10 +394,12 @@ print.rxUi <-function(x, ...) {
 #'
 #'
 #' @param ui rxode2 ui object
+#' @inheritParams rxUiCompressDefault
 #' @return A compressed or decompressed rxui object
 #' @author Matthew L. Fidler
 #' @export
 #' @examples
+#'
 #' one.cmt <- function() {
 #'   ini({
 #'     ## You may label each parameter with a comment
@@ -435,19 +437,89 @@ print.rxUi <-function(x, ...) {
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) return(ui)
   if (is.environment(ui))  return(ui)
+  if (is.raw(ui)) {
+    .ret <- try(qs::qdeserialize(ui), silent=TRUE)
+    if (inherits(.ret, "try-error")) {
+      stop("cannot decompress ui object, possibly corrupt",
+           call.=FALSE)
+    }
+    class(.ret) <- "rxUi"
+    return(.ret)
+  }
+  if (is.list(ui)) {
+    .meta <- new.env(parent=emptyenv())
+    lapply(names(ui$meta), function(x) {
+      assign(x, ui$meta[[x]], .meta)
+    })
+    .ret <- new.env(parent=emptyenv())
+    lapply(names(ui), function(x) {
+      if (x == "meta") {
+        assign(x, .meta, .ret)
+      }
+      assign(x, ui[[x]], .ret)
+    })
+    class(.ret) <- "rxUi"
+    return(.ret)
+  }
   .ret <- qs::qdeserialize(ui)
   class(.ret) <- "rxUi"
   .ret
 }
 
+.rxUiCompressDefault <- new.env(parent=emptyenv())
+.rxUiCompressDefault$type <-"list"
+
+#' Set the default compression type for rxode2 ui objects
+#'
+#' @param type type can either be:
+#'
+#'  - \code{"list"} (default) for a list object, which changes the environment to a list object
+#' - \code{"qs"} for a raw object, which uses the qs package to serialize the object
+#' @return nothing, called for side effect of setting the default compression type
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' rxUiCompressDefault("list")
+#'
+rxUiCompressDefault <- function(type=c("list","qs")) {
+  if (missing(type)) {
+    type <- "list"
+  } else  {
+    type <- match.arg(type)
+  }
+  .rxUiCompressDefault$type <- type
+}
+
 #' @rdname rxUiDecompress
 #' @export
-rxUiCompress <- function(ui) {
+rxUiCompress <- function(ui, type=c("list","qs")) {
+  if (missing(type)) {
+    type <- "list"
+  } else  {
+    type <- match.arg(type)
+  }
   if (!inherits(ui, "rxUi")) return(ui)
-  if (is.environment(ui)) {
+  if (is.environment(ui) && type=="qs") {
     .ret <- try(qs::qserialize(ui, preset="fast"), silent=TRUE)
     if (inherits(.ret, "try-error")) .ret <- qs::qserialize(ui, preset="archive")
     class(.ret) <- c("rxUi", "raw")
+    return(.ret)
+  }
+  if (is.environment(ui) && type=="list") {
+    .m <- get("meta", envir=ui)
+    .n <- ls(get("meta", envir=ui), all=TRUE)
+    .meta <- lapply(.n, function(x) {
+      get(x, .m)
+    })
+    names(.meta) <- .n
+    .n <- ls(ui, all=TRUE)
+    .ret <- lapply(.n, function(x) {
+      if (x == "meta") return(.meta)
+      get(x, ui)
+    })
+    names(.ret) <- .n
+    class(.ret) <- c("rxUi", "list")
     return(.ret)
   }
   ui

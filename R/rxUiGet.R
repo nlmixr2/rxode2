@@ -4,6 +4,45 @@
   "fun.txt"="funTxt",
   "all.covs"="allCovs"
 )
+#' Helper to see if the item exists in the UI environment
+#'
+#' @param x rxode2 ui environment
+#' @param envir rxode2 ui that is either a list or an environment
+#' @return TRUE if the object exists in the UI
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords interal
+rxUiExists <- function(x, envir) {
+  if (is.environment(envir)) {
+    exists(x, envir=envir)
+  } else if (is.list(envir)) {
+    .ui <- envir
+    class(.ui) <- NULL
+    x %in% names(.ui)
+  } else {
+    stop("ui must be an environment or list for rxUiExists()")
+  }
+}
+#' Helper function to get objects from UI that are lists or environments
+#'
+#' @param x object to get
+#'
+#' @param ui rxode2 ui that is either a list or an environment
+#' @return the value of the object that was requested
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+getRxUiRo <- function(x, ui) {
+  if (is.environment(ui)) {
+    get(x, envir=ui)
+  } else if (is.list(ui)) {
+    .ui <- ui
+    class(.ui) <- NULL
+    .ui[[x]]
+  } else {
+    stop("ui must be an environment or list for getRxUiRo()")
+  }
+}
 
 #' Convert rxode2 UI object to object for `rxUiGet`
 #'
@@ -14,7 +53,9 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .uiToRxUiGet <- function(obj, arg, exact=TRUE) {
-  if (inherits(obj, "raw")) obj <- rxUiDecompress(obj)
+  if (inherits(obj, "raw")) {
+    obj <- rxUiDecompress(obj)
+  }
   .lst <- list(obj, exact)
   .arg <- .rxUiBackward[arg]
   if (is.na(.arg)) .arg <- arg
@@ -137,7 +178,7 @@ attr(rxUiGet.theta, "desc") <- "Initial Population/Fixed Effects estimates, thet
 #' @export
 #' @rdname rxUiGet
 rxUiGet.lstChr <- function(x, ...) {
-  vapply(get("lstExpr", envir=x[[1]]),
+  vapply(getRxUiRo("lstExpr", envir=x[[1]]),
          function(x) {
            deparse1(x)
          }, character(1), USE.NAMES=FALSE)
@@ -173,7 +214,7 @@ attr(rxUiGet.funTxt, "desc") <- "Get function text for the model({}) block"
 #' @export
 #' @rdname rxUiGet
 rxUiGet.allCovs <- function(x, ...) {
-  get("covariates", envir=x[[1]])
+  getRxUiRo("covariates", envir=x[[1]])
 }
 attr(rxUiGet.allCovs, "desc") <- "Get all covariates defined in the model"
 
@@ -182,24 +223,24 @@ attr(rxUiGet.allCovs, "desc") <- "Get all covariates defined in the model"
 rxUiGet.muRefTable <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  .muRef <- get("muRefDataFrame", .x)
+  .muRef <- getRxUiRo("muRefDataFrame", .x)
   if (length(.muRef$theta) == 0) return(NULL)
-  .muRefCov <- rbind(get("muRefCovariateDataFrame", .x),
-                     get("mu2RefCovariateReplaceDataFrame", .x)[,c("theta", "covariate", "covariateParameter")])
+  .muRefCov <- rbind(getRxUiRo("muRefCovariateDataFrame", .x),
+                     getRxUiRo("mu2RefCovariateReplaceDataFrame", .x)[,c("theta", "covariate", "covariateParameter")])
   if (length(.muRefCov$theta) > 0) {
     .env <- new.env(parent=emptyenv())
     lapply(seq_along(.muRefCov$theta), function(i) {
       .theta <- .muRefCov$theta[i]
       .cov <- paste0(.muRefCov$covariate[i], "*", .muRefCov$covariateParameter[i])
-      if (exists(.theta, .env)) {
-        assign(.theta, c(get(.theta, .env), .cov), .env)
+      if (rxUiExists(.theta, .env)) {
+        assign(.theta, c(getRxUiRo(.theta, .env), .cov), .env)
       } else {
         assign(.theta, .cov, .env)
       }
     })
     .muRef$covariates <- vapply(.muRef$theta, function(theta) {
       if (exists(theta, .env)) {
-        return(paste(get(theta, .env), collapse=" + "))
+        return(paste(getRxUiRo(theta, .env), collapse=" + "))
       }
       return("")
     }, character(1), USE.NAMES=FALSE)
@@ -213,7 +254,7 @@ attr(rxUiGet.muRefTable, "desc") <- "table of mu-referenced items in a model"
 rxUiGet.multipleEndpoint <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
-  .info <- get("predDf", .x)
+  .info <- getRxUiRo("predDf", .x)
   if (is.null(.info)) {
     return(invisible())
   }
@@ -296,7 +337,7 @@ rxUiGet.md5 <- function(x, ...) {
 #' @export
 #' @rdname rxUiGet
 rxUiGet.ini <- function(x, ...) {
-  get("iniDf", x[[1]])
+  getRxUiRo("iniDf", x[[1]])
 }
 attr(rxUiGet.ini, "desc") <- "Model initilizations/bounds object"
 
@@ -326,8 +367,8 @@ rxUiGet.model <- rxUiGet.modelFun
 #' @export
 #' @rdname rxUiGet
 rxUiGet.modelDesc <- function(x, ...) {
-  .mv <- get("mv0", x[[1]])
-  .mvL <- get("mvL", x[[1]])
+  .mv <- getRxUiRo("mv0", x[[1]])
+  .mvL <- getRxUiRo("mvL", x[[1]])
   if (!is.null(.mvL)) {
     return(sprintf(
       "rxode2-based solved PK %s-compartment model%s%s", .mvL$flags["ncmt"],
@@ -368,9 +409,9 @@ attr(rxUiGet.thetaUpper, "desc") -> "thetaUpper"
 #' @rdname rxUiGet
 rxUiGet.lhsVar <- function(x, ...) {
   .x <- x[[1]]
-  .eta <- get("etaLhsDf", .x)
-  .theta <- get("thetaLhsDf", .x)
-  .cov <- get("covLhsDf", .x)
+  .eta <- getRxUiRo("etaLhsDf", .x)
+  .theta <- getRxUiRo("thetaLhsDf", .x)
+  .cov <- getRxUiRo("covLhsDf", .x)
   setNames(c(.eta$eta, .theta$theta, .cov$cov),
            c(.eta$lhs, .theta$lhs, .cov$lhs))
 }
@@ -379,9 +420,9 @@ rxUiGet.lhsVar <- function(x, ...) {
 #' @rdname rxUiGet
 rxUiGet.varLhs <- function(x, ...) {
   .x <- x[[1]]
-  .eta <- get("etaLhsDf", .x)
-  .theta <- get("thetaLhsDf", .x)
-  .cov <- get("covLhsDf", .x)
+  .eta <- getRxUiRo("etaLhsDf", .x)
+  .theta <- getRxUiRo("thetaLhsDf", .x)
+  .cov <- getRxUiRo("covLhsDf", .x)
   setNames(c(.eta$lhs, .theta$lhs, .cov$lhs),
            c(.eta$eta, .theta$theta, .cov$cov))
 }
@@ -391,7 +432,7 @@ attr(rxUiGet.varLhs, "desc") <- "var->lhs translation"
 #' @rdname rxUiGet
 rxUiGet.lhsEta <- function(x, ...) {
   .x <- x[[1]]
-  .eta <- get("etaLhsDf", .x)
+  .eta <- getRxUiRo("etaLhsDf", .x)
   setNames(.eta$eta,.eta$lhs)
 }
 attr(rxUiGet.lhsEta, "desc") <- "lhs->eta translation"
@@ -400,7 +441,7 @@ attr(rxUiGet.lhsEta, "desc") <- "lhs->eta translation"
 #' @rdname rxUiGet
 rxUiGet.lhsTheta <- function(x, ...) {
   .x <- x[[1]]
-  .eta <- get("thetaLhsDf", .x)
+  .eta <- getRxUiRo("thetaLhsDf", .x)
   setNames(.eta$theta, .eta$lhs)
 }
 attr(rxUiGet.lhsTheta, "desc") <- "lhs->theta translation"
@@ -409,7 +450,7 @@ attr(rxUiGet.lhsTheta, "desc") <- "lhs->theta translation"
 #' @rdname rxUiGet
 rxUiGet.lhsCov <- function(x, ...) {
   .x <- x[[1]]
-  .cov <- get("covLhsDf", .x)
+  .cov <- getRxUiRo("covLhsDf", .x)
   setNames(.cov$cov, .cov$lhs)
 }
 attr(rxUiGet.lhsCov, "desc") <- "lhs->cov translation"
@@ -418,7 +459,7 @@ attr(rxUiGet.lhsCov, "desc") <- "lhs->cov translation"
 #' @rdname rxUiGet
 rxUiGet.etaLhs <- function(x, ...) {
   .x <- x[[1]]
-  .eta <- get("etaLhsDf", .x)
+  .eta <- getRxUiRo("etaLhsDf", .x)
   setNames(.eta$lhs, .eta$eta)
 }
 attr(rxUiGet.etaLhs, "desc") <- "eta->lhs translation"
@@ -427,7 +468,7 @@ attr(rxUiGet.etaLhs, "desc") <- "eta->lhs translation"
 #' @rdname rxUiGet
 rxUiGet.thetaLhs <- function(x, ...) {
   .x <- x[[1]]
-  .theta <- get("thetaLhsDf", .x)
+  .theta <- getRxUiRo("thetaLhsDf", .x)
   setNames(.theta$lhs, .theta$theta)
 }
 attr(rxUiGet.thetaLhs, "desc") <- "theta->lhs translation"
@@ -436,7 +477,7 @@ attr(rxUiGet.thetaLhs, "desc") <- "theta->lhs translation"
 #' @rdname rxUiGet
 rxUiGet.covLhs <- function(x, ...) {
   .x <- x[[1]]
-  .cov <- get("covLhsDf", .x)
+  .cov <- getRxUiRo("covLhsDf", .x)
   setNames(.cov$lhs, .cov$cov)
 }
 attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
@@ -446,14 +487,19 @@ attr(rxUiGet.covLhs, "desc") <- "cov->lhs translation"
 rxUiGet.default <- function(x, ...) {
   .arg <- class(x)[1]
   .ui <- x[[1]]
-  if (!exists(.arg, envir=.ui)) {
-    .meta <- get("meta", envir=.ui)
-    if (exists(.arg, envir=.meta)) {
-      return(get(.arg, envir=.meta))
+  if (!rxUiExists(.arg, envir=.ui)) {
+    .meta <- getRxUiRo("meta", envir=.ui)
+    if (is.environment(.meta)) {
+      if (exists(.arg, envir=.meta)) {
+        return(getRxUiRo(.arg, envir=.meta))
+      }
+    } else if (is.list(.meta)) {
+      .ret <- .meta[[.arg]]
+      if (!is.null(.ret)) return(.ret)
     }
     return(NULL)
   }
-  get(.arg, .ui)
+  getRxUiRo(.arg, .ui)
 }
 
 .rxUiGetEnvInfo <- c("model"="Original Model (with comments if available)",
