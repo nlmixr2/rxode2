@@ -29,6 +29,8 @@
 
 - Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
 
+- Model extraction `modelExtract()` will now extract model properties.  Note that the model property of `alag(cmt)` and `lag(cmt)` will give the same value. See #745
+
 ## Big change
 
 - At the request of CRAN, combine `rxode2parse`, `rxode2random`, and
