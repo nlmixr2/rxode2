@@ -191,55 +191,62 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
 
 
 static inline int handleRemainingAssignmentsCalcPropIni(nodeInfo ni, char *name, D_ParseNode *pn, char *v) {
-  if (nodeHas(ini) || nodeHas(ini0)) {
-    D_ParseNode *xpn;
-    double d;
-    if (tb.ini[tb.ix] == 0){
-      // If there is only one initialzation call, then assume
-      // this is a parameter with an initial value.
-      tb.ini[tb.ix] = 1;
-      if (nodeHas(ini0)){
-	tb.ini0[tb.ix] = 1;
-	xpn = d_get_child(pn, 3);
-	/* Free(v); */
-	v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-	sscanf(v, "%lf", &d);
-	tb.iniv[tb.ix] = d;
-	tb.ini_i++;
+  if (tb.ix < 0) {
+    sPrint(&_gbuf,"cannot assign protected variable '%s'",v);
+    updateSyntaxCol();
+    trans_syntax_error_report_fn(_gbuf.s);
+    return 0;
+  } else {
+    if (nodeHas(ini) || nodeHas(ini0)) {
+      D_ParseNode *xpn;
+      double d;
+      if (tb.ini[tb.ix] == 0){
+        // If there is only one initialzation call, then assume
+        // this is a parameter with an initial value.
+        tb.ini[tb.ix] = 1;
+        if (nodeHas(ini0)){
+          tb.ini0[tb.ix] = 1;
+          xpn = d_get_child(pn, 3);
+          /* Free(v); */
+          v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+          sscanf(v, "%lf", &d);
+          tb.iniv[tb.ix] = d;
+          tb.ini_i++;
+        } else {
+          tb.ini0[tb.ix] = 0;
+          if (strncmp(v,"rx_",3)==0){
+            tb.lh[tb.ix] = isLHS;
+          } else {
+            xpn = d_get_child(pn, 2);
+            /* Free(v); */
+            v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+            sscanf(v, "%lf", &d);
+            tb.iniv[tb.ix] = d;
+            tb.ini_i++;
+          }
+        }
+        /* Free(v); */
+        return 1;
       } else {
-	tb.ini0[tb.ix] = 0;
-	if (strncmp(v,"rx_",3)==0){
-	  tb.lh[tb.ix] = isLHS;
-	} else {
-	  xpn = d_get_child(pn, 2);
-	  /* Free(v); */
-	  v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-	  sscanf(v, "%lf", &d);
-	  tb.iniv[tb.ix] = d;
-	  tb.ini_i++;
-	}
+        // There is more than one call to this variable, it is a
+        // conditional variable
+        /* Rprintf("Duplicate %s; %d %d\n", v, tb.lh[tb.ix], tb.ini0[tb.ix]); */
+        if (tb.lh[tb.ix] != isLHS){
+          tb.lh[tb.ix] = isLHS;
+          if (nodeHas(ini0) && tb.ini0[tb.ix] == 1){
+            sPrint(&_gbuf,"cannot have conditional initial conditions for '%s'",v);
+            updateSyntaxCol();
+            trans_syntax_error_report_fn(_gbuf.s);
+          } else if (tb.ini0[tb.ix] == 1){
+            tb.iniv[tb.ix] = NA_REAL;
+            tb.ini_i--;
+          } else if (tb.ini[tb.ix] == 1){
+            tb.iniv[tb.ix] = NA_REAL;
+            tb.ini_i--;
+          }
+        }
+        tb.ini0[tb.ix] = 0;
       }
-      /* Free(v); */
-      return 1;
-    } else {
-      // There is more than one call to this variable, it is a
-      // conditional variable
-      /* Rprintf("Duplicate %s; %d %d\n", v, tb.lh[tb.ix], tb.ini0[tb.ix]); */
-      if (tb.lh[tb.ix] != isLHS){
-	tb.lh[tb.ix] = isLHS;
-	if (nodeHas(ini0) && tb.ini0[tb.ix] == 1){
-	  sPrint(&_gbuf,"cannot have conditional initial conditions for '%s'",v);
-	  updateSyntaxCol();
-	  trans_syntax_error_report_fn(_gbuf.s);
-	} else if (tb.ini0[tb.ix] == 1){
-	  tb.iniv[tb.ix] = NA_REAL;
-	  tb.ini_i--;
-	} else if (tb.ini[tb.ix] == 1){
-	  tb.iniv[tb.ix] = NA_REAL;
-	  tb.ini_i--;
-	}
-      }
-      tb.ini0[tb.ix] = 0;
     }
   }
   return 0;

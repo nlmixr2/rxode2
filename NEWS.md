@@ -31,6 +31,8 @@
 
 - Model extraction `modelExtract()` will now extract model properties.  Note that the model property of `alag(cmt)` and `lag(cmt)` will give the same value. See #745
 
+- When assigning reserved variables, the parser will error. See #744
+
 ## Big change
 
 - At the request of CRAN, combine `rxode2parse`, `rxode2random`, and
