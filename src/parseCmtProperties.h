@@ -250,6 +250,13 @@ static inline int handleRemainingAssignmentsCalcProps(nodeInfo ni, char *name, i
     handleRemainingAssignmentsRestProp(ni, name, i, pn, xpn, v);
   }
   new_or_ith(v);
+  if (tb.ix == -2) {
+    char *buf2[200];
+    snprintf(buf2, 200, "'%s' is a rxode2 reserved variable and cannot be assigned", v);
+    updateSyntaxCol();
+    trans_syntax_error_report_fn0(buf2);
+    return 0;
+  }
   aProp(tb.ix);
   if (!(handleRemainingAssignmentsCalcPropMtime(ni, name) ||
 	handleRemainingAssignmentsCalcPropComplexAssign(ni, name, v))) {
