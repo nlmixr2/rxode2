@@ -566,11 +566,18 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              CharacterVector keep = CharacterVector(0),
              bool addlKeepsCov=false,
              bool addlDropSs = true,
-             bool ssAtDoseTime=true) {
+             bool ssAtDoseTime=true,
+             Nullable<List> iCovIn = R_NilValue) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
   List mv = rxModelVars_(obj);
+  bool hasIcov = false;
+  List iCov;
+  if (!iCovIn.isNull()){
+    iCov = as<List>(iCovIn);
+    hasIcov = true;
+  }
   Environment rx = rxode2env();
   bool combineDvidB = false;
   Environment b=Rcpp::Environment::base_namespace();
@@ -630,10 +637,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // Translates events + model into translated events
   CharacterVector dName = as<CharacterVector>(Rf_getAttrib(inData, R_NamesSymbol));
   CharacterVector lName = clone(dName);
-
+  CharacterVector diName;
+  CharacterVector liName;
+  if (hasIcov) {
+    diName = as<CharacterVector>(Rf_getAttrib(iCov, R_NamesSymbol));
+    liName = clone(diName);
+  }
   int i, idCol = -1, evidCol=-1, timeCol=-1, amtCol=-1, cmtCol=-1,
     dvCol=-1, ssCol=-1, rateCol=-1, addlCol=-1, iiCol=-1, durCol=-1, j,
-    mdvCol=-1, dvidCol=-1, censCol=-1, limitCol=-1, methodCol = -1;
+    mdvCol=-1, dvidCol=-1, censCol=-1, limitCol=-1, methodCol = -1,
+    idIcovCol = -1;
   std::string tmpS;
 
   CharacterVector pars = as<CharacterVector>(mv[RxMv_params]);
@@ -644,7 +657,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool allBolus = true;
   bool allInf = true;
   int mxCmt = 0;
-  std::vector<int> keepI(keep.size(), 0);  for (i = lName.size(); i--;){
+  std::vector<int> keepI(keep.size(), 0);
+  for (i = lName.size(); i--;) {
     tmpS0= as<std::string>(lName[i]);
     tmpS = as<std::string>(lName[i]);
     std::transform(tmpS.begin(), tmpS.end(), tmpS.begin(), ::tolower);
@@ -705,11 +719,97 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
   }
+  if (hasIcov) {
+    for (i = liName.size(); i--;) {
+      tmpS0= as<std::string>(liName[i]);
+      tmpS = as<std::string>(liName[i]);
+      std::transform(tmpS.begin(), tmpS.end(), tmpS.begin(), ::tolower);
+      liName[i] = tmpS;
+      if (tmpS == "id") {
+        idIcovCol=i;
+      }
+      else if (tmpS == "evid") {
+        stop(_("cannot specify 'evid' in 'iCov'"));
+      }
+      else if (tmpS == "time") {
+        stop(_("cannot specify 'time' in 'iCov'"));
+      }
+      else if (tmpS == "amt") {
+        stop(_("cannot specify 'amt' in 'iCov'"));
+      } else if (tmpS == "value") {
+        stop(_("cannot specify 'value' in 'iCov'"));
+      } else if (tmpS == "cmt") {
+        stop(_("cannot specify 'cmt' in 'iCov'"));
+      } else if (tmpS=="ytype") {
+        stop(_("cannot specify 'ytype' in 'iCov'"));
+      } else if (tmpS=="state") {
+        stop(_("cannot specify 'state' in 'iCov'"));
+      } else if (tmpS == "var") {
+        stop(_("cannot specify 'var' in 'iCov'"));
+      } else if (tmpS == "dv") {
+        stop(_("cannot specify 'dv' in 'iCov'"));
+      } else if (tmpS == "ss") {
+        stop(_("cannot specify 'ss' in 'iCov'"));
+      } else if (tmpS == "rate") {
+        stop(_("cannot specify 'rate' in 'iCov'"));
+      } else if (tmpS == "dur") {
+        stop(_("cannot specify 'dur' in 'iCov'"));
+      } else if (tmpS == "addl") {
+        stop(_("cannot specify 'addl' in 'iCov'"));
+      } else if (tmpS == "ii") {
+        stop(_("cannot specify 'ii' in 'iCov'"));
+      } else if (tmpS == "mdv") {
+        stop(_("cannot specify 'mdv' in 'iCov'"));
+      } else if (tmpS == "dvid") {
+        stop(_("cannot specify 'dvid' in 'iCov'"));
+      } else if (tmpS == "cens") {
+        stop(_("cannot specify 'cens' in 'iCov'"));
+      } else if (tmpS == "limit") {
+        stop(_("cannot specify 'limit' in 'iCov'"));
+      } else if (tmpS == "method") {
+        stop(_("cannot specify 'method' in 'iCov'"));
+      }
+      for (j = pars.size(); j--;){
+        // Check lower case
+        if (tmpS == as<std::string>(pars[j])){
+          // Covariate found; dv not considered covariate
+          covCol.push_back(-i-1);
+          covParPos.push_back(j);
+          break;
+        }
+        if (tmpS0 == as<std::string>(pars[j])){
+          // Covariate found.
+          covCol.push_back(-i-1);
+          covParPos.push_back(j);
+          break;
+        }
+        // Check upper case.
+        std::transform(tmpS.begin(), tmpS.end(), tmpS.begin(), ::toupper);
+        if (tmpS == as<std::string>(pars[j])){
+          // Covariate found.
+          covCol.push_back(-i-1);
+          covParPos.push_back(j);
+          break;
+        }
+      }
+      for (j = keep.size(); j--;){
+        if (as<std::string>(dName[i]) == as<std::string>(keep[j])){
+          if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing'"));
+          keepCol.push_back(-i-1);
+          keepI[j] = 2;
+          break;
+        }
+      }
+    }
+    if (idIcovCol == -1)  {
+      stop(_("'iCov' must have an 'id' column"));
+    }
+  }
 #ifdef rxSolveT
   REprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
-  if ((int)(keepCol.size())!=(int)keep.size()){
+  if ((int)(keepCol.size()) != (int)keep.size()){
     std::string wKeep = "Cannot keep missing columns:";
     for (j = 0; j < keep.size(); j++){
       if (keepI[j] == 0){
@@ -726,10 +826,25 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   List inDataF(covCol.size());
   List inDataLvl(covCol.size());
   for (i = covCol.size(); i--;){
-    covUnitsN[i] = lName[covCol[i]];
+    int covColi = covCol[i];
+    if (covColi >= 0) {
+      covUnitsN[i] = lName[covColi];
+    } else {
+      // Get from iCov; when found the i was pushed back as:
+      //   covCol.push_back(-i-1);
+      // Using some algebra you have
+      // -i-1 = covColi
+      // i    = -covColi-1
+      covUnitsN[i] = liName[-covColi-1];
+    }
     nvTmp2 = NumericVector::create(1.0);
-    if (hasCmt || as<std::string>(lName[covCol[i]]) != "cmt"){
-      RObject cur = inData[covCol[i]];
+    if (hasCmt || covColi >= 0 && as<std::string>(lName[covColi]) != "cmt"){
+      RObject cur;
+      if (covColi >= 0) {
+        cur = inData[covColi];
+      } else {
+        cur = iCov[-covColi-1];
+      }
       if (TYPEOF(cur) == INTSXP){
         RObject lvls = cur.attr("levels");
         if (!Rf_isNull(lvls)){
@@ -829,11 +944,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     List newInData = clone(inData);
     Function convDate = rx[".convertExtra"];
     newInData =  convDate(newInData);
-    return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid);
+    return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
+                   combineDvid, CharacterVector(0), false, true, true,
+                   iCovIn = iCovIn);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;
   id.reserve(resSize);
+  std::vector<int> idIcov;
   std::vector<int> allId;
   allId.reserve(resSize);
   std::vector<int> obsId;
@@ -862,6 +980,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   dv.reserve(resSize);
   std::vector<int> idxOutput;
   idxOutput.reserve(resSize);
+  std::vector<int> idxIcov;
   std::vector<int> cens;
   cens.reserve(resSize);
   std::vector<int> nObsId;
@@ -882,6 +1001,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int tmpCmt = 1;
   IntegerVector inId;
   CharacterVector idLvl;
+  IntegerVector inIdCov;
   int idInt=0;
   if (idCol != -1){
     if (rxode2parseIsIntegerish(inData[idCol])){
@@ -892,6 +1012,28 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     idLvl = Rf_getAttrib(inId, R_LevelsSymbol);
   } else {
     idLvl = CharacterVector::create("1");
+  }
+  if (hasIcov) {
+    if (!rxode2parseIsIntegerish(iCov[idIcovCol]) &&
+        idInt == 1) {
+      stop(_("data 'id' column is an integer; 'iCov' 'id' also needs to be an integer"));
+    }
+    bool badSize = false;
+    if (Rf_length(iCov[idIcovCol]) != idLvl.size()) badSize=true;
+    if (!badSize) {
+      Function factor2("factor", R_BaseNamespace);
+      inIdCov = factor2(iCov[idIcovCol], _["levels"]=idLvl);
+      if (inIdCov.size() != idLvl.size()) badSize=true;
+    }
+    if (badSize) {
+      stop(_("the 'id' in the iCov must have 1 unique match to the event table"));
+    }
+    for (int i=0; i < inIdCov.size(); ++i) {
+      idxIcov.push_back(i);
+      if (inIdCov[i] == NA_INTEGER) {
+        stop(_("some of the 'id' values do not match the input event table"));
+      }
+    }
   }
   IntegerVector inCmt;
   RObject cmtInfo = R_NilValue;
@@ -1998,6 +2140,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 #undef sortID
   Function order = as<Function>(getForder());
   IntegerVector ord;
+  IntegerVector ordI;
   if (useForder()){
     ord = order(ivId, nvTime, ivEvid,
                 _["na.last"] = LogicalVector::create(true));
@@ -2007,12 +2150,23 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])){
       idxOutput.pop_back();
     }
+    if (hasIcov) {
+      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true));
+      ordI = ordI-1;
+      idxIcov = as<std::vector<int>>(ordI);
+    }
   } else {
     ord = order(ivId, nvTime, ivEvid,
                 _["na.last"] = LogicalVector::create(NA_LOGICAL),
                 _["method"]="radix");
     ord = ord - 1;
     idxOutput = as<std::vector<int>>(ord);
+    if (hasIcov) {
+      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true),
+                   _["method"]="radix");
+      ordI = ordI-1;
+      idxIcov = as<std::vector<int>>(ordI);
+    }
   }
 #ifdef rxSolveT
   REprintf("  Time8: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -2298,62 +2452,82 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             nvTmp[jj] = NA_REAL;
           } else {
             // These covariates are added.
-            SEXP cur = inData[covCol[j]];
+            int covColj = covCol[j];
+            SEXP cur;
+            if (covColj >= 0) {
+              // This comes from the original data
+              cur = inData[covColj];
+            } else {
+              // this comes from the individual covariate table
+              cur = iCov[-covColj-1];
+            }
             if (TYPEOF(cur) == STRSXP) {
               // Strings are converted to numbers
               cur = inDataF[j];
             }
             nvTmp2   = as<NumericVector>(cur);
-            nvTmp[jj] = nvTmp2[idxInput[idxOutput[i]]];
-            if (addId) {
+            if (covColj < 0) {
+              // By definition, not time varying, no need to check
+              // nvTmp2 in this case is the column sorted by id
+              // so we get the current
+              // idx1 = the index of the current id
+              nvTmp[jj] = nvTmp2[idxIcov[idx1]];
               nvTmp = as<NumericVector>(lst1[1+j]);
-              int iCur = i;
-              int idxOut = i;
-              int idxIn = i;
-              double vCur = nvTmp2[idxInput[idxOutput[i]]];
-              // Could be NA, look for non NA value OR beginning of subject
-              while (ISNA(vCur) && iCur != 0 &&
-                     id.size() > (idxOut = idxOutput[iCur]) &&
-                     idxOut >= 0 &&
-                     lastId == id[idxOut] &&
-                     idxInput.size() > idxOut &&
-                     nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
-                     idxIn >= 0) {
-                vCur = nvTmp2[idxIn];
-                iCur--;
-              }
-              if (ISNA(vCur)) iCur = i;
-              while (ISNA(vCur) && iCur+1 != (int)(covCol.size()) &&
-                     idxOutput.size() < iCur+1 &&
-                     id.size() > (idxOut = idxOutput[iCur+1]) &&
-                     idxOut >= 0 &&
-                     lastId == id[idxOut] &&
-                     idxInput.size() > idxOut &&
-                     nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
-                     idxIn >= 0) {
-                vCur = nvTmp2[idxIn];
-                iCur++;
-              }
-              if (ISNA(vCur)) {
-                Rf_warningcall(R_NilValue,
-                               "column '%s' has only 'NA' values for id '%s'" , CHAR(nme1[1+j]),
-                               CHAR(idLvl[((inId.size() == 0) ? 1 : lastId)-1]));
-              }
+              double vCur = nvTmp2[idx1];
               nvTmp[idx1] = vCur;
               fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
-              added = true;
-            } else if (sub1[1+j]) {
-              nvTmp = as<NumericVector>(lst1[1+j]);
-              //double cur1 = nvTmp[idx1];
-              double cur2 = nvTmp2[idxInput[idxOutput[i]]];
-              if (!ISNA(cur2) && nvTmp[idx1] != cur2){
-                sub0[baseSize+j] = true;
-                sub1[1+j] = false;
-                fPars[idx1*pars.size()+covParPos[j]] = NA_REAL;
-                if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()){
-                  covParPosTV.push_back(covParPos[j]);
+            } else {
+              nvTmp[jj] = nvTmp2[idxInput[idxOutput[i]]];
+              if (addId) {
+                nvTmp = as<NumericVector>(lst1[1+j]);
+                int iCur = i;
+                int idxOut = i;
+                int idxIn = i;
+                double vCur = nvTmp2[idxInput[idxOutput[i]]];
+                // Could be NA, look for non NA value OR beginning of subject
+                while (ISNA(vCur) && iCur != 0 &&
+                       id.size() > (idxOut = idxOutput[iCur]) &&
+                       idxOut >= 0 &&
+                       lastId == id[idxOut] &&
+                       idxInput.size() > idxOut &&
+                       nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
+                       idxIn >= 0) {
+                  vCur = nvTmp2[idxIn];
+                  iCur--;
                 }
-                nTv++;
+                if (ISNA(vCur)) iCur = i;
+                while (ISNA(vCur) && iCur+1 != (int)(covCol.size()) &&
+                       idxOutput.size() < iCur+1 &&
+                       id.size() > (idxOut = idxOutput[iCur+1]) &&
+                       idxOut >= 0 &&
+                       lastId == id[idxOut] &&
+                       idxInput.size() > idxOut &&
+                       nvTmp2.size() > (idxIn = idxInput[idxOut]) &&
+                       idxIn >= 0) {
+                  vCur = nvTmp2[idxIn];
+                  iCur++;
+                }
+                if (ISNA(vCur)) {
+                  Rf_warningcall(R_NilValue,
+                                 "column '%s' has only 'NA' values for id '%s'" , CHAR(nme1[1+j]),
+                                 CHAR(idLvl[((inId.size() == 0) ? 1 : lastId)-1]));
+                }
+                nvTmp[idx1] = vCur;
+                fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
+                added = true;
+              } else if (sub1[1+j]) {
+                nvTmp = as<NumericVector>(lst1[1+j]);
+                //double cur1 = nvTmp[idx1];
+                double cur2 = nvTmp2[idxInput[idxOutput[i]]];
+                if (!ISNA(cur2) && nvTmp[idx1] != cur2){
+                  sub0[baseSize+j] = true;
+                  sub1[1+j] = false;
+                  fPars[idx1*pars.size()+covParPos[j]] = NA_REAL;
+                  if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()){
+                    covParPosTV.push_back(covParPos[j]);
+                  }
+                  nTv++;
+                }
               }
             }
           }
