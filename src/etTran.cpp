@@ -2381,6 +2381,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cur4[i] = cur3[iCovKeepIdx[i]];
         }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else if (TYPEOF(cur2) == INTSXP){
         // Create an integer vector for each element
         IntegerVector cur3 = as<IntegerVector>(cur2);
@@ -2388,12 +2390,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         for (int i = iCovKeepIdx.size(); i--;) {
           cur4[i] = cur3[iCovKeepIdx[i]];
         }
-        // save attributes
-        std::vector<std::string> attr = cur3.attributeNames();
-        for (int i = attr.size(); i--;) {
-          cur4.attr(attr[i]) = cur3.attr(attr[i]);
-        }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else if (TYPEOF(cur2) == REALSXP) {
         NumericVector cur3 = as<NumericVector>(cur2);
         NumericVector cur4(iCovKeepIdx.size());
@@ -2406,18 +2405,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cur4.attr(attr[i]) = cur3.attr(attr[i]);
         }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else if (TYPEOF(cur2) == LGLSXP) {
         LogicalVector cur3 = as<LogicalVector>(cur2);
         LogicalVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
           cur4[i] = cur3[iCovKeepIdx[i]];
         }
-        // save attributes
-        std::vector<std::string> attr = cur3.attributeNames();
-        for (int i = attr.size(); i--;) {
-          cur4.attr(attr[i]) = cur3.attr(attr[i]);
-        }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else {
         stop(_("the columns that are kept must be either an underlying logical, string, factor, integer number, or real number"));
       }
