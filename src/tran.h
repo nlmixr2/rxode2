@@ -27,6 +27,12 @@ lhs symbols?
 =29
 =70 LHS + param
 */
+  int *interp;  // Interpolation flag:
+  // 0, = default via any declaration including param()
+  // 1 = linear via linear() or lin()
+  // 2 = constant/locf  via constant() or locf()
+  // 3 = nocb via nocb()
+  // 4 = midpoint via midpoint()
   int *ini;        /* initial variable assignment =2 if there are two assignments */
   int *mtime;
   double *iniv;        /* Initial values */

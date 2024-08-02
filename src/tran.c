@@ -264,6 +264,7 @@ void parseFree(int last) {
   lineFree(&_dupStrs);
   linCmtGenFree(&_linCmtGenStruct);
   R_Free(tb.lh);
+  R_Free(tb.interp);
   R_Free(tb.lag);
   R_Free(tb.alag);
   R_Free(tb.ini);
@@ -331,6 +332,7 @@ void reset(void) {
   lineIni(&(tb.de));
 
   tb.lh		= R_Calloc(MXSYM, int);
+  tb.interp	= R_Calloc(MXSYM, int);
   tb.ini	= R_Calloc(MXSYM, int);
   tb.mtime	= R_Calloc(MXSYM, int);
   tb.iniv	= R_Calloc(MXSYM, double);

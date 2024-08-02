@@ -48,7 +48,7 @@ param_statement
 
 interp_statement
     : ('locf' | 'constant' | 'linear' | 'nocb' | 'midpoint')
-        '(' identifier_r (',' identifier_r)* ')';
+        '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta))* ')';
 
 printf_statement
   : printf_command '(' string (',' logical_or_expression )* ')';

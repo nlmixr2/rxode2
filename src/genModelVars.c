@@ -9,8 +9,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 21));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 21));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 22));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -41,6 +41,7 @@ SEXP generateModelVars(void) {
   SEXP params = PROTECT(Rf_allocVector(STRSXP, tb.pi));pro++;
   SEXP lhs    = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
   SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
+  SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
 
   SEXP version = PROTECT(calcVersionInfo());pro++;
   SEXP ini = PROTECT(calcIniVals()); pro++;
@@ -49,7 +50,7 @@ SEXP generateModelVars(void) {
   SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
   SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;
 
-  populateParamsLhsSlhs(params, lhs, slhs);
+  populateParamsLhsSlhs(params, lhs, slhs, INTEGER(interp));
 
 
   INTEGER(sLinCmt)[5] = tb.hasCmt;
@@ -225,6 +226,22 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(names, 20, mkChar("udf"));
   SEXP udf = PROTECT(_rxode2parse_getUdf());pro++;
   SET_VECTOR_ELT(lst,   20, udf);
+
+  Rf_setAttrib(interp, R_NamesSymbol, params);
+  SEXP clsInterp = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
+  SET_STRING_ELT(clsInterp, 0, mkChar("factor"));
+  classgets(interp, clsInterp);
+
+  SEXP lvlInterp = PROTECT(Rf_allocVector(STRSXP, 5));pro++;
+  SET_STRING_ELT(lvlInterp, 0, mkChar("default"));
+  SET_STRING_ELT(lvlInterp, 1, mkChar("linear"));
+  SET_STRING_ELT(lvlInterp, 2, mkChar("locf"));
+  SET_STRING_ELT(lvlInterp, 3, mkChar("nocb"));
+  SET_STRING_ELT(lvlInterp, 4, mkChar("midpoint"));
+  Rf_setAttrib(interp, R_LevelsSymbol, lvlInterp);
+
+  SET_VECTOR_ELT(lst, 21, interp);
+  SET_STRING_ELT(names, 21, mkChar("interp"));
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);
