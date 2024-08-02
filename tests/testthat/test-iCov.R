@@ -95,11 +95,29 @@ rxTest({
                  "'iCov' must have an 'id' column")
 
     paramsDf$id <- 1:nsub+1
-
     expect_error(etTrans(ev, mod1, iCov=paramsDf, keep=c("CL", "V2")),
                  "some of the 'id' values do not match the input event table")
 
+
     paramsDf$id <- 1:nsub
+
+    paramsDf2 <- paramsDf
+
+    paramsDf2$id <- paste("pt ",paramsDf2$id)
+
+    expect_error(etTrans(ev, mod1, iCov=paramsDf2),
+                 "data 'id' column is an integer; 'iCov' 'id' also needs to be an integer")
+
+    paramsDf2 <- paramsDf[-1,]
+
+    expect_error(etTrans(ev, mod1, iCov=paramsDf2),
+                 "the 'id' in the iCov must have 1 unique match to the event table")
+
+    paramsDf2 <- rbind(paramsDf[1,], paramsDf)
+
+    expect_error(etTrans(ev, mod1, iCov=paramsDf2),
+                 "the 'id' in the iCov must have 1 unique match to the event table")
+
     # Check keep of various sorts in iCov
     tmp <- rxSolve(mod1, ev, iCov=paramsDf, keep=c("CL", "V2", "ptS", "ptF", "ptI", "ptL"))
     expect_true(is.character(tmp$ptS))
