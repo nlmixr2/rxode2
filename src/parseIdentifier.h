@@ -6,6 +6,7 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
     if (new_or_ith(value)){
       // If it is new, add it
       addSymbolStr(value);
+      tb.interp[NV-1] = tb.interpC;
       // Ignored variables
       if (isTbsVar(value)){
         // If it is Transform both sides, suppress printouts

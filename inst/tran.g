@@ -17,6 +17,7 @@ statement
   | matF       end_statement
   | printf_statement end_statement
   | param_statement end_statement
+  | interp_statement end_statement
   | cmt_statement end_statement
   | dvid_statementI end_statement
   | break_statement end_statement
@@ -46,9 +47,7 @@ cmt_statement
 param_statement
     : "params?" '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )*  ')';
 
-interp_statement
-    : ('locf' | 'constant' | 'linear' | 'nocb' | 'midpoint')
-        '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta))* ')';
+interp_statement: ('locf' | 'constant' | 'linear' | 'nocb' | 'midpoint') '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )* ')';
 
 printf_statement
   : printf_command '(' string (',' logical_or_expression )* ')';

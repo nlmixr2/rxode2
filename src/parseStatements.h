@@ -1,4 +1,25 @@
 // -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
+                                             D_ParseNode *xpn, D_ParseNode *pn) {
+  if (nodeHas(interp_statement)) {
+    if (*i == 0) {
+      char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+      // ('locf' | 'constant' | 'linear' | 'nocb' | 'midpoint')
+      if (!strcmp(v, "locf") || !strcmp(v, "constant")) {
+        tb.interpC = 2;
+      } else if (!strcmp(v, "linear")) {
+        tb.interpC = 1;
+      } else if (!strcmp(v, "nocb")) {
+        tb.interpC = 3;
+      } else if (!strcmp(v, "midpoint")) {
+        tb.interpC = 4;
+      }
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static inline int handleDvidStatement(nodeInfo ni, char *name, D_ParseNode *xpn, D_ParseNode *pn) {
   if (nodeHas(dvid_statementI)){
     if (tb.dvidn == 0){
@@ -168,6 +189,7 @@ static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int is
     finalizeLineDdt(ni, name) ||
     finalizeLineParam(ni, name) ||
     finalizeLineSelectionStatement(ni, name, isWhile) ||
-    finalizeLinePower(ni, name);
+    finalizeLinePower(ni, name) ||
+    finalizeLineInterp(ni, name);
   (void) tmp;
 }

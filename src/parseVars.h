@@ -126,6 +126,20 @@ static inline int new_or_ith(const char *s) {
   for (i=0; i<NV; i++) {
     if (!strcmp(tb.ss.line[i], s)) {
       tb.ix = i;
+      // if currently defining an interpolation and
+      // this variable has not been assigned an interpolation
+      // then assign it.
+      if (tb.interpC != 0) {
+        if (tb.interp[tb.ix] == 0) {
+          tb.interp[tb.ix] = tb.interpC;
+        } else {
+          // It this variable has already been assigned an
+          // interpolation error
+          sPrint(&_gbuf,"'%s' cannot have more than one interpolation method", s);
+          updateSyntaxCol();
+          trans_syntax_error_report_fn(_gbuf.s);
+        }
+      }
       return 0;
     }
   }
