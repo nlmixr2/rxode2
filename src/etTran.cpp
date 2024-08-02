@@ -2339,6 +2339,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool addId = false, added=false;
   int idx1=nid, nTv=0;
   std::vector<int> covParPosTV;
+  std::vector<int> covParPosTVinterp;
   bool cmtFadd = false;
   int jj = idxOutput.size()-rmAmt;
   int kk;
@@ -2346,6 +2347,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   List inDataFKL(keepCol.size());
   bool calcIcovKeepIdx = false;
   IntegerVector iCovKeepIdx;
+  std::vector<int> covParInterpMv = as<std::vector<int>>(mv[RxMv_interp]);
   for (j = 0; j < (int)(keepCol.size()); j++){
     int keepColj = keepCol[j];
     SEXP cur;
@@ -2541,6 +2543,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             sub0[baseSize+j] = true;
             sub1[1+j] = false;
             covParPosTV.push_back(covParPos[j]);
+            // We minus 2 here because that way that the covariates
+            // interpolation will match the interpolation method defined in
+            // the rxControl() object
+            covParPosTVinterp.push_back(covParInterpMv[covParPos[j]]-2);
             cmtFadd=true;
             nTv++;
           }
@@ -2626,6 +2632,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                   fPars[idx1*pars.size()+covParPos[j]] = NA_REAL;
                   if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()){
                     covParPosTV.push_back(covParPos[j]);
+                    // We minus 2 here because that way that the covariates
+                    // interpolation will match the interpolation method defined in
+                    // the rxControl() object
+                    covParPosTVinterp.push_back(covParInterpMv[covParPos[j]]-2);
                   }
                   nTv++;
                 }
@@ -2714,7 +2724,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   Rf_setAttrib(lst1F, R_ClassSymbol, wrap("data.frame"));
   Rf_setAttrib(lst1F, R_RowNamesSymbol,
                IntegerVector::create(NA_INTEGER, -nid));
-  List e(30);
+  List e(31);
   RxTransNames;
   e[RxTrans_ndose] = IntegerVector::create(ndose);
   e[RxTrans_nobs]  = IntegerVector::create(nobs);
@@ -2722,6 +2732,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   e[RxTrans_cov1] = lst1F;
   e[RxTrans_covParPos]  = wrap(covParPos);
   e[RxTrans_covParPosTV] = wrap(covParPosTV); // Time-varying pos
+  e[RxTrans_covParPosTVinterp] = wrap(covParPosTV); // Time-varying pos
+  // We minus 2 here because that way that the covariates
+  // interpolation will match the interpolation method defined in
+  // the rxControl() object
   if (allTimeVar){
     e[RxTrans_sub0] = wrap(sub0);
     e[RxTrans_baseSize] = baseSize;
@@ -2736,6 +2750,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     e[RxTrans_nme] = R_NilValue;
   }
   std::vector<int> covParPos0;
+  // flag the time-varying covariates
   for (j = covParPos.size();j--;){
     if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()){
       covParPos0.push_back(covParPos[j]);
