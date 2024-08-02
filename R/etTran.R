@@ -15,7 +15,6 @@
 #' @return An C-based index of where each item from the `iCov`
 #'   data-frame to create the keep data-est as if the `iCov` came from
 #'   the first dataset
-#' @export
 #' @author Matthew L. Fidler
 #' @noRd
 .getIcovIdx <- function(fullData, iCovData) {

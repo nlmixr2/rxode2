@@ -554,6 +554,8 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   steady concentration at the actual time of dose, otherwise when
 //'   `FALSE` the doses are shifted
 //'
+//' @inheritParams rxSolve::rxSolve
+//'
 //' @return Object for solving in rxode2
 //'
 //' @keywords internal
@@ -567,15 +569,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool addlKeepsCov=false,
              bool addlDropSs = true,
              bool ssAtDoseTime=true,
-             Nullable<List> iCovIn = R_NilValue) {
+             Nullable<List> iCov = R_NilValue) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
   List mv = rxModelVars_(obj);
   bool hasIcov = false;
-  List iCov;
-  if (!iCovIn.isNull()){
-    iCov = as<List>(iCovIn);
+  List iCov_;
+  if (!iCov.isNull()){
+    iCov_ = as<List>(iCov);
     hasIcov = true;
   }
   Environment rx = rxode2env();
@@ -640,7 +642,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   CharacterVector diName;
   CharacterVector liName;
   if (hasIcov) {
-    diName = as<CharacterVector>(Rf_getAttrib(iCov, R_NamesSymbol));
+    diName = as<CharacterVector>(Rf_getAttrib(iCov_, R_NamesSymbol));
     liName = clone(diName);
   }
   int i, idCol = -1, evidCol=-1, timeCol=-1, amtCol=-1, cmtCol=-1,
@@ -843,7 +845,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (covColi >= 0) {
         cur = inData[covColi];
       } else {
-        cur = iCov[-covColi-1];
+        cur = iCov_[-covColi-1];
       }
       if (TYPEOF(cur) == INTSXP){
         RObject lvls = cur.attr("levels");
@@ -946,7 +948,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     newInData =  convDate(newInData);
     return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
                    combineDvid, CharacterVector(0), false, true, true,
-                   iCovIn = iCovIn);
+                   iCov = iCov);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;
@@ -1014,15 +1016,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     idLvl = CharacterVector::create("1");
   }
   if (hasIcov) {
-    if (!rxode2parseIsIntegerish(iCov[idIcovCol]) &&
+    if (!rxode2parseIsIntegerish(iCov_[idIcovCol]) &&
         idInt == 1) {
       stop(_("data 'id' column is an integer; 'iCov' 'id' also needs to be an integer"));
     }
     bool badSize = false;
-    if (Rf_length(iCov[idIcovCol]) != idLvl.size()) badSize=true;
+    if (Rf_length(iCov_[idIcovCol]) != idLvl.size()) badSize=true;
     if (!badSize) {
       Function factor2("factor", R_BaseNamespace);
-      inIdCov = factor2(iCov[idIcovCol], _["levels"]=idLvl);
+      inIdCov = factor2(iCov_[idIcovCol], _["levels"]=idLvl);
       if (inIdCov.size() != idLvl.size()) badSize=true;
     }
     if (badSize) {
@@ -2292,7 +2294,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           lst[baseSize+j] = NumericVector(0);
         }
-        NumericVector curNV = iCov[-covColj-1];
+        NumericVector curNV = iCov_[-covColj-1];
         for (int idx1c=curNV.size(); idx1c--;) {
           double vcur = curNV[idxIcov[idx1c]];
           fPars[idx1c*pars.size()+covParPos[j]] = vcur;
@@ -2372,7 +2374,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         Function getIcovIdx = getRxFn(".getIcovIdx");
         iCovKeepIdx = getIcovIdx(inDf, iDf);
       }
-      SEXP cur2 = iCov[-keepColj-1];
+      SEXP cur2 = iCov_[-keepColj-1];
       if (TYPEOF(cur2) == STRSXP) {
         CharacterVector cur3 = as<CharacterVector>(cur2);
         CharacterVector cur4(iCovKeepIdx.size());
@@ -2559,7 +2561,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               cur = inData[covColj];
             } else {
               // this comes from the individual covariate table
-              cur = iCov[-covColj-1];
+              cur = iCov_[-covColj-1];
             }
             if (TYPEOF(cur) == STRSXP) {
               // Strings are converted to numbers

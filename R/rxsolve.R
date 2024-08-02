@@ -216,7 +216,8 @@
 #'   are the same components as `linDiff`
 #'
 #' @param iCov A data frame of individual non-time varying covariates
-#'     to combine with the `events` dataset by merge.
+#'   to combine with the `events` dataset.  The `iCov` dataset has one
+#'   covariate per ID and should match the event table
 #'
 #' @param covsInterpolation specifies the interpolation method for
 #'     time-varying covariates. When solving ODEs it often samples
