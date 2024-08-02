@@ -5,6 +5,67 @@ test_that("modelExtract and related functions", {
       tka <- 0.45 # Log Ka
       tcl <- 1 # Log Cl
       tv <- 3.45    # Log V
+      fDepot <-1
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      d/dt(depot) = -ka * depot
+      f(depot) <- fDepot
+      depot(0) <- fDepot
+      dur(depot) <- fDepot
+      rate(depot) <- fDepot
+      lag(depot) <- fDepot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      cp ~ add(add.sd)
+    })
+  }
+
+  f <- one.compartment()
+
+  tmp <- "d/dt(center)"
+
+  expect_equal(modelExtract(f, tmp),
+               "d/dt(center) = ka * depot - cl/v * center")
+
+  tmp <- list(tmp="d/dt(center)")
+  expect_equal(modelExtract(f, tmp$tmp),
+               "d/dt(center) = ka * depot - cl/v * center")
+
+
+  tmp <- list(tmp=list(tmp="d/dt(center)"))
+  expect_equal(modelExtract(f, tmp$tmp$tmp),
+               "d/dt(center) = ka * depot - cl/v * center")
+
+  expect_equal(modelExtract(f, "f(depot)"),
+               "f(depot) <- fDepot")
+
+  expect_equal(modelExtract(f, "alag(depot)"),
+               "lag(depot) <- fDepot")
+
+  expect_equal(modelExtract(f, "lag(depot)"),
+               "lag(depot) <- fDepot")
+
+  expect_equal(modelExtract(f, "dur(depot)"),
+               "dur(depot) <- fDepot")
+
+  expect_equal(modelExtract(f, "rate(depot)"),
+               "rate(depot) <- fDepot")
+
+  expect_equal(modelExtract(f, "depot(0)"),
+               "depot(0) <- fDepot")
+
+  one.compartment <- function() {
+    ini({
+      tka <- 0.45 # Log Ka
+      tcl <- 1 # Log Cl
+      tv <- 3.45    # Log V
       eta.ka ~ 0.6
       eta.cl ~ 0.3
       eta.v ~ 0.1
@@ -23,19 +84,6 @@ test_that("modelExtract and related functions", {
 
   f <- one.compartment()
 
-  tmp <- "d/dt(center)"
-
-  expect_equal(modelExtract(f, tmp),
-               "d/dt(center) = ka * depot - cl/v * center")
-
-  tmp <- list(tmp="d/dt(center)")
-  expect_equal(modelExtract(f, tmp$tmp),
-               "d/dt(center) = ka * depot - cl/v * center")
-
-  tmp <- list(tmp=list(tmp="d/dt(center)"))
-  expect_equal(modelExtract(f, tmp$tmp$tmp),
-               "d/dt(center) = ka * depot - cl/v * center")
-
   expect_equal(modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE),
                structure(list(quote(ka <- exp(tka + eta.ka)),
                               quote(cl <- exp(tcl + eta.cl)),
@@ -45,7 +93,7 @@ test_that("modelExtract and related functions", {
                               str2lang("cp = center/v"),
                               quote(cp ~ add(add.sd))),
                          lines = 1:7))
-  
+
   expect_equal(modelExtract(f, "ka", expression=FALSE, endpoint=FALSE, lines=TRUE),
                structure("ka <- exp(tka + eta.ka)", lines = 1L))
 
@@ -85,7 +133,7 @@ test_that("modelExtract and related functions", {
       cp ~ add(add.sd)
     })
   }
-  
+
   expect_equal(modelExtract(one.compartment, "cl", expression=FALSE, endpoint=FALSE),
                c("cl <- tcl", "cl <- cl * exp(eta.cl)"))
 

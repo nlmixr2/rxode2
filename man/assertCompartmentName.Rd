@@ -4,6 +4,8 @@
 \alias{assertCompartmentName}
 \alias{assertVariableName}
 \alias{assertParameterValue}
+\alias{assertExists}
+\alias{testExists}
 \title{Verify that a value is a valid nlmixr2 compartment name}
 \usage{
 assertCompartmentName(x)
@@ -11,9 +13,15 @@ assertCompartmentName(x)
 assertVariableName(x)
 
 assertParameterValue(x)
+
+assertExists(ui, x)
+
+testExists(ui, x)
 }
 \arguments{
 \item{x}{The value to test}
+
+\item{ui}{when needed, this is the rxode2/nlmixr2 model}
 }
 \value{
 The value or an error
@@ -29,11 +37,18 @@ nlmixr2 variable name
 \item \code{assertParameterValue()}: Verify that a value is a valid
 nlmixr2 parameter value
 
+\item \code{assertExists()}: Assert compartment/variable exists
+
+\item \code{testExists()}: Test compartment/variable exists
+
 }}
 \seealso{
 Other Assertions: 
 \code{\link{assertCompartmentExists}()},
-\code{\link{assertRxUi}()}
+\code{\link{assertCompartmentNew}()},
+\code{\link{assertRxUi}()},
+\code{\link{assertVariableExists}()},
+\code{\link{assertVariableNew}()}
 }
 \author{
 Bill Denney

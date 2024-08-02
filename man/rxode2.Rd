@@ -333,7 +333,7 @@ compilation model.
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 
-## rxode2 2.1.3.9000 model named rx_7b1f8bbd81bb1929019fbc16318c0656 model (ready). 
+## rxode2 2.1.3.9000 model named rx_f286e2ac84606f0a7fb7f7dbc29b33a8 model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -346,7 +346,7 @@ mod$simulationIniModel
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{## using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’
 
-## rxode2 2.1.3.9000 model named rx_11da1c69027ac4e46fc6819b8ba8d5ee model (ready). 
+## rxode2 2.1.3.9000 model named rx_d2c9887afabffb922c91402f800196ce model (ready). 
 ## x$state: depot, center
 ## x$stateExtra: cp
 ## x$params: tka, tcl, tv, add.sd, eta.ka, eta.cl, eta.v, rxerr.cp
@@ -578,11 +578,15 @@ table:\tabular{lll}{
    rxgeom \tab Generate one deviate from the geometric distribution for each observation \tab  \cr
    rxpois \tab Generate one deviate from the poission distribution for each observation \tab  \cr
    rxt \tab Generate one deviate from the t distribtuion for each observation \tab  \cr
-   tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt) \tab  \cr
-   tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt) \tab  \cr
+   tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt); no dose=NA \tab  \cr
+   tad0() or tad0(x) \tab Time after dose (tad0()) or time after dose for a compartment tad0(cmt); no dose=0 \tab  \cr
+   tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
+   tafd0() or tafd0(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
    dosenum() \tab Dose Number \tab  \cr
-   tlast() or tlast(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment \tab  \cr
-   tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment \tab  \cr
+   tlast() or tlast(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment; no dose=NA \tab  \cr
+   tlast0() or tlast0(cmt) \tab Time of Last dose; This takes into consideration any lag time, so if there is a dose at time 3 and a lag of 1, the time of last dose would be 4. tlast(cmt) calculates the time since last dose of a compartment; no dose=0 \tab  \cr
+   tfirst() or tfirst(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=NA \tab  \cr
+   tfirst0() or tfirst0(cmt) \tab Time since first dose or time since first dose of a compartment; no dose=0 \tab  \cr
    prod(…) \tab product of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
    sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
    max(…) \tab maximum of a group of numbers \tab  \cr

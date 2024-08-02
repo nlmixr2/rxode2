@@ -4,6 +4,11 @@
 
 - Error when specifying `wd` without `modName`
 
+## Possible breaking changes (though unlikely)
+
+- `iCov` is no longer merged to the event dataset.  This makes solving
+  with `iCov` slightly faster (#743)
+
 ## New features
 
 - Empty arguments to `rxRename()` give a warning (#688)
@@ -11,16 +16,27 @@
 - Promoting from covariates to parameters with model piping (via `ini()`) now
   allows setting bounds (#692)
 
-  * Added `assertCompartmentName()`, `assertCompartmentExists()`,
-  `assertVariableName()`, and `assertParameterValue()` to verify that
-  a value is a valid nlmixr2 compartment name, nlmixr2 compartment
-  exists in the model, variable name, or parameter value,
-  respectively (#726)
+ - Added `assertCompartmentName()`, `assertCompartmentExists()`,
+  `assertCompartmentNew()`, `testCompartmentExists()`,
+  `assertVariableExists()` `testVariableExists()`,
+  `assertVariableNew()`, `assertVariableName()`, and
+  `assertParameterValue()` to verify that a value is a valid nlmixr2
+  compartment name, nlmixr2 compartment/variable exists in the model,
+  variable name, or parameter value (#726; #733)
 
+- Added functions `tad0()`, `tafd0()`, `tlast0()` and `tfirst0()` that
+  will give `0` instead of `NA` when the dose has not been
+  administered yet.  This is useful for use in ODEs since `NA`s will
+  break the solving (so can be used a bit more robustly with models
+  like Weibull absorption).
 
 ## Bug fixes
 
 - Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
+
+- Model extraction `modelExtract()` will now extract model properties.  Note that the model property of `alag(cmt)` and `lag(cmt)` will give the same value. See #745
+
+- When assigning reserved variables, the parser will error. See #744
 
 ## Big change
 

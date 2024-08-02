@@ -15,7 +15,8 @@ etTrans(
   keep = character(0),
   addlKeepsCov = FALSE,
   addlDropSs = TRUE,
-  ssAtDoseTime = TRUE
+  ssAtDoseTime = TRUE,
+  iCov = NULL
 )
 }
 \arguments{

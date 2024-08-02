@@ -2,25 +2,37 @@
 % Please edit documentation in R/assert.R
 \name{assertCompartmentExists}
 \alias{assertCompartmentExists}
-\title{Verify that a value is a valid nlmixr2 compartment name in a model}
+\alias{testCompartmentExists}
+\title{Verify that the compartment exists in a model}
 \usage{
 assertCompartmentExists(ui, x)
+
+testCompartmentExists(ui, x)
 }
 \arguments{
-\item{ui}{is the model to test that a model paramet exists}
+\item{ui}{is the model to test}
 
-\item{x}{The value to test}
+\item{x}{The value to test (can be a vector of strings)}
 }
 \value{
-The value or an error
+the value of the compartment that exists; if it is a vector
+returns the first item that matches
 }
 \description{
-Verify that a value is a valid nlmixr2 compartment name in a model
+Verify that the compartment exists in a model
 }
+\section{Functions}{
+\itemize{
+\item \code{testCompartmentExists()}: Test if compartment exists
+
+}}
 \seealso{
 Other Assertions: 
 \code{\link{assertCompartmentName}()},
-\code{\link{assertRxUi}()}
+\code{\link{assertCompartmentNew}()},
+\code{\link{assertRxUi}()},
+\code{\link{assertVariableExists}()},
+\code{\link{assertVariableNew}()}
 }
 \author{
 Matthew Fidler & Bill Denney

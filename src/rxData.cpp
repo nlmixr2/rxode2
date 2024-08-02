@@ -86,7 +86,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt,
              CharacterVector keep,
              bool addlKeepsCov,
              bool addlDropSs,
-             bool ssAtDoseTime);
+             bool ssAtDoseTime,
+             Nullable<List> iCovIn = R_NilValue);
 
 RObject et_(List input, List et__);
 
@@ -2981,7 +2982,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
                            false, false, true, R_NilValue,
                            rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime]));
+                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                           rxControl[Rxc_iCov]));
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");
