@@ -727,6 +727,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       liName[i] = tmpS;
       if (tmpS == "id") {
         idIcovCol=i;
+        continue;
       }
       else if (tmpS == "evid") {
         stop(_("cannot specify 'evid' in 'iCov'"));
@@ -2275,7 +2276,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   nme1[0] = "ID";
 
   for (j = 0; j < (int)(covCol.size()); j++){
-    if (hasCmt && j == cmtI){
+    int covColj = covCol[j];
+    if (hasCmt && covColj >= 0 && j == cmtI) {
       lst[baseSize+j] = IntegerVector(idxOutput.size()-rmAmt);
       nme[baseSize+j] = pars[covParPos[j]];
       sub0[baseSize+j] = false;
@@ -2283,10 +2285,26 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       nme1[1+j] = nme[baseSize+j];
       sub1[1+j] = true;
     } else {
-      lst[baseSize+j] = NumericVector(idxOutput.size()-rmAmt);
+      nvTmp = NumericVector(nid);
       nme[baseSize+j] = pars[covParPos[j]];
+      if (covColj < 0) {
+        // invariant covariates so don't allocate space
+        if (allTimeVar) {
+          lst1[1+j] = NumericVector(nid);
+        } else {
+          lst[baseSize+j] = NumericVector(0);
+        }
+        NumericVector curNV = iCov[-covColj-1];
+        for (int idx1c=curNV.size(); idx1c--;) {
+          double vcur = curNV[idxIcov[idx1c]];
+          fPars[idx1c*pars.size()+covParPos[j]] = vcur;
+          nvTmp[idx1c] = vcur;
+        }
+      } else {
+        lst[baseSize+j] = NumericVector(idxOutput.size()-rmAmt);
+      }
+      lst1[1+j] = nvTmp;
       sub0[baseSize+j] = false;
-      lst1[1+j] = NumericVector(nid);
       nme1[1+j] = nme[baseSize+j];
       sub1[1+j] = true;
     }
@@ -2435,7 +2453,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
       for (j = 0; j < (int)(covCol.size()); j++){
-        if (hasCmt && j == cmtI){
+        int covColj = covCol[j];
+        if (hasCmt && covColj >= 0 &&j == cmtI){
           ivTmp = as<IntegerVector>(lst[baseSize+j]);
           ivTmp[jj] = cmtF[idxOutput[i]];
           if (!cmtFadd){
@@ -2446,13 +2465,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             nTv++;
           }
         } else {
+          if (!allTimeVar && covColj < 0) continue;
           nvTmp = as<NumericVector>(lst[baseSize+j]);
           if (idxInput[idxOutput[i]] == -1){
             // These should be ignored for interpolation.
             nvTmp[jj] = NA_REAL;
           } else {
             // These covariates are added.
-            int covColj = covCol[j];
             SEXP cur;
             if (covColj >= 0) {
               // This comes from the original data
@@ -2471,11 +2490,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               // nvTmp2 in this case is the column sorted by id
               // so we get the current
               // idx1 = the index of the current id
-              nvTmp[jj] = nvTmp2[idxIcov[idx1]];
-              nvTmp = as<NumericVector>(lst1[1+j]);
-              double vCur = nvTmp2[idx1];
-              nvTmp[idx1] = vCur;
-              fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
+              if (allTimeVar) {
+                nvTmp[jj] = nvTmp2[idxIcov[idx1]];
+              }
+              // nvTmp = as<NumericVector>(lst1[1+j]);
+              // double vCur = nvTmp2[idx1];
+              // nvTmp[idx1] = vCur;
+              // fPars[idx1*pars.size()+covParPos[j]] = nvTmp[idx1];
             } else {
               nvTmp[jj] = nvTmp2[idxInput[idxOutput[i]]];
               if (addId) {
