@@ -794,8 +794,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
       for (j = keep.size(); j--;){
-        if (as<std::string>(dName[i]) == as<std::string>(keep[j])){
-          if (tmpS == "evid") stop(_("cannot keep 'evid'; try 'addDosing'"));
+        if (as<std::string>(diName[i]) == as<std::string>(keep[j])){
           keepCol.push_back(-i-1);
           keepI[j] = 2;
           break;
@@ -810,14 +809,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+  std::string wKeep = "";
   if ((int)(keepCol.size()) != (int)keep.size()){
-    std::string wKeep = "Cannot keep missing columns:";
+    wKeep = "Cannot keep missing columns:";
     for (j = 0; j < keep.size(); j++){
       if (keepI[j] == 0){
         wKeep += " " + as<std::string>(keep[j]);
       }
     }
-    Rf_warningcall(R_NilValue, "%s", wKeep.c_str());
   }
   List covUnits(covCol.size());
   CharacterVector covUnitsN(covCol.size());
@@ -2174,7 +2173,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   _lastT0 = clock();
 #endif
 
-
   if (idxOutput.size()==0) stop(_("no rows in event table or input data"));
   lastId = id[idxOutput.back()]+42;
   int rmAmt = 0;
@@ -2314,9 +2312,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector keepLc(keepCol.size());
   for (j = 0; j < (int)(keepCol.size()); j++){
     keepL[j] = NumericVector(idxOutput.size()-rmAmt);
-    keepN[j] = dName[keepCol[j]];
+    int keepColj = keepCol[j];
+    const char* cmp;
+    if (keepColj >= 0) {
+      keepN[j] = dName[keepColj];
+      cmp = CHAR(dName[keepColj]);
+    } else {
+      keepN[j] = diName[-keepColj-1];
+      cmp = CHAR(diName[-keepColj-1]);
+    }
     keepLc[j] = 0;
-    const char* cmp = CHAR(dName[keepCol[j]]);
     for (int ip = pars.size(); ip--;){
       if (!strcmp(cmp, CHAR(pars[ip]))) {
         keepLc[j] = ip+1;
@@ -2338,8 +2343,84 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int kk;
   List inDataFK(keepCol.size());
   List inDataFKL(keepCol.size());
+  bool calcIcovKeepIdx = false;
+  IntegerVector iCovKeepIdx;
   for (j = 0; j < (int)(keepCol.size()); j++){
-    SEXP cur = inData[keepCol[j]];
+    int keepColj = keepCol[j];
+    SEXP cur;
+    if (keepColj >= 0) {
+      cur = inData[keepColj];
+    } else {
+      // Need to create a new vector that as if it was a covariate from the data
+      if (!calcIcovKeepIdx) {
+        List inDf(2);
+        inDf[0] = inId;
+        IntegerVector inDfIdx(inId.size());
+        std::iota(inDfIdx.begin(), inDfIdx.end(), 0);
+        inDf[1]  = inDfIdx;
+        inDf.attr("names") = CharacterVector::create("id", "idx0");
+        inDf.attr("class") = "data.frame";
+        inDf.attr("row.names") = IntegerVector::create(NA_INTEGER, -inId.size());
+        List iDf(2);
+        iDf[0] = inIdCov;
+        IntegerVector iDfIdx(inIdCov.size());
+        std::iota(iDfIdx.begin(), iDfIdx.end(), 0);
+        iDf[1]  = iDfIdx;
+        iDf.attr("names") = CharacterVector::create("id", "idxi");
+        iDf.attr("class") = "data.frame";
+        iDf.attr("row.names") = IntegerVector::create(NA_INTEGER, -inIdCov.size());
+        Function getIcovIdx = getRxFn(".getIcovIdx");
+        iCovKeepIdx = getIcovIdx(inDf, iDf);
+      }
+      SEXP cur2 = iCov[-keepColj-1];
+      if (TYPEOF(cur2) == STRSXP) {
+        CharacterVector cur3 = as<CharacterVector>(cur2);
+        CharacterVector cur4(iCovKeepIdx.size());
+        for (int i = iCovKeepIdx.size(); i--;) {
+          cur4[i] = cur3[iCovKeepIdx[i]];
+        }
+        cur = wrap(cur4);
+      } else if (TYPEOF(cur2) == INTSXP){
+        // Create an integer vector for each element
+        IntegerVector cur3 = as<IntegerVector>(cur2);
+        IntegerVector cur4(iCovKeepIdx.size());
+        for (int i = iCovKeepIdx.size(); i--;) {
+          cur4[i] = cur3[iCovKeepIdx[i]];
+        }
+        // save attributes
+        std::vector<std::string> attr = cur3.attributeNames();
+        for (int i = attr.size(); i--;) {
+          cur4.attr(attr[i]) = cur3.attr(attr[i]);
+        }
+        cur = wrap(cur4);
+      } else if (TYPEOF(cur2) == REALSXP) {
+        NumericVector cur3 = as<NumericVector>(cur2);
+        NumericVector cur4(iCovKeepIdx.size());
+        for (int i = iCovKeepIdx.size(); i--;) {
+          cur4[i] = cur3[iCovKeepIdx[i]];
+        }
+        // save attributes
+        std::vector<std::string> attr = cur3.attributeNames();
+        for (int i = attr.size(); i--;) {
+          cur4.attr(attr[i]) = cur3.attr(attr[i]);
+        }
+        cur = wrap(cur4);
+      } else if (TYPEOF(cur2) == LGLSXP) {
+        LogicalVector cur3 = as<LogicalVector>(cur2);
+        LogicalVector cur4(iCovKeepIdx.size());
+        for (int i = iCovKeepIdx.size(); i--;) {
+          cur4[i] = cur3[iCovKeepIdx[i]];
+        }
+        // save attributes
+        std::vector<std::string> attr = cur3.attributeNames();
+        for (int i = attr.size(); i--;) {
+          cur4.attr(attr[i]) = cur3.attr(attr[i]);
+        }
+        cur = wrap(cur4);
+      } else {
+        stop(_("the columns that are kept must be either an underlying logical, string, factor, integer number, or real number"));
+      }
+    }
     RObject calc;
     List curType(3);
     if (TYPEOF(cur) == STRSXP){
@@ -2730,6 +2811,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time15: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+  if (wKeep != "")
+    Rf_warningcall(R_NilValue, "%s", wKeep.c_str());
   return lstF;
 }
 
