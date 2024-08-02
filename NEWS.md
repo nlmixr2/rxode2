@@ -4,6 +4,11 @@
 
 - Error when specifying `wd` without `modName`
 
+## Possible breaking changes (though unlikely)
+
+- `iCov` is no longer merged to the event dataset.  This makes solving
+  with `iCov` slightly faster (#743)
+
 ## New features
 
 - Empty arguments to `rxRename()` give a warning (#688)
