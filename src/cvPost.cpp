@@ -35,7 +35,8 @@ List etTrans(List inData, const RObject &mv, bool addCmt,
              CharacterVector keep,
              bool addlKeepsCov,
              bool addlDropSs,
-             bool ssAtDoseTime);
+             bool ssAtDoseTime,
+             Nullable<List> iCovIn);
 SEXP nestingInfo_(SEXP omega, List data);
 
 List rxExpandNesting(const RObject& obj, List& nestingInfo,
@@ -831,7 +832,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_keepF],
                                control[Rxc_addlKeepsCov],
                                control[Rxc_addlDropSs],
-                               control[Rxc_ssAtDoseTime])); pro++;
+                               control[Rxc_ssAtDoseTime],
+                               control[Rxc_iCov])); pro++;
       rxModelsAssign(".nestEvents", events);
       RObject cls = Rf_getAttrib(events, R_ClassSymbol);
       List rxLst = cls.attr(".rxode2.lst");
@@ -1013,7 +1015,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_keepF],
                                control[Rxc_addlKeepsCov],
                                control[Rxc_addlDropSs],
-                               control[Rxc_ssAtDoseTime])); pro++;
+                               control[Rxc_ssAtDoseTime],
+                               control[Rxc_iCov])); pro++;
       rxModelsAssign(".nestEvents", events);
     } else if (!Rf_inherits(events, "rxEtTrans")){
       events = PROTECT(etTrans(as<List>(events), nestObj,
@@ -1022,7 +1025,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_keepF],
                                control[Rxc_addlKeepsCov],
                                control[Rxc_addlDropSs],
-                               control[Rxc_ssAtDoseTime])); pro++;
+                               control[Rxc_ssAtDoseTime],
+                               control[Rxc_iCov])); pro++;
       rxModelsAssign(".nestEvents", events);
     }
     int nobs =  Rf_length(VECTOR_ELT(events, 0));

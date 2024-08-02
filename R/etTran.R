@@ -1,6 +1,27 @@
 .isIntegerish <- function(v) {
   checkmate::testIntegerish(v)
 }
+#' This gives the iCov index when generating keep from iCov
+#'
+#'
+#' @param fullData Full data index information
+#'
+#'  This dataset has an "id" from the input event table and idx0 a
+#'  0-based index of the full dataset
+#'
+#' @param iCovData This dataset has an "id" from the input `iCov`
+#'   dataset and "idxi" which is a zero based `iCov` index
+#'
+#' @return An C-based index of where each item from the `iCov`
+#'   data-frame to create the keep data-est as if the `iCov` came from
+#'   the first dataset
+#' @author Matthew L. Fidler
+#' @noRd
+.getIcovIdx <- function(fullData, iCovData) {
+  .m <- merge(fullData, iCovData, by="id", all.x=TRUE)
+  .m <- .m[order(.m$idx0),]
+  .m$idxi
+}
 
 .DTEnv <- NULL
 .getDTEnv <- function() {

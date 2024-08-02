@@ -216,7 +216,8 @@
 #'   are the same components as `linDiff`
 #'
 #' @param iCov A data frame of individual non-time varying covariates
-#'     to combine with the `events` dataset by merge.
+#'   to combine with the `events` dataset.  The `iCov` dataset has one
+#'   covariate per ID and should match the event table
 #'
 #' @param covsInterpolation specifies the interpolation method for
 #'     time-varying covariates. When solving ODEs it often samples
@@ -1640,14 +1641,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
         stop("iCov has duplicate IDs, cannot continue")
       }
       names(.ctl$iCov)[.icovId] <- .by
-      .lEvents <- length(.events[, 1])
-      .events <- merge(.events, .ctl$iCov, by = .by)
-      if (.lEvents != length(.events[, 1])) {
-        warning("combining iCov and events dropped some event information")
-      }
-      if (length(unique(.events[[.by]])) != length(.ctl$iCov[, 1])) {
-        warning("combining iCov and events dropped some iCov information")
-      }
+      ## .lEvents <- length(.events[, 1])
+      ## .events <- merge(.events, .ctl$iCov, by = .by)
+      ## if (.lEvents != length(.events[, 1])) {
+      ##   warning("combining iCov and events dropped some event information")
+      ## }
+      ## if (length(unique(.events[[.by]])) != length(.ctl$iCov[, 1])) {
+      ##   warning("combining iCov and events dropped some iCov information")
+      ## }
       if (.useEvents) {
         events <- .events
       } else {

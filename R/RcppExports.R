@@ -187,13 +187,15 @@ etTransEvidIsObs <- function(isObsSexp) {
 #'   steady concentration at the actual time of dose, otherwise when
 #'   `FALSE` the doses are shifted
 #'
+#' @inheritParams rxSolve::rxSolve
+#'
 #' @return Object for solving in rxode2
 #'
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL) {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov)
 }
 
 rxEtTransAsDataFrame_ <- function(inData1) {
