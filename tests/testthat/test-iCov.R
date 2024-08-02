@@ -118,6 +118,17 @@ rxTest({
     expect_error(etTrans(ev, mod1, iCov=paramsDf2),
                  "the 'id' in the iCov must have 1 unique match to the event table")
 
+    # Now check for proper behavior
+
+    tmp <- etTrans(ev, mod1, iCov=paramsDf)
+    tmp2 <- attr(class(tmp), ".rxode2.lst")
+    class(tmp2) <- NULL
+
+    for (v in c("EC50", "Kout", "Kin", "V3", "Q", "V2", "CL", "KA")) {
+      expect_equal(tmp2$cov1[[v]], paramsDf[[v]])
+      expect_equal(tmp2$pars[v,], paramsDf[[v]])
+    }
+
     # Check keep of various sorts in iCov
     tmp <- rxSolve(mod1, ev, iCov=paramsDf, keep=c("CL", "V2", "ptS", "ptF", "ptI", "ptL"))
     expect_true(is.character(tmp$ptS))
@@ -131,11 +142,9 @@ rxTest({
     for (v in
          c("evid",  "time", "amt", "value", "cmt", "ytype", "state", "var", "dv",
            "rate","dur", "addl", "ii", "mdv", "cens", "limit", "method")) {
-      test_that(paste0("iCov error on '", v, "'"), {
-        names(paramsDf)[9] <- v
-        expect_error(etTrans(ev, mod1, iCov=paramsDf),
-                     paste0("cannot specify '", v,"' in 'iCov'"))
-      })
+      names(paramsDf)[9] <- v
+      expect_error(etTrans(ev, mod1, iCov=paramsDf),
+                   paste0("cannot specify '", v,"' in 'iCov'"))
     }
 
   })
