@@ -947,8 +947,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     Function convDate = rx[".convertExtra"];
     newInData =  convDate(newInData);
     return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
-                   combineDvid, CharacterVector(0), false, true, true,
-                   iCov = iCov);
+                   combineDvid, CharacterVector(0), false, true, true, iCov);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;
