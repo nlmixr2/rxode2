@@ -110,5 +110,15 @@ rxTest({
     expect_true(is.logical(tmp$ptL))
     expect_true(all((tmp$ptI <= 50) == tmp$ptL))
 
+    for (v in
+         c("evid",  "time", "amt", "value", "cmt", "ytype", "state", "var", "dv",
+           "rate","dur", "addl", "ii", "mdv", "cens", "limit", "method")) {
+      test_that(paste0("iCov error on '", v, "'"), {
+        names(paramsDf)[9] <- v
+        expect_error(etTrans(ev, mod1, iCov=paramsDf),
+                     paste0("cannot specify '", v,"' in 'iCov'"))
+      })
+    }
+
   })
 })
