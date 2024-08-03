@@ -4,8 +4,8 @@ static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
   if (nodeHas(interp_statement)) {
     if (*i == 0) {
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      // ('locf' | 'constant' | 'linear' | 'nocb' | 'midpoint')
-      if (!strcmp(v, "locf") || !strcmp(v, "constant")) {
+      // ('locf' | 'linear' | 'nocb' | 'midpoint')
+      if (!strcmp(v, "locf")) {
         tb.interpC = 2;
       } else if (!strcmp(v, "linear")) {
         tb.interpC = 1;
