@@ -1774,7 +1774,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
-
   if (rxode2.debug) {
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,

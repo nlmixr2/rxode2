@@ -804,11 +804,8 @@ List rxModelVars_blank() {
   ret[21] = interp;
   retN[21] = "interp";
 
-
   ret[22] = IntegerVector::create(0); // timeId
   retN[22] = "timeId";
-
-
 
   ret[23] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
   retN[23] = "md5";
@@ -917,28 +914,40 @@ List rxModelVars_list(const RObject &obj) {
   bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, dfdy=false;
   List lobj  = asList(obj, "rxModelVars_list");
   CharacterVector nobj = lobj.names();
+  // create a blank and then copy everthing over.  to return a valid
+  // object need at least params, lhs, state, trans, ini, model, md5,
+  // and dfdy in the object
+  List blank = rxModelVars_blank();
+  CharacterVector nobj2 = blank.names();
   for (unsigned int i = 0; i < nobj.size(); i++){
     if (nobj[i] == "modVars"){
       return(rxModelVars_(lobj["modVars"]));
-    } else if (!params && nobj[i]== "params"){
-      params=true;
-    } else if (!lhs && nobj[i] == "lhs"){
-      lhs=true;
-    } else if (!state && nobj[i] == "state"){
-      state=true;
-    } else if (!trans && nobj[i] == "trans"){
-      trans=true;
-    } else if (!ini && nobj[i] == "ini"){
-      ini = true;
-    } else if (!model && nobj[i] == "model"){
-      model = true;
-    } else if (!md5 && nobj[i] == "md5"){
-      md5 = true;
-    } else if (!dfdy && nobj[i] == "dfdy"){
-      dfdy = true;
-    } else if (params && lhs && state && trans && ini && model && md5 && dfdy) {
-      return lobj;
     }
+    for (unsigned int j = 0; j < nobj2.size(); j++){
+      if (nobj[i] == nobj2[j]){
+        if (nobj[i] == "params"){
+          params = true;
+        } else if (nobj[i] == "lhs"){
+          lhs = true;
+        } else if (nobj[i] == "state"){
+          state = true;
+        } else if (nobj[i] == "trans"){
+          trans = true;
+        } else if (nobj[i] == "ini"){
+          ini = true;
+        } else if (nobj[i] == "model"){
+          model = true;
+        } else if (nobj[i] == "md5"){
+          md5 = true;
+        } else if (nobj[i] == "dfdy"){
+          dfdy = true;
+        }
+        break;
+      }
+    }
+  }
+  if (params && lhs && state && trans && ini && model && md5 && dfdy) {
+    return blank;
   }
   return rxModelVars_lastChance(obj);
 }
