@@ -4668,9 +4668,6 @@ static inline void iniRx(rx_solve* rx) {
   op->scale = NULL;
   op->do_par_cov=false;
   // approx fun options
-  op->f1   = 0.0;
-  op->f2   = 1.0;
-  op->kind = 0;
   op->is_locf = 1;
   op->cores = 0;
   op->extraCmt = 0;
@@ -5294,21 +5291,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // approx fun options
     op->is_locf = covs_interpolation;
     if (op->is_locf == 0){//linear
-      op->f1 = 1.0;
-      op->f2 = 0.0;
-      op->kind=1;
     } else if (op->is_locf == 1){ // locf
-      op->f2 = 0.0;
-      op->f1 = 1.0;
-      op->kind = 0;
-      op->is_locf=1;
     } else if (op->is_locf == 2){ //nocb
-      op->f2 = 1.0;
-      op->f1 = 0.0;
-      op->kind = 0;
-    }  else if (op->is_locf == 3){ // midpoint
-      op->f1 = op->f2 = 0.5;
-      op->kind = 0;
+    } else if (op->is_locf == 3){ // midpoint
     } else {
       rxSolveFree();
       stop(_("unknown covariate interpolation specified"));

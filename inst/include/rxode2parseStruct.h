@@ -44,9 +44,6 @@ typedef struct {
   double *scale;
   bool do_par_cov;
   // approx fun options
-  double f1;
-  double f2;
-  int kind;
   int is_locf;
   int cores;
   int doesRandom;
@@ -214,6 +211,8 @@ typedef struct {
   //double *extraDoseIi; // ii doses unsupported
   bool lastIsSs2;
   double *timeThread;
+  int idxLow;
+  int idxHi;
 } rx_solving_options_ind;
 
 typedef struct {
