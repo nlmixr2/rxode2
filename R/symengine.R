@@ -1441,6 +1441,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                )
         }
       } else {
+        if (.fun %in% c("param", "dvid", "cmt", "locf", "nocb",
+                        "midpoint", "linear")) return(NULL)
         .udf <- try(get(.fun, envir = .rxToSE.envir$parent, mode="function"), silent =TRUE)
         if (inherits(.udf, "try-error")) {
           .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
