@@ -52,6 +52,10 @@ doses (when \code{TRUE}) or retained (when \code{FALSE})}
 \item{ssAtDoseTime}{Boolean that when \code{TRUE} back calculates the
 steady concentration at the actual time of dose, otherwise when
 \code{FALSE} the doses are shifted}
+
+\item{iCov}{A data frame of individual non-time varying covariates
+to combine with the \code{events} dataset.  The \code{iCov} dataset has one
+covariate per ID and should match the event table}
 }
 \value{
 Object for solving in rxode2

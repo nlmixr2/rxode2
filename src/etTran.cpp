@@ -554,7 +554,7 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   steady concentration at the actual time of dose, otherwise when
 //'   `FALSE` the doses are shifted
 //'
-//' @inheritParams rxSolve::rxSolve
+//' @inheritParams rxSolve
 //'
 //' @return Object for solving in rxode2
 //'
