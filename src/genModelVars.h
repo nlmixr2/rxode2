@@ -319,7 +319,7 @@ static inline void assertLhsAndDualLhsDiffNotLegal(int islhs, int i, char *buf) 
   }
 }
 
-static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs) {
+static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *interp) {
   int li=0, pi=0, sli = 0;
   char *buf;
   for (int i=0; i<NV; i++) {
@@ -334,6 +334,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs) {
     /* is a state var */
     if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi)) {
       paramSubThetaEtaToBufw(buf);
+      interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
       SET_STRING_ELT(params, pi++, mkChar(_bufw.s));
     }
   }

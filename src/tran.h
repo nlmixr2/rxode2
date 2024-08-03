@@ -27,6 +27,13 @@ lhs symbols?
 =29
 =70 LHS + param
 */
+  int *interp;  // Interpolation flag:
+  // 0, = default via any declaration including param()
+  // 1 = linear via linear() or lin()
+  // 2 = constant/locf  via constant() or locf()
+  // 3 = nocb via nocb()
+  // 4 = midpoint via midpoint()
+  int interpC;// = 0; // current interpolation method
   int *ini;        /* initial variable assignment =2 if there are two assignments */
   int *mtime;
   double *iniv;        /* Initial values */
@@ -178,6 +185,7 @@ typedef struct nodeInfo {
   int theta;
   int cmt_statement;
   int param_statement;
+  int interp_statement;
   int dvid_statementI;
   int ifelse;
   int ifelse_statement;
@@ -186,6 +194,7 @@ typedef struct nodeInfo {
   int equality_str1;
   int equality_str2;
   int simfun_statement;
+  int relational_op;
 } nodeInfo;
 
 static inline void niReset(nodeInfo *ni){
@@ -234,6 +243,7 @@ static inline void niReset(nodeInfo *ni){
   ni->theta0_noout = -1;
   ni->cmt_statement = -1;
   ni->param_statement = -1;
+  ni->interp_statement = -1;
   ni->dvid_statementI = -1;
   ni->ifelse = -1;
   ni->ifelse_statement=-1;
@@ -242,6 +252,7 @@ static inline void niReset(nodeInfo *ni){
   ni->equality_str1 = -1;
   ni->equality_str2 = -1;
   ni->simfun_statement = -1;
+  ni->relational_op = -1;
 }
 
 #define STRINGIFY(...) STRINGIFY_AUX(__VA_ARGS__)

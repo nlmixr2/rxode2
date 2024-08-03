@@ -737,8 +737,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(20);
-  CharacterVector retN(20);
+  List ret(24);
+  CharacterVector retN(24);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -773,10 +773,42 @@ List rxModelVars_blank() {
   retN[15] = "dvid";
   ret[16] = List::create();
   retN[16] = "indLin";
-  ret[17] = IntegerVector::create(0); // timeId
-  retN[17] = "timeId";
-  ret[18] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[18] = "md5";
+
+  ret[17] = IntegerVector::create(_["ncmt"] = 0,
+                                  _["ka"] = 0,
+                                  _["linB"] = 0,
+                                  _["maxeta"] = 0,
+                                  _["maxtheta"] = 0,
+                                  _["hasCmt"] = 0,
+                                  _["linCmt"] = -100,
+                                  _["linCmtFlg"] = 0,
+                                  _["nIndSim"] = 0,
+                                  _["simflg"] = 0,
+                                  _["thread"] = 0,
+                                  _["nLlik"] = 0); // flags
+  retN[17] = "flags";
+
+  ret[18] = CharacterVector::create();
+  retN[18] = "slhs";
+
+  ret[19] = CharacterVector::create();
+  retN[19] = "alag";
+
+  ret[20] = IntegerVector::create(0); // timeId
+  retN[20] = "udf";
+
+  IntegerVector interp = IntegerVector::create();
+  interp.attr("names") = CharacterVector::create();
+  interp.attr("levels") = CharacterVector::create("default", "linear", "locf", "nocb", "midpoint");
+  interp.attr("class") = "factor";
+  ret[21] = interp;
+  retN[21] = "interp";
+
+  ret[22] = IntegerVector::create(0); // timeId
+  retN[22] = "timeId";
+
+  ret[23] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[23] = "md5";
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
   return ret;
@@ -882,28 +914,40 @@ List rxModelVars_list(const RObject &obj) {
   bool params=false, lhs=false, state=false, trans=false, ini=false, model=false, md5=false, dfdy=false;
   List lobj  = asList(obj, "rxModelVars_list");
   CharacterVector nobj = lobj.names();
+  // create a blank and then copy everthing over.  to return a valid
+  // object need at least params, lhs, state, trans, ini, model, md5,
+  // and dfdy in the object
+  List blank = rxModelVars_blank();
+  CharacterVector nobj2 = blank.names();
   for (unsigned int i = 0; i < nobj.size(); i++){
     if (nobj[i] == "modVars"){
       return(rxModelVars_(lobj["modVars"]));
-    } else if (!params && nobj[i]== "params"){
-      params=true;
-    } else if (!lhs && nobj[i] == "lhs"){
-      lhs=true;
-    } else if (!state && nobj[i] == "state"){
-      state=true;
-    } else if (!trans && nobj[i] == "trans"){
-      trans=true;
-    } else if (!ini && nobj[i] == "ini"){
-      ini = true;
-    } else if (!model && nobj[i] == "model"){
-      model = true;
-    } else if (!md5 && nobj[i] == "md5"){
-      md5 = true;
-    } else if (!dfdy && nobj[i] == "dfdy"){
-      dfdy = true;
-    } else if (params && lhs && state && trans && ini && model && md5 && dfdy) {
-      return lobj;
     }
+    for (unsigned int j = 0; j < nobj2.size(); j++){
+      if (nobj[i] == nobj2[j]){
+        if (nobj[i] == "params"){
+          params = true;
+        } else if (nobj[i] == "lhs"){
+          lhs = true;
+        } else if (nobj[i] == "state"){
+          state = true;
+        } else if (nobj[i] == "trans"){
+          trans = true;
+        } else if (nobj[i] == "ini"){
+          ini = true;
+        } else if (nobj[i] == "model"){
+          model = true;
+        } else if (nobj[i] == "md5"){
+          md5 = true;
+        } else if (nobj[i] == "dfdy"){
+          dfdy = true;
+        }
+        break;
+      }
+    }
+  }
+  if (params && lhs && state && trans && ini && model && md5 && dfdy) {
+    return blank;
   }
   return rxModelVars_lastChance(obj);
 }
@@ -1395,6 +1439,7 @@ struct rx_globals {
   int *grc;
   int *gidose;
   int *gpar_cov;
+  int *gpar_covInterp;
 
   int *gParPos;
   int *gParPos2;
@@ -3496,7 +3541,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
     if (_globals.gevid != NULL) free(_globals.gevid);
-    _globals.gevid = (int*)calloc(3*evid.size()+dfN+si.size(), sizeof(int));
+    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+si.size(), sizeof(int));
     if (_globals.gevid == NULL){
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
@@ -3505,7 +3550,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     _globals.gidose = _globals.gevid + evid.size();
     _globals.gcens = _globals.gidose + evid.size();
     _globals.gpar_cov = _globals.gidose + evid.size();//[dfN];
-    _globals.gsi = _globals.gpar_cov + dfN;//[si.size()];
+    _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
+    _globals.gsi = _globals.gpar_covInterp + dfN;//[si.size()];
     std::copy(si.begin(),si.end(), &_globals.gsi[0]);
 
     int ntot = 1;
@@ -3583,10 +3629,15 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     ncov = 0;
     std::vector<int> covPos(dfN);
     curcovi=0;
+    IntegerVector interp0 = as<IntegerVector>(rxSolveDat->mv[RxMv_interp]);
     for (i = dfN; i--;){
       for (j = rxSolveDat->npars; j--;){
         if (pars[j] == dfNames[i]){
           _globals.gpar_cov[ncov] = j+1;
+          // We minus 2 here because that way that the covariates
+          // interpolation will match the interpolation method defined in
+          // the rxControl() object
+          _globals.gpar_covInterp[ncov] = interp0[j] - 2;
           covPos[ncov] = i;
           ncov++;
         }
@@ -3600,6 +3651,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       stop(_("can not allocate memory for the covariates"));
     }
     op->par_cov=&(_globals.gpar_cov[0]);
+    op->par_cov_interp = &(_globals.gpar_covInterp[0]);
     op->ncov=ncov;
     op->do_par_cov = (ncov > 0);
     // Make sure the covariates are a #ncov * all times size
@@ -4668,10 +4720,8 @@ static inline void iniRx(rx_solve* rx) {
   op->scale = NULL;
   op->do_par_cov=false;
   // approx fun options
-  op->f1   = 0.0;
-  op->f2   = 1.0;
-  op->kind = 0;
   op->is_locf = 1;
+  op->instant_backward = 1;
   op->cores = 0;
   op->extraCmt = 0;
   op->hmax2 = 0; // Determined by diff
@@ -5292,23 +5342,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _rxModels[as<std::string>(trans[RxMvTrans_model_vars])] = rxSolveDat->mv;
     snprintf(op->modNamePtr, 1000, "%s", (as<std::string>(trans[RxMvTrans_model_vars])).c_str());
     // approx fun options
+    op->instant_backward = asInt(rxControl[Rxc_naInterpolation], "naInterpolation");
     op->is_locf = covs_interpolation;
     if (op->is_locf == 0){//linear
-      op->f1 = 1.0;
-      op->f2 = 0.0;
-      op->kind=1;
     } else if (op->is_locf == 1){ // locf
-      op->f2 = 0.0;
-      op->f1 = 1.0;
-      op->kind = 0;
-      op->is_locf=1;
     } else if (op->is_locf == 2){ //nocb
-      op->f2 = 1.0;
-      op->f1 = 0.0;
-      op->kind = 0;
-    }  else if (op->is_locf == 3){ // midpoint
-      op->f1 = op->f2 = 0.5;
-      op->kind = 0;
+    } else if (op->is_locf == 3){ // midpoint
     } else {
       rxSolveFree();
       stop(_("unknown covariate interpolation specified"));

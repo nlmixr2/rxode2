@@ -62,6 +62,22 @@ d/dt(blood)     = a*intestine - b*blood
 
 .rxodeBuildCode <- function() {
   # This builds the code needed for rxode2
+  message("Generate grammar include file")
+  dparser::mkdparse(devtools::package_file("inst/tran.g"),
+                    devtools::package_file("src/"),
+                    grammar_ident="rxode2parse")
+  l <- readLines(devtools::package_file("src/tran.g.d_parser.c"))
+  .w <- which(grepl("#line ", l))
+  if (.w > 1L) {
+    .w <- .w[1L]
+    l[.w] <- sub("[#]line([^\"]*\").*(src.*)", "#line\\1\\2",l[.w])
+  }
+  tran.g.h <- file(devtools::package_file("src/tran.g.d_parser.h"), "wb")
+  writeLines(l, tran.g.h)
+  close(tran.g.h)
+  unlink(devtools::package_file("src/tran.g.d_parser.c"))
+
+
   # generate control
   try({
     message("generate defines")
