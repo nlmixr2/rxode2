@@ -737,8 +737,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(20);
-  CharacterVector retN(20);
+  List ret(24);
+  CharacterVector retN(24);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -773,10 +773,45 @@ List rxModelVars_blank() {
   retN[15] = "dvid";
   ret[16] = List::create();
   retN[16] = "indLin";
-  ret[17] = IntegerVector::create(0); // timeId
-  retN[17] = "timeId";
-  ret[18] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[18] = "md5";
+
+  ret[17] = IntegerVector::create(_["ncmt"] = 0,
+                                  _["ka"] = 0,
+                                  _["linB"] = 0,
+                                  _["maxeta"] = 0,
+                                  _["maxtheta"] = 0,
+                                  _["hasCmt"] = 0,
+                                  _["linCmt"] = -100,
+                                  _["linCmtFlg"] = 0,
+                                  _["nIndSim"] = 0,
+                                  _["simflg"] = 0,
+                                  _["thread"] = 0,
+                                  _["nLlik"] = 0); // flags
+  retN[17] = "flags";
+
+  ret[18] = CharacterVector::create();
+  retN[18] = "slhs";
+
+  ret[19] = CharacterVector::create();
+  retN[19] = "alag";
+
+  ret[20] = IntegerVector::create(0); // timeId
+  retN[20] = "udf";
+
+  IntegerVector interp = IntegerVector::create();
+  interp.attr("names") = CharacterVector::create();
+  interp.attr("levels") = CharacterVector::create("default", "linear", "locf", "nocb", "midpoint");
+  interp.attr("class") = "factor";
+  ret[21] = interp;
+  retN[21] = "interp";
+
+
+  ret[22] = IntegerVector::create(0); // timeId
+  retN[22] = "timeId";
+
+
+
+  ret[23] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[23] = "md5";
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
   return ret;
