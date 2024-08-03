@@ -6,6 +6,7 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
     if (new_or_ith(value)){
       // If it is new, add it
       addSymbolStr(value);
+      tb.interp[NV-1] = tb.interpC;
       // Ignored variables
       if (isTbsVar(value)){
         // If it is Transform both sides, suppress printouts
@@ -19,6 +20,15 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
       } else {
         tb.lh[tb.ix] = isLHSparam;
       }
+    }
+  } else if (nodeHas(relational_op)) {
+    // Relational operators include assignments
+    // These secondary assignments are not supported
+    if (!strcmp("<-", value) ||
+        !strcmp("->", value)) {
+      sPrint(&_gbuf,"assignment '%s' not allowed in this context", value);
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_gbuf.s);
     }
   }
 }

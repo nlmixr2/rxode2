@@ -47,6 +47,7 @@ rxSolve(
   ...,
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
+  naInterpolation = c("locf", "nocb"),
   addCov = TRUE,
   sigma = NULL,
   sigmaDf = NULL,
@@ -345,12 +346,36 @@ interpolated.  Currently this can be:
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
 covariate value.
-\item \code{"constant"} -- Last observation carried forward (the default).
-\item \code{"NOCB"} -- Next Observation Carried Backward.  This is the same method
+\item \code{"locf"} -- Last observation carried forward (the default).
+\item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
 \item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
 carried backward to midpoint.
+
+For time-varying covariates where a missing value is present, the
+interpolation method will use either "locf" or "nocb" throughout
+if they are the type of covariate interpolation that is selected.
+
+When using the linear or midpoint interpolation, the lower point
+in the interpolation will use locf to interpolate missing
+covariates and the upper point will use the nocb to interpolate
+missing covariates.
 }}
+
+\item{naInterpolation}{specifies the interpolation method for
+time-varying covariates when the instantaneous value is \code{NA} (not
+during an explicit interpolation) and the \code{covsInterpolation} is
+either \code{"midpoint"} or \code{"linear"}. This can be:
+\itemize{
+\item \code{"locf"} -- last observation carried forward (default)
+\item \code{"nocb"} -- next observation carried backward.
+}
+
+This will look for the prior value (backwards/locf) when
+instantaneously missing, or the next value when instantaneously
+missing.  If all the covariates are missing and you find the
+end/beginning of the individual record, switch direction.  If all
+are really missing, then return missing.}
 
 \item{addCov}{A boolean indicating if covariates should be added
 to the output matrix or data frame. By default this is

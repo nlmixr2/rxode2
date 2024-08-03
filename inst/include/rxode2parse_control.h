@@ -95,7 +95,8 @@
 #define Rxc_addlDropSs 91
 #define Rxc_ssAtDoseTime 92
 #define Rxc_ss2cancelAllPending 93
-#define Rxc__zeros 94
+#define Rxc_naInterpolation 94
+#define Rxc__zeros 95
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
@@ -117,8 +118,9 @@
 #define RxMv_slhs 18
 #define RxMv_alag 19
 #define RxMv_udf 20
-#define RxMv_timeId 21
-#define RxMv_md5 22
+#define RxMv_interp 21
+#define RxMv_timeId 22
+#define RxMv_md5 23
 #define RxMvFlag_ncmt 0
 #define RxMvFlag_ka 1
 #define RxMvFlag_linB 2

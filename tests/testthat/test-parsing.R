@@ -1252,8 +1252,12 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   badParse("Double assignment",
            "a <- 3 <- 1")
 
+
   badParse("Double assignment#2",
            "a = 3 = 1")
+
+  badParse("Double assignment #3",
+           "a <- 3 -> b")
 
 
   test_that("after isn't shown or garbled", {

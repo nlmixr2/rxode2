@@ -229,13 +229,37 @@
 #'     by solving the line between the observed covariates and extrapolating the new
 #'     covariate value.
 #'
-#' * `"constant"` -- Last observation carried forward (the default).
+#' * `"locf"` -- Last observation carried forward (the default).
 #'
-#' * `"NOCB"` -- Next Observation Carried Backward.  This is the same method
+#' * `"nocb"` -- Next Observation Carried Backward.  This is the same method
 #'       that NONMEM uses.
 #'
 #' * `"midpoint"` Last observation carried forward to midpoint; Next observation
 #'   carried backward to midpoint.
+#'
+#'   For time-varying covariates where a missing value is present, the
+#'   interpolation method will use either "locf" or "nocb" throughout
+#'   if they are the type of covariate interpolation that is selected.
+#'
+#'   When using the linear or midpoint interpolation, the lower point
+#'   in the interpolation will use locf to interpolate missing
+#'   covariates and the upper point will use the nocb to interpolate
+#'   missing covariates.
+#'
+#' @param naInterpolation specifies the interpolation method for
+#'   time-varying covariates when the instantaneous value is `NA` (not
+#'   during an explicit interpolation) and the `covsInterpolation` is
+#'   either `"midpoint"` or `"linear"`. This can be:
+#'
+#'   * `"locf"` -- last observation carried forward (default)
+#'
+#'   * `"nocb"` -- next observation carried backward.
+#'
+#'   This will look for the prior value (backwards/locf) when
+#'   instantaneously missing, or the next value when instantaneously
+#'   missing.  If all the covariates are missing and you find the
+#'   end/beginning of the individual record, switch direction.  If all
+#'   are really missing, then return missing.
 #'
 #' @param addCov A boolean indicating if covariates should be added
 #'     to the output matrix or data frame. By default this is
@@ -661,6 +685,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     hmaxSd = 0, hini = 0, maxordn = 12L, maxords = 5L, ...,
                     cores,
                     covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
+                    naInterpolation = c("locf", "nocb"),
                     addCov = TRUE, sigma = NULL, sigmaDf = NULL,
                     sigmaLower = -Inf, sigmaUpper = Inf,
                     nCoresRV = 1L, sigmaIsChol = FALSE,
@@ -793,6 +818,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       covsInterpolation <- as.integer(covsInterpolation)
     } else {
       covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
+    }
+    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0, upper=2, any.missing=FALSE)) {
+      naInterpolation <- as.integer(naInterpolation)
+    } else {
+      naInterpolation <- c("locf"=1L, "nocb"=0L)[match.arg(naInterpolation)]
     }
     if (missing(naTimeHandle) && !is.null(getOption("rxode2.naTimeHandle", NULL))) {
       naTimeHandle <- getOption("rxode2.naTimeHandle")
@@ -1127,8 +1157,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       addlDropSs=addlDropSs,
       ssAtDoseTime=ssAtDoseTime,
       ss2cancelAllPending=ss2cancelAllPending,
+      naInterpolation=naInterpolation,
       .zeros=unique(.zeros)
-
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -1744,7 +1774,6 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse="', '")))
   }
-
   if (rxode2.debug) {
     .envReset$ret <- .collectWarnings(rxSolveSEXP(object, .ctl, .nms, .xtra,
                                                   params, events, inits,

@@ -4,12 +4,36 @@
 
 - Error when specifying `wd` without `modName`
 
+- With Linear and midpoint of a time between two points, how `rxode2`
+  handles missing values has changed.  When the missing value is lower
+  than the requested time, it will look backward until it finds the
+  first non-missing value (or if all are missing start looking
+  forward).  When the missing value is higher than the requested time,
+  the algorithm will look forward until it finds the first non-missing
+  value (or if all are missing, start looking backward).
+
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
   with `iCov` slightly faster (#743)
 
 ## New features
+
+- Now you can specify the interpolation method per covariate in the model:
+
+  - `linear(var1, var2)` says both `var1` and `var2` would use linear
+    interpolation when they are a time-varying covariate. You could
+    also use `linear(var1)`
+
+  - `locf()` declares variables using last observation carried forward
+
+  - `nocb()` declares variables using next observation carried backward
+
+  - `midpoint()` declares variables using midpoint interpolation
+
+- `linear()`, `locf()`, `locb()`, `midpoint()`, `params()`, `cmt()`
+  and `dvid()` declarations are now ignored when loading a `rxode2`
+  model with `rxS()`
 
 - Empty arguments to `rxRename()` give a warning (#688)
 
@@ -37,6 +61,9 @@
 - Model extraction `modelExtract()` will now extract model properties.  Note that the model property of `alag(cmt)` and `lag(cmt)` will give the same value. See #745
 
 - When assigning reserved variables, the parser will error. See #744
+
+- Linear interpolation will now adjust the times as well as the values
+  when `NA` values are observed.
 
 ## Big change
 
