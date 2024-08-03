@@ -21,6 +21,15 @@ static inline void handleIdentifier(nodeInfo ni, char *name, char *value) {
         tb.lh[tb.ix] = isLHSparam;
       }
     }
+  } else if (nodeHas(relational_op)) {
+    // Relational operators include assignments
+    // These secondary assignments are not supported
+    if (!strcmp("<-", value) ||
+        !strcmp("->", value)) {
+      sPrint(&_gbuf,"assignment '%s' not allowed in this context", value);
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_gbuf.s);
+    }
   }
 }
 

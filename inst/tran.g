@@ -112,8 +112,10 @@ equality_str2 : identifier_r ('!=' | '==' ) string;
 equality_expression : relational_expression
     (('!=' | '==' ) relational_expression)* ;
 
+relational_op: '<' | '>' | '<=' | '>=' | '<-' | '->';
+
 relational_expression : additive_expression
-    (('<' | '>' | '<=' | '>=') additive_expression)* ;
+    (relational_op additive_expression)* ;
 
 additive_expression : multiplicative_expression
     (('+' | '-') multiplicative_expression)* ;
