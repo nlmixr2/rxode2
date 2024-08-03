@@ -183,6 +183,7 @@ double rx_approxP(double v, double *y, int is_locf, int n,
     return 0.5*(V(i, -1) + V(j, 1));
     break;
   }
+  return NA_REAL; // nocov
 }/* approx1() */
 
 #undef T
