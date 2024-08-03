@@ -1395,6 +1395,7 @@ struct rx_globals {
   int *grc;
   int *gidose;
   int *gpar_cov;
+  int *gpar_covInterp;
 
   int *gParPos;
   int *gParPos2;
@@ -3496,7 +3497,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
     if (_globals.gevid != NULL) free(_globals.gevid);
-    _globals.gevid = (int*)calloc(3*evid.size()+dfN+si.size(), sizeof(int));
+    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+si.size(), sizeof(int));
     if (_globals.gevid == NULL){
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
@@ -3505,7 +3506,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     _globals.gidose = _globals.gevid + evid.size();
     _globals.gcens = _globals.gidose + evid.size();
     _globals.gpar_cov = _globals.gidose + evid.size();//[dfN];
-    _globals.gsi = _globals.gpar_cov + dfN;//[si.size()];
+    _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
+    _globals.gsi = _globals.gpar_covInterp + dfN;//[si.size()];
     std::copy(si.begin(),si.end(), &_globals.gsi[0]);
 
     int ntot = 1;
@@ -3583,10 +3585,15 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     ncov = 0;
     std::vector<int> covPos(dfN);
     curcovi=0;
+    IntegerVector interp0 = as<IntegerVector>(rxSolveDat->mv[RxMv_interp]);
     for (i = dfN; i--;){
       for (j = rxSolveDat->npars; j--;){
         if (pars[j] == dfNames[i]){
           _globals.gpar_cov[ncov] = j+1;
+          // We minus 2 here because that way that the covariates
+          // interpolation will match the interpolation method defined in
+          // the rxControl() object
+          _globals.gpar_covInterp[ncov] = interp0[j] - 2;
           covPos[ncov] = i;
           ncov++;
         }
@@ -3600,6 +3607,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       stop(_("can not allocate memory for the covariates"));
     }
     op->par_cov=&(_globals.gpar_cov[0]);
+    op->par_cov_interp = &(_globals.gpar_covInterp[0]);
     op->ncov=ncov;
     op->do_par_cov = (ncov > 0);
     // Make sure the covariates are a #ncov * all times size

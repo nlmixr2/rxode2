@@ -40,6 +40,8 @@ typedef struct {
   int ncov;
   char modNamePtr[1000];
   int *par_cov;
+  int *par_cov_interp;
+
   double *inits;
   double *scale;
   bool do_par_cov;

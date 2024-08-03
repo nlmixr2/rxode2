@@ -277,7 +277,8 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
     if (op->do_par_cov) {
       for (k = ncov; k--;) {
         if (op->par_cov[k]) {
-          int is_locf = op->is_locf;
+          int is_locf = op->par_cov_interp[k];
+          if (is_locf == -1) is_locf = op->is_locf;
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
@@ -309,8 +310,9 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
     int ncov = op->ncov;
     if (op->do_par_cov) {
       for (k = ncov; k--;){
-        if (op->par_cov[k]){
-          int is_locf = op->is_locf;
+        if (op->par_cov[k]) {
+          int is_locf = op->par_cov_interp[k];
+          if (is_locf == -1) is_locf = op->is_locf;
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
