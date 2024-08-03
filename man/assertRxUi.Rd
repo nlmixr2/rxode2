@@ -2,7 +2,6 @@
 % Please edit documentation in R/assert.R
 \name{assertRxUi}
 \alias{assertRxUi}
-\alias{assertRxLinCmt}
 \alias{assertRxUiPrediction}
 \alias{assertRxUiSingleEndpoint}
 \alias{assertRxUiTransformNormal}
@@ -15,8 +14,6 @@
 \title{Assert properties of the rxUi models}
 \usage{
 assertRxUi(ui, extra = "", .var.name = .vname(ui))
-
-assertRxLinCmt(ui, extra = "", .var.name = .vname(ui))
 
 assertRxUiPrediction(ui, extra = "", .var.name = .vname(ui))
 
@@ -72,11 +69,6 @@ population effect, only)
 \item \code{assertRxUiRandomOnIdOnly} -- Make sure there are only random effects at the ID level
 }
 }
-\section{Functions}{
-\itemize{
-\item \code{assertRxLinCmt()}: Assert that the rxode2 uses linear solved systems
-
-}}
 \examples{
 
 \donttest{

@@ -130,7 +130,7 @@ testRxLinCmt <- function(ui, extra="", .var.name=.vname(ui)) {
   FALSE
 }
 
-#' @describeIn assertRxUi Assert that the rxode2 uses linear solved systems
+#' @describeIn testRxLinCmt Assert that the rxode2 uses linear solved systems
 #' @export
 assertRxLinCmt <- function(ui, extra="", .var.name=.vname(ui)) {
   .ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
