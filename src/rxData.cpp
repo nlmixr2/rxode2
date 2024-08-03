@@ -4669,6 +4669,7 @@ static inline void iniRx(rx_solve* rx) {
   op->do_par_cov=false;
   // approx fun options
   op->is_locf = 1;
+  op->instant_backward = 1;
   op->cores = 0;
   op->extraCmt = 0;
   op->hmax2 = 0; // Determined by diff
@@ -5289,6 +5290,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _rxModels[as<std::string>(trans[RxMvTrans_model_vars])] = rxSolveDat->mv;
     snprintf(op->modNamePtr, 1000, "%s", (as<std::string>(trans[RxMvTrans_model_vars])).c_str());
     // approx fun options
+    op->instant_backward = asInt(rxControl[Rxc_naInterpolation], "naInterpolation");
     op->is_locf = covs_interpolation;
     if (op->is_locf == 0){//linear
     } else if (op->is_locf == 1){ // locf

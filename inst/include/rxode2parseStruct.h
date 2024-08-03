@@ -45,6 +45,7 @@ typedef struct {
   bool do_par_cov;
   // approx fun options
   int is_locf;
+  int instant_backward;
   int cores;
   int doesRandom;
   int extraCmt;

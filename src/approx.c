@@ -87,9 +87,11 @@ static inline double getValue(int idx, double *y, int is_locf,
       backward = 0; // for nocb always get the previous value
     } else if (is_locf == 0 || is_locf == 3) {
       // linear & midpoint choose based on direction
-      if (lh == -1 || lh == -2|| lh == 0) {
+      if (lh == -1 || lh == -2) {
         // get previous value for the left or centered value
         backward = 1;
+      } else if (lh == 0) {
+        backward = op->instant_backward;
       } else {
         // get next value for the right value for approx
         backward = 0;
