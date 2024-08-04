@@ -173,7 +173,7 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
       expect_equal(as.numeric(tmp$time[2]), 0.5)
       expect_equal(as.numeric(x$time[2]), 1)
       ## $ access updates object.
-      x$add.sampling(0.5)
+      expect_warning(x$add.sampling(0.5), NA) # from issue #750
       expect_equal(as.numeric(x$time[2]), 0.5)
     })
     x <- solve(mod1, theta, ev, inits)
