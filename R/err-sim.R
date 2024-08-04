@@ -205,29 +205,33 @@ attr(rxUiGet.paramsLine, "desc") <- "params() line for model"
 rxUiGet.interpLines <- function(x, ...){
   .ui <- x[[1]]
   .interp <- rxModelVars(.ui)$interp
-  if (all(.interp == 1L)) {
+  if (all(.interp =="default")) {
     # use default
     return(NULL)
   }
   .ret <- list()
-  .w <- which(.interp==2L) # linear
+  .w <- which(.interp=="linear")
   if (length(.w) > 0) {
     .ret <- list(str2lang(paste("linear(",paste(names(.interp)[.w], collapse=", "), ")")))
   }
-  .w <- which(.interp==3L) # locf
+  .w <- which(.interp=="locf")
   if (length(.w) > 0) {
     .ret <- c(.ret, list(str2lang(paste("locf(",paste(names(.interp)[.w], collapse=", "), ")"))))
   }
-  .w <- which(.interp==4L) # nocb
+  .w <- which(.interp=="nocb")
   if (length(.w) > 0) {
     .ret <- c(.ret, list(str2lang(paste("nocb(",paste(names(.interp)[.w], collapse=", "), ")"))))
   }
-  .w <- which(.interp==5L) # midpoint
+  .w <- which(.interp=="midpoint")
   if (length(.w) > 0) {
     .ret <- c(.ret, list(str2lang(paste("midpoint(",paste(names(.interp)[.w], collapse=", "), ")"))))
   }
+  if (length(.ret) == 0) {
+    return(NULL) #nocov
+  }
   .ret
 }
+attr(rxUiGet.interpLines, "desc") <- "interpolation declaration line(s) for model"
 
 #' @export
 #' @rdname rxUiGet
