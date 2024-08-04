@@ -4,6 +4,7 @@
 \alias{rxUiGet.cmtLines}
 \alias{rxUiGet.dvidLine}
 \alias{rxUiGet.paramsLine}
+\alias{rxUiGet.interpLines}
 \alias{rxUiGet.simulationSigma}
 \alias{rxUiGet.simulationModel}
 \alias{rxUiGet.symengineModelNoPrune}
@@ -44,6 +45,8 @@
 \method{rxUiGet}{dvidLine}(x, ...)
 
 \method{rxUiGet}{paramsLine}(x, ...)
+
+\method{rxUiGet}{interpLines}(x, ...)
 
 \method{rxUiGet}{simulationSigma}(x, ...)
 

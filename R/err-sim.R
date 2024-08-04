@@ -135,9 +135,9 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
     .ret[[1]] <- quote(ipredSim <- NA)
     .ret[[2]] <- str2lang(paste0("rx_sim_~rxord(", paste(.n, collapse=", "), ")"))
     .ce <- setNames(.ce, NULL)
-    
+
     .ret[[3]] <- str2lang(paste0("sim<-", paste(vapply(seq_along(.ce), function(i) {
-      paste("(rx_sim_ == ", i, ")*", .ce[i]) 
+      paste("(rx_sim_ == ", i, ")*", .ce[i])
    }, character(1), USE.NAMES=FALSE), collapse="+")))
     return(.ret)
   }
@@ -202,6 +202,35 @@ attr(rxUiGet.paramsLine, "desc") <- "params() line for model"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.interpLines <- function(x, ...){
+  .ui <- x[[1]]
+  .interp <- rxModelVars(.ui)$interp
+  if (all(.interp == 1L)) {
+    # use default
+    return(NULL)
+  }
+  .ret <- list()
+  .w <- which(.interp==2L) # linear
+  if (length(.w) > 0) {
+    .ret <- list(str2lang(paste("linear(",paste(names(.interp)[.w], collapse=", "), ")")))
+  }
+  .w <- which(.interp==3L) # locf
+  if (length(.w) > 0) {
+    .ret <- c(.ret, list(str2lang(paste("locf(",paste(names(.interp)[.w], collapse=", "), ")"))))
+  }
+  .w <- which(.interp==4L) # nocb
+  if (length(.w) > 0) {
+    .ret <- c(.ret, list(str2lang(paste("nocb(",paste(names(.interp)[.w], collapse=", "), ")"))))
+  }
+  .w <- which(.interp==5L) # midpoint
+  if (length(.w) > 0) {
+    .ret <- c(.ret, list(str2lang(paste("midpoint(",paste(names(.interp)[.w], collapse=", "), ")"))))
+  }
+  .ret
+}
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.simulationSigma <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
@@ -255,7 +284,7 @@ rxUiGet.symengineModelPrune <- function(x, ...) {
   .tmp[[1]] <- quote(`rxModelVars`)
   .tmp <- eval(.tmp)
   .tmp <- rxode2(rxPrune(.tmp))
-  .simulationModelAssignTOS(.x, .tmp) 
+  .simulationModelAssignTOS(.x, .tmp)
 }
 attr(rxUiGet.symengineModelPrune, "desc") <- "symengine model with pruning if/else from UI"
 
