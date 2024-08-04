@@ -1,73 +1,73 @@
 rxTest({
 
   test_that("sync covariates", {
-    
-    dat <- structure(list(ID = c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
-                                 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
-                                 1L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 
-                                 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 
-                                 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 
+
+    dat <- structure(list(ID = c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+                                 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+                                 1L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+                                 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L,
+                                 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
                                  3L, 3L, 3L, 3L, 3L, 3L, 3L),
-                          TIME = c(0, 0, 0, 0.5, 0.5, 1, 1, 
-                                   1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3, 3.5, 3.5, 4, 4, 4.5, 4.5, 5, 
-                                   5, 5.5, 5.5, 6, 6, 0, 0, 0, 0.5, 0.5, 1, 1, 1.5, 1.5, 2, 2, 2.5, 
-                                   2.5, 3, 3, 3.5, 3.5, 4, 4, 4.5, 4.5, 5, 5, 5.5, 5.5, 6, 6, 0, 
-                                   0, 0, 0.5, 0.5, 1, 1, 1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3, 3.5, 3.5, 
+                          TIME = c(0, 0, 0, 0.5, 0.5, 1, 1,
+                                   1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3, 3.5, 3.5, 4, 4, 4.5, 4.5, 5,
+                                   5, 5.5, 5.5, 6, 6, 0, 0, 0, 0.5, 0.5, 1, 1, 1.5, 1.5, 2, 2, 2.5,
+                                   2.5, 3, 3, 3.5, 3.5, 4, 4, 4.5, 4.5, 5, 5, 5.5, 5.5, 6, 6, 0,
+                                   0, 0, 0.5, 0.5, 1, 1, 1.5, 1.5, 2, 2, 2.5, 2.5, 3, 3, 3.5, 3.5,
                                    4, 4, 4.5, 4.5, 5, 5, 5.5, 5.5, 6, 6),
-                          EVID = c(80101L, 60101L, 
-                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
-                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 80101L, 60101L, 0L, 0L, 0L, 
-                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
-                                   0L, 0L, 0L, 0L, 0L, 0L, 80101L, 60101L, 0L, 0L, 0L, 0L, 0L, 0L, 
-                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+                          EVID = c(80101L, 60101L,
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 80101L, 60101L, 0L, 0L, 0L,
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+                                   0L, 0L, 0L, 0L, 0L, 0L, 80101L, 60101L, 0L, 0L, 0L, 0L, 0L, 0L,
+                                   0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
                                    0L, 0L, 0L),
-                          AMT = c(10, 10, NA, NA, NA, NA, NA, NA, NA, NA, 
-                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
-                                  NA, 10, 10, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
-                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 10, 10, NA, NA, 
-                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
+                          AMT = c(10, 10, NA, NA, NA, NA, NA, NA, NA, NA,
+                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+                                  NA, 10, 10, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 10, 10, NA, NA,
+                                  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
                                   NA, NA, NA, NA, NA, NA, NA),
-                          II = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 
-                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                          II = c(0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                  0, 0, 0, 0, 0, 0, 0, 0, 0),
-                          DV = c(NA, NA, 0, 3.8, 0.9, 5.8, 
-                                 2.5, 3.2, 3.2, 1.8, 2.9, 1, 2.2, 0.5, 1.6, 0.3, 1.1, 0.2, 0.8, 
-                                 0.1, 0.5, 0, 0.3, 0, 0.2, 0, 0.1, NA, NA, 0, 3.4, 0.7, 7.3, 2.4, 
-                                 2.8, 2.5, 1.3, 2.7, 1, 1.6, 0.6, 1.1, 0.3, 0.8, 0.2, 0.8, 0.1, 
-                                 0.5, 0, 0.3, 0, 0.2, 0, 0.2, NA, NA, 0, 2.8, 1.1, 6.7, 2.7, 3.9, 
-                                 3.6, 1.5, 3.1, 0.7, 2.4, 0.5, 1.5, 0.3, 1.2, 0.1, 0.5, 0.1, 0.6, 
+                          DV = c(NA, NA, 0, 3.8, 0.9, 5.8,
+                                 2.5, 3.2, 3.2, 1.8, 2.9, 1, 2.2, 0.5, 1.6, 0.3, 1.1, 0.2, 0.8,
+                                 0.1, 0.5, 0, 0.3, 0, 0.2, 0, 0.1, NA, NA, 0, 3.4, 0.7, 7.3, 2.4,
+                                 2.8, 2.5, 1.3, 2.7, 1, 1.6, 0.6, 1.1, 0.3, 0.8, 0.2, 0.8, 0.1,
+                                 0.5, 0, 0.3, 0, 0.2, 0, 0.2, NA, NA, 0, 2.8, 1.1, 6.7, 2.7, 3.9,
+                                 3.6, 1.5, 3.1, 0.7, 2.4, 0.5, 1.5, 0.3, 1.2, 0.1, 0.5, 0.1, 0.6,
                                  0.1, 0.4, 0, 0.2, 0, 0.2),
-                          CMT = c(1L, 1L, 4L, 3L, 4L, 3L, 4L, 
-                                  3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 
-                                  3L, 4L, 3L, 4L, 1L, 1L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 
-                                  4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 1L, 
-                                  1L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 
+                          CMT = c(1L, 1L, 4L, 3L, 4L, 3L, 4L,
+                                  3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L,
+                                  3L, 4L, 3L, 4L, 1L, 1L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L,
+                                  4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 1L,
+                                  1L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L,
                                   3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L, 3L, 4L),
                           nlmixrRowNums =
-                            c(1, 
-                              NA, 14, 2, 15, 3, 16, 4, 17, 5, 18, 6, 19, 7, 20, 8, 21, 9, 22, 
-                              10, 23, 11, 24, 12, 25, 13, 26, 27, NA, 40, 28, 41, 29, 42, 30, 
-                              43, 31, 44, 32, 45, 33, 46, 34, 47, 35, 48, 36, 49, 37, 50, 38, 
-                              51, 39, 52, 53, NA, 66, 54, 67, 55, 68, 56, 69, 57, 70, 58, 71, 
+                            c(1,
+                              NA, 14, 2, 15, 3, 16, 4, 17, 5, 18, 6, 19, 7, 20, 8, 21, 9, 22,
+                              10, 23, 11, 24, 12, 25, 13, 26, 27, NA, 40, 28, 41, 29, 42, 30,
+                              43, 31, 44, 32, 45, 33, 46, 34, 47, 35, 48, 36, 49, 37, 50, 38,
+                              51, 39, 52, 53, NA, 66, 54, 67, 55, 68, 56, 69, 57, 70, 58, 71,
                               59, 72, 60, 73, 61, 74, 62, 75, 63, 76, 64, 77, 65, 78)),
                      class = "data.frame", row.names = c(NA, -81L))
 
-    par <- structure(c(0, 0, 0, 0.693147180559945, 0.693147180559945, 0.693147180559945, 
-                       2.30258509299405, 2.30258509299405, 2.30258509299405, 2.30258509299405, 
-                       2.30258509299405, 2.30258509299405, 0, 0, 0, 1, 1, 1, 1, 1, 1, 
-                       -1.86782087447842, 0, 0, -2.44813462994314, 0, 0, 0.0831313226164289, 
+    par <- structure(c(0, 0, 0, 0.693147180559945, 0.693147180559945, 0.693147180559945,
+                       2.30258509299405, 2.30258509299405, 2.30258509299405, 2.30258509299405,
+                       2.30258509299405, 2.30258509299405, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+                       -1.86782087447842, 0, 0, -2.44813462994314, 0, 0, 0.0831313226164289,
                        0, 0, -2.28843604434224, 0, 0, 1.97816823869187e-05, 0, 0),
                      dim = c(3L, 12L),
                      dimnames = list(NULL,
-                                     c("THETA[1]", "THETA[2]", "THETA[3]", 
-                                       "THETA[4]", "THETA[5]", "THETA[6]", "THETA[7]", "ETA[1]", "ETA[2]", 
+                                     c("THETA[1]", "THETA[2]", "THETA[3]",
+                                       "THETA[4]", "THETA[5]", "THETA[6]", "THETA[7]", "ETA[1]", "ETA[2]",
                                        "ETA[3]", "ETA[4]", "ETA[5]")))
-    
+
 
     rx <- rxode2({
-      param(THETA[1], THETA[2], THETA[3], THETA[4], THETA[5], THETA[6], 
+      param(THETA[1], THETA[2], THETA[3], THETA[4], THETA[5], THETA[6],
             THETA[7], ETA[1], ETA[2], ETA[3], ETA[4], ETA[5])
       cmt(center)
       cmt(meta)
@@ -75,13 +75,13 @@ rxTest({
       rx_expr_6 ~ ETA[1] + THETA[2]
       rx_expr_7 ~ ETA[2] + THETA[4]
       rx_expr_10 ~ exp(rx_expr_5)
-      d/dt(center) = -rx_expr_10 * center - exp(rx_expr_6 - (rx_expr_7)) * 
+      d/dt(center) = -rx_expr_10 * center - exp(rx_expr_6 - (rx_expr_7)) *
         center
       rx_expr_8 ~ ETA[5] + THETA[5]
       rx_expr_11 ~ exp(rx_expr_8)
       dur(center) = rx_expr_11
       rx_expr_9 ~ ETA[4] + THETA[3]
-      d/dt(meta) = rx_expr_10 * center - exp(rx_expr_9 - (rx_expr_7)) * 
+      d/dt(meta) = rx_expr_10 * center - exp(rx_expr_9 - (rx_expr_7)) *
         meta
       center(0) = 0
       meta(0) = 0
@@ -101,10 +101,10 @@ rxTest({
       rx_expr_17 ~ rx_expr_14 * (rx_expr_0)
       rx_expr_18 ~ rx_expr_15 * (rx_expr_2)
       rx_expr_19 ~ rx_expr_18 * (rx_expr_1)
-      rx_pred_ = (rx_expr_0) * (rx_expr_17 + rx_expr_19) + rx_expr_18 * 
+      rx_pred_ = (rx_expr_0) * (rx_expr_17 + rx_expr_19) + rx_expr_18 *
         Rx_pow_di((rx_expr_1), 2)
-      rx_r_ = (rx_expr_0) * Rx_pow_di(((rx_expr_17 + rx_expr_19) * 
-                                         THETA[7]), 2) + (rx_expr_2) * Rx_pow_di((rx_expr_15 * 
+      rx_r_ = (rx_expr_0) * Rx_pow_di(((rx_expr_17 + rx_expr_19) *
+                                         THETA[7]), 2) + (rx_expr_2) * Rx_pow_di((rx_expr_15 *
                                                                                     THETA[6] * (rx_expr_1)), 2) * (rx_expr_1)
       tkm = THETA[1]
       tcl = THETA[2]
@@ -130,7 +130,7 @@ rxTest({
       cmt(cp)
       cmt(cm)
       dvid(3, 4)
-    }) 
+    })
 
     s <- rxSolve(rx, dat, par, returnType="data.frame",
                  keep=c("nlmixrRowNums", "DV"), subsetNonmem=TRUE, addCov=TRUE)
@@ -138,7 +138,7 @@ rxTest({
     expect_equal(sort(unique(s[s$time==0.5,"CMT"])), 3:4)
 
   })
-  
+
   skip_if_not_installed("units")
 
   for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match precisely.
@@ -146,6 +146,51 @@ rxTest({
     # context(sprintf("Simple test for time-varying covariates (%s)", meth))
 
     ode <- rxode2({
+      b <- -1
+      d/dt(X) <- a * X + Y * Z
+      d/dt(Y) <- b * (Y - Z)
+      d/dt(Z) <- -X * Y + c * Y - Z
+      printf("%.10f,%.10f\n", t, c)
+    })
+
+    odeLin <- rxode2({
+      linear(c)
+      b <- -1
+      d/dt(X) <- a * X + Y * Z
+      d/dt(Y) <- b * (Y - Z)
+      d/dt(Z) <- -X * Y + c * Y - Z
+      printf("%.10f,%.10f\n", t, c)
+    })
+
+    odeLin <- rxode2({
+      linear(c)
+      b <- -1
+      d/dt(X) <- a * X + Y * Z
+      d/dt(Y) <- b * (Y - Z)
+      d/dt(Z) <- -X * Y + c * Y - Z
+      printf("%.10f,%.10f\n", t, c)
+    })
+
+    odeLocf <- rxode2({
+      locf(c)
+      b <- -1
+      d/dt(X) <- a * X + Y * Z
+      d/dt(Y) <- b * (Y - Z)
+      d/dt(Z) <- -X * Y + c * Y - Z
+      printf("%.10f,%.10f\n", t, c)
+    })
+
+    odeNocb <- rxode2({
+      nocb(c)
+      b <- -1
+      d/dt(X) <- a * X + Y * Z
+      d/dt(Y) <- b * (Y - Z)
+      d/dt(Z) <- -X * Y + c * Y - Z
+      printf("%.10f,%.10f\n", t, c)
+    })
+
+    odeMidpoint <- rxode2({
+      midpoint(c)
       b <- -1
       d/dt(X) <- a * X + Y * Z
       d/dt(Y) <- b * (Y - Z)
@@ -190,6 +235,28 @@ rxTest({
       expect_equal(lin.interp$c, lin.interp$c2)
     })
 
+    t <- tempfile("temp", fileext = ".csv")
+    suppressWarnings(.rxWithSink(t, {
+      cat("t,c\n")
+      out <- rxSolve(odeLin,
+                     params = c(a = -8 / 3, b = -10),
+                     events = et,
+                     inits = c(X = 1, Y = 1, Z = 1),
+                     addCov = TRUE,
+                     covsInterpolation = "nocb",
+                     method = meth
+                     )
+    }))
+
+    lin.interp <- read.csv(t)
+    unlink(t)
+
+    lin.interp$c2 <- cov.lin(lin.interp$t)
+
+    test_that("Linear Approximation matches approxfun and overrides covsInterpolation", {
+      expect_equal(lin.interp$c, lin.interp$c2)
+    })
+
     ## NONMEM interpolation
     suppressWarnings(.rxWithSink(t, {
       cat("t,c\n")
@@ -215,6 +282,29 @@ rxTest({
       expect_equal(lin.interp$c, lin.interp$c2)
     })
 
+    suppressWarnings(.rxWithSink(t, {
+      cat("t,c\n")
+      out <- rxSolve(odeNocb,
+                     params = c(a = -8 / 3, b = -10),
+                     events = et,
+                     inits = c(X = 1, Y = 1, Z = 1),
+                     covsInterpolation = "locf", addCov = TRUE,
+                     method = meth
+                     )
+    }))
+
+    lin.interp <- read.csv(t)
+    unlink(t)
+
+    cov.lin <- approxfun(out$time, out$c,
+                         yleft = cov$c[1], yright = cov$c[length(cov$c)],
+                         method = "constant", f = 1
+                         )
+    lin.interp$c2 <- cov.lin(lin.interp$t)
+
+    test_that("NOCB Approximation similar to approxfun and overrides locf when in ode", {
+      expect_equal(lin.interp$c, lin.interp$c2)
+    })
 
     ## midpoint interpolation
     suppressWarnings(.rxWithSink(t, {
@@ -242,6 +332,31 @@ rxTest({
     })
 
 
+    ## midpoint interpolation
+    suppressWarnings(.rxWithSink(t, {
+      cat("t,c\n")
+      out <- rxSolve(odeMidpoint,
+                     params = c(a = -8 / 3, b = -10),
+                     events = et,
+                     inits = c(X = 1, Y = 1, Z = 1),
+                     covsInterpolation = "locf", addCov = TRUE,
+                     method = meth
+                     )
+    }))
+    lin.interp <- read.csv(t)
+    unlink(t)
+
+    cov.lin <- approxfun(out$time, out$c,
+                         yleft = cov$c[1], yright = cov$c[length(cov$c)],
+                         method = "constant", f = 0.5
+                         )
+
+    lin.interp$c2 <- cov.lin(lin.interp$t)
+
+    test_that("midpoint Approximation similar to approxfun and overrides covsInterpolation method", {
+      expect_equal(lin.interp$c, lin.interp$c2)
+    })
+
     ## covs_interpolation
     suppressWarnings(.rxWithSink(t, {
       cat("t,c\n")
@@ -264,6 +379,31 @@ rxTest({
     lin.interp$c2 <- cov.lin(lin.interp$t)
 
     test_that("Constant Approximation similar to approxfun.", {
+      expect_equal(lin.interp$c, lin.interp$c2)
+    })
+
+    ## covs_interpolation
+    suppressWarnings(.rxWithSink(t, {
+      cat("t,c\n")
+      out <- rxSolve(odeLocf,
+                     params = c(a = -8 / 3, b = -10),
+                     events = et,
+                     inits = c(X = 1, Y = 1, Z = 1),
+                     covsInterpolation = "nocb", addCov = TRUE,
+                     method = meth
+                     )
+    }))
+
+    lin.interp <- read.csv(t)
+    unlink(t)
+
+    cov.lin <- approxfun(out$time, out$c,
+                         yleft = cov$c[1], yright = cov$c[length(cov$c)],
+                         method = "constant")
+
+    lin.interp$c2 <- cov.lin(lin.interp$t)
+
+    test_that("Constant Approximation similar to approxfun and overrides covsInterpolation", {
       expect_equal(lin.interp$c, lin.interp$c2)
     })
 

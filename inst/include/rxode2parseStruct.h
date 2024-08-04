@@ -40,14 +40,14 @@ typedef struct {
   int ncov;
   char modNamePtr[1000];
   int *par_cov;
+  int *par_cov_interp;
+
   double *inits;
   double *scale;
   bool do_par_cov;
   // approx fun options
-  double f1;
-  double f2;
-  int kind;
   int is_locf;
+  int instant_backward;
   int cores;
   int doesRandom;
   int extraCmt;
@@ -214,6 +214,8 @@ typedef struct {
   //double *extraDoseIi; // ii doses unsupported
   bool lastIsSs2;
   double *timeThread;
+  int idxLow;
+  int idxHi;
 } rx_solving_options_ind;
 
 typedef struct {

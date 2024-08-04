@@ -27,6 +27,8 @@ extern "C" {
 		ind->cacheME=0;
 		ind->curShift=0.0;
 		ind->lastIsSs2 = false;
+    ind->idxLow=0;
+    ind->idxHi=0;
 		// neq[0] = op->neq
     int ncmt = (op->neq + op->extraCmt);
 		for (int j = ncmt; j--;) {

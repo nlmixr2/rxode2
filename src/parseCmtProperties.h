@@ -265,12 +265,39 @@ static inline int handleRemainingAssignmentsCalcProps(nodeInfo ni, char *name, i
   return 0;
 }
 
-
 static inline int finalizeLineParam(nodeInfo ni, char *name) {
   if (nodeHas(param_statement)) {
     sbDt.o = 0; sbt.o = 0;
     sAppend(&sbNrm, "param%s;\n", sbt.s);
     addLine(&sbNrmL, "param%s;\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int finalizeLineInterp(nodeInfo ni, char *name) {
+  if (nodeHas(interp_statement)) {
+    sbDt.o = 0; sbt.o = 0;
+    switch(tb.interpC) {
+    case 1: // linear
+      sAppend(&sbNrm, "linear%s;\n", sbt.s);
+      addLine(&sbNrmL, "linear%s;\n", sbt.s);
+      break;
+    case 2: // locf
+      sAppend(&sbNrm, "locf%s;\n", sbt.s);
+      addLine(&sbNrmL, "locf%s;\n", sbt.s);
+      break;
+    case 3: //nocb
+      sAppend(&sbNrm, "nocb%s;\n", sbt.s);
+      addLine(&sbNrmL, "nocb%s;\n", sbt.s);
+      break;
+    case 4: // midpoint
+      sAppend(&sbNrm, "midpoint%s;\n", sbt.s);
+      addLine(&sbNrmL, "midpoint%s;\n", sbt.s);
+      break;
+    }
+    tb.interpC=0; // reset to default
     ENDLINE;
     return 1;
   }

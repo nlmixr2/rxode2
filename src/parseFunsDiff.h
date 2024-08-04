@@ -77,10 +77,10 @@ static inline int handleFunctionDiff(transFunctions *tf) {
       if (tf->isLead) lagNo=-1;
       if (tf->isFirst || tf->isLast) lagNo=NA_INTEGER;
       if (new_or_ith(v2)){
-	addSymbolStr(v2);
-	tb.lag[NV-1] = lagNo;
+        addSymbolStr(v2);
+        tb.lag[NV-1] = lagNo;
       } else {
-	tb.lag[tb.ix] = lagNo;
+        tb.lag[tb.ix] = lagNo;
       }
       tb.fn=1;
       sAppend(&sb,"%s_", tf->v);
@@ -96,15 +96,15 @@ static inline int handleFunctionDiff(transFunctions *tf) {
       v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       tb.fn=0;
       if (new_or_ith(v2)){
-	addSymbolStr(v2);
-	tb.lag[NV-1] = lagNo;
+        addSymbolStr(v2);
+        tb.lag[NV-1] = lagNo;
       } else {
-	tb.lag[tb.ix] = lagNo;
+        tb.lag[tb.ix] = lagNo;
       }
       tb.fn=1;
       if (lagNo == 0){
-	doDot2(&sb, &sbDt, v2);
-	/* Free(v2); */
+        doDot2(&sb, &sbDt, v2);
+        /* Free(v2); */
 	/* Free(tf->v); */
 	tf->i[0] = 4;// skip next arguments
 	tf->depth[0]=1;

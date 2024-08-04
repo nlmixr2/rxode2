@@ -85,6 +85,60 @@ assertRxUi <- function(ui, extra="", .var.name=.vname(ui)) {
   }
   invisible(ui)
 }
+#' Test if rxode2 uses linear solved systems
+#'
+#' @param ui rxode2 model
+#' @inheritParams assertRxUi
+#' @return TRUE if the model uses linear solved systems, FALSE otherwise
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' one.cmt <- function() {
+#'   ini({
+#'    ## You may label each parameter with a comment
+#'    tka <- 0.45 # Log Ka
+#'    tcl <- log(c(0, 2.7, 100)) # Log Cl
+#'    ## This works with interactive models
+#'    ## You may also label the preceding line with label("label text")
+#'    tv <- 3.45; label("log V")
+#'    ## the label("Label name") works with all models
+#'    eta.ka ~ 0.6
+#'    eta.cl ~ 0.3
+#'    eta.v ~ 0.1
+#'    add.sd <- 0.7
+#'  })
+#'  model({
+#'    ka <- exp(tka + eta.ka)
+#'    cl <- exp(tcl + eta.cl)
+#'    v <- exp(tv + eta.v)
+#'    linCmt() ~ add(add.sd)
+#'  })
+#'}
+#'
+#' testRxLinCmt(one.cmt)
+#'
+testRxLinCmt <- function(ui, extra="", .var.name=.vname(ui)) {
+  .ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  if (!is.null(.ui$.linCmtM)) {
+    return(TRUE)
+  }
+  .predDf <- .ui$predDf
+  if (any(.predDf$linCmt)) {
+    return(TRUE)
+  }
+  FALSE
+}
+
+#' @describeIn testRxLinCmt Assert that the rxode2 uses linear solved systems
+#' @export
+assertRxLinCmt <- function(ui, extra="", .var.name=.vname(ui)) {
+  .ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  if (testRxLinCmt(.ui)) {
+    return(invisible(.ui))
+  }
+  stop("'", .var.name, "' needs to have 'linCmt()'", extra, call.=FALSE)
+}
 
 #' @export
 #' @rdname assertRxUi

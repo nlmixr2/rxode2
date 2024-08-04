@@ -554,7 +554,7 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   steady concentration at the actual time of dose, otherwise when
 //'   `FALSE` the doses are shifted
 //'
-//' @inheritParams rxSolve::rxSolve
+//' @inheritParams rxSolve
 //'
 //' @return Object for solving in rxode2
 //'
@@ -2346,6 +2346,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   List inDataFKL(keepCol.size());
   bool calcIcovKeepIdx = false;
   IntegerVector iCovKeepIdx;
+  std::vector<int> covParInterpMv = as<std::vector<int>>(mv[RxMv_interp]);
   for (j = 0; j < (int)(keepCol.size()); j++){
     int keepColj = keepCol[j];
     SEXP cur;
@@ -2381,6 +2382,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cur4[i] = cur3[iCovKeepIdx[i]];
         }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else if (TYPEOF(cur2) == INTSXP){
         // Create an integer vector for each element
         IntegerVector cur3 = as<IntegerVector>(cur2);
@@ -2388,12 +2391,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         for (int i = iCovKeepIdx.size(); i--;) {
           cur4[i] = cur3[iCovKeepIdx[i]];
         }
-        // save attributes
-        std::vector<std::string> attr = cur3.attributeNames();
-        for (int i = attr.size(); i--;) {
-          cur4.attr(attr[i]) = cur3.attr(attr[i]);
-        }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else if (TYPEOF(cur2) == REALSXP) {
         NumericVector cur3 = as<NumericVector>(cur2);
         NumericVector cur4(iCovKeepIdx.size());
@@ -2406,18 +2406,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cur4.attr(attr[i]) = cur3.attr(attr[i]);
         }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else if (TYPEOF(cur2) == LGLSXP) {
         LogicalVector cur3 = as<LogicalVector>(cur2);
         LogicalVector cur4(iCovKeepIdx.size());
         for (int i = iCovKeepIdx.size(); i--;) {
           cur4[i] = cur3[iCovKeepIdx[i]];
         }
-        // save attributes
-        std::vector<std::string> attr = cur3.attributeNames();
-        for (int i = attr.size(); i--;) {
-          cur4.attr(attr[i]) = cur3.attr(attr[i]);
-        }
         cur = wrap(cur4);
+        // save attributes
+        Rf_copyMostAttrib(cur2, cur);
       } else {
         stop(_("the columns that are kept must be either an underlying logical, string, factor, integer number, or real number"));
       }
@@ -2724,6 +2723,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   e[RxTrans_cov1] = lst1F;
   e[RxTrans_covParPos]  = wrap(covParPos);
   e[RxTrans_covParPosTV] = wrap(covParPosTV); // Time-varying pos
+  // We minus 2 here because that way that the covariates
+  // interpolation will match the interpolation method defined in
+  // the rxControl() object
   if (allTimeVar){
     e[RxTrans_sub0] = wrap(sub0);
     e[RxTrans_baseSize] = baseSize;
@@ -2738,8 +2740,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     e[RxTrans_nme] = R_NilValue;
   }
   std::vector<int> covParPos0;
-  for (j = covParPos.size();j--;){
-    if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()){
+  // flag the time-varying covariates
+  for (j = covParPos.size();j--;) {
+    if (std::find(covParPosTV.begin(), covParPosTV.end(), covParPos[j]) == covParPosTV.end()) {
       covParPos0.push_back(covParPos[j]);
     }
   }
