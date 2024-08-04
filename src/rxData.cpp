@@ -4896,8 +4896,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveDat->mv = rxModelVars(object);
       rxSolveFreeObj = object;
     }
+  } else if (rxSolveDat->mv.size() == 0) {
+    rxSolveDat->mv = rxModelVars(object);
   }
-
   _rxode2_udfEnvSet(rxSolveDat->mv[RxMv_udf]);
   LogicalVector recompileUdf = _rxode2_assignUdf(rxSolveDat->mv[RxMv_udf]);
 
