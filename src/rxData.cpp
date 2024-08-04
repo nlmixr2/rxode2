@@ -4896,7 +4896,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveDat->mv = rxModelVars(object);
       rxSolveFreeObj = object;
     }
-  } else if (rxSolveDat->mv.size() == 0) {
+  }
+  if (rxSolveDat->mv.size() == 0) {
+    // sometimes the model variables have not been assigned, but this
+    // needs to be assigned to set the user defined functions
+    // this is shown indirectly in the backward compatible testing
+    // where the subscript wasn't defined;  See #750
     rxSolveDat->mv = rxModelVars(object);
   }
   _rxode2_udfEnvSet(rxSolveDat->mv[RxMv_udf]);
