@@ -2,6 +2,9 @@
 
 ## Breaking Changes
 
+- The model properties was moved from `$params` to `$props` so it does
+  not conflict with the low level `rxode2` model `$params`
+
 - Error when specifying `wd` without `modName`
 
 - With Linear and midpoint of a time between two points, how `rxode2`
@@ -56,7 +59,9 @@
 
 ## Bug fixes
 
-- Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
+- Fix `ui$props$endpoint` when the ui endpoint is defined in terms of the ode instead of lhs. See #754
+
+- Fix `ui$props` when the ui is a linear compartment model without `ka` defined.
 
 - Model extraction `modelExtract()` will now extract model properties.  Note that the model property of `alag(cmt)` and `lag(cmt)` will give the same value. See #745
 
