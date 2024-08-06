@@ -2738,6 +2738,9 @@ extern "C" SEXP get_fkeepChar(int col, double val) {
   List cur = keepFcovType[col];
   StringVector levels = cur[1];
   int i = (int)(val - 1.0);
+  if (R_IsNA(val) || R_IsNaN(val)) {
+    return NA_STRING;
+  }
   return wrap(levels[i]);
 }
 
