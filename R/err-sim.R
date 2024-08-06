@@ -217,7 +217,7 @@ rxUiGet.interpLines <- function(x, ...){
   if (any(is.na(.interp))) {
     return(NULL)
   }
-  if (all(.interp == c"default")) {
+  if (all(.interp == "default")) {
     # use default
     return(NULL)
   }
