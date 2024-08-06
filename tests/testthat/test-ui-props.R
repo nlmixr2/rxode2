@@ -1,5 +1,5 @@
 if (!.Call(`_rxode2_isIntel`)) {
-  test_that("ui params", {
+  test_that("ui props", {
 
     fun_odes  <- function() {
       description <- "Dupilumab PK model (Kovalenko 2020)"
@@ -108,7 +108,7 @@ if (!.Call(`_rxode2_isIntel`)) {
     obj_ana = rxode2(fun_ana)
     obj_odes = rxode2(fun_odes)
 
-    expect_equal(obj_ana$params,
+    expect_equal(obj_ana$props,
                  list(pop = c("lfdepot", "lka", "lcl", "lv", "lvp", "lq", "allocl", "allov"),
                       resid = "prop.err",
                       group = list(id = c("etafdepot", "etaka", "etacl", "etav", "etavp", "etaq")),
@@ -119,7 +119,7 @@ if (!.Call(`_rxode2_isIntel`)) {
                                     endpoint = "Cc",
                                     state = character(0))))
 
-    expect_equal(obj_odes$params,
+    expect_equal(obj_odes$props,
                  list(pop = c("lvc", "lke", "lkcp", "Mpc", "lka", "lMTT", "lVm", "Km", "lfdepot", "e_wt_vc"),
                       resid = c("cppropSd", "cpaddSd"),
                       group = list(id = c("etalvc", "etalke", "etalka", "etalvm", "etamtt")),
@@ -171,7 +171,7 @@ if (!.Call(`_rxode2_isIntel`)) {
 
     tmp <- fun_ana2()
 
-    expect_equal(tmp$params,
+    expect_equal(tmp$props,
                  list(pop = c("lfdepot", "lka", "lcl", "lv", "lvp", "lq", "allocl", "allov"),
                       resid = "prop.err",
                       group = list(id = c("etafdepot", "etaka", "etacl", "etav", "etavp", "etaq")),
@@ -200,9 +200,9 @@ if (!.Call(`_rxode2_isIntel`)) {
 
     mod <- mod()
 
-    expect_error(mod$params, NA)
+    expect_error(mod$props, NA)
 
-    expect_equal(mod$params,
+    expect_equal(mod$props
                  list(pop = c("cl", "vc"),
                       resid = "err.sd",
                       group = structure(list(), names = character(0)),
