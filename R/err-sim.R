@@ -205,7 +205,11 @@ attr(rxUiGet.paramsLine, "desc") <- "params() line for model"
 rxUiGet.interpLines <- function(x, ...){
   .ui <- x[[1]]
   .interp <- rxModelVars(.ui)$interp
-  if (all(.interp =="default")) {
+  if (!is.factor(.interp) ||
+        length(.interp) == 0) {
+    return(NULL)
+  }
+  if (all(.interp == "default")) {
     # use default
     return(NULL)
   }
