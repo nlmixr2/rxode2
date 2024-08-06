@@ -177,19 +177,15 @@ if (!.Call(`_rxode2_isIntel`)) {
         kel_target <- log(2)/1.2
         kform_target <- 1.4*kel_target
         kd_anon1_target_umolL <- 1.5/1000
-
         d/dt(depot_anon1) <- -ka_anon1*depot_anon1
         d/dt(central_anon1) <- ka_anon1*depot_anon1 - kel_anon1*central_anon1
-
         central_anon1_umolL <- central_anon1/vc_anon1*mw_convert_anon1
         totalconc <- central_anon1_umolL + central_target + kd_anon1_target_umolL
         bound_umolL <- (totalconc - sqrt(totalconc^2 - 4*central_anon1_umolL*central_target))/2
         free_central_target <- central_target - bound_umolL
-
         d/dt(central_target) <- kform_target - kel_target*free_central_target - kel_anon1*bound_umolL - 1.1 * (1.3*central_target - peripheral_target)
         d/dt(peripheral_target) <- 1.1 * (1.3*central_target - peripheral_target)
         d/dt(cleared_amount_bound_anon1_umol) <- kel_anon1*bound_umolL
-
         f(depot_anon1) <- f_anon1
         central_target(0) <- 1.4
         peripheral_target(0) <- 1.4*1.3
@@ -198,7 +194,23 @@ if (!.Call(`_rxode2_isIntel`)) {
 
     expect_error(rxSolve(mod, d, keep="target_name"), NA)
 
-    s <- rxSolve(mod, d, keep="target_name")
+    tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE)
+
+    print(head(tmp[,c("id", "amt", "target_name")]))
+
+    et <- etTrans(d, mod, keep="target_name")
+    et2 <- attr(class(et), ".rxode2.lst")
+    class(et2) <- NULL
+
+    expect_equal(length(et2$keepL$keepL[[1]]),
+                 length(et$ID))
+
+    tmp <- data.frame(keepL=is.na(et2$keepL$keepL[[1]])*1,
+                      amt=1*!is.na(et$AMT))
+
+    expect_equal(tmp$keepL, tmp$amt)
+
+    ## s <- rxSolve(mod, d, keep="target_name")
 
   })
 }
