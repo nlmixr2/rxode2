@@ -211,7 +211,7 @@ rxUiGet.interpLines <- function(x, ...){
   }
   .lvl <- levels(.interp)
   if (length(.lvl) != 5L ||
-      all(.lvl == c("default", "linear", "locf", "nocb", "midpoint"))) {
+        !identical(.lvl, c("default", "linear", "locf", "nocb", "midpoint"))) {
     return(NULL)
   }
   if (any(is.na(.interp))) {
