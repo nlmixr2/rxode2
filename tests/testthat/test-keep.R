@@ -1,5 +1,6 @@
 # Individual keep AGE==AGE2
 if (!.Call(`_rxode2_isIntel`)) {
+
   test_that("Make sure the keep gives the right values", {
     TVQ <- 4
     TVV3 <- 7
@@ -152,6 +153,52 @@ if (!.Call(`_rxode2_isIntel`)) {
     expect_true(is.na(d$lSEX[4]))
 
     expect_error(rxSolve(one.cmt, events = d, keep = c("eSEX")))
+
+  })
+
+  test_that("rxSolve 'keep' does not crash and keeps correct values #756", {
+
+    qs <- test_path("keep-756.qs")
+    skip_if_not(file.exists(qs), "Test file not found")
+
+    d <- qs::qread(qs)
+
+    mod <- function() {
+      ini({
+        ka_anon1 <- 1
+        f_anon1 <- 0.8
+        vc_anon1 <- 3
+        hl_anon1 <- 5
+      })
+      model({
+        mw_anon1 <- 55000
+        mw_convert_anon1 <- 1 / mw_anon1 * 1e3
+        kel_anon1 <- log(2)/(hl_anon1/60/24)
+        kel_target <- log(2)/1.2
+        kform_target <- 1.4*kel_target
+        kd_anon1_target_umolL <- 1.5/1000
+
+        d/dt(depot_anon1) <- -ka_anon1*depot_anon1
+        d/dt(central_anon1) <- ka_anon1*depot_anon1 - kel_anon1*central_anon1
+
+        central_anon1_umolL <- central_anon1/vc_anon1*mw_convert_anon1
+        totalconc <- central_anon1_umolL + central_target + kd_anon1_target_umolL
+        bound_umolL <- (totalconc - sqrt(totalconc^2 - 4*central_anon1_umolL*central_target))/2
+        free_central_target <- central_target - bound_umolL
+
+        d/dt(central_target) <- kform_target - kel_target*free_central_target - kel_anon1*bound_umolL - 1.1 * (1.3*central_target - peripheral_target)
+        d/dt(peripheral_target) <- 1.1 * (1.3*central_target - peripheral_target)
+        d/dt(cleared_amount_bound_anon1_umol) <- kel_anon1*bound_umolL
+
+        f(depot_anon1) <- f_anon1
+        central_target(0) <- 1.4
+        peripheral_target(0) <- 1.4*1.3
+      })
+    }
+
+    expect_error(rxSolve(mod, d, keep="target_name"), NA)
+
+    s <- rxSolve(mod, d, keep="target_name")
 
   })
 }
