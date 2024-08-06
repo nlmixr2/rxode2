@@ -10,7 +10,7 @@
 \alias{rxUiGet.symengineModelPrune}
 \alias{rxUiGet.simulationIniModel}
 \alias{rxUiGet}
-\alias{rxUiGet.params}
+\alias{rxUiGet.props}
 \alias{rxUiGet.theta}
 \alias{rxUiGet.lstChr}
 \alias{rxUiGet.omega}
@@ -57,7 +57,7 @@
 
 rxUiGet(x, ...)
 
-\method{rxUiGet}{params}(x, ...)
+\method{rxUiGet}{props}(x, ...)
 
 \method{rxUiGet}{theta}(x, ...)
 

@@ -123,7 +123,7 @@ rxUiGet.props <- function(x, ...) {
                    endpoint=.end,
                    state=.x$state))
 }
-attr(rxUiGet.params, "desc") <- "rxode2 model properties"
+attr(rxUiGet.props, "desc") <- "rxode2 model properties"
 
 #' @export
 #' @rdname rxUiGet
