@@ -67,7 +67,7 @@ attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
 
 #' @export
 #' @rdname rxUiGet
-rxUiGet.params <- function(x, ...) {
+rxUiGet.props <- function(x, ...) {
   .x <- x[[1]]
   .ini <- .x$iniDf
   .w <- !is.na(.ini$ntheta) & is.na(.ini$err)
@@ -106,8 +106,9 @@ rxUiGet.params <- function(x, ...) {
   .dose <- c(.doseExtra, .x$state)
   names(.var) <- .cnds
   .lhs <- .mv$lhs
+  .state <- .mv$state
   .end <- .x$predDf$var
-  .end <- .end[.end %in% .lhs]
+  .end <- .end[.end %in% c(.lhs, .state)]
   .lhs <- .lhs[!(.lhs %in% .end)]
   .varLhs <- .x$varLhs
   .primary <- .lhs[.lhs %in% .varLhs]
@@ -122,7 +123,7 @@ rxUiGet.params <- function(x, ...) {
                    endpoint=.end,
                    state=.x$state))
 }
-attr(rxUiGet.params, "desc") <- "Parameter names"
+attr(rxUiGet.props, "desc") <- "rxode2 model properties"
 
 #' @export
 #' @rdname rxUiGet
