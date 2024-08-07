@@ -2704,10 +2704,51 @@ extern void resetFkeep() {
 }
 
 
-extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind) {
+extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid) {
+  // fid is the first index of the id for keep
   List keepFcovI= keepFcov.attr("keepCov");
   int idx = keepFcovI[col];
-  if (idx == 0) return REAL(keepFcov[col])[id];
+  if (idx == 0) {
+    double *vals = REAL(keepFcov[col]);
+    double val = vals[id];
+    if (R_IsNA(val) || R_IsNaN(val)) {
+      rx_solve* rx = getRxSolve_();
+      rx_solving_options* op = rx->op;
+      if (op->keep_interp == 1) { // locf
+        int i = id;
+        // find the previous non-NA value
+        while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
+          i--;
+        }
+        // if it can't be found find the next non-NA value
+        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+          i = id;
+          while (i < fid  + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
+            i++;
+          }
+        }
+        return vals[i];
+      } else if (op->keep_interp == 0) { // nocb
+        int i = id;
+        // find the next non-NA value
+        while (i < fid + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
+          i++;
+        }
+        // if it can't be found find the previous non-NA value
+        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+          i = id;
+          while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
+            i--;
+          }
+        }
+        return vals[i];
+      } else { // should be op->keep_interp == 2
+        // this will return NA
+        return val;
+      }
+    }
+    return val;
+  }
   return ind->par_ptr[idx-1];
 }
 
@@ -5352,6 +5393,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     snprintf(op->modNamePtr, 1000, "%s", (as<std::string>(trans[RxMvTrans_model_vars])).c_str());
     // approx fun options
     op->instant_backward = asInt(rxControl[Rxc_naInterpolation], "naInterpolation");
+    op->keep_interp = asInt(rxControl[Rxc_keepInterpolation], "keepInterpolation");
     op->is_locf = covs_interpolation;
     if (op->is_locf == 0){//linear
     } else if (op->is_locf == 1){ // locf

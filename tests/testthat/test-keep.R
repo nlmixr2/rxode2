@@ -198,6 +198,19 @@ if (!.Call(`_rxode2_isIntel`)) {
 
     expect_false(any(is.na(tmp$target_name)))
 
+    tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE, keepInterpolation="na")
+
+    expect_true(any(is.na(tmp$target_name)))
+
+    tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE, keepInterpolation="locf")
+
+    expect_false(any(is.na(tmp$target_name)))
+
+    tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE, keepInterpolation="nocb")
+
+    expect_false(any(is.na(tmp$target_name)))
+
+
     ## print(head(tmp[,c("id", "amt", "target_name")]))
 
     et <- etTrans(d, mod, keep="target_name")

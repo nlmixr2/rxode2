@@ -261,6 +261,19 @@
 #'   end/beginning of the individual record, switch direction.  If all
 #'   are really missing, then return missing.
 #'
+#' @param keepInterpolation specifies the interpolation method for
+#'   variables in the `keep` column.  When `nlmixr2` creates `mtime`,
+#'   `addl` doses etc, these items were not originally in the dataset.
+#'   The interpolation methods you can choose are:
+#'
+#'   * `"locf"` -- last observation carried forward (default)
+#'
+#'   * `"nocb"` -- next observation carried backward.
+#'
+#'   * `"na"` -- no interpolation, simply put `NA` for the
+#'   interpolated `keep` covariates.
+#'
+#'
 #' @param addCov A boolean indicating if covariates should be added
 #'     to the output matrix or data frame. By default this is
 #'     disabled.
@@ -686,6 +699,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     cores,
                     covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
                     naInterpolation = c("locf", "nocb"),
+                    keepInterpolation=c("locf", "nocb", "na"),
                     addCov = TRUE, sigma = NULL, sigmaDf = NULL,
                     sigmaLower = -Inf, sigmaUpper = Inf,
                     nCoresRV = 1L, sigmaIsChol = FALSE,
@@ -819,10 +833,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
     }
-    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0, upper=2, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0, upper=1, any.missing=FALSE)) {
       naInterpolation <- as.integer(naInterpolation)
     } else {
       naInterpolation <- c("locf"=1L, "nocb"=0L)[match.arg(naInterpolation)]
+    }
+    if (checkmate::testIntegerish(keepInterpolation, len=1, lower=0, upper=2, any.missing=FALSE)) {
+      keepInterpolation <- as.integer(keepInterpolation)
+    } else {
+      keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)[match.arg(keepInterpolation)]
     }
     if (missing(naTimeHandle) && !is.null(getOption("rxode2.naTimeHandle", NULL))) {
       naTimeHandle <- getOption("rxode2.naTimeHandle")
@@ -1158,6 +1177,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ssAtDoseTime=ssAtDoseTime,
       ss2cancelAllPending=ss2cancelAllPending,
       naInterpolation=naInterpolation,
+      keepInterpolation=keepInterpolation,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
