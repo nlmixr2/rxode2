@@ -48,6 +48,7 @@ rxSolve(
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
   naInterpolation = c("locf", "nocb"),
+  keepInterpolation = c("locf", "nocb", "na"),
   addCov = TRUE,
   sigma = NULL,
   sigmaDf = NULL,
@@ -376,6 +377,17 @@ instantaneously missing, or the next value when instantaneously
 missing.  If all the covariates are missing and you find the
 end/beginning of the individual record, switch direction.  If all
 are really missing, then return missing.}
+
+\item{keepInterpolation}{specifies the interpolation method for
+variables in the \code{keep} column.  When \code{nlmixr2} creates \code{mtime},
+\code{addl} doses etc, these items were not originally in the dataset.
+The interpolation methods you can choose are:
+\itemize{
+\item \code{"locf"} -- last observation carried forward (default)
+\item \code{"nocb"} -- next observation carried backward.
+\item \code{"na"} -- no interpolation, simply put \code{NA} for the
+interpolated \code{keep} covariates.
+}}
 
 \item{addCov}{A boolean indicating if covariates should be added
 to the output matrix or data frame. By default this is
