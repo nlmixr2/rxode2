@@ -192,9 +192,11 @@ if (!.Call(`_rxode2_isIntel`)) {
       })
     }
 
-    ## expect_error(rxSolve(mod, d, keep="target_name"), NA)
+    expect_error(rxSolve(mod, d, keep="target_name"), NA)
 
-    ## tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE)
+    tmp <- rxSolve(mod, d, keep="target_name", addDosing=FALSE)
+
+    expect_false(any(is.na(tmp$target_name)))
 
     ## print(head(tmp[,c("id", "amt", "target_name")]))
 
