@@ -217,7 +217,12 @@ rxUiGet.interpLines <- function(x, ...){
   if (any(is.na(.interp))) {
     return(NULL)
   }
-  if (all(.interp == "default")) {
+  .try <- try(all(.interp == "default"), silent=TRUE)
+  if (inherits(.try, "try-error") ||
+        !checkmate::testLogical(.try, any.missing=FALSE, len=1)) {
+    return(NULL)
+  }
+  if (.try) {
     # use default
     return(NULL)
   }
