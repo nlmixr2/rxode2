@@ -746,13 +746,13 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             if (TYPEOF(tmp) == REALSXP){
               dfp = REAL(tmp);
               // is this ntimes = nAllTimes or nObs time for this subject...?
-              dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind);
+              dfp[ii] = get_fkeep(j, curi + ind->ix[i], ind, curi);
             } else if (TYPEOF(tmp) == STRSXP){
-              SET_STRING_ELT(tmp, ii, get_fkeepChar(j, get_fkeep(j, curi + ind->ix[i], ind)));
+              SET_STRING_ELT(tmp, ii, get_fkeepChar(j, get_fkeep(j, curi + ind->ix[i], ind, curi)));
             } else if (TYPEOF(tmp) == LGLSXP) {
               // Everything here is double
               dfi = LOGICAL(tmp);
-              double curD = get_fkeep(j, curi + ind->ix[i], ind);
+              double curD = get_fkeep(j, curi + ind->ix[i], ind, curi);
               if (ISNA(curD) || std::isnan(curD)) {
                 dfi[ii] = NA_LOGICAL;
               } else {
@@ -762,7 +762,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
               dfi = INTEGER(tmp);
               /* if (j == 0) RSprintf("j: %d, %d; %f\n", j, i, get_fkeep(j, curi + i)); */
               // is this ntimes = nAllTimes or nObs time for this subject...?
-              double curD = get_fkeep(j, curi + ind->ix[i], ind);
+              double curD = get_fkeep(j, curi + ind->ix[i], ind, curi);
               if (ISNA(curD) || std::isnan(curD)) {
                 dfi[ii] = NA_INTEGER;
               } else {

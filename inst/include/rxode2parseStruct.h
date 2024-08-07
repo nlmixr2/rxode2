@@ -48,6 +48,7 @@ typedef struct {
   // approx fun options
   int is_locf;
   int instant_backward;
+  int keep_interp;
   int cores;
   int doesRandom;
   int extraCmt;

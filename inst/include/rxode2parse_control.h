@@ -96,7 +96,8 @@
 #define Rxc_ssAtDoseTime 92
 #define Rxc_ss2cancelAllPending 93
 #define Rxc_naInterpolation 94
-#define Rxc__zeros 95
+#define Rxc_keepInterpolation 95
+#define Rxc__zeros 96
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
