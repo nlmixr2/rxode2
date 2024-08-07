@@ -1,5 +1,6 @@
 rxTest({ # mostly tested in 'rxode2et'
   test_that("warfarin model", {
+
     warfarin <- nlmixr2data::warfarin
 
     mod <- rxode2({
@@ -62,6 +63,7 @@ rxTest({ # mostly tested in 'rxode2et'
 
     expect_equal(as.double((t$sex == "male") * 1), t$sm)
     expect_equal(as.double((t$sex == "female") * 1), t$sf)
+
   })
 
   test_that("etTrans na time evid=2", {
@@ -86,6 +88,7 @@ d/dt(blood)     = a*intestine - b*blood
     skip_on_cran()
 
     expect_warning(expect_false(any(is.na(etTrans(et, mod)$TIME))))
+
   })
 
   .Call(`_rxode2_etTransEvidIsObs`, FALSE)

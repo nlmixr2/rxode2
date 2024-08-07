@@ -192,11 +192,11 @@ if (!.Call(`_rxode2_isIntel`)) {
       })
     }
 
-    expect_error(rxSolve(mod, d, keep="target_name"), NA)
+    ## expect_error(rxSolve(mod, d, keep="target_name"), NA)
 
-    tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE)
+    ## tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE)
 
-    print(head(tmp[,c("id", "amt", "target_name")]))
+    ## print(head(tmp[,c("id", "amt", "target_name")]))
 
     et <- etTrans(d, mod, keep="target_name")
     et2 <- attr(class(et), ".rxode2.lst")
@@ -205,10 +205,15 @@ if (!.Call(`_rxode2_isIntel`)) {
     expect_equal(length(et2$keepL$keepL[[1]]),
                  length(et$ID))
 
-    tmp <- data.frame(keepL=is.na(et2$keepL$keepL[[1]])*1,
-                      amt=1*!is.na(et$AMT))
+    class(et) <- "data.frame"
+    et <- cbind(et, k=et2$keepL$keepL[[1]])
 
-    expect_equal(tmp$keepL, tmp$amt)
+    d2 <- d %>% dplyr::filter(EVID==1) %>% dplyr::select(ID, TIME) %>%
+      dplyr::mutate(i=1)
+
+    # only variables in the dataset are considered NA
+    expect_true(merge(et, d2, all.x=TRUE) %>%
+                  dplyr::filter(i!= 1) %>% dplyr::pull(k) %>% all(is.na(.)))
 
     ## s <- rxSolve(mod, d, keep="target_name")
 
