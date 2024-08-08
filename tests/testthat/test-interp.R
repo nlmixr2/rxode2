@@ -29,3 +29,212 @@ test_that("interpolation functions", {
 
 
 })
+
+test_that("ui $interpLines", {
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      cl.wt <- 0
+      v.wt <- 0
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      linear(WT)
+      locf(b)
+      nocb(c)
+      midpoint(d)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+      v <- exp(tv + eta.v+ WT * v.wt + b + c + d)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  ui <- rxode(f)
+
+  expect_equal(ui$interpLines,
+               list(str2lang("linear(WT)"),
+                    str2lang("locf(b)"),
+                    str2lang("nocb(c)"),
+                    str2lang("midpoint(d)")))
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      cl.wt <- 0
+      v.wt <- 0
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      linear(WT)
+      locf(b)
+      midpoint(d)
+      nocb(c)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+      v <- exp(tv + eta.v+ WT * v.wt + b + c + d)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  ui <- rxode(f)
+
+  expect_equal(ui$interpLines,
+               list(str2lang("linear(WT)"),
+                    str2lang("locf(b)"),
+                    str2lang("nocb(c)"),
+                    str2lang("midpoint(d)")))
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      cl.wt <- 0
+      v.wt <- 0
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      locf(WT, b, d, c)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+      v <- exp(tv + eta.v+ WT * v.wt + b + c + d)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  ui <- rxode(f)
+
+  expect_equal(ui$interpLines,
+               list(str2lang("locf(WT, b, d, c)")))
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      cl.wt <- 0
+      v.wt <- 0
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+      v <- exp(tv + eta.v+ WT * v.wt + b + c + d)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  ui <- rxode(f)
+
+  expect_null(ui$interpLines)
+
+})
+
+
+test_that("interp $simulationModel", {
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      cl.wt <- 0
+      v.wt <- 0
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      linear(WT)
+      locf(b)
+      nocb(c)
+      midpoint(d)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+      v <- exp(tv + eta.v+ WT * v.wt + b + c + d)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  ui <- rxode(f)
+
+  expect_error(ui$simulationModel, NA)
+
+  mod <- ui$simulationModel
+
+  expect_true(rxModelVars(mod)$interp["WT"] == "linear")
+  expect_true(rxModelVars(mod)$interp["b"] == "locf")
+  expect_true(rxModelVars(mod)$interp["c"] == "nocb")
+  expect_true(rxModelVars(mod)$interp["d"] == "midpoint")
+
+  expect_error(ui$simulationIniModel, NA)
+
+  mod <- ui$simulationIniModel
+
+  expect_true(rxModelVars(mod)$interp["WT"] == "linear")
+  expect_true(rxModelVars(mod)$interp["b"] == "locf")
+  expect_true(rxModelVars(mod)$interp["c"] == "nocb")
+  expect_true(rxModelVars(mod)$interp["d"] == "midpoint")
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      cl.wt <- 0
+      v.wt <- 0
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+      v <- exp(tv + eta.v+ WT * v.wt + b + c + d)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  ui <- rxode(f)
+
+
+  expect_error(ui$simulationModel, NA)
+
+  mod <- ui$simulationModel
+
+  expect_true(rxModelVars(mod)$interp["WT"] == "default")
+  expect_true(rxModelVars(mod)$interp["b"] == "default")
+  expect_true(rxModelVars(mod)$interp["c"] == "default")
+  expect_true(rxModelVars(mod)$interp["d"] == "default")
+
+  expect_error(ui$simulationIniModel, NA)
+
+  mod <- ui$simulationIniModel
+
+  expect_true(rxModelVars(mod)$interp["WT"] == "default")
+  expect_true(rxModelVars(mod)$interp["b"] == "default")
+  expect_true(rxModelVars(mod)$interp["c"] == "default")
+  expect_true(rxModelVars(mod)$interp["d"] == "default")
+
+
+})

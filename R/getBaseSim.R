@@ -93,5 +93,9 @@ getBaseIniSimModel.default <- function(obj) {
   if (identical(.params, str2lang("params()"))) {
     .params <- NULL
   }
-  as.call(c(list(quote(`rxode2`)),as.call(c(list(quote(`{`)), .params, .sigma, .ini, .mod))))
+  # now filter out the interpolation methods
+  .mod <- .rxFilterOutPropsAndAdjustPredDf(.ui, predDf=NULL, lstExpr=.mod)
+  .interp <- rxUiGet.interpLines(list(.ui))
+  as.call(c(list(quote(`rxode2`)),
+            as.call(c(list(quote(`{`)), .params, .interp, .sigma, .ini, .mod))))
 }

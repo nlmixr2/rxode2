@@ -22,6 +22,13 @@
 
 ## New features
 
+- You can specify the type of interpolation applied for added dosing
+  records (or other added records) for columns that are kept with the
+  `keep=` option in `rxSolve()`. This new option is
+  `keepInterpolation` and can be `locf` for last observation carried
+  forward, `nocb` which is the next observation carried backward, as
+  well as `NA` which puts a `NA` in all imputed data rows. See #756.
+
 - Now you can specify the interpolation method per covariate in the model:
 
   - `linear(var1, var2)` says both `var1` and `var2` would use linear
@@ -69,6 +76,9 @@
 
 - Linear interpolation will now adjust the times as well as the values
   when `NA` values are observed.
+
+- Fix when keeping data has `NA` values that it will not crash R; Also
+  fixed some incorrect `NA` interpolations. See #756
 
 ## Big change
 
