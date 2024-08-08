@@ -13,7 +13,8 @@ rxCombineErrorLines(
   cmtLines = TRUE,
   dvidLine = TRUE,
   lstExpr = NULL,
-  useIf = TRUE
+  useIf = TRUE,
+  interpLines = NULL
 )
 }
 \arguments{
@@ -37,6 +38,8 @@ defaults to the model expressions accessible by
 \code{uiModel$lstExpr}.}
 
 \item{useIf}{Use an \verb{if (CMT == X)} for endpoints}
+
+\item{interpLines}{Interpolation lines, if not present}
 }
 \value{
 quoted expression that can be evaluated to compiled rxode2
