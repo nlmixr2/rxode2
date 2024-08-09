@@ -32,6 +32,7 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
+#include "strncmp.h"
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #define _(String) dgettext ("rxode2", String)
@@ -3674,6 +3675,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     std::vector<int> covPos(dfN);
     curcovi=0;
     IntegerVector interp0 = as<IntegerVector>(rxSolveDat->mv[RxMv_interp]);
+    //
+    bool isLinearOrMidpointInterp = op->is_locf == 0 || op->is_locf == 3;
     for (i = dfN; i--;){
       for (j = rxSolveDat->npars; j--;){
         if (pars[j] == dfNames[i]){
@@ -3681,7 +3684,32 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           // We minus 2 here because that way that the covariates
           // interpolation will match the interpolation method defined in
           // the rxControl() object
+          const char *curDf = dfNames[i];
+          int curDfN = strlen(curDf);
           _globals.gpar_covInterp[ncov] = interp0[j] - 2;
+          if ((isLinearOrMidpointInterp &&
+               _globals.gpar_covInterp[ncov] == -1) ||
+              _globals.gpar_covInterp[ncov] == 0 ||
+              _globals.gpar_covInterp[ncov] == 3) {
+            // linear or midpoint extrapolation, make sure it isn't a
+            // character/integer
+            // factorName.line[0] == "ID"
+
+            // the rest represent the character vectors that should
+            // not be interpolated with anything by locf / nocb
+            // change to locf if necessary.
+
+            for (int ifct = 2; ifct < rx->factorNames.n; ++ifct) {
+              const char *curFactor = rx->factorNames.line[ifct];
+              if (!strncmpci(curDf, curFactor, curDfN)) {
+                // This is a string/factor
+                _globals.gpar_covInterp[ncov] = 1; //
+                Rcpp::warning("changed '%s' interpolation to locf", curDf);
+                break;
+              }
+            }
+
+          }
           covPos[ncov] = i;
           ncov++;
         }

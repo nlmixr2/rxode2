@@ -238,3 +238,157 @@ test_that("interp $simulationModel", {
 
 
 })
+
+
+test_that("time varying character/factors should not be interpolated by linear solving", {
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      tviov.cl <- c(0, 0.1)
+      iov.cl1 ~ fix(1)
+      iov.cl2 ~ fix(1)
+      add.sd <- 0.7
+    })
+    model({
+      iov.cl <- sqrt(tviov.cl) * ((OCC=="first") * iov.cl1 +
+                                    (OCC=="second") * iov.cl2)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+
+  et <- et(amt=100) %>%
+    et(0:24) %>%
+    as.data.frame()
+
+  et$OCC  <- "first"
+  et$OCC[et$time > 12] <- "second"
+
+  f <- suppressWarnings(f()$simulationIniModel)
+  expect_warning(rxSolve(f, et, covsInterpolation="linear"))
+  expect_warning(rxSolve(f, et, covsInterpolation="nocb"), NA)
+  expect_warning(rxSolve(f, et, covsInterpolation="locf"), NA)
+  expect_warning(rxSolve(f, et, covsInterpolation="midpoint"))
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      tviov.cl <- c(0, 0.1)
+      iov.cl1 ~ fix(1)
+      iov.cl2 ~ fix(1)
+      add.sd <- 0.7
+    })
+    model({
+      midpoint(OCC)
+      iov.cl <- sqrt(tviov.cl) * ((OCC=="first") * iov.cl1 +
+                                    (OCC=="second") * iov.cl2)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  f <- suppressWarnings(f()$simulationIniModel)
+
+  expect_warning(rxSolve(f, et))
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      tviov.cl <- c(0, 0.1)
+      iov.cl1 ~ fix(1)
+      iov.cl2 ~ fix(1)
+      add.sd <- 0.7
+    })
+    model({
+      linear(OCC)
+      iov.cl <- sqrt(tviov.cl) * ((OCC=="first") * iov.cl1 +
+                                    (OCC=="second") * iov.cl2)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  f <- suppressWarnings(f()$simulationIniModel)
+
+  expect_warning(rxSolve(f, et))
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      tviov.cl <- c(0, 0.1)
+      iov.cl1 ~ fix(1)
+      iov.cl2 ~ fix(1)
+      add.sd <- 0.7
+    })
+    model({
+      nocb(OCC)
+      iov.cl <- sqrt(tviov.cl) * ((OCC=="first") * iov.cl1 +
+                                    (OCC=="second") * iov.cl2)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  f <- suppressWarnings(f()$simulationIniModel)
+
+  expect_warning(rxSolve(f, et), NA)
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      tviov.cl <- c(0, 0.1)
+      iov.cl1 ~ fix(1)
+      iov.cl2 ~ fix(1)
+      add.sd <- 0.7
+    })
+    model({
+      locf(OCC)
+      iov.cl <- sqrt(tviov.cl) * ((OCC=="first") * iov.cl1 +
+                                    (OCC=="second") * iov.cl2)
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)
+      v <- exp(tv + eta.v)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  f <- suppressWarnings(f()$simulationIniModel)
+
+  expect_warning(rxSolve(f, et), NA)
+
+})

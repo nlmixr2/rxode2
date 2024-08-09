@@ -254,7 +254,11 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
         idx = j;
       } else if (isSameTimeOp(v, getTime(ind->ix[i], ind))) {
         idx = i;
-      } else if (op->is_locf == 2) {
+      } else if (op->instant_backward == 0) {
+        // use instant_backward to change the idx too; it does not
+        // change based on covariate
+        // backward=0=locf
+        // backward=1=nocb
         // nocb
         idx = j;
       }  else {

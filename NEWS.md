@@ -29,6 +29,9 @@
   forward, `nocb` which is the next observation carried backward, as
   well as `NA` which puts a `NA` in all imputed data rows. See #756.
 
+   - Note: when interpolation is linear/midpoint for
+     factors/characters it changes to locf with a warning (#759)
+
 - Now you can specify the interpolation method per covariate in the model:
 
   - `linear(var1, var2)` says both `var1` and `var2` would use linear
