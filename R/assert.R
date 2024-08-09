@@ -532,3 +532,91 @@ testExists <- function(ui, x) {
   if (.vn %in% c(.mv$lhs, .mv$params, .mv$state)) return(TRUE)
   FALSE
 }
+
+#' Check if parameters have user boundaries different than defaults
+#'
+#' @param ui rxode2 ui
+#' @param extra extra information to append to the error message
+#' @param .var.name variable name
+#' @return a named logical vector indicating whether each parameter is bounded
+#' @noRd
+#' @author Matthew L. Fidler
+.getRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
+  .ui <- assertRxUi(ui, extra=extra, .var.name=.var.name)
+  .iniDf <- .ui$iniDf
+  .theta <- .iniDf[which(!is.na(.iniDf$ntheta)),]
+  setNames(vapply(seq_along(.theta$name),
+               function(i) {
+                 .t <- .theta[i,]
+                 if (is.na(.t$err)) {
+                   return(is.finite(.t$upper) || is.finite(.t$lower))
+                 }
+                 .err <- .errDistArgRanges[[.t$err]]
+                 return (!identical(.t$upper, .err[1]) ||
+                           !identical(.t$lower, .err[2]))
+               }, logical(1), USE.NAMES=FALSE), .theta$name)
+}
+#' Test if the rxode2 model has any parameters with user defined boundaries
+#'
+#' @param ui rxode2 ui
+#' @param extra extra information to append to the error message
+#' @param .var.name variable name
+#' @return boolean indicating if any parameters have user defined boundaries
+#' @family Assertions
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' one.cmt <- function() {
+#'   ini({
+#'     ## You may label each parameter with a comment
+#'     tka <- 0.45 # Log Ka
+#'     tcl <- log(c(0, 2.7, 100)) # Log Cl
+#'     ## This works with interactive models
+#'     ## You may also label the preceding line with label("label text")
+#'     tv <- 3.45; label("log V")
+#'     ## the label("Label name") works with all models
+#'     eta.ka ~ 0.6
+#'     eta.cl ~ 0.3
+#'     eta.v ~ 0.1
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka + eta.ka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv + eta.v)
+#'     linCmt() ~ add(add.sd)
+#'   })
+#  }
+#'
+#' testRxBounded(one.cmt)
+#'
+#' try(assertRxBounded(one.cmt))
+#'
+#' warnAssertRxBounded(one.cmt)
+#'
+testRxBounded <- function(ui) {
+  any(.getRxBounded(ui))
+}
+
+#' @describeIn testRxBounded Assert that the rxode2 model has any parameters with user defined boundaries
+#' @export
+assertRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
+  if (testRxBounded(ui,extra=extra, .var.name=.var.name)) {
+    return(invisible(ui))
+  }
+  stop("'", .var.name, "' can not have user defined boundaries", extra, call.=FALSE)
+}
+
+#' @describeIn testRxBounded Warn that the rxode2 model has any parameters with user defined boundaries
+#' @export
+warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
+  .bound <- .getRxBounded(ui, extra=extra, .var.name=.var.name)
+  .w <- which(.bound)
+  if (length(.w) > 0) {
+    warning("'", .var.name, "' has the following user-defined boundaries: ",
+         paste(names(.bound)[.w], collapse=", "),
+         extra, call.=FALSE)
+  }
+  invisible()
+}
