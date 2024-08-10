@@ -102,7 +102,8 @@ Other Assertions:
 \code{\link{assertCompartmentName}()},
 \code{\link{assertCompartmentNew}()},
 \code{\link{assertVariableExists}()},
-\code{\link{assertVariableNew}()}
+\code{\link{assertVariableNew}()},
+\code{\link{testRxUnbounded}()}
 }
 \author{
 Matthew L. Fidler

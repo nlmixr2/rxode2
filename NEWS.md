@@ -61,6 +61,9 @@
   compartment name, nlmixr2 compartment/variable exists in the model,
   variable name, or parameter value (#726; #733)
 
+- Added `assertRxUnbounded()`, `testRxUnbounded()`, `warnRxBounded()`
+  to allow `nlmixr2` warn about methods that ignore boundaries #760
+
 - Added functions `tad0()`, `tafd0()`, `tlast0()` and `tfirst0()` that
   will give `0` instead of `NA` when the dose has not been
   administered yet.  This is useful for use in ODEs since `NA`s will
