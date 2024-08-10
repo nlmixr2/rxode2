@@ -1,5 +1,31 @@
 if (!.Call(`_rxode2_isIntel`)) {
-  test_that("assert or testRxLinCmt", {
+
+  test_that("no warnings/errors without boundaries", {
+
+    one.cmt <- function() {
+      ini({
+        tka <- 0.45; label("Ka")
+        tcl <- log(2.7); label("Cl")
+        tv <- 3.45; label("V")
+        eta.ka ~ 0.6
+        eta.cl ~ 0.3
+        eta.v ~ 0.1
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv + eta.v)
+        linCmt() ~ add(add.sd)
+      })
+    }
+
+    expect_true(testRxUnbounded(one.cmt))
+    expect_error(assertRxUnbounded(one.cmt), NA)
+    expect_warning(warnRxBounded(one.cmt), NA)
+  })
+  test_that("assert or testRxLinCmt and boundaries", {
+
     one.cmt <- function() {
       ini({
         tka <- 0.45; label("Ka")
@@ -17,6 +43,10 @@ if (!.Call(`_rxode2_isIntel`)) {
         linCmt() ~ add(add.sd)
       })
     }
+
+    expect_false(testRxUnbounded(one.cmt))
+    expect_error(assertRxUnbounded(one.cmt))
+    expect_warning(warnRxBounded(one.cmt))
 
     expect_error(assertRxLinCmt(one.cmt), NA)
     expect_true(testRxLinCmt(one.cmt))
