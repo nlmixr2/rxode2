@@ -1351,4 +1351,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     }
   })
 
+  test_that("cmt/locf interaction", {
+    expect_equal(rxNorm(rxModelVars("cmt(a);\nlocf(b);d/dt(a)=b*kel")),
+                 "cmt(a);\nlocf(b);\nd/dt(a)=b*kel;\n")
+  })
+
 })

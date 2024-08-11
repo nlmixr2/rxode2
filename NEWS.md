@@ -86,6 +86,10 @@
 - Fix when keeping data has `NA` values that it will not crash R; Also
   fixed some incorrect `NA` interpolations. See #756
 
+- When using `cmt()` sometimes the next statement would be corrupted
+  in the normalized syntax (like for instance `locf`); This bug was
+  fixed (#763)
+
 ## Big change
 
 - At the request of CRAN, combine `rxode2parse`, `rxode2random`, and
