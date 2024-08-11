@@ -1008,7 +1008,13 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(dfObs, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
     # iCov = data.frame
     checkmate::assertDataFrame(iCov, null.ok=TRUE)
-    checkmate::assertCharacter(keep, any.missing=FALSE, null.ok=TRUE)
+    .invalidKeep <- c("nlmixrRowNums", "id", "sim.id", "resetno", "evid", "cmt", "ss", "amt",
+                      "rate", "dur", "ii", "time", "rxLambda",
+                      "rxYj", "rxLow", "rxHi")
+    .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
+    if (length(.invalidKeep) > 0) {
+      stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using addDosing=TRUE or merging to original dataset", call.=FALSE)
+    }
     checkmate::assertCharacter(drop, any.missing=FALSE, null.ok=TRUE)
     checkmate::assertLogical(warnDrop, len=1, any.missing=FALSE)
     checkmate::assertNumeric(omegaLower, any.missing=FALSE, null.ok=TRUE)
