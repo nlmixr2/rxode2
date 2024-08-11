@@ -274,7 +274,6 @@ extern sbuf sbOut;
 extern sbuf _gbuf, _mv;
 
 #define SBPTR sb.s+sb.o
-#define SBTPTR sbt.s+sbt.o
 #define NV tb.ss.n
 
 extern char *gBuf;

@@ -71,11 +71,11 @@ static inline int handleCmtPropertyRate(nodeInfo ni, char *name, char *v) {
 }
 
 static inline int handleCmtPropertyCmtOrder(nodeInfo ni, char *name, char *v) {
-  if (nodeHas(cmt_statement)){
-    sb.o=0;sbDt.o=0; sbt.o=0;
-    sAppend(&sbt, "cmt(%s)", v);
-    sAppend(&sbNrm, "%s;\n", sbt.s);
-    addLine(&sbNrmL, "%s;\n", sbt.s);
+  if (nodeHas(cmt_statement)) {
+    sb.o=0; sbDt.o=0; sbt.o=0;
+    //sAppend(&sbt, "cmt(%s)", v);
+    sAppend(&sbNrm, "cmt(%s);\n", v);
+    addLine(&sbNrmL, "cmt(%s);\n", v);
     return 1;
   }
   return 0;
