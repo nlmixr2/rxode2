@@ -90,6 +90,9 @@
   in the normalized syntax (like for instance `locf`); This bug was
   fixed (#763)
 
+- `keep` will now error when trying to keep items that are in the
+  rxode2 output data-frame and will be calculated (#764)
+
 ## Big change
 
 - At the request of CRAN, combine `rxode2parse`, `rxode2random`, and
