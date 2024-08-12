@@ -286,7 +286,6 @@ typedef SEXP (*lotriSep_type) (SEXP, SEXP, SEXP, SEXP, SEXP);
 typedef SEXP (*lotriAllNames_type) (SEXP);
 typedef SEXP (*lotriGetBounds_type) (SEXP, SEXP, SEXP);
 typedef SEXP (*isLotri_type) (SEXP);
-typedef SEXP (*lotriMaxNu_type) (SEXP);
 typedef SEXP (*rxSolveFreeSexp_t)(void);
 extern void setZeroMatrix(int which);
 extern rx_solve rx_global;
@@ -364,8 +363,11 @@ SEXP _rxode2_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
                             SEXP, SEXP);
 SEXP _rxode2_rxQs(SEXP);
 
+SEXP iniLotriPtr(SEXP ptr);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},
     {"_rxode2_rxode2parseSetRstudio", (DL_FUNC) &_rxode2_rxode2parseSetRstudio, 1},
     {"_rxode2_rxQs", (DL_FUNC) &_rxode2_rxQs, 1},
     {"_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr, 1},

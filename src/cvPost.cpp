@@ -10,25 +10,13 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2_as.h"
+#include <lotri.h>
 
-extern "C"{
+extern "C" SEXP chin(SEXP a, SEXP b);
 
-  extern "C" SEXP chin(SEXP a, SEXP b);
-  typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
-  lotriMat_type lotriMat;
-   typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
-  asLotriMat_type asLotriMat;
-  typedef SEXP (*lotriSep_type) (SEXP, SEXP, SEXP, SEXP, SEXP);
-  lotriSep_type lotriSep;
-  typedef SEXP (*lotriAllNames_type) (SEXP);
-  lotriAllNames_type lotriAllNames;
-  typedef SEXP (*lotriGetBounds_type) (SEXP, SEXP, SEXP);
-  lotriGetBounds_type lotriGetBounds;
-  typedef SEXP (*isLotri_type) (SEXP);
-  isLotri_type isLotri;
-  typedef SEXP (*lotriMaxNu_type) (SEXP);
-  lotriMaxNu_type lotriMaxNu;
-}
+// place links here
+iniLotri;
+
 List etTrans(List inData, const RObject &mv, bool addCmt,
              bool dropUnits, bool allTimeVar,
              bool keepDosingOnly, Nullable<LogicalVector> combineDvid,
@@ -61,19 +49,6 @@ void rxModelsAssign(std::string str, SEXP assign);
 LogicalVector rxSolveFree();
 
 bool gotLotriMat=false;
-
-static inline void setupLotri() {
-  if (!gotLotriMat) {
-    lotriMat = (lotriMat_type) R_GetCCallable("lotri","_lotriLstToMat");
-    asLotriMat = (asLotriMat_type) R_GetCCallable("lotri","_asLotriMat");
-    lotriSep = (lotriSep_type) R_GetCCallable("lotri","_lotriSep");
-    lotriAllNames = (lotriAllNames_type) R_GetCCallable("lotri","_lotriAllNames");
-    lotriGetBounds = (lotriGetBounds_type) R_GetCCallable("lotri", "_lotriGetBounds");
-    isLotri = (isLotri_type) R_GetCCallable("lotri", "_isLotri");
-    lotriMaxNu = (lotriMaxNu_type) R_GetCCallable("lotri", "_lotriMaxNu");
-    gotLotriMat=true;
-  }
-}
 
 using namespace Rcpp;
 using namespace arma;
@@ -411,7 +386,6 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
   } else {
     stop(_("variable 'type': Can only use type string or integer[1,3]"));
   }
-  setupLotri();
   if (n == 1 && type == 1){
     if (qtest(omegaS, "M")) {
       double nu = getDbl(nuS, "nu");
@@ -485,7 +459,6 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
       if (omega.hasAttribute("format")) {
         format = omega.attr("format");
       }
-      setupLotri();
       return as<SEXP>(lotriMat(as<SEXP>(omegaLst), format, as<SEXP>(startAt)));
     }
   } else {
@@ -715,7 +688,6 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
   // SEXP events = as<DataFrame>(events);
   qassertS(controlS, "l+", "control");
   List control = as<List>(controlS);
-  setupLotri();
   int pro = 0;
   SEXP nStudS = PROTECT(control[Rxc_nStud]); pro++;
   int nStud = as<int>(nStudS);
@@ -1167,7 +1139,6 @@ SEXP nestingInfo_(SEXP omega, List data) {
   if (Rf_isNewList(omega)){
     lotriOmega = omega;
   } else if (Rf_isMatrix(omega)) {
-    setupLotri();
     lotriOmega = PROTECT(asLotriMat(omega, R_NilValue,
                                     wrap(CharacterVector::create(idName)))); pro++;
   } else {
