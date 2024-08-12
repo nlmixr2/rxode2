@@ -80,7 +80,7 @@
     setProgSupported(0)
   }
   # Setup lotri C linkages using calculated function pointers
-  .Call(`_iniLotriPtr`, lotri::.lotriPointers())
+  .Call(`_iniLotriPtr`, lotri::.lotriPointers(), class(matrix(0)))
   rxTempDir()
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")

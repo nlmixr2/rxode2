@@ -280,13 +280,6 @@ SEXP _rxode2_meanProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP useT, SEXP pred, SEX
 SEXP _rxode2_binomProbs_(SEXP x, SEXP probs, SEXP naRm, SEXP inN, SEXP cont);
 SEXP _rxode2_binomProbsPredVec_(SEXP n, SEXP m, SEXP Y, SEXP M, SEXP doP, SEXP tol);
 
-typedef SEXP (*lotriMat_type) (SEXP, SEXP, SEXP);
-typedef SEXP (*asLotriMat_type) (SEXP, SEXP, SEXP);
-typedef SEXP (*lotriSep_type) (SEXP, SEXP, SEXP, SEXP, SEXP);
-typedef SEXP (*lotriAllNames_type) (SEXP);
-typedef SEXP (*lotriGetBounds_type) (SEXP, SEXP, SEXP);
-typedef SEXP (*isLotri_type) (SEXP);
-typedef SEXP (*rxSolveFreeSexp_t)(void);
 extern void setZeroMatrix(int which);
 extern rx_solve rx_global;
 extern rx_solving_options op_global;
@@ -363,11 +356,11 @@ SEXP _rxode2_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
                             SEXP, SEXP);
 SEXP _rxode2_rxQs(SEXP);
 
-SEXP iniLotriPtr(SEXP ptr);
+SEXP iniLotriPtr(SEXP ptr, SEXP matCls);
 
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
-    {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},
+    {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 2},
     {"_rxode2_rxode2parseSetRstudio", (DL_FUNC) &_rxode2_rxode2parseSetRstudio, 1},
     {"_rxode2_rxQs", (DL_FUNC) &_rxode2_rxQs, 1},
     {"_rxode2_rxQr", (DL_FUNC) &_rxode2_rxQr, 1},
