@@ -74,6 +74,12 @@
   changes in the `lotri` package will not require `rxode2` to be
   recompiled (in most cases) and will not crash the system.
 
+- `rxode2` also has no more binary linkage to `PreciseSums`
+
+- The binary linkage for `dparser` is reduced to C structures only,
+  making changes in dparser less likely to cause segmentation faults
+  in `rxode2` if it wasn't recompiled.
+
 ## Bug fixes
 
 - Fix `ui$props$endpoint` when the ui endpoint is defined in terms of the ode instead of lhs. See #754
