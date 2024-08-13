@@ -72,6 +72,10 @@
   .ggplot2Fix()
 } ## nocov end
 
+.iniLotriPtrs <- function() {
+  .Call(`_iniLotriPtr`, lotri::.lotriPointers())
+}
+
 .onAttach <- function(libname, pkgname) {
   ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
@@ -79,8 +83,8 @@
   if (!interactive()) {
     setProgSupported(0)
   }
-  # Setup lotri C linkages using calculated function pointers
-  .Call(`_iniLotriPtr`, lotri::.lotriPointers(), class(matrix(0)))
+  # Setup lotri C linkages using function pointers
+  .iniLotriPtrs()
   rxTempDir()
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")

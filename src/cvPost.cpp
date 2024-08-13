@@ -459,7 +459,9 @@ SEXP cvPost_(SEXP nuS, SEXP omegaS, SEXP nS, SEXP omegaIsCholS,
       if (omega.hasAttribute("format")) {
         format = omega.attr("format");
       }
-      return as<SEXP>(lotriMat(as<SEXP>(omegaLst), format, as<SEXP>(startAt)));
+      return as<SEXP>(lotriLstToMat(as<SEXP>(omegaLst), format,
+                                    as<SEXP>(startAt),
+                                    as<SEXP>(CharacterVector::create("matrix", "array"))));
     }
   } else {
     if (type == 1){
