@@ -82,7 +82,7 @@ Imports:
     checkmate,
     ggplot2 (>= 3.4.0),
     inline,
-    lotri (>= 0.4.0),
+    lotri (>= 0.5.0),
     magrittr,
     memoise,
     methods,
@@ -116,6 +116,7 @@ RoxygenNote: 7.3.2
 Biarch: true
 LinkingTo:
     sitmo,
+    lotri (>= 0.5.0),
     PreciseSums (>= 0.3),
     Rcpp,
     RcppArmadillo (>= 0.9.300.2.0),

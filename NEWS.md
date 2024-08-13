@@ -70,6 +70,10 @@
   break the solving (so can be used a bit more robustly with models
   like Weibull absorption).
 
+- `rxode2` is has no more binary link to `lotri`, which means that
+  changes in the `lotri` package will not require `rxode2` to be
+  recompiled (in most cases) and will not crash the system.
+
 ## Bug fixes
 
 - Fix `ui$props$endpoint` when the ui endpoint is defined in terms of the ode instead of lhs. See #754
