@@ -9,9 +9,10 @@
 #include "dop853.h"
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define STRICT_R_HEADERS
-#include <PreciseSums.h>
+#include <PreciseSumsPtr.h>
 #include "../inst/include/rxode2.h"
 
+iniPreciseSums;
 //--------------------------------------------------------------------------
 
 // These are now allocated via R structures in Rcpp.

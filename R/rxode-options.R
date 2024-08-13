@@ -16,8 +16,6 @@
   }
 }
 .hasUnits <- FALSE
-.PreciseSumsVersion <- utils::packageVersion("PreciseSums")
-
 ## nocov start
 .onLoad <- function(libname, pkgname) {
   requireNamespace("data.table", quietly=TRUE)
@@ -32,15 +30,6 @@
   }
   if (requireNamespace("data.table", quietly = TRUE)) {
     .s3register("data.table::as.data.table", "rxEt")
-  }
-  if (!identical(.PreciseSumsVersion, utils::packageVersion("PreciseSums"))) {
-    stop("rxode2 compiled with PreciseSums '", as.character(.PreciseSumsVersion),
-      "' but PreciseSums '", as.character(utils::packageVersion("PreciseSums")),
-      "' is loaded\nRecompile rxode2 with the this version of PreciseSums",
-      call. = FALSE
-    )
-  } else {
-    requireNamespace("PreciseSums", quietly=TRUE)
   }
   if (requireNamespace("dplyr", quietly=TRUE)) {
     .s3register("dplyr::rename", "rxUi")
@@ -76,6 +65,11 @@
   .Call(`_iniLotriPtr`, lotri::.lotriPointers())
 }
 
+.iniPreciseSumsPtr <- function() {
+  .Call(`_iniPreciseSumsPtr`, PreciseSums::.preciseSumsPtr())
+}
+
+
 .onAttach <- function(libname, pkgname) {
   ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
   .Call(`_rxode2_setRstudio`, Sys.getenv("RSTUDIO") == "1")
@@ -85,6 +79,8 @@
   }
   # Setup lotri C linkages using function pointers
   .iniLotriPtrs()
+  # Setup PreciseSums linkage with function pointers
+  .iniPreciseSumsPtr()
   rxTempDir()
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")
