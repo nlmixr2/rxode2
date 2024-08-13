@@ -71,16 +71,6 @@ extern double rxode2_sumV(int n, ...){
   return s;
 }
 
-extern double rxode2_sumV_r(double *p, long double *pld, int m, int type, int n, ...){
-  va_list valist;
-  va_start(valist, n);
-  for (unsigned int i = (unsigned int)n; i--;){
-    p[i] = va_arg(valist, double);
-  }
-  va_end(valist);
-  return PreciseSums_sum_r(p, n, pld, m, type);
-}
-
 extern double rxode2_prod(double *input, int len){
   return PreciseSums_prod(input, len);
 }
