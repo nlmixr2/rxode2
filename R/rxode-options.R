@@ -59,6 +59,7 @@
     setProgSupported(0)
   }
   .ggplot2Fix()
+  .linkAll()
 } ## nocov end
 
 .iniLotriPtrs <- function() {
@@ -69,6 +70,16 @@
   .Call(`_iniPreciseSumsPtr`, PreciseSums::.preciseSumsPtr())
 }
 
+.iniDparserPtr <- function() {
+  .Call(`_rxode2_iniDparserPtr`, dparser::.dparsePtr())
+}
+
+.linkAll <- function() {
+  .iniLotriPtrs()
+  .iniPreciseSumsPtr()
+  .iniDparserPtr()
+}
+
 
 .onAttach <- function(libname, pkgname) {
   ## For some strange reason, mvnfast needs to be loaded before rxode2 to work correctly
@@ -77,10 +88,8 @@
   if (!interactive()) {
     setProgSupported(0)
   }
-  # Setup lotri C linkages using function pointers
-  .iniLotriPtrs()
-  # Setup PreciseSums linkage with function pointers
-  .iniPreciseSumsPtr()
+  .linkAll()
+
   rxTempDir()
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")
