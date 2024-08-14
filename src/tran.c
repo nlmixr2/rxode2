@@ -14,7 +14,6 @@
 #include "genModelVars.h"
 #include "print_node.h"
 #include <errno.h>
-#include <dparser.h>
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
@@ -26,6 +25,15 @@
 #else
 #define _(String) (String)
 #endif
+
+// change the name of the iniDparser pointer
+#define iniDparserPtr _rxode2_iniDparserPtr
+
+#include <dparserPtr.h>
+
+dparserPtrIni;
+
+
 #include "tran.g.d_parser.h"
 
 #define MXSYM 50000
