@@ -5,6 +5,8 @@
 #define STRICT_R_HEADER
 #include <RcppArmadillo.h>
 #include "nearPD.h"
+#define lotriArma
+#include <lotri.h>
 
 using namespace arma;
 using namespace Rcpp;
@@ -12,14 +14,14 @@ using namespace Rcpp;
 Function getRxFn(std::string name);
 
 bool rxNearPD(arma::mat &ret, const arma::mat in) {
-  Function mnearpd = getRxFn(".nearPD");
-  RObject retRO = mnearpd(in);
-  if (Rf_isMatrix(retRO)) {
-    ret = as<arma::mat>(retRO);
+  ret = mat(in.n_rows, in.n_cols);
+  if (lotriNearPDarma(ret,  in)) {
     return true;
+  } else {
+    ret = in;
+    return false;
   }
-  ret = in;
-  return false;
+  return false;  // nocov
 }
 
 unsigned int rxNearPdChol(Rcpp::NumericMatrix &ret, Rcpp::NumericMatrix x, bool isChol) {
