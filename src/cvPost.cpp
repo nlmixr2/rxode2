@@ -12,10 +12,12 @@
 #include "../inst/include/rxode2_as.h"
 #include <lotri.h>
 
+extern "C" {
+  iniLotri;
+}
+
 extern "C" SEXP chin(SEXP a, SEXP b);
 
-// place links here
-iniLotri;
 
 List etTrans(List inData, const RObject &mv, bool addCmt,
              bool dropUnits, bool allTimeVar,

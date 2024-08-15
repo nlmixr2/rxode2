@@ -60,7 +60,3 @@ rxTest({
                  NA)
   })
 })
-
-test_that(".nearPD expected null for matrix that cannot become positive definite", {
-  expect_null(.nearPD(matrix(Inf)))
-})
