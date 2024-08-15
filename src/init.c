@@ -362,8 +362,30 @@ SEXP iniPreciseSumsPtr(SEXP ptr);
 
 SEXP _rxode2_iniDparserPtr(SEXP ptr);
 
+SEXP _rxode2_rxode2Ptr(void) {
+  int pro = 0;  // Counter for the number of PROTECT calls
+  // Create an external pointer for _lotriLstToMat
+  SEXP rxode2rxRmvnSEXP = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&_rxode2_rxRmvnSEXP, R_NilValue, R_NilValue)); pro++;
+
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 1)); pro++;
+  SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
+
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
+
+  // Set the names attribute of the list
+  Rf_setAttrib(ret, R_NamesSymbol, retN);
+
+  // Unprotect all protected objects
+  UNPROTECT(pro);
+
+  // Return the list of external pointers
+  return ret;
+}
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_rxode2Ptr", (DL_FUNC) &_rxode2_rxode2Ptr, 0},
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
     {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},

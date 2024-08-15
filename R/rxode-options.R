@@ -16,6 +16,21 @@
   }
 }
 .hasUnits <- FALSE
+#' Get the rxode2 function pointers
+#'
+#' This function is used to get the function pointers for rxode2.  This is
+#' used to allow rxode2 to have binary linkage to nlmixr2est.
+#'
+#' @return a list of function pointers
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' .rxode2ptrs()
+.rxode2ptrs <- function() {
+  .Call(`_rxode2_rxode2Ptr`, PACKAGE = "rxode2")
+}
+
 ## nocov start
 .onLoad <- function(libname, pkgname) {
   requireNamespace("data.table", quietly=TRUE)
