@@ -366,12 +366,16 @@ SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
   // Create an external pointer for _lotriLstToMat
   SEXP rxode2rxRmvnSEXP = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&_rxode2_rxRmvnSEXP, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxParProgress = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&par_progress, R_NilValue, R_NilValue));
 
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 1)); pro++;
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 2)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
+  SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
 
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 1)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 2)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
+  SET_STRING_ELT(retN, 1, Rf_mkChar("rxode2rxParProgress"));
+
 
   // Set the names attribute of the list
   Rf_setAttrib(ret, R_NamesSymbol, retN);
