@@ -366,16 +366,37 @@ SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
   // Create an external pointer for _lotriLstToMat
   SEXP rxode2rxRmvnSEXP = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&_rxode2_rxRmvnSEXP, R_NilValue, R_NilValue)); pro++;
-  SEXP rxode2rxParProgress = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&par_progress, R_NilValue, R_NilValue));
 
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 2)); pro++;
+  SEXP rxode2rxParProgress = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&par_progress, R_NilValue, R_NilValue)); pro++;
+
+  SEXP rxode2getRxSolve_ = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxSolve_, R_NilValue,
+                                                       R_NilValue)); pro++;
+  SEXP rxode2indSolve = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&ind_solve, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getTime = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getTime, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2isRstudio = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&isRstudio, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2iniSubjectI = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&iniSubjectE, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2sortIds = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&sortIds, R_NilValue, R_NilValue)); pro++;
+
+
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 8)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
+  SET_VECTOR_ELT(ret, 2, rxode2getRxSolve_);
+  SET_VECTOR_ELT(ret, 3, rxode2indSolve);
+  SET_VECTOR_ELT(ret, 4, rxode2getTime);
+  SET_VECTOR_ELT(ret, 5, rxode2isRstudio);
+  SET_VECTOR_ELT(ret, 6, rxode2iniSubjectI);
+  SET_VECTOR_ELT(ret, 7, rxode2sortIds);
 
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 2)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 8)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
   SET_STRING_ELT(retN, 1, Rf_mkChar("rxode2rxParProgress"));
-
+  SET_STRING_ELT(retN, 2, Rf_mkChar("rxode2getRxSolve_"));
+  SET_STRING_ELT(retN, 3, Rf_mkChar("rxode2indSolve"));
+  SET_STRING_ELT(retN, 4, Rf_mkChar("rxode2getTime"));
+  SET_STRING_ELT(retN, 5, Rf_mkChar("rxode2isRstudio"));
+  SET_STRING_ELT(retN, 6, Rf_mkChar("rxode2iniSubjectI"));
+  SET_STRING_ELT(retN, 7, Rf_mkChar("rxode2sortIds"));
 
   // Set the names attribute of the list
   Rf_setAttrib(ret, R_NamesSymbol, retN);
