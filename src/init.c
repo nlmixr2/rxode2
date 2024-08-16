@@ -383,9 +383,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2_rxode2_rxModelVars_ = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&_rxode2_rxModelVars_, R_NilValue, R_NilValue)); pro++;
 
   SEXP rxode2_par_solve = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&par_solve, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxGetId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxGetId, R_NilValue, R_NilValue)); pro++;
 
 
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 12)); pro++;
+
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 13)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
   SET_VECTOR_ELT(ret, 2, rxode2getRxSolve_);
@@ -398,8 +400,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 9, rxode2getUpdateInis);
   SET_VECTOR_ELT(ret, 10, rxode2_rxode2_rxModelVars_);
   SET_VECTOR_ELT(ret, 11, rxode2_par_solve);
+  SET_VECTOR_ELT(ret, 12, rxode2rxGetId);
 
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 12)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 13)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
   SET_STRING_ELT(retN, 1, Rf_mkChar("rxode2rxParProgress"));
   SET_STRING_ELT(retN, 2, Rf_mkChar("rxode2getRxSolve_"));
@@ -412,6 +415,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 9, Rf_mkChar("rxode2getUpdateInis"));
   SET_STRING_ELT(retN, 10, Rf_mkChar("rxode2_rxode2_rxModelVars_"));
   SET_STRING_ELT(retN, 11, Rf_mkChar("rxode2_par_solve"));
+  SET_STRING_ELT(retN, 12, Rf_mkChar("rxode2rxGetId"));
 
   // Set the names attribute of the list
   Rf_setAttrib(ret, R_NamesSymbol, retN);

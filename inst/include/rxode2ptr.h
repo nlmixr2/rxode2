@@ -43,6 +43,9 @@ extern "C" {
   typedef void (*par_solve_t)(rx_solve *rx);
   extern par_solve_t par_solve;
 
+  typedef const char *(*rxGetId_t)(int id);
+  extern rxGetId_t rxGetId;
+
 
   /* getUpdateInis = (getUpdateInis_t) R_GetCCallable("rxode2", "getUpdateInis"); */
   /*  rxModelVarsS = (mv_t)R_GetCCallable("rxode2", "_rxode2_rxModelVars_"); */
@@ -63,6 +66,7 @@ extern "C" {
       getUpdateInis = (t_update_inis) R_ExternalPtrAddrFn(VECTOR_ELT(p, 9));
       _rxode2_rxModelVars = (_rxode2_rxModelVars_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 10));
       par_solve = (par_solve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 11));
+      rxGetId = (rxGetId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 12));
     }
     return R_NilValue;
   }
@@ -79,6 +83,7 @@ extern "C" {
   t_calc_lhs getRxLhs = NULL;                       \
   t_update_inis getUpdateInis = NULL;               \
   _rxode2_rxModelVars_t _rxode2_rxModelVars = NULL; \
+  rxGetId_t rxGetId = NULL;                         \
   SEXP iniRxodePtrs(SEXP ptr) {                     \
   return iniRxodePtrs0(ptr);                        \
 }                                                   \
