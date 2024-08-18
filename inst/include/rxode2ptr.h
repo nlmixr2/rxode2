@@ -34,11 +34,11 @@ extern "C" {
   typedef void (*sortIds_t)(rx_solve* rx, int ini);
   extern sortIds_t sortIds;
 
-  typedef t_calc_lhs (*getRxLhs_t)(void);
-  extern getRxLhs_t getRxLhs;
+  typedef rx_solving_options* (*getSolvingOptions_t)(rx_solve* rx);
+  extern getSolvingOptions_t getSolvingOptions;
 
-  typedef t_update_inis (*getUpdateInis_t)(void);
-  extern getUpdateInis_t getUpdateInis;
+  typedef rx_solving_options_ind *(*getSolvingOptionsInd_t)(rx_solve *rx, int id);
+  extern getSolvingOptionsInd_t getSolvingOptionsInd;
 
   typedef SEXP (*_rxode2_rxModelVars_t)(SEXP);
   extern _rxode2_rxModelVars_t _rxode2_rxModelVars_;
@@ -48,6 +48,18 @@ extern "C" {
 
   typedef const char *(*rxGetId_t)(int id);
   extern rxGetId_t rxGetId;
+
+  typedef double (*getIndLambda_t)(rx_solving_options_ind* ind);
+  extern getIndLambda_t getIndLambda;
+
+  typedef int (*getIndLambdaYj_t)(rx_solving_options_ind* ind);
+  extern getIndLambdaYj_t getIndLambdaYj;
+
+  typedef double (*getIndLogitLow_t)(rx_solving_options_ind* ind);
+  extern getIndLogitLow_t getIndLogitLow;
+
+  typedef double (*getIndLogitHi_t)(rx_solving_options_ind* ind);
+  extern getIndLogitHi_t getIndLogitHi;
 
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
@@ -59,32 +71,41 @@ extern "C" {
       isRstudio = (isRstudio_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 5));
       iniSubjectE = (iniSubjectE_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 6));
       sortIds = (sortIds_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 7));
-      getRxLhs = (getRxLhs_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 8));
-      getUpdateInis = (getUpdateInis_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 9));
+      getSolvingOptions = (getSolvingOptions_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 8));
+      getSolvingOptionsInd = (getSolvingOptionsInd_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 9));
       _rxode2_rxModelVars_ = (_rxode2_rxModelVars_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 10));
       par_solve = (par_solve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 11));
       rxGetId = (rxGetId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 12));
+      getIndLambda = (getIndLambda_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 13));
+      getIndLambdaYj = (getIndLambdaYj_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 14));
+      getIndLogitLow = (getIndLogitLow_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 15));
+      getIndLogitHi = (getIndLogitHi_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 16));
+
     }
     return R_NilValue;
   }
 
-#define iniRxode2ptr                                \
-  _rxode2_rxRmvnSEXP_t _rxode2_rxRmvnSEXP_ = NULL;  \
-  par_progress_t par_progress = NULL;               \
-  getRxSolve_t getRxSolve_ = NULL;                  \
-  ind_solve_t ind_solve = NULL;                     \
-  par_solve_t par_solve = NULL;                     \
-  getTime_t getTime = NULL;                         \
-  isRstudio_t isRstudio = NULL;                     \
-  iniSubjectE_t iniSubjectE = NULL;                 \
-  sortIds_t sortIds = NULL;                         \
-  getRxLhs_t getRxLhs = NULL;                        \
-  getUpdateInis_t getUpdateInis = NULL;              \
-  _rxode2_rxModelVars_t _rxode2_rxModelVars_ = NULL; \
-  rxGetId_t rxGetId = NULL;                         \
-  SEXP iniRxodePtrs(SEXP ptr) {                     \
-  return iniRxodePtrs0(ptr);                        \
-}                                                   \
+#define iniRxode2ptr                                    \
+  _rxode2_rxRmvnSEXP_t _rxode2_rxRmvnSEXP_ = NULL;      \
+  par_progress_t par_progress = NULL;                   \
+  getRxSolve_t getRxSolve_ = NULL;                      \
+  ind_solve_t ind_solve = NULL;                         \
+  par_solve_t par_solve = NULL;                         \
+  getTime_t getTime = NULL;                             \
+  isRstudio_t isRstudio = NULL;                         \
+  iniSubjectE_t iniSubjectE = NULL;                     \
+  sortIds_t sortIds = NULL;                             \
+  getSolvingOptions_t getSolvingOptions = NULL;         \
+  getSolvingOptionsInd_t getSolvingOptionsInd = NULL;   \
+  _rxode2_rxModelVars_t _rxode2_rxModelVars_ = NULL;    \
+  getIndLambda_t getIndLambda = NULL;                   \
+  getIndLambdaYj_t getIndLambdaYj = NULL;               \
+  getIndLogitLow_t getIndLogitLow = NULL;               \
+  getIndLogitHi_t getIndLogitHi = NULL;                 \
+  rxGetId_t rxGetId = NULL;                             \
+  SEXP iniRxodePtrs(SEXP ptr) {                         \
+    return iniRxodePtrs0(ptr);                          \
+  }                                                     \
 
 #if defined(__cplusplus)
 }

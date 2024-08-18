@@ -12,6 +12,7 @@
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseGetTime.h"
 #include "rxthreefry.h"
+#include "rx2api.h"
 
 SEXP _rxHasOpenMp(void);
 
@@ -254,7 +255,6 @@ int getSilentErr(void);
 int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
                 t_update_inis u_inis);
 
-t_calc_lhs getRxLhs(void);
 t_update_inis getUpdateInis(void);
 
 void sortIds(rx_solve* rx, int ini);
@@ -376,18 +376,23 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2isRstudio = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&isRstudio, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2iniSubjectE = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&iniSubjectE, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2sortIds = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&sortIds, R_NilValue, R_NilValue)); pro++;
-  SEXP rxode2getRxLhs = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxLhs, R_NilValue, R_NilValue)); pro++;
-  SEXP rxode2getUpdateInis = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getUpdateInis,
-                                                         R_NilValue, R_NilValue)); pro++;
-
   SEXP rxode2_rxode2_rxModelVars_ = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&_rxode2_rxModelVars_, R_NilValue, R_NilValue)); pro++;
 
   SEXP rxode2_par_solve = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&par_solve, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxGetId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxGetId, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getSolvingOptions = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getSolvingOptions, R_NilValue, R_NilValue)); pro++;
 
+  SEXP rxode2getSolvingOptionsInd = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getSolvingOptionsInd, R_NilValue, R_NilValue)); pro++;
 
+  SEXP rxode2getIndLambda = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndLambda, R_NilValue, R_NilValue)); pro++;
 
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 13)); pro++;
+  SEXP rxode2getIndLambdaYj =  PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndLambdaYj, R_NilValue, R_NilValue)); pro++;
+
+  SEXP rxode2getIndLogitLow = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndLogitLow, R_NilValue, R_NilValue)); pro++;
+
+  SEXP rxode2getIndLogitHi = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndLogitHi, R_NilValue, R_NilValue)); pro++;
+
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 17)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
   SET_VECTOR_ELT(ret, 2, rxode2getRxSolve_);
@@ -396,13 +401,17 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 5, rxode2isRstudio);
   SET_VECTOR_ELT(ret, 6, rxode2iniSubjectE);
   SET_VECTOR_ELT(ret, 7, rxode2sortIds);
-  SET_VECTOR_ELT(ret, 8, rxode2getRxLhs);
-  SET_VECTOR_ELT(ret, 9, rxode2getUpdateInis);
+  SET_VECTOR_ELT(ret, 8, rxode2getSolvingOptions);
+  SET_VECTOR_ELT(ret, 9, rxode2getSolvingOptionsInd);
   SET_VECTOR_ELT(ret, 10, rxode2_rxode2_rxModelVars_);
   SET_VECTOR_ELT(ret, 11, rxode2_par_solve);
   SET_VECTOR_ELT(ret, 12, rxode2rxGetId);
+  SET_VECTOR_ELT(ret, 13, rxode2getIndLambda);
+  SET_VECTOR_ELT(ret, 14, rxode2getIndLambdaYj);
+  SET_VECTOR_ELT(ret, 15, rxode2getIndLogitLow);
+  SET_VECTOR_ELT(ret, 16, rxode2getIndLogitHi);
 
-  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 13)); pro++;
+  SEXP retN = PROTECT(Rf_allocVector(STRSXP, 17)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
   SET_STRING_ELT(retN, 1, Rf_mkChar("rxode2rxParProgress"));
   SET_STRING_ELT(retN, 2, Rf_mkChar("rxode2getRxSolve_"));
@@ -411,11 +420,15 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 5, Rf_mkChar("rxode2isRstudio"));
   SET_STRING_ELT(retN, 6, Rf_mkChar("rxode2iniSubjectE"));
   SET_STRING_ELT(retN, 7, Rf_mkChar("rxode2sortIds"));
-  SET_STRING_ELT(retN, 8, Rf_mkChar("rxode2getRxLhs"));
+  SET_STRING_ELT(retN, 8, Rf_mkChar("getSolvingOptionsInd"));
   SET_STRING_ELT(retN, 9, Rf_mkChar("rxode2getUpdateInis"));
   SET_STRING_ELT(retN, 10, Rf_mkChar("rxode2_rxode2_rxModelVars_"));
   SET_STRING_ELT(retN, 11, Rf_mkChar("rxode2_par_solve"));
   SET_STRING_ELT(retN, 12, Rf_mkChar("rxode2rxGetId"));
+  SET_STRING_ELT(retN, 13, Rf_mkChar("rxode2getIndLambda"));
+  SET_STRING_ELT(retN, 14, Rf_mkChar("rxode2getIndLambdaYj"));
+  SET_STRING_ELT(retN, 15, Rf_mkChar("rxode2getIndLogitLow"));
+  SET_STRING_ELT(retN, 16, Rf_mkChar("rxode2getIndLogitHi"));
 
   // Set the names attribute of the list
   Rf_setAttrib(ret, R_NamesSymbol, retN);
@@ -644,13 +657,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "gammaqInv", (DL_FUNC) &gamma_q_inv);
   R_RegisterCCallable("rxode2", "gammaqInva", (DL_FUNC) &gamma_q_inva);
   R_RegisterCCallable("rxode2", "compareFactorVal", (DL_FUNC) &compareFactorVal);
-  R_RegisterCCallable("rxode2", "iniSubjectE", (DL_FUNC) &iniSubjectE);
-  R_RegisterCCallable("rxode2", "getRxLhs", (DL_FUNC) &getRxLhs);
-  R_RegisterCCallable("rxode2", "getUpdateInis", (DL_FUNC) &getUpdateInis);
-  R_RegisterCCallable("rxode2", "sortIds", (DL_FUNC) &sortIds);
   R_RegisterCCallable("rxode2", "handleTlast", (DL_FUNC) &handleTlast);
-  R_RegisterCCallable("rxode2", "rxGetId", (DL_FUNC) &rxGetId);
-  R_RegisterCCallable("rxode2", "getTime", (DL_FUNC) &getTime);
   R_RegisterCCallable("rxode2", "phi", (DL_FUNC) &phi);
   R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
   R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);
