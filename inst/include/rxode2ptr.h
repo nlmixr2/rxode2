@@ -1,11 +1,11 @@
 #ifndef __RXODE2PTR_H__
 #define __RXODE2PTR_H__
 
+#include "rxode2.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-  #include <rxode2parseStruct.h>
 
   typedef SEXP (*_rxode2_rxRmvnSEXP_t)(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSSEXP, SEXP upperSSEXP, SEXP ncoresSSEXP, SEXP isCholSSEXP, SEXP keepNamesSSEXP, SEXP aSSEXP, SEXP tolSSEXP, SEXP nlTolSSEXP, SEXP nlMaxiterSSEXP);
   extern _rxode2_rxRmvnSEXP_t rxRmvnSEXP;
@@ -13,7 +13,7 @@ extern "C" {
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
 
-  typedef rx_solve *(getRxSolve_t)(void);
+  typedef rx_solve *(*getRxSolve_t)(void);
   extern getRxSolve_t getRxSolve_;
 
   typedef void (*ind_solve_t)(rx_solve *rx, unsigned int cid, t_dydt_liblsoda dydt_lls,
@@ -27,9 +27,9 @@ extern "C" {
   typedef int (*isRstudio_t)(void);
   extern isRstudio_t isRstudio;
 
-  typedef int (*iniSubjectI_t)(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
+  typedef int (*iniSubjectE_t)(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
                                t_update_inis u_inis);
-  extern iniSubjectI_t iniSubjectI;
+  extern iniSubjectE_t iniSubjectE;
 
   typedef void (*sortIds_t)(rx_solve* rx, int ini);
   extern sortIds_t sortIds;
@@ -60,7 +60,7 @@ extern "C" {
       ind_solve = (ind_solve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 3));
       getTime = (getTime_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 4));
       isRstudio = (isRstudio_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 5));
-      iniSubjectI = (iniSubjectI_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 6));
+      iniSubjectE = (iniSubjectE_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 6));
       sortIds = (sortIds_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 7));
       getRxLhs = (t_calc_lhs) R_ExternalPtrAddrFn(VECTOR_ELT(p, 8));
       getUpdateInis = (t_update_inis) R_ExternalPtrAddrFn(VECTOR_ELT(p, 9));
@@ -78,7 +78,7 @@ extern "C" {
   ind_solve_t ind_solve = NULL;                     \
   getTime_t getTime = NULL;                         \
   isRstudio_t isRstudio = NULL;                     \
-  iniSubjectI_t iniSubjectI = NULL;                 \
+  iniSubjectE_t iniSubjectE = NULL;                 \
   sortIds_t sortIds = NULL;                         \
   t_calc_lhs getRxLhs = NULL;                       \
   t_update_inis getUpdateInis = NULL;               \

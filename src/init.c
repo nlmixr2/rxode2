@@ -374,7 +374,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2indSolve = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&ind_solve, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getTime = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getTime, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2isRstudio = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&isRstudio, R_NilValue, R_NilValue)); pro++;
-  SEXP rxode2iniSubjectI = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&iniSubjectE, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2iniSubjectE = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&iniSubjectE, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2sortIds = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&sortIds, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getRxLhs = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxLhs, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getUpdateInis = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getUpdateInis,
@@ -394,7 +394,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 3, rxode2indSolve);
   SET_VECTOR_ELT(ret, 4, rxode2getTime);
   SET_VECTOR_ELT(ret, 5, rxode2isRstudio);
-  SET_VECTOR_ELT(ret, 6, rxode2iniSubjectI);
+  SET_VECTOR_ELT(ret, 6, rxode2iniSubjectE);
   SET_VECTOR_ELT(ret, 7, rxode2sortIds);
   SET_VECTOR_ELT(ret, 8, rxode2getRxLhs);
   SET_VECTOR_ELT(ret, 9, rxode2getUpdateInis);
@@ -409,7 +409,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 3, Rf_mkChar("rxode2indSolve"));
   SET_STRING_ELT(retN, 4, Rf_mkChar("rxode2getTime"));
   SET_STRING_ELT(retN, 5, Rf_mkChar("rxode2isRstudio"));
-  SET_STRING_ELT(retN, 6, Rf_mkChar("rxode2iniSubjectI"));
+  SET_STRING_ELT(retN, 6, Rf_mkChar("rxode2iniSubjectE"));
   SET_STRING_ELT(retN, 7, Rf_mkChar("rxode2sortIds"));
   SET_STRING_ELT(retN, 8, Rf_mkChar("rxode2getRxLhs"));
   SET_STRING_ELT(retN, 9, Rf_mkChar("rxode2getUpdateInis"));
