@@ -66,15 +66,20 @@ typedef int (*t_dydt_liblsoda)(double t, double *y, double *ydot, void *data);
 typedef void (*t_ode_current)(void);
 
 typedef void (*t_set_solve)(rx_solve *);
+
 typedef rx_solve *(*t_get_solve)(void);
 
 typedef void *(*t_assignFuns)(void);
 
+#ifndef __RXODE2PTR_H__
 rx_solve *getRxSolve_(void);
+#endif
 rx_solve *getRxSolve2_(void);
 rx_solve *getRxSolve(SEXP ptr);
 
+#ifndef __RXODE2PTR_H__
 void par_solve(rx_solve *rx);
+#endif
 
 rx_solving_options *getRxOp(rx_solve *rx);
 

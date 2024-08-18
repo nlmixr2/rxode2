@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
   typedef SEXP (*_rxode2_rxRmvnSEXP_t)(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSSEXP, SEXP upperSSEXP, SEXP ncoresSSEXP, SEXP isCholSSEXP, SEXP keepNamesSSEXP, SEXP aSSEXP, SEXP tolSSEXP, SEXP nlTolSSEXP, SEXP nlMaxiterSSEXP);
-  extern _rxode2_rxRmvnSEXP_t rxRmvnSEXP;
+  extern _rxode2_rxRmvnSEXP_t _rxode2_rxRmvnSEXP_;
 
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
@@ -34,8 +34,11 @@ extern "C" {
   typedef void (*sortIds_t)(rx_solve* rx, int ini);
   extern sortIds_t sortIds;
 
-  extern t_calc_lhs getRxLhs;
-  extern t_update_inis getUpdateInis;
+  typedef t_calc_lhs (*getRxLhs_t)(void);
+  extern getRxLhs_t getRxLhs;
+
+  typedef t_update_inis (*getUpdateInis_t)(void);
+  extern getUpdateInis_t getUpdateInis;
 
   typedef SEXP (*_rxode2_rxModelVars_t)(SEXP);
   extern _rxode2_rxModelVars_t _rxode2_rxModelVars_;
@@ -46,15 +49,9 @@ extern "C" {
   typedef const char *(*rxGetId_t)(int id);
   extern rxGetId_t rxGetId;
 
-
-  /* getUpdateInis = (getUpdateInis_t) R_GetCCallable("rxode2", "getUpdateInis"); */
-  /*  rxModelVarsS = (mv_t)R_GetCCallable("rxode2", "_rxode2_rxModelVars_"); */
-  /* R_GetCCallable("rxode2","par_solve"); */
-
-
   static inline SEXP iniRxodePtrs0(SEXP p) {
-    if (rxRmvnSEXP == NULL) {
-      rxRmvnSEXP = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
+    if (_rxode2_rxRmvnSEXP_ == NULL) {
+      _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
       par_progress = (par_progress_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 1));
       getRxSolve_ = (getRxSolve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 2));
       ind_solve = (ind_solve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 3));
@@ -62,9 +59,9 @@ extern "C" {
       isRstudio = (isRstudio_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 5));
       iniSubjectE = (iniSubjectE_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 6));
       sortIds = (sortIds_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 7));
-      getRxLhs = (t_calc_lhs) R_ExternalPtrAddrFn(VECTOR_ELT(p, 8));
-      getUpdateInis = (t_update_inis) R_ExternalPtrAddrFn(VECTOR_ELT(p, 9));
-      _rxode2_rxModelVars = (_rxode2_rxModelVars_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 10));
+      getRxLhs = (getRxLhs_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 8));
+      getUpdateInis = (getUpdateInis_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 9));
+      _rxode2_rxModelVars_ = (_rxode2_rxModelVars_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 10));
       par_solve = (par_solve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 11));
       rxGetId = (rxGetId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 12));
     }
@@ -72,24 +69,25 @@ extern "C" {
   }
 
 #define iniRxode2ptr                                \
-  _rxode2_rxRmvnSEXP_t rxode2_rxRmvnSEXP = NULL;    \
+  _rxode2_rxRmvnSEXP_t _rxode2_rxRmvnSEXP_ = NULL;  \
   par_progress_t par_progress = NULL;               \
   getRxSolve_t getRxSolve_ = NULL;                  \
   ind_solve_t ind_solve = NULL;                     \
+  par_solve_t par_solve = NULL;                     \
   getTime_t getTime = NULL;                         \
   isRstudio_t isRstudio = NULL;                     \
   iniSubjectE_t iniSubjectE = NULL;                 \
   sortIds_t sortIds = NULL;                         \
-  t_calc_lhs getRxLhs = NULL;                       \
-  t_update_inis getUpdateInis = NULL;               \
-  _rxode2_rxModelVars_t _rxode2_rxModelVars = NULL; \
+  getRxLhs_t getRxLhs = NULL;                        \
+  getUpdateInis_t getUpdateInis = NULL;              \
+  _rxode2_rxModelVars_t _rxode2_rxModelVars_ = NULL; \
   rxGetId_t rxGetId = NULL;                         \
   SEXP iniRxodePtrs(SEXP ptr) {                     \
   return iniRxodePtrs0(ptr);                        \
 }                                                   \
 
 #if defined(__cplusplus)
-  extern "C" {
+}
 #endif
 
 #endif
