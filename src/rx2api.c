@@ -81,3 +81,7 @@ int getIndYj(rx_solving_options_ind* ind) {
 double getIndLimit(rx_solving_options_ind* ind, int kk) {
   return ind->limit[kk];
 }
+
+int getIndCens(rx_solving_options_ind* ind, int kk) {
+  return ind->cens[kk];
+}

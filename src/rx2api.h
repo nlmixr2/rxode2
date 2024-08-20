@@ -67,6 +67,10 @@ extern "C" {
   // Gets the individual's censoring limit at time index kk
   double getIndLimit(rx_solving_options_ind* ind, int kk);
 
+  // Get the individual's censoring flag should be (0, -1, -1) at time index kk
+  int getIndCens(rx_solving_options_ind* ind, int kk);
+
+
 #if defined(__cplusplus)
 }
 #endif
