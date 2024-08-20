@@ -76,6 +76,12 @@ extern "C" {
   // Get the problems number of ode equatons
   int getOpNeq(rx_solving_options* op);
 
+  // Set the problems number of ode equations; This should be used
+  // with cation This is used in the inner problem to calculate the
+  // likelihood for finite differences.  It corrupts the solving
+  // structure, so should be used with extreme caution.
+  void setOpNeq(rx_solving_options* op, int neq);
+
 
 #if defined(__cplusplus)
 }

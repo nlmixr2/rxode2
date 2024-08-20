@@ -112,6 +112,9 @@ extern "C" {
   typedef int (*getOpNeq_t)(rx_solving_options* op);
   extern getOpNeq_t getOpNeq;
 
+  typedef void (*setOpNeq_t)(rx_solving_options* op, int neq);
+  extern setOpNeq_t setOpNeq;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -148,6 +151,7 @@ extern "C" {
       getIndCens = (getIndCens_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 31));
       getIndIdx = (getIndIdx_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 32));
       getOpNeq = (getOpNeq_t)  R_ExternalPtrAddrFn(VECTOR_ELT(p, 33));
+      setOpNeq= (setOpNeq_t)  R_ExternalPtrAddrFn(VECTOR_ELT(p, 34));
     }
     return R_NilValue;
   }
@@ -187,6 +191,7 @@ extern "C" {
   getIndCens_t getIndCens = NULL;                       \
   getIndIdx_t getIndIdx = NULL;                         \
   getOpNeq_t getOpNeq = NULL;                           \
+  setOpNeq_t setOpNeq = NULL;                           \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

@@ -101,3 +101,7 @@ int getIndIdx(rx_solving_options_ind* ind) {
 int getOpNeq(rx_solving_options* op) {
   return op->neq;
 }
+
+void setOpNeq(rx_solving_options* op, int neq) {
+  op->neq = neq;
+}
