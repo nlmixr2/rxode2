@@ -64,6 +64,9 @@ extern "C" {
   // Gets the individual's transformation type at the current time-point.
   int getIndYj(rx_solving_options_ind* ind);
 
+  // Gets the individual's censoring limit at time index kk
+  double getIndLimit(rx_solving_options_ind* ind, int kk);
+
 #if defined(__cplusplus)
 }
 #endif

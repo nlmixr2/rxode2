@@ -77,3 +77,7 @@ double getIndDv(rx_solving_options_ind* ind, int j) {
 int getIndYj(rx_solving_options_ind* ind) {
   return (int)(ind->yj);
 }
+
+double getIndLimit(rx_solving_options_ind* ind, int kk) {
+  return ind->limit[kk];
+}
