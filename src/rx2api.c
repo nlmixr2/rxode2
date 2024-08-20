@@ -65,3 +65,7 @@ int getIndNevid2(rx_solving_options_ind* ind) {
 void setIndSolve(rx_solving_options_ind* ind, int solve) {
   ind->solved = solve;
 }
+
+double *getIndSolve(rx_solving_options_ind* ind) {
+  return ind->solve;
+}

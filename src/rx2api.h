@@ -55,6 +55,9 @@ extern "C" {
   // This sets the index of where the linear compartment solver is solved to.
   void setIndSolve(rx_solving_options_ind* ind, int solve);
 
+  // This gets the double vector of the individual's solver
+  double *getIndSolve(rx_solving_options_ind* ind);
+
 #if defined(__cplusplus)
 }
 #endif
