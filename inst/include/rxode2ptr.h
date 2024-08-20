@@ -121,8 +121,11 @@ extern "C" {
 
   typedef int (*hasOpBadSolve_t)(rx_solving_options* op);
   extern hasOpBadSolve_t hasOpBadSolve;
-
 #define hasRxBadSolve(rx)  hasOpBadSolve(getSolvingOptions(rx))
+
+  typedef int (*getOpNlin_t)(rx_solving_options* op);
+  extern getOpNlin_t getOpNlin;
+#define getRxNlin(rx) getOpNlin(getSolvingOptions(rx))
 
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
@@ -162,6 +165,7 @@ extern "C" {
       getOpNeq = (getOpNeq_t)  R_ExternalPtrAddrFn(VECTOR_ELT(p, 33));
       setOpNeq= (setOpNeq_t)  R_ExternalPtrAddrFn(VECTOR_ELT(p, 34));
       hasOpBadSolve = (hasOpBadSolve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 35));
+      getOpNlin = (getOpNlin_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 36));
     }
     return R_NilValue;
   }
@@ -203,6 +207,7 @@ extern "C" {
   getOpNeq_t getOpNeq = NULL;                           \
   setOpNeq_t setOpNeq = NULL;                           \
   hasOpBadSolve_t hasOpBadSolve = NULL;                 \
+  getOpNlin_t getOpNlin = NULL;                         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

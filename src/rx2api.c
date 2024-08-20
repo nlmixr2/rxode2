@@ -109,3 +109,11 @@ void setOpNeq(rx_solving_options* op, int neq) {
 int hasOpBadSolve(rx_solving_options* op) {
   return op->badSolve;
 }
+
+int getOpNlin(rx_solving_options* op) {
+  return op->nlin;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Solving options in rx
+////////////////////////////////////////////////////////////////////////

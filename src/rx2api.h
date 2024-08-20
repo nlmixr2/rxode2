@@ -85,6 +85,9 @@ extern "C" {
   // Does this problem have a bad solve?
   int hasOpBadSolve(rx_solving_options* op);
 
+  // Get the number of linear-related compartments
+  int getOpNlin(rx_solving_options* op);
+
 #if defined(__cplusplus)
 }
 #endif
