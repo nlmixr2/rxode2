@@ -85,3 +85,7 @@ double getIndLimit(rx_solving_options_ind* ind, int kk) {
 int getIndCens(rx_solving_options_ind* ind, int kk) {
   return ind->cens[kk];
 }
+
+int getIndIdx(rx_solving_options_ind* ind) {
+  return ind->idx;
+}

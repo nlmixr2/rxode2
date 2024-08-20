@@ -70,6 +70,9 @@ extern "C" {
   // Get the individual's censoring flag should be (0, -1, -1) at time index kk
   int getIndCens(rx_solving_options_ind* ind, int kk);
 
+  // Get the index of the current solve
+  int getIndIdx(rx_solving_options_ind* ind);
+
 
 #if defined(__cplusplus)
 }
