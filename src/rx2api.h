@@ -73,6 +73,9 @@ extern "C" {
   // Get the index of the current solve
   int getIndIdx(rx_solving_options_ind* ind);
 
+  // Get the problems number of ode equatons
+  int getOpNeq(rx_solving_options* op);
+
 
 #if defined(__cplusplus)
 }

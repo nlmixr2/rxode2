@@ -9,6 +9,10 @@ rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
   return &(rx->subjects[id]);
 }
 
+////////////////////////////////////////////////////////////////////////
+// Individual solving options
+////////////////////////////////////////////////////////////////////////
+
 double getIndLambda(rx_solving_options_ind* ind) {
   return ind->lambda;
 }
@@ -88,4 +92,12 @@ int getIndCens(rx_solving_options_ind* ind, int kk) {
 
 int getIndIdx(rx_solving_options_ind* ind) {
   return ind->idx;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Solving options (rx->op)
+////////////////////////////////////////////////////////////////////////
+
+int getOpNeq(rx_solving_options* op) {
+  return op->neq;
 }
