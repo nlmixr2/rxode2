@@ -102,6 +102,9 @@ extern "C" {
   // options)
   void resetOpBadSolve(rx_solving_options* op);
 
+  // Get the number of subjects in the rx_solve structure
+  int getRxNsub(rx_solve *rx);
+
 #if defined(__cplusplus)
 }
 #endif

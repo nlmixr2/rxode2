@@ -140,8 +140,11 @@ extern "C" {
 #define getRxStiff(rx) getOpStiff(getSolvingOptions(rx))
 
   typedef void (*resetOpBadSolve_t)(rx_solving_options* op);
-  resetOpBadSolve_t resetOpBadSolve;
+  extern resetOpBadSolve_t resetOpBadSolve;
 #define resetRxBadSolve(rx) resetOpBadSolve(getSolvingOptions(rx))
+
+  typedef int (*getRxNsub_t)(rx_solve *rx);
+  extern getRxNsub_t getRxNsub;
 
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
@@ -186,6 +189,7 @@ extern "C" {
       getOpNlhs = (getOpNlhs_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 38));
       getOpStiff = (getOpStiff_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 39));
       resetOpBadSolve = (resetOpBadSolve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 40));
+      getRxNsub = (getRxNsub_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 41));
     }
     return R_NilValue;
   }
@@ -232,6 +236,7 @@ extern "C" {
   getOpNlhs_t getOpNlhs = NULL;                         \
   getOpStiff_t getOpStiff = NULL;                       \
   resetOpBadSolve_t resetOpBadSolve = NULL;             \
+  getRxNsub_t getRxNsub = NULL;                         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
