@@ -34,6 +34,9 @@ extern "C" {
   // The the individual's number of time and dosing points
   int getIndNallTimes(rx_solving_options_ind* ind);
 
+  // Set the individual's index
+  void setIndIdx(rx_solving_options_ind* ind, int j);
+
 #if defined(__cplusplus)
 }
 #endif

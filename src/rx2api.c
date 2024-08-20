@@ -37,3 +37,7 @@ double getIndParPtr(rx_solving_options_ind* ind, int i) {
 int getIndNallTimes(rx_solving_options_ind* ind) {
   return ind->n_all_times;
 }
+
+void setIndIdx(rx_solving_options_ind* ind, int j) {
+  ind->idx = j;
+}
