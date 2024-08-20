@@ -125,6 +125,10 @@ int getOpNlhs(rx_solving_options* op) {
 int getOpStiff(rx_solving_options* op) {
   return op->stiff;
 }
+
+void resetOpBadSolve(rx_solving_options* op) {
+  op->badSolve = 0;
+}
 ////////////////////////////////////////////////////////////////////////
 // Solving options in rx
 ////////////////////////////////////////////////////////////////////////

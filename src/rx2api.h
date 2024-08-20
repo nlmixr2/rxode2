@@ -98,6 +98,10 @@ extern "C" {
   // rxode2 solving options
   int getOpStiff(rx_solving_options* op);
 
+  // reset the bad solve flag (that way you can repeat with different
+  // options)
+  void resetOpBadSolve(rx_solving_options* op);
+
 #if defined(__cplusplus)
 }
 #endif
