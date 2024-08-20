@@ -111,6 +111,8 @@ extern "C" {
   //Does the rxode2 problem have censoring column?
   int hasRxCens(rx_solve *rx);
 
+  int getRxNall(rx_solve *rx);
+
 #if defined(__cplusplus)
 }
 #endif

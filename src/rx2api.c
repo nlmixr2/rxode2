@@ -144,3 +144,7 @@ int hasRxLimit(rx_solve *rx) {
 int hasRxCens(rx_solve *rx) {
   return rx->cens;
 }
+
+int getRxNall(rx_solve *rx) {
+  return rx->nall;
+}
