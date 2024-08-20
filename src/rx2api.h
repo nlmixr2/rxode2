@@ -61,6 +61,9 @@ extern "C" {
   // This gets the individual's dv at position j
   double getIndDv(rx_solving_options_ind* ind, int j);
 
+  // Gets the individual's transformation type at the current time-point.
+  int getIndYj(rx_solving_options_ind* ind);
+
 #if defined(__cplusplus)
 }
 #endif

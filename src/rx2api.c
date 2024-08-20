@@ -73,3 +73,7 @@ double *getIndSolve(rx_solving_options_ind* ind) {
 double getIndDv(rx_solving_options_ind* ind, int j) {
   return ind->dv[j];
 }
+
+int getIndYj(rx_solving_options_ind* ind) {
+  return (int)(ind->yj);
+}
