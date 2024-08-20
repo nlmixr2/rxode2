@@ -69,3 +69,7 @@ void setIndSolve(rx_solving_options_ind* ind, int solve) {
 double *getIndSolve(rx_solving_options_ind* ind) {
   return ind->solve;
 }
+
+double getIndDv(rx_solving_options_ind* ind, int j) {
+  return ind->dv[j];
+}

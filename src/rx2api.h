@@ -58,6 +58,9 @@ extern "C" {
   // This gets the double vector of the individual's solver
   double *getIndSolve(rx_solving_options_ind* ind);
 
+  // This gets the individual's dv at position j
+  double getIndDv(rx_solving_options_ind* ind, int j);
+
 #if defined(__cplusplus)
 }
 #endif
