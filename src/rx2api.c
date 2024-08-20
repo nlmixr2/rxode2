@@ -57,3 +57,7 @@ double *getIndLhs(rx_solving_options_ind* ind) {
 int getIndNdoses(rx_solving_options_ind* ind) {
   return ind->ndoses;
 }
+
+int getIndNevid2(rx_solving_options_ind* ind) {
+  return ind->nevid2;
+}

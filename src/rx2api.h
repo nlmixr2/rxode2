@@ -49,6 +49,9 @@ extern "C" {
   // Get the number of doses for the individual
   int getIndNdoses(rx_solving_options_ind* ind);
 
+  // This gets the number of events with EVID=2 in the individual
+  int getIndNevid2(rx_solving_options_ind* ind);
+
 #if defined(__cplusplus)
 }
 #endif
