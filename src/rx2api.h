@@ -88,6 +88,8 @@ extern "C" {
   // Get the number of linear-related compartments
   int getOpNlin(rx_solving_options* op);
 
+  int getOpCores(rx_solving_options* op);
+
 #if defined(__cplusplus)
 }
 #endif
