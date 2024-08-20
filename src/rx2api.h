@@ -82,6 +82,8 @@ extern "C" {
   // structure, so should be used with extreme caution.
   void setOpNeq(rx_solving_options* op, int neq);
 
+  // Does this problem have a bad solve?
+  int hasOpBadSolve(rx_solving_options* op);
 
 #if defined(__cplusplus)
 }

@@ -105,3 +105,7 @@ int getOpNeq(rx_solving_options* op) {
 void setOpNeq(rx_solving_options* op, int neq) {
   op->neq = neq;
 }
+
+int hasOpBadSolve(rx_solving_options* op) {
+  return op->badSolve;
+}
