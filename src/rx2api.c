@@ -29,3 +29,7 @@ double getIndLogitHi(rx_solving_options_ind* ind) {
 void setIndParPtr(rx_solving_options_ind* ind, int i, double val) {
   ind->par_ptr[i] = val;
 }
+
+double getIndParPtr(rx_solving_options_ind* ind, int i) {
+  return ind->par_ptr[i];
+}

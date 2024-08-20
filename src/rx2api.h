@@ -28,6 +28,9 @@ extern "C" {
   // Set individual parameters in the par_ptr double vector
   void setIndParPtr(rx_solving_options_ind* ind, int i, double val);
 
+  // Get individual parameters in the ptr_ptr double vector
+  double getIndParPtr(rx_solving_options_ind* ind, int i);
+
 #if defined(__cplusplus)
 }
 #endif
