@@ -112,11 +112,17 @@ extern "C" {
   typedef int (*getOpNeq_t)(rx_solving_options* op);
   extern getOpNeq_t getOpNeq;
 
+#define getRxNeq(rx) getOpNeq(getSolvingOptions(rx))
+
   typedef void (*setOpNeq_t)(rx_solving_options* op, int neq);
   extern setOpNeq_t setOpNeq;
 
+#define setRxNeq(rx, neq)  setOpNeq(getSolvingOptions(rx), neq)
+
   typedef int (*hasOpBadSolve_t)(rx_solving_options* op);
   extern hasOpBadSolve_t hasOpBadSolve;
+
+#define hasRxBadSolve(rx)  hasOpBadSolve(getSolvingOptions(rx))
 
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
