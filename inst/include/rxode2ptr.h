@@ -61,6 +61,9 @@ extern "C" {
   typedef double (*getIndLogitHi_t)(rx_solving_options_ind* ind);
   extern getIndLogitHi_t getIndLogitHi;
 
+  typedef void (*setIndParPtr_t)(rx_solving_options_ind* ind, int i, double val);
+  extern setIndParPtr_t setIndParPtr;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -80,7 +83,7 @@ extern "C" {
       getIndLambdaYj = (getIndLambdaYj_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 14));
       getIndLogitLow = (getIndLogitLow_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 15));
       getIndLogitHi = (getIndLogitHi_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 16));
-
+      setIndParPtr =  (setIndParPtr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 17));
     }
     return R_NilValue;
   }
@@ -103,6 +106,7 @@ extern "C" {
   getIndLogitLow_t getIndLogitLow = NULL;               \
   getIndLogitHi_t getIndLogitHi = NULL;                 \
   rxGetId_t rxGetId = NULL;                             \
+  setIndParPtr_t setIndParPtr = NULL;                   \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

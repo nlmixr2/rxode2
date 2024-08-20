@@ -24,3 +24,8 @@ double getIndLogitLow(rx_solving_options_ind* ind) {
 double getIndLogitHi(rx_solving_options_ind* ind) {
   return ind->logitHi;
 }
+
+
+void setIndParPtr(rx_solving_options_ind* ind, int i, double val) {
+  ind->par_ptr[i] = val;
+}

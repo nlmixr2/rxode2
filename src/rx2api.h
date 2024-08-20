@@ -25,6 +25,8 @@ extern "C" {
   // transformation lower boundary
   double getIndLogitHi(rx_solving_options_ind* ind);
 
+  // Set individual parameters in the par_ptr double vector
+  void setIndParPtr(rx_solving_options_ind* ind, int i, double val);
 
 #if defined(__cplusplus)
 }
