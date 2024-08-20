@@ -37,6 +37,9 @@ extern "C" {
   // Set the individual's index
   void setIndIdx(rx_solving_options_ind* ind, int j);
 
+  // Get the sorted index (ix) j for the individual
+  int getIndIx(rx_solving_options_ind* ind, int j);
+
 #if defined(__cplusplus)
 }
 #endif

@@ -41,3 +41,7 @@ int getIndNallTimes(rx_solving_options_ind* ind) {
 void setIndIdx(rx_solving_options_ind* ind, int j) {
   ind->idx = j;
 }
+
+int getIndIx(rx_solving_options_ind* ind, int j) {
+  return ind->ix[j];
+}
