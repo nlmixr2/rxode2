@@ -105,6 +105,9 @@ extern "C" {
   // Get the number of subjects in the rx_solve structure
   int getRxNsub(rx_solve *rx);
 
+  // Get if the rxode2 has the limit
+  int hasRxLimit(rx_solve *rx);
+
 #if defined(__cplusplus)
 }
 #endif

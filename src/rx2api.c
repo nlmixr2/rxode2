@@ -136,3 +136,7 @@ void resetOpBadSolve(rx_solving_options* op) {
 int getRxNsub(rx_solve *rx) {
   return rx->nsub;
 }
+
+int hasRxLimit(rx_solve *rx) {
+  return rx->limit;
+}
