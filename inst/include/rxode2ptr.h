@@ -132,7 +132,7 @@ extern "C" {
 #define getRxCores(rx) getOpCores(getSolvingOptions(rx))
 
   typedef int (*getOpNlhs_t)(rx_solving_options* op);
-  getOpNlhs_t getOpNlhs;
+  extern getOpNlhs_t getOpNlhs;
 #define getRxNlhs(rx) getOpNlhs(getSolvingOptions(rx))
 
   static inline SEXP iniRxodePtrs0(SEXP p) {
