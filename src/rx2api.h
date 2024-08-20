@@ -90,6 +90,8 @@ extern "C" {
 
   int getOpCores(rx_solving_options* op);
 
+  int getOpNlhs(rx_solving_options* op);
+
 #if defined(__cplusplus)
 }
 #endif

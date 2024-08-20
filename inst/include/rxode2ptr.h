@@ -131,6 +131,10 @@ extern "C" {
   extern getOpCores_t getOpCores;
 #define getRxCores(rx) getOpCores(getSolvingOptions(rx))
 
+  typedef int (*getOpNlhs_t)(rx_solving_options* op);
+  getOpNlhs_t getOpNlhs;
+#define getRxNlhs(rx) getOpNlhs(getSolvingOptions(rx))
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -171,6 +175,7 @@ extern "C" {
       hasOpBadSolve = (hasOpBadSolve_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 35));
       getOpNlin = (getOpNlin_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 36));
       getOpCores = (getOpCores_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 37));
+      getOpNlhs = (getOpNlhs_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 38));
     }
     return R_NilValue;
   }
@@ -214,6 +219,7 @@ extern "C" {
   hasOpBadSolve_t hasOpBadSolve = NULL;                 \
   getOpNlin_t getOpNlin = NULL;                         \
   getOpCores_t getOpCores = NULL;                       \
+  getOpNlhs_t getOpNlhs = NULL;                         \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
