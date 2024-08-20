@@ -46,6 +46,9 @@ extern "C" {
   // Get Individual Left Hand Side (LHS) vector
   double *getIndLhs(rx_solving_options_ind* ind);
 
+  // Get the number of doses for the individual
+  int getIndNdoses(rx_solving_options_ind* ind);
+
 #if defined(__cplusplus)
 }
 #endif

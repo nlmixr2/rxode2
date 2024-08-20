@@ -82,6 +82,9 @@ extern "C" {
   typedef double *(*getIndLhs_t)(rx_solving_options_ind* ind);
   extern getIndLhs_t getIndLhs;
 
+  typedef int (*getIndNdoses_t)(rx_solving_options_ind* ind);
+  extern getIndNdoses_t getIndNdoses;
+
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
       _rxode2_rxRmvnSEXP_ = (_rxode2_rxRmvnSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 0));
@@ -108,6 +111,7 @@ extern "C" {
       getIndIx = (getIndIx_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 21));
       getIndEvid= (getIndEvid_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 22));
       getIndLhs = (getIndLhs_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 23));
+      getIndNdoses = (getIndNdoses_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 24));
     }
     return R_NilValue;
   }
@@ -137,6 +141,7 @@ extern "C" {
   getIndIx_t getIndIx = NULL;                           \
   getIndEvid_t getIndEvid = NULL;                       \
   getIndLhs_t getIndLhs = NULL;                         \
+  getIndNdoses_t getIndNdoses = NULL;                   \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
