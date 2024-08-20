@@ -33,3 +33,7 @@ void setIndParPtr(rx_solving_options_ind* ind, int i, double val) {
 double getIndParPtr(rx_solving_options_ind* ind, int i) {
   return ind->par_ptr[i];
 }
+
+int getIndNallTimes(rx_solving_options_ind* ind) {
+  return ind->n_all_times;
+}

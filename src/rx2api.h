@@ -31,6 +31,9 @@ extern "C" {
   // Get individual parameters in the ptr_ptr double vector
   double getIndParPtr(rx_solving_options_ind* ind, int i);
 
+  // The the individual's number of time and dosing points
+  int getIndNallTimes(rx_solving_options_ind* ind);
+
 #if defined(__cplusplus)
 }
 #endif
