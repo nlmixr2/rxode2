@@ -401,9 +401,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2getIndLhs = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndLhs, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndNdoses = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndNdoses, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndNevid2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndNevid2, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndSolve = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndSolve, R_NilValue, R_NilValue)); pro++;
 
 
-#define nVec 26
+#define nVec 27
 
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
@@ -432,6 +433,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 23, rxode2getIndLhs);
   SET_VECTOR_ELT(ret, 24, rxode2getIndNdoses);
   SET_VECTOR_ELT(ret, 25, rxode2getIndNevid2);
+  SET_VECTOR_ELT(ret, 26, rxode2setIndSolve);
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -460,6 +462,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 23, Rf_mkChar("rxode2getIndLhs"));
   SET_STRING_ELT(retN, 24, Rf_mkChar("rxode2getIndNdoses"));
   SET_STRING_ELT(retN, 25, Rf_mkChar("rxode2getIndNevid2"));
+  SET_STRING_ELT(retN, 26, Rf_mkChar("rxode2setIndSolve"));
 
 #undef nVec
 

@@ -61,3 +61,7 @@ int getIndNdoses(rx_solving_options_ind* ind) {
 int getIndNevid2(rx_solving_options_ind* ind) {
   return ind->nevid2;
 }
+
+void setIndSolve(rx_solving_options_ind* ind, int solve) {
+  ind->solved = solve;
+}

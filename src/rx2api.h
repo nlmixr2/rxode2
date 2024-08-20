@@ -52,6 +52,9 @@ extern "C" {
   // This gets the number of events with EVID=2 in the individual
   int getIndNevid2(rx_solving_options_ind* ind);
 
+  // This sets the index of where the linear compartment solver is solved to.
+  void setIndSolve(rx_solving_options_ind* ind, int solve);
+
 #if defined(__cplusplus)
 }
 #endif
