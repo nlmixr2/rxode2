@@ -40,6 +40,9 @@ extern "C" {
   // Get the sorted index (ix) j for the individual
   int getIndIx(rx_solving_options_ind* ind, int j);
 
+  // Get the event id for the individual
+  int getIndEvid(rx_solving_options_ind* ind, int kk);
+
 #if defined(__cplusplus)
 }
 #endif

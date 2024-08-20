@@ -45,3 +45,7 @@ void setIndIdx(rx_solving_options_ind* ind, int j) {
 int getIndIx(rx_solving_options_ind* ind, int j) {
   return ind->ix[j];
 }
+
+int getIndEvid(rx_solving_options_ind* ind, int kk) {
+  return ind->evid[kk];
+}
