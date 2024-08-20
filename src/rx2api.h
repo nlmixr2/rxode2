@@ -43,6 +43,9 @@ extern "C" {
   // Get the event id for the individual
   int getIndEvid(rx_solving_options_ind* ind, int kk);
 
+  // Get Individual Left Hand Side (LHS) vector
+  double *getIndLhs(rx_solving_options_ind* ind);
+
 #if defined(__cplusplus)
 }
 #endif

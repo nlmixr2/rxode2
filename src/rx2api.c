@@ -49,3 +49,7 @@ int getIndIx(rx_solving_options_ind* ind, int j) {
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
   return ind->evid[kk];
 }
+
+double *getIndLhs(rx_solving_options_ind* ind) {
+  return ind->lhs;
+}
