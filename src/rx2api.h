@@ -88,9 +88,15 @@ extern "C" {
   // Get the number of linear-related compartments
   int getOpNlin(rx_solving_options* op);
 
+  // Get the number of cores from the rxode2 solving options
   int getOpCores(rx_solving_options* op);
 
+  // Get the number of lhs in the rxode2 solving options
   int getOpNlhs(rx_solving_options* op);
+
+  // Get the solving method (historically called stiff) from the
+  // rxode2 solving options
+  int getOpStiff(rx_solving_options* op);
 
 #if defined(__cplusplus)
 }

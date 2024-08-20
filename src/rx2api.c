@@ -121,6 +121,10 @@ int getOpCores(rx_solving_options* op) {
 int getOpNlhs(rx_solving_options* op) {
   return op->nlhs;
 }
+
+int getOpStiff(rx_solving_options* op) {
+  return op->stiff;
+}
 ////////////////////////////////////////////////////////////////////////
 // Solving options in rx
 ////////////////////////////////////////////////////////////////////////
