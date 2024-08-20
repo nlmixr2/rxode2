@@ -105,8 +105,11 @@ extern "C" {
   // Get the number of subjects in the rx_solve structure
   int getRxNsub(rx_solve *rx);
 
-  // Get if the rxode2 has the limit
+  // Get if the rxode2 has the limit (for censoring)
   int hasRxLimit(rx_solve *rx);
+
+  //Does the rxode2 problem have censoring column?
+  int hasRxCens(rx_solve *rx);
 
 #if defined(__cplusplus)
 }

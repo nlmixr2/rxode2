@@ -140,3 +140,7 @@ int getRxNsub(rx_solve *rx) {
 int hasRxLimit(rx_solve *rx) {
   return rx->limit;
 }
+
+int hasRxCens(rx_solve *rx) {
+  return rx->cens;
+}
