@@ -152,3 +152,7 @@ int getRxNall(rx_solve *rx) {
 int getRxNobs(rx_solve *rx) {
   return rx->nobs;
 }
+
+int getRxNobs2(rx_solve *rx) {
+  return rx->nobs2;
+}

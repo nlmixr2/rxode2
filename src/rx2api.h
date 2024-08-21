@@ -117,6 +117,9 @@ extern "C" {
   // Get the number of observation sin the rxode2 problem
   int getRxNobs(rx_solve *rx);
 
+  // Get the number of observations excluding evid=2
+  int getRxNobs2(rx_solve *rx);
+
 #if defined(__cplusplus)
 }
 #endif
