@@ -111,7 +111,11 @@ extern "C" {
   //Does the rxode2 problem have censoring column?
   int hasRxCens(rx_solve *rx);
 
+  // Get the number of all times in the rxode2 problem
   int getRxNall(rx_solve *rx);
+
+  // Get the number of observation sin the rxode2 problem
+  int getRxNobs(rx_solve *rx);
 
 #if defined(__cplusplus)
 }

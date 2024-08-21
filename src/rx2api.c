@@ -148,3 +148,7 @@ int hasRxCens(rx_solve *rx) {
 int getRxNall(rx_solve *rx) {
   return rx->nall;
 }
+
+int getRxNobs(rx_solve *rx) {
+  return rx->nobs;
+}
