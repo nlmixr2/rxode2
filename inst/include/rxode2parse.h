@@ -4,11 +4,16 @@
 #define __rxode2parse_H__
 #define rxLlikSaveSize 9
 
+#ifndef __RXODE2PTR_H__ // these refer to abi and should not be used.
 #define getAdvan(idx) ind->solve + (op->neq + op->nlin)*(idx) + op->neq
 #define getSolve(idx) ind->solve + (op->neq + op->nlin)*(idx)
+#endif // __RXODE2PTR_H__
+
+
 #define isDose(evid) ((evid) == 3 || (evid) >= 100)
 #define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 9 && (evid) <= 99))
 
+#ifndef __RXODE2PTR_H__ // these refer to abi and should not be used.
 #define getEvid(ind, idx) (idx >= 0 ? ind->evid[idx] : ind->extraDoseEvid[-1-idx])
 #define getEvidP1(ind, idx) (idx >= 0 ? ind->evid[idx+1] : ind->extraDoseEvid[-idx])
 #define getEvidM1(ind, idx) (idx >= 0 ? ind->evid[idx-1] : ind->extraDoseEvid[-2-idx])
@@ -30,6 +35,8 @@
 #define getAllTimesM1(ind, idx) (idx >= 0 ? ind->all_times[idx-1] : ind->extraDoseTime[-2-idx])
 
 #define setAllTimesP1(ind, idx, val) if (idx>= 0) {ind->all_times[idx+1] = val;} else {ind->extraDoseTime[-idx] = val;}
+#endif // __RXODE2PTR_H__
+
 #include <R.h>
 #include <stdbool.h>
 

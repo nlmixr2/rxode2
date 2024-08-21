@@ -156,3 +156,9 @@ int getRxNobs(rx_solve *rx) {
 int getRxNobs2(rx_solve *rx) {
   return rx->nobs2;
 }
+////////////////////////////////////////////////////////////////////////
+// Get solve vector for ith solve
+////////////////////////////////////////////////////////////////////////
+double * getOpIndSolve(rx_solving_options* op, rx_solving_options_ind* ind, int idx) {
+  return ind->solve + (op->neq + op->nlin)*(idx);
+}
