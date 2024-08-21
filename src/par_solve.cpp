@@ -444,14 +444,6 @@ t_calc_lhs calc_lhs = NULL;
 
 t_update_inis update_inis = NULL;
 
-extern "C" t_calc_lhs getRxLhs() {
-  return calc_lhs;
-}
-
-extern "C" t_update_inis getUpdateInis() {
-  return update_inis;
-}
-
 t_dydt_lsoda_dum dydt_lsoda_dum = NULL;
 
 t_dydt_liblsoda dydt_liblsoda = NULL;
