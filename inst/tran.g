@@ -3,6 +3,7 @@ statement_list : (statement)+ ;
 
 statement
   : assignment end_statement
+  | assign_str end_statement
   | ini        end_statement
   | ini0       end_statement
   | ini0f      end_statement
@@ -82,6 +83,8 @@ dur        : 'dur'  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_o
 end_statement : (';')* ;
 
 assignment : identifier_r  ('=' | '<-' | '~' ) logical_or_expression;
+
+assign_str : identifier_r ('=' | '<-' | '~' ) string;
 
 mat0: '_rxM' '=' logical_or_expression;
 
