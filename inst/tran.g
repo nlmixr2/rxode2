@@ -4,6 +4,8 @@ statement_list : (statement)+ ;
 statement
   : assignment end_statement
   | assign_str end_statement
+  | levels_str end_statement
+  | levels_str1 end_statement
   | ini        end_statement
   | ini0       end_statement
   | ini0f      end_statement
@@ -85,6 +87,12 @@ end_statement : (';')* ;
 assignment : identifier_r  ('=' | '<-' | '~' ) logical_or_expression;
 
 assign_str : identifier_r_no_output ('=' | '<-' | '~' ) string;
+
+levels_str : 'levels' '(' identifier_r_no_output ')' ('=' | '<-' | '~' )
+            'c' '(' string ( ',' string)* ')';
+
+levels_str1 : 'levels' '(' identifier_r_no_output ')' ('=' | '<-' | '~' )
+                string ;
 
 mat0: '_rxM' '=' logical_or_expression;
 
@@ -177,7 +185,9 @@ theta0_noout: ('THETA' | 'theta' | 'ETA' | 'eta');
 
 decimalintNo0: "([1-9][0-9]*)" $term -1;
 decimalint: "0|([1-9][0-9]*)" $term -1;
-string: "\"([^\"\\]|\\[^])*\"";
+string: string1 | string2;
+string1: "\"([^\"\\]|\\[^])*\"";
+string2: "'([^'\\]|\\[^])*'";
 float1: "([0-9]+.[0-9]*|[0-9]*.[0-9]+)([eE][\-\+]?[0-9]+)?" $term -2;
 float2: "[0-9]+[eE][\-\+]?[0-9]+" $term -3;
 identifier_r_1: "[a-zA-Z][a-zA-Z0-9_.]*" $term -4;
