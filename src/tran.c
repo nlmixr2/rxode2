@@ -31,7 +31,7 @@
 
 #include <dparserPtr.h>
 
-dparserPtrIni;
+dparserPtrIni
 
 
 #include "tran.g.d_parser.h"
@@ -151,6 +151,7 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
 #include "parseLogical.h"
 #include "parseIdentifier.h"
 #include "parseIndLin.h"
+#include "parseAssignStr.h"
 #include "parseStatements.h"
 #include "parseDfdy.h"
 #include "parseCmtProperties.h"
@@ -186,7 +187,8 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
       handleLogicalExpr(ni, name, *i, pn, xpn, isWhile) ||
       handleCmtProperty(ni, name, *i, xpn) ||
       handleDdtAssign(ni, name, *i, pn, xpn) ||
-      handleDdtRhs(ni, name, xpn)) return 1;
+      handleDdtRhs(ni, name, xpn) ||
+      handleStrAssign(ni, name, *i, pn, xpn)) return 1;
   if (*i==0 && nodeHas(power_expression)) {
     aAppendN("),", 2);
     sAppendN(&sbt, "^", 1);
@@ -207,7 +209,6 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
   handleFunctionArguments(name, depth);
   // print/change identifier/operator and change operator information (if needed)
   handleOperatorsOrPrintingIdentifiers(depth, fn, client_data, ni, name, value);
-
   if (nch != 0) {
     int isWhile=0;
     if (nodeHas(power_expression)) {
@@ -215,12 +216,9 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
     }
     for (i = 0; i < nch; i++) {
       D_ParseNode *xpn = d_get_child(pn, i);
-
       if (parseNodePossiblySkipRecursion(ni, name, pn, xpn, &i, nch, &depth)) continue;
-
       // Recursively parse tree
       wprint_parsetree(pt, xpn, depth, fn, client_data);
-
       parseNodeAfterRecursion(ni, name, pn, xpn, &i, nch, &depth, &safe_zero,
 			      &ii, &found, &isWhile);
     }
@@ -269,6 +267,8 @@ void parseFree(int last) {
   lineFree(&sbNrmL);
   lineFree(&(tb.ss));
   lineFree(&(tb.de));
+  lineFree(&(tb.str));
+  lineFree(&(tb.strVal));
   lineFree(&depotLines);
   lineFree(&centralLines);
   lineFree(&_dupStrs);
@@ -282,7 +282,12 @@ void parseFree(int last) {
   R_Free(tb.iniv);
   R_Free(tb.ini0);
   R_Free(tb.di);
+  R_Free(tb.si);
+  R_Free(tb.sin);
+  R_Free(tb.strValI);
+  R_Free(tb.strValII);
   R_Free(tb.idi);
+  R_Free(tb.isi);
   R_Free(tb.idu);
   R_Free(tb.dvid);
   R_Free(tb.df);
@@ -340,6 +345,7 @@ void reset(void) {
 
   lineIni(&(tb.ss));
   lineIni(&(tb.de));
+  lineIni(&(tb.str));
 
   tb.lh		= R_Calloc(MXSYM, int);
   tb.interp	= R_Calloc(MXSYM, int);
@@ -349,7 +355,12 @@ void reset(void) {
   tb.iniv	= R_Calloc(MXSYM, double);
   tb.ini0	= R_Calloc(MXSYM, int);
   tb.di		= R_Calloc(MXDER, int);
+  tb.si     = R_Calloc(MXDER, int);
+  tb.sin    = R_Calloc(MXDER, int);
   tb.idi	= R_Calloc(MXDER, int);
+  tb.strValI= R_Calloc(MXDER, int);
+  tb.strValII= R_Calloc(MXDER, int);
+  tb.isi    = R_Calloc(MXDER, int);
   tb.idu	= R_Calloc(MXDER, int);
   tb.lag	= R_Calloc(MXSYM, int);
   tb.alag   = R_Calloc(MXSYM, int);
@@ -391,6 +402,8 @@ void reset(void) {
   tb.hasKa      = 0;
   tb.allocS	= MXSYM;
   tb.allocD	= MXDER;
+  tb.allocS = MXDER;
+  tb.allocSV = MXDER;
   tb.matn	= 0;
   tb.matnf	= 0;
   tb.ncmt	= 0;
@@ -695,6 +708,8 @@ void transIniNull(void) {
   sNull(&(s_inits));
   lineNull(&(tb.ss));
   lineNull(&(tb.de));
+  lineNull(&(tb.str));
+  lineNull(&(tb.strVal));
   sNull(&(sb));
   sNull(&(sbDt));
   sNull(&(sbt));

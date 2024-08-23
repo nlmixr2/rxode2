@@ -190,6 +190,8 @@ static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int is
     finalizeLineParam(ni, name) ||
     finalizeLineSelectionStatement(ni, name, isWhile) ||
     finalizeLinePower(ni, name) ||
-    finalizeLineInterp(ni, name);
+    finalizeLineInterp(ni, name) ||
+    finalizeLineStrAssign(ni, name)
+    ;
   (void) tmp;
 }

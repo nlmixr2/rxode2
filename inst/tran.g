@@ -84,7 +84,7 @@ end_statement : (';')* ;
 
 assignment : identifier_r  ('=' | '<-' | '~' ) logical_or_expression;
 
-assign_str : identifier_r ('=' | '<-' | '~' ) string;
+assign_str : identifier_r_no_output ('=' | '<-' | '~' ) string;
 
 mat0: '_rxM' '=' logical_or_expression;
 

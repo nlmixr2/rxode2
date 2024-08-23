@@ -111,13 +111,13 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
   if (fromWhere == fromCMTprop && !nodeHas(cmt_statement)) {
     if (rx_syntax_require_ode_first) {
       if (!strcmp("depot", v)) {
-	tb.hasDepot = 1;
+        tb.hasDepot = 1;
       } else if (!strcmp("central", v)) {
-	tb.hasCentral = 1;
+        tb.hasCentral = 1;
       } else {
-	updateSyntaxCol();
-	sPrint(&_gbuf,ODEFIRST,v);
-	trans_syntax_error_report_fn(_gbuf.s);
+        updateSyntaxCol();
+        sPrint(&_gbuf,ODEFIRST,v);
+        trans_syntax_error_report_fn(_gbuf.s);
       }
     }
   }

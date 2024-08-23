@@ -76,10 +76,22 @@ static inline void calcNparamsNlhsNslhs(void) {
   int sli=0, li=0, pi=0;
   for (int i=0; i<NV; i++) {
     int islhs = tb.lh[i];
-    if (islhs>1 && islhs != isLhsStateExtra && islhs != isLHSparam && islhs != isSuppressedLHS) continue;      /* is a state var */
-    if (islhs == isSuppressedLHS){
+    if (islhs>1 &&
+        islhs != isLhsStateExtra &&
+        islhs != isLHSparam &&
+        islhs != isSuppressedLHS &&
+        islhs != isLHSstr &&
+        islhs != isSuppressedLHSstr) {
+      continue;      /* is a state var */
+    }
+    if (islhs == isSuppressedLHS ||
+        islhs == isSuppressedLHSstr){
       sli++;
-    } else if (islhs == isLHS || islhs == isLhsStateExtra || islhs == isLHSparam){
+    } else if (islhs == isLHS ||
+               islhs == isLHSstr ||
+               islhs == isLhsStateExtra ||
+               islhs == isLHSparam ||
+               islhs == isLHSstr){
       li++;
       if (islhs == isLHSparam) pi++;
     } else {
@@ -246,7 +258,8 @@ static inline void populateDfdy(SEXP dfdy) {
 }
 
 static inline int assertStateCannotHaveDiff(int islhs, int i, char *buf) {
-  if (islhs>1 && islhs != isLhsStateExtra && islhs != isLHSparam) {
+  if (islhs>1 && islhs != isLhsStateExtra && islhs != isLHSparam &&
+      islhs != isLHSstr) {
     if (tb.lag[i] != 0){
       buf=tb.ss.line[i];
       if (islhs == isState){
@@ -264,7 +277,8 @@ static inline int assertStateCannotHaveDiff(int islhs, int i, char *buf) {
 
 static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *buf,
                                         int *li, int *pi) {
-  if (islhs == isLHS || islhs == isLhsStateExtra || islhs == isLHSparam) {
+  if (islhs == isLHS || islhs == isLHSstr ||
+      islhs == isLhsStateExtra || islhs == isLHSparam) {
     SET_STRING_ELT(lhs, li[0], mkChar(buf));
     li[0] = li[0]+1;
     if (islhs == isLHSparam) {
@@ -324,7 +338,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
   char *buf;
   for (int i=0; i<NV; i++) {
     int islhs = tb.lh[i];
-    if (islhs == isSuppressedLHS){
+    if (islhs == isSuppressedLHS || islhs == isSuppressedLHSstr){
       SET_STRING_ELT(slhs, sli++, mkChar(tb.ss.line[i]));
     }
     buf=tb.ss.line[i];

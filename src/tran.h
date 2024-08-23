@@ -16,6 +16,10 @@ typedef struct symtab {
   vLines ss; // Symbol string or symbol lines
   /* char ss[64*MXSYM]; */                     /* symbol string: all vars*/
   vLines de;             /* symbol string: all Des*/
+  vLines str; /* symbol string: all assigned string variables*/
+  vLines strVal; /* symbol string for rxode2 assigned strings */
+  int *strValI; /* which variable is assigned a string */
+  int *strValII; /* The number that the string is assigned (what C sees) */
   int *lh;        /*
 lhs symbols?
 =0 not LHS
@@ -39,7 +43,10 @@ lhs symbols?
   double *iniv;        /* Initial values */
   int *ini0;        /* state initial variable assignment =2 if there are two assignments */
   int *di;        /* ith of state vars */
+  int *si;      /* ith of string vars */
+  int *sin;      /* n values in each string var */
   int *idi;       /* should ith state variable be ignored 0/1 */
+  int *isi;      /* should ith string variable be ignored 0/1 */
   int *idu;       /* Has the ith state been used in a derivative expression? */
   int *lag;  // Lag number (if present)
   int *alag; // absorption lag compartments seen
@@ -80,6 +87,7 @@ lhs symbols?
   int hasCentralCmt;
   int hasKa;
   int allocS;
+  int allocSV;
   int allocD;
   int matn;
   int matnf;
@@ -143,6 +151,7 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 typedef struct nodeInfo {
   int alag;
   int assignment;
+  int assign_str;
   int constant;
   int der_rhs;
   int derivative;
@@ -201,6 +210,7 @@ static inline void niReset(nodeInfo *ni){
   ni->mtime = -1;
   ni->alag = -1;
   ni->assignment = -1;
+  ni->assign_str = -1;
   ni->constant = -1;
   ni->der_rhs = -1;
   ni->derivative = -1;
@@ -265,8 +275,10 @@ extern sbuf sbOut;
 
 #define notLHS 0
 #define isLHS 1
+#define isLHSstr 100
 #define isState 9
 #define isSuppressedLHS 10
+#define isSuppressedLHSstr 110
 #define isSuppressedParam 11
 #define isLhsStateExtra 19
 #define isLHSparam 70
