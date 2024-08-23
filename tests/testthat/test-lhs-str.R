@@ -87,13 +87,15 @@ f <- function() {
 }
 
 test_that("test lhs string assign rxode2.syntax.allow.ini=TRUE", {
-  withr::with_options(list(rxode2.syntax.allow.ini=TRUE), {
+  withr::with_options(list(rxode2.syntax.allow.ini=TRUE,
+                           rxode2.syntax.require.ode.first = FALSE), {
     f()
   })
 })
 
 test_that("test lhs string assign rxode2.syntax.allow.ini=FALSE", {
-  withr::with_options(list(rxode2.syntax.allow.ini=TRUE), {
+  withr::with_options(list(rxode2.syntax.allow.ini=TRUE,
+                           rxode2.syntax.require.ode.first = FALSE), {
     f()
   })
 })
