@@ -63,7 +63,7 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 		} else if (!strcmp("central", v2)){
 			tb.hasCentral = 1;
 			aAppendN("_CENTRAL_)", 10);
-		} else if (rx_syntax_require_ode_first){
+		} else if (rx_syntax_require_ode_first) {
 			updateSyntaxCol();
 			sPrint(&_gbuf,ODEFIRST,v2);
 			trans_syntax_error_report_fn(_gbuf.s);
