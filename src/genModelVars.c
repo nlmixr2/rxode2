@@ -9,8 +9,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 22));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 23));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 23));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -37,11 +37,11 @@ SEXP generateModelVars(void) {
   SEXP dfdy = PROTECT(Rf_allocVector(STRSXP,tb.ndfdy));pro++;
   populateDfdy(dfdy);
 
-
   SEXP params = PROTECT(Rf_allocVector(STRSXP, tb.pi));pro++;
   SEXP lhs    = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
   SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
   SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
+
 
   SEXP version = PROTECT(calcVersionInfo());pro++;
   SEXP ini = PROTECT(calcIniVals()); pro++;
@@ -242,6 +242,25 @@ SEXP generateModelVars(void) {
 
   SET_VECTOR_ELT(lst, 21, interp);
   SET_STRING_ELT(names, 21, mkChar("interp"));
+
+  SEXP strAssign = PROTECT(Rf_allocVector(VECSXP, tb.str.n));pro++;
+  SEXP strAssignN = PROTECT(Rf_allocVector(STRSXP, tb.str.n));pro++;
+  for (int i = 0; i < tb.str.n; i++) {
+    SEXP cur = PROTECT(Rf_allocVector(STRSXP, tb.sin[i]));pro++;
+    int k = 0;
+    for (int j = 0; j < tb.strVal.n; j++) {
+      if (tb.strValI[j] == i) {
+        SET_STRING_ELT(cur, k, mkChar(tb.strVal.line[j]));
+        k++;
+      }
+    }
+    SET_VECTOR_ELT(strAssign, i, cur);
+    SET_STRING_ELT(strAssignN, i, mkChar(tb.str.line[i]));
+  }
+  Rf_setAttrib(strAssign, R_NamesSymbol, strAssignN);
+
+  SET_VECTOR_ELT(lst, 22, strAssign);
+  SET_STRING_ELT(names, 22, mkChar("strAssign"));
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);
