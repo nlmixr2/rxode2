@@ -190,7 +190,8 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
       handleDdtAssign(ni, name, *i, pn, xpn) ||
       handleDdtRhs(ni, name, xpn) ||
       handleStrAssign(ni, name, *i, pn, xpn) ||
-      handleLevelsStr(ni, name, *i, pn, xpn)) return 1;
+      handleLevelsStr(ni, name, *i, pn, xpn) ||
+      handleLevelsStr1(ni, name, *i, pn, xpn)) return 1;
   if (*i==0 && nodeHas(power_expression)) {
     aAppendN("),", 2);
     sAppendN(&sbt, "^", 1);
