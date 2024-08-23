@@ -50,6 +50,11 @@
 
 - Strings can be assigned to variables in `rxode2`.
 
+- Strings can now be enclosed with a single quote as well as a double
+  quote.  This limitation was only in the rxode2 using string since
+  the R-parser changes single quotes to double quotes. (This has no
+  impact with `rxode2({})` and ui/function form).
+
 - Empty arguments to `rxRename()` give a warning (#688)
 
 - Promoting from covariates to parameters with model piping (via `ini()`) now

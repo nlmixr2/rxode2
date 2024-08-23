@@ -87,6 +87,25 @@ static inline int get_str_assign_int(int val, const char *s) {
   return n;
 }
 
+static inline void errorStrAssign(const char *v) {
+  new_assign_str(v);
+  int n = tb.sin[tb.id];
+  if (n > 1) {
+    sPrint(&_gbuf,"the string variable '%s' can only be 1 to %d, or '",v, n);
+  } else {
+    sPrint(&_gbuf,"the string variable '%s' can only be 1 or '",v, n);
+  }
+  for (int i=0; i<tb.strVal.n; i++) {
+    if (tb.strValI[i] == tb.id) {
+      sAppend(&_gbuf, "%s', '", tb.strVal.line[i]);
+    }
+  }
+  _gbuf.o-=3;
+  _gbuf.s[_gbuf.o]=0;
+  updateSyntaxCol();
+  trans_syntax_error_report_fn(_gbuf.s);
+}
+
 static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   if (nodeHas(assign_str)) {
     if (i==0) {
