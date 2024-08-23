@@ -136,7 +136,6 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
         // not ignored
         tb.lh[tb.ix] = isLHSstr;
       }
-      tb.didEq=0; // reset the equation flag (to avoid double assign errors)
       return 1;
     }
   }
@@ -144,7 +143,7 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
 }
 
 static inline int finalizeLineStrAssign(nodeInfo ni, char *name) {
-  if (nodeHas(derivative)){
+  if (nodeHas(assign_str)){
     addLine(&sbPm,     "%s\n", sb.s);
     addLine(&sbPmDt,   "%s\n", sbDt.s);
     sAppend(&sbNrm, "%s\n", sbt.s);

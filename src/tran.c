@@ -152,6 +152,7 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
 #include "parseIdentifier.h"
 #include "parseIndLin.h"
 #include "parseAssignStr.h"
+#include "parseLevels.h"
 #include "parseStatements.h"
 #include "parseDfdy.h"
 #include "parseCmtProperties.h"
@@ -188,7 +189,8 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
       handleCmtProperty(ni, name, *i, xpn) ||
       handleDdtAssign(ni, name, *i, pn, xpn) ||
       handleDdtRhs(ni, name, xpn) ||
-      handleStrAssign(ni, name, *i, pn, xpn)) return 1;
+      handleStrAssign(ni, name, *i, pn, xpn) ||
+      handleLevelsStr(ni, name, *i, pn, xpn)) return 1;
   if (*i==0 && nodeHas(power_expression)) {
     aAppendN("),", 2);
     sAppendN(&sbt, "^", 1);
@@ -209,6 +211,7 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
   handleFunctionArguments(name, depth);
   // print/change identifier/operator and change operator information (if needed)
   handleOperatorsOrPrintingIdentifiers(depth, fn, client_data, ni, name, value);
+  if (handleLevelStr(ni, name, value)) return;
   if (nch != 0) {
     int isWhile=0;
     if (nodeHas(power_expression)) {
@@ -413,6 +416,7 @@ void reset(void) {
   tb.centralN	= -1;
   tb.linExtra   = false;
   tb.nwhile     = 0;
+  tb.lvlStr     = 0;
   tb.nInd       = 0;
   tb.simflg     = 0;
   tb.nLlik      = 0;
