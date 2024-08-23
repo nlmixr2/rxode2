@@ -112,7 +112,15 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
       // assign lhs
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       new_or_ith(v); // update tb.ix for the right value
-      tb.lh[tb.ix] = isLHSstr;
+      if (tb.lh[tb.ix] == 0 && tb.ini[tb.ix] == 0) {
+        tb.lh[tb.ix] = isLHSstr;
+      } else if (tb.lh[tb.ix] == isLHSstr ||
+                 tb.lh[tb.ix] == isSuppressedLHSstr) {
+      } else {
+        sPrint(&_gbuf,"'%s' needs to be first declared as a string by assignment or labels()", v);
+        updateSyntaxCol();
+        trans_syntax_error_report_fn(_gbuf.s);
+      }
       if (new_assign_str(v)){
         add_assign_str(v);
       }

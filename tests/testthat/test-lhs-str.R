@@ -69,6 +69,8 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
     expect_error(rxode2parse('a <- "matt"; a <- "rxode2"; a<- 2'), NA)
     expect_error(rxode2parse('a <- "matt"; a <- "rxode2"; a<- 3'))
     expect_error(rxode2parse('a <- "matt"; a(0)<- 2'))
+    expect_error(rxode2parse('a <- b; a <- "str"'))
+    expect_error(rxode2parse('a <- 1; a <- "str"'))
   }
 
   withr::with_options(list(rxode2.syntax.allow.ini=TRUE), {
@@ -78,6 +80,8 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
   withr::with_options(list(rxode2.syntax.allow.ini=FALSE), {
     f()
   })
+
+
 
 
 })

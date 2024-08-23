@@ -134,14 +134,14 @@ static inline int handleRemainingAssignmentsIniProp(nodeInfo ni, char *name, int
 static inline void handleRemainingAssignmentsRestProp(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn, char *v) {
   sb.o = 0; sbDt.o = 0;
   doDot2(&sb, &sbDt, v);
-  if (!new_de(v)){
+  if (!new_de(v)) {
     if (tb.idu[tb.id] == 0){
       // Change to 19 for LHS w/stateExtra
       new_or_ith(v);
       if (tb.lh[tb.ix] == isSuppressedLHS || tb.lh[tb.ix] == 29){
-	tb.lh[tb.ix] = 29;
+        tb.lh[tb.ix] = 29;
       } else {
-	tb.lh[tb.ix] = isLhsStateExtra;
+        tb.lh[tb.ix] = isLhsStateExtra;
       }
     } else {
       sPrint(&_gbuf,"Cannot assign state variable %s; For initial condition assigment use '%s(0) ='",v,v);
