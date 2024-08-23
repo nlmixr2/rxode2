@@ -9,8 +9,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 23));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 23));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 24));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 24));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -39,6 +39,7 @@ SEXP generateModelVars(void) {
 
   SEXP params = PROTECT(Rf_allocVector(STRSXP, tb.pi));pro++;
   SEXP lhs    = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
+  SEXP lhsStr    = PROTECT(Rf_allocVector(LGLSXP, tb.li));pro++;
   SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
   SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
 
@@ -50,7 +51,7 @@ SEXP generateModelVars(void) {
   SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
   SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;
 
-  populateParamsLhsSlhs(params, lhs, slhs, INTEGER(interp));
+  populateParamsLhsSlhs(params, lhs, slhs, INTEGER(interp), lhsStr);
 
 
   INTEGER(sLinCmt)[5] = tb.hasCmt;
@@ -258,9 +259,14 @@ SEXP generateModelVars(void) {
     SET_STRING_ELT(strAssignN, i, mkChar(tb.str.line[i]));
   }
   Rf_setAttrib(strAssign, R_NamesSymbol, strAssignN);
+  Rf_setAttrib(lhsStr, R_NamesSymbol, lhs);
+
 
   SET_VECTOR_ELT(lst, 22, strAssign);
   SET_STRING_ELT(names, 22, mkChar("strAssign"));
+
+  SET_VECTOR_ELT(lst, 23, lhsStr);
+  SET_STRING_ELT(names, 23, mkChar("lhsStr"));
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);

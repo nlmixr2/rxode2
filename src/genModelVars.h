@@ -276,10 +276,11 @@ static inline int assertStateCannotHaveDiff(int islhs, int i, char *buf) {
 }
 
 static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *buf,
-                                        int *li, int *pi) {
+                                        int *li, int *pi, SEXP lhsStr) {
   if (islhs == isLHS || islhs == isLHSstr ||
       islhs == isLhsStateExtra || islhs == isLHSparam) {
     SET_STRING_ELT(lhs, li[0], mkChar(buf));
+    INTEGER(lhsStr)[li[0]] = islhs == isLHSstr;
     li[0] = li[0]+1;
     if (islhs == isLHSparam) {
       if (!strcmp("CMT", buf)) {
@@ -333,7 +334,7 @@ static inline void assertLhsAndDualLhsDiffNotLegal(int islhs, int i, char *buf) 
   }
 }
 
-static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *interp) {
+static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *interp, SEXP lhsStr) {
   int li=0, pi=0, sli = 0;
   char *buf;
   for (int i=0; i<NV; i++) {
@@ -346,7 +347,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
     if (assertStateCannotHaveDiff(islhs, i, buf)) continue;
     assertLhsAndDualLhsDiffNotLegal(islhs, i, buf);
     /* is a state var */
-    if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi)) {
+    if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi, lhsStr)) {
       paramSubThetaEtaToBufw(buf);
       interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
       SET_STRING_ELT(params, pi++, mkChar(_bufw.s));

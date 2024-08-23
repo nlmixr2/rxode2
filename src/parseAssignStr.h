@@ -136,6 +136,7 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
         // not ignored
         tb.lh[tb.ix] = isLHSstr;
       }
+      tb.didEq=0; // reset the equation flag (to avoid double assign errors)
       return 1;
     }
   }
