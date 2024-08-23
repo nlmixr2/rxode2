@@ -48,6 +48,8 @@
   and `dvid()` declarations are now ignored when loading a `rxode2`
   model with `rxS()`
 
+- Strings can be assigned to variables in `rxode2`.
+
 - Empty arguments to `rxRename()` give a warning (#688)
 
 - Promoting from covariates to parameters with model piping (via `ini()`) now
