@@ -36,6 +36,7 @@ if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
   expect_equal(p$lhsStr, c(tAPGAR = TRUE))
   expect_equal(p$lhs, "tAPGAR")
   expect_equal(p$slhs, character(0))
-  expect_equal(p$params , c("APGAR"))
+  expect_equal(p$params , "APGAR")
+
 
 })

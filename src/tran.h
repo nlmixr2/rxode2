@@ -152,6 +152,8 @@ typedef struct nodeInfo {
   int alag;
   int assignment;
   int assign_str;
+  int levels_str;
+  int levels_str1;
   int constant;
   int der_rhs;
   int derivative;
@@ -211,6 +213,8 @@ static inline void niReset(nodeInfo *ni){
   ni->alag = -1;
   ni->assignment = -1;
   ni->assign_str = -1;
+  ni->levels_str = -1;
+  ni->levels_str1 = -1;
   ni->constant = -1;
   ni->der_rhs = -1;
   ni->derivative = -1;
