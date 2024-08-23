@@ -20,5 +20,22 @@ test_that("test lhs string assign lhs expression information", {
   expect_equal(p$strAssign, list(a = "oh no"))
   expect_equal(p$lhsStr, c(a = TRUE, b = FALSE))
 
+  p <- rxode2parse('
+if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
+    tAPGAR <- "High"
+  } else if (APGAR == 1 || APGAR == 2 || APGAR == 3) {
+    tAPGAR <- "Low"
+  } else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) {
+    tAPGAR <- "Med"
+  } else {
+    tAPGAR<- "Med"
+  }
+')
+
+  expect_equal(p$strAssign, list(tAPGAR = c("High", "Low", "Med")))
+  expect_equal(p$lhsStr, c(tAPGAR = TRUE))
+  expect_equal(p$lhs, "tAPGAR")
+  expect_equal(p$slhs, character(0))
+  expect_equal(p$params , c("APGAR"))
 
 })
