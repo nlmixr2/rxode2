@@ -89,15 +89,15 @@ f <- function() {
 test_that("test lhs string assign rxode2.syntax.allow.ini=TRUE", {
   withr::with_options(list(rxode2.syntax.allow.ini=TRUE,
                            rxode2.syntax.require.ode.first = FALSE), {
-    f()
-  })
+                             f()
+                           })
 })
 
 test_that("test lhs string assign rxode2.syntax.allow.ini=FALSE", {
   withr::with_options(list(rxode2.syntax.allow.ini=TRUE,
                            rxode2.syntax.require.ode.first = FALSE), {
-    f()
-  })
+                             f()
+                           })
 })
 
 test_that("lhs solve; tests lhs assign & str equals with lhs", {
@@ -175,5 +175,78 @@ test_that("levels1 statement solve", {
   expect_true(all(s$a[s$time >= 10] == ">=10"))
   expect_true(all(s$b[s$time < 10] == 0))
   expect_true(all(s$b[s$time >= 10] == 1))
+
+})
+
+test_that("levels extraction", {
+
+  rx <- function() {
+    model({
+      levels(a) <- c("<10", ">=10")
+      if (t < 10) {
+        a <- 1
+      } else {
+        a <- 2
+      }
+      b <- 1
+      if (a == "<10") {
+        b <- 2;
+      }
+    })
+  }
+
+  rx <- rx()
+
+  expect_equal(rx$levels,
+               list(str2lang("levels(a) <- c(\"<10\", \">=10\")")))
+
+  rx <- function() {
+    model({
+      levels(a) <- c("<10", ">=10")
+      levels(b) <- c("low", "high")
+      if (t < 10) {
+        a <- 1
+      } else {
+        a <- 2
+      }
+      b <- 1
+      if (a == "<10") {
+        b <- 2;
+      }
+    })
+  }
+
+  rx <- rx()
+
+  expect_equal(rx$levels,
+               list(str2lang("levels(a) <- c(\"<10\", \">=10\")"),
+                    str2lang("levels(b) <- c(\"low\", \"high\")")))
+
+
+  rx <- function() {
+    model({
+      levels(a) <- c("<10", ">=10")
+      levels(b) <- c("low", "high")
+      levels(c) <- c("funny")
+      if (t < 10) {
+        a <- 1
+      } else {
+        a <- 2
+      }
+      b <- 1
+      if (a == "<10") {
+        b <- 2;
+      }
+      c <- 1
+    })
+  }
+
+  rx <- rx()
+
+  expect_equal(rx$levels,
+               list(str2lang("levels(a) <- c(\"<10\", \">=10\")"),
+                    str2lang("levels(b) <- c(\"low\", \"high\")"),
+                    str2lang("levels(c) <- \"funny\"")))
+
 
 })

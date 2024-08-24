@@ -49,6 +49,21 @@ rxUiGet <- function(x, ...) {
   UseMethod("rxUiGet")
 }
 
+#' @rdname rxUiGet
+#' @export
+rxUiGet.levels <- function(x, ...) {
+  .x <- x[[1]]
+  .mv <- rxModelVars(.x)
+  .str <- .mv$strAssign
+  .names <- names(.str)
+  lapply(vapply(seq_along(.str), function(i) {
+    paste0("levels(", .names[i], ") <- ",
+           deparse1(.str[[i]]))
+  }, character(1), USE.NAMES=FALSE),
+  str2lang)
+}
+
+#' @rdname rxUiGet
 #' @export
 rxUiGet.state <- function(x, ...) {
   .ui <- x[[1]]
@@ -56,6 +71,7 @@ rxUiGet.state <- function(x, ...) {
 }
 attr(rxUiGet.state, "desc") <- "states associated with the model (in order)"
 
+#' @rdname rxUiGet
 #' @export
 rxUiGet.stateDf <- function(x, ...) {
   .ui <- x[[1]]

@@ -114,8 +114,6 @@ extern vLines depotLines;
 extern vLines centralLines;
 extern vLines sbPm, sbPmDt, sbNrmL;
 
-
-
 #define FBIO 1
 #define ALAG 2
 #define RATE 3
