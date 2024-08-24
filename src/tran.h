@@ -137,6 +137,7 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define TMAT0 19
 #define TMATF 20
 #define TLIN 21
+#define TNONE 22
 
 // new de type
 #define fromDDT 2

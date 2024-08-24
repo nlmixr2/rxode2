@@ -16,6 +16,8 @@ static inline int handleLevelsStr(nodeInfo ni, char *name, int i, D_ParseNode *p
     } else if (i == 2) {
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       new_or_ith(v); // update tb.ix for the right value
+      aProp(tb.ix);
+      aType(TNONE);
       tb.lh[tb.ix] = isLHSstr;
       if (new_assign_str(v)){
         add_assign_str(v);
@@ -50,7 +52,7 @@ static inline int handleLevelsStr(nodeInfo ni, char *name, int i, D_ParseNode *p
       }
       sbt.o -= 2; // remove last comma
       sAppendN(&sbt, ");", 2);
-      sbt.o = sbDt.o = 0;
+      sb.o = sbDt.o = 0;
       sAppend(&sb, "/*  '%s' */", sbt.s);
       sAppend(&sbDt, "/*  '%s' */ ", sbt.s);
       return 1;
@@ -97,7 +99,7 @@ static inline int handleLevelsStr1(nodeInfo ni, char *name, int i, D_ParseNode *
         sAppendN(&sbt, "<- ", 3);
       }
       sAppend(&sbt, "\"%s\";", v);
-      sbt.o = sbDt.o = 0;
+      sb.o = sbDt.o = 0;
       sAppend(&sb, "/*  '%s' */", sbt.s);
       sAppend(&sbDt, "/*  '%s' */ ", sbt.s);
       return 1;

@@ -445,6 +445,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             sAppend(&sbOut,"  %s", sbPm.line[i]);
           }
           break;
+        case TNONE: // no code is output (just props)
+          break;
         default:
           RSprintf("line Number: %d\n", i);
           RSprintf("type: %d\n", sbPm.lType[i]);

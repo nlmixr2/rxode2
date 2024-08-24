@@ -150,3 +150,30 @@ test_that("lhs solve; tests lhs levels & str equals with lhs", {
   expect_true(all(s$b[s$time >= 10] == 1))
 
 })
+
+
+test_that("levels1 statement solve", {
+
+  rx <- rxode2({
+    levels(a) <- "<10"
+    if (t < 10) {
+      a <- 1
+    } else {
+      a <- ">=10"
+    }
+    b <- 1
+    if (a == "<10") {
+      b <- 0;
+    }
+  })
+
+  e <- et(1:20)
+
+  s <-rxSolve(rx, e, returnType = "data.frame")
+
+  expect_true(all(s$a[s$time < 10] == "<10"))
+  expect_true(all(s$a[s$time >= 10] == ">=10"))
+  expect_true(all(s$b[s$time < 10] == 0))
+  expect_true(all(s$b[s$time >= 10] == 1))
+
+})
