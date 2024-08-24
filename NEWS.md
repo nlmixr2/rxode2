@@ -55,6 +55,9 @@
   the R-parser changes single quotes to double quotes. (This has no
   impact with `rxode2({})` and ui/function form).
 
+- More robust string encoding for symengine (adapted from
+  `utils::URLencode()` and `utils::URLdecode()`)
+
 - Empty arguments to `rxRename()` give a warning (#688)
 
 - Promoting from covariates to parameters with model piping (via `ini()`) now
