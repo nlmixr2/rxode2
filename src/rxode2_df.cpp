@@ -56,7 +56,7 @@ using namespace arma;
 extern t_update_inis update_inis;
 extern t_calc_lhs calc_lhs;
 
-extern "C" SEXP getDfLevels(const char *item, rx_solve *rx){
+extern "C" SEXP getDfLevels(const char *item, rx_solve *rx) {
   int totN = rx->factorNames.n;
   int base = 0, curLen= rx->factorNs[0], curG=0;
   curLen= rx->factorNs[0];
@@ -199,7 +199,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   // Multiple simulation data?
   int sm = 0;
   if (rx->nsim > 1) sm = 1;
-  int ncols =1+nPrnState+nlhs;
+  int ncols =1+nPrnState;
   int ncols2 = add_cov*(ncov+ncov0)+nkeep;
   int doseCols = 0;
   int nevid2col = 0;
@@ -230,7 +230,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
     }
   }
-  int ncol = ncols+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
+  int ncol = ncols+nlhs+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
   List df = List(ncol);//PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
   for (i = nidCols; i--;){
     df[i] = IntegerVector(rx->nr);
@@ -260,9 +260,22 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   doseCols += nevid2col;
   CharacterVector paramNames = rxParamNames(op->modNamePtr);
   CharacterVector fkeepNames = get_fkeepn();
-  for (i = md + sm + ms + doseCols + 2*nmevid; i < ncols + doseCols + nidCols + 2*nmevid; i++){
+  // time comes in here
+  df[md + sm +ms + doseCols + 2*nmevid] = NumericVector(rx->nr);
+  // now lhs expressions
+  CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
+  for (i = 0; i < nlhs; ++i) {
+    if (op->lhs_str[i] == 1) {
+      // factor; from string expression
+      df[i + md + sm + ms + doseCols + 2*nmevid+1] = getDfLevels(CHAR(STRING_ELT(lhsNames, i)), rx);
+    } else {
+      df[i + md + sm + ms + doseCols + 2*nmevid+1] = NumericVector(rx->nr);
+    }
+  }
+  for (i = md + sm + ms + doseCols + 2*nmevid + nlhs + 1; i < ncols + doseCols + nidCols + 2*nmevid-1; i++){
     df[i] = NumericVector(rx->nr);
   }
+  ncols += nlhs; // add lhs back to the number of lhs
   // These could be factors
   j = ncols + doseCols + nidCols + 2*nmevid;
   const char *charItem;
@@ -689,9 +702,19 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           // LHS
           if (nlhs){
             for (j = 0; j < nlhs; j++){
-              dfp = REAL(VECTOR_ELT(df, jj));
-              dfp[ii] =ind->lhs[j];
-              jj++;
+              if (op->lhs_str[j] == 1) {
+                dfi = INTEGER(VECTOR_ELT(df, jj));
+                if (ISNA(ind->lhs[j])) {
+                  dfi[ii] = NA_INTEGER;
+                } else {
+                  dfi[ii] = (int)(ind->lhs[j]);
+                }
+                jj++;
+              } else {
+                dfp = REAL(VECTOR_ELT(df, jj));
+                dfp[ii] =ind->lhs[j];
+                jj++;
+              }
             }
           }
           // States
@@ -855,7 +878,6 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   jj++;
 
   // Put in LHS names
-  CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
   for (i = 0; i < nlhs; i++){
     sexp_colnames[jj] = STRING_ELT(lhsNames,i);
     jj++;

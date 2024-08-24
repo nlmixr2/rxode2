@@ -40,7 +40,13 @@ extern "C" {
 		}
 		ind->inLhs = inLhs;
 		if (rx->nMtime) calc_mtime(solveid, ind->mtime);
-		for (int j = op->nlhs; j--;) ind->lhs[j] = NA_REAL;
+		for (int j = op->nlhs; j--;) {
+      if (op->lhs_str[j] == 1) {
+        ind->lhs[j] = 1.0; // default is first string defined
+      } else {
+        ind->lhs[j] = NA_REAL;
+      }
+    }
 		if ((inLhs == 0 && op->neq > 0) ||
 				(inLhs == 1 && op->neq == 0 && (rx->nIndSim > 0 || (rx->simflg & 1) != 0 ))) {
 			ind->isIni = 1;

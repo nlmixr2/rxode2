@@ -112,6 +112,8 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
       // assign lhs
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       new_or_ith(v); // update tb.ix for the right value
+      aProp(tb.ix);
+      aType(TASSIGN);
       if (tb.lh[tb.ix] == 0 && tb.ini[tb.ix] == 0) {
         tb.lh[tb.ix] = isLHSstr;
       } else if (tb.lh[tb.ix] == isLHSstr ||

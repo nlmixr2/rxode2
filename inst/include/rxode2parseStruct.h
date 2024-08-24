@@ -41,6 +41,7 @@ typedef struct {
   char modNamePtr[1000];
   int *par_cov;
   int *par_cov_interp;
+  int *lhs_str;
 
   double *inits;
   double *scale;

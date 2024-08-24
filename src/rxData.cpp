@@ -1441,6 +1441,7 @@ struct rx_globals {
   int *gidose;
   int *gpar_cov;
   int *gpar_covInterp;
+  int *glhs_str;
 
   int *gParPos;
   int *gParPos2;
@@ -3585,8 +3586,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     int dfN = dfNames.size();
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
+    IntegerVector strLhs = as<IntegerVector>(rxSolveDat->mv[RxMv_lhsStr]);
     if (_globals.gevid != NULL) free(_globals.gevid);
-    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+si.size(), sizeof(int));
+    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+si.size() + strLhs.size(), sizeof(int));
     if (_globals.gevid == NULL){
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
@@ -3598,7 +3600,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
     _globals.gsi = _globals.gpar_covInterp + dfN;//[si.size()];
     std::copy(si.begin(),si.end(), &_globals.gsi[0]);
-
+    _globals.glhs_str = _globals.gsi + si.size(); // [strLhs.siae()]
+    std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -3723,6 +3726,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       stop(_("can not allocate memory for the covariates"));
     }
     op->par_cov=&(_globals.gpar_cov[0]);
+    op->lhs_str=&(_globals.glhs_str[0]);
     op->par_cov_interp = &(_globals.gpar_covInterp[0]);
     op->ncov=ncov;
     op->do_par_cov = (ncov > 0);
@@ -4788,6 +4792,8 @@ static inline void iniRx(rx_solve* rx) {
   op->stiff = 0;
   op->ncov = 0;
   op->par_cov = NULL;
+  op->par_cov_interp = NULL;
+  op->lhs_str = NULL;
   op->inits = NULL;
   op->scale = NULL;
   op->do_par_cov=false;
