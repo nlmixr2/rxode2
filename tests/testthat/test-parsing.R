@@ -1070,7 +1070,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     alag(central) <- popLagCentral * exp(bsvLagCentral)
     rate(central) <- popRateCentral * exp(bsvRateCentral)
     dur(central) <- popDurCentral * exp(bsvDurCentral)
-    dur(matt) <- 3
+    dur(matta) <- 3 # undefined compartment
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
