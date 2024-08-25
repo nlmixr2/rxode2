@@ -15,6 +15,34 @@
   the algorithm will look forward until it finds the first non-missing
   value (or if all are missing, start looking backward).
 
+- An overlooked parsing error with initial conditions has been fixed
+  (which will break old code).  In the past you could use the
+  following code:
+
+```
+  x(0) = y+3
+  d/dt(x) = 4
+```
+
+without error, but the code:
+
+```
+  alag(x) = y+3
+  d/dt(x) = 4
+```
+
+would error.  This has been fixed to be consistent between all
+compartment-based properties.  Of course (as the error indicates) you
+can get more flexible compartment declaration by:
+
+```
+options(rxode2.syntax.require.ode.first = FALSE)
+```
+
+and both code block will work; This means the work-around is simply
+using the option above.
+
+
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
