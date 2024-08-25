@@ -272,7 +272,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       df[i + md + sm + ms + doseCols + 2*nmevid+1] = NumericVector(rx->nr);
     }
   }
-  for (i = md + sm + ms + doseCols + 2*nmevid + nlhs + 1; i < ncols + doseCols + nidCols + 2*nmevid-1; i++){
+  for (i = md + sm + ms + doseCols + 2*nmevid + nlhs + 1; i < ncols + doseCols + nidCols + 2*nmevid; i++){
     df[i] = NumericVector(rx->nr);
   }
   ncols += nlhs; // add lhs back to the number of lhs
