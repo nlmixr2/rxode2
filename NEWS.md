@@ -15,6 +15,13 @@
   the algorithm will look forward until it finds the first non-missing
   value (or if all are missing, start looking backward).
 
+
+
+## Possible breaking changes (though unlikely)
+
+- `iCov` is no longer merged to the event dataset.  This makes solving
+  with `iCov` slightly faster (#743)
+
 - An overlooked parsing error with initial conditions has been fixed
   (which will break old code).  In the past you could use the
   following code:
@@ -40,13 +47,9 @@ options(rxode2.syntax.require.ode.first = FALSE)
 ```
 
 and both code block will work; This means the work-around is simply
-using the option above.
+using the option above; To maintain most old code, this is the new
+default; If you would like to ensure that you declare your compartments use `cmt` or something similar, or `options(rxode2.syntax.require.ode.first = TRUE)`
 
-
-## Possible breaking changes (though unlikely)
-
-- `iCov` is no longer merged to the event dataset.  This makes solving
-  with `iCov` slightly faster (#743)
 
 ## New features
 

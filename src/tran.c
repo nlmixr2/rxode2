@@ -570,7 +570,7 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   reset();
   rx_suppress_syntax_info = R_get_option("rxode2.suppress.syntax.info",0);
   rx_syntax_allow_ini  = R_get_option("rxode2.syntax.allow.ini",1);
-  rx_syntax_require_ode_first = R_get_option("rxode2.syntax.require.ode.first",1);
+  rx_syntax_require_ode_first = R_get_option("rxode2.syntax.require.ode.first", 0);
   set_d_use_r_headers(0);
   set_d_rdebug_grammar_level(0);
   set_d_verbose_level(0);
