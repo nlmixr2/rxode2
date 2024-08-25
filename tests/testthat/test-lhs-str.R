@@ -248,5 +248,82 @@ test_that("levels extraction", {
                     str2lang("levels(b) <- c(\"low\", \"high\")"),
                     str2lang("levels(c) <- \"funny\"")))
 
+})
+
+test_that("test symengine translation to integers", {
+
+  v <-rxModelVars("
+levels(a) <- c(\"<10\", \">=10\")
+b <- (a == \"<10\")*1 + (a == \">=10\")*2
+")
+
+  s <- rxS(v)
+  v <- as.character(s$b)
+  expect_error(rxFromSE(v), NA)
+
+  expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"),
+                        strAssign=list(a = "a")),
+               "a<-1\nb<-1")
+
+  expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"),
+                        strAssign=list(a = c("b", "a"))),
+               "a<-2\nb<-1")
+
+  expect_equal(.rxPrune(str2lang("{a<-'a'; b<-1}"),
+                        strAssign=list(c = c("b", "a"))),
+               "a<-\"a\"\nb<-1")
+
+  expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"),
+                        strAssign=list(c = c("b", "a"))),
+               "b<-(a==\"a\")")
+
+  expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"),
+                        strAssign=list(a = c("b", "a"))),
+               "b<-(a==2)")
+
+  expect_equal(.rxPrune(str2lang("{b <- (a == 'a')}"),
+                        strAssign=list(a = c("a"))),
+               "b<-(a==1)")
+
+  ## No test the other direction
+  expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"),
+                        strAssign=list(c = c("b", "a"))),
+               "b<-(\"a\"==a)")
+
+    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"),
+                        strAssign=list(a = c("b", "a"))),
+               "b<-(2==a)")
+
+    expect_equal(.rxPrune(str2lang("{b <- ('a' == a)}"),
+                        strAssign=list(a = c("a"))),
+                 "b<-(1==a)")
+
+
+    ## neq
+    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"),
+                          strAssign=list(c = c("b", "a"))),
+                 "b<-(a!=\"a\")")
+
+    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"),
+                          strAssign=list(a = c("b", "a"))),
+                 "b<-(a!=2)")
+
+    expect_equal(.rxPrune(str2lang("{b <- (a != 'a')}"),
+                          strAssign=list(a = c("a"))),
+                 "b<-(a!=1)")
+
+    ## No test the other direction
+    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"),
+                          strAssign=list(c = c("b", "a"))),
+                 "b<-(\"a\"!=a)")
+
+    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"),
+                          strAssign=list(a = c("b", "a"))),
+                 "b<-(2!=a)")
+
+    expect_equal(.rxPrune(str2lang("{b <- ('a' != a)}"),
+                          strAssign=list(a = c("a"))),
+                 "b<-(1!=a)")
+
 
 })
