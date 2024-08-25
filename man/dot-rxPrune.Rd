@@ -4,12 +4,14 @@
 \alias{.rxPrune}
 \title{Internal Pruning function}
 \usage{
-.rxPrune(x, envir = parent.frame())
+.rxPrune(x, envir = parent.frame(), strAssign = list())
 }
 \arguments{
 \item{x}{List of quoted lines}
 
 \item{envir}{Environment where information is stored}
+
+\item{strAssign}{string assignment list from  model variables}
 }
 \value{
 Pruned model code

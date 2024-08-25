@@ -429,6 +429,8 @@ attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini value
 #'   `uiModel$lstExpr`.
 #' @param useIf Use an `if (CMT == X)` for endpoints
 #' @param interpLines Interpolation lines, if not present
+#' @param levelLines Levels lines for assigned strings.  If not
+#'   present, use the interpolation lines from the current model.
 #' @return quoted expression that can be evaluated to compiled rxode2
 #'   model
 #' @export
@@ -541,7 +543,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
                                 modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE,
                                 lstExpr=NULL,
                                 useIf=TRUE,
-                                interpLines=NULL) {
+                                interpLines=NULL, levelLines=NULL) {
   if(!inherits(uiModel, "rxUi")) {
     stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
          call.=FALSE)
@@ -583,6 +585,17 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .lenLines <- .lenLines - 1
     .k <- 1 + dvidLine * 1
   }
+  if (is.null(levelLines)) {
+    .levelLines <- rxUiGet.levels(list(uiModel))
+    .lenLines <- .lenLines - length(.levelLines)
+    .k <- .k + length(.levelLines)
+  } else if (is.na(levelLines)) {
+    .levelLines <- list()
+  } else {
+    .levelLines <- levelLines
+    .lenLines <- .lenLines - length(.levelLines)
+    .k <- .k + length(.levelLines)
+  }
   if (is.null(interpLines)) {
     .interpLines <- rxUiGet.interpLines(list(uiModel))
     .lenLines <- .lenLines - length(.interpLines)
@@ -604,6 +617,12 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .k <- 2
   } else {
     .ret[[2]] <- paramsLine
+  }
+  if (length(.levelLines) > 0) {
+    for (.i in seq_along(.levelLines)) {
+      .ret[[.k]] <- .levelLines[[.i]]
+      .k <- .k + 1
+    }
   }
   if (length(.interpLines) > 0) {
     for (.i in seq_along(.interpLines)) {

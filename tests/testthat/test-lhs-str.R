@@ -325,5 +325,50 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
                           strAssign=list(a = c("a"))),
                  "b<-(1!=a)")
 
+})
+
+
+test_that("simulation model will include string information", {
+
+  f <- function() {
+    ini({
+      tka <- 0.45
+      tcl <- log(c(0, 2.7, 100))
+      tv <- 3.45
+      cl.wt <- 0
+      v.wt <- 0
+      eta.ka ~ 0.6
+      eta.cl ~ 0.3
+      eta.v ~ 0.1
+      add.sd <- 0.7
+    })
+    model({
+      if (time > 10) {
+        timeText <- "time > 10"
+      } else {
+        timeText <- "time <= 10"
+      }
+      ka <- exp(tka + eta.ka)
+      cl <- exp(tcl + eta.cl)+ WT ^ 2* cl.wt
+      v <- exp(tv + eta.v+ WT * v.wt + b + c + d)
+      linCmt() ~ add(add.sd)
+    })
+  }
+
+  ui <- rxode(f)
+
+  expect_error(ui$simulationModel, NA)
+
+  mod <- ui$simulationModel
+
+  expect_equal(rxModelVars(mod)$strAssign,
+               list(timeText = c("time > 10", "time <= 10")))
+
+  expect_error(ui$simulationIniModel, NA)
+
+  mod <- ui$simulationIniModel
+
+  expect_equal(rxModelVars(mod)$strAssign,
+               list(timeText = c("time > 10", "time <= 10")))
 
 })
