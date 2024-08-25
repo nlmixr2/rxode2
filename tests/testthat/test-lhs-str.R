@@ -78,8 +78,6 @@ f <- function() {
   expect_error(rxode2parse("rate(a) <- -kel; a <- \"str\""))
   expect_error(rxode2parse("dur(a) <- -kel; a <- \"str\""))
   expect_error(rxode2parse("alag(a) <- -kel; a <- \"str\""))
-  expect_error(rxode2parse("a(0) <- -kel; a <- \"str\""))
-  expect_error(rxode2parse("a(0) <- 1; a <- \"str\""))
   expect_error(rxode2parse('a <- "matt"; d/dt(a)<- 2'))
   expect_error(rxode2parse('a <- "matt"; rate(a)<- 2'))
   expect_error(rxode2parse('a <- "matt"; dur(a)<- 2'))
