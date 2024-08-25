@@ -1,6 +1,6 @@
 static inline int handleLevelStr(nodeInfo ni, char *name, char *v) {
   if (tb.lvlStr == 1 && nodeHas(string)) {
-    char *v2 = (char*)rc_dup_str(v, strlen(v));
+    char *v2 = (char*)rc_dup_str(v, 0);
     v2++;
     v2[strlen(v2)-1]=0; // remove last quote
     get_str_assign_int(tb.id, v2);
