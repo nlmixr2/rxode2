@@ -147,10 +147,10 @@ static inline void calcExtracmt(void) {
       trans_syntax_error_report_fn0("'cmt(central)' does not work with 'linCmt()'");
     }
   } else {
-    if (tb.hasDepot && rx_syntax_require_ode_first){
+    if (tb.hasDepot && rx_syntax_require_ode_first) {
       sPrint(&_bufw2, ODEFIRST, "depot");
       trans_syntax_error_report_fn0(_bufw2.s);
-    } else if (tb.hasCentral && rx_syntax_require_ode_first){
+    } else if (tb.hasCentral && rx_syntax_require_ode_first) {
       sPrint(&_bufw2, ODEFIRST, "depot");
       trans_syntax_error_report_fn0(_bufw2.s);
     }

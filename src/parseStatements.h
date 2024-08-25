@@ -63,11 +63,28 @@ static inline int handleDvidStatement(nodeInfo ni, char *name, D_ParseNode *xpn,
 }
 
 static inline int handleRemainingAssignments(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
-  if (nodeHas(ini0f) && rx_syntax_allow_ini && i == 0){
+  if (nodeHas(ini0f) && i == 0) {
+    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (new_de(v)) {
+      if (rx_syntax_require_ode_first) {
+        updateSyntaxCol();
+        sPrint(&_gbuf,ODEFIRST,v);
+        trans_syntax_error_report_fn(_gbuf.s);
+        return 0;
+      }
+      add_de(ni, name, v, isCmtLhsStatement(ni, name, v), fromCMTprop);
+      aProp(tb.de.n);
+    }
+    new_or_ith(v);
+    if (tb.lh[tb.ix] == isLHSstr || tb.lh[tb.ix] == isSuppressedLHSstr) {
+      sPrint(&_gbuf,"cannot have initial conditions for string variable '%s'",v);
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_gbuf.s);
+      return 0;
+    }
     foundF0=1;
     aType(TF0);
     sb.o =0; sbDt.o=0; sbt.o = 0;
-    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     doDot2(&sb, &sbDt, v);
     sAppend(&sbt, "%s(0)",v);
   }

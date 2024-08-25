@@ -111,7 +111,20 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
     if (i==0) {
       // assign lhs
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+      if (!new_de(v)) {
+        add_de(ni, name, v, isCmtLhsStatement(ni, name, v), fromCMTprop);
+        sPrint(&_gbuf,"'%s' compartment cannot be a string variable", v);
+        updateSyntaxCol();
+        trans_syntax_error_report_fn(_gbuf.s);
+        return 0;
+      }
       new_or_ith(v); // update tb.ix for the right value
+      if (tb.lh[tb.ix]!= 0 && tb.lh[tb.ix] != isLHSstr && tb.lh[tb.ix] != isSuppressedLHSstr) {
+        sPrint(&_gbuf,"'%s' cannot be both a calculated and a string variable", v);
+        updateSyntaxCol();
+        trans_syntax_error_report_fn(_gbuf.s);
+        return 0;
+      }
       aProp(tb.ix);
       aType(TASSIGN);
       if (tb.lh[tb.ix] == 0 && tb.ini[tb.ix] == 0) {
