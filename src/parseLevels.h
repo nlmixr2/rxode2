@@ -73,6 +73,8 @@ static inline int handleLevelsStr1(nodeInfo ni, char *name, int i, D_ParseNode *
       if (new_assign_str(v)){
         add_assign_str(v);
       }
+      aProp(tb.ix);
+      aType(TNONE);
       return 1;
     } else if (i == 4) {
       // variable type

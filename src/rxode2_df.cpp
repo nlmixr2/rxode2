@@ -199,7 +199,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   // Multiple simulation data?
   int sm = 0;
   if (rx->nsim > 1) sm = 1;
-  int ncols =1+nPrnState;
+  int ncols =1+nPrnState + nlhs;
   int ncols2 = add_cov*(ncov+ncov0)+nkeep;
   int doseCols = 0;
   int nevid2col = 0;
@@ -230,7 +230,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
       warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
     }
   }
-  int ncol = ncols+nlhs+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
+  int ncol = ncols+ncols2+nidCols+doseCols+doTBS*4+5*nmevid*doDose+nevid2col;
   List df = List(ncol);//PROTECT(Rf_allocVector(VECSXP,ncol)); pro++;
   for (i = nidCols; i--;){
     df[i] = IntegerVector(rx->nr);
@@ -262,20 +262,27 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   CharacterVector fkeepNames = get_fkeepn();
   // time comes in here
   df[md + sm +ms + doseCols + 2*nmevid] = NumericVector(rx->nr);
-  // now lhs expressions
   CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
-  for (i = 0; i < nlhs; ++i) {
-    if (op->lhs_str[i] == 1) {
+  // time
+  int i0 = md + sm + ms + doseCols + 2*nmevid;
+  df[i0] = NumericVector(rx->nr);
+  i0++;
+
+  // nlhs
+  for (i = i0; i < i0+nlhs; i++){
+    if (op->lhs_str[i-i0] == 1) {
       // factor; from string expression
-      df[i + md + sm + ms + doseCols + 2*nmevid+1] = getDfLevels(CHAR(STRING_ELT(lhsNames, i)), rx);
+      df[i] = getDfLevels(CHAR(STRING_ELT(lhsNames, i-i0)), rx);
     } else {
-      df[i + md + sm + ms + doseCols + 2*nmevid+1] = NumericVector(rx->nr);
+      df[i] = NumericVector(rx->nr);
     }
   }
-  for (i = md + sm + ms + doseCols + 2*nmevid + nlhs + 1; i < ncols + doseCols + nidCols + 2*nmevid; i++){
+  i0+=nlhs;
+
+  // Rest is numeric
+  for (i = i0; i < ncols + doseCols + nidCols + 2*nmevid; i++){
     df[i] = NumericVector(rx->nr);
   }
-  ncols += nlhs; // add lhs back to the number of lhs
   // These could be factors
   j = ncols + doseCols + nidCols + 2*nmevid;
   const char *charItem;
@@ -365,7 +372,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           }
           handleTlastInline(&curT, ind);
         }
-        if (updateErr){
+        if (updateErr) {
           for (j=0; j < errNcol; j++){
             // The error pointer is updated if needed
             par_ptr[svar[j]] = errs[errNrow*j+kk];
@@ -376,7 +383,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
             kk=min2(kk+1, errNrow-1);
           }
         }
-        if (nlhs){
+        if (nlhs) {
           calc_lhs(neq[1], curT, getSolve(i), ind->lhs);
         }
         if (subsetEvid == 1){
