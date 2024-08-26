@@ -65,7 +65,7 @@ int lastStrLoc=0;
 SEXP _goodFuns;
 vLines _dupStrs;
 
-int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_syntax_require_ode_first = 1;
+int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_syntax_require_ode_first = 0;
 
 extern D_ParserTables parser_tables_rxode2parse;
 
