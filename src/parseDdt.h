@@ -1,49 +1,6 @@
 static inline int new_de(const char *s) {
   int i;
-  if (!strcmp("cmt", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'cmt' cannot be a state or lhs expression");
-  }
-  if (!strcmp("dvid", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'dvid' cannot be a state or lhs expression");
-  }
-  if (!strcmp("addl", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'addl' cannot be a state or lhs expression");
-  }
-  if (!strcmp("ii", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'ii' cannot be a state or lhs expression");
-  }
-  if (!strcmp("ss", s)){
-    _rxode2parse_unprotect();
-    err_trans("'ss' cannot be a state or lhs expression");
-  }
-  if (!strcmp("amt", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'amt' cannot be a state or lhs expression");
-  }
-  if (!strcmp("dur", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'dur' cannot be a state or lhs expression");
-  }
-  if (!strcmp("rate", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'rate' cannot be a state or lhs expression");
-  }
-  if (!strcmp("Rprintf", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'Rprintf' cannot be a state");
-  }
-  if (!strcmp("printf", s)){
-    _rxode2parse_unprotect();
-    err_trans("'printf' cannot be a state");
-  }
-  if (!strcmp("print", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'print' cannot be a state");
-  }
+  parseAllowAssignOrState(s);
   for (i=0; i<tb.de.n; i++) {
     if (!strcmp(tb.de.line[i], s)) {
       tb.id = i;

@@ -147,6 +147,7 @@ static inline int isCmtLhsStatement(nodeInfo ni, char *name, char *v);
 //static inline int add_deCmtProp(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere);
 static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere);
 
+#include "parseAllowAssign.h"
 #include "parseFuns.h"
 #include "parseLogical.h"
 #include "parseIdentifier.h"
