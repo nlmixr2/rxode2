@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
-extern int rx_syntax_require_ode_first, needSort;
+extern int needSort;
 void updateSyntaxCol(void);
 void trans_syntax_error_report_fn(char *err);
 void parseFree(int last);
@@ -43,6 +43,9 @@ lhs symbols?
   double *iniv;        /* Initial values */
   int *ini0;        /* state initial variable assignment =2 if there are two assignments */
   int *di;        /* ith of state vars */
+  int *didx;
+  int *dprop;  /* property of state vars */
+  int didxn; /* nth of declared states */
   int *si;      /* ith of string vars */
   int *sin;      /* n values in each string var */
   int *idi;       /* should ith state variable be ignored 0/1 */
@@ -140,6 +143,7 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 // new de type
 #define fromDDT 2
 #define fromCMTprop 1
+#define fromCMT 3
 
 #define NEEDSEMI _("lines need to end with ';'\n     to match R's handling of line endings set 'options(rxode2.syntax.require.semicolon = FALSE)'")
 #define NOSTATE _("defined 'df(%s)/dy(%s)', but '%s' is not a state")
@@ -364,5 +368,11 @@ void parseFree(int last);
 void _rxode2parse_unprotect(void);
 
 char *getLine (char *src, int line, int *lloc);
+
+#define prop0    1
+#define propF    2
+#define propAlag 4
+#define propRate 8
+#define propDur  16
 
 #endif // __TRAN_H__

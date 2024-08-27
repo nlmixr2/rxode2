@@ -83,6 +83,37 @@ attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.statePropDf <- function(x,...) {
+  .ui <- x[[1]]
+  .mv <- rxModelVars(.ui)
+  do.call(rbind, lapply(seq_along(.mv$stateProp),
+                 function(i) {
+                   .prop <- .mv$stateProp[i]
+                   if (.prop == 0) return(NULL)
+                   .name <- names(.mv$stateProp)[i]
+                   .props <- character(0)
+                   if (bitwAnd(.prop, 1)) {
+                     .props <- c(.props, "ini")
+                   }
+                   if (bitwAnd(.prop, 2)) {
+                     .props <- c(.props, "f")
+                   }
+                   if (bitwAnd(.prop, 4)) {
+                     .props <- c(.props, "alag")
+                   }
+                   if (bitwAnd(.prop, 8)) {
+                     .props <- c(.props, "rate")
+                   }
+                   if (bitwAnd(.prop, 16)) {
+                     .props <- c(.props, "dur")
+                   }
+                   data.frame("Compartment"=.name,
+                              "Property"=.props)
+                 }))
+}
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.props <- function(x, ...) {
   .x <- x[[1]]
   .ini <- .x$iniDf
@@ -137,7 +168,8 @@ rxUiGet.props <- function(x, ...) {
        output=list(primary=.primary,
                    secondary=.secondary,
                    endpoint=.end,
-                   state=.x$state))
+                   state=.x$state),
+       cmtProp=rxUiGet.statePropDf(x,...))
 }
 attr(rxUiGet.props, "desc") <- "rxode2 model properties"
 

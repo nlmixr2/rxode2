@@ -2,6 +2,7 @@ rxTest({
   warfarin <- nlmixr2data::warfarin
 
   test_that("cmt() syntax makes sense", {
+
     mod <- rxode2({
       a <- 6
       b <- 0.6
@@ -26,8 +27,8 @@ rxTest({
         a <- 6
         b <- 0.6
         cmt(matt) # cmt = 1 now
-        d / dt(intestine) <- -a * intestine
-        d / dt(blood) <- a * intestine - b * blood
+        d/dt(intestine) <- -a * intestine
+        d/dt(blood) <- a * intestine - b * blood
       }))),
       regexp = "compartment 'matt' needs differential equations defined"
     )

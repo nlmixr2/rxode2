@@ -140,19 +140,11 @@ static inline void calcExtracmt(void) {
     } else {
       extraCmt=1;
     }
-    if (tb.hasDepotCmt){
+    if (tb.hasDepotCmt == -1){
       trans_syntax_error_report_fn0(_("'cmt(depot)' does not work with 'linCmt()'"));
     }
-    if (tb.hasCentralCmt) {
+    if (tb.hasCentralCmt == -1) {
       trans_syntax_error_report_fn0("'cmt(central)' does not work with 'linCmt()'");
-    }
-  } else {
-    if (tb.hasDepot && rx_syntax_require_ode_first) {
-      sPrint(&_bufw2, ODEFIRST, "depot");
-      trans_syntax_error_report_fn0(_bufw2.s);
-    } else if (tb.hasCentral && rx_syntax_require_ode_first) {
-      sPrint(&_bufw2, ODEFIRST, "depot");
-      trans_syntax_error_report_fn0(_bufw2.s);
     }
   }
 }
@@ -205,25 +197,115 @@ static inline SEXP calcIniVals(void) {
   return ini;
 }
 
-static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, int *stateRm, SEXP extraState) {
+SEXP orderForderS1(SEXP ordIn);
+
+static inline int populateStateVectors(SEXP state, SEXP sens, SEXP normState, int *stateRm, SEXP extraState, SEXP stateProp, SEXP sensProp, SEXP normProp) {
   int k=0, j=0, m=0, p=0;
   char *buf;
+  // Create the vector to order the states
+  SEXP ordS = PROTECT(Rf_allocVector(INTSXP, tb.de.n));
+  int *ord = INTEGER(ordS);
+  sbt.o = 0; // we can use sbt.o since all the code has already been output
+  sbt.s[0] = 0;
+  int *statePropI = INTEGER(stateProp);
+  int *sensPropI = INTEGER(sensProp);
+  int *normPropI = INTEGER(normProp);
+  for (int i = 0; i < tb.de.n; i++) {
+    int cur = tb.didx[i];
+    int prop = tb.dprop[i];
+    int pass = 0;
+    if (tb.linCmt){
+      if (tb.hasDepotCmt && !strcmp("depot", tb.ss.line[tb.di[i]])){
+        pass = 1;
+      } else if (tb.hasCentralCmt  && !strcmp("central", tb.ss.line[tb.di[i]])) {
+        pass = 1;
+      }
+    }
+    if (cur == 0) {
+      // This has a property without an ODE or cmt() statement; should error here.
+      if (prop == 0 || pass == 1) {
+        continue;
+      }
+      if ((prop & prop0) != 0) {
+        sAppend(&sbt, "'%s(0)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propF) != 0) {
+        sAppend(&sbt, "'f(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propAlag) != 0) {
+        sAppend(&sbt, "'alag(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propRate) != 0) {
+        sAppend(&sbt, "'rate(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propDur) != 0) {
+        sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      // Take off trailing "',
+      sbt.o -= 2;
+      sbt.s[sbt.o] = 0;
+      sAppend(&sbt, " present, but d/dt(%s) not defined1\n", tb.ss.line[tb.di[i]]);
+    } else if (cur < 0) {
+      // This is a compartment only defined by CMT() and is used for
+      // dvid ordering, no properties should be defined.
+      ord[i] = -cur;
+      if (prop == 0 || pass == 1) {
+        continue;
+      }
+      if ((prop & prop0) != 0) {
+        sAppend(&sbt, "'%s(0)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propF) != 0) {
+        sAppend(&sbt, "'f(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propAlag) != 0) {
+        sAppend(&sbt, "'alag(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propRate) != 0) {
+        sAppend(&sbt, "'rate(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      if ((prop & propDur) != 0) {
+        sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
+      }
+      // Take off trailing "',
+      sbt.o -= 2;
+      sbt.s[sbt.o] = 0;
+      sAppend(&sbt, " present, but d/dt(%s) not defined\n", tb.ss.line[tb.di[i]]);
+    } else {
+      ord[i] = cur;
+    }
+  }
+  if (sbt.o != 0) {
+    sbt.o--; // remove last newline
+    sbt.s[sbt.o] = 0;
+    sPrint(&_gbuf, "%s", sbt.s);
+    UNPROTECT(1);
+    return 0;
+  }
+  SEXP ordF = PROTECT(orderForderS1(ordS));
+  int *ordFp = INTEGER(ordF);
   for (int i=0; i<tb.de.n; i++) {                     /* name state vars */
-    buf=tb.ss.line[tb.di[i]];
+    buf=tb.ss.line[tb.di[ordFp[i]-1]] ;
     if (tb.idu[i] == 1){
       if (strncmp(buf,"rx__sens_", 9) == 0){
+        statePropI[k] = tb.dprop[ordFp[i]-1];
+        sensPropI[j] = tb.dprop[ordFp[i]-1];
         SET_STRING_ELT(sens,j++,mkChar(buf));
         SET_STRING_ELT(state,k++,mkChar(buf));
-        stateRm[k-1]=tb.idi[i];
+        stateRm[k-1]=tb.idi[ordFp[i]-1];
       } else {
+        statePropI[k] = tb.dprop[ordFp[i]-1];
+        normPropI[m] = tb.dprop[ordFp[i]-1];
         SET_STRING_ELT(normState,m++,mkChar(buf));
         SET_STRING_ELT(state,k++,mkChar(buf));
-        stateRm[k-1]=tb.idi[i];
+        stateRm[k-1]=tb.idi[ordFp[i]-1];
       }
     } else {
       SET_STRING_ELT(extraState, p++, mkChar(buf));
     }
   }
+  UNPROTECT(2);
+  return 1;
 }
 
 static inline void populateDfdy(SEXP dfdy) {

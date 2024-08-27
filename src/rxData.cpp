@@ -738,8 +738,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(26);
-  CharacterVector retN(26);
+  List ret(29);
+  CharacterVector retN(29);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -815,11 +815,26 @@ List rxModelVars_blank() {
   ret[23] = lhsStr; // md5
   retN[23] = "lhsStr";
 
-  ret[24] = IntegerVector::create(0); // timeId
-  retN[24] = "timeId";
+  IntegerVector stateProp = IntegerVector::create();
+  stateProp.attr("names") = CharacterVector::create();
+  ret[24] = stateProp; // stateProp
+  retN[24] = "stateProp";
 
-  ret[25] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[25] = "md5";
+  IntegerVector sensProp = IntegerVector::create();
+  sensProp.attr("names") = CharacterVector::create();
+  ret[25] = sensProp; // sensProp
+  retN[25] = "sensProp";
+
+  IntegerVector normProp = IntegerVector::create();
+  normProp.attr("names") = CharacterVector::create();
+  ret[26] = normProp; // normProp
+  retN[26] = "normProp";
+
+  ret[27] = IntegerVector::create(0); // timeId
+  retN[27] = "timeId";
+
+  ret[28] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[28] = "md5";
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
   return ret;

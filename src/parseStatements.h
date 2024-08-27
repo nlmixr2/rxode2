@@ -65,15 +65,12 @@ static inline int handleDvidStatement(nodeInfo ni, char *name, D_ParseNode *xpn,
 static inline int handleRemainingAssignments(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   if (nodeHas(ini0f) && i == 0) {
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-    if (new_de(v)) {
-      if (rx_syntax_require_ode_first) {
-        updateSyntaxCol();
-        sPrint(&_gbuf,ODEFIRST,v);
-        trans_syntax_error_report_fn(_gbuf.s);
-        return 0;
-      }
+    if (new_de(v, fromCMTprop)) {
       add_de(ni, name, v, isCmtLhsStatement(ni, name, v), fromCMTprop);
       aProp(tb.de.n);
+      if ((tb.dprop[tb.id] & prop0) == 0) {
+        tb.dprop[tb.id] += prop0;
+      }
     }
     new_or_ith(v);
     if (tb.lh[tb.ix] == isLHSstr || tb.lh[tb.ix] == isSuppressedLHSstr) {

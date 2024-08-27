@@ -68,7 +68,7 @@ static inline int handleStrAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
     if (i==0) {
       // assign lhs
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      if (!new_de(v)) {
+      if (!new_de(v, 0)) {
         add_de(ni, name, v, isCmtLhsStatement(ni, name, v), fromCMTprop);
         sPrint(&_gbuf,"'%s' compartment cannot be a string variable", v);
         updateSyntaxCol();

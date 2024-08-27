@@ -1,6 +1,9 @@
 static inline int handleCmtPropertyFbio(nodeInfo ni, char *name, char *v) {
   if (nodeHas(fbio)){
     sb.o=0;sbDt.o=0; sbt.o=0;
+    if ((tb.dprop[tb.id] & propF) == 0) {
+      tb.dprop[tb.id] += propF;
+    }
     sAppend(&sb, "_f[%d] = ", tb.id);
     sAppend(&sbDt, "_f[%d] = ", tb.id);
     sAppend(&sbt, "f(%s)=", v);
@@ -16,6 +19,9 @@ static inline int handleCmtPropertyFbio(nodeInfo ni, char *name, char *v) {
 static inline int handleCmtPropertyAlag(nodeInfo ni, char *name, char *v) {
   if (nodeHas(alag)){
     sb.o=0;sbDt.o=0; sbt.o=0;
+    if ((tb.dprop[tb.id] & propAlag) == 0) {
+      tb.dprop[tb.id] += propAlag;
+    }
     sAppend(&sb, "_alag[%d] = ", tb.id);
     sAppend(&sbDt, "_alag[%d] = ", tb.id);
     sAppend(&sbt, "alag(%s)=", v);
@@ -42,6 +48,9 @@ static inline int handleCmtPropertyAlag(nodeInfo ni, char *name, char *v) {
 
 static inline int handleCmtPropertyDur(nodeInfo ni, char *name, char *v) {
   if (nodeHas(dur)) {
+    if ((tb.dprop[tb.id] & propDur) == 0) {
+      tb.dprop[tb.id] += propDur;
+    }
     sb.o=0;sbDt.o=0; sbt.o=0;
     sAppend(&sb, "_dur[%d] = ", tb.id);
     sAppend(&sbDt, "_dur[%d] = ", tb.id);
@@ -58,6 +67,9 @@ static inline int handleCmtPropertyDur(nodeInfo ni, char *name, char *v) {
 static inline int handleCmtPropertyRate(nodeInfo ni, char *name, char *v) {
   if (nodeHas(rate)){
     sb.o=0;sbDt.o=0; sbt.o=0;
+    if ((tb.dprop[tb.id] & propRate) == 0) {
+      tb.dprop[tb.id] += propRate;
+    }
     sAppend(&sb, "_rate[%d] = ", tb.id);
     sAppend(&sbDt, "_rate[%d] = ", tb.id);
     sAppend(&sbt, "rate(%s)=", v);
@@ -82,13 +94,16 @@ static inline int handleCmtPropertyCmtOrder(nodeInfo ni, char *name, char *v) {
 }
 
 static inline int handleCmtProperty(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
+  int isCmt = 0;
   if ((nodeHas(fbio) || nodeHas(alag) ||
        nodeHas(dur) || nodeHas(rate) ||
-       nodeHas(cmt_statement)) && i==2) {
+       (isCmt = nodeHas(cmt_statement))) &&
+      i==2) {
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     int hasLhs=isCmtLhsStatement(ni, name, v);
-    if (new_de(v)){
-      add_de(ni, name, v, hasLhs, fromCMTprop);
+    int from = isCmt ? fromCMT : fromCMTprop;
+    if (new_de(v, from)){
+      add_de(ni, name, v, hasLhs, from);
       aProp(tb.de.n);
       handleCmtPropertyCmtOrder(ni, name, v);
     } else {
@@ -112,7 +127,7 @@ static inline int handleRemainingAssignmentsIniProp(nodeInfo ni, char *name, int
     /* aAppendN("(__0__)", 7); */
     aType(TINI);
     doDot2(&sb, &sbDt, v);
-    if (nodeHas(ini) && !new_de(v)) {
+    if (nodeHas(ini) && !new_de(v, fromCMTprop)) {
       if (tb.idu[tb.id] == 0) {
         new_or_ith(v);
         if (tb.lh[tb.ix] == isSuppressedLHS || tb.lh[tb.ix] == 29){
@@ -134,7 +149,7 @@ static inline int handleRemainingAssignmentsIniProp(nodeInfo ni, char *name, int
 static inline void handleRemainingAssignmentsRestProp(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn, char *v) {
   sb.o = 0; sbDt.o = 0;
   doDot2(&sb, &sbDt, v);
-  if (!new_de(v)) {
+  if (!new_de(v, fromCMTprop)) {
     if (tb.idu[tb.id] == 0){
       // Change to 19 for LHS w/stateExtra
       new_or_ith(v);
@@ -223,7 +238,8 @@ static inline int handleRemainingAssignmentsCalcPropIni(nodeInfo ni, char *name,
     if (nodeHas(ini) || nodeHas(ini0)) {
       D_ParseNode *xpn;
       double d;
-      if (tb.lh[tb.ix] == isLHSstr || tb.lh[tb.ix] == isSuppressedLHSstr) {
+      if (tb.lh[tb.ix] == isLHSstr ||
+          tb.lh[tb.ix] == isSuppressedLHSstr) {
         if (nodeHas(ini0)) {
           sPrint(&_gbuf,"cannot have initial conditions for string variable '%s'",v);
           updateSyntaxCol();
@@ -253,6 +269,12 @@ static inline int handleRemainingAssignmentsCalcPropIni(nodeInfo ni, char *name,
         tb.ini[tb.ix] = 1;
         if (nodeHas(ini0)){
           tb.ini0[tb.ix] = 1;
+          if (new_de(v, fromCMTprop)) {
+            add_de(ni, name, v, 0, fromCMTprop);
+          }
+          if ((tb.dprop[tb.id] & prop0) == 0) {
+            tb.dprop[tb.id] += prop0;
+          }
           xpn = d_get_child(pn, 3);
           /* Free(v); */
           v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
@@ -311,6 +333,7 @@ static inline int handleRemainingAssignmentsCalcProps(nodeInfo ni, char *name, i
   }
   return 0;
 }
+
 
 static inline int finalizeLineParam(nodeInfo ni, char *name) {
   if (nodeHas(param_statement)) {

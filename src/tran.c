@@ -65,7 +65,7 @@ int lastStrLoc=0;
 SEXP _goodFuns;
 vLines _dupStrs;
 
-int rx_syntax_error = 0, rx_suppress_syntax_info=0, rx_syntax_require_ode_first = 0;
+int rx_syntax_error = 0, rx_suppress_syntax_info=0;
 
 extern D_ParserTables parser_tables_rxode2parse;
 
@@ -138,7 +138,7 @@ int depotAttr=0, centralAttr=0;
 
 sbuf _gbuf, _mv;
 
-static inline int new_de(const char *s);
+static inline int new_de(const char *s, int fromWhere);
 static inline int handleRemainingAssignmentsCalcProps(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn, char *v);
 static inline int finalizeLineDdt(nodeInfo ni, char *name);
 static inline int finalizeLineParam(nodeInfo ni, char *name);
@@ -287,6 +287,8 @@ void parseFree(int last) {
   R_Free(tb.iniv);
   R_Free(tb.ini0);
   R_Free(tb.di);
+  R_Free(tb.didx);
+  R_Free(tb.dprop);
   R_Free(tb.si);
   R_Free(tb.sin);
   R_Free(tb.strValI);
@@ -360,6 +362,9 @@ void reset(void) {
   tb.iniv	= R_Calloc(MXSYM, double);
   tb.ini0	= R_Calloc(MXSYM, int);
   tb.di		= R_Calloc(MXDER, int);
+  tb.didx   = R_Calloc(MXDER, int);
+  tb.dprop  = R_Calloc(MXDER, int);
+  tb.didxn  = 1;
   tb.si     = R_Calloc(MXDER, int);
   tb.sin    = R_Calloc(MXDER, int);
   tb.idi	= R_Calloc(MXDER, int);
@@ -571,7 +576,6 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   reset();
   rx_suppress_syntax_info = R_get_option("rxode2.suppress.syntax.info",0);
   rx_syntax_allow_ini  = R_get_option("rxode2.syntax.allow.ini",1);
-  rx_syntax_require_ode_first = R_get_option("rxode2.syntax.require.ode.first", 0);
   set_d_use_r_headers(0);
   set_d_rdebug_grammar_level(0);
   set_d_verbose_level(0);

@@ -48,6 +48,21 @@ Function getRxFn(std::string name);
 extern "C" SEXP getForder(void);
 extern "C" int useForder(void);
 
+extern "C" SEXP orderForderS1(SEXP ordIn) {
+  Function order = getForder();
+  IntegerVector ord;
+  if (useForder()){
+    ord = order(ordIn,
+                _["na.last"] = LogicalVector::create(0));
+  } else {
+    ord = order(ordIn,
+                _["na.last"] = LogicalVector::create(0),
+                _["method"]="radix");
+  }
+  return wrap(ord);
+}
+
+
 RObject evCur;
 RObject curSolve;
 

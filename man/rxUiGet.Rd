@@ -14,6 +14,7 @@
 \alias{rxUiGet.levels}
 \alias{rxUiGet.state}
 \alias{rxUiGet.stateDf}
+\alias{rxUiGet.statePropDf}
 \alias{rxUiGet.props}
 \alias{rxUiGet.theta}
 \alias{rxUiGet.lstChr}
@@ -68,6 +69,8 @@ rxUiGet(x, ...)
 \method{rxUiGet}{state}(x, ...)
 
 \method{rxUiGet}{stateDf}(x, ...)
+
+\method{rxUiGet}{statePropDf}(x, ...)
 
 \method{rxUiGet}{props}(x, ...)
 

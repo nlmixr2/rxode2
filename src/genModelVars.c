@@ -9,8 +9,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 24));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 24));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 27));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 27));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -26,14 +26,22 @@ SEXP generateModelVars(void) {
   SEXP trann = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
 
   SEXP state      = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.nExtra));pro++;
+  SEXP stateProp  = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
+
   SEXP stateRmS   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
   int *stateRm    = INTEGER(stateRmS);
   SEXP extraState = PROTECT(Rf_allocVector(STRSXP,tb.nExtra));pro++;
-  SEXP sens     = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
-  SEXP normState= PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
+  SEXP sens       = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
+  SEXP sensProp   = PROTECT(Rf_allocVector(INTSXP,tb.sensi));pro++;
 
-  populateStateVectors(state, sens, normState, stateRm, extraState);
+  SEXP normState  = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
+  SEXP normProp   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
 
+  if (!populateStateVectors(state, sens, normState, stateRm, extraState, stateProp, sensProp, normProp)) {
+    UNPROTECT(pro);
+    Rf_errorcall(R_NilValue, "%s", _gbuf.s);
+    return R_NilValue;
+  }
   SEXP dfdy = PROTECT(Rf_allocVector(STRSXP,tb.ndfdy));pro++;
   populateDfdy(dfdy);
 
@@ -267,6 +275,18 @@ SEXP generateModelVars(void) {
 
   SET_VECTOR_ELT(lst, 23, lhsStr);
   SET_STRING_ELT(names, 23, mkChar("lhsStr"));
+
+  Rf_setAttrib(stateProp, R_NamesSymbol, state);
+  SET_VECTOR_ELT(lst, 24, stateProp);
+  SET_STRING_ELT(names, 24, mkChar("stateProp"));
+
+  Rf_setAttrib(sensProp, R_NamesSymbol, sens);
+  SET_VECTOR_ELT(lst, 25, sensProp);
+  SET_STRING_ELT(names, 25, mkChar("sensProp"));
+
+  Rf_setAttrib(normProp, R_NamesSymbol, normState);
+  SET_VECTOR_ELT(lst, 26, normProp);
+  SET_STRING_ELT(names, 26, mkChar("normProp"));
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);
