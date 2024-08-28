@@ -96,9 +96,17 @@
   making changes in dparser less likely to cause segmentation faults
   in `rxode2` if it wasn't recompiled.
 
+- A new model property has been added to `$props$cmtProp` and
+  `$statePropDf`.  Both are data-frames showing which compartment has
+  properties (currently `ini`, `f`, `alag`, `rate` and `dur`)
+  in the `rxode2` ui model.  This comes from the lower
+  level model variable `$stateProp` which has this information
+  encoded in integers for each state.
+
 ## Bug fixes
 
-- Fix `ui$props$endpoint` when the ui endpoint is defined in terms of the ode instead of lhs. See #754
+- Fix `ui$props$endpoint` when the ui endpoint is defined in terms of
+  the ode instead of lhs. See #754
 
 - Fix `ui$props` when the ui is a linear compartment model without `ka` defined.
 
