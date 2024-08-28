@@ -215,9 +215,10 @@ static inline int populateStateVectors(SEXP state, SEXP sens, SEXP normState, in
     int prop = tb.dprop[i];
     int pass = 0;
     if (tb.linCmt){
-      if (tb.hasDepotCmt && !strcmp("depot", tb.ss.line[tb.di[i]])){
+      if (tb.hasDepotCmt == 1 && !strcmp("depot", tb.ss.line[tb.di[i]])){
         pass = 1;
-      } else if (tb.hasCentralCmt  && !strcmp("central", tb.ss.line[tb.di[i]])) {
+      } else if ((tb.hasCentralCmt == 1 || tb.hasDepotCmt == 1)  &&
+                 !strcmp("central", tb.ss.line[tb.di[i]])) {
         pass = 1;
       }
     }
