@@ -238,7 +238,7 @@ static inline SEXP sortStateVectors(SEXP ordS) {
       // Take off trailing "',
       sbt.o -= 2;
       sbt.s[sbt.o] = 0;
-      sAppend(&sbt, " present, but d/dt(%s) not defined1\n", tb.ss.line[tb.di[i]]);
+      sAppend(&sbt, " present, but d/dt(%s) not defined.\n", tb.ss.line[tb.di[i]]);
     } else if (cur < 0) {
       // This is a compartment only defined by CMT() and is used for
       // dvid ordering, no properties should be defined.
