@@ -41,7 +41,7 @@ SEXP generateModelVars(void) {
   SEXP ordF = PROTECT(sortStateVectors(ordS)); pro++;
   if (Rf_isNull(ordF)) {
     UNPROTECT(pro);
-    Rf_errorcall(R_NilValue, "%s", _gbuf.s);
+    trans_syntax_error_report_fn0(_gbuf.s);
     return R_NilValue;
   }
 
