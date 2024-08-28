@@ -162,8 +162,14 @@
 #'     upper range to make sure all state values are in the
 #'     reasonable range.
 #'
-#' @param safeZero Use safe zero divide and log routines.  By default
+#' @param safeZero Use safe zero divide. By default
 #'     this is turned on but you may turn it off if you wish.
+#'
+#' @param safePow Use safe powers.  When enabled if your power is
+#'   negative and your base is zero, this will return the `machine
+#'   epsilon^(negative power)`.  By default this is turned on.
+#'
+#' @param safeLog Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  By default this is turned on.
 #'
 #' @param sumType Sum type to use for `sum()` in
 #'     rxode2 code blocks.
@@ -743,6 +749,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtol = 1.0e-8,
                     ssRtol = 1.0e-6,
                     safeZero = TRUE,
+                    safeLog = TRUE,
+                    safePow = TRUE,
                     sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
                     prodType = c("long double", "double", "logify"),
                     sensType = c("advan", "autodiff", "forward", "central"),
@@ -914,6 +922,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
     }
     safeZero <- as.integer(safeZero)
+    if (!checkmate::testIntegerish(safeLog, lower=0, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(safeLog, len=1, any.missing=FALSE)
+    }
+    safeLog <- as.integer(safeLog)
+    if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
+    }
+    safePow <- as.integer(safePow)
     if (is.null(scale)) {
     } else if (is.list(scale)) {
       checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
@@ -1194,6 +1210,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ss2cancelAllPending=ss2cancelAllPending,
       naInterpolation=naInterpolation,
       keepInterpolation=keepInterpolation,
+      safeLog=safeLog,
+      safePow=safePow,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

@@ -3,23 +3,60 @@
 #include <rxode2.h>
 #include <float.h>
 
-#define _evid getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(&_solveData->subjects[_cSub])->idx])
-#define amt (isDose(_evid) ?  getDose((&_solveData->subjects[_cSub]),(&_solveData->subjects[_cSub])->ixds) : NA_REAL)
+#define _evid getEvid((_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(_solveData->subjects[_cSub])->idx])
+#define amt (isDose(_evid) ?  getDose((_solveData->subjects[_cSub]),(_solveData->subjects[_cSub])->ixds) : NA_REAL)
 #define JAC_Rprintf Rprintf
-#define _idx (&_solveData->subjects[_cSub])->idx
-#define JAC0_Rprintf if ( (&_solveData->subjects[_cSub])->jac_counter == 0) Rprintf
+#define _idx (_solveData->subjects[_cSub]).idx
+#define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) Rprintf
 #define ODE_Rprintf Rprintf
-#define ODE0_Rprintf if ( (&_solveData->subjects[_cSub])->dadt_counter == 0) Rprintf
+#define ODE0_Rprintf if ((_solveData->subjects[_cSub]).dadt_counter == 0) Rprintf
 #define LHS_Rprintf Rprintf
-#define _safe_log(a) (&_solveData->safeZero ? (((a) <= 0) ? log(DBL_EPSILON) : log(a)) : log(a))
-#define safe_zero(a) (&_solveData->safeZero ? ((a) == 0 ? DBL_EPSILON : ((double)(a))) : ((double)(a)))
-#define _as_zero(a) (&_solveData->safeZero && fabs((double)(a)) < sqrt(DBL_EPSILON) ? 0.0 : ((double)(a)))
-#define _as_dbleps(a) (&_solveData->safeZero && fabs((double)a) < sqrt(DBL_EPSILON) ? (((double)(a)) < 0 ? -sqrt(DBL_EPSILON)  : sqrt(DBL_EPSILON)) : ((double)(a)))
-#define _as_dbleps2(a) (&_solveData->safeZero && fabs((double)(a)) < sqrt(DBL_EPSILON) ? sqrt(DBL_EPSILON) : ((double)(a)))
+static inline double _safe_log_(double a, rx_solve *rx) {
+  if (rx->safeLog) {
+    return (a <= 0) ? log(DBL_EPSILON) : log(a);
+  } else {
+    return log(a);
+  }
+}
+#define _safe_log(a) _safe_log_(a, _solveData)
+static inline double _div0_(double denom, rx_solve *rx) {
+  if (rx->safeZero) {
+    return (denom == 0.0) ? DBL_EPSILON : denom;
+  } else {
+    return denom;
+  }
+}
+#define _div0(a) _div0_(a, _solveData);
 #define factorial(a) exp(lgamma1p(a))
 #define sign_exp(sgn, x)(((sgn) > 0.0) ? exp(x) : (((sgn) < 0.0) ? -exp(x) : 0.0))
-#define Rx_pow(a, b) (&_solveData->useStdPow ? pow(a, b) : R_pow(a, b))
-#define Rx_pow_di(a, b) (&_solveData->useStdPow ? pow(a, b) : R_pow_di(a, b))
+static inline double Rx_pow_(double a, double b, rx_solve *rx) {
+  double a0 = a;
+  if (rx->safePow) {
+    if (b < 0 && a == 0.0) {
+      a0 = DBL_EPSILON;
+    }
+  }
+  if (rx->useStdPow) {
+    return pow(a0, b);
+  } else {
+    return R_pow(a0, b);
+  }
+}
+#define Rx_pow(a, b) Rx_pow_(a, b, _solveData)
+static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
+  double a0 = a;
+  if (rx->safePow) {
+    if (b < 0 && a == 0.0) {
+      a0 = DBL_EPSILON;
+    }
+  }
+  if (rx->useStdPow) {
+    return pow(a0, b);
+  } else {
+    return R_pow_di(a0, (int)b);
+  }
+}
+#define Rx_pow_di(a, b) _Rx_pow_di(a, b, _solveData)
 #define abs_log1p(x) (((x) + 1.0 > 0.0) ? log1p(x) : (((x) + 1.0 > 0.0) ? log1p(-x) : 0.0))
 #define abs_log(x) ((&_solveData->safeZero && fabs(x) <= sqrt(DBL_EPSILON)) ? log(sqrt(DBL_EPSILON)) : (((x) > 0.0) ? log(x) ? (((x) == 0) ? 0.0 : log(-x))))
 #define _IR (_solveData->subjects[_cSub].InfusionRate)

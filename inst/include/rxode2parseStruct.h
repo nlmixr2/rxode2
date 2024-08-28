@@ -248,6 +248,8 @@ typedef struct {
   int cens;
   int limit;
   int safeZero;
+  int safeLog;
+  int safePow;
   int sumType;
   int prodType;
   int sensType;

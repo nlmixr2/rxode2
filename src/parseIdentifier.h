@@ -113,7 +113,7 @@ static inline void handleSafeZero(nodeInfo ni, char *name, int i, int *safe_zero
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     if (i == 0){
       if (!strcmp("/",v)){
-        aAppendN("safe_zero(", 10);
+        aAppendN("_div0(", 6);
         *safe_zero = 1;
       } else {
         *safe_zero = 0;

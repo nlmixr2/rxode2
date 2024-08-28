@@ -114,6 +114,8 @@ rxSolve(
   ssAtol = 1e-08,
   ssRtol = 1e-06,
   safeZero = TRUE,
+  safeLog = TRUE,
+  safePow = TRUE,
   sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
   prodType = c("long double", "double", "logify"),
   sensType = c("advan", "autodiff", "forward", "central"),
@@ -735,8 +737,13 @@ a vector based on each state.}
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
 vector based on each state.}
 
-\item{safeZero}{Use safe zero divide and log routines.  By default
+\item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
+
+\item{safeLog}{Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return \verb{log(machine epsilon)}.  By default this is turned on.}
+
+\item{safePow}{Use safe powers.  When enabled if your power is
+negative and your base is zero, this will return the \verb{machine epsilon^(negative power)}.  By default this is turned on.}
 
 \item{sumType}{Sum type to use for \code{sum()} in
 rxode2 code blocks.
