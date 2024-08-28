@@ -117,7 +117,8 @@ if (!.Call(`_rxode2_isIntel`)) {
                       output = list(primary = c("fdepot", "ka", "wtnorm", "cl", "q", "v", "vp"),
                                     secondary = character(0),
                                     endpoint = "Cc",
-                                    state = character(0))))
+                                    state = character(0)),
+                      cmtProp=NULL))
 
     expect_equal(obj_odes$props,
                  list(pop = c("lvc", "lke", "lkcp", "Mpc", "lka", "lMTT", "lVm", "Km", "lfdepot", "e_wt_vc"),
@@ -128,7 +129,8 @@ if (!.Call(`_rxode2_isIntel`)) {
                       output = list(primary = c("vc", "ke", "kcp", "ka", "MTT", "Vm", "kpc"),
                                     secondary = "ktr",
                                     endpoint = "Cc",
-                                    state = c("depot", "transit1", "transit2", "transit3", "central", "periph"))))
+                                    state = c("depot", "transit1", "transit2", "transit3", "central", "periph")),
+                      cmtProp=data.frame(Compartment="depot", Property="f")))
 
 
     fun_ana2 <- function() {
@@ -180,7 +182,8 @@ if (!.Call(`_rxode2_isIntel`)) {
                       output = list(primary = c("fdepot", "ka", "wtnorm", "cl", "q", "v", "vp"),
                                     secondary = character(0),
                                     endpoint = character(0),
-                                    state = character(0))))
+                                    state = character(0)),
+                      cmtProp=NULL))
 
   })
 
@@ -211,7 +214,8 @@ if (!.Call(`_rxode2_isIntel`)) {
                       output = list(primary = character(0),
                                     secondary = character(0),
                                     endpoint = "Cc",
-                                    state = character(0))))
+                                    state = character(0)),
+                      cmtProp=NULL))
 
   })
 
