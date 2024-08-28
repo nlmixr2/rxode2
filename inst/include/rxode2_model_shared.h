@@ -26,7 +26,7 @@ static inline double _div0_(double denom, rx_solve *rx) {
     return denom;
   }
 }
-#define _div0(a) _div0_(a, _solveData);
+#define _div0(a) _div0_(a, _solveData)
 #define factorial(a) exp(lgamma1p(a))
 #define sign_exp(sgn, x)(((sgn) > 0.0) ? exp(x) : (((sgn) < 0.0) ? -exp(x) : 0.0))
 static inline double Rx_pow_(double a, double b, rx_solve *rx) {
@@ -56,7 +56,7 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
     return R_pow_di(a0, (int)b);
   }
 }
-#define Rx_pow_di(a, b) Rx_pow_di(a, b, _solveData)
+#define Rx_pow_di(a, b) Rx_pow_di_(a, b, _solveData)
 #define abs_log1p(x) (((x) + 1.0 > 0.0) ? log1p(x) : (((x) + 1.0 > 0.0) ? log1p(-x) : 0.0))
 #define abs_log(x) ((&_solveData->safeZero && fabs(x) <= sqrt(DBL_EPSILON)) ? log(sqrt(DBL_EPSILON)) : (((x) > 0.0) ? log(x) ? (((x) == 0) ? 0.0 : log(-x))))
 #define _IR (_solveData->subjects[_cSub].InfusionRate)
