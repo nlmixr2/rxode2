@@ -199,7 +199,7 @@ static inline SEXP calcIniVals(void) {
 
 SEXP orderForderS1(SEXP ordIn);
 
-static inline int sortStateVectorsErrHandle(int prop, int pass) {
+static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
   if (prop == 0 || pass == 1) {
     return 1;
   }
@@ -243,12 +243,12 @@ static inline SEXP sortStateVectors(SEXP ordS) {
     }
     if (cur == 0) {
       // This has a property without an ODE or cmt() statement; should error here.
-      if (sortStateVectorsErrHandle(prop, pass)) continue;
+      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
     } else if (cur < 0) {
       // This is a compartment only defined by CMT() and is used for
       // dvid ordering, no properties should be defined.
       ord[i] = -cur;
-      if (sortStateVectorsErrHandle(prop, pass)) continue;
+      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
     } else {
       ord[i] = cur;
     }
