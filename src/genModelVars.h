@@ -199,6 +199,32 @@ static inline SEXP calcIniVals(void) {
 
 SEXP orderForderS1(SEXP ordIn);
 
+static inline int sortStateVectorsErrHandle(int prop, int pass) {
+  if (prop == 0 || pass == 1) {
+    return 1;
+  }
+  if ((prop & prop0) != 0) {
+    sAppend(&sbt, "'%s(0)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propF) != 0) {
+    sAppend(&sbt, "'f(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propAlag) != 0) {
+    sAppend(&sbt, "'alag(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propRate) != 0) {
+    sAppend(&sbt, "'rate(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propDur) != 0) {
+    sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  // Take off trailing "',
+  sbt.o -= 2;
+  sbt.s[sbt.o] = 0;
+  sAppend(&sbt, " present, but d/dt(%s) not defined\n", tb.ss.line[tb.di[i]]);
+  return 0;
+}
+
 static inline SEXP sortStateVectors(SEXP ordS) {
   int *ord = INTEGER(ordS);
   sbt.o = 0; // we can use sbt.o since all the code has already been output
@@ -217,54 +243,12 @@ static inline SEXP sortStateVectors(SEXP ordS) {
     }
     if (cur == 0) {
       // This has a property without an ODE or cmt() statement; should error here.
-      if (prop == 0 || pass == 1) {
-        continue;
-      }
-      if ((prop & prop0) != 0) {
-        sAppend(&sbt, "'%s(0)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propF) != 0) {
-        sAppend(&sbt, "'f(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propAlag) != 0) {
-        sAppend(&sbt, "'alag(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propRate) != 0) {
-        sAppend(&sbt, "'rate(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propDur) != 0) {
-        sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      // Take off trailing "',
-      sbt.o -= 2;
-      sbt.s[sbt.o] = 0;
-      sAppend(&sbt, " present, but d/dt(%s) not defined.\n", tb.ss.line[tb.di[i]]);
+      if (sortStateVectorsErrHandle(prop, pass)) continue;
     } else if (cur < 0) {
       // This is a compartment only defined by CMT() and is used for
       // dvid ordering, no properties should be defined.
       ord[i] = -cur;
-      if (prop == 0 || pass == 1) {
-        continue;
-      }
-      if ((prop & prop0) != 0) {
-        sAppend(&sbt, "'%s(0)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propF) != 0) {
-        sAppend(&sbt, "'f(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propAlag) != 0) {
-        sAppend(&sbt, "'alag(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propRate) != 0) {
-        sAppend(&sbt, "'rate(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      if ((prop & propDur) != 0) {
-        sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
-      }
-      // Take off trailing "',
-      sbt.o -= 2;
-      sbt.s[sbt.o] = 0;
-      sAppend(&sbt, " present, but d/dt(%s) not defined\n", tb.ss.line[tb.di[i]]);
+      if (sortStateVectorsErrHandle(prop, pass)) continue;
     } else {
       ord[i] = cur;
     }
