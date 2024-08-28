@@ -14,7 +14,8 @@ rxCombineErrorLines(
   dvidLine = TRUE,
   lstExpr = NULL,
   useIf = TRUE,
-  interpLines = NULL
+  interpLines = NULL,
+  levelLines = NULL
 )
 }
 \arguments{
@@ -40,6 +41,9 @@ defaults to the model expressions accessible by
 \item{useIf}{Use an \verb{if (CMT == X)} for endpoints}
 
 \item{interpLines}{Interpolation lines, if not present}
+
+\item{levelLines}{Levels lines for assigned strings.  If not
+present, use the interpolation lines from the current model.}
 }
 \value{
 quoted expression that can be evaluated to compiled rxode2

@@ -11,6 +11,10 @@
 \alias{rxUiGet.symengineModelPrune}
 \alias{rxUiGet.simulationIniModel}
 \alias{rxUiGet}
+\alias{rxUiGet.levels}
+\alias{rxUiGet.state}
+\alias{rxUiGet.stateDf}
+\alias{rxUiGet.statePropDf}
 \alias{rxUiGet.props}
 \alias{rxUiGet.theta}
 \alias{rxUiGet.lstChr}
@@ -59,6 +63,14 @@
 \method{rxUiGet}{simulationIniModel}(x, ...)
 
 rxUiGet(x, ...)
+
+\method{rxUiGet}{levels}(x, ...)
+
+\method{rxUiGet}{state}(x, ...)
+
+\method{rxUiGet}{stateDf}(x, ...)
+
+\method{rxUiGet}{statePropDf}(x, ...)
 
 \method{rxUiGet}{props}(x, ...)
 

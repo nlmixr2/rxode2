@@ -120,8 +120,13 @@
 #define RxMv_alag 19
 #define RxMv_udf 20
 #define RxMv_interp 21
-#define RxMv_timeId 22
-#define RxMv_md5 23
+#define RxMv_strAssign 22
+#define RxMv_lhsStr 23
+#define RxMv_stateProp 24
+#define RxMv_sensProp 25
+#define RxMv_normProp 26
+#define RxMv_timeId 27
+#define RxMv_md5 28
 #define RxMvFlag_ncmt 0
 #define RxMvFlag_ka 1
 #define RxMvFlag_linB 2

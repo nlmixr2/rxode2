@@ -341,6 +341,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           if(tb.idu[i] != 0){
             if (show_ode == ode_lag || show_ode == ode_dur || show_ode == ode_rate){
               sAppendN(&sbOut, "  ", 2);
+              int assignOne = 0;
               doDot(&sbOut, buf);
               sAppend(&sbOut, " = NA_REAL;\n", i, i);
             } else {
@@ -388,7 +389,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           if (show_ode != ode_mexp && show_ode != ode_indLinVec){
             if (sbPm.lProp[i] >= 0 ){
               tb.ix = sbPm.lProp[i];
-              if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam){
+              if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSstr ||
+                  tb.lh[tb.ix] == isLHSparam){
                 sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
               }
             }
@@ -443,6 +445,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             sAppend(&sbOut,"  %s", sbPm.line[i]);
           }
           break;
+        case TNONE: // no code is output (just props)
+          break;
         default:
           RSprintf("line Number: %d\n", i);
           RSprintf("type: %d\n", sbPm.lType[i]);
@@ -494,7 +498,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
     } else if (show_ode == ode_lhs && tb.li){
       sAppendN(&sbOut,  "\n", 1);
       for (i=0, j=0; i<NV; i++) {
-        if (tb.lh[i] != isLHS && tb.lh[i] != isLhsStateExtra && tb.lh[i] != isLHSparam) continue;
+        if (tb.lh[i] != isLHS && tb.lh[i] != isLhsStateExtra &&
+            tb.lh[i] != isLHSparam && tb.lh[i] != isLHSstr) continue;
         buf = tb.ss.line[i];
         sAppend(&sbOut,  "  _lhs[%d]=", j);
         doDot(&sbOut, buf);

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
-extern int rx_syntax_require_ode_first, needSort;
+extern int needSort;
 void updateSyntaxCol(void);
 void trans_syntax_error_report_fn(char *err);
 void parseFree(int last);
@@ -16,6 +16,10 @@ typedef struct symtab {
   vLines ss; // Symbol string or symbol lines
   /* char ss[64*MXSYM]; */                     /* symbol string: all vars*/
   vLines de;             /* symbol string: all Des*/
+  vLines str; /* symbol string: all assigned string variables*/
+  vLines strVal; /* symbol string for rxode2 assigned strings */
+  int *strValI; /* which variable is assigned a string */
+  int *strValII; /* The number that the string is assigned (what C sees) */
   int *lh;        /*
 lhs symbols?
 =0 not LHS
@@ -39,7 +43,13 @@ lhs symbols?
   double *iniv;        /* Initial values */
   int *ini0;        /* state initial variable assignment =2 if there are two assignments */
   int *di;        /* ith of state vars */
+  int *didx;
+  int *dprop;  /* property of state vars */
+  int didxn; /* nth of declared states */
+  int *si;      /* ith of string vars */
+  int *sin;      /* n values in each string var */
   int *idi;       /* should ith state variable be ignored 0/1 */
+  int *isi;      /* should ith string variable be ignored 0/1 */
   int *idu;       /* Has the ith state been used in a derivative expression? */
   int *lag;  // Lag number (if present)
   int *alag; // absorption lag compartments seen
@@ -80,6 +90,7 @@ lhs symbols?
   int hasCentralCmt;
   int hasKa;
   int allocS;
+  int allocSV;
   int allocD;
   int matn;
   int matnf;
@@ -97,6 +108,7 @@ lhs symbols?
   int thread;
   int lastDdt;
   int nLlik;
+  int lvlStr;
 } symtab;
 
 extern symtab tb;
@@ -104,8 +116,6 @@ extern symtab tb;
 extern vLines depotLines;
 extern vLines centralLines;
 extern vLines sbPm, sbPmDt, sbNrmL;
-
-
 
 #define FBIO 1
 #define ALAG 2
@@ -128,10 +138,12 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define TMAT0 19
 #define TMATF 20
 #define TLIN 21
+#define TNONE 22
 
 // new de type
 #define fromDDT 2
 #define fromCMTprop 1
+#define fromCMT 3
 
 #define NEEDSEMI _("lines need to end with ';'\n     to match R's handling of line endings set 'options(rxode2.syntax.require.semicolon = FALSE)'")
 #define NOSTATE _("defined 'df(%s)/dy(%s)', but '%s' is not a state")
@@ -143,6 +155,9 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 typedef struct nodeInfo {
   int alag;
   int assignment;
+  int assign_str;
+  int levels_str;
+  int levels_str1;
   int constant;
   int der_rhs;
   int derivative;
@@ -195,12 +210,16 @@ typedef struct nodeInfo {
   int equality_str2;
   int simfun_statement;
   int relational_op;
+  int string;
 } nodeInfo;
 
 static inline void niReset(nodeInfo *ni){
   ni->mtime = -1;
   ni->alag = -1;
   ni->assignment = -1;
+  ni->assign_str = -1;
+  ni->levels_str = -1;
+  ni->levels_str1 = -1;
   ni->constant = -1;
   ni->der_rhs = -1;
   ni->derivative = -1;
@@ -253,6 +272,7 @@ static inline void niReset(nodeInfo *ni){
   ni->equality_str2 = -1;
   ni->simfun_statement = -1;
   ni->relational_op = -1;
+  ni->string = -1;
 }
 
 #define STRINGIFY(...) STRINGIFY_AUX(__VA_ARGS__)
@@ -265,8 +285,10 @@ extern sbuf sbOut;
 
 #define notLHS 0
 #define isLHS 1
+#define isLHSstr 100
 #define isState 9
 #define isSuppressedLHS 10
+#define isSuppressedLHSstr 110
 #define isSuppressedParam 11
 #define isLhsStateExtra 19
 #define isLHSparam 70
@@ -346,5 +368,11 @@ void parseFree(int last);
 void _rxode2parse_unprotect(void);
 
 char *getLine (char *src, int line, int *lloc);
+
+#define prop0    1
+#define propF    2
+#define propAlag 4
+#define propRate 8
+#define propDur  16
 
 #endif // __TRAN_H__

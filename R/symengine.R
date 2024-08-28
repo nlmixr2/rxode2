@@ -571,28 +571,62 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(.rxToSE(eval(parse(text = paste0("quote({", x, "})"))), envir, progress))
 }
 
+## adapted from URLencode
+.rxStrEncode <- function (str) {
+  paste0("rxQ__",
+         vapply(str, function(str) {
+           OK <- "[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789]"
+           x <- strsplit(str, "")[[1L]]
+           z <- grep(OK, x)
+           if (length(z)) {
+             y <- vapply(x[z], function(x)
+               paste0("_", toupper(as.character(charToRaw(x))),
+                      collapse = ""), "")
+             x[z] <- y
+           }
+           paste(x, collapse = "")
+         }, character(1), USE.NAMES = FALSE),
+         "__rxQ")
+}
+
+.rxStrDecode <- function(x) {
+  .nchr <- nchar(x)
+  if (.nchr > 10) {
+    if (substr(x, 1, 5) == "rxQ__") {
+      .x <- charToRaw(substr(x, 6, .nchr - 5))
+      .pc <- charToRaw("_")
+      .out <- raw(0L)
+      .i <- 1L
+      while (.i <= length(.x)) {
+        if (.x[.i] != .pc) {
+          .out <- c(.out, .x[.i])
+          .i <- .i + 1L
+        }
+        else {
+          .y <- as.integer(.x[.i + 1L:2L])
+          .y[.y > 96L] <- .y[.y > 96L] - 32L
+          .y[.y > 57L] <- .y[.y > 57L] - 7L
+          .y <- sum((.y - 48L) * c(16L, 1L))
+          .out <- c(.out, as.raw(as.character(.y)))
+          .i <- .i + 3L
+        }
+      }
+      return(rawToChar(.out))
+    }
+  }
+  return(x)
+}
+
+
 .rxChrToSym <- function(x) {
-  str2lang(paste0(
-    "rxQ__",
-    gsub(
-      " ", "_rxSpace_",
-      gsub("[.]", "_rxDoT_", x)
-    ),
-    "__rxQ"
-  ))
+  str2lang(.rxStrEncode(x))
 }
 
 .rxRepRxQ <- function(x) {
   .nchr <- nchar(x)
   if (.nchr > 10) {
     if (substr(x, 1, 5) == "rxQ__") {
-      return(deparse1(gsub(
-        "_rxSpace_", " ",
-        gsub(
-          "_rxDoT_", ".",
-          substr(x, 6, .nchr - 5)
-        )
-      )))
+      return(deparse1(.rxStrDecode(x)))
     }
   }
   return(x)
@@ -1207,6 +1241,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   } else if (identical(x[[1]], quote(`=`)) ||
                identical(x[[1]], quote(`<-`)) ||
                identical(x[[1]], quote(`~`))) {
+    if (length(x[[2]]) == 2 &&
+          identical(x[[2]][[1]], quote(`levels`))) {
+      return("")
+    }
     return(.rxToSEAssignOperators(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`[`))) {
     return(.rxToSESquareBracket(x, envir = envir, progress = progress, isEnv=isEnv))

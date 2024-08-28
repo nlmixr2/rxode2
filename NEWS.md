@@ -15,10 +15,16 @@
   the algorithm will look forward until it finds the first non-missing
   value (or if all are missing, start looking backward).
 
+- The order of ODEs is now only determined by the order of `cmt()` and
+  `d/dt()`. Compartment properties, `tad()` and other compartment
+  related variables no no longer affect compartment sorting.  The
+  option `rxode2.syntax.require.ode.first` no longer does anything.
+
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
   with `iCov` slightly faster (#743)
+
 
 ## New features
 
@@ -47,6 +53,16 @@
 - `linear()`, `locf()`, `locb()`, `midpoint()`, `params()`, `cmt()`
   and `dvid()` declarations are now ignored when loading a `rxode2`
   model with `rxS()`
+
+- Strings can be assigned to variables in `rxode2`.
+
+- Strings can now be enclosed with a single quote as well as a double
+  quote.  This limitation was only in the rxode2 using string since
+  the R-parser changes single quotes to double quotes. (This has no
+  impact with `rxode2({})` and ui/function form).
+
+- More robust string encoding for symengine (adapted from
+  `utils::URLencode()` and `utils::URLdecode()`)
 
 - Empty arguments to `rxRename()` give a warning (#688)
 
@@ -80,9 +96,17 @@
   making changes in dparser less likely to cause segmentation faults
   in `rxode2` if it wasn't recompiled.
 
+- A new model property has been added to `$props$cmtProp` and
+  `$statePropDf`.  Both are data-frames showing which compartment has
+  properties (currently `ini`, `f`, `alag`, `rate` and `dur`)
+  in the `rxode2` ui model.  This comes from the lower
+  level model variable `$stateProp` which has this information
+  encoded in integers for each state.
+
 ## Bug fixes
 
-- Fix `ui$props$endpoint` when the ui endpoint is defined in terms of the ode instead of lhs. See #754
+- Fix `ui$props$endpoint` when the ui endpoint is defined in terms of
+  the ode instead of lhs. See #754
 
 - Fix `ui$props` when the ui is a linear compartment model without `ka` defined.
 

@@ -738,8 +738,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(24);
-  CharacterVector retN(24);
+  List ret(29);
+  CharacterVector retN(29);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -805,11 +805,36 @@ List rxModelVars_blank() {
   ret[21] = interp;
   retN[21] = "interp";
 
-  ret[22] = IntegerVector::create(0); // timeId
-  retN[22] = "timeId";
+  List strAssign;
+  strAssign.attr("names") = CharacterVector::create();
+  ret[22] = strAssign; // strAssign
+  retN[22] = "strAssign";
 
-  ret[23] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[23] = "md5";
+  LogicalVector lhsStr = LogicalVector::create();
+  lhsStr.attr("names") = CharacterVector::create();
+  ret[23] = lhsStr; // md5
+  retN[23] = "lhsStr";
+
+  IntegerVector stateProp = IntegerVector::create();
+  stateProp.attr("names") = CharacterVector::create();
+  ret[24] = stateProp; // stateProp
+  retN[24] = "stateProp";
+
+  IntegerVector sensProp = IntegerVector::create();
+  sensProp.attr("names") = CharacterVector::create();
+  ret[25] = sensProp; // sensProp
+  retN[25] = "sensProp";
+
+  IntegerVector normProp = IntegerVector::create();
+  normProp.attr("names") = CharacterVector::create();
+  ret[26] = normProp; // normProp
+  retN[26] = "normProp";
+
+  ret[27] = IntegerVector::create(0); // timeId
+  retN[27] = "timeId";
+
+  ret[28] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[28] = "md5";
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
   return ret;
@@ -1441,6 +1466,7 @@ struct rx_globals {
   int *gidose;
   int *gpar_cov;
   int *gpar_covInterp;
+  int *glhs_str;
 
   int *gParPos;
   int *gParPos2;
@@ -3585,8 +3611,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     int dfN = dfNames.size();
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
+    IntegerVector strLhs = as<IntegerVector>(rxSolveDat->mv[RxMv_lhsStr]);
     if (_globals.gevid != NULL) free(_globals.gevid);
-    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+si.size(), sizeof(int));
+    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+si.size() + strLhs.size(), sizeof(int));
     if (_globals.gevid == NULL){
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
@@ -3598,7 +3625,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
     _globals.gsi = _globals.gpar_covInterp + dfN;//[si.size()];
     std::copy(si.begin(),si.end(), &_globals.gsi[0]);
-
+    _globals.glhs_str = _globals.gsi + si.size(); // [strLhs.siae()]
+    std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -3723,6 +3751,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       stop(_("can not allocate memory for the covariates"));
     }
     op->par_cov=&(_globals.gpar_cov[0]);
+    op->lhs_str=&(_globals.glhs_str[0]);
     op->par_cov_interp = &(_globals.gpar_covInterp[0]);
     op->ncov=ncov;
     op->do_par_cov = (ncov > 0);
@@ -4788,6 +4817,8 @@ static inline void iniRx(rx_solve* rx) {
   op->stiff = 0;
   op->ncov = 0;
   op->par_cov = NULL;
+  op->par_cov_interp = NULL;
+  op->lhs_str = NULL;
   op->inits = NULL;
   op->scale = NULL;
   op->do_par_cov=false;

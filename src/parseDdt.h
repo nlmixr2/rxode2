@@ -1,58 +1,36 @@
-static inline int new_de(const char *s) {
+static inline int new_de(const char *s, int fromWhere) {
   int i;
-  if (!strcmp("cmt", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'cmt' cannot be a state or lhs expression");
-  }
-  if (!strcmp("dvid", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'dvid' cannot be a state or lhs expression");
-  }
-  if (!strcmp("addl", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'addl' cannot be a state or lhs expression");
-  }
-  if (!strcmp("ii", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'ii' cannot be a state or lhs expression");
-  }
-  if (!strcmp("ss", s)){
-    _rxode2parse_unprotect();
-    err_trans("'ss' cannot be a state or lhs expression");
-  }
-  if (!strcmp("amt", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'amt' cannot be a state or lhs expression");
-  }
-  if (!strcmp("dur", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'dur' cannot be a state or lhs expression");
-  }
-  if (!strcmp("rate", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'rate' cannot be a state or lhs expression");
-  }
-  if (!strcmp("Rprintf", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'Rprintf' cannot be a state");
-  }
-  if (!strcmp("printf", s)){
-    _rxode2parse_unprotect();
-    err_trans("'printf' cannot be a state");
-  }
-  if (!strcmp("print", s)) {
-    _rxode2parse_unprotect();
-    err_trans("'print' cannot be a state");
-  }
+  parseAllowAssignOrState(s);
   for (i=0; i<tb.de.n; i++) {
     if (!strcmp(tb.de.line[i], s)) {
       tb.id = i;
+      if (tb.didx[tb.id] == 0) {
+        // Since cmt() can add fake compartments for dvids,
+        // distinguish between compartments added by cmt() and d/dt()
+        if (fromWhere == fromDDT) {
+          tb.didx[tb.id] = tb.didxn;
+          tb.didxn++;
+          if (strncmp(s, "rx__sens_", 9) == 0) {
+            tb.sensi++;
+          }
+        } else if (fromWhere == fromCMT) {
+          tb.didx[tb.id] = -tb.didxn;
+          tb.didxn++;
+        }
+      } else if (fromWhere == fromDDT && tb.didx[tb.id] < 0) {
+        tb.didx[tb.id] = -tb.didx[tb.id];  // flag that the cmt() also has d/dt()
+        if (strncmp(s, "rx__sens_", 9) == 0) {
+          tb.sensi++;
+        }
+      }
       return 0;
     }
   }
   if (tb.de.n + 1 > tb.allocD){
     tb.allocD+=MXDER;
     tb.di=R_Realloc(tb.di, tb.allocD, int);
+    tb.didx = R_Realloc(tb.didx, tb.allocD, int);
+    tb.dprop = R_Realloc(tb.dprop, tb.allocD, int);
     tb.idi=R_Realloc(tb.idi, tb.allocD, int);
     tb.idu=R_Realloc(tb.idu, tb.allocD, int);
     tb.dvid=R_Realloc(tb.dvid, tb.allocD, int);
@@ -68,11 +46,15 @@ static inline int isCmtLhsStatement(nodeInfo ni, char *name, char *v) {
       hasLhs=1;
       tb.ini[tb.ix]=2;
     }
-    if (!strcmp("depot", v)){
-      tb.hasDepotCmt = 1;
-    } else if (!strcmp("central", v)){
-      tb.hasCentralCmt = 1;
+    if (tb.hasDepotCmt != -1 && !strcmp("depot", v)){
+      tb.hasDepotCmt = -1;
+    } else if (tb.hasCentralCmt != -1 && !strcmp("central", v)){
+      tb.hasCentralCmt = -1;
     }
+  } else if (tb.hasDepotCmt == 0 && !strcmp("depot", v)){
+    tb.hasDepotCmt = 1;
+  } else if (tb.hasCentralCmt == 0 && !strcmp("central", v)){
+    tb.hasCentralCmt = 1;
   }
   return hasLhs;
 }
@@ -91,9 +73,6 @@ static inline int add_deCmtProp(nodeInfo ni, char *name, char *v, int hasLhs, in
 }
 
 static inline int add_deState(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere) {
-  if (fromWhere == fromDDT && strncmp(v, "rx__sens_", 3) == 0) {
-    tb.sensi++;
-  }
   new_or_ith(v);
   if (((tb.ini[tb.ix] == 1 && tb.ini0[tb.ix] == 0) ||
        (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam))){
@@ -109,29 +88,45 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
   tb.statei++;
   tb.id=tb.de.n;
   if (fromWhere == fromCMTprop && !nodeHas(cmt_statement)) {
-    if (rx_syntax_require_ode_first) {
-      if (!strcmp("depot", v)) {
-	tb.hasDepot = 1;
-      } else if (!strcmp("central", v)) {
-	tb.hasCentral = 1;
-      } else {
-	updateSyntaxCol();
-	sPrint(&_gbuf,ODEFIRST,v);
-	trans_syntax_error_report_fn(_gbuf.s);
-      }
+    if (!new_assign_str(v)) {
+      updateSyntaxCol();
+      sPrint(&_gbuf,"'%s' was already declared as a string variable",v);
+      trans_syntax_error_report_fn(_gbuf.s);
     }
   }
   int tmp = add_deCmtProp(ni, name, v, hasLhs, fromWhere) ||
     add_deState(ni, name, v, hasLhs, fromWhere);
   (void) tmp;
   tb.di[tb.de.n] = tb.ix;
+  // Since cmt() can add fake compartments for dvids, distinguish
+  // between them in the location indicator
+  if (fromWhere == fromDDT) {
+    // if added from d/dt() count it as the next compartment
+    tb.didx[tb.de.n] = tb.didxn;
+    tb.didxn++;
+    if (strncmp(v, "rx__sens_", 9) == 0) {
+      tb.sensi++;
+    }
+  } else if (fromWhere == fromCMT) {
+    // if added from cmt() count it as the next compartment
+    tb.didx[tb.de.n] = -tb.didxn;
+    tb.didxn++;
+  }
   addLine(&(tb.de),"%s",v);
 }
 
 static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   if (nodeHas(derivative) && i==2) {
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-    if (new_de(v)) {
+    if (!new_or_ith(v)) {
+      if (tb.lh[tb.ix] == isSuppressedLHSstr ||
+          tb.lh[tb.ix] == isLHSstr) {
+        updateSyntaxCol();
+        sPrint(&_gbuf,"'%s' cannot be a derivative and string variable", v);
+        trans_syntax_error_report_fn(_gbuf.s);
+      }
+    }
+    if (new_de(v, fromDDT)) {
       add_de(ni, name, v, 0, fromDDT);
     }
     new_or_ith(v);
@@ -208,7 +203,7 @@ static inline int handleDdtRhs(nodeInfo ni, char *name, D_ParseNode *xpn) {
       {
 	updateSyntaxCol();
 	char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-	if (new_de(v)){
+	if (new_de(v, 0)){
 	  /* sPrint(&buf2,"d/dt(%s)",v); */
 	  updateSyntaxCol();
 	  sPrint(&_gbuf,"Tried to use d/dt(%s) before it was defined",v);

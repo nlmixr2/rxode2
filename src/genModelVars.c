@@ -9,8 +9,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 22));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 27));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 27));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -26,22 +26,35 @@ SEXP generateModelVars(void) {
   SEXP trann = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
 
   SEXP state      = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.nExtra));pro++;
+  SEXP stateProp  = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
+
   SEXP stateRmS   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
   int *stateRm    = INTEGER(stateRmS);
   SEXP extraState = PROTECT(Rf_allocVector(STRSXP,tb.nExtra));pro++;
-  SEXP sens     = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
-  SEXP normState= PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
+  SEXP sens       = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
+  SEXP sensProp   = PROTECT(Rf_allocVector(INTSXP,tb.sensi));pro++;
 
-  populateStateVectors(state, sens, normState, stateRm, extraState);
+  SEXP normState  = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
+  SEXP normProp   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
 
+  SEXP ordS = PROTECT(Rf_allocVector(INTSXP, tb.de.n));pro++;
+  SEXP ordF = PROTECT(sortStateVectors(ordS)); pro++;
+  if (Rf_isNull(ordF)) {
+    UNPROTECT(pro);
+    trans_syntax_error_report_fn0(_gbuf.s);
+    return R_NilValue;
+  }
+
+  populateStateVectors(state, sens, normState, stateRm, extraState, stateProp, sensProp, normProp, INTEGER(ordF));
   SEXP dfdy = PROTECT(Rf_allocVector(STRSXP,tb.ndfdy));pro++;
   populateDfdy(dfdy);
 
-
   SEXP params = PROTECT(Rf_allocVector(STRSXP, tb.pi));pro++;
   SEXP lhs    = PROTECT(Rf_allocVector(STRSXP, tb.li));pro++;
+  SEXP lhsStr    = PROTECT(Rf_allocVector(LGLSXP, tb.li));pro++;
   SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
   SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
+
 
   SEXP version = PROTECT(calcVersionInfo());pro++;
   SEXP ini = PROTECT(calcIniVals()); pro++;
@@ -50,7 +63,7 @@ SEXP generateModelVars(void) {
   SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
   SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;
 
-  populateParamsLhsSlhs(params, lhs, slhs, INTEGER(interp));
+  populateParamsLhsSlhs(params, lhs, slhs, INTEGER(interp), lhsStr);
 
 
   INTEGER(sLinCmt)[5] = tb.hasCmt;
@@ -242,6 +255,42 @@ SEXP generateModelVars(void) {
 
   SET_VECTOR_ELT(lst, 21, interp);
   SET_STRING_ELT(names, 21, mkChar("interp"));
+
+  SEXP strAssign = PROTECT(Rf_allocVector(VECSXP, tb.str.n));pro++;
+  SEXP strAssignN = PROTECT(Rf_allocVector(STRSXP, tb.str.n));pro++;
+  for (int i = 0; i < tb.str.n; i++) {
+    SEXP cur = PROTECT(Rf_allocVector(STRSXP, tb.sin[i]));pro++;
+    int k = 0;
+    for (int j = 0; j < tb.strVal.n; j++) {
+      if (tb.strValI[j] == i) {
+        SET_STRING_ELT(cur, k, mkChar(tb.strVal.line[j]));
+        k++;
+      }
+    }
+    SET_VECTOR_ELT(strAssign, i, cur);
+    SET_STRING_ELT(strAssignN, i, mkChar(tb.str.line[i]));
+  }
+  Rf_setAttrib(strAssign, R_NamesSymbol, strAssignN);
+  Rf_setAttrib(lhsStr, R_NamesSymbol, lhs);
+
+
+  SET_VECTOR_ELT(lst, 22, strAssign);
+  SET_STRING_ELT(names, 22, mkChar("strAssign"));
+
+  SET_VECTOR_ELT(lst, 23, lhsStr);
+  SET_STRING_ELT(names, 23, mkChar("lhsStr"));
+
+  Rf_setAttrib(stateProp, R_NamesSymbol, state);
+  SET_VECTOR_ELT(lst, 24, stateProp);
+  SET_STRING_ELT(names, 24, mkChar("stateProp"));
+
+  Rf_setAttrib(sensProp, R_NamesSymbol, sens);
+  SET_VECTOR_ELT(lst, 25, sensProp);
+  SET_STRING_ELT(names, 25, mkChar("sensProp"));
+
+  Rf_setAttrib(normProp, R_NamesSymbol, normState);
+  SET_VECTOR_ELT(lst, 26, normProp);
+  SET_STRING_ELT(names, 26, mkChar("normProp"));
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);

@@ -28,12 +28,12 @@ static inline int handleRhsDf(nodeInfo ni, char *name, int i, D_ParseNode *xpn, 
       aType(TJAC);
       sAppend(&sbDt, "__PDStateVar_%s_SeP_",v);
       sAppend(&sbt,"df(%s)/dy(",v);
-      if (new_de(v)){
-	updateSyntaxCol();
-	sPrint(&_gbuf,_("d/dt(%s) needs to be defined before using a Jacobians for this state"),v);
-	trans_syntax_error_report_fn(_gbuf.s);
+      if (new_de(v, 0)) {
+        updateSyntaxCol();
+        sPrint(&_gbuf,_("d/dt(%s) needs to be defined before using a Jacobians for this state"),v);
+        trans_syntax_error_report_fn(_gbuf.s);
       } else {
-	sAppend(&sb, "__PDStateVar__[%d*(__NROWPD__)+",tb.id);
+        sAppend(&sb, "__PDStateVar__[%d*(__NROWPD__)+",tb.id);
       }
     }
     }
@@ -53,7 +53,7 @@ static inline int handleLhsDf(nodeInfo ni, char *name, int i, D_ParseNode *xpn, 
     sbt.o = 0;
     sAppend(&sbDt,"__PDStateVar_%s_SeP_",v);
     sAppend(&sbt,"df(%s)/dy(",v);
-    if (new_de(v)){
+    if (new_de(v, 0)){
       updateSyntaxCol();
       sPrint(&_gbuf,_("d/dt(%s) needs to be defined before using a Jacobians for this state"),v);
       trans_syntax_error_report_fn(_gbuf.s);
@@ -89,7 +89,7 @@ static inline void handleDyThetaEta(nodeInfo ni, char *name, int i, D_ParseNode 
     sAppend(&sbt, "%s)",v);
     new_or_ith(v);
     if (tb.lh[tb.ix] == isState){
-      new_de(v);
+      new_de(v, 0);
       sAppend(&sb, "%d]",tb.id);
     } else {
       sAppendN(&sb, "0]",2);
@@ -107,22 +107,22 @@ static inline int handleDy(nodeInfo ni, char *name, int i, D_ParseNode *xpn, int
       aAppendN(" = ", 3);
       sAppendN(&sbt ,"=", 1);
       if (*ii == 1){
-	new_or_ith(_gbuf.s);
+        new_or_ith(_gbuf.s);
       } else {
-	new_or_ith(v);
+        new_or_ith(v);
       }
       *found = -1;
       for (*ii = 0; *ii < tb.ndfdy; (*ii)++){
-	if (tb.df[*ii] == tb.cdf && tb.dy[*ii] == tb.ix){
-	  *found = *ii;
-	  break;
-	}
+        if (tb.df[*ii] == tb.cdf && tb.dy[*ii] == tb.ix){
+          *found = *ii;
+          break;
+        }
       }
       if (*found < 0){
-	tb.df[tb.ndfdy] = tb.cdf;
-	tb.dy[tb.ndfdy] = tb.ix;
-	tb.ndfdy = tb.ndfdy+1;
-	tb.cdf = -1;
+        tb.df[tb.ndfdy] = tb.cdf;
+        tb.dy[tb.ndfdy] = tb.ix;
+        tb.ndfdy = tb.ndfdy+1;
+        tb.cdf = -1;
       }
     }
     return 1;

@@ -825,19 +825,22 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   NumericVector nvTmp, nvTmp2;
   bool hasCmt = false;
   int cmtI =0;
+  List strAssign = mv[RxMv_strAssign];
+  List strAssignN = strAssign.names();
   List inDataF(covCol.size());
-  List inDataLvl(covCol.size());
+  List inDataLvlN(covCol.size()+strAssign.size());
+  List inDataLvl(covCol.size()+strAssign.size());
   for (i = covCol.size(); i--;){
     int covColi = covCol[i];
     if (covColi >= 0) {
-      covUnitsN[i] = lName[covColi];
+      inDataLvlN[i] = covUnitsN[i] = lName[covColi];
     } else {
       // Get from iCov; when found the i was pushed back as:
       //   covCol.push_back(-i-1);
       // Using some algebra you have
       // -i-1 = covColi
       // i    = -covColi-1
-      covUnitsN[i] = liName[-covColi-1];
+      inDataLvlN[i] = covUnitsN[i] = liName[-covColi-1];
     }
     nvTmp2 = NumericVector::create(1.0);
     if (hasCmt || covColi >= 0 && as<std::string>(lName[covColi]) != "cmt"){
@@ -869,7 +872,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     covUnits[i] = nvTmp2;
   }
-  Rf_setAttrib(inDataLvl, R_NamesSymbol, covUnitsN);
+  for (i = 0; i < strAssign.size(); ++i){
+    inDataLvlN[i+covCol.size()] = strAssignN[i];
+    inDataLvl[i+covCol.size()] = strAssign[i];
+  }
+  Rf_setAttrib(inDataLvl, R_NamesSymbol, inDataLvlN);
   Rf_setAttrib(covUnits, R_NamesSymbol, covUnitsN);
   // EVID = 0; Observations
   // EVID = 1; is illegal, but converted from NONMEM

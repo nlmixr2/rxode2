@@ -234,7 +234,7 @@ rxOpt <- list(
   rxode2.cache.directory = c(.cacheDefault, .cacheDefault),
   rxode2.tempfiles = c(TRUE, TRUE),
   rxode2.sympy.run.internal = c(FALSE, FALSE),
-  rxode2.syntax.require.ode.first = c(TRUE, TRUE),
+  rxode2.syntax.require.ode.first = c(FALSE, FALSE),
   rxode2.compile.O = c("3", "3"),
   rxode2.unload.unused = c(FALSE, FALSE),
   rxode2.debug=c(FALSE, FALSE)
