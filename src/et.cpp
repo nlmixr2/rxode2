@@ -49,6 +49,7 @@ extern "C" SEXP getForder(void);
 extern "C" int useForder(void);
 
 extern "C" SEXP orderForderS1(SEXP ordIn) {
+BEGIN_RCPP
   Function order = getForder();
   IntegerVector ord;
   if (useForder()){
@@ -60,6 +61,7 @@ extern "C" SEXP orderForderS1(SEXP ordIn) {
                 _["method"]="radix");
   }
   return wrap(ord);
+END_RCPP
 }
 
 
