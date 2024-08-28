@@ -15,40 +15,15 @@
   the algorithm will look forward until it finds the first non-missing
   value (or if all are missing, start looking backward).
 
-
+- The order of ODEs is now only determined by the order of `cmt()` and
+  `d/dt()`. Compartment properties, `tad()` and other compartment
+  related variables no no longer affect compartment sorting.  The
+  option `rxode2.syntax.require.ode.first` no longer does anything.
 
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
   with `iCov` slightly faster (#743)
-
-- An overlooked parsing error with initial conditions has been fixed
-  (which will break old code).  In the past you could use the
-  following code:
-
-```
-  x(0) = y+3
-  d/dt(x) = 4
-```
-
-without error, but the code:
-
-```
-  alag(x) = y+3
-  d/dt(x) = 4
-```
-
-would error.  This has been fixed to be consistent between all
-compartment-based properties.  Of course (as the error indicates) you
-can get more flexible compartment declaration by:
-
-```
-options(rxode2.syntax.require.ode.first = FALSE)
-```
-
-and both code block will work; This means the work-around is simply
-using the option above; To maintain most old code, this is the new
-default; If you would like to ensure that you declare your compartments use `cmt` or something similar, or `options(rxode2.syntax.require.ode.first = TRUE)`
 
 
 ## New features
