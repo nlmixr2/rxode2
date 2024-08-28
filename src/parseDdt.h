@@ -48,13 +48,12 @@ static inline int isCmtLhsStatement(nodeInfo ni, char *name, char *v) {
     }
     if (tb.hasDepotCmt != -1 && !strcmp("depot", v)){
       tb.hasDepotCmt = -1;
-    } else if (tb.hasDepotCmt != -1 && !strcmp("central", v)){
+    } else if (tb.hasCentralCmt != -1 && !strcmp("central", v)){
       tb.hasCentralCmt = -1;
     }
-  }
-  if (tb.hasDepotCmt == 0 && !strcmp("depot", v)){
+  } else if (tb.hasDepotCmt == 0 && !strcmp("depot", v)){
     tb.hasDepotCmt = 1;
-  } else if (tb.hasDepotCmt == 0 && !strcmp("central", v)){
+  } else if (tb.hasCentralCmt == 0 && !strcmp("central", v)){
     tb.hasCentralCmt = 1;
   }
   return hasLhs;
