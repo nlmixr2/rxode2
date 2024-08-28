@@ -37,11 +37,15 @@ SEXP generateModelVars(void) {
   SEXP normState  = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
   SEXP normProp   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
 
-  if (!populateStateVectors(state, sens, normState, stateRm, extraState, stateProp, sensProp, normProp)) {
+  SEXP ordS = PROTECT(Rf_allocVector(INTSXP, tb.de.n));pro++;
+  SEXP ordF = PROTECT(sortStateVectors(ordS)); pro++;
+  if (Rf_isNull(ordF)) {
     UNPROTECT(pro);
     Rf_errorcall(R_NilValue, "%s", _gbuf.s);
     return R_NilValue;
   }
+
+  populateStateVectors(state, sens, normState, stateRm, extraState, stateProp, sensProp, normProp, INTEGER(ordF));
   SEXP dfdy = PROTECT(Rf_allocVector(STRSXP,tb.ndfdy));pro++;
   populateDfdy(dfdy);
 

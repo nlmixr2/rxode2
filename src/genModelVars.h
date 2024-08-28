@@ -199,17 +199,10 @@ static inline SEXP calcIniVals(void) {
 
 SEXP orderForderS1(SEXP ordIn);
 
-static inline int populateStateVectors(SEXP state, SEXP sens, SEXP normState, int *stateRm, SEXP extraState, SEXP stateProp, SEXP sensProp, SEXP normProp) {
-  int k=0, j=0, m=0, p=0;
-  char *buf;
-  // Create the vector to order the states
-  SEXP ordS = PROTECT(Rf_allocVector(INTSXP, tb.de.n));
+static inline SEXP sortStateVectors(SEXP ordS) {
   int *ord = INTEGER(ordS);
   sbt.o = 0; // we can use sbt.o since all the code has already been output
   sbt.s[0] = 0;
-  int *statePropI = INTEGER(stateProp);
-  int *sensPropI = INTEGER(sensProp);
-  int *normPropI = INTEGER(normProp);
   for (int i = 0; i < tb.de.n; i++) {
     int cur = tb.didx[i];
     int prop = tb.dprop[i];
@@ -280,11 +273,17 @@ static inline int populateStateVectors(SEXP state, SEXP sens, SEXP normState, in
     sbt.o--; // remove last newline
     sbt.s[sbt.o] = 0;
     sPrint(&_gbuf, "%s", sbt.s);
-    UNPROTECT(1);
-    return 0;
+    return R_NilValue;
   }
-  SEXP ordF = PROTECT(orderForderS1(ordS));
-  int *ordFp = INTEGER(ordF);
+  return orderForderS1(ordS);
+}
+
+static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, int *stateRm, SEXP extraState, SEXP stateProp, SEXP sensProp, SEXP normProp, int *ordFp) {
+  int k=0, j=0, m=0, p=0;
+  char *buf;
+  int *statePropI = INTEGER(stateProp);
+  int *sensPropI = INTEGER(sensProp);
+  int *normPropI = INTEGER(normProp);
   for (int i=0; i<tb.de.n; i++) {                     /* name state vars */
     buf=tb.ss.line[tb.di[ordFp[i]-1]] ;
     if (tb.idu[i] == 1){
@@ -305,8 +304,6 @@ static inline int populateStateVectors(SEXP state, SEXP sens, SEXP normState, in
       SET_STRING_ELT(extraState, p++, mkChar(buf));
     }
   }
-  UNPROTECT(2);
-  return 1;
 }
 
 static inline void populateDfdy(SEXP dfdy) {
