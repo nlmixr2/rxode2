@@ -10,12 +10,18 @@ static inline int new_de(const char *s, int fromWhere) {
         if (fromWhere == fromDDT) {
           tb.didx[tb.id] = tb.didxn;
           tb.didxn++;
+          if (strncmp(s, "rx__sens_", 9) == 0) {
+            tb.sensi++;
+          }
         } else if (fromWhere == fromCMT) {
           tb.didx[tb.id] = -tb.didxn;
           tb.didxn++;
         }
       } else if (fromWhere == fromDDT && tb.didx[tb.id] < 0) {
         tb.didx[tb.id] = -tb.didx[tb.id];  // flag that the cmt() also has d/dt()
+        if (strncmp(s, "rx__sens_", 9) == 0) {
+          tb.sensi++;
+        }
       }
       return 0;
     }
@@ -68,9 +74,6 @@ static inline int add_deCmtProp(nodeInfo ni, char *name, char *v, int hasLhs, in
 }
 
 static inline int add_deState(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere) {
-  if (fromWhere == fromDDT && strncmp(v, "rx__sens_", 3) == 0) {
-    tb.sensi++;
-  }
   new_or_ith(v);
   if (((tb.ini[tb.ix] == 1 && tb.ini0[tb.ix] == 0) ||
        (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam))){
@@ -102,6 +105,9 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
     // if added from d/dt() count it as the next compartment
     tb.didx[tb.de.n] = tb.didxn;
     tb.didxn++;
+    if (strncmp(v, "rx__sens_", 9) == 0) {
+      tb.sensi++;
+    }
   } else if (fromWhere == fromCMT) {
     // if added from cmt() count it as the next compartment
     tb.didx[tb.de.n] = -tb.didxn;
