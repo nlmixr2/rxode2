@@ -4785,6 +4785,8 @@ static inline void iniRx(rx_solve* rx) {
   rx->cens = 0;
   rx->limit = 0;
   rx->safeZero = 1;
+  rx->safePow = 1;
+  rx->safeLog = 1;
   rx->useStdPow = 0;
   rx->ss2cancelAllPending = false;
   rx->sumType = 1; // pairwise
@@ -5079,6 +5081,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->add_cov = (int)(addCov);
     rx->istateReset = asInt(rxControl[Rxc_istateReset], "istateReset");
     rx->safeZero = asInt(rxControl[Rxc_safeZero], "safeZero");
+    rx->safePow = asInt(rxControl[Rxc_safePow], "safePow");
+    rx->safeLog = asInt(rxControl[Rxc_safeLog], "safeLog");
     rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
     op->stiff = method;

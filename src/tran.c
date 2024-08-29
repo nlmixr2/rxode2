@@ -194,7 +194,7 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
       handleLevelsStr(ni, name, *i, pn, xpn) ||
       handleLevelsStr1(ni, name, *i, pn, xpn)) return 1;
   if (*i==0 && nodeHas(power_expression)) {
-    aAppendN("),", 2);
+    aAppendN(",", 1);
     sAppendN(&sbt, "^", 1);
   }
   handleRemainingAssignments(ni, name, *i, pn, xpn);
@@ -217,7 +217,7 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
   if (nch != 0) {
     int isWhile=0;
     if (nodeHas(power_expression)) {
-      aAppendN("Rx_pow(_as_dbleps(", 18);
+      aAppendN("Rx_pow(", 7);
     }
     for (i = 0; i < nch; i++) {
       D_ParseNode *xpn = d_get_child(pn, i);
