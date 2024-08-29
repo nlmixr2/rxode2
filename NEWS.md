@@ -20,6 +20,22 @@
   related variables no no longer affect compartment sorting.  The
   option `rxode2.syntax.require.ode.first` no longer does anything.
 
+- The handling of zeros "safely" has changed (see #775)
+
+  - when `safeZero=TRUE` and the denominator of a division expression
+    is zero, use the Machine's small number/`eps` (you can see this
+    value with `.Machine$double.eps`)
+
+  - when `saveLog=TRUE` and the x in the `log(x)` is less than or
+    equal to zero, change this to `log(eps)`
+
+  - when `safePow=TRUE` and the expression `x^y` has a zero for `x`
+    and a negative number for `y` replace `x` with `eps`.
+
+  Since the protection for divide by zero has changed, the results
+  will also change. This is a more conservative protection mechanism
+  than was applied previously.
+
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
