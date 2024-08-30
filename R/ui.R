@@ -226,7 +226,9 @@
 #' @export
 ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {
-    .ini <- eval(bquote(lotri(.(substitute(x)))), envir=envir)
+    .ini <- eval(bquote(lotri::lotri(.(substitute(x)),
+                                     cov=TRUE, rcm=TRUE)),
+                 envir=envir)
     assignInMyNamespace(".lastIni", .ini)
     assignInMyNamespace(".lastIniQ", bquote(.(substitute(x))))
     return(invisible(.ini))
