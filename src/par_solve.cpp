@@ -2708,17 +2708,22 @@ extern "C" void par_lsoda(rx_solve *rx){
 
   int curTick = 0;
   int abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
-    ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
-               dydt_lsoda_dum, update_inis, jdum_lsoda);
-    if (displayProgress){ // Can only abort if it is long enough to display progress.
-      curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
-      if (checkInterrupt()){
-        abort =1;
-        break;
+    if (abort == 0){
+      setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
+      ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
+                 dydt_lsoda_dum, update_inis, jdum_lsoda);
+      if (displayProgress){ // Can only abort if it is long enough to display progress.
+        curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
+        if (checkInterrupt()){
+          abort =1;
+          break;
+        }
       }
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op_global.abort = 1;
   } else {
