@@ -2147,14 +2147,17 @@ extern "C" void par_indLin(rx_solve *rx){
   // It was buggy due to Rprint.  Use REprint instead since Rprint calls the interrupt every so often....
   int abort = 0;
   // FIXME parallel
+  uint32_t seed0 = getRxSeed1(cores);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
     if (abort == 0){
+      setSeedEng1(seed0 + solveid - 1 );
       ind_indLin(rx, solveid, update_inis, ME, IndF);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
         curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
       }
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op->abort = 1;
     /* yp0 = NULL; */
@@ -2932,8 +2935,10 @@ void par_dop(rx_solve *rx){
 
   int curTick = 0;
   int abort = 0;
+  uint32_t seed0 = getRxSeed1(cores);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
     if (abort == 0){
+      setSeedEng1(seed0 + solveid - 1 );
       ind_dop0(rx, &op_global, solveid, neq, dydt, update_inis);
       if (displayProgress && abort == 0){
         if (checkInterrupt()) abort =1;
@@ -2941,6 +2946,7 @@ void par_dop(rx_solve *rx){
       if (displayProgress) curTick = par_progress(solveid, nsim*nsub, curTick, 1, t0, 0);
     }
   }
+  setRxSeedFinal(seed0 + nsim*nsub);
   if (abort == 1){
     op->abort = 1;
   } else {
