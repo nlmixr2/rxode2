@@ -36,6 +36,11 @@
   will also change. This is a more conservative protection mechanism
   than was applied previously.
 
+- Random numbers from `rxode2` are different when using `dop853`,
+  `lsoda` or `indLin` methods.  These now seed the random numbers in
+  the same way as `liblsoda`, so the random number provided will be
+  the same with different solving methods.
+
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
