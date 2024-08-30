@@ -2714,7 +2714,7 @@ extern "C" void par_lsoda(rx_solve *rx){
   uint32_t seed0 = getRxSeed1(1);
   for (int solveid = 0; solveid < nsim*nsub; solveid++){
     if (abort == 0){
-      setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
+      setSeedEng1(seed0 + solveid - 1 );
       ind_lsoda0(rx, &op_global, solveid, neq, rwork, lrw, iwork, liw, jt,
                  dydt_lsoda_dum, update_inis, jdum_lsoda);
       if (displayProgress){ // Can only abort if it is long enough to display progress.
