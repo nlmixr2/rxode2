@@ -212,8 +212,8 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
             }
           }
         } else {
-          errorStrAssign(v);
-          return 0;
+          /* errorStrAssign(v); */
+          /* return 0; */
         }
       } else if (tb.lh[tb.ix] == notLHS){
         tb.lh[tb.ix] = isLHSparam;
