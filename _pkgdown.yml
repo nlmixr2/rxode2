@@ -33,25 +33,32 @@ reference:
   - rxCbindStudyIndividual
 - title: Functions for working with nlmixr2/rxode2 functions
   contents:
-  - model
-  - modelExtract
-  - ini
-  - zeroRe
+  - as.ini
+  - as.model
+  - as.rxUi
+  - assertCompartmentExists
+  - assertCompartmentName
+  - assertCompartmentNew
   - assertRxUi
+  - assertVariableExists
+  - assertVariableNew
+  - ini
+  - ini<-
+  - model
+  - model<-
+  - modelExtract
   - rxAppendModel
   - rxFixPop
   - rxRename
-  - update.rxUi
-  - as.rxUi
-  - ini<-
-  - model<-
-  - rxode2<-
   - rxSetCovariateNamesForPiping
   - rxSetPipingAuto
-  - rxUiDecompress
   - rxUiCompress
-  - as.ini
-  - as.model
+  - rxUiDecompress
+  - rxode2<-
+  - testRxLinCmt
+  - testRxUnbounded
+  - update.rxUi
+  - zeroRe
 - title: ggplot2/plot support functions
   contents:
   - stat_cens
@@ -164,6 +171,7 @@ reference:
   - .rxLinCmtGen
   - .rxWithOptions
   - .rxWithWd
+  - .rxode2ptrs
   - .toClassicEvid
   - .vecDf
   - invWR1d
