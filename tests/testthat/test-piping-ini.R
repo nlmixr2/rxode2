@@ -276,6 +276,7 @@ if (!.Call(`_rxode2_isIntel`)) {
 
   test_that(".iniAddCovarianceBetweenTwoEtaValues", {
     # Promote a covariate to a correlated eta
+
     mod <- function() {
       ini({
         a <- 1
@@ -292,12 +293,27 @@ if (!.Call(`_rxode2_isIntel`)) {
         b ~ add(addSd)
       })
     }
+
     suppressMessages(
       expect_message(
         ini(mod, d + e ~ c(1, 0.5, 3)),
         regexp = "promote `e` to between subject variability"
       )
     )
+
+    suppressMessages(
+      expect_message(
+        ini(mod, d ~ 1,  e ~ c(0.5, 3)),
+        regexp = "promote `e` to between subject variability"
+      )
+    )
+
+    suppressMessages(
+      expect_message(
+        ini(mod, {
+          d ~ 1
+          e ~ c(0.5, 3)})
+      ))
 
     # Non-existent correlated eta
     suppressMessages(
@@ -306,6 +322,15 @@ if (!.Call(`_rxode2_isIntel`)) {
         regexp = "cannot find parameter 'g'"
       )
     )
+
+    suppressMessages(
+      expect_error(
+        ini(mod, d ~ 1, g ~ c(0.5, 3)),
+        regexp = "cannot find parameter 'g'"
+      )
+    )
+
+
     # Update eta order
     suppressMessages(
       expect_equal(
@@ -313,6 +338,14 @@ if (!.Call(`_rxode2_isIntel`)) {
         c("a", "b", "c", "addSd", "h", "d", "(h,d)")
       )
     )
+
+    suppressMessages(
+      expect_equal(
+        ini(mod, h ~ 1,  d ~ c(0.5, 3))$iniDf$name,
+        c("a", "b", "c", "addSd", "h", "d", "(h,d)")
+      )
+    )
+
   })
 
   test_that(".iniHandleLabel", {

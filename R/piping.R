@@ -235,8 +235,69 @@
   .expandedForm
 }
 
-.nsEnv <- new.env(parent=emptyenv())
+#' This function collapses the lotri line form to the plus form
+#'
+#' @param expressionList Expression list that is input to change into
+#'   matrix expression form the new line expressions to the classic
+#'   plus expressions.
+#' @return expression list where lotri line for covariance matrices
+#'   are translated to classic plus form.
+#' @author Matthew L. Fidler
+#' @noRd
+#' @examples
+#'
+#' tmp <- list(str2lang("d ~ 1"),
+#'             str2lang("e ~ c(0.5, 3)"))
+#'
+#' .collapseLotriLineFormToPlusForm(tmp)
+.collapseLotriLineFormToPlusForm <- function(expressionList) {
+  .env <- new.env(parent=emptyenv())
+  .env$ret <- expressionList
+  .env$lst <- list()
+  .env$last <- NA_integer_
 
+  .f <- function() {
+    if (!is.na(.env$last)) {
+      .val <- as.call(c(list(quote(`{`)), .env$lst))
+      .val <- as.call(c(str2lang("lotri::lotri"), .val))
+      .val <- eval(.val)
+      .val <- lotri::lotriAsExpression(.val, plusNames=TRUE)
+      .val <- lapply(seq_along(.val)[-1],
+                     function(i){
+                       .val[[i]]
+                     })[[1]]
+      .val <- lapply(seq_along(.val)[-1],
+                     function(i){
+                       .val[[i]]
+                     })
+      for (.j in seq_along(.val)) {
+        .env$ret[[.env$last + .j - 1L]] <- .val[[.j]]
+      }
+      .env$lst <- list()
+      .env$last <- NA_integer_
+    }
+  }
+  for (.i in seq_along(.env$ret)) {
+    .cur <- .env$ret[[.i]]
+    if (is.call(.cur) && identical(.cur[[1]], quote(`~`)) &&
+          length(.cur) == 3L) {
+      if (is.na(.env$last)) {
+        .env$last <- .i
+      }
+      .env$ret[[.i]] <- NA
+      .env$lst <- c(.env$lst, .cur)
+    } else {
+      .f()
+    }
+  }
+  .f()
+  .w <- which(vapply(seq_along(.env$ret), function(i) {
+    !(length(.env$ret[[i]]) == 1L && is.na(.env$ret[[i]]))
+  }, logical(1), USE.NAMES=FALSE))
+  lapply(.w, function(i) { .env$ret[[i]]})
+}
+
+.nsEnv <- new.env(parent=emptyenv())
 
 .nsEnv$.quoteCallInfoLinesAppend <- NULL
 #' Returns quoted call information
@@ -326,8 +387,7 @@
     }
     .ret[[i]]
   })
-
-  .ret[vapply(seq_along(.ret), function(i) {
+  .collapseLotriLineFormToPlusForm(.ret[vapply(seq_along(.ret), function(i) {
     !is.null(.ret[[i]])
-  }, logical(1), USE.NAMES=FALSE)]
+  }, logical(1), USE.NAMES=FALSE)])
 }
