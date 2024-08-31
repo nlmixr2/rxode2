@@ -710,11 +710,18 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           if (nlhs){
             for (j = 0; j < nlhs; j++){
               if (op->lhs_str[j] == 1) {
-                dfi = INTEGER(VECTOR_ELT(df, jj));
+                // factor; from string
+                IntegerVector cur = VECTOR_ELT(df, jj);
+                CharacterVector curL = cur.attr("levels");
+                dfi = INTEGER(cur);
+                int len = curL.size();
                 if (ISNA(ind->lhs[j])) {
                   dfi[ii] = NA_INTEGER;
                 } else {
                   dfi[ii] = (int)(ind->lhs[j]);
+                  if (dfi[ii] < 1 || dfi[ii] > len) {
+                    dfi[ii] = NA_INTEGER;
+                  }
                 }
                 jj++;
               } else {
