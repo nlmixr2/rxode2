@@ -247,9 +247,13 @@
 #' @examples
 #'
 #' tmp <- list(str2lang("d ~ 1"),
-#'             str2lang("e ~ c(0.5, 3)"))
+#'             str2lang("e ~ c(0.5, 3)"),
+#'             str2lang("cp ~ add(add.sd)"),
+#'             str2lang("cp ~ add(add.sd) + prop(prop.sd)"),
+#'             str2lang("cp ~ + add(add.sd)"))
 #'
 #' .collapseLotriLineFormToPlusForm(tmp)
+#'
 .collapseLotriLineFormToPlusForm <- function(expressionList) {
   .env <- new.env(parent=emptyenv())
   .env$ret <- expressionList
@@ -260,18 +264,24 @@
     if (!is.na(.env$last)) {
       .val <- as.call(c(list(quote(`{`)), .env$lst))
       .val <- as.call(c(str2lang("lotri::lotri"), .val))
-      .val <- eval(.val)
-      .val <- lotri::lotriAsExpression(.val, plusNames=TRUE)
-      .val <- lapply(seq_along(.val)[-1],
-                     function(i){
-                       .val[[i]]
-                     })[[1]]
-      .val <- lapply(seq_along(.val)[-1],
-                     function(i){
-                       .val[[i]]
-                     })
-      for (.j in seq_along(.val)) {
-        .env$ret[[.env$last + .j - 1L]] <- .val[[.j]]
+      .val <- suppressMessages(try(eval(.val), silent=TRUE))
+      if (inherits(.val, "try-error")) {
+        for (.j in seq_along(.env$lst)) {
+          .env$ret[[.env$last + .j - 1L]] <- .env$lst[[.j]]
+        }
+      } else {
+        .val <- lotri::lotriAsExpression(.val, plusNames=TRUE)
+        .val <- lapply(seq_along(.val)[-1],
+                       function(i){
+                         .val[[i]]
+                       })[[1]]
+        .val <- lapply(seq_along(.val)[-1],
+                       function(i){
+                         .val[[i]]
+                       })
+        for (.j in seq_along(.val)) {
+          .env$ret[[.env$last + .j - 1L]] <- .val[[.j]]
+        }
       }
       .env$lst <- list()
       .env$last <- NA_integer_
@@ -280,12 +290,29 @@
   for (.i in seq_along(.env$ret)) {
     .cur <- .env$ret[[.i]]
     if (is.call(.cur) && identical(.cur[[1]], quote(`~`)) &&
-          length(.cur) == 3L) {
-      if (is.na(.env$last)) {
-        .env$last <- .i
+          length(.cur) == 3L &&
+          length(.cur[[2]]) == 1L # excludes ll(cp) ~ 1
+        ) {
+      .isLotri <- TRUE
+      # Check to see if this is an error call
+      if (is.call(.cur[[3]])) {
+        .call <- deparse1(.cur[[3]][[1]])
+        if (.call == "+" &&
+              length(.cur[[3]]) >= 2 &&
+              is.call(.cur[[3]][[2]])) {
+          .call <- deparse1(.cur[[3]][[2]][[1]])
+        }
+        if (.call %in% names(.errDist)) {
+          .isLotri <- FALSE
+        }
       }
-      .env$ret[[.i]] <- NA
-      .env$lst <- c(.env$lst, .cur)
+      if (.isLotri) {
+        if (is.na(.env$last)) {
+          .env$last <- .i
+        }
+        .env$ret[[.i]] <- NA
+        .env$lst <- c(.env$lst, .cur)
+      }
     } else {
       .f()
     }
