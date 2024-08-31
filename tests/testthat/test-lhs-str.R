@@ -86,6 +86,10 @@ f <- function() {
   expect_error(rxode2parse('a <- "matt"; alag(a)<- 2'))
   expect_error(rxode2parse("a <- \"str\"; a(0) <- -kel"))
   expect_error(rxode2parse("a <- \"str\"; a(0) <- 1"))
+  # so that pruned expressions can work
+  expect_error(rxode2parse("a <- \"str\"; a <- 1+5"), NA)
+  expect_error(rxode2parse("a <- \"str\"; a <- -1+5"), NA)
+  expect_error(rxode2parse("a <- \"str\"; a <- +1+5"), NA)
 }
 
 test_that("test lhs string assign rxode2.syntax.allow.ini=TRUE", {
@@ -124,6 +128,47 @@ test_that("lhs solve; tests lhs assign & str equals with lhs", {
   expect_true(all(s$a[s$time >= 10] == ">=10"))
   expect_true(all(s$b[s$time < 10] == 0))
   expect_true(all(s$b[s$time >= 10] == 1))
+})
+
+test_that("out of bounds solve gives NA for factors", {
+
+  rx <- rxode2({
+    if (t < 10) {
+      a <- "<10"
+    } else {
+      a <- ">=10"
+    }
+    a <- 1-3
+    b <- 1
+    if (a == "<10") {
+      b <- 0;
+    }
+  })
+
+  e <- et(1:20)
+
+  s <-rxSolve(rx, e, returnType = "data.frame")
+
+  expect_true(all(is.na(s$a)))
+
+  rx <- rxode2({
+    if (t < 10) {
+      a <- "<10"
+    } else {
+      a <- ">=10"
+    }
+    a <- 1+20
+    b <- 1
+    if (a == "<10") {
+      b <- 0;
+    }
+  })
+
+  s <-rxSolve(rx, e, returnType = "data.frame")
+
+  expect_true(all(is.na(s$a)))
+
+
 })
 
 

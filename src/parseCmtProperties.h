@@ -195,11 +195,11 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
       if (tb.lh[tb.ix] == isLHSstr ||
           tb.lh[tb.ix] == isSuppressedLHSstr) {
         D_ParseNode *xpn = d_get_child(pn, 2);
-        /* Free(v); */
         const char* v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
         double d = 0.0;
         int nd = sscanf(v2, "%lf", &d);
         if (nd == 1) {
+          if (v2[0] == '-') return 1;
           if (round(d) != d) {
             errorStrAssign(v);
             return 0;
@@ -211,9 +211,6 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
               return 0;
             }
           }
-        } else {
-          errorStrAssign(v);
-          return 0;
         }
       } else if (tb.lh[tb.ix] == notLHS){
         tb.lh[tb.ix] = isLHSparam;
