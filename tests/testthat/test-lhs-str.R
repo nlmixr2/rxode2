@@ -88,6 +88,8 @@ f <- function() {
   expect_error(rxode2parse("a <- \"str\"; a(0) <- 1"))
   # so that pruned expressions can work
   expect_error(rxode2parse("a <- \"str\"; a <- 1+5"), NA)
+  expect_error(rxode2parse("a <- \"str\"; a <- -1+5"), NA)
+  expect_error(rxode2parse("a <- \"str\"; a <- +1+5"), NA)
 }
 
 test_that("test lhs string assign rxode2.syntax.allow.ini=TRUE", {
