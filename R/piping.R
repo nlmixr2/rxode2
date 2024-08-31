@@ -202,10 +202,7 @@
         })
       } else if (inherits(.cur, "matrix")) {
         .cur2 <- .cur
-        if (!inherits(.cur, "lotriFix")) {
-          class(.cur2) <- c("lotriFix", class(.cur))
-        }
-        .unlistedBrackets <- as.list(as.expression(.cur2)[[-1]])[-1]
+        .unlistedBrackets <- as.list(lotri::lotriAsExpression(.cur2, plusNames=TRUE)[[-1]])[-1]
       } else if (inherits(.cur, "character") && !is.null(names(.cur))) {
         .unlistedBrackets <- lapply(paste(names(.cur),"=", setNames(.cur, NULL)),
                                     str2lang)
