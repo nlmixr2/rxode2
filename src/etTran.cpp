@@ -1242,7 +1242,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     } else if (lastId != cid) {
       lastId = cid;
     } else if (lastTime > ctime) {
-      if (inEvid[i] != 3 && inEvid[i] != 4) {
+      if (!hasEvid || (inEvid[i] != 3 && inEvid[i] != 4)) {
         isSorted = false; // The prior EVID=3 w/reset a reset time
         // REprintf("\t not sorted");
       } else if (lastTime > ctime) {
