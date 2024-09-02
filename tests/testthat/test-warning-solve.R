@@ -61,6 +61,12 @@ test_that("test warning/solve for out of bounds", {
     dvid(5, 6)
   })
 
+  lst <- qs::qread(p)
+
+  expect_warning(etTrans(lst[[2]], m), NA)
+
+  invisible(do.call(rxSolve, c(list(m), qs::qread(p))))
+
   expect_warning(do.call(rxSolve, c(list(m), qs::qread(p))), NA)
 
 })
