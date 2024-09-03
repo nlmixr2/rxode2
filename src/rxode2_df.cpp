@@ -709,7 +709,8 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           // LHS
           if (nlhs){
             for (j = 0; j < nlhs; j++){
-              if (op->lhs_str[j] == 1) {
+              RObject curR = VECTOR_ELT(df, jj);
+              if (curR.hasAttribute("levels") && op->lhs_str[j] == 1) {
                 // factor; from string
                 IntegerVector cur = VECTOR_ELT(df, jj);
                 CharacterVector curL = cur.attr("levels");
