@@ -909,7 +909,7 @@ test_that("parameters can be promoted from covariate to parameter with bounds (#
   )
 })
 
-test_that("ini(diag) tests", {
+test_that("ini(diag) and ini(-cov()) tests", {
 
   mod2 <- function() {
     ini({
@@ -929,9 +929,44 @@ test_that("ini(diag) tests", {
     })
   }
 
+  tmp <- mod2 %>% ini(-cov(lcl, lvc))
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
+  tmp <- mod2 %>% ini(-cor(lcl, lvc))
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
+  tmp <- mod2 %>% ini(cor(lcl, lvc) <- NULL)
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
+  tmp <- mod2 %>% ini(cor(lcl, lvc) ~ NULL)
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
   # Will reorder
   tmp <- mod2 %>% ini(diag(lcl, lvc))
-
   expect_equal(tmp$omega,
                lotri({
                  lfun ~ 4

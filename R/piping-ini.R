@@ -631,6 +631,13 @@
     expr <- as.call(list(quote(`-`), expr[[2]]))
   }
 
+  # now handle dropping covariances
+  if (.matchesLangTemplate(expr, str2lang("-cov(.name, .name)")) ||
+        .matchesLangTemplate(expr, str2lang("-cor(.name, .name)"))) {
+    .iniHandleRmCov(expr=expr, rxui=rxui)
+    return(invisible())
+  }
+
   # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
   if (.matchesLangTemplate(expr, str2lang("fix(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`fix`)))
@@ -977,6 +984,22 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   .iniDf
 }
 
+.iniHandleRmCov <- function(expr, rxui) {
+  .iniDf <- rxui$iniDf
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  .mat <- lotri::as.lotri(.eta)
+  .v1 <- which(as.character(expr[[2]][[2]])==dimnames(.mat)[[1]])
+  .v2 <- which(as.character(expr[[2]][[3]])==dimnames(.mat)[[1]])
+  .mat[.v1, .v2] <- .mat[.v2, .v1] <- 0
+  .mat <- lotri::rcm(.mat)
+  class(.mat) <- c("lotriFix", class(.mat))
+  .eta <- as.data.frame(.mat)
+  .eta$err <- NA_character_
+  .iniDf <- rbind(.theta, .eta)
+  assign("iniDf", .iniDf, envir=rxui)
+}
+
 .iniHandleDiag <- function(expr, rxui){
   if (is.null(expr)) {
     assign("iniDf", .iniDfRmDiag(rxui$iniDf), envir=rxui)
@@ -996,28 +1019,6 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
            function(i) {
               .f(expr[[i]])
            })
-    ## .mat <- as.matrix(lotri::as.lotri(rxui$iniDf))
-    ## attr(.mat, "lotriEst") <- NULL
-    ## class(.mat) <- NULL
-    ## .tmp <- expand.grid(r=.env$names, c=.env$names)
-    ## .tmp <- .tmp[.tmp$r != .tmp$c,]
-    ## .tmp$r <- paste(.tmp$r)
-    ## .tmp$c <- paste(.tmp$c)
-    ## .tmp$r <- vapply(.tmp$r,
-    ##                  function(x) {
-    ##                    which(x == colnames(.mat))
-    ##                  }, integer(1))
-    ## .tmp$c <- vapply(.tmp$c,
-    ##                  function(x) {
-    ##                    which(x == colnames(.mat))
-    ##                  }, integer(1))
-    ## for (.i in seq_along(.tmp$r)) {
-    ##   .mat[.tmp$r[.i], .tmp$c[.i]] <- 0.0
-    ## }
-    ## .mat <- lotri::rcm(.mat)
-    ## class(.mat) <- c("lotriFix", class(.mat))
-    ## .ini <- as.data.frame(.mat)
-    # remove covariates between the expressions
     assign("iniDf", .iniDfRmDiag(rxui$iniDf, .env$names), envir=rxui)
   }
 }
