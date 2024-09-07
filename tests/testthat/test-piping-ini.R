@@ -948,6 +948,7 @@ test_that("ini(diag) and ini(-cov()) tests", {
                }))
 
   tmp <- mod2 %>% ini(cor(lcl, lvc) <- NULL)
+
   expect_equal(tmp$omega,
                lotri({
                  lvc ~ 3.45

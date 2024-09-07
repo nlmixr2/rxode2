@@ -625,9 +625,12 @@
   # downstream operations
   expr <- .iniSimplifyAssignArrow(expr)
 
-  if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
-    expr <- as.call(list(quote(`-`), expr[[2]]))
-  } else if (.matchesLangTemplate(expr, str2lang(".name ~ NULL"))) {
+  if (.matchesLangTemplate(expr, str2lang(".name <- NULL")) ||
+        .matchesLangTemplate(expr, str2lang(".name ~ NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cov(.name, .name) <- NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cor(.name, .name) <- NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cov(.name, .name) ~ NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cor(.name, .name) ~ NULL"))) {
     expr <- as.call(list(quote(`-`), expr[[2]]))
   }
 

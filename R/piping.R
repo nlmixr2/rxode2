@@ -392,7 +392,7 @@
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
     } else if (identical(.quoted[[1]], quote(`~`))) {
-      if (length(.quoted) == 3L) {
+      if (length(.quoted) == 3L && !is.null(.quoted[[3]])) {
         .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
         if (identical(.quoted[[3]], quote(`fix`)) ||
               identical(.quoted[[3]], quote(`unfix`))) {
