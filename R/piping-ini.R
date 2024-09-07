@@ -1,3 +1,11 @@
+#' Message about fixing or unfixing a parameter
+#'
+#' @param ini this is the iniDf data frame
+#' @param w this indicates the row number of the item that is fixed or
+#'   unfixed
+#' @param fixedValue this is a boolean
+#' @noRd
+#' @author Matthew L. Fidler
 .msgFix<- function(ini, w, fixedValue) {
   lapply(w, function(.w) {
     if (ini$fix[.w] != fixedValue) {
@@ -10,6 +18,18 @@
   })
 }
 
+#' This modifies the iniDf to fix (or unfix) parameters and related
+#' values
+#'
+#' Note that the block of etas will be fixed/unfixed when a single
+#' value is fixed/unfixed
+#'
+#' @param ini iniDf data.frame
+#' @param w which item will be fixed
+#' @param fixedValue should this be fixed `TRUE` or unfixed `FALSE`
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
 .iniModifyFixedForThetaOrEtablock <- function(ini, w, fixedValue) {
   if (rxode2.verbose.pipe) {
     .msgFix(ini, w, fixedValue)
@@ -215,9 +235,9 @@
   rbind(ini,.ini2)
 }
 
-#'  This function handles the lotri process and integrates into current UI
+#' This function handles the lotri process and integrates into current UI
 #'
-#'  This will update the matrix and integrate the initial estimates in the UI
+#' This will update the matrix and integrate the initial estimates in the UI
 #'
 #' @param mat Lotri processed matrix from the piping ini function
 #'
@@ -891,4 +911,83 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   }
   ini(.ret) <- iniDf
   .ret
+}
+
+#' This removes the off-diagonal BSV from a rxode2 model
+#'
+#' @param ui rxode2 ui model
+#'
+#' @param diag character vector of diagonal values to remove
+#'
+#' @return model with off-diagonals removed
+#'
+#' @export
+#'
+#' @author Matthew L. Fidler
+#'
+#' @examples
+#'
+#' one.compartment <- function() {
+#'   ini({
+#'     tka <- log(1.57); label("Ka")
+#'     tcl <- log(2.72); label("Cl")
+#'     tv <- log(31.5); label("V")
+#'     eta.ka ~ c(0.6)
+#'     eta.cl ~ c(0.01, 0.3)
+#'     eta.v ~  c(0.01, 0.01, 0.1)
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka + eta.ka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv + eta.v)
+#'     d/dt(depot) = -ka * depot
+#'     d/dt(center) = ka * depot - cl / v * center
+#'     cp = center / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#'
+.rmDiag <- function(ui, diag=character(0)) {
+  .ui <- rxode2::assertRxUi(ui)
+  .iniDf <- .ui$iniDf
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),,drop=FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),,drop=FALSE]
+  if (length(diag) == 0) {
+    .w <- which(.eta$neta1 == .eta$neta2)
+    .rmNames <- .eta[-.w, "name"]
+    .eta <- .eta[which(.w),, drop=FALSE]
+    .iniDf <- rbind(.theta, .eta)
+    ini(.ui) <- .iniDf
+  } else {
+    .rmNames <- character(0)
+    for (.e in diag) {
+      .w <- which(.eta$name == .e)
+      if (length(.w) == 1L) {
+        .n <- .eta$neta1[.w]
+        .w <- vapply(seq_along(.eta$neta1),
+                     function(i) {
+                       if (.eta$neta1[i] == .eta$neta2[i]) {
+                         TRUE
+                       } else if (.eta$neta1[i] == .n && .eta$neta2[i] != .n) {
+                         FALSE
+                       } else if (.eta$neta2[i] == .n && .eta$neta1[i] != .n) {
+                         FALSE
+                       } else {
+                         TRUE
+                       }
+                     }, logical(1), USE.NAMES = TRUE)
+        .rmNames <- c(.rmNames, .eta$name[!.w])
+        .eta <- .eta[.w,,drop=FALSE]
+      }
+    }
+    .iniDf <- rbind(.theta, .eta)
+    ini(.ui) <- .iniDf
+  }
+  if (rxode2.verbose.pipe) {
+    for (.v in .rmNames) {
+      .minfo(paste0("remove covariance {.code ", .v, "}"))
+    }
+  }
+  .ui
 }
