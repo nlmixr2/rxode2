@@ -502,6 +502,8 @@ The common items you want to do with initial estimates are:
 
 -   Reorder parameters
 
+- Remove covariances between all parameters or a group of parameters
+
 You may wish to create your own functions; we will discuss this too.
 
 
@@ -828,6 +830,49 @@ f8 <- f |>
   ini(tka=backTransform(NULL))
 
 print(f8)
+```
+
+### Removing covariances between between subject varaibilities
+
+There are two approaches to removing covarinaces for between subject
+variabilities: `diag()` and `-cov(var1, var2)`
+
+The `diag()` removes either all covariance elements (with no
+arguments) or any covariance elements included in the argument list:
+
+```{r diagExamples}
+fd <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- c(0, 0.7)
+    eta.ka ~ 0.6
+    eta.v ~ c(0.01, 0.1)
+    eta.cl ~ c(0.01, 0.01, 1)
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl/v * center
+    cp <- center/v
+    cp ~ add(add.sd)
+  })
+}
+
+# If you want to remove all covariances you can use diag() with no
+# arguments
+
+fd %>% ini(diag())
+
+# if you want to remove only covariances with eta.ka  you can use:
+fd %>% ini(diag(eta.ka))
+
+# if you want to remove only the covariances with eta.ka and eta.v you can use:
+fd %>% ini(-cov(eta.ka, eta.v))
+
 ```
 
 ### More granular access of initial conditions
