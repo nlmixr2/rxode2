@@ -448,7 +448,6 @@
     # This likely cannot be reached because all scenarios should be handled
     # above in the input checking.  The line remains in the code defensively.
     stop("Cannot find parameter '", append, "'", call.=FALSE) # nocov
-
   } else if (appendClean == wLhs) {
     warning("parameter '", lhs, "' set to be moved after itself, no change in order made",
             call. = FALSE)
@@ -608,6 +607,17 @@
 #' @keywords internal
 #' @export
 .iniHandleLine <- function(expr, rxui, envir=parent.frame(), append = NULL) {
+  if (.matchesLangTemplate(expr, str2lang("~diag()"))) {
+    .iniHandleDiag(expr=NULL, rxui=rxui)
+    return(invisible())
+  } else if (length(expr) == 2L &&
+               identical(expr[[1]], quote(`~`)) &&
+               is.call(expr[[2]]) && length(expr[[2]]) >= 2L &&
+               identical(expr[[2]][[1]], quote(`diag`))) {
+    # .matchesLangTemplate(expr, str2lang("~diag(.)")) doesn't work
+    .iniHandleDiag(expr=expr, rxui=rxui)
+    return(invisible())
+  }
   # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
   # UNFIXED to fix and unfix to simplify all downstream operations
   expr <- .iniSimplifyFixUnfix(expr)
@@ -627,7 +637,6 @@
   } else if (.matchesLangTemplate(expr, str2lang("unfix(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
   }
-
   if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
   } else if (.matchesLangTemplate(expr, str2lang(".name <- backTransform(.)"))) {
@@ -913,52 +922,24 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   .ret
 }
 
-#' This removes the off-diagonal BSV from a rxode2 model
+#' This removes the off-diagonal BSV from a rxode2 iniDf
 #'
 #' @param ui rxode2 ui model
 #'
 #' @param diag character vector of diagonal values to remove
 #'
-#' @return model with off-diagonals removed
-#'
-#' @export
-#'
+#' @return iniDf with modified diagonal
+#' @noRd
 #' @author Matthew L. Fidler
-#'
-#' @examples
-#'
-#' one.compartment <- function() {
-#'   ini({
-#'     tka <- log(1.57); label("Ka")
-#'     tcl <- log(2.72); label("Cl")
-#'     tv <- log(31.5); label("V")
-#'     eta.ka ~ c(0.6)
-#'     eta.cl ~ c(0.01, 0.3)
-#'     eta.v ~  c(0.01, 0.01, 0.1)
-#'     add.sd <- 0.7
-#'   })
-#'   model({
-#'     ka <- exp(tka + eta.ka)
-#'     cl <- exp(tcl + eta.cl)
-#'     v <- exp(tv + eta.v)
-#'     d/dt(depot) = -ka * depot
-#'     d/dt(center) = ka * depot - cl / v * center
-#'     cp = center / v
-#'     cp ~ add(add.sd)
-#'   })
-#' }
-#'
-.rmDiag <- function(ui, diag=character(0)) {
-  .ui <- rxode2::assertRxUi(ui)
-  .iniDf <- .ui$iniDf
+.iniDfRmDiag <- function(iniDf, diag=character(0)) {
+  .iniDf <- iniDf
   .theta <- .iniDf[!is.na(.iniDf$ntheta),,drop=FALSE]
   .eta <- .iniDf[is.na(.iniDf$ntheta),,drop=FALSE]
   if (length(diag) == 0) {
     .w <- which(.eta$neta1 == .eta$neta2)
     .rmNames <- .eta[-.w, "name"]
-    .eta <- .eta[which(.w),, drop=FALSE]
+    .eta <- .eta[.w,, drop=FALSE]
     .iniDf <- rbind(.theta, .eta)
-    ini(.ui) <- .iniDf
   } else {
     .rmNames <- character(0)
     for (.e in diag) {
@@ -981,13 +962,62 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
         .eta <- .eta[.w,,drop=FALSE]
       }
     }
+    .mat <- lotri::as.lotri(.eta)
+    .mat <- lotri::rcm(.mat)
+    class(.mat) <- c("lotriFix", class(.mat))
+    .eta <- as.data.frame(.mat)
+    .eta$err <- NA_character_
     .iniDf <- rbind(.theta, .eta)
-    ini(.ui) <- .iniDf
   }
   if (rxode2.verbose.pipe) {
     for (.v in .rmNames) {
       .minfo(paste0("remove covariance {.code ", .v, "}"))
     }
   }
-  .ui
+  .iniDf
+}
+
+.iniHandleDiag <- function(expr, rxui){
+  if (is.null(expr)) {
+    assign("iniDf", .iniDfRmDiag(rxui$iniDf), envir=rxui)
+  } else {
+    # now get the variables in the diag expression
+    .env <- new.env(parent=emptyenv())
+    .env$names <- character(0)
+    .f <- function(x) {
+      if (is.name(x)) {
+        .env$names <- c(.env$names, as.character(x))
+      } else if (is.call(x)) {
+        lapply(lapply(seq_along(x)[-1], function(i) {x[[i]]}), .f)
+      }
+    }
+    expr <- expr[[2]]
+    lapply(seq_along(expr)[-1],
+           function(i) {
+              .f(expr[[i]])
+           })
+    ## .mat <- as.matrix(lotri::as.lotri(rxui$iniDf))
+    ## attr(.mat, "lotriEst") <- NULL
+    ## class(.mat) <- NULL
+    ## .tmp <- expand.grid(r=.env$names, c=.env$names)
+    ## .tmp <- .tmp[.tmp$r != .tmp$c,]
+    ## .tmp$r <- paste(.tmp$r)
+    ## .tmp$c <- paste(.tmp$c)
+    ## .tmp$r <- vapply(.tmp$r,
+    ##                  function(x) {
+    ##                    which(x == colnames(.mat))
+    ##                  }, integer(1))
+    ## .tmp$c <- vapply(.tmp$c,
+    ##                  function(x) {
+    ##                    which(x == colnames(.mat))
+    ##                  }, integer(1))
+    ## for (.i in seq_along(.tmp$r)) {
+    ##   .mat[.tmp$r[.i], .tmp$c[.i]] <- 0.0
+    ## }
+    ## .mat <- lotri::rcm(.mat)
+    ## class(.mat) <- c("lotriFix", class(.mat))
+    ## .ini <- as.data.frame(.mat)
+    # remove covariates between the expressions
+    assign("iniDf", .iniDfRmDiag(rxui$iniDf, .env$names), envir=rxui)
+  }
 }
