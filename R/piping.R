@@ -374,8 +374,17 @@
       warning("empty argument ignored")
       return(NULL)
     } else if (length(.quoted) == 1) {
-      .bracket[i] <- TRUE
-      assign(".bracket", .bracket, envir=.env)
+      if (identical(.quoted, quote(`diag`))) {
+        .quoted <- str2lang("~diag()")
+      } else {
+        .bracket[i] <- TRUE
+        assign(".bracket", .bracket, envir=.env)
+      }
+    } else if (length(.quoted) >= 1 &&
+                 identical(.quoted[[1]], quote(`diag`))) {
+      .quoted <- as.call(c(list(quote(`~`)), .quoted))
+    } else if (identical(.quoted[[1]], quote(`diag`))) {
+
     } else if (identical(.quoted[[1]], quote(`{`)) ||
           identical(.quoted[[1]], quote(`c`)) ||
           identical(.quoted[[1]], quote(`list`))) {
@@ -384,7 +393,7 @@
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
     } else if (identical(.quoted[[1]], quote(`~`))) {
-      if (length(.quoted) == 3L) {
+      if (length(.quoted) == 3L && !is.null(.quoted[[3]])) {
         .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
         if (identical(.quoted[[3]], quote(`fix`)) ||
               identical(.quoted[[3]], quote(`unfix`))) {

@@ -908,3 +908,131 @@ test_that("parameters can be promoted from covariate to parameter with bounds (#
     fixed = TRUE
   )
 })
+
+test_that("ini(diag) and ini(-cov()) tests", {
+
+  mod2 <- function() {
+    ini({
+      lka ~ 0.45
+      lcl ~ c(0.01, 1)
+      lvc ~ c(-0.01, 0.01, 3.45)
+      lfun ~ c(-0.1, 0.1, 0.01, 4)
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc + lfun
+    })
+  }
+
+  expect_error(
+    mod2 %>% ini(diag(lcl, matt)),
+    "matt"
+  )
+
+  expect_error(
+    mod2 %>% ini(diag(matt, lcl)),
+    "matt"
+  )
+
+  tmp <- mod2 %>% ini(-cov(lcl, lvc))
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
+  tmp <- mod2 %>% ini(-cor(lcl, lvc))
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
+  tmp <- mod2 %>% ini(cor(lcl, lvc) <- NULL)
+
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
+  tmp <- mod2 %>% ini(cor(lcl, lvc) ~ NULL)
+  expect_equal(tmp$omega,
+               lotri({
+                 lvc ~ 3.45
+                 lfun ~ c(0.01, 4)
+                 lka ~ c(-0.01, -0.1, 0.45)
+                 lcl ~ c(0, 0.1, 0.01, 1)
+               }))
+
+  expect_error(mod2 %>% ini(diag(matt)),
+               "matt")
+
+  # Will reorder
+  tmp <- mod2 %>% ini(diag(lcl, lvc))
+  expect_equal(tmp$omega,
+               lotri({
+                 lfun ~ 4
+                 lka ~ c(-0.1, 0.45)
+                 lvc ~ 3.45
+                 lcl ~ 1
+               }))
+
+  tmp <- mod2 %>% ini(diag)
+  expect_equal(tmp$omega,
+               lotri({
+                 lka ~ 0.45
+                 lcl ~ 1
+                 lvc ~ 3.45
+                 lfun ~ 4
+               }))
+
+  tmp <- mod2 %>% ini(diag(lvc))
+
+  expect_equal(tmp$omega,
+               lotri({
+                 lfun ~ 4
+                 lcl ~ c(0.1, 1)
+                 lka ~ c(-0.1, 0.01, 0.45)
+                 lvc ~ 3.45
+               }))
+
+  mod <- function() {
+    ini({
+      lka ~ 0.45
+      lcl ~ c(0.01, 1)
+      lvc ~ c(-0.01, 0.01, 3.45)
+    })
+    model({
+      ka <- exp(lka)
+      cl <- exp(lcl)
+      vc  <- exp(lvc)
+      kel <- cl / vc
+      d/dt(depot) <- -ka*depot
+      d/dt(central) <- ka*depot-kel*central
+      cp <- central / vc
+    })
+  }
+
+
+  tmp <- mod %>% ini(diag)
+
+  expect_equal(tmp$omega,
+               lotri({
+                 lka ~ 0.45
+                 lcl ~ 1
+                 lvc ~ 3.45
+               }))
+
+})

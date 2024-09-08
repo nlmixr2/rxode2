@@ -49,6 +49,15 @@
 
 ## New features
 
+- You can remove covariances for every omega by piping with `%>%
+  ini(diag())` you can be a bit more granular by removing all
+  covariances that have either `eta.ka` or `eta.cl` by: `%>%
+  ini(diag(eta.ka, eta.cl))` or anything with correlations with
+  `eta.cl` with `%>% ini(diag(eta.cl))`
+
+- You can also remove individual covariances by `%>% ini(-cov(a, b))`
+  or `%>% ini(-cor(a,b))`.
+
 - You can specify the type of interpolation applied for added dosing
   records (or other added records) for columns that are kept with the
   `keep=` option in `rxSolve()`. This new option is

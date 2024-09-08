@@ -1,3 +1,11 @@
+#' Message about fixing or unfixing a parameter
+#'
+#' @param ini this is the iniDf data frame
+#' @param w this indicates the row number of the item that is fixed or
+#'   unfixed
+#' @param fixedValue this is a boolean
+#' @noRd
+#' @author Matthew L. Fidler
 .msgFix<- function(ini, w, fixedValue) {
   lapply(w, function(.w) {
     if (ini$fix[.w] != fixedValue) {
@@ -10,6 +18,18 @@
   })
 }
 
+#' This modifies the iniDf to fix (or unfix) parameters and related
+#' values
+#'
+#' Note that the block of etas will be fixed/unfixed when a single
+#' value is fixed/unfixed
+#'
+#' @param ini iniDf data.frame
+#' @param w which item will be fixed
+#' @param fixedValue should this be fixed `TRUE` or unfixed `FALSE`
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
 .iniModifyFixedForThetaOrEtablock <- function(ini, w, fixedValue) {
   if (rxode2.verbose.pipe) {
     .msgFix(ini, w, fixedValue)
@@ -215,9 +235,9 @@
   rbind(ini,.ini2)
 }
 
-#'  This function handles the lotri process and integrates into current UI
+#' This function handles the lotri process and integrates into current UI
 #'
-#'  This will update the matrix and integrate the initial estimates in the UI
+#' This will update the matrix and integrate the initial estimates in the UI
 #'
 #' @param mat Lotri processed matrix from the piping ini function
 #'
@@ -428,7 +448,6 @@
     # This likely cannot be reached because all scenarios should be handled
     # above in the input checking.  The line remains in the code defensively.
     stop("Cannot find parameter '", append, "'", call.=FALSE) # nocov
-
   } else if (appendClean == wLhs) {
     warning("parameter '", lhs, "' set to be moved after itself, no change in order made",
             call. = FALSE)
@@ -588,6 +607,17 @@
 #' @keywords internal
 #' @export
 .iniHandleLine <- function(expr, rxui, envir=parent.frame(), append = NULL) {
+  if (.matchesLangTemplate(expr, str2lang("~diag()"))) {
+    .iniHandleDiag(expr=NULL, rxui=rxui)
+    return(invisible())
+  } else if (length(expr) == 2L &&
+               identical(expr[[1]], quote(`~`)) &&
+               is.call(expr[[2]]) && length(expr[[2]]) >= 2L &&
+               identical(expr[[2]][[1]], quote(`diag`))) {
+    # .matchesLangTemplate(expr, str2lang("~diag(.)")) doesn't work
+    .iniHandleDiag(expr=expr, rxui=rxui)
+    return(invisible())
+  }
   # Convert all variations on fix, fixed, FIX, FIXED; unfix, unfixed, UNFIX,
   # UNFIXED to fix and unfix to simplify all downstream operations
   expr <- .iniSimplifyFixUnfix(expr)
@@ -595,10 +625,20 @@
   # downstream operations
   expr <- .iniSimplifyAssignArrow(expr)
 
-  if (.matchesLangTemplate(expr, str2lang(".name <- NULL"))) {
+  if (.matchesLangTemplate(expr, str2lang(".name <- NULL")) ||
+        .matchesLangTemplate(expr, str2lang(".name ~ NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cov(.name, .name) <- NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cor(.name, .name) <- NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cov(.name, .name) ~ NULL")) ||
+        .matchesLangTemplate(expr, str2lang("cor(.name, .name) ~ NULL"))) {
     expr <- as.call(list(quote(`-`), expr[[2]]))
-  } else if (.matchesLangTemplate(expr, str2lang(".name ~ NULL"))) {
-    expr <- as.call(list(quote(`-`), expr[[2]]))
+  }
+
+  # now handle dropping covariances
+  if (.matchesLangTemplate(expr, str2lang("-cov(.name, .name)")) ||
+        .matchesLangTemplate(expr, str2lang("-cor(.name, .name)"))) {
+    .iniHandleRmCov(expr=expr, rxui=rxui)
+    return(invisible())
   }
 
   # Convert fix(name) or unfix(name) to name <- fix or name <- unfix
@@ -607,7 +647,6 @@
   } else if (.matchesLangTemplate(expr, str2lang("unfix(.name)"))) {
     expr <- as.call(list(quote(`<-`), expr[[2]], quote(`unfix`)))
   }
-
   if (.matchesLangTemplate(expr, str2lang(".name <- label(.)"))) {
     .iniHandleLabel(expr=expr, rxui=rxui, envir=envir)
   } else if (.matchesLangTemplate(expr, str2lang(".name <- backTransform(.)"))) {
@@ -891,4 +930,112 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   }
   ini(.ret) <- iniDf
   .ret
+}
+
+#' This removes the off-diagonal BSV from a rxode2 iniDf
+#'
+#' @param ui rxode2 ui model
+#'
+#' @param diag character vector of diagonal values to remove
+#'
+#' @return iniDf with modified diagonal
+#' @noRd
+#' @author Matthew L. Fidler
+.iniDfRmDiag <- function(iniDf, diag=character(0)) {
+  .iniDf <- iniDf
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),,drop=FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),,drop=FALSE]
+  if (length(diag) == 0) {
+    .w <- which(.eta$neta1 == .eta$neta2)
+    .rmNames <- .eta[-.w, "name"]
+    .eta <- .eta[.w,, drop=FALSE]
+    .iniDf <- rbind(.theta, .eta)
+  } else {
+    .rmNames <- character(0)
+    for (.e in diag) {
+      .w <- which(.eta$name == .e)
+      if (length(.w) == 1L) {
+        .n <- .eta$neta1[.w]
+        .w <- vapply(seq_along(.eta$neta1),
+                     function(i) {
+                       if (.eta$neta1[i] == .eta$neta2[i]) {
+                         TRUE
+                       } else if (.eta$neta1[i] == .n && .eta$neta2[i] != .n) {
+                         FALSE
+                       } else if (.eta$neta2[i] == .n && .eta$neta1[i] != .n) {
+                         FALSE
+                       } else {
+                         TRUE
+                       }
+                     }, logical(1), USE.NAMES = TRUE)
+        .rmNames <- c(.rmNames, .eta$name[!.w])
+        .eta <- .eta[.w,,drop=FALSE]
+      } else {
+        stop("cannot find parameter '", .e, "' for covariance removal", call.=FALSE)
+      }
+    }
+    .mat <- lotri::as.lotri(.eta)
+    .mat <- lotri::rcm(.mat)
+    class(.mat) <- c("lotriFix", class(.mat))
+    .eta <- as.data.frame(.mat)
+    .eta$err <- NA_character_
+    .iniDf <- rbind(.theta, .eta)
+  }
+  if (rxode2.verbose.pipe) {
+    for (.v in .rmNames) {
+      .minfo(paste0("remove covariance {.code ", .v, "}"))
+    }
+  }
+  .iniDf
+}
+
+.iniHandleRmCov <- function(expr, rxui) {
+  .iniDf <- rxui$iniDf
+  .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
+  .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
+  .mat <- lotri::as.lotri(.eta)
+  .n1 <- as.character(expr[[2]][[2]])
+  .v1 <- which(.n1==dimnames(.mat)[[1]])
+  if (length(.v1) != 1) {
+    stop("cannot find parameter '", .n1, "' for covariance removal", call.=FALSE)
+  }
+  .n2 <- as.character(expr[[2]][[3]])
+  .v2 <- which(.n2==dimnames(.mat)[[1]])
+  if (length(.v2) != 1) {
+    stop("cannot find parameter '", .n2, "' for covariance removal", call.=FALSE)
+  }
+  if (rxode2.verbose.pipe) {
+    .minfo(paste0("remove covariance {.code (", .n1, ", ", .n2, ")}"))
+  }
+
+  .mat[.v1, .v2] <- .mat[.v2, .v1] <- 0
+  .mat <- lotri::rcm(.mat)
+  class(.mat) <- c("lotriFix", class(.mat))
+  .eta <- as.data.frame(.mat)
+  .eta$err <- NA_character_
+  .iniDf <- rbind(.theta, .eta)
+  assign("iniDf", .iniDf, envir=rxui)
+}
+
+.iniHandleDiag <- function(expr, rxui){
+  if (is.null(expr)) {
+    assign("iniDf", .iniDfRmDiag(rxui$iniDf), envir=rxui)
+  } else {
+    # now get the variables in the diag expression
+    .env <- new.env(parent=emptyenv())
+    .env$names <- character(0)
+    .f <- function(x) {
+      if (is.name(x)) {
+        .env$names <- c(.env$names, as.character(x))
+      } else if (is.call(x)) {
+        lapply(lapply(seq_along(x)[-1], function(i) {x[[i]]}), .f)
+      }
+    }
+    expr <- expr[[2]]
+    lapply(seq_along(expr)[-1],
+           function(i) {
+              .f(expr[[i]])
+           })
+    assign("iniDf", .iniDfRmDiag(rxui$iniDf, .env$names), envir=rxui)
+  }
 }
