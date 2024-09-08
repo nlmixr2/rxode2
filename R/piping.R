@@ -374,7 +374,8 @@
       warning("empty argument ignored")
       return(NULL)
     } else if (length(.quoted) == 1) {
-      if (identical(.quoted, quote(`diag`))) {
+      if (identical(.quoted, quote(`diag`)) ||
+            (is.call(.quoted) && identical(.quoted[[1]], quote(`diag`)))) {
         .quoted <- str2lang("~diag()")
       } else {
         .bracket[i] <- TRUE

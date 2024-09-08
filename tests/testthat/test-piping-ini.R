@@ -1035,4 +1035,13 @@ test_that("ini(diag) and ini(-cov()) tests", {
                  lvc ~ 3.45
                }))
 
+  tmp <- mod %>% ini(diag())
+
+  expect_equal(tmp$omega,
+               lotri({
+                 lka ~ 0.45
+                 lcl ~ 1
+                 lvc ~ 3.45
+               }))
+
 })
