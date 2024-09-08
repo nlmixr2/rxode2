@@ -373,15 +373,16 @@
       # Capture empty arguments (rxode2#688)
       warning("empty argument ignored")
       return(NULL)
-    } else if (is.symbol(.quoted) &&
-                 identical(.quoted, quote(`diag`))) {
-      .quoted <- str2lang("~diag()")
+    } else if (length(.quoted) == 1) {
+      if (identical(.quoted, quote(`diag`))) {
+        .quoted <- str2lang("~diag()")
+      } else {
+        .bracket[i] <- TRUE
+        assign(".bracket", .bracket, envir=.env)
+      }
     } else if (length(.quoted) >= 1 &&
                  identical(.quoted[[1]], quote(`diag`))) {
       .quoted <- as.call(c(list(quote(`~`)), .quoted))
-    } else if (length(.quoted) == 1) {
-      .bracket[i] <- TRUE
-      assign(".bracket", .bracket, envir=.env)
     } else if (identical(.quoted[[1]], quote(`diag`))) {
 
     } else if (identical(.quoted[[1]], quote(`{`)) ||
