@@ -929,6 +929,16 @@ test_that("ini(diag) and ini(-cov()) tests", {
     })
   }
 
+  expect_error(
+    mod2 %>% ini(diag(lcl, matt)),
+    "matt"
+  )
+
+  expect_error(
+    mod2 %>% ini(diag(matt, lcl)),
+    "matt"
+  )
+
   tmp <- mod2 %>% ini(-cov(lcl, lvc))
   expect_equal(tmp$omega,
                lotri({
@@ -965,6 +975,9 @@ test_that("ini(diag) and ini(-cov()) tests", {
                  lka ~ c(-0.01, -0.1, 0.45)
                  lcl ~ c(0, 0.1, 0.01, 1)
                }))
+
+  expect_error(mod2 %>% ini(diag(matt)),
+               "matt")
 
   # Will reorder
   tmp <- mod2 %>% ini(diag(lcl, lvc))

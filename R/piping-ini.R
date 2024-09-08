@@ -970,6 +970,8 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
                      }, logical(1), USE.NAMES = TRUE)
         .rmNames <- c(.rmNames, .eta$name[!.w])
         .eta <- .eta[.w,,drop=FALSE]
+      } else {
+        stop("cannot find parameter '", .e, "' for covariance removal", call.=FALSE)
       }
     }
     .mat <- lotri::as.lotri(.eta)
@@ -992,8 +994,20 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   .theta <- .iniDf[!is.na(.iniDf$ntheta),, drop = FALSE]
   .eta <- .iniDf[is.na(.iniDf$ntheta),, drop = FALSE]
   .mat <- lotri::as.lotri(.eta)
-  .v1 <- which(as.character(expr[[2]][[2]])==dimnames(.mat)[[1]])
-  .v2 <- which(as.character(expr[[2]][[3]])==dimnames(.mat)[[1]])
+  .n1 <- as.character(expr[[2]][[2]])
+  .v1 <- which(.n1==dimnames(.mat)[[1]])
+  if (length(.v1) != 1) {
+    stop("cannot find parameter '", .n1, "' for covariance removal", call.=FALSE)
+  }
+  .n2 <- as.character(expr[[2]][[3]])
+  .v2 <- which(.n2==dimnames(.mat)[[1]])
+  if (length(.v2) != 1) {
+    stop("cannot find parameter '", .n2, "' for covariance removal", call.=FALSE)
+  }
+  if (rxode2.verbose.pipe) {
+    .minfo(paste0("remove covariance {.code (", .n1, ", ", .n2, ")}"))
+  }
+
   .mat[.v1, .v2] <- .mat[.v2, .v1] <- 0
   .mat <- lotri::rcm(.mat)
   class(.mat) <- c("lotriFix", class(.mat))
