@@ -177,10 +177,12 @@
 #' label("Typical Value of Clearance (L/hr)")}.
 #'
 #' Off diagonal values of 'omega' can be set to zero using the
-#' \code{diag()} or \code{diag(iivKa, iivCL)} for example removing all
-#' off-diagonals can be removed with `ini(diag())`, or the off
-#' diagonals between clearance and ka could be removed by
-#' \code{ini(diag(iivKa, iivCL)}.
+#' \code{diag()} to remove all off-diagonals can be removed with
+#' `ini(diag())`.  To remove covariances of 'omega' item with `iivKa`,
+#' you can use `%>% ini(diag(iivKa))`.  Or to remove covariances that
+#' contain either `iivKa` or `iivCl` you can use `%>% ini(diag(iivKa,
+#' iivCl))`.  For finer control you can remove the covariance between
+#' two items (like `iivKa` and `iivCl`) by `%>% ini(-cov(iivKa, iivCl))
 #'
 #' \code{rxode2}/\code{nlmixr2} will attempt to determine some
 #' back-transformations for the user.  For example, \code{CL <- exp(tvCL)} will
