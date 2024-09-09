@@ -272,6 +272,7 @@ typedef struct {
   int hasEvid2;
   int useStdPow;
   bool ss2cancelAllPending;
+  int npars;
 } rx_solve;
 
 

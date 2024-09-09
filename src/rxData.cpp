@@ -2877,7 +2877,6 @@ struct rxSolve_t {
   int parType = 1;
   int nPopPar = 1;
   CharacterVector nmP;
-  int npars;
   NumericVector mvIni;
   int nsvar;
   bool idFactor;
@@ -3706,7 +3705,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     //
     bool isLinearOrMidpointInterp = op->is_locf == 0 || op->is_locf == 3;
     for (i = dfN; i--;){
-      for (j = rxSolveDat->npars; j--;){
+      for (j = rx->npars; j--;){
         if (pars[j] == dfNames[i]){
           _globals.gpar_cov[ncov] = j+1;
           // We minus 2 here because that way that the covariates
@@ -3905,14 +3904,14 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   if (_globals.gParPos != NULL) free(_globals.gParPos);
-  _globals.gParPos = (int*)calloc(rxSolveDat->npars*2 +
+  _globals.gParPos = (int*)calloc(rx->npars*2 +
                                   rxSolveDat->sigmaN.size() + rxSolveDat->omegaN.size(), sizeof(int));// [npars]
   if (_globals.gParPos == NULL){
     rxSolveFree();
     stop(_("cannot allocate enough memory to sort input parameters"));
   }
-  _globals.gParPos2 =  _globals.gParPos + rxSolveDat->npars; // [npars]
-  _globals.gsvar =  _globals.gParPos2 + rxSolveDat->npars;//[sigmaN.size()]
+  _globals.gParPos2 =  _globals.gParPos + rx->npars; // [npars]
+  _globals.gsvar =  _globals.gParPos2 + rx->npars;//[sigmaN.size()]
   _globals.govar =  _globals.gsvar + rxSolveDat->sigmaN.size(); // [omegaN.size()]
   std::string errStr = "";
   bool allPars = true;
@@ -3927,7 +3926,7 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
   }
   int i, j;
 
-  for (i = rxSolveDat->npars; i--;) {
+  for (i = rx->npars; i--;) {
     curPar = false;
     const char *p0 = CHAR(pars[i]);
     // Check for the omega-style simulated parameters.
@@ -4053,7 +4052,7 @@ static inline void rxSolve_resample(const RObject &obj,
       rx->sample = true;
       if (rx->par_sample != NULL) free(rx->par_sample);
       rx->par_sample = (int*)calloc(pars.size(), sizeof(int));
-      for (int ip = rxSolveDat->npars; ip--;){
+      for (int ip = rx->npars; ip--;){
         for (int is = Rf_length(sampleVars); is--;){
           if (!strcmp(pars[ip],CHAR(STRING_ELT(sampleVars, is)))){
             rx->par_sample[ip] = 1;
@@ -4072,7 +4071,7 @@ static inline void rxSolve_resample(const RObject &obj,
         parListF = clone(parList);
         updatePar = true;
       }
-      int nrow = rxSolveDat->npars;
+      int nrow = rx->npars;
       int ncol = rx->nsub;
       int size = rx->nsub*rx->nsim;
       NumericMatrix iniPars(nrow, ncol,&_globals.gpars[0]);
@@ -4182,7 +4181,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
     }
   case 3: // NumericMatrix
     {
-      gparsCovSetup(rxSolveDat->npars, rxSolveDat->nPopPar, rx->nsub*rx->nsim, ev1, rx);
+      gparsCovSetup(rx->npars, rxSolveDat->nPopPar, rx->nsub*rx->nsim, ev1, rx);
       rxSolve_assignGpars(rxSolveDat);
       rxSolve_resample(obj, rxControl, specParams, extraArgs, pars, ev1,
                        inits, rxSolveDat);
@@ -4216,7 +4215,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind = &(rx->subjects[cid]);
           ind->linCmt = linCmt;
           setupRxInd(ind, 1);
-          ind->par_ptr = &_globals.gpars[cid*rxSolveDat->npars];
+          ind->par_ptr = &_globals.gpars[cid*rx->npars];
           ind->mtime   = &_globals.gmtime[rx->nMtime*cid];
           if (rx->nMtime > 0) ind->mtime[0]=-1;
           ind->BadDose = &_globals.gBadDose[op->neq*cid];
@@ -4579,9 +4578,10 @@ static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
 RObject _curPar;
 static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
   unsigned int i;
+  rx_solve* rx = getRxSolve_();
   for (unsigned int j = 0; j < (unsigned int)rxSolveDat->nPopPar; j++){
-    for (unsigned int k = 0; k < (unsigned int)rxSolveDat->npars; k++){
-      i = k+rxSolveDat->npars*j;
+    for (unsigned int k = 0; k < (unsigned int)rx->npars; k++){
+      i = k+rx->npars*j;
       if (ISNA(_globals.gpars[i])){
         if (_globals.gParPos[k] == 0){
           _globals.gpars[i] = 0;
@@ -4645,8 +4645,8 @@ static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
 //     rxSolveDat->parMat.attr("dimnames") = List::create(R_NilValue, rxSolveDat->parNumeric.attr("names"));
 //   }
 //   RObject ev1=_rxModels[".lastEv1"];
-//   std::fill_n(&_globals.gpars[0], rxSolveDat->npars*rxSolveDat->nPopPar, NA_REAL);
-//   gparsCovSetupConstant(ev1, rxSolveDat->npars);
+//   std::fill_n(&_globals.gpars[0], rx->npars*rxSolveDat->nPopPar, NA_REAL);
+//   gparsCovSetupConstant(ev1, rx->npars);
 //   // Setup a possibly new scale.
 //   RObject scale = rxControl[Rxc_scale];
 //   NumericVector scaleC = rxSetupScale(obj, scale, extraArgs);
@@ -5068,7 +5068,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
     CharacterVector pars = rxSolveDat->mv[RxMv_params];
-    rxSolveDat->npars = pars.size();
+    rx->npars = pars.size();
     rxSolveDat->hasCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasCmt] == 1;
     // Assign Pointers
     rxAssignPtr(rxSolveDat->mv);
@@ -5384,7 +5384,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // The event table can contain covariate information, if it is acutally a data frame or matrix.
     Nullable<CharacterVector> covnames0, simnames0;
     CharacterVector covnames, simnames;
-    rxSolveDat->eGparPos = IntegerVector(rxSolveDat->npars);
+    rxSolveDat->eGparPos = IntegerVector(rx->npars);
     CharacterVector state = rxSolveDat->mv[RxMv_state];
     CharacterVector lhs = rxSolveDat->mv[RxMv_lhs];
     op->neq = state.size();

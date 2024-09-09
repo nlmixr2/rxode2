@@ -1,11 +1,17 @@
 #include "../inst/include/rxode2.h"
 #include "rx2api.h"
 
+rx_solve *getRxSolve_(void);
+
 rx_solving_options* getSolvingOptions(rx_solve* rx) {
   return rx->op;
 }
 
 rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
+  int nall = rx->nsub*rx->nsim;
+  if (id < 0 || id >= nall) {
+    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %d)", id, nall);
+  }
   return &(rx->subjects[id]);
 }
 
@@ -31,10 +37,18 @@ double getIndLogitHi(rx_solving_options_ind* ind) {
 
 
 void setIndParPtr(rx_solving_options_ind* ind, int i, double val) {
+  rx_solve* rx = getRxSolve_();
+  if (i < 0 || i >= rx->npars) {
+    Rf_error("[setIndParPtr]: i (%d) should be between [0, %d) when assigning  %f", i, rx->npars, val);
+  }
   ind->par_ptr[i] = val;
 }
 
 double getIndParPtr(rx_solving_options_ind* ind, int i) {
+  rx_solve* rx = getRxSolve_();
+  if (i < 0 || i >= rx->npars) {
+    Rf_error("[getIndParPtr]: i (%d) should be between [0, %d)", i, rx->npars);
+  }
   return ind->par_ptr[i];
 }
 
@@ -47,10 +61,16 @@ void setIndIdx(rx_solving_options_ind* ind, int j) {
 }
 
 int getIndIx(rx_solving_options_ind* ind, int j) {
+  if (j < 0 || j >= ind->n_all_times) {
+    Rf_error("[getIndIx]: j (%d) should be between [0, %d)", j, ind->n_all_times);
+  }
   return ind->ix[j];
 }
 
 int getIndEvid(rx_solving_options_ind* ind, int kk) {
+  if (kk < 0 || kk >= ind->n_all_times) {
+    Rf_error("[getIndEvid]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
   return ind->evid[kk];
 }
 
@@ -75,6 +95,9 @@ double *getIndSolve(rx_solving_options_ind* ind) {
 }
 
 double getIndDv(rx_solving_options_ind* ind, int j) {
+  if (j < 0 || j >= ind->n_all_times) {
+    Rf_error("[getIndDv]: j (%d) should be between [0, %d)", j, ind->n_all_times);
+  }
   return ind->dv[j];
 }
 
@@ -83,10 +106,16 @@ int getIndYj(rx_solving_options_ind* ind) {
 }
 
 double getIndLimit(rx_solving_options_ind* ind, int kk) {
+  if (kk < 0 || kk >= ind->n_all_times) {
+    Rf_error("[getIndLimit]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
   return ind->limit[kk];
 }
 
 int getIndCens(rx_solving_options_ind* ind, int kk) {
+  if (kk < 0 || kk >= ind->n_all_times) {
+    Rf_error("[getIndCens]: kk (%d) should be between [0, %d)", kk, ind->n_all_times);
+  }
   return ind->cens[kk];
 }
 
