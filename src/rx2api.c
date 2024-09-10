@@ -10,7 +10,7 @@ rx_solving_options* getSolvingOptions(rx_solve* rx) {
 rx_solving_options_ind *getSolvingOptionsInd(rx_solve *rx, int id) {
   int nall = rx->nsub*rx->nsim;
   if (id < 0 || id >= nall) {
-    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %d)", id, nall);
+    Rf_error("[getSolvingOptionsInd]: id (%d) should be between [0, %d); nsub: %d nsim: %d", id, nall, rx->nsub, rx->nsim);
   }
   return &(rx->subjects[id]);
 }
