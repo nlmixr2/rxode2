@@ -386,6 +386,67 @@ gammapInv <- function(a, p) {
 gammapInva <- function(x, p) {
   .Call(`_gammapInva`, x, p, PACKAGE = "rxode2")
 }
+#' rxode2 general transformation function
+#'
+#' @param x value that will be transformed
+#' @param lambda lambda value for the transformation
+#' @param transform transformation to use (can be integer or string
+#'   matching supported transformations)
+#' @param low lower bound for the transformation
+#' @param high upper bound for the transformation
+#' @param inverse boolean if the inverse transformation should be performed
+#' @return transformed value
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @examples
+#'
+#' logit(0.25)
+#'
+#' .rxTransform(0.25, transform="logit")
+#'
+#' expit(-1.09)
+#'
+#' .rxTransform(-1.09, transform="logit", inverse=TRUE)
+#'
+.rxTransform <- function(x, lambda=1.0,
+                         low = 0.0, high = 1.0,
+                         transform=c("boxCox", "yeoJohnson", "untransformed",
+                                     "lnorm", "logit", "logit + yeoJohnson",
+                                     "probit", "probit + yeoJohnson",
+                                     "logit + boxCox", "probit + boxCox"),
+                         inverse=FALSE) {
+  if (is.integer(transform)) {
+  } else {
+    transform <- factor(match.arg(transform),
+                        levels=c("boxCox", "yeoJohnson", "untransformed",
+                                 "lnorm", "logit", "logit + yeoJohnson",
+                                 "probit", "probit + yeoJohnson", "logit + boxCox",
+                                 "probit + boxCox"))
+    transform <- as.integer(transform)-1L
+  }
+  if (length(lambda) > 1 ||
+        length(low) > 1 ||
+        length(high) > 1 ||
+        length(transform) > 1 ||
+        length(inverse) > 1) {
+    .df <- data.frame(x = x, lambda = lambda, low = low, high = high,
+                      transform=transform, inverse=inverse)
+    vapply(1:nrow(.df),
+           function(i) {
+             .powerD(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
+                     .df$transform[i], .df$inverse[i])
+    }, numeric(1), USE.NAMES = FALSE)
+  } else {
+    checkmate::assertNumeric(x, any.missing = FALSE)
+    checkmate::assertNumeric(lambda, any.missing = FALSE)
+    checkmate::assertNumeric(low, any.missing = FALSE)
+    checkmate::assertNumeric(high, any.missing = FALSE)
+    checkmate::assertInteger(transform, any.missing = FALSE)
+    checkmate::assertLogical(inverse, any.missing = FALSE)
+    .Call(`_rxode2_powerD`, x, low, high, lambda, transform, inverse)
+  }
+}
 
 #' logit and inverse logit (expit) functions
 #'
@@ -435,22 +496,27 @@ gammapInva <- function(x, p) {
 #' logitNormInfo(logit(0.25), sd = 0.1)
 #'
 #' logitNormInfo(logit(1, 0, 10), sd = 1, low = 0, high = 10)
+#'
 #' @export
 logit <- function(x, low = 0, high = 1) {
-  .Call(`_logit`, x, low, high, PACKAGE = "rxode2")
+  .rxTransform(x, 1.0, low, high, 4L, FALSE)
 }
 #' @rdname logit
 #' @export
 expit <- function(alpha, low = 0, high = 1) {
-  .Call(`_expit`, alpha, low, high, PACKAGE = "rxode2")
+  .rxTransform(alpha, 1.0, low, high, 4L, TRUE)
 }
 
 #' @rdname logit
 #' @export
 logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, ...) {
-  .fM1 <- function(x) .Call(`_expit`, x, low, high, PACKAGE = "rxode2") * dnorm(x, mean = mean, sd = sd)
+  .fM1 <- function(x) {
+    expit(x, low, high) * dnorm(x, mean = mean, sd = sd)
+  }
   .m <- integrate(.fM1, -Inf, Inf, abs.tol = abs.tol, ...)$value
-  .fV <- function(x) (.Call(`_expit`, x, low, high, PACKAGE = "rxode2") - .m)^2 * dnorm(x, mean = mean, sd = sd)
+  .fV <- function(x){
+    (expit(x, low, high) - .m)^2 * dnorm(x, mean = mean, sd = sd)
+  }
   .v <- integrate(.fV, -Inf, Inf, abs.tol = abs.tol, ...)$value
   c(mean = .m, var = .v, cv = sqrt(.v) / .m)
 }
@@ -470,26 +536,60 @@ logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, .
 #' probitNormInfo(probit(1, 0, 10), sd = 1, low = 0, high = 10)
 #' @export
 probit <- function(x, low = 0, high = 1) {
-  .Call(`_probit`, x, low, high, PACKAGE = "rxode2")
+  .rxTransform(x, 1.0, low, high, 6L, FALSE)
 }
 
 #' @rdname probit
 #' @export
 probitInv <- function(x, low = 0, high = 1) {
-  .Call(`_probitInv`, x, low, high, PACKAGE = "rxode2")
+  .rxTransform(x, 1.0, low, high, 6L, TRUE)
 }
 
 
 #' @rdname logit
 #' @export
 probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, ...) {
-  .fM1 <- function(x) .Call(`_probitInv`, x, low, high, PACKAGE = "rxode2") * dnorm(x, mean = mean, sd = sd)
+  .fM1 <- function(x) probitInv(x, low, high) * dnorm(x, mean = mean, sd = sd)
   .m <- integrate(.fM1, -Inf, Inf, abs.tol = abs.tol, ...)$value
-  .fV <- function(x) (.Call(`_probitInv`, x, low, high, PACKAGE = "rxode2") - .m)^2 * dnorm(x, mean = mean, sd = sd)
+  .fV <- function(x) (probitInv(x, low, high) - .m)^2 * dnorm(x, mean = mean, sd = sd)
   .v <- integrate(.fV, -Inf, Inf, abs.tol = abs.tol, ...)$value
   c(mean = .m, var = .v, cv = sqrt(.v) / .m)
 }
 
+#' boxCox/yeoJohnson and inverse boxCox/yeoJohnson functions
+#'
+#' @param x input value(s) to transform
+#' @param lambda lambda value for the transformation
+#' @return values from boxCox and boxCoxInv
+#' @export
+#'
+#' boxCox(10, 0.5)
+#'
+#' boxCoxInv(4.32, 0.5)
+#'
+#' yeoJohson(10, 0.5)
+#'
+#' yeoJohnsonInv(4.32, 0.5)
+#'
+boxCox <- function(x, lambda = 1.0) {
+  checkmate::assertNumeric(x, lower=0.0, any.missing=FALSE)
+  .rxTransform(x, lambda, low=0.0, high=1.0, 0L, FALSE)
+}
+#' @rdname boxCox
+#' @export
+boxCoxInv <- function(x, lambda = 1.0) {
+  .rxTransform(x, lambda, low=0.0, high=1.0, 0L, TRUE)
+}
+#' @rdname boxCox
+#' @export
+yeoJohnson <- function(x, lambda = 1.0) {
+  .rxTransform(x, lambda, low=0.0, high=1.0, 1L, FALSE)
+}
+#' @rdname boxCox
+#' @export
+yeoJohnsonInv <- function(x, lambda = 1.0) {
+  .rxTransform(x, lambda, low=0.0, high=1.0, 1L, TRUE)
+}
 #' Get/Set the number of threads that rxode2 uses
 #'
 #' @param threads NULL (default) rereads environment variables. 0
