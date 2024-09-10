@@ -629,12 +629,17 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
 
   SEXP stateOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_stateOrd)); pro++;
-  SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
-  int *stateOrdInt = INTEGER(stateOrd);
-  sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
-  for (int i = 0; i < Rf_length(stateOrd); i++){
-    sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
-            CHAR(STRING_ELT(stateOrdNames, i)));
+  int nOrd = Rf_length(stateOrd);
+  if (nOrd > 0) {
+    SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
+    int *stateOrdInt = INTEGER(stateOrd);
+    sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
+    for (int i = 0; i < nOrd; i++){
+      sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
+              CHAR(STRING_ELT(stateOrdNames, i)));
+    }
+    writeSb(&sbOut, fpIO);
+    sbOut.o = 0;
   }
   UNPROTECT(pro);
   // show_ode = 1 dydt
@@ -680,8 +685,9 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
       }
       sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei);
     }
+    writeSb(&sbOut, fpIO);
+    sbOut.o = 0;
   }
-  writeSb(&sbOut, fpIO);
   gCode(1); // d/dt()
   gCode(2); // jac
   gCode(3); // ini()
