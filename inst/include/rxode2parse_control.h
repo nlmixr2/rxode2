@@ -127,8 +127,9 @@
 #define RxMv_stateProp 24
 #define RxMv_sensProp 25
 #define RxMv_normProp 26
-#define RxMv_timeId 27
-#define RxMv_md5 28
+#define RxMv_stateOrd 27
+#define RxMv_timeId 28
+#define RxMv_md5 29
 #define RxMvFlag_ncmt 0
 #define RxMvFlag_ka 1
 #define RxMvFlag_linB 2

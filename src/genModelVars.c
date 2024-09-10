@@ -9,8 +9,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   int pro = 0;
-  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 27));pro++;
-  SEXP names = PROTECT(Rf_allocVector(STRSXP, 27));pro++;
+  SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 28));pro++;
+  SEXP names = PROTECT(Rf_allocVector(STRSXP, 28));pro++;
 
   SEXP sNeedSort = PROTECT(Rf_allocVector(INTSXP,1));pro++;
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -44,7 +44,6 @@ SEXP generateModelVars(void) {
     trans_syntax_error_report_fn0(_gbuf.s);
     return R_NilValue;
   }
-
   populateStateVectors(state, sens, normState, stateRm, extraState, stateProp, sensProp, normProp, INTEGER(ordF));
   SEXP dfdy = PROTECT(Rf_allocVector(STRSXP,tb.ndfdy));pro++;
   populateDfdy(dfdy);
@@ -291,6 +290,10 @@ SEXP generateModelVars(void) {
   Rf_setAttrib(normProp, R_NamesSymbol, normState);
   SET_VECTOR_ELT(lst, 26, normProp);
   SET_STRING_ELT(names, 26, mkChar("normProp"));
+
+  Rf_setAttrib(ordF, R_NamesSymbol, state);
+  SET_VECTOR_ELT(lst, 27, ordF);
+  SET_STRING_ELT(names, 27, mkChar("stateOrd"));
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);
   Rf_setAttrib(lst,   R_NamesSymbol, names);

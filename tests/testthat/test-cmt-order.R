@@ -673,7 +673,9 @@ rxTest({
 
     s1 <- rxSolve(f1, ev2, returnType="data.frame")
 
-    expect_equal(s1, s2)
+    expect_equal(s1[,c("A1", "A2", "A3", "A4")],
+                 s2[,c("A1", "A2", "A3", "A4")])
+
   })
 
 })

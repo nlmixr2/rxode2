@@ -348,7 +348,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
               // stateExtra
               sAppendN(&sbOut, "  ", 2);
               doDot(&sbOut, buf);
-              sAppend(&sbOut, " = __zzStateVar__[%d]*((double)(_ON[%d]));\n", i, i);
+              sAppend(&sbOut, " = __zzStateVar__[__DDT%d__]*((double)(_ON[__DDT%d__]));\n", i, i);
             }
           } else {
             break;
@@ -485,7 +485,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         for (i = 0; i < tb.de.n; i++) {
           if (tb.idu[i]) {
             buf=tb.ss.line[tb.di[i]];
-            sAppend(&sbOut, "  __zzStateVar__[%d]=((double)(_ON[%d]))*(",i,i);
+            sAppend(&sbOut, "  __zzStateVar__[__DDT%d__]=((double)(_ON[__DDT%d__]))*(",i,i);
             doDot(&sbOut, buf);
             sAppendN(&sbOut,  ");\n", 3);
           }
@@ -552,7 +552,7 @@ extern SEXP _goodFuns;
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast,
-                          SEXP goodFuns){
+                          SEXP goodFuns) {
   _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
@@ -568,6 +568,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   }
   fpIO = fopen(CHAR(STRING_ELT(c_file,0)), "wb");
   err_msg((intptr_t) fpIO, "error opening output c file\n", -2);
+
   if (badMd5){
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, mkChar(""));
   } else {
@@ -622,11 +623,20 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(trans, 21, mkChar(buf.s)); // IndF
   }
   sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
-  UNPROTECT(pro);
   sFree(&buf);
   //SET_STRING_ELT(tran, 0, mkChar());
   sFree(&sbOut);
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
+
+  SEXP stateOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_stateOrd)); pro++;
+  SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
+  int *stateOrdInt = INTEGER(stateOrd);
+  sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
+  for (int i = 0; i < Rf_length(stateOrd); i++){
+    sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
+            CHAR(STRING_ELT(stateOrdNames, i)));
+  }
+  UNPROTECT(pro);
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
   // show_ode = 3 Ini statement
@@ -670,8 +680,8 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
       }
       sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei);
     }
-    writeSb(&sbOut, fpIO);
   }
+  writeSb(&sbOut, fpIO);
   gCode(1); // d/dt()
   gCode(2); // jac
   gCode(3); // ini()
