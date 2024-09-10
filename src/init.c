@@ -109,8 +109,6 @@ SEXP _gammaqInva(SEXP, SEXP);
 
 double expit(double, double, double);
 double logit(double, double, double);
-SEXP _expit(SEXP, SEXP, SEXP);
-SEXP _logit(SEXP, SEXP, SEXP);
 SEXP _linCmtParse(SEXP vars, SEXP inStr, SEXP verbose);
 SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 
@@ -261,8 +259,6 @@ void sortIds(rx_solve* rx, int ini);
 
 void handleTlast(double *time, rx_solving_options_ind *ind);
 
-SEXP _probit(SEXP xS, SEXP lowS, SEXP highS);
-SEXP _probitInv(SEXP xS, SEXP lowS, SEXP highS);
 SEXP _rxode2_rxrandnV(SEXP, SEXP);
 SEXP _rxode2_rxErf(SEXP);
 
@@ -539,8 +535,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   return ret;
 }
 
+SEXP _rxode2_powerD(SEXP, SEXP, SEXP, SEXP, SEXP,
+                    SEXP);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_powerD", (DL_FUNC) &_rxode2_powerD, 6},
     {"_rxode2_rxode2Ptr", (DL_FUNC) &_rxode2_rxode2Ptr, 0},
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
@@ -682,8 +681,6 @@ void R_init_rxode2(DllInfo *info){
     {"_gammaqInv", (DL_FUNC) _gammaqInv, 2},
     {"_gammapInva", (DL_FUNC) _gammapInv, 2},
     {"_gammaqInva", (DL_FUNC) _gammaqInv, 2},
-    {"_expit", (DL_FUNC) _expit, 3},
-    {"_logit", (DL_FUNC) _logit, 3},
     {"_calcDerived", (DL_FUNC) _calcDerived, 4},
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
@@ -692,8 +689,6 @@ void R_init_rxode2(DllInfo *info){
     {"getRxThreads_R", (DL_FUNC) getRxThreads_R, 1},
     {"setRxthreads", (DL_FUNC) setRxthreads, 3},
     {"_rxHasOpenMp", (DL_FUNC) _rxHasOpenMp, 0},
-    {"_probit", (DL_FUNC) _probit, 3},
-    {"_probitInv", (DL_FUNC) _probitInv, 3},
     {"_rxode2_isNullZero", (DL_FUNC) _rxode2_isNullZero, 1},
     {"_rxode2_invWR1d", (DL_FUNC) _rxode2_invWR1d, 3},
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},
