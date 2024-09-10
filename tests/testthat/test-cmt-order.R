@@ -606,8 +606,6 @@ rxTest({
 
     f1 <- f1 %>% zeroRe("omega")
 
-    library(rxode2)
-
     f2 <- function() {
       ini({
         TVCL <- c(0, 0.0308628127403366)
