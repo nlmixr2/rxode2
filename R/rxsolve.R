@@ -2262,7 +2262,7 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 #'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify",
 #'  sensType="central"), "ctl")
 
-#' @rdname rxControl
+#' @rdname rxUiDeparse
 #' @export
 rxUiDeparse.rxControl <- function(object, var) {
   .ret <- rxControl()
