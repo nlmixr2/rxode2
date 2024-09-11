@@ -722,7 +722,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     omegaLower = -Inf, omegaUpper = Inf,
                     nSub = 1L, thetaMat = NULL, thetaDf = NULL, thetaIsChol = FALSE,
-                    nStud = 1L, dfSub = 0.0, dfObs = 0.0, returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
+                    nStud = 1L, dfSub = 0.0, dfObs = 0.0,
+                    returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
                     seed = NULL, nsim = NULL,
                     minSS = 10L, maxSS = 1000L,
                     infSSstep = 12,
@@ -2253,4 +2254,61 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
   rxControl$ssAtol <- c(rep(rxControl$ssAtol[1], ncmt - sensCmt), rep(rxControl$ssAtolSens, sensCmt))
   rxControl$ssRtol <- c(rep(rxControl$ssRtol[1], ncmt - sensCmt), rep(rxControl$ssRtolSens, sensCmt))
   rxControl
+}
+
+
+#' rxUiDeparse.rxControl(rxControl(covsInterpolation="linear", method="dop853",
+#'  naInterpolation="nocb", keepInterpolation="nocb", sigmaXform="variance",
+#'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify",
+#'  sensType="central"), "ctl")
+
+#' @rdname rxControl
+#' @export
+rxUiDeparse.rxControl <- function(object, var) {
+  .ret <- rxControl()
+
+  .w <- which(vapply(names(.ret), function(x) {
+    !identical(.ret[[x]], object[[x]])
+  }, logical(1)))
+  .retD <- vapply(names(.ret)[.w], function(x) {
+    if (x == "covsInterpolation") {
+      .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
+      paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
+    } else if (x == "method")  {
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+      paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
+    } else if (x == "naInterpolation") {
+      .naInterpolation <- c("locf"=1L, "nocb"=0L)
+      paste0(x, " =", deparse1(names(.naInterpolation)[which(object[[x]] == .naInterpolation)]))
+    } else if (x == "keepInterpolation") {
+      .keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)
+      paste0(x, " =", deparse1(names(.keepInterpolation)[which(object[[x]] == .keepInterpolation)]))
+    } else if (x %in% c("sigmaXform", "omegaXform")) {
+      .sigmaXform <- c(
+        "variance" = 6L, "log" = 5L, "identity" = 4L,
+        "nlmixrSqrt" = 1L, "nlmixrLog" = 2L,
+        "nlmixrIdentity" = 3L)
+      paste0(x, " =", deparse1(names(.sigmaXform)[which(object[[x]] == .sigmaXform)]))
+    } else if (x == "returnType") {
+      .matrixIdx <- c(
+        "rxSolve" = 0L, "matrix" = 1L, "data.frame" = 2L, "data.frame.TBS" = 3L, "data.table" = 4L,
+        "tbl" = 5L, "tibble" = 5L)
+      paste0(x, " =", deparse1(names(.matrixIdx)[which(object[[x]] == .matrixIdx)]))
+    } else if (x == "sumType") {
+      .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)
+      paste0(x, " = ", deparse1(names(.sum)[which(object[[x]] == .sum)]))
+    } else if (x == "prodType") {
+      .prod <- c("long double"=1L, "double"=1L, "logify"=1L)
+      paste0(x, " = ", deparse1(names(.prod)[which(object[[x]] == .prod)]))
+    } else if (x == "sensType") {
+      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)
+      paste0(x, " = ", deparse1(names(.sensType)[which(object[[x]] == .sensType)]))
+    } else if (x == "naTimeHandle") {
+      .naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)
+      paste0(x, " = ", deparse1(names(.naTimeHandle)[which(object[[x]] == .naTimeHandle)]))
+    }  else {
+      paste0(x, "=", deparse1(object[[x]]))
+    }
+  }, character(1), USE.NAMES=FALSE)
+  str2lang(paste(var, " <- rxControl(", paste(.retD, collapse=","),")"))
 }

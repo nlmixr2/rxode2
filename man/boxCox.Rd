@@ -26,3 +26,14 @@ values from boxCox and boxCoxInv
 \description{
 boxCox/yeoJohnson and inverse boxCox/yeoJohnson functions
 }
+\examples{
+
+boxCox(10, 0.5)
+
+boxCoxInv(4.32, 0.5)
+
+yeoJohson(10, 0.5)
+
+yeoJohnsonInv(4.32, 0.5)
+
+}

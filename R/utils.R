@@ -562,6 +562,7 @@ probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, 
 #' @param lambda lambda value for the transformation
 #' @return values from boxCox and boxCoxInv
 #' @export
+#' @examples
 #'
 #' boxCox(10, 0.5)
 #'
