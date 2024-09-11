@@ -2268,8 +2268,13 @@ rxUiDeparse.rxControl <- function(object, var) {
   .ret <- rxControl()
 
   .w <- which(vapply(names(.ret), function(x) {
-    !identical(.ret[[x]], object[[x]])
+    if (is.integer(.ret[[x]]) && is.integer(object[[x]])) {
+      .ret[[x]] != object[[x]]
+    } else {
+      !identical(.ret[[x]], object[[x]])
+    }
   }, logical(1)))
+
   .retD <- vapply(names(.ret)[.w], function(x) {
     if (x == "covsInterpolation") {
       .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
