@@ -434,8 +434,8 @@ gammapInva <- function(x, p) {
                       transform=transform, inverse=inverse)
     vapply(1:nrow(.df),
            function(i) {
-             .powerD(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
-                     .df$transform[i], .df$inverse[i])
+             .rxTransform(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
+                          .df$transform[i], .df$inverse[i])
     }, numeric(1), USE.NAMES = FALSE)
   } else {
     checkmate::assertNumeric(x, any.missing = FALSE)
