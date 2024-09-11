@@ -134,11 +134,11 @@ static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
     /* printf("de[%d]->%s[%d]\n",tb.id,v,tb.ix); */
     sb.o =0; sbDt.o =0;
     if (tb.idu[tb.id] == 0){
-      sAppend(&sb, "__DDtStateVar__[%d] = ((double)(_ON[%d]))*(_IR[%d] ", tb.id, tb.id, tb.id);
-      sAppend(&sbDt, "__DDtStateVar_%d__ = ((double)(_ON[%d]))*(_IR[%d] ", tb.id, tb.id, tb.id);
+      sAppend(&sb, "__DDtStateVar__[__DDT%d__] = ((double)(_ON[__DDT%d__]))*(_IR[__DDT%d__] ", tb.id, tb.id, tb.id);
+      sAppend(&sbDt, "__DDtStateVar_%d__ = ((double)(_ON[__DDT%d__]))*(_IR[__DDT%d__] ", tb.id, tb.id, tb.id);
     } else {
-      sAppend(&sb, "__DDtStateVar__[%d] = ((double)(_ON[%d]))*(", tb.id, tb.id);
-      sAppend(&sbDt, "__DDtStateVar_%d__ = ((double)(_ON[%d]))*(", tb.id, tb.id);
+      sAppend(&sb, "__DDtStateVar__[__DDT%d__] = ((double)(_ON[__DDT%d__]))*(", tb.id, tb.id);
+      sAppend(&sbDt, "__DDtStateVar_%d__ = ((double)(_ON[__DDT%d__]))*(", tb.id, tb.id);
     }
     tb.idu[tb.id]=1;
     aType(TDDT);
@@ -214,7 +214,7 @@ static inline int handleDdtRhs(nodeInfo ni, char *name, D_ParseNode *xpn) {
 	    sAppend(&sb,   "__DDtStateVar_%d__", tb.id);
 	    sAppend(&sbDt, "__DDtStateVar_%d__", tb.id);
 	  } else {
-	    sAppend(&sb,   "__DDtStateVar__[%d]", tb.id);
+	    sAppend(&sb,   "__DDtStateVar__[__DDT%d__]", tb.id);
 	    sAppend(&sbDt, "__DDtStateVar_%d__", tb.id);
 	    aType(TDDT);
 	  }

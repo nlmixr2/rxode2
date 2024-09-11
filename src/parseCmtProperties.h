@@ -4,8 +4,8 @@ static inline int handleCmtPropertyFbio(nodeInfo ni, char *name, char *v) {
     if ((tb.dprop[tb.id] & propF) == 0) {
       tb.dprop[tb.id] += propF;
     }
-    sAppend(&sb, "_f[%d] = ", tb.id);
-    sAppend(&sbDt, "_f[%d] = ", tb.id);
+    sAppend(&sb, "_f[__DDT%d__] = ", tb.id);
+    sAppend(&sbDt, "_f[__DDT%d__] = ", tb.id);
     sAppend(&sbt, "f(%s)=", v);
     tb.curPropN=tb.id;
     if (foundF == 0) needSort+=1;// & 1 when F
@@ -22,8 +22,8 @@ static inline int handleCmtPropertyAlag(nodeInfo ni, char *name, char *v) {
     if ((tb.dprop[tb.id] & propAlag) == 0) {
       tb.dprop[tb.id] += propAlag;
     }
-    sAppend(&sb, "_alag[%d] = ", tb.id);
-    sAppend(&sbDt, "_alag[%d] = ", tb.id);
+    sAppend(&sb, "_alag[__DDT%d__] = ", tb.id);
+    sAppend(&sbDt, "_alag[__DDT%d__] = ", tb.id);
     sAppend(&sbt, "alag(%s)=", v);
     tb.curPropN=tb.id;
     if (foundLag == 0) needSort+=2; // & 2 when alag
@@ -52,8 +52,8 @@ static inline int handleCmtPropertyDur(nodeInfo ni, char *name, char *v) {
       tb.dprop[tb.id] += propDur;
     }
     sb.o=0;sbDt.o=0; sbt.o=0;
-    sAppend(&sb, "_dur[%d] = ", tb.id);
-    sAppend(&sbDt, "_dur[%d] = ", tb.id);
+    sAppend(&sb, "_dur[__DDT%d__] = ", tb.id);
+    sAppend(&sbDt, "_dur[__DDT%d__] = ", tb.id);
     sAppend(&sbt, "dur(%s)=", v);
     tb.curPropN=tb.id;
     if (foundDur == 0) needSort+=4;// & 4 when dur
@@ -70,8 +70,8 @@ static inline int handleCmtPropertyRate(nodeInfo ni, char *name, char *v) {
     if ((tb.dprop[tb.id] & propRate) == 0) {
       tb.dprop[tb.id] += propRate;
     }
-    sAppend(&sb, "_rate[%d] = ", tb.id);
-    sAppend(&sbDt, "_rate[%d] = ", tb.id);
+    sAppend(&sb, "_rate[__DDT%d__] = ", tb.id);
+    sAppend(&sbDt, "_rate[__DDT%d__] = ", tb.id);
     sAppend(&sbt, "rate(%s)=", v);
     tb.curPropN=tb.id;
     if (foundRate == 0) needSort+=8;// & 8 when rate
