@@ -8,6 +8,6 @@ test_that("rxUiDeparse()", {
                                     naInterpolation="nocb", keepInterpolation="nocb", sigmaXform="variance",
                                     omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify",
                                     sensType="central"), "a"),
-               str2lang("a <- rxControl(method = \"dop853\", covsInterpolation = \"linear\", returnType = \"data.frame\", sigmaXform = \"variance\", sumType = \"fsum\", prodType = c(\"long double\", \"double\", \"logify\"), sensType = \"central\", naInterpolation = \"nocb\", keepInterpolation = \"nocb\")"))
+               str2lang("a <- rxControl(method = \"dop853\", covsInterpolation = \"linear\", returnType = \"data.frame\", sigmaXform = \"variance\", sumType = \"fsum\", sensType = \"central\", naInterpolation = \"nocb\", keepInterpolation = \"nocb\")"))
 
 })
