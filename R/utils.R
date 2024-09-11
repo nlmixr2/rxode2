@@ -434,8 +434,8 @@ gammapInva <- function(x, p) {
                       transform=transform, inverse=inverse)
     vapply(1:nrow(.df),
            function(i) {
-             .powerD(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
-                     .df$transform[i], .df$inverse[i])
+             .rxTransform(.df$x[i], .df$lambda[i], .df$low[i], .df$high[i],
+                          .df$transform[i], .df$inverse[i])
     }, numeric(1), USE.NAMES = FALSE)
   } else {
     checkmate::assertNumeric(x, any.missing = FALSE)
@@ -562,12 +562,13 @@ probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, 
 #' @param lambda lambda value for the transformation
 #' @return values from boxCox and boxCoxInv
 #' @export
+#' @examples
 #'
 #' boxCox(10, 0.5)
 #'
 #' boxCoxInv(4.32, 0.5)
 #'
-#' yeoJohson(10, 0.5)
+#' yeoJohnson(10, 0.5)
 #'
 #' yeoJohnsonInv(4.32, 0.5)
 #'

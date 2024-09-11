@@ -604,6 +604,12 @@ SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEXP yjS, SEXP
   int inverse = INTEGER(inverseS)[0];
   int yj = INTEGER(yjS)[0];
   double low, high, lambda;
+  if (Rf_length(inverseS) != 1) {
+    Rf_errorcall(R_NilValue, _("'inverse' must be an logical of length 1"));
+  }
+  if (Rf_length(yjS) != 1) {
+    Rf_errorcall(R_NilValue, _("'yj' must be an integer of length 1"));
+  }
   if (Rf_length(lambdaS) != 1){
     Rf_errorcall(R_NilValue, _("'lambda' must be a numeric of length 1"));
   }

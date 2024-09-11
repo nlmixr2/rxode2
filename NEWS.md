@@ -133,6 +133,12 @@
   level model variable `$stateProp` which has this information
   encoded in integers for each state.
 
+- A new generic method `rxUiDeparse` can be used to deparse meta
+  information into more readable expressions; This currently by
+  default supports lower triangular matrices by lotri, but can be
+  extended to support other types of objects like 'nlmixr2's
+  `foceiControl()` for instance.
+
 ## Bug fixes
 
 - Fix `ui$props$endpoint` when the ui endpoint is defined in terms of
