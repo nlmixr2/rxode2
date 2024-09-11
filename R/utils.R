@@ -568,7 +568,7 @@ probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, 
 #'
 #' boxCoxInv(4.32, 0.5)
 #'
-#' yeoJohson(10, 0.5)
+#' yeoJohnson(10, 0.5)
 #'
 #' yeoJohnsonInv(4.32, 0.5)
 #'

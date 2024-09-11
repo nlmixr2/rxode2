@@ -32,7 +32,7 @@ boxCox(10, 0.5)
 
 boxCoxInv(4.32, 0.5)
 
-yeoJohson(10, 0.5)
+yeoJohnson(10, 0.5)
 
 yeoJohnsonInv(4.32, 0.5)
 
