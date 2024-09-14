@@ -1772,7 +1772,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.ignore)>0) {
       .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
-    .ctl$thetaMat <-.ctl$thetaMat[.col[.w], .col[.w], drop=FALSE]
+    .ctl$thetaMat <-.ctl$thetaMat[.w, .w, drop=FALSE]
     if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
     .names <- c(.names, .col[.w])
 
@@ -1782,7 +1782,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     .w <- which(.d == 0)
     if (length(.w) > 0) {
       .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse="', '"), "'"))
-      .ctl$thetaMat <-.ctl$thetaMat[.col[-.w], .col[-.w], drop=FALSE]
+      .ctl$thetaMat <-.ctl$thetaMat[-.w, -.w, drop=FALSE]
       if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
       .names <- c(.names, .col[-.w])
     }
@@ -1795,7 +1795,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.ignore)>0) {
       .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
-    .ctl$omega <-.ctl$omega[.col[.w], .col[.w], drop=FALSE]
+    .ctl$omega <-.ctl$omega[.w, .w, drop=FALSE]
     if (dim(.ctl$omega)[1] == 0) .ctl$omega <- NULL
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$omega, "character")) {
@@ -1816,7 +1816,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.ignore)>0) {
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
-    .ctl$sigma <-.ctl$sigma[.col[.w], .col[.w], drop=FALSE]
+    .ctl$sigma <-.ctl$sigma[.w, .w, drop=FALSE]
     if (dim(.ctl$sigma)[1] == 0) .ctl$sigma <- NULL
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$sigma, "character")) {
