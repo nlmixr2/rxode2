@@ -1764,29 +1764,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .envReset$unload <- FALSE
   # take care of too many DLLs or not provided simulation errors
   .names <- NULL
-  if (inherits(.ctl$thetaMat, "matrix")) {
-    .mv <- rxModelVars(object)
-    .col <- colnames(.ctl$thetaMat)
-    .w <- .col %in% .mv$params
-    .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
-    }
-    .ctl$thetaMat <-.ctl$thetaMat[.w, .w, drop=FALSE]
-    if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
-    .names <- c(.names, .col[.w])
 
-    # now look for zero diagonals
-    .col <- colnames(.ctl$thetaMat)
-    .d <- diag(.ctl$thetaMat)
-    .w <- which(.d == 0)
-    if (length(.w) > 0) {
-      .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse="', '"), "'"))
-      .ctl$thetaMat <-.ctl$thetaMat[-.w, -.w, drop=FALSE]
-      if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
-      .names <- c(.names, .col[-.w])
-    }
-  }
+  .extraNames <- character(0)
+
   if (inherits(.ctl$omega, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$omega)
@@ -1799,6 +1779,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (dim(.ctl$omega)[1] == 0) .ctl$omega <- NULL
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$omega, "character")) {
+    .extraNames <- c(.extraNames, .ctl$omega)
     .mv <- rxModelVars(object)
     .col <- .ctl$omega
     .w <- .col %in% .mv$params
@@ -1820,6 +1801,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (dim(.ctl$sigma)[1] == 0) .ctl$sigma <- NULL
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$sigma, "character")) {
+    .extraNames <- c(.extraNames, .ctl$sigma)
     .mv <- rxModelVars(object)
     .col <- .ctl$sigma
     .w <- .col %in% .mv$params
@@ -1828,6 +1810,30 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
     .names <- c(.names, .col[.w])
+  }
+
+  if (inherits(.ctl$thetaMat, "matrix")) {
+    .mv <- rxModelVars(object)
+    .col <- colnames(.ctl$thetaMat)
+    .w <- .col %in% c(.mv$params, .extraNames)
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .ctl$thetaMat <-.ctl$thetaMat[.w, .w, drop=FALSE]
+    if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
+    .names <- c(.names, .col[.w])
+
+    # now look for zero diagonals
+    .col <- colnames(.ctl$thetaMat)
+    .d <- diag(.ctl$thetaMat)
+    .w <- which(.d == 0)
+    if (length(.w) > 0) {
+      .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse="', '"), "'"))
+      .ctl$thetaMat <-.ctl$thetaMat[-.w, -.w, drop=FALSE]
+      if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
+      .names <- c(.names, .col[-.w])
+    }
   }
   rxSetCovariateNamesForPiping(NULL)
   if (length(.ctl$.zeros) > 0) {
