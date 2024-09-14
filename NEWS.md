@@ -41,6 +41,10 @@
   the same way as `liblsoda`, so the random number provided will be
   the same with different solving methods.
 
+- The arguments saved in the `rxSolve` for items like `thetaMat` will
+  be the reduced matrices used in solving, not the full matrices (this
+  will likely not break very many items)
+
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
