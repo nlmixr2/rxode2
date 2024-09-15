@@ -1,14 +1,15 @@
 rxTest({
   test_that("Zero variances; RxODE#299", {
+
     mod <- rxode2({
       eff(0) <- 1
       C2 <- centr / V2
       C3 <- peri / V3
       CL <- TCl * exp(eta.Cl) ## This is coded as a variable in the model
-      d / dt(depot) <- -KA * depot
-      d / dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
-      d / dt(peri) <- Q * C2 - Q * C3
-      d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
+      d/dt(peri) <- Q * C2 - Q * C3
+      d/dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
       e <- eff + eff.err
       cp <- centr * (1 + cp.err)
     })

@@ -1776,7 +1776,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
     .ctl$omega <-.ctl$omega[.w, .w, drop=FALSE]
-    if (dim(.ctl$omega)[1] == 0) .ctl$omega <- NULL
+    if (dim(.ctl$omega)[1] == 0) {
+      .ctl$omega <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$omega, "character")) {
     .extraNames <- c(.extraNames, .ctl$omega)
@@ -1798,7 +1801,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
     .ctl$sigma <-.ctl$sigma[.w, .w, drop=FALSE]
-    if (dim(.ctl$sigma)[1] == 0) .ctl$sigma <- NULL
+    if (dim(.ctl$sigma)[1] == 0) {
+      .ctl$sigma <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$sigma, "character")) {
     .extraNames <- c(.extraNames, .ctl$sigma)
@@ -1821,7 +1827,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
     .ctl$thetaMat <-.ctl$thetaMat[.w, .w, drop=FALSE]
-    if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
+    if (dim(.ctl$thetaMat)[1] == 0) {
+      .ctl$thetaMat <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
     .names <- c(.names, .col[.w])
 
     # now look for zero diagonals
@@ -1831,7 +1840,10 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.w) > 0) {
       .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse="', '"), "'"))
       .ctl$thetaMat <-.ctl$thetaMat[-.w, -.w, drop=FALSE]
-      if (dim(.ctl$thetaMat)[1] == 0) .ctl$thetaMat <- NULL
+      if (dim(.ctl$thetaMat)[1] == 0) {
+        .ctl$thetaMat <- NULL
+        .ctl <- do.call(rxControl, .ctl)
+      }
       .names <- c(.names, .col[-.w])
     }
   }
