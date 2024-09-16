@@ -2841,14 +2841,18 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
       solveTime[i] = ind->solveTime;
     }
     Function order = as<Function>(getForder());
+    SEXP solveTimeSEXP = PROTECT(wrap(solveTime));
     if (useForder()) {
-      ord = order(solveTime, _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                  _["decreasing"] = LogicalVector::create(true));
+      ord = as<IntegerVector>(order(solveTimeSEXP,
+                                    _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                                    _["decreasing"] = LogicalVector::create(true)));
     } else {
-      ord = order(solveTime, _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                  _["method"]="radix",
-                  _["decreasing"] = LogicalVector::create(true));
+      ord = as<IntegerVector>(order(solveTimeSEXP,
+                                    _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                                    _["method"]="radix",
+                                    _["decreasing"] = LogicalVector::create(true)));
     }
+    UNPROTECT(1);
     // This assumes that this has already been created
     std::copy(ord.begin(), ord.end(), rx->ordId);
   }

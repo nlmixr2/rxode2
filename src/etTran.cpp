@@ -186,7 +186,11 @@ Function getChin() {
 
 extern "C" SEXP chin(SEXP x, SEXP table) {
   Function chin_ = getChin();
-  return chin_(x, table);
+  SEXP xin = PROTECT(x);
+  SEXP tablein = PROTECT(table);
+  SEXP chinout = PROTECT(chin_(x, table));
+  UNPROTECT(3);
+  return chinout;
 }
 
 extern "C" int useForder(void){
@@ -2152,8 +2156,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector ord;
   IntegerVector ordI;
   if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(true));
+    SEXP ivIdSxp = PROTECT(wrap(ivId));
+    SEXP nvTimeSxp = PROTECT(wrap(nvTime));
+    SEXP ivEvidSxp = PROTECT(wrap(ivEvid));
+    ord = as<IntegerVector>(order(ivIdSxp, nvTimeSxp, ivEvidSxp,
+                                  _["na.last"] = LogicalVector::create(true)));
+    UNPROTECT(3);
     ord = ord - 1;
     // na.last isn't =NA isn't quite working
     idxOutput = as<std::vector<int>>(ord);
@@ -2161,19 +2169,27 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       idxOutput.pop_back();
     }
     if (hasIcov) {
-      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true));
+      SEXP inIdCovSxp = PROTECT(wrap(inIdCov));
+      ordI = as<IntegerVector>(order(inIdCovSxp, _["na.last"] = LogicalVector::create(true)));
+      UNPROTECT(1);
       ordI = ordI-1;
       idxIcov = as<std::vector<int>>(ordI);
     }
   } else {
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                _["method"]="radix");
+    SEXP ivIdSxp = PROTECT(wrap(ivId));
+    SEXP nvTimeSxp = PROTECT(wrap(nvTime));
+    SEXP ivEvidSxp = PROTECT(wrap(ivEvid));
+    ord = as<IntegerVector>(order(ivIdSxp, nvTimeSxp, ivEvidSxp,
+                                  _["na.last"] = LogicalVector::create(NA_LOGICAL),
+                                  _["method"]="radix"));
+    UNPROTECT(3);
     ord = ord - 1;
     idxOutput = as<std::vector<int>>(ord);
     if (hasIcov) {
-      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true),
-                   _["method"]="radix");
+      SEXP inIdCovSxp = PROTECT(wrap(inIdCov));
+      ordI = as<IntegerVector>(order(inIdCovSxp, _["na.last"] = LogicalVector::create(true),
+                                     _["method"]="radix"));
+      UNPROTECT(1);
       ordI = ordI-1;
       idxIcov = as<std::vector<int>>(ordI);
     }

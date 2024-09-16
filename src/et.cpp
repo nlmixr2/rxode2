@@ -52,14 +52,16 @@ extern "C" SEXP orderForderS1(SEXP ordIn) {
 BEGIN_RCPP
   Function order = getForder();
   IntegerVector ord;
+  SEXP ordInSexp = PROTECT(wrap(ordIn));
   if (useForder()){
-    ord = order(ordIn,
+    ord = order(ordInSexp,
                 _["na.last"] = LogicalVector::create(0));
   } else {
-    ord = order(ordIn,
+    ord = order(ordInSexp,
                 _["na.last"] = LogicalVector::create(0),
                 _["method"]="radix");
   }
+  UNPROTECT(1);
   return wrap(ord);
 END_RCPP
 }
@@ -432,14 +434,18 @@ List etSort(List& curEt){
   IntegerVector ivEvid=wrap(evid);
   Function order = getForder();
   IntegerVector ord;
+  SEXP ivIdSxp = PROTECT(wrap(ivId));
+  SEXP nvTimeSxp = PROTECT(wrap(nvTime));
+  SEXP ivEvidSxp = PROTECT(wrap(ivEvid));
   if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
+    ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                 _["na.last"] = LogicalVector::create(0));
   } else {
     ord = order(ivId, nvTime, ivEvid,
                 _["na.last"] = LogicalVector::create(0),
                 _["method"]="radix");
   }
+  UNPROTECT(3);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
   List newEt(curEt.size());
@@ -593,15 +599,19 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
   NumericVector nvTime=wrap(time);
   IntegerVector ivEvid=wrap(evid);
   Function order = getForder();
+  SEXP ivIdSxp = PROTECT(wrap(ivId));
+  SEXP nvTimeSxp = PROTECT(wrap(nvTime));
+  SEXP ivEvidSxp = PROTECT(wrap(ivEvid));
   IntegerVector ord;
   if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
+    ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                 _["na.last"] = LogicalVector::create(NA_LOGICAL));
   } else {
-    ord = order(ivId, nvTime, ivEvid,
+    ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                 _["na.last"] = LogicalVector::create(NA_LOGICAL),
                 _["method"]="radix");
   }
+  UNPROTECT(3);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
   List lst(curEt.size());
@@ -1533,14 +1543,18 @@ List etExpandAddl(List curEt){
   IntegerVector ivEvid=wrap(evid);
   Function order = getForder();
   IntegerVector ord;
+  SEXP ivIdSxp = PROTECT(wrap(ivId));
+  SEXP nvTimeSxp = PROTECT(wrap(nvTime));
+  SEXP ivEvidSxp = PROTECT(wrap(ivEvid));
   if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
+    ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                 _["na.last"] = LogicalVector::create(NA_LOGICAL));
   } else {
-    ord = order(ivId, nvTime, ivEvid,
+    ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                 _["na.last"] = LogicalVector::create(NA_LOGICAL),
                 _["method"]="radix");
   }
+  UNPROTECT(3);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
   List lst(curEt.size());
@@ -1715,14 +1729,18 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
   IntegerVector ivEvid=wrap(evid);
   Function order = getForder();
   IntegerVector ord;
+  SEXP ivIdSxp = PROTECT(wrap(ivId));
+  SEXP nvTimeSxp = PROTECT(wrap(nvTime));
+  SEXP ivEvidSxp = PROTECT(wrap(ivEvid));
   if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
+    ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                 _["na.last"] = LogicalVector::create(NA_LOGICAL));
   } else {
-    ord = order(ivId, nvTime, ivEvid,
+    ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                 _["na.last"] = LogicalVector::create(NA_LOGICAL),
                 _["method"]="radix");
   }
+  UNPROTECT(3);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
 
@@ -3388,14 +3406,18 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
     IntegerVector ivEvid=wrap(evid);
     Function order = getForder();
     IntegerVector ord;
+    SEXP ivIdSxp = PROTECT(wrap(ivId));
+    SEXP nvTimeSxp = PROTECT(wrap(nvTime));
+    SEXP ivEvidSxp = PROTECT(wrap(ivEvid));
     if (useForder()){
-      ord = order(ivId, nvTime, ivEvid,
+      ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                   _["na.last"] = LogicalVector::create(NA_LOGICAL));
     } else {
-      ord = order(ivId, nvTime, ivEvid,
+      ord = order(ivIdSxp, nvTimeSxp, ivEvidSxp,
                   _["na.last"] = LogicalVector::create(NA_LOGICAL),
                   _["method"]="radix");
     }
+    UNPROTECT(3);
     ord = ord - 1;
     idx = as<std::vector<int>>(ord);
   }
