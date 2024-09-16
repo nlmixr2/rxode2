@@ -14,6 +14,8 @@ extern "C" rx_solving_options op_global;
 
 using namespace Rcpp;
 
+Function getRxFn(std::string name);
+
 SEXP convertId_(SEXP id);
 
 extern "C" int _rxIsEt(SEXP objSexp);
@@ -43,23 +45,11 @@ static inline bool rxIsCleanList(RObject obj) {
 #endif
 
 Environment rxode2env ();
-Function getRxFn(std::string name);
-
-extern "C" SEXP getForder(void);
-extern "C" int useForder(void);
 
 extern "C" SEXP orderForderS1(SEXP ordIn) {
 BEGIN_RCPP
-  Function order = getForder();
-  IntegerVector ord;
-  if (useForder()){
-    ord = order(ordIn,
-                _["na.last"] = LogicalVector::create(0));
-  } else {
-    ord = order(ordIn,
-                _["na.last"] = LogicalVector::create(0),
-                _["method"]="radix");
-  }
+  Function order1 = getRxFn(".order1");
+ IntegerVector ord = order1(ordIn);
   return wrap(ord);
 END_RCPP
 }
@@ -430,21 +420,13 @@ List etSort(List& curEt){
   IntegerVector ivId=wrap(id);
   NumericVector nvTime=wrap(time);
   IntegerVector ivEvid=wrap(evid);
-  Function order = getForder();
+  Function order3 = getRxFn(".order3");
   IntegerVector ord;
-  if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(0));
-  } else {
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(0),
-                _["method"]="radix");
-  }
+  ord = order3(ivId, nvTime, ivEvid);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
   List newEt(curEt.size());
   int i, j, newSize = time.size();
-  bool naTime=false;
   for (int j = time.size(); j--;) {
     if (ISNA(time[j])) {
       newSize--;
@@ -592,16 +574,9 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
   IntegerVector ivId=wrap(id);
   NumericVector nvTime=wrap(time);
   IntegerVector ivEvid=wrap(evid);
-  Function order = getForder();
+  Function order3 = getRxFn(".order3");
   IntegerVector ord;
-  if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL));
-  } else {
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                _["method"]="radix");
-  }
+  ord = order3(ivId, nvTime, ivEvid);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
   List lst(curEt.size());
@@ -1531,16 +1506,9 @@ List etExpandAddl(List curEt){
   IntegerVector ivId=wrap(id);
   NumericVector nvTime=wrap(time);
   IntegerVector ivEvid=wrap(evid);
-  Function order = getForder();
+  Function order3 = getRxFn(".order3");
   IntegerVector ord;
-  if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL));
-  } else {
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                _["method"]="radix");
-  }
+  ord = order3(ivId, nvTime, ivEvid);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
   List lst(curEt.size());
@@ -1713,16 +1681,8 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
   IntegerVector ivId=wrap(id);
   NumericVector nvTime=wrap(time);
   IntegerVector ivEvid=wrap(evid);
-  Function order = getForder();
-  IntegerVector ord;
-  if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL));
-  } else {
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                _["method"]="radix");
-  }
+  Function order3 = getRxFn(".order3");
+  IntegerVector ord = order3(ivId, nvTime, ivEvid);
   ord = ord - 1;
   idx = as<std::vector<int>>(ord);
 
@@ -3147,6 +3107,8 @@ RObject et_(List input, List et__) {
   return ret;
 }
 
+Function getRxFn(std::string name);
+
 // Sequence event tables
 //[[Rcpp::export]]
 List etSeq_(List ets, int handleSamples=0, int waitType = 0,
@@ -3386,16 +3348,9 @@ List etSeq_(List ets, int handleSamples=0, int waitType = 0,
     IntegerVector ivId=wrap(id);
     NumericVector nvTime=wrap(time);
     IntegerVector ivEvid=wrap(evid);
-    Function order = getForder();
+    Function order3 = getRxFn(".order3");
     IntegerVector ord;
-    if (useForder()){
-      ord = order(ivId, nvTime, ivEvid,
-                  _["na.last"] = LogicalVector::create(NA_LOGICAL));
-    } else {
-      ord = order(ivId, nvTime, ivEvid,
-                  _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                  _["method"]="radix");
-    }
+    ord = order3(ivId, nvTime, ivEvid);
     ord = ord - 1;
     idx = as<std::vector<int>>(ord);
   }

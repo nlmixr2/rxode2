@@ -283,8 +283,6 @@ extern rx_solving_options op_global;
 extern void setZeroMatrix(int which);
 extern void rxModelsAssignC(const char *str0, SEXP assign);
 
-extern SEXP chin(SEXP x, SEXP table);
-
 SEXP _rxode2_rxSolveSetup(void);
 
 SEXP _rxode2_etDollarNames(SEXP);
@@ -334,7 +332,6 @@ SEXP _rxode2_rxQr(SEXP);
 SEXP _rxode2_parse_strncmpci(void);
 
 SEXP _rxode2_etTransEvidIsObs(SEXP);
-SEXP _rxode2_forderForceBase(SEXP);
 SEXP _rxode2_rxSetIni0(SEXP ini0SEXP);
 SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP);
 SEXP _rxode2_swapMatListWithCube_(SEXP inOSEXP);
@@ -558,7 +555,6 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_swapMatListWithCube_", (DL_FUNC) &_rxode2_swapMatListWithCube_, 1},
     {"_rxode2_rxEtTransAsDataFrame_", (DL_FUNC) &_rxode2_rxEtTransAsDataFrame_, 1},
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
-    {"_rxode2_forderForceBase", (DL_FUNC) &_rxode2_forderForceBase, 1},
     {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
     {"_rxode2_parse_strncmpci",(DL_FUNC) &_rxode2_parse_strncmpci, 0},
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},

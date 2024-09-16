@@ -75,6 +75,7 @@
   }
   .ggplot2Fix()
   .linkAll()
+  forderForceBase(FALSE)
 } ## nocov end
 
 .iniLotriPtrs <- function() {
@@ -125,6 +126,7 @@
       "\n========================================\n"
     )
   }
+  forderForceBase(FALSE)
 }
 
 .onUnload <- function(libpath) {

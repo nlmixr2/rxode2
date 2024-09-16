@@ -72,8 +72,6 @@ extern "C" SEXP _rxode2_udfEnvSet(SEXP udf);
 extern "C" SEXP _rxode2_udfReset();
 extern "C" SEXP _rxode2_rxC(SEXP in);
 
-extern "C" SEXP getForder(void);
-extern "C" int useForder(void);
 
 #include "../inst/include/rxode2_as.h"
 
@@ -2840,15 +2838,8 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
       ind = &(rx->subjects[i]);
       solveTime[i] = ind->solveTime;
     }
-    Function order = as<Function>(getForder());
-    if (useForder()) {
-      ord = order(solveTime, _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                  _["decreasing"] = LogicalVector::create(true));
-    } else {
-      ord = order(solveTime, _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                  _["method"]="radix",
-                  _["decreasing"] = LogicalVector::create(true));
-    }
+    Function order1 = getRxFn(".order1"); // decreasing
+    ord = order1(solveTime, _["decreasing"] = LogicalVector::create(true));
     // This assumes that this has already been created
     std::copy(ord.begin(), ord.end(), rx->ordId);
   }
