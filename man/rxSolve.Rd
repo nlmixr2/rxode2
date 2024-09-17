@@ -48,7 +48,7 @@ rxSolve(
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
   naInterpolation = c("locf", "nocb"),
-  keepInterpolation = c("locf", "nocb", "na"),
+  keepInterpolation = c("na", "locf", "nocb"),
   addCov = TRUE,
   sigma = NULL,
   sigmaDf = NULL,
