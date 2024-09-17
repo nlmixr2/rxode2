@@ -118,34 +118,8 @@ static inline bool asBool(SEXP in, const char *what) {
 }
 
 Function getRxFn(std::string name);
+
 Environment rxode2env();
-
-Environment dataTable;
-bool getForder_b=false;
-Function getRxFn(std::string name);
-bool dtForder = false;
-bool forderForceBase_ = false;
-
-//' Force using base order for rxode2 radix sorting
-//'
-//' @param forceBase boolean indicating if rxode2 should use R's
-//'   [order()] for radix sorting instead of
-//'   `data.table`'s parallel radix sorting.
-//'
-//' @return NILL; called for side effects
-//'
-//' @examples
-//' \donttest{
-//' forderForceBase(TRUE) # Use base `order` for rxode2 sorts
-//' forderForceBase(FALSE) # Use `data.table` for rxode2 sorts
-//' }
-//' @export
-//' @keywords internal
-//[[Rcpp::export]]
-RObject forderForceBase(bool forceBase = false){
-  forderForceBase_=forceBase;
-  return R_NilValue;
-}
 
 IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   IntegerVector id = asIv(inCmt, "inCmt");
@@ -155,42 +129,6 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
     return Rcpp::match(id, udvid);
   }
   return id;
-}
-extern "C" SEXP getForder(void) {
-  if (!getForder_b){
-    Function fn = getRxFn(".getDTEnv");
-    dataTable = fn();
-    getForder_b=true;
-  }
-  if (!forderForceBase_ && dataTable.exists("forder")){
-    dtForder=true;
-    return wrap(dataTable["forder"]);
-  }
-  Environment b=Rcpp::Environment::base_namespace();
-  dtForder=false;
-  return wrap(b["order"]);
-}
-
-Function getChin() {
-  if (!getForder_b){
-    Function fn = getRxFn(".getDTEnv");
-    dataTable = fn();
-    getForder_b=true;
-  }
-  if (!forderForceBase_ && dataTable.exists("%chin%")){
-    return dataTable["%chin%"];
-  }
-  Environment b=Rcpp::Environment::base_namespace();
-  return b["%in%"];
-}
-
-extern "C" SEXP chin(SEXP x, SEXP table) {
-  Function chin_ = getChin();
-  return chin_(x, table);
-}
-
-extern "C" int useForder(void){
-  return (int)(getForder_b);
 }
 
 IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
@@ -2148,35 +2086,20 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
   }
 #undef sortID
-  Function order = as<Function>(getForder());
+  Function order3  = getRxFn(".order3");
+  Function order1  = getRxFn(".order1");
   IntegerVector ord;
   IntegerVector ordI;
-  if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(true));
-    ord = ord - 1;
-    // na.last isn't =NA isn't quite working
-    idxOutput = as<std::vector<int>>(ord);
-    while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])){
-      idxOutput.pop_back();
-    }
-    if (hasIcov) {
-      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true));
-      ordI = ordI-1;
-      idxIcov = as<std::vector<int>>(ordI);
-    }
-  } else {
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                _["method"]="radix");
-    ord = ord - 1;
-    idxOutput = as<std::vector<int>>(ord);
-    if (hasIcov) {
-      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true),
-                   _["method"]="radix");
-      ordI = ordI-1;
-      idxIcov = as<std::vector<int>>(ordI);
-    }
+  ord = order3(ivId, nvTime, ivEvid);
+  ord = ord - 1;
+  idxOutput = as<std::vector<int>>(ord);
+  while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])){
+    idxOutput.pop_back();
+  }
+  if (hasIcov) {
+    ordI = order1(inIdCov);
+    ordI = ordI-1;
+    idxIcov = as<std::vector<int>>(ordI);
   }
 #ifdef rxSolveT
   REprintf("  Time8: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
