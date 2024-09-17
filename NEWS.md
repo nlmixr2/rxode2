@@ -72,6 +72,8 @@
    - Note: when interpolation is linear/midpoint for
      factors/characters it changes to locf with a warning (#759)
 
+   - Also note, that the default keep interpolation is `na`
+
 - Now you can specify the interpolation method per covariate in the model:
 
   - `linear(var1, var2)` says both `var1` and `var2` would use linear
