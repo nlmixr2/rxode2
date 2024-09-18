@@ -113,6 +113,7 @@ reference:
   - rxValidate
 - title: Special Functions for rxode2
   contents:
+    - boxCox
     - erf
     - forderForceBase
     - gammap
@@ -220,6 +221,7 @@ reference:
   - rxode2parseGetPointerAssignment
   - rxode2parseGetTranslation
   - summary.rxode2
+  - rxUiDeparse
 - title: Rxode2 data sets
   contents:
   - rxResidualError
