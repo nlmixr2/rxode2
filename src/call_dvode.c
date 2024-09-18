@@ -12,7 +12,7 @@
 #include <PreciseSumsPtr.h>
 #include "../inst/include/rxode2.h"
 
-iniPreciseSums;
+iniPreciseSums
 //--------------------------------------------------------------------------
 
 // These are now allocated via R structures in Rcpp.
