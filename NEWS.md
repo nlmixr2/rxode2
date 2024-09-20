@@ -1,3 +1,7 @@
+# rxode2 3.0.1
+
+- explicitly initialize the order vector to stop valgrind warning (requested from CRAN)
+
 # rxode2 3.0.0
 
 ## Breaking Changes
