@@ -20,6 +20,7 @@ d/dt(y3) = a3*y1*y2
     et <- eventTable()
     et$add.sampling(seq(0, 20, by = 0.01))
 
+
     out <- solve(rigid, et)
 
     expect_equal(rxModelVars(rigid), rxModelVars(rigid$cmpMgr$rxDll()))
