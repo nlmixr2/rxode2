@@ -1,8 +1,8 @@
-The ODE-based model specification may be coded inside four places: 
+The ODE-based model specification may be coded inside four places:
 
 - Inside a `rxode2({})` block statements:
 
-```{r modBracket}
+``` r
 library(rxode2)
 mod <- rxode2({
   # simple assignment
@@ -15,7 +15,7 @@ mod <- rxode2({
 
 - Inside a `rxode2("")` string statement:
 
-```{r modString}
+``` r
 mod <- rxode2("
   # simple assignment
   C2 <- centr/V2
@@ -27,7 +27,7 @@ mod <- rxode2("
 
 - In a file name to be loaded by rxode2:
 
-```{r modFile} 
+``` r
 writeLines("
   # simple assignment
   C2 <- centr/V2
@@ -38,10 +38,10 @@ writeLines("
 mod <- rxode2(filename='modelFile.rxode2')
 unlink("modelFile.rxode2")
 ```
-  
+
 - In a model function which can be parsed by `rxode2`:
 
-```{r modFun}
+``` r
 mod <- function() {
   model({
     # simple assignment
@@ -94,10 +94,10 @@ For the last type of model (a model function), a call to `rxode2`
 creates a parsed `rxode2` ui that can be translated to the `rxode2`
 compilation model.
 
-```{r}
+``` r
 mod$simulationModel
 
-# or 
+# or
 mod$simulationIniModel
 ```
 
