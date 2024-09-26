@@ -227,6 +227,9 @@ static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
 
 static inline SEXP sortStateVectors(SEXP ordS) {
   int *ord = INTEGER(ordS);
+  for (int i = 0; i < Rf_length(ordS); i++) {
+    ord[i] = 0; // explicitly initialize to avoid valgrind warning
+  }
   sbt.o = 0; // we can use sbt.o since all the code has already been output
   sbt.s[0] = 0;
   for (int i = 0; i < tb.de.n; i++) {
