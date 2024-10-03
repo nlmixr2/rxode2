@@ -31,7 +31,7 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .iniModifyFixedForThetaOrEtablock <- function(ini, w, fixedValue) {
-  if (rxode2.verbose.pipe) {
+  if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
     .msgFix(ini, w, fixedValue)
   }
   ini$fix[w] <- fixedValue
@@ -42,7 +42,7 @@
     while (length(.etas) > 0) {
       .neta <- .etas[1]
       w <- which(ini$neta1 == .neta | ini$neta2 == .neta)
-      if (rxode2.verbose.pipe) {
+      if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .msgFix(ini, w, fixedValue)
       }
       ini$fix[w] <- fixedValue
@@ -90,20 +90,20 @@
   if (is.null(rhs)) {
   } else if (length(rhs) == 1)  {
     ini$est[.w] <- rhs
-    if (rxode2.verbose.pipe) {
+    if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
       .minfo(paste0("change initial estimate of {.code ", ini$name[.w], "} to {.code ", ini$est[.w], "}"))
     }
     .lower <- ini$lower[.w]
     .upper <- ini$upper[.w]
     if (.lower >= rhs) {
       ini$lower[.w] <- -Inf
-      if (rxode2.verbose.pipe) {
+      if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .minfo(paste0("lower bound of  {.code ", ini$name[.w], "} reset to {.code -Inf}"))
       }
     }
     if (.upper <= rhs) {
       ini$upper[.w] <- Inf
-      if (rxode2.verbose.pipe) {
+      if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .minfo(paste0("upper bound of  {.code ", ini$name[.w], "} reset to {.code Inf}"))
       }
     }
@@ -114,14 +114,14 @@
     } else if (length(rhs) == 2) {
       ini$lower[.w] <- rhs[1]
       ini$est[.w] <- rhs[2]
-      if (rxode2.verbose.pipe) {
+      if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .minfo(paste0("change initial estimate (", ini$est[.w], ") and lower bound (", ini$lower[.w], ") of {.code ", ini$name[.w], "}"))
       }
       # now check/change upper if needed
       .upper <- ini$upper[.w]
       if (.upper <= rhs[1] || .upper <= rhs[2]) {
         ini$upper[.w] <- Inf
-        if (rxode2.verbose.pipe) {
+        if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
           .minfo(paste0("upper bound for initial estimate (", ini$name[.w], ") reset to Inf"))
         }
       }
@@ -129,7 +129,7 @@
       ini$lower[.w] <- rhs[1]
       ini$est[.w] <- rhs[2]
       ini$upper[.w] <- rhs[3]
-      if (rxode2.verbose.pipe) {
+      if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .minfo(paste0("change initial estimate (", ini$est[.w], ") and upper/lower bound (", ini$lower[.w], " to ", ini$upper[.w], ") of {.code ", ini$name[.w], "}"))
       }
     }
@@ -229,7 +229,7 @@
                       name=paste0("(", neta2, ",", neta1, ")"), lower= -Inf, est=est, upper=Inf,
                       fix=.fix, label=NA_character_, backTransform=NA_character_, condition="id",
                       err=NA_character_)
-  if (rxode2.verbose.pipe) {
+  if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
     .minfo(paste0("add covariance between {.code ", ini$name[.w1], "} and {.code ", ini$name[.w2], "} with initial estimate {.code ", est, "}"))
   }
   rbind(ini,.ini2)
@@ -277,7 +277,7 @@
       }
     }
   }
-  if (rxode2.verbose.pipe && .drop) {
+  if (isTRUE(getOption("rxode2.verbose.pipe", TRUE)) && .drop) {
     .minfo(paste0("some correlations may have been dropped for the variables: {.code ", paste(.dn, collapse="}, {.code "), "}"))
     .minfo("the piping should specify the needed covariances directly")
   }
@@ -981,7 +981,7 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
     .eta$err <- NA_character_
     .iniDf <- rbind(.theta, .eta)
   }
-  if (rxode2.verbose.pipe) {
+  if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
     for (.v in .rmNames) {
       .minfo(paste0("remove covariance {.code ", .v, "}"))
     }
@@ -1004,7 +1004,7 @@ zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   if (length(.v2) != 1) {
     stop("cannot find parameter '", .n2, "' for covariance removal", call.=FALSE)
   }
-  if (rxode2.verbose.pipe) {
+  if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
     .minfo(paste0("remove covariance {.code (", .n1, ", ", .n2, ")}"))
   }
 

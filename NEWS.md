@@ -1,5 +1,12 @@
 # rxode2 (development version)
 
+- Query `rxode2.verbose.pipe` at run time instead of requiring it to
+  be set before loading `rxode2`.
+
+- Have correct values at boundaries for `logit`, `expit`, `probit`,
+  and `probitInv` (instead of `NA`). For most cases this does not
+  break anything.
+
 # rxode2 3.0.1
 
 - Explicitly initialize the order vector to stop valgrind warning
