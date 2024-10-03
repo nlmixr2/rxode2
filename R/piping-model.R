@@ -185,7 +185,7 @@ model.rxModelVars <- model.rxode2
       .isErr <- x %in% .v$err
       if (auto || .isErr) {
         .addVariableToIniDf(x, rxui, promote=ifelse(.isErr, NA, FALSE))
-      } else if (rxode2.verbose.pipe) {
+      } else if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .minfo(paste0("add covariate {.code ", x, "}"))
       }
     })
@@ -750,10 +750,10 @@ attr(rxUiGet.errParams, "desc") <- "Get the error-associated variables"
       if (length(.w1) > 0) .iniDf <- .iniDf[-.w1, ]
       .w1 <- which(.iniDf$neta2 == .neta)
       if (length(.w1) > 0) .iniDf <- .iniDf[-.w1, ]
-      if (rxode2.verbose.pipe) {
+      if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .mwarn(paste0("remove between subject variability {.code ", var, "}"))
       }
-    } else if (rxode2.verbose.pipe) {
+    } else if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
       if (is.na(promote)) {
         .mwarn(paste0("remove residual parameter {.code ", var, "}"))
       } else {
@@ -912,7 +912,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
   }
   if (!is.null(.varSelect$cov)) {
     if (var %in% .varSelect$cov) {
-      if (rxode2.verbose.pipe) {
+      if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
         .minfo(paste0("add covariate {.code ", var, "} (as requested by cov option)"))
       }
       return(invisible())
@@ -963,7 +963,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
     .extra$neta2 <- .eta
     .extra$name <- var
     .extra$condition <- "id"
-    if (rxode2.verbose.pipe) {
+    if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
       if (is.na(promote)) {
       } else if (promote) {
         if (is.na(value))  {
@@ -985,14 +985,14 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
     } else if (!promote) {
       if (regexpr(.varSelect$covariateExceptions, tolower(var)) != -1 ||
             regexpr(.varSelect$thetaModelReg, var, perl=TRUE) == -1) {
-        if (rxode2.verbose.pipe) {
+        if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
           .minfo(paste0("add covariate {.code ", var, "}"))
         }
         return(invisible())
       }
       if (!is.null(.varSelect$covariateNames)) {
         if (var %in% .varSelect$covariateNames) {
-          if (rxode2.verbose.pipe) {
+          if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
             .minfo(paste0("add covariate {.code ", var, "} (known covariate)"))
           }
           return(invisible())
@@ -1008,7 +1008,7 @@ rxSetCovariateNamesForPiping <- function(covariates=NULL) {
     .extra$est <- value
     .extra$ntheta <- .theta
     .extra$name <- var
-    if (rxode2.verbose.pipe) {
+    if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
       if (is.na(promote)) {
         .minfo(paste0("add residual parameter {.code ", var, "} and set estimate to {.number ", value, "}"))
       } else if (promote) {
