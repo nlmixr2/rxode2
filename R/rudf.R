@@ -574,6 +574,7 @@ rxRmFunParse <- function(name) {
       if (inherits(.e$iniDf, "data.frame")) {
         env$df <- .e$iniDf
       }
+      expr <- str2lang(paste0("(", deparse1(expr), ")"))
       expr
     }
   } else {
