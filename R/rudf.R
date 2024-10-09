@@ -529,6 +529,18 @@ rxRmFunParse <- function(name) {
   }
 }
 
+#' Handle User-Defined Functions in UI
+#'
+#' This function processes expressions to handle user-defined
+#' functions in the UI.  It will see if there is any registered `s3`
+#' generic in `rxUdfUi` and call that with the parsed function.  The
+#' s3 generic is responsible for returning a list in the correct form
+#' so that the parsed UI will be updated.
+#'
+#' @param expr The expression to be processed.
+#' @param env The environment in which to evaluate the expression.
+#' @return The processed expression.
+#' @noRd
 .handleUdfUi <- function(expr, env) {
   if (is.call(expr)) {
     .c <- as.character(expr[[1]])
@@ -544,22 +556,22 @@ rxRmFunParse <- function(name) {
       .e <- .fun(.num, expr, env$df)
       if (is.language(.e$replace)) {
         expr <- .e$replace
-      }
-      if (is.language(.e$replace)) {
+        env$redo <- TRUE
       } else if (length(.e$replace) == 1 &&
             inherits(.e$replace, "character")) {
-        .ret <- try(str2lang(.e$replace), silent=TRUE)
-        if (inherits(.ret, "try-error")) {
+        expr <- try(str2lang(.e$replace), silent=TRUE)
+        if (inherits(expr, "try-error")) {
           stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed '", .e$replace, "'",
                call.=FALSE)
         }
+        env$redo <- TRUE
       } else {
         stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed in the",
              call.=FALSE)
       }
       .handleUdifUiBeforeOrAfter("before", .e, env, .c)
       .handleUdifUiBeforeOrAfter("after", .e, env, .c)
-      if (inherits(.e$iniDf)) {
+      if (inherits(.e$iniDf, "data.frame")) {
         env$df <- .e$iniDf
       }
       expr
@@ -597,11 +609,10 @@ rxUdfUi <- function(num, fun, iniDf) {
   UseMethod("rxUdfUi")
 }
 
-#' @export
-rxUdfUi.linMod <- function(num, fun, iniDf) {
+.linMod <- function(num, fun, iniDf, intercept=TRUE) {
   .var <- fun[[2]]
   .pow <- fun[[3]]
-  .pre <- paste0("rx.linMod.", .var, num, base::letters[seq_len(.pow+1L)])
+  .pre <- paste0("rx.linMod.", .var, num, base::letters[seq_len(.pow+ifelse(intercept, 1L, 0L))])
   .theta <- iniDf[!is.na(iniDf$ntheta),,drop=FALSE]
   if (length(.theta$ntheta) > 0L) {
     .maxTheta <- max(.theta$ntheta)
@@ -628,12 +639,28 @@ rxUdfUi.linMod <- function(num, fun, iniDf) {
   .eta <- iniDf[is.na(iniDf$neta),,drop=FALSE]
   .iniDf <- rbind(.theta, .eta)
   list(replace=paste(vapply(seq_along(.pre),
-         function(i) {
-           if (i == 1) return(.pre[i])
-           if (i == 2) return(paste0(.pre[i], "*", .var))
-           paste0(.pre[i], "*", paste0(.var,"^", i))
-         }, character(1)), collapse="+"),
+                            function(i) {
+                              if (intercept) {
+                                if (i == 1) return(.pre[i])
+                                if (i == 2) return(paste0(.pre[i], "*", .var))
+                                paste0(.pre[i], "*", paste0(.var,"^", i-1L))
+                              } else {
+                                if (i == 1) return(paste0(.pre[i], "*", .var))
+                                paste0(.pre[i], "*", paste0(.var,"^", i))
+                              }
+                            }, character(1)), collapse="+"),
        iniDf=.iniDf)
+}
+
+#' @export
+rxUdfUi.linMod <- function(num, fun, iniDf) {
+  .linMod(num, fun, iniDf, intercept=TRUE)
+}
+attr(rxUdfUi.linMod, "nargs") <- 2L
+
+#' @export
+rxUdfUi.linMod0 <- function(num, fun, iniDf) {
+  .linMod(num, fun, iniDf, intercept=FALSE)
 }
 attr(rxUdfUi.linMod, "nargs") <- 2L
 

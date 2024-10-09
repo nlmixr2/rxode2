@@ -372,20 +372,76 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
   expect_error(rxModelVars("a <- linMod()"))
 
   f <- rxode2({
-    a <- linMod(3)
+    a <- linMod(x, 3)
   })
 
   e <- et(1:10)
 
-  expect_error(rxSolve(f, e), "ui user function")
+  expect_error(rxSolve(f, e, c(x=2)), "ui user function")
 
-  ## f <- function() {
-  ##   ini({
-  ##     d <- 4
-  ##   })
-  ##   model({
-  ##     a <- linMod(x, 3) + d
-  ##   })
-  ## }
+  # Test a linear model construction
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod(time, 3)
+      b <-  d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(tmp$iniDf$name,
+              c("d", "rx.linMod.time1a", "rx.linMod.time1b", "rx.linMod.time1c",
+                "rx.linMod.time1d"))
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- rx.linMod.time1a + rx.linMod.time1b * time + rx.linMod.time1c * time^2 + rx.linMod.time1d * time^3")
+
+  # Test a linear model construction without an intercept
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(time, 3) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(tmp$iniDf$name,
+              c("d", "rx.linMod.time1a", "rx.linMod.time1b", "rx.linMod.time1c"))
+
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- rx.linMod.time1a * time + rx.linMod.time1b * time^2 + rx.linMod.time1c * time^3 + d")
+
+  # Now test the use of 2 linear models in the UI
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod(time, 3)
+      b <- linMod(time, 3)
+      c <- d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(tmp$iniDf$name,
+               c("d", "rx.linMod.time1a", "rx.linMod.time1b", "rx.linMod.time1c", "rx.linMod.time1d",
+                 "rx.linMod.time2a", "rx.linMod.time2b", "rx.linMod.time2c", "rx.linMod.time2d"))
+
+    expect_equal(modelExtract(tmp, a),
+                 "a <- rx.linMod.time1a + rx.linMod.time1b * time + rx.linMod.time1c * time^2 + rx.linMod.time1d * time^3")
+
+    expect_equal(modelExtract(tmp, b),
+                 "b <- rx.linMod.time2a + rx.linMod.time2b * time + rx.linMod.time2c * time^2 + rx.linMod.time2d * time^3")
 
 })

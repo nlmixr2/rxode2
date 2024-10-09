@@ -1121,6 +1121,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
         } else {
+          .env$redo <- FALSE
           .cur <- .handleUdfUi(.y[[.i]], .env)
           .len <- length(.y)
           .y <- c(lapply(seq_len(.i - 1),
@@ -1140,6 +1141,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
             .env$before <- list()
             .env$after <- list()
             # redo the parsing since the length of the expression has changed
+            next
+          } else if (.env$redo) {
             next
           }
         }
