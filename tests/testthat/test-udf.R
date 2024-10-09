@@ -362,3 +362,30 @@ rxTest({
   })
 
 })
+
+
+test_that("udf type 2 (that changes ui models upon parsing)", {
+
+  expect_error(rxModelVars("a <- linMod(x, 3)"), NA)
+  expect_error(rxModelVars("a <- linMod(x, 3, b)"))
+  expect_error(rxModelVars("a <- linMod(x)"))
+  expect_error(rxModelVars("a <- linMod()"))
+
+  f <- rxode2({
+    a <- linMod(3)
+  })
+
+  e <- et(1:10)
+
+  expect_error(rxSolve(f, e), "ui user function")
+
+  ## f <- function() {
+  ##   ini({
+  ##     d <- 4
+  ##   })
+  ##   model({
+  ##     a <- linMod(x, 3) + d
+  ##   })
+  ## }
+
+})

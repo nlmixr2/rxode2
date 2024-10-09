@@ -708,7 +708,8 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxMuRefHandleNonPlusCall <- function(x, env) {
-  assign(".curEval", as.character(x[[1]]), env)
+  .curEval <- as.character(x[[1]])
+  assign(".curEval", .curEval, env)
   env$curHi <- NA_real_
   env$curLow <- NA_real_
   if (env$.curEval == "probitInv" ||

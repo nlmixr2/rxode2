@@ -294,7 +294,7 @@ rxPreferredDistributionName <- function(dist) {
 #'   rxDemoteAddErr()
 #'
 #' # This is used for logitNorm(NA), the additive portion is stripped
-#' 
+#'
 #' @keywords internal
 rxDemoteAddErr <- function(errType) {
   if (inherits(errType, "factor")) {
@@ -1081,6 +1081,9 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   # ntheta neta1 neta2   name lower       est   upper   fix  err  label
   # backTransform condition trLow trHi
   .env <- new.env(parent=emptyenv())
+  .env$rxUdfUiCount <- new.env(parent=emptyenv())
+  .env$before <- list()
+  .env$after <- list()
   .env$eta <- dimnames(ini)[[1]]
   .env$top <- TRUE
   if (!inherits(ini, "lotriFix") && inherits(ini, "matrix")) {
@@ -1109,10 +1112,36 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .env$lstErr <- vector(length(.y), mode="list")
       .env$lstExpr <- vector(length(.y), mode="list")
       .env$hasErrors <- FALSE
-      for (.i in seq_along(.y)) {
+      .i <- 1L
+      .y <- lapply(seq_along(.y), function(i) {
+        .y[[i]]
+      })
+      while(.i <= length(.y)) {
         .env$line <- .i
         if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
+        } else {
+          .cur <- .handleUdfUi(.y[[.i]], .env)
+          .len <- length(.y)
+          .y <- c(lapply(seq_len(.i - 1),
+                         function(i) {
+                           .y[[i]]
+                         }), .env$before, .cur, .env$after,
+                  lapply(seq_len(.len - .i),
+                         function(i) {
+                           .y[[i + .i]]
+                         }))
+          if (length(.y) != .len) {
+            # Update the lengths of lstChr, lstErr, lstExpr
+            .len <- length(.cur)+ length(.env$before) + length(.env$after)
+            .env$lstChr <- c(.env$lstChr, character(.len))
+            .env$lstErr <- c(.env$lstErr, vector(.len, mode="list"))
+            .env$lstExpr <- c(.env$lstExpr, vector(.len, mode="list"))
+            .env$before <- list()
+            .env$after <- list()
+            # redo the parsing since the length of the expression has changed
+            next
+          }
         }
         .env$lstChr[[.i]] <- deparse1(.y[[.i]])
         .env$lstExpr[[.i]] <- .y[[.i]]
@@ -1121,6 +1150,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           .env$err <- NULL
           .env$hasErrors <- TRUE
         }
+        .i <- .i + 1L
       }
       .env$iniDf <- .env$df
       if (is.null(.env$predDf)) {
@@ -1211,7 +1241,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "lastDistAssign", "line", "needsToBeAnErrorExpression",
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
-                         "curCmt", "errGlobal", "linCmt", "ll", "distribution"),
+                         "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
@@ -1303,4 +1333,3 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     stop(paste(.env$err, collapse="\n"), call.=FALSE)
   }
 }
-

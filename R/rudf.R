@@ -203,7 +203,6 @@ rxRmFunParse <- function(name) {
       .udfEnv$envir <- env[[1]]
     } else {
       .udfEnv$envir <- env
-
     }
   }
   .udfAddToSearch(env)
@@ -291,6 +290,20 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getUdfInfo <- function(fun, nargs) {
+  .nargs <- .rxUdfUiNarg(fun)
+  if (is.integer(.nargs) && !is.na(.nargs)) {
+    if (.nargs > 0L && nargs != .nargs) {
+      return(list(nargs=NA_integer_,
+                  sprintf("rxode2 ui user defined R function has %d arguments, but supplied %d",
+                          .nargs, nargs)))
+    } else if (.nargs <= 0L) {
+      return(list(nargs=NA_integer_,
+                  "rxode2 ui user defined R needs to be setup with a positive number of arguments"))
+    } else {
+      return(list(nargs=-42L,
+                  ".rxUiUdfNone"))
+    }
+  }
   if (is.null(.udfEnv$envir)) {
     return(list(nargs=NA_integer_,
                 "rxode2 cannot determine which environment the user defined functions are located"))
@@ -469,4 +482,180 @@ rxRmFunParse <- function(name) {
   stop(paste0(.udfCallFunArg(fun, args), "needs to return a length 1 numeric"),
        call.=FALSE)
   .ret
+}
+
+.handleUdifUiBeforeOrAfter <- function(type="before", e, env, fun) {
+  .cur <- e[[type]]
+  if (is.null(.cur)) return(invisible())
+  if (is.list(.cur)) {
+    .ret <- lapply(seq_along(.cur),
+                   function(i) {
+                     if (is.language(.cur[[i]])) {
+                       .cur[[i]]
+                     } else if (length(cur[[i]]) == 1L &&
+                                  inheritsc(cur[[i]], "character")) {
+                       .ret <- try(str2lang(.cur[[i]]), silent=TRUE)
+                       if (inherits(.ret, "try-error")) {
+                         stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed '", .cur[[i]],
+                              "' in $",
+                              type,
+                              call.=FALSE)
+                       }
+                       .ret
+                     } else {
+                       stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed in $", type,
+                            call.=FALSE)
+                     }
+                   })
+    assign(type, c(get(type, env), .ret), envir=env)
+  } else if (is.language(.cur)) {
+    assign(type, c(get(type, env), list(.cur)), envir=env)
+  } else if (inherits(.cur, "character")) {
+    .ret <- lapply(seq_along(.cur),
+                   function(i) {
+                     .ret <- try(str2lang(.cur[[i]]), silent=TRUE)
+                     if (inherits(.ret, "try-error")) {
+                       stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed '", .cur[[i]],
+                            "' in $",
+                            type,
+                            call.=FALSE)
+                     }
+                     .ret
+                   })
+    assign(type, c(get(type, env), .ret), envir=env)
+  } else {
+    stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed in $", type,
+         call.=FALSE)
+  }
+}
+
+.handleUdfUi <- function(expr, env) {
+  if (is.call(expr)) {
+    .c <- as.character(expr[[1]])
+    .fun <- try(utils::getS3method("rxUdfUi", .c), silent=TRUE)
+    if (inherits(.fun, "try-error")) {
+      as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env=env)))
+    } else {
+      if (!exists(.c, envir=env$rxUdfUiCount)) {
+        assign(.c, 0L, envir=env$rxUdfUiCount)
+      }
+      .num <- get(.c, envir=env$rxUdfUiCount) + 1L
+      assign(.c, .num, envir=env$rxUdfUiCount)
+      .e <- .fun(.num, expr, env$df)
+      if (is.language(.e$replace)) {
+        expr <- .e$replace
+      }
+      if (is.language(.e$replace)) {
+      } else if (length(.e$replace) == 1 &&
+            inherits(.e$replace, "character")) {
+        .ret <- try(str2lang(.e$replace), silent=TRUE)
+        if (inherits(.ret, "try-error")) {
+          stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed '", .e$replace, "'",
+               call.=FALSE)
+        }
+      } else {
+        stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed in the",
+             call.=FALSE)
+      }
+      .handleUdifUiBeforeOrAfter("before", .e, env, .c)
+      .handleUdifUiBeforeOrAfter("after", .e, env, .c)
+      if (inherits(.e$iniDf)) {
+        env$df <- .e$iniDf
+      }
+      expr
+    }
+  } else {
+    expr
+  }
+}
+
+#' This function is called when processing rxode2 user functions from
+#' the models
+#'
+#'
+#' @param num This represents the user function number in the model
+#'
+#' @param fun this is the function that needs to be parsed and
+#'   changed.  This is a R language expression
+#'
+#' @param iniDf initial values `data.frame`
+#'
+#' @return This needs to return a list with the following elements:
+#'
+#' - `iniDf` -- the modified initial estimate data.frame
+#'
+#' - `before` -- any model code that needs to be added before the current line
+#'
+#' - `after` -- any model code that needs to be added after the current line
+#'
+#' - `replace` -- replacement code for this user function
+#'
+#' @export
+#' @keywords internal
+#' @author Matthew L. Fidler
+rxUdfUi <- function(num, fun, iniDf) {
+  UseMethod("rxUdfUi")
+}
+
+#' @export
+rxUdfUi.linMod <- function(num, fun, iniDf) {
+  .var <- fun[[2]]
+  .pow <- fun[[3]]
+  .pre <- paste0("rx.linMod.", .var, num, base::letters[seq_len(.pow+1L)])
+  .theta <- iniDf[!is.na(iniDf$ntheta),,drop=FALSE]
+  if (length(.theta$ntheta) > 0L) {
+    .maxTheta <- max(.theta$ntheta)
+    .theta1 <- .theta[1,]
+    .theta1$lower <- -Inf
+    .theta1$upper <- Inf
+    .theta1$est <- 0
+    .theta1$fix <- FALSE
+    .theta1$label <- NA_character_
+    .theta1$backTransform <- NA_character_
+    .theta1$condition <- NA_character_
+    .theta1$err <- NA_character_
+    .cur <- c(list(.theta),
+              lapply(seq_along(.pre), function(i) {
+                .cur <- .theta1
+                .cur$name <- .pre[i]
+                .cur$ntheta <- .maxTheta+i
+                .cur
+              }))
+    .theta <- do.call(`rbind`, .cur)
+  } else {
+    stop("fixme")
+  }
+  .eta <- iniDf[is.na(iniDf$neta),,drop=FALSE]
+  .iniDf <- rbind(.theta, .eta)
+  list(replace=paste(vapply(seq_along(.pre),
+         function(i) {
+           if (i == 1) return(.pre[i])
+           if (i == 2) return(paste0(.pre[i], "*", .var))
+           paste0(.pre[i], "*", paste0(.var,"^", i))
+         }, character(1)), collapse="+"),
+       iniDf=.iniDf)
+}
+attr(rxUdfUi.linMod, "nargs") <- 2L
+
+rxUdfUi.default <- function(num, fun, iniDf) {
+  stop("rxode2 user defined function '", fun, "' not supported", call.=FALSE)
+}
+
+#' Get the number of arguments for user defined functions for ui
+#' replacement
+#'
+#' @param fun The rxode2 ui function to replace
+#' @return The number of arguments needed for this function
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUdfUiNarg <- function(fun) {
+  .cls <- try(utils::getS3method("rxUdfUi", fun), silent=TRUE)
+  if (inherits(.cls, "try-error")) {
+    return(NA_integer_)
+  }
+  .nargs <- attr(.cls, "nargs")
+  if (is.null(.nargs)) {
+    return(NA_integer_)
+  }
+  as.integer(.nargs)
 }
