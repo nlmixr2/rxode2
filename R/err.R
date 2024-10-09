@@ -1134,7 +1134,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          }))
           if (length(.y) != .len) {
             # Update the lengths of lstChr, lstErr, lstExpr
-            .len <- length(.cur)+ length(.env$before) + length(.env$after)
+            .len <- length(.env$before) + length(.env$after)
             .env$lstChr <- c(.env$lstChr, character(.len))
             .env$lstErr <- c(.env$lstErr, vector(.len, mode="list"))
             .env$lstExpr <- c(.env$lstExpr, vector(.len, mode="list"))

@@ -610,9 +610,14 @@ rxUdfUi <- function(num, fun, iniDf) {
   UseMethod("rxUdfUi")
 }
 
-.linMod <- function(num, fun, iniDf, intercept=TRUE) {
+.linMod <- function(num, fun, iniDf, intercept=TRUE, type=c("replace", "before", "after")) {
+  type <- match.arg(type)
   .var <- fun[[2]]
   .pow <- fun[[3]]
+  if (!checkmate::testIntegerish(.pow, lower=ifelse(intercept, 0L, 1L), len=1L)) {
+    stop("linCmt(", .var, ", ", .pow, ") needs to have an integer >= ", ifelse(intercept, 0L, 1L),
+         call.=FALSE)
+  }
   .pre <- paste0("rx.linMod.", .var, num, base::letters[seq_len(.pow+ifelse(intercept, 1L, 0L))])
   .theta <- iniDf[!is.na(iniDf$ntheta),,drop=FALSE]
   if (length(.theta$ntheta) > 0L) {
@@ -639,34 +644,73 @@ rxUdfUi <- function(num, fun, iniDf) {
   }
   .eta <- iniDf[is.na(iniDf$neta),,drop=FALSE]
   .iniDf <- rbind(.theta, .eta)
-  list(replace=paste(vapply(seq_along(.pre),
-                            function(i) {
-                              if (intercept) {
-                                if (i == 1) return(.pre[i])
-                                if (i == 2) return(paste0(.pre[i], "*", .var))
-                                paste0(.pre[i], "*", paste0(.var,"^", i-1L))
-                              } else {
-                                if (i == 1) return(paste0(.pre[i], "*", .var))
-                                paste0(.pre[i], "*", paste0(.var,"^", i))
-                              }
-                            }, character(1)), collapse="+"),
-       iniDf=.iniDf)
+  .linMod <- paste(vapply(seq_along(.pre),
+                          function(i) {
+                            if (intercept) {
+                              if (i == 1) return(.pre[i])
+                              if (i == 2) return(paste0(.pre[i], "*", .var))
+                              paste0(.pre[i], "*", paste0(.var,"^", i-1L))
+                            } else {
+                              if (i == 1) return(paste0(.pre[i], "*", .var))
+                              paste0(.pre[i], "*", paste0(.var,"^", i))
+                            }
+                          }, character(1)), collapse="+")
+  if (type == "replace") {
+    list(replace=.linMod,
+         iniDf=.iniDf )
+  } else if (type == "before") {
+    .replace <- paste0("rx.linMod.", .var, ".f", num)
+    list(before=paste0(.replace, " <- ", .linMod),
+         replace=.replace,
+         iniDf=.iniDf)
+  } else if (type == "after") {
+    .replace <- paste0("rx.linMod.", .var, ".f", num)
+    list(after=paste0(.replace, " <- ", .linMod),
+         replace="0",
+         iniDf=.iniDf)
+  }
+
 }
 
 #' @export
 rxUdfUi.linMod <- function(num, fun, iniDf) {
-  .linMod(num, fun, iniDf, intercept=TRUE)
+  .linMod(num, fun, iniDf, intercept=TRUE, type="replace")
 }
 attr(rxUdfUi.linMod, "nargs") <- 2L
 
 #' @export
 rxUdfUi.linMod0 <- function(num, fun, iniDf) {
-  .linMod(num, fun, iniDf, intercept=FALSE)
+  .linMod(num, fun, iniDf, intercept=FALSE, type="replace")
 }
 attr(rxUdfUi.linMod, "nargs") <- 2L
 
+#' @export
+rxUdfUi.linModB <- function(num, fun, iniDf) {
+  .linMod(num, fun, iniDf, intercept=TRUE, type="before")
+}
+attr(rxUdfUi.linMod, "nargs") <- 2L
+
+#' @export
+rxUdfUi.linModB0 <- function(num, fun, iniDf) {
+  .linMod(num, fun, iniDf, intercept=FALSE, type="before")
+}
+attr(rxUdfUi.linMod, "nargs") <- 2L
+
+#' @export
+rxUdfUi.linModA <- function(num, fun, iniDf) {
+  .linMod(num, fun, iniDf, intercept=TRUE, type="after")
+}
+attr(rxUdfUi.linMod, "nargs") <- 2L
+
+#' @export
+rxUdfUi.linModA0 <- function(num, fun, iniDf) {
+  .linMod(num, fun, iniDf, intercept=FALSE, type="after")
+}
+attr(rxUdfUi.linMod, "nargs") <- 2L
+
+#' @export
 rxUdfUi.default <- function(num, fun, iniDf) {
-  stop("rxode2 user defined function '", fun, "' not supported", call.=FALSE)
+  stop("rxode2 user defined function '", fun, "' not supported", call.=FALSE) # nocov
 }
 
 #' Get the number of arguments for user defined functions for ui
