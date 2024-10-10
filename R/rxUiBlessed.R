@@ -5,5 +5,5 @@
     "modelName", "mu2RefCovariateReplaceDataFrame", "muRefCovariateDataFrame", 
     "muRefCovariateEmpty", "muRefCurEval", "muRefDataFrame", 
     "muRefDropParameters", "muRefExtra", "muRefExtraEmpty", "mv0", 
-    "mvL", "nonMuEtas", "oneTheta", "predDf", "singleTheta", 
+    "mvL", "nonMuEtas", "oneTheta", "predDf", "redo", "singleTheta", 
     "sticky", "thetaLhsDf")

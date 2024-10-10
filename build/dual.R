@@ -116,7 +116,7 @@ toDual <- function(x="0.5*(s - sqrt(s*s - 4*(*k32)*(*k20)))"){
         print(x[[1]])
         print(x)
       }
-      return(as.call(lapply(x, f)));
+      return(as.call(lapply(x, f)))
     }
   }
   return(gsub(" +", "", deparse1(f(eval(parse(text=paste0("quote(", fromC(x), ")")))))))
