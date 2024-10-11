@@ -1035,6 +1035,74 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   }
 }
 
+#' Get a blank, theta1, or eta1 initialization block for iniDf
+#'
+#' @param type type of initialization block to return
+#' @return A data.frame with the appropriate number/type of columns.
+#'
+#' For type="empty", the data.frame will have 0 rows but all the correct types.
+#'
+#' For type="theta", the data.frame will have 1 row with the correct
+#' types and default values.  The "name" and "est" will likely need to
+#' be updated.
+#'
+#' For type="eta", the data.frame will have 1 row with the correct
+#' types and default values for the a single eta being added.  The
+#' "name" and "est" will likely need to be updated.
+#'
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @examples
+#'
+#' .rxBlankIni("empty")
+#'
+#' .rxBlankIni("theta")
+#'
+#' .rxBlankIni("eta")
+#'
+.rxBlankIni <- function(type=c("emtpy", "theta", "eta")) {
+  type <- match.arg(type)
+  if (type == "empty") {
+    data.frame(ntheta=integer(0),
+               neta1=integer(0),
+               neta2=integer(0),
+               name=character(0),
+               lower=numeric(0),
+               est=numeric(0),
+               upper=numeric(0),
+               fix=logical(0),
+               err=character(0),
+               label=character(0),
+               stringsAsFactors=FALSE)
+  } else if (type == "theta") {
+    data.frame(ntheta=1L,
+               neta1=NA_integer_,
+               neta2=NA_integer_,
+               name=NA_character_,
+               lower=-Inf,
+               est=0,
+               upper=Inf,
+               fix=FALSE,
+               err=NA_character_,
+               label=NA_character_,
+               stringsAsFactors=FALSE)
+  } else {
+    data.frame(ntheta=NA_integer_,
+               neta1=1L,
+               neta2=1L,
+               name=NA_character_,
+               lower=0,
+               est=0.1,
+               upper=Inf,
+               fix=FALSE,
+               err=NA_character_,
+               label=NA_character_,
+               stringsAsFactors=FALSE)
+  }
+}
+
 #' Process the errors in the quoted expression
 #'
 #' @param x Quoted expression for parsing
@@ -1078,6 +1146,11 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 .errProcessExpression <- function(x, ini,
                                   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
                                   verbose=FALSE, checkMissing=TRUE) {
+  on.exit({
+    .udfUiEnv$num <- 1L
+    .udfUiEnv$iniDf <- NULL
+    .udfUiEnv$lhs <- NULL
+  })
   # ntheta neta1 neta2   name lower       est   upper   fix  err  label
   # backTransform condition trLow trHi
   .env <- new.env(parent=emptyenv())
@@ -1122,7 +1195,15 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           .errHandleTilde(.y[[.i]], .env)
         } else {
           .env$redo <- FALSE
-          .cur <- .handleUdfUi(.y[[.i]], .env)
+          .cur <- .y[[.i]]
+          if (length(.cur) >= 3 && identical(.cur[[1]], quote(`<-`))) {
+            .env$lhs <- .cur[[2]]
+          } else if (length(.cur)>= 3 && identical(.cur[[1]], quote(`=`))) {
+            .env$lhs <- .cur[[2]]
+          } else {
+            .env$lhs <- NULL
+          }
+          .cur <- .handleUdfUi(.cur, .env)
           .len <- length(.y)
           .y <- c(lapply(seq_len(.i - 1),
                          function(i) {
@@ -1244,7 +1325,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "lastDistAssign", "line", "needsToBeAnErrorExpression",
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
-                         "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after"),
+                         "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after",
+                         "lhs"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)

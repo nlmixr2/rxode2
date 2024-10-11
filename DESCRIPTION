@@ -26,6 +26,7 @@ Authors@R: c(
    person("Matt", "Dowle", role="ctb", email="mattjdowle@gmail.com"),
    person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = "ctb"),
    person("Melissa", "Hallow", role = "aut", email = "hallowkm@uga.edu"),
+   person("Michel", "Lang", , "michellang@gmail.com", role = "ctb"),
    person("Morwenn","", role="ctb"),
    person("Nicholas J.", "Higham",role="ctb"),
    person("Omar", "Elashkar", email="omar.i.elashkar@gmail.com", role="ctb"),

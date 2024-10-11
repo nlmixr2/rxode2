@@ -513,6 +513,15 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
   expect_equal(modelExtract(tmp, a),
                "a <- (0) + d")
 
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod(power=3, variable="x") + d
+    })
+  }
+
 
 
 })
