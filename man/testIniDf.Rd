@@ -12,6 +12,8 @@ assertIniDf(iniDf, extra = "", .var.name = .vname(iniDf), null.ok = FALSE)
 \arguments{
 \item{iniDf}{the object to test if it is a rxode2 ui \code{iniDf} data.frame}
 
+\item{extra}{information to append to the error message}
+
 \item{.var.name}{[\code{character(1)}]\cr
 Name of the checked object to print in assertions. Defaults to
 the heuristic implemented in \code{\link[checkmate]{vname}}.}

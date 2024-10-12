@@ -123,12 +123,8 @@ rxUdfUiIniLhs <- function() {
 #' the models
 #'
 #'
-#' @param num This represents the user function number in the model
-#'
 #' @param fun this is the function that needs to be parsed and
 #'   changed.  This is a R language expression
-#'
-#' @param iniDf initial values `data.frame`
 #'
 #' @return This needs to return a list with the following elements:
 #'
@@ -250,6 +246,8 @@ rxIntToBase <- function(x, base=36L) {
 #'   unspecified, query using `rxUdfUiNum()`.
 #' @param iniDf the initialization `data.frame`, if `NULL` query using
 #'   `rxUdfUiIniDf()`
+#' @param ... arguments that are passed to `linMod()` for the other
+#'   abbreviations of `linMod()`
 #' @return a list for use in when generating the `rxode2` ui model see
 #'   `rxUdfUi()` for details.
 #' @export
@@ -372,8 +370,8 @@ linModA0 <- function(..., intercept=FALSE, type="after") {
                    function(i) {
                      if (is.language(.cur[[i]])) {
                        .cur[[i]]
-                     } else if (length(cur[[i]]) == 1L &&
-                                  -                                  inheritsc(cur[[i]], "character")) {
+                     } else if (length(.cur[[i]]) == 1L &&
+                                  inherits(.cur[[i]], "character")) {
                        .ret <- try(str2lang(.cur[[i]]), silent=TRUE)
                        if (inherits(.ret, "try-error")) {
                          stop("rxode2 ui user function '", fun, "' failed to produce code that could be parsed '", .cur[[i]],

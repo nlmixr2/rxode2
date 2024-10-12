@@ -10,10 +10,6 @@ rxUdfUi(fun)
 \arguments{
 \item{fun}{this is the function that needs to be parsed and
 changed.  This is a R language expression}
-
-\item{num}{This represents the user function number in the model}
-
-\item{iniDf}{initial values \code{data.frame}}
 }
 \value{
 This needs to return a list with the following elements:

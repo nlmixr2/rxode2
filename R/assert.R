@@ -620,6 +620,7 @@ warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
 #'
 #'
 #' @param iniDf the object to test if it is a rxode2 ui `iniDf` data.frame
+#' @param extra information to append to the error message
 #' @inheritParams checkmate::testDataFrame
 #' @return boolean, indicating if the object is a valid initialization data frame
 #' @export

@@ -42,6 +42,9 @@ unspecified, query using \code{rxUdfUiNum()}.}
 
 \item{iniDf}{the initialization \code{data.frame}, if \code{NULL} query using
 \code{rxUdfUiIniDf()}}
+
+\item{...}{arguments that are passed to \code{linMod()} for the other
+abbreviations of \code{linMod()}}
 }
 \value{
 a list for use in when generating the \code{rxode2} ui model see
