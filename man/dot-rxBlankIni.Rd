@@ -4,7 +4,7 @@
 \alias{.rxBlankIni}
 \title{Get a blank, theta1, or eta1 initialization block for iniDf}
 \usage{
-.rxBlankIni(type = c("emtpy", "theta", "eta"))
+.rxBlankIni(type = c("empty", "theta", "eta"))
 }
 \arguments{
 \item{type}{type of initialization block to return}

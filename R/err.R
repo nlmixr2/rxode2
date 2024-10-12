@@ -1062,7 +1062,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #'
 #' .rxBlankIni("eta")
 #'
-.rxBlankIni <- function(type=c("emtpy", "theta", "eta")) {
+.rxBlankIni <- function(type=c("empty", "theta", "eta")) {
   type <- match.arg(type)
   if (type == "empty") {
     data.frame(ntheta=integer(0),
