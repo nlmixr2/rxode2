@@ -1150,10 +1150,13 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     .udfUiEnv$num <- 1L
     .udfUiEnv$iniDf <- NULL
     .udfUiEnv$lhs <- NULL
+    .udfUiEnv$parsing <- FALSE
   })
+  .udfUiEnv$parsing <- TRUE
   # ntheta neta1 neta2   name lower       est   upper   fix  err  label
   # backTransform condition trLow trHi
   .env <- new.env(parent=emptyenv())
+  .env$uiUseData <- FALSE
   .env$rxUdfUiCount <- new.env(parent=emptyenv())
   .env$before <- list()
   .env$after <- list()

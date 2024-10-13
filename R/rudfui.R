@@ -2,6 +2,9 @@
 .udfUiEnv$num <- 1L
 .udfUiEnv$iniDf <- NULL
 .udfUiEnv$lhs <- NULL
+.udfUiEnv$data <- NULL
+.udfUiEnv$est <- NULL
+.udfUiEnv$parsing <- FALSE
 
 #' This gives the current number in the ui of the particular function being called.
 #'
@@ -57,6 +60,63 @@ rxUdfUiIniLhs <- function() {
     NULL
   }
 }
+#' Return the data.frame that is being processed or setup data.frame for processing
+#'
+#'
+#' @param value when specified, this assigns the data.frame to be
+#'   processed, or resets it by assigning it to be NULL
+#' @return value of the data.frame being processed or NULL
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' rxUdfUiData()
+#'
+rxUdfUiData <- function(value) {
+  if (missing(value)) {
+    .udfUiEnv$data
+  } else if (is.data.frame(value)) {
+    .udfUiEnv$data <- value
+  } else if (is.null(value)) {
+    .udfUiEnv$data <- value
+  } else {
+    stop("rxUdfUiData must be called with a data.frame, NULL, or without any arguments",
+         call.=FALSE)
+  }
+}
+#' Return the current estimation method for the UI processing
+#'
+#' @param value when specified, this assigns the character value of
+#'   the estimation method or NULL if there is nothing being estimated
+#' @return value of the estimation method being processed or NULL
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' rxUdfUiEst()
+#'
+rxUdfUiEst <- function(value) {
+  if (missing(value)) {
+    .udfUiEnv$est
+  } else if (checkmate::testCharacter(value, min.chars=1L, any.missing=FALSE, len=1L)) {
+    .udfUiEnv$est <- value
+  } else if (is.null(value)) {
+    .udfUiEnv$est <- value
+  } else {
+    stop("rxUdfUiEst must be called with a character, NULL, or without any arguments",
+         call.=FALSE)
+  }
+}
+#' Returns if the current ui function is being parsed
+#'
+#' @return logical if the current ui function is being parsed
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' rxUdfUiParsing()
+rxUdfUiParsing <- function() {
+  .udfUiEnv$parsing
+}
 
 #' Handle User-Defined Functions in UI
 #'
@@ -111,7 +171,19 @@ rxUdfUiIniLhs <- function() {
       if (inherits(.e$iniDf, "data.frame")) {
         env$df <- .e$iniDf
       }
-      expr <- str2lang(paste0("(", deparse1(expr), ")"))
+      if (is.null() &&
+            checkmate::testLogical(.e$useData, len=1L, any.missing=FALSE)) {
+        env$uiUseData <- .e$uiUseData
+      }
+      expr <- as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env=env)))
+      if (is.call(expr) &&
+            (identical(as.character(expr[[1]]), `+`) ||
+               identical(as.character(expr[[1]]), `-`) ||
+               identical(as.character(expr[[1]]), `^`) ||
+               identical(as.character(expr[[1]]), `/`) ||
+               identical(as.character(expr[[1]]), `*`))) {
+        expr <- str2lang(paste0("(", deparse1(expr), ")"))
+      }
       expr
     }
   } else {

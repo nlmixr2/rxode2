@@ -1225,6 +1225,19 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
+  if (rxIs(events, "event.data.frame")) {
+    rxUdfUiData(events)
+  } else if (rxIs(params, "event.data.frame")) {
+    rxUdfUiData(params)
+  } else {
+    stop("Cannot detect an event data frame to use while re-parsing the model",
+         call.=FALSE)
+  }
+  rxUdfUiEst("rxSolve")
+  on.exit({
+    rxUdfUiData(NULL)
+    rxUdfUiEst(NULL)
+  })
   .udfEnvSet(list(envir, parent.frame(1)))
   .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
@@ -1375,6 +1388,25 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
+  if (object$uiUseData) {
+    # this needs to be re-parsed
+    if (rxIs(events, "event.data.frame")) {
+      rxUdfUiData(events)
+    } else if (rxIs(params, "event.data.frame")) {
+      rxUdfUiData(params)
+    } else {
+      stop("Cannot detect an event data frame to use while re-parsing the model",
+           call.=FALSE)
+    }
+    rxUdfUiEst("rxSolve")
+    on.exit({
+      rxUdfUiData(NULL)
+      rxUdfUiEst(NULL)
+    })
+    # Now re-parse
+    object <- as.function(object)
+    object <- suppressMessages(rxode2(object))
+  }
   .udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
