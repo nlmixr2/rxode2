@@ -17,13 +17,16 @@ library(rxode2)
 
 When defining models you may have wished to write a small R function
 or make a function integrate into `rxode2` somehow. This article
-discusses 2 ways to do this:
+discusses 4 ways to do this:
 
--   A R-based user function which can be loaded as a simple function
-    or in certain circumstances translated to C to run more
-    efficiently
+- A R-based user function which can be loaded as a simple function or
+  in certain circumstances translated to C to run more efficiently
 
--   A C function that you define and integrate into code
+- A C function that you define and integrate into code
+
+- A user defined function that changes `rxode2` ui code by replacing
+  the function with `rxode2` code.  This can be in the presence or
+  absence of the data for simulation or estimation.
 
 ## R based user functions
 
@@ -203,3 +206,149 @@ table:
 ```{r rxDrm}
 rxRmFun("fun")
 ```
+
+## Functions to insert `rxode2` code into the current model
+
+This replaces `rxode2` code in the current model with some expansion.
+This can allow more R-like functions inside of the rxode2 ui models,
+as well as adding approximating functions like polynomials, splines
+and neural networks.
+
+An example that allows more `R`-like functions is below:
+
+```r
+f <- function() {
+  model({
+    a <- rxpois(lambda=lam)
+  })
+}
+
+# Which will evaluate into a standard rxode2 function that does not
+# support named arguments (since it is translated to C)
+f()
+
+# Which is still true in the standard rxode2:
+
+try(rxode2({
+  a <- rxpois(lambda=lam)
+}))
+```
+
+This is accomplished by a combination of two functions, which are
+highly commented:
+
+``` r
+rxUdfUi.rxpois <- function(fun) {
+  # Fun is the language object (ie quoted R object) to be evaluated or
+  # changed in the code
+  .fun <- fun
+  # Since the `rxpois` function is built into the rxode2 we need to
+  # have a function with a different conflicts.  In this case, I take
+  # the function name (fun[[1]]), and prepend a ".", which follows
+  # `rxode2`'s naming convention of un-exported functions.
+  #
+  # This next evaluation changes the expression function to .rxpois()
+  .fun[[1]] <- str2lang(paste0(".", deparse1(fun[[1]])))
+  # Since this is still a R expression, you can then evaluate the
+  # function .rxpois to produce the proper code:
+  eval(.fun)
+}
+
+# The above s3 method can be registered in a package or you can use
+# the following code to register it in your session:
+rxode2::.s3register("rxode2::rxUdfUi", "rxpois")
+
+# This is the function that changes the code as needed
+.rxpois <- function(lambda) {
+  # The first part of this code tries to change the value into a
+  # character.  This handles cases like rxpois(lambda=lam),
+  # rxpois(lam), rxpois("lam").  It also tries to evaluate the
+  # argument supplied to lambda in case it comes from a different
+  # location.
+  .lam <- as.character(substitute(lambda))
+  .tmp <- try(force(lambda), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .lam <- lambda
+    }
+  }
+  # This part creates a list with the replacement text, in this case
+  # it woulb be rxpois(lam) where there is no equals included, as
+  # required by `rxode2`:
+  list(replace=paste0("rxpois(", .lam, ")"))
+}
+
+```
+
+In general the list that the function needs to return can have:
+
+- `$replace` -- The text that will be replaced
+
+- `$before` -- lines that will be placed in the model before the
+  current function is found
+
+- `$after` -- lines that are added in the model after the current
+  function is found
+
+- `$iniDf` -- the initial estimates `data.frame` for this problem.
+  While calling this function, you can retrieve the initial conditions
+  currently used parsing you can get the prior value with
+  `rxUdfUiIniDf()` and then you can modify it inside the function and
+  return the new `data.frame` in this list element.  This allows you
+  add/delete initial estimates from the model as well as modify the
+  model lines themselves.
+
+- `$uiUseData` -- when `TRUE`, this instructs `rxode2` and
+  `nlmixr2est` to re-parse this function in the presence of data, this
+  means a bit more function setup will need to be done.
+
+In addition to the `rxUdfUiIniDf()` you can get information about the
+parser:
+
+- `rxUdfUiParsing()` returns if the rxode2 ui function is being parsed
+  currently (this allows a function to be overloaded as a `udf` for
+  calling from `rxode2` as well as a function for modifying the
+  model).
+
+- `rxUdfUiNum()` during parsing the function you are calling (in the
+  example above `rxpois()` can be called multiple times.  This gives
+  the number of the function in the model in order (the first would
+  give `1` the second, `2`, etc).  This can be used to create unique
+  variables with functions like `rxIntToLetter()` or `rxIntToBase()`.
+
+- `rxUdfUiIniLhs()` which gives the left-handed side of the equation
+  where the function is found.  This is also a `R` language object.
+
+- `rxUdfUiData()` which specifies the data that are being used to
+  simulate, estimate, etc.
+
+- `rxUdfUiEst()` which gives the estimation/simulation method that is
+  being used with the model.  For example, with simulation it would be
+  `rxSolve`.
+
+### Using data for `rxode2` ui modification models
+
+When you would like to use data to help inform arguments or
+replacements, you will likely need to do the following steps:
+
+- When data are not being processed, you need to put the function in
+  an `rxode2` acceptable form, no named arguments, no strings, and
+  only numbers or variables in the output.
+
+- The number of arguments of this output needs to be declared in the
+  `S3` method by adding the attribute `"nargs"` to method.  For
+  example, the built in `linMod()` ui modification function uses:
+
+```r
+#' @export
+rxUdfUi.linMod <- function(fun) {
+  eval(fun)
+}
+attr(rxUdfUi.linMod, "nargs") <- 2L
+```
+
+- Since the number of arguments are specified, you can return the
+  `linMod()` in the standardized form and allow it to be re-parsed
+  when data are present; to do this use the return `$uiUseData`, you
+  could customize further what happens by choosing extra steps for
+  different "estimation" methods.
