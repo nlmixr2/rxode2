@@ -63,9 +63,10 @@ rxUdfUiIniLhs <- function() {
 #' Return the data.frame that is being processed or setup data.frame for processing
 #'
 #'
-#' @param value when specified, this assigns the data.frame to be
-#'   processed, or resets it by assigning it to be NULL
-#' @return value of the data.frame being processed or NULL
+#' @param value when specified, this assigns the data.frame to be processed, or resets it by assigning it to be `NULL`.
+#'
+#' @return value of the `data.frame` being processed or `NULL`.
+#'
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -132,6 +133,9 @@ rxUdfUiParsing <- function() {
 #' @noRd
 .handleUdfUi <- function(expr, env) {
   if (is.call(expr)) {
+    if (length(expr) == 1L) {
+      return(expr)
+    }
     .c <- as.character(expr[[1]])
     .fun <- try(utils::getS3method("rxUdfUi", .c), silent=TRUE)
     if (inherits(.fun, "try-error")) {
@@ -171,17 +175,18 @@ rxUdfUiParsing <- function() {
       if (inherits(.e$iniDf, "data.frame")) {
         env$df <- .e$iniDf
       }
-      if (is.null() &&
-            checkmate::testLogical(.e$useData, len=1L, any.missing=FALSE)) {
+      if (is.null(.udfUiEnv$data) &&
+            checkmate::testLogical(.e$uiUseData, len=1L, any.missing=FALSE)) {
         env$uiUseData <- .e$uiUseData
       }
+      if (!is.call(expr)) return(expr)
       expr <- as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env=env)))
-      if (is.call(expr) &&
-            (identical(as.character(expr[[1]]), `+`) ||
-               identical(as.character(expr[[1]]), `-`) ||
-               identical(as.character(expr[[1]]), `^`) ||
-               identical(as.character(expr[[1]]), `/`) ||
-               identical(as.character(expr[[1]]), `*`))) {
+      if (is.call(expr) && length(expr) >= 2L &&
+            (identical(expr[[1]], quote(`+`)) ||
+               identical(expr[[1]], quote(`-`)) ||
+               identical(expr[[1]], quote(`^`)) ||
+               identical(expr[[1]], quote(`/`)) ||
+               identical(expr[[1]], quote(`*`)))) {
         expr <- str2lang(paste0("(", deparse1(expr), ")"))
       }
       expr

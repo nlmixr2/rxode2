@@ -1388,7 +1388,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
-  if (object$uiUseData) {
+  if (isTRUE(object$uiUseData)) {
     # this needs to be re-parsed
     if (rxIs(events, "event.data.frame")) {
       rxUdfUiData(events)

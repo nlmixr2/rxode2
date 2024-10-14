@@ -460,7 +460,7 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
                "rx.linMod.time.f1 <- rx.linMod.time1a + rx.linMod.time1b * time + rx.linMod.time1c * time^2 + rx.linMod.time1d * time^3")
 
   expect_equal(modelExtract(tmp, a),
-               "a <- (rx.linMod.time.f1)")
+               "a <- rx.linMod.time.f1")
 
   f <- function() {
     ini({
@@ -477,7 +477,7 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
                "rx.linMod.time.f1 <- rx.linMod.time1a * time + rx.linMod.time1b * time^2 + rx.linMod.time1c * time^3")
 
   expect_equal(modelExtract(tmp, a),
-               "a <- (rx.linMod.time.f1) + d")
+               "a <- rx.linMod.time.f1 + d")
 
   f <- function() {
     ini({
@@ -494,7 +494,7 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
                "rx.linMod.time.f1 <- rx.linMod.time1a + rx.linMod.time1b * time")
 
   expect_equal(modelExtract(tmp, a),
-               "a <- (0) + d")
+               "a <- 0 + d")
 
   f <- function() {
     ini({
@@ -511,7 +511,7 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
                "rx.linMod.time.f1 <- rx.linMod.time1a * time")
 
   expect_equal(modelExtract(tmp, a),
-               "a <- (0) + d")
+               "a <- 0 + d")
 
   f <- function() {
     ini({

@@ -8,31 +8,43 @@ attr(rxUdfUi.linMod, "nargs") <- 2L
 rxUdfUi.linMod0 <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linMod, "nargs") <- 2L
+attr(rxUdfUi.linMod0, "nargs") <- 2L
 
 #' @export
 rxUdfUi.linModB <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linMod, "nargs") <- 2L
+attr(rxUdfUi.linModB, "nargs") <- 2L
 
 #' @export
 rxUdfUi.linModB0 <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linMod, "nargs") <- 2L
+attr(rxUdfUi.linModB0, "nargs") <- 2L
 
 #' @export
 rxUdfUi.linModA <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linMod, "nargs") <- 2L
+attr(rxUdfUi.linModA, "nargs") <- 2L
 
 #' @export
 rxUdfUi.linModA0 <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linMod, "nargs") <- 2L
+attr(rxUdfUi.linModA0, "nargs") <- 2L
+
+#' @export
+rxUdfUi.linModD <- function(fun) {
+  eval(fun)
+}
+attr(rxUdfUi.linModD, "nargs") <- 2L
+
+#' @export
+rxUdfUi.linModD0 <- function(fun) {
+  eval(fun)
+}
+attr(rxUdfUi.linModD0, "nargs") <- 2L
 
 #' @export
 rxUdfUi.default <- function(fun) {
@@ -49,6 +61,8 @@ rxUdfUi.default <- function(fun) {
 #'   unspecified, query using `rxUdfUiNum()`.
 #' @param iniDf the initialization `data.frame`, if `NULL` query using
 #'   `rxUdfUiIniDf()`
+#' @param data logical that tells if the initial estimates of the
+#'   linear model should be estimated from the data.
 #' @param ... arguments that are passed to `linMod()` for the other
 #'   abbreviations of `linMod()`
 #' @return a list for use in when generating the `rxode2` ui model see
@@ -59,7 +73,7 @@ rxUdfUi.default <- function(fun) {
 #'
 #' linMod(x, 3)
 linMod <- function(variable, power, intercept=TRUE,type=c("replace", "before", "after"),
-                   num=NULL, iniDf=NULL) {
+                   num=NULL, iniDf=NULL, data=FALSE) {
   .var <- as.character(substitute(variable))
   .tmp <- try(force(variable), silent=TRUE)
   if (!inherits(.tmp, "try-error")) {
@@ -75,6 +89,15 @@ linMod <- function(variable, power, intercept=TRUE,type=c("replace", "before", "
     num <- rxUdfUiNum()
   }
   checkmate::assertIntegerish(num, lower=1, any.missing=FALSE, len=1)
+  if (data && !rxUdfUiData()) {
+    if (intercept) {
+      return(list(replace=paste0("linModD(", .var, ", ", power, ")"),
+                  uiUseData=TRUE))
+    } else {
+      return(list(replace=paste0("linModD0(", .var, ", ", power, ")"),
+                  uiUseData=TRUE))
+    }
+  }
   if (is.null(iniDf)) {
     iniDf <- rxUdfUiIniDf()
   }
@@ -92,16 +115,31 @@ linMod <- function(variable, power, intercept=TRUE,type=c("replace", "before", "
     }
     .theta1$lower <- -Inf
     .theta1$upper <- Inf
-    .theta1$est <- 0
     .theta1$fix <- FALSE
     .theta1$label <- NA_character_
     .theta1$backTransform <- NA_character_
     .theta1$condition <- NA_character_
     .theta1$err <- NA_character_
+    .est <- rep(0, length(.pre))
+    if (data) {
+      .dat <- rxUdfUiData()
+      .dv <- which(tolower(names(.dat)) == "dv")
+      if (lenght(.dv) == 0L) {
+        warning("No dependent variable found in data, so no initial estimates will be set to zero")
+      } else {
+        names(.dat)[.dv] <- "dv"
+        .model <- stats::lm(as.formula(paste0("dv ~ stats::poly(", .var, ",",
+                                              power, ")",
+                                              ifelse(intercept, "", "+0"))),
+                            data=rxUdfUiData())
+        .est <- coef(.model)
+      }
+    }
     .cur <- c(list(.theta),
               lapply(seq_along(.pre), function(i) {
                 .cur <- .theta1
                 .cur$name <- .pre[i]
+                .cur$est <- .est[i]
                 .cur$ntheta <- .maxTheta+i
                 .cur
               }))
@@ -163,4 +201,16 @@ linModA <- function(..., type="after") {
 #' @export
 linModA0 <- function(..., intercept=FALSE, type="after") {
   linMod(..., intercept=intercept, type=type)
+}
+
+#' @describeIn linMod linear model where initial estimates are generated from the data
+#' @export
+linModD <- function(..., intercept=TRUE, data=TRUE) {
+  linMod(..., intercept=intercept, data=data)
+}
+
+#' @describeIn linMod linear model where initial estimates are generated from the data (no intercept)
+#' @export
+linModD0 <- function(..., intercept=FALSE, data=TRUE) {
+  linMod(..., intercept=intercept, data=data)
 }

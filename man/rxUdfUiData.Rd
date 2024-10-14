@@ -7,11 +7,10 @@
 rxUdfUiData(value)
 }
 \arguments{
-\item{value}{when specified, this assigns the data.frame to be
-processed, or resets it by assigning it to be NULL}
+\item{value}{when specified, this assigns the data.frame to be processed, or resets it by assigning it to be \code{NULL}.}
 }
 \value{
-value of the data.frame being processed or NULL
+value of the \code{data.frame} being processed or \code{NULL}.
 }
 \description{
 Return the data.frame that is being processed or setup data.frame for processing
