@@ -38,13 +38,13 @@ attr(rxUdfUi.linModA0, "nargs") <- 2L
 rxUdfUi.linModD <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linModD, "nargs") <- 2L
+attr(rxUdfUi.linModD, "nargs") <- 3L
 
 #' @export
 rxUdfUi.linModD0 <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linModD0, "nargs") <- 2L
+attr(rxUdfUi.linModD0, "nargs") <- 3L
 
 #' @export
 rxUdfUi.default <- function(fun) {
@@ -72,29 +72,89 @@ rxUdfUi.default <- function(fun) {
 #' @examples
 #'
 #' linMod(x, 3)
-linMod <- function(variable, power, intercept=TRUE,type=c("replace", "before", "after"),
+linMod <- function(variable, power, dv="dv",
+                   intercept=TRUE,type=c("replace", "before", "after"),
                    num=NULL, iniDf=NULL, data=FALSE) {
+  .dv <- as.character(substitute(dv))
+  .tmp <- try(force(dv), silent=TRUE)
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .dv <- dv
+    }
+  }
   .var <- as.character(substitute(variable))
   .tmp <- try(force(variable), silent=TRUE)
+  .doExp3 <- FALSE
   if (!inherits(.tmp, "try-error")) {
     if (is.character(.tmp)) {
       .var <- variable
+    } else if (!inherits(.tmp, "formula")) {
+      .dv <- as.character(substitute(dv))
+      .tmp <- try(force(dv), silent=TRUE)
+      if (!inherits(.tmp, "try-error")) {
+        if (is.character(.tmp)) {
+          .dv <- dv
+        }
+      }
+    } else if (length(variable) == 2) {
+      if (!identical(variable[[1]], quote(`~`))) {
+        stop("unexpected formula, needs to be the form ~x^3",
+             call.=FALSE)
+      }
+      .doExp3 <- TRUE
+      .exp3 <- variable[[2]]
+    } else {
+      if (length(variable) != 3) {
+        stop("unexpected formula, needs to be the form dv~x^3",
+             call.=FALSE)
+      }
+      if (!identical(variable[[1]], quote(`~`))) {
+        stop("unexpected formula, needs to be the form dv~x^3",
+             call.=FALSE)
+      }
+      .dv <- as.character(variable[[2]])
+      data <- TRUE
+      .exp3 <- variable[[3]]
+      .doExp3 <- TRUE
+    }
+    if (.doExp3) {
+      if (length(.exp3) == 1) {
+        .var <- variable <- as.character(.exp3)
+        power <- 1
+      } else if (length(.exp3) == 3) {
+        if (!identical(.exp3[[1]], quote(`^`))) {
+          stop("unexpected formula, needs to be the form dv~x^3",
+               call.=FALSE)
+        }
+        if (!is.numeric(.exp3[[3]])) {
+          stop("unexpected formula, needs to be the form dv~x^3",
+               call.=FALSE)
+        }
+        .var <- variable <- as.character(.exp3[[2]])
+        power <- .exp3[[3]]
+      } else {
+        stop("unexpected formula, needs to be the form dv~x^3",
+             call.=FALSE)
+      }
     }
   }
   checkmate::assertCharacter(.var, len=1L, any.missing=FALSE, pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", min.chars=1L,
                              .var.name="variable")
+  checkmate::assertCharacter(.dv, len=1L, any.missing=FALSE, pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", min.chars=1L,
+                             .var.name="dv")
+
   checkmate::assertLogical(intercept, len=1L, any.missing=FALSE)
   checkmate::assertIntegerish(power, lower=ifelse(intercept, 0L, 1L), len=1L)
   if (is.null(num)) {
     num <- rxUdfUiNum()
   }
   checkmate::assertIntegerish(num, lower=1, any.missing=FALSE, len=1)
-  if (data && !rxUdfUiData()) {
+  if (data && is.null(rxUdfUiData())) {
     if (intercept) {
-      return(list(replace=paste0("linModD(", .var, ", ", power, ")"),
+      return(list(replace=paste0("linModD(", .var, ", ", power, ", ", .dv, ")"),
                   uiUseData=TRUE))
     } else {
-      return(list(replace=paste0("linModD0(", .var, ", ", power, ")"),
+      return(list(replace=paste0("linModD0(", .var, ", ", power, ",", .dv, ")"),
                   uiUseData=TRUE))
     }
   }
@@ -123,12 +183,12 @@ linMod <- function(variable, power, intercept=TRUE,type=c("replace", "before", "
     .est <- rep(0, length(.pre))
     if (data) {
       .dat <- rxUdfUiData()
-      .dv <- which(tolower(names(.dat)) == "dv")
-      if (lenght(.dv) == 0L) {
-        warning("No dependent variable found in data, so no initial estimates will be set to zero")
+      .wdv <- which(tolower(names(.dat)) == tolower(.dv))
+      if (lenght(.wdv) == 0L) {
+        warning(.dv, "not found in data, so no initial estimates will be set to zero")
       } else {
-        names(.dat)[.dv] <- "dv"
-        .model <- stats::lm(as.formula(paste0("dv ~ stats::poly(", .var, ",",
+        names(.dat)[.wdv] <- .dv
+        .model <- stats::lm(as.formula(paste0(.dv, " ~ stats::poly(", .var, ",",
                                               power, ")",
                                               ifelse(intercept, "", "+0"))),
                             data=rxUdfUiData())

@@ -341,10 +341,10 @@ replacements, you will likely need to do the following steps:
 
 ```r
 #' @export
-rxUdfUi.linMod <- function(fun) {
+rxUdfUi.linModD <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linMod, "nargs") <- 2L
+attr(rxUdfUi.linModD, "nargs") <- 3L
 ```
 
 - Since the number of arguments are specified, you can return the

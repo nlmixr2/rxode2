@@ -522,6 +522,61 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
     })
   }
 
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.x1a + rx.linMod.x1b * x + rx.linMod.x1c * x^2 + rx.linMod.x1d * x^3) + d")
+
+  expect_false(tmp$uiUseData)
+
+
+  ## Formula interface
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(dv~x^3) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- linModD0(x, 3, dv) + d")
+  expect_true(tmp$uiUseData)
+
+  ## Formula interface
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(~x^3) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.x1a * x + rx.linMod.x1b * x^2 + rx.linMod.x1c * x^3) + d")
+
+  ## Formula interface
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(~x^6) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.x1a * x + rx.linMod.x1b * x^2 + rx.linMod.x1c * x^3 + rx.linMod.x1d * x^4 + rx.linMod.x1e * x^5 + rx.linMod.x1f * x^6) + d")
+
+
 
 
 })
