@@ -51,6 +51,8 @@ rxnormV  <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #' @export
 rxnorm <- rxnormV
 
+
+
 #' Simulate random Poisson variable from threefry generator
 #'
 #' @inheritParams stats::rpois
@@ -88,25 +90,6 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
   rxSeedEng(ncores)
   .Call(`_rxode2_rxpois_`, lambda, n, ncores)
 }
-
-.rxpois <- function(lambda) {
-  .lam <- as.character(substitute(lambda))
-  .tmp <- try(force(lambda), silent=TRUE)
-  if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp)) {
-      .lam <- lambda
-    }
-  }
-  list(replace=paste0("rxpois(", .lam, ")"))
-}
-
-#' @export
-rxUdfUi.rxpois <- function(fun) {
-  .fun <- fun
-  .fun[[1]] <- str2lang(paste0(".", deparse1(fun[[1]])))
-  eval(.fun)
-}
-
 
 #' Simulate student t variable from threefry generator
 #'
@@ -1300,4 +1283,11 @@ rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, i
     return(invisible())
   }
   return(.ret)
+}
+
+#' @export
+rxUdfUi.rxpois <- function(fun) {
+  .fun <- fun
+  .fun[[1]] <- str2lang(paste0(".", deparse1(fun[[1]])))
+  eval(.fun)
 }
