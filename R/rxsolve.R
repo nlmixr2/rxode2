@@ -1225,6 +1225,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
   if (rxIs(events, "event.data.frame")) {
     rxUdfUiData(events)
   } else if (rxIs(params, "event.data.frame")) {
@@ -1235,8 +1236,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
   }
   rxUdfUiEst("rxSolve")
   on.exit({
-    rxUdfUiData(NULL)
-    rxUdfUiEst(NULL)
+    rxUdfUiReset()
   })
   .udfEnvSet(list(envir, parent.frame(1)))
   .object <- rxode2(object)
@@ -1388,6 +1388,7 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
   if (isTRUE(object$uiUseData)) {
     # this needs to be re-parsed
     if (rxIs(events, "event.data.frame")) {
@@ -1402,9 +1403,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     }
     rxUdfUiEst("rxSolve")
     on.exit({
-      rxUdfUiData(NULL)
-      rxUdfUiEst(NULL)
-      rxUdfUiMv(NULL)
+      rxUdfUiReset()
     })
     # Now re-parse
     object <- as.function(object)
@@ -1458,6 +1457,7 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                                    theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
@@ -1467,11 +1467,13 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
     .oldControl <- get("control", envir=.env)
     assign("control", .rxControl, envir=.env)
     on.exit({
+      rxUdfUiReset()
       assign("control", .oldControl, envir=.env)
     })
   } else {
     assign("control", .rxControl, envir=.env)
     on.exit({
+      rxUdfUiReset()
       rm(list="control", envir=.env)
     })
   }
@@ -1493,8 +1495,10 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
   on.exit({
+    rxUdfUiReset()
     .clearPipe()
     .asFunctionEnv$rx <- NULL
   })

@@ -79,6 +79,9 @@ rxUdfUi.default <- function(fun) {
 #' @param iniDf the initialization `data.frame`, if `NULL` query using
 #'   `rxUdfUiIniDf()`
 #'
+#' @param dv the dependent variable to use to generate the initial
+#'   estimates from the data. If `NULL` query using `rxUdfUiData()`.
+#'
 #' @param data logical that tells if the initial estimates of the
 #'   linear model should be estimated from the data.
 #'
@@ -102,7 +105,7 @@ linMod <- function(variable, power, dv="dv",
                    intercept=TRUE,type=c("replace", "before", "after"),
                    num=NULL, iniDf=NULL, data=FALSE, mv=FALSE) {
   .dv <- as.character(substitute(dv))
-  .tmp <- try(force(dv), silent=TRUE)
+  .tmp <- suppressWarnings(try(force(dv), silent=TRUE))
   if (!inherits(.tmp, "try-error")) {
     if (is.character(.tmp)) {
       .dv <- dv
@@ -116,7 +119,7 @@ linMod <- function(variable, power, dv="dv",
       .var <- variable
     } else if (!inherits(.tmp, "formula")) {
       .dv <- as.character(substitute(dv))
-      .tmp <- try(force(dv), silent=TRUE)
+      .tmp <- suppressWarnings(try(force(dv), silent=TRUE))
       if (!inherits(.tmp, "try-error")) {
         if (is.character(.tmp)) {
           .dv <- dv
@@ -232,7 +235,7 @@ linMod <- function(variable, power, dv="dv",
     if (data) {
       .dat <- rxUdfUiData()
       .wdv <- which(tolower(names(.dat)) == tolower(.dv))
-      if (lenght(.wdv) == 0L) {
+      if (length(.wdv) == 0L) {
         warning(.dv, "not found in data, so no initial estimates will be set to zero")
       } else {
         names(.dat)[.wdv] <- .dv

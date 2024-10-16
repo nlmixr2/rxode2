@@ -6,4 +6,4 @@
     "muRefCovariateEmpty", "muRefCurEval", "muRefDataFrame", 
     "muRefDropParameters", "muRefExtra", "muRefExtraEmpty", "mv0", 
     "mvL", "nonMuEtas", "oneTheta", "predDf", "redo", "singleTheta", 
-    "sticky", "thetaLhsDf", "uiUseData")
+    "sticky", "thetaLhsDf", "uiUseData", "uiUseMv")

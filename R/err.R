@@ -1158,7 +1158,6 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .env <- new.env(parent=emptyenv())
   .env$uiUseData <- FALSE
   .env$uiUseMv <- FALSE
-  rxUdfUiData(NULL)
   rxUdfUiEst(NULL)
   rxUdfUiMv(mv)
   .env$rxUdfUiCount <- new.env(parent=emptyenv())
@@ -1293,7 +1292,6 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       if (isTRUE(.env$uiUseMv) && is.null(mv)) {
         # ui function requests model variables, so re-process
         on.exit({
-          rxUdfUiData(NULL)
           rxUdfUiMv(NULL)
         })
         return(.errProcessExpression(x=x, ini=ini,

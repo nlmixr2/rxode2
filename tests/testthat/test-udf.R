@@ -608,5 +608,37 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
   expect_equal(modelExtract(tmp, a),
                "a <- (x1a + x1b * x + x1c * x^2 + x1d * x^3 + x1e * x^4 + x1f * x^5 + x1g * x^6) + d")
 
+  rxWithSeed(42, {
+
+    q <- seq(from=0, to=20, by=0.1)
+
+    y <- 500 + 42*q^2 + 0.4 * (q-10)^3
+
+    df <- data.frame(q=q, y=y)
+
+    f <- function() {
+      model({
+        a <- linMod(y~q^3)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, a),
+                 "a <- linModD(q, 3, y)")
+
+    rxUdfUiData(df)
+
+    try({
+      if (f$uiUseData) {
+        f <- rxode2(as.function(f))
+        expect_false(any(f$theta == 0))
+      }
+    })
+    rxUdfUiData(NULL)
+  })
+
+
+
 
 })

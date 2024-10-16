@@ -1,11 +1,27 @@
 .udfUiEnv <- new.env(parent=emptyenv())
-.udfUiEnv$num <- 1L
-.udfUiEnv$iniDf <- NULL
-.udfUiEnv$lhs <- NULL
-.udfUiEnv$data <- NULL
-.udfUiEnv$est <- NULL
-.udfUiEnv$parsing <- FALSE
-.udfUiEnv$mv <- NULL
+
+#' Reset the rxode2 ui environment variables
+#'
+#' @return NULL silently
+#' @export
+#'
+#' @keywords internal
+#' @author Matthew L. Fidler
+#' @examples
+#' rxUdfUiReset()
+rxUdfUiReset <- function() {
+  .udfUiEnv$num <- 1L
+  .udfUiEnv$iniDf <- NULL
+  .udfUiEnv$lhs <- NULL
+  .udfUiEnv$data <- NULL
+  .udfUiEnv$est <- NULL
+  .udfUiEnv$parsing <- FALSE
+  .udfUiEnv$mv <- NULL
+  invisible(NULL)
+}
+
+rxUdfUiReset()
+
 
 #' This gives the current number in the ui of the particular function being called.
 #'
@@ -147,6 +163,7 @@ rxUdfUiEst <- function(value) {
 rxUdfUiParsing <- function() {
   .udfUiEnv$parsing
 }
+
 
 #' Handle User-Defined Functions in UI
 #'
