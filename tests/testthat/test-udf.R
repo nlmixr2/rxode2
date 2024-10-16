@@ -577,6 +577,20 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
                "a <- (rx.linMod.x1a * x + rx.linMod.x1b * x^2 + rx.linMod.x1c * x^3 + rx.linMod.x1d * x^4 + rx.linMod.x1e * x^5 + rx.linMod.x1f * x^6) + d")
 
 
+  # This checks to make sure that the variables are not in the model
+  # before adding them
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linModM0(~x^6) + d
+    })
+  }
 
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (x1a * x + x1b * x^2 + x1c * x^3 + x1d * x^4 + x1e * x^5 + x1f * x^6) + d")
 
 })

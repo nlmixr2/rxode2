@@ -302,6 +302,9 @@ In general the list that the function needs to return can have:
   `nlmixr2est` to re-parse this function in the presence of data, this
   means a bit more function setup will need to be done.
 
+- `$uiUseMv` -- when `TRUE` this instructs `rxode2` to re-parse the
+  function after the initial model variables are calculated.
+
 In addition to the `rxUdfUiIniDf()` you can get information about the
 parser:
 
@@ -319,12 +322,17 @@ parser:
 - `rxUdfUiIniLhs()` which gives the left-handed side of the equation
   where the function is found.  This is also a `R` language object.
 
+- `rxUdfUiIniMv()` gives the model variables for parsing (can be used
+  in functions like `linCmt()`)
+
 - `rxUdfUiData()` which specifies the data that are being used to
   simulate, estimate, etc.
 
 - `rxUdfUiEst()` which gives the estimation/simulation method that is
   being used with the model.  For example, with simulation it would be
   `rxSolve`.
+
+### Using model variables in `rxode2` ui models
 
 ### Using data for `rxode2` ui modification models
 

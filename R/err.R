@@ -1145,7 +1145,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .errProcessExpression <- function(x, ini,
                                   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
-                                  verbose=FALSE, checkMissing=TRUE) {
+                                  verbose=FALSE, checkMissing=TRUE, mv=rxUdfUiMv()) {
   on.exit({
     .udfUiEnv$num <- 1L
     .udfUiEnv$iniDf <- NULL
@@ -1157,6 +1157,10 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   # backTransform condition trLow trHi
   .env <- new.env(parent=emptyenv())
   .env$uiUseData <- FALSE
+  .env$uiUseMv <- FALSE
+  rxUdfUiData(NULL)
+  rxUdfUiEst(NULL)
+  rxUdfUiMv(mv)
   .env$rxUdfUiCount <- new.env(parent=emptyenv())
   .env$before <- list()
   .env$after <- list()
@@ -1285,6 +1289,17 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         }
       } else {
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
+      }
+      if (isTRUE(.env$uiUseMv) && is.null(mv)) {
+        # ui function requests model variables, so re-process
+        on.exit({
+          rxUdfUiData(NULL)
+          rxUdfUiMv(NULL)
+        })
+        return(.errProcessExpression(x=x, ini=ini,
+                                     linCmtSens = linCmtSens,
+                                     verbose=verbose, checkMissing=checkMissing,
+                                     mv=.env$mv0))
       }
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
       if (.Call(`_rxode2_isLinCmt`) == 1L) {

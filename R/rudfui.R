@@ -5,6 +5,7 @@
 .udfUiEnv$data <- NULL
 .udfUiEnv$est <- NULL
 .udfUiEnv$parsing <- FALSE
+.udfUiEnv$mv <- NULL
 
 #' This gives the current number in the ui of the particular function being called.
 #'
@@ -58,6 +59,34 @@ rxUdfUiIniLhs <- function() {
     .udfUiEnv$lhs
   } else {
     NULL
+  }
+}
+
+#' Return the model variables that is being processed or setup model
+#' variables for processing
+#'
+#'
+#' @param value when specified, this assigns the model variables to be
+#'   processed, or resets it by assigning it to be `NULL`.
+#'
+#' @return value of the `modelVariables` being processed or `NULL`.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' rxUdfUiMv()
+#'
+rxUdfUiMv <- function(value) {
+  if (missing(value)) {
+    .udfUiEnv$mv
+  } else if (inherits(value, "rxModelVars")) {
+    .udfUiEnv$mv <- value
+  } else if (is.null(value)) {
+    .udfUiEnv$mv <- value
+  } else {
+    stop("rxUdfUiMt must be called with model variables, NULL, or without any arguments",
+         call.=FALSE)
   }
 }
 #' Return the data.frame that is being processed or setup data.frame for processing
@@ -178,6 +207,10 @@ rxUdfUiParsing <- function() {
       if (is.null(.udfUiEnv$data) &&
             checkmate::testLogical(.e$uiUseData, len=1L, any.missing=FALSE)) {
         env$uiUseData <- .e$uiUseData
+      }
+      if (is.null(.udfUiEnv$mv) &&
+            checkmate::testLogical(.e$uiUseMv, len=1L, any.missing=FALSE)) {
+        env$uiUseMv <- .e$uiUseMv
       }
       if (!is.call(expr)) return(expr)
       expr <- as.call(c(expr[[1]], lapply(expr[-1], .handleUdfUi, env=env)))

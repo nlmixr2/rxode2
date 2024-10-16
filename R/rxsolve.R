@@ -1392,8 +1392,10 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     # this needs to be re-parsed
     if (rxIs(events, "event.data.frame")) {
       rxUdfUiData(events)
+      rxUdfUiMv(rxModelVars(object))
     } else if (rxIs(params, "event.data.frame")) {
       rxUdfUiData(params)
+      rxUdfUiMv(rxModelVars(object))
     } else {
       stop("Cannot detect an event data frame to use while re-parsing the model",
            call.=FALSE)
@@ -1402,6 +1404,7 @@ rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...
     on.exit({
       rxUdfUiData(NULL)
       rxUdfUiEst(NULL)
+      rxUdfUiMv(NULL)
     })
     # Now re-parse
     object <- as.function(object)

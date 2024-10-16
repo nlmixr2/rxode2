@@ -47,34 +47,60 @@ rxUdfUi.linModD0 <- function(fun) {
 attr(rxUdfUi.linModD0, "nargs") <- 3L
 
 #' @export
+rxUdfUi.linModM <- function(fun) {
+  eval(fun)
+}
+attr(rxUdfUi.linModM, "nargs") <- 2L
+
+#' @export
+rxUdfUi.linModM0 <- function(fun) {
+  eval(fun)
+}
+attr(rxUdfUi.linModM0, "nargs") <- 2L
+
+#' @export
 rxUdfUi.default <- function(fun) {
   stop("rxode2 user defined function '", fun, "' not supported", call.=FALSE) # nocov
 }
 
 #' Linear model to replace in rxode2 ui model
 #'
-#' @param variable The variable that the rxode2 will be made on
-#' @param power The power of the polynomial that will be generated
-#' @param intercept Boolean that tells if the intercept be generated
+#' @param variable The variable that the rxode2 will be made on.
+#'
+#' @param power The power of the polynomial that will be generated.
+#'
+#' @param intercept Boolean that tells if the intercept be generated.
+#'
 #' @param type the type of linear model replacement to be used.
+#'
 #' @param num the number the particular model is being generated. If
 #'   unspecified, query using `rxUdfUiNum()`.
+#'
 #' @param iniDf the initialization `data.frame`, if `NULL` query using
 #'   `rxUdfUiIniDf()`
+#'
 #' @param data logical that tells if the initial estimates of the
 #'   linear model should be estimated from the data.
+#'
+#' @param mv logical that tell if the model variables need to be used
+#'   to generate model variables.
+#'
 #' @param ... arguments that are passed to `linMod()` for the other
 #'   abbreviations of `linMod()`
+#'
 #' @return a list for use in when generating the `rxode2` ui model see
 #'   `rxUdfUi()` for details.
+#'
 #' @export
+#'
 #' @author Matthew L. Fidler
+#'
 #' @examples
 #'
 #' linMod(x, 3)
 linMod <- function(variable, power, dv="dv",
                    intercept=TRUE,type=c("replace", "before", "after"),
-                   num=NULL, iniDf=NULL, data=FALSE) {
+                   num=NULL, iniDf=NULL, data=FALSE, mv=FALSE) {
   .dv <- as.character(substitute(dv))
   .tmp <- try(force(dv), silent=TRUE)
   if (!inherits(.tmp, "try-error")) {
@@ -142,13 +168,21 @@ linMod <- function(variable, power, dv="dv",
                              .var.name="variable")
   checkmate::assertCharacter(.dv, len=1L, any.missing=FALSE, pattern = "^[.]*[a-zA-Z]+[a-zA-Z0-9._]*$", min.chars=1L,
                              .var.name="dv")
-
   checkmate::assertLogical(intercept, len=1L, any.missing=FALSE)
   checkmate::assertIntegerish(power, lower=ifelse(intercept, 0L, 1L), len=1L)
   if (is.null(num)) {
     num <- rxUdfUiNum()
   }
   checkmate::assertIntegerish(num, lower=1, any.missing=FALSE, len=1)
+  if (mv && is.null(rxUdfUiMv())) {
+    if (intercept) {
+      return(list(replace=paste0("linModM(", .var, ", ", power, ")"),
+                  uiUseMv=TRUE))
+    } else {
+      return(list(replace=paste0("linModM0(", .var, ", ", power, ")"),
+                  uiUseMv=TRUE))
+    }
+  }
   if (data && is.null(rxUdfUiData())) {
     if (intercept) {
       return(list(replace=paste0("linModD(", .var, ", ", power, ", ", .dv, ")"),
@@ -163,7 +197,21 @@ linMod <- function(variable, power, dv="dv",
   }
   assertIniDf(iniDf, null.ok=TRUE)
   type <- match.arg(type)
-  .pre <- paste0("rx.linMod.", .var, num, rxIntToLetter(seq_len(power+ifelse(intercept, 1L, 0L))-1L))
+  .mv <- rxUdfUiMv()
+  if (!is.null(.mv)) {
+    .varsMv <- c(.mv$lhs, .mv$params, .mv$state)
+    .pre <- paste0(.var, num, rxIntToLetter(seq_len(power+ifelse(intercept, 1L, 0L))-1L))
+    .pre <- vapply(.pre, function(v) {
+      if (v %in% .varsMv) {
+        paste0("rx.linMod.", v)
+      } else {
+        v
+      }
+    }, character(1), USE.NAMES=FALSE)
+  } else {
+    .pre <- paste0("rx.linMod.", .var, num, rxIntToLetter(seq_len(power+ifelse(intercept, 1L, 0L))-1L))
+  }
+
   if (!is.null(iniDf)) {
     .theta <- iniDf[!is.na(iniDf$ntheta),,drop=FALSE]
     if (length(.theta$ntheta) > 0L) {
@@ -273,4 +321,15 @@ linModD <- function(..., intercept=TRUE, data=TRUE) {
 #' @export
 linModD0 <- function(..., intercept=FALSE, data=TRUE) {
   linMod(..., intercept=intercept, data=data)
+}
+
+#' @describeIn linMod linear model where the model variables are used to generate the model variables
+#' @export
+linModM <- function(..., intercept=TRUE, mv=TRUE) {
+  linMod(..., intercept=intercept, mv=mv)
+}
+#' @describeIn linMod linear model where the model variables are used to generate the model variables (no intercept)
+#' @export
+linModM0 <- function(..., intercept=FALSE, mv=TRUE) {
+  linMod(..., intercept=intercept, mv=mv)
 }
