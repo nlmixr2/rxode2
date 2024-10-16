@@ -7,6 +7,15 @@
   and `probitInv` (instead of `NA`). For most cases this does not
   break anything.
 
+- Add a new style of user function that modifies the `ui` while
+  parsing or just before using the function (in the presence of
+  `data`).
+
+- Used the new user function interface to allow all random functions
+  in `rxode2` ui functions to be named.  For example, you can use
+  `rxnorm(sd=3)` instead of having to use `rxnorm(0, 3)`, although
+  `rxnorm()` still works.
+
 # rxode2 3.0.1
 
 - Explicitly initialize the order vector to stop valgrind warning
