@@ -334,10 +334,16 @@ parser:
 
 ### Using model variables in `rxode2` ui models
 
-### Using data for `rxode2` ui modification models
+You can also take and change the model and take into consideration the
+`rxode2` model variables before the full `ui` has completed its
+parsing.  These `rxode2` model variables has information that might
+change what variables you make or names of variables. For example it
+has what is on the left hand side of the equations (`$lhs`), what are
+the input parameters (`$params`) and what is the ODE states
+(`$state`)).
 
-When you would like to use data to help inform arguments or
-replacements, you will likely need to do the following steps:
+If you are using this approach, you will likely need to do the
+following steps:
 
 - When data are not being processed, you need to put the function in
   an `rxode2` acceptable form, no named arguments, no strings, and
@@ -345,18 +351,126 @@ replacements, you will likely need to do the following steps:
 
 - The number of arguments of this output needs to be declared in the
   `S3` method by adding the attribute `"nargs"` to method.  For
-  example, the built in `linMod()` ui modification function uses:
+  example, the built in `testMod1()` ui modification function uses
+  only one argument when parsed
 
-```r
-#' @export
-rxUdfUi.linModD <- function(fun) {
+Below is a commented example of the model variables example:
+
+```{r rxModelVarsUiModel}
+
+testMod1 <- function(val=1) {
+  # This converts the val to a character if it is somthing like testMod1(b)
+  .val <- as.character(substitute(val))
+  .tmp <- suppressWarnings(try(force(val), silent = TRUE))
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .val <- val
+    }
+  }
+  # This does the UI parsing
+  if (rxUdfUiParsing()) {
+    # See if the model variables are available
+    .mv <- rxUdfUiMv()
+    if (is.null(.mv)) {
+      # Put this in a rxode2 low level acceptible form, no complex
+      # expressions, no named arguments, something that is suitable
+      # for C.
+      #
+      # The `uiUsMv` tells the parser this needs to be reparsed when
+      # the model variables become avaialble during parsing.
+      return(list(replace=paste0("testMod1(", .val, ")"),
+                  uiUseMv=TRUE))
+    } else {
+      # Now that we have the model variables, we can then do something
+      # about this
+      .vars <- .mv$params
+      if (length(.vars) > 0) {
+        # If there is parameters available, this dummy function times
+        # the first input function by the value specified
+        return(list(replace=paste0(.vars[1], "*", .val)))
+      } else {
+        # If the value isn't availble, simply replace the function
+        # with the value.
+        return(list(replace=.val))
+      }
+    }
+  }
+  stop("This function is only for use in rxode2 ui models",
+       call.=FALSE)
+
+}
+
+rxUdfUi.testMod1 <- function(fun) {
   eval(fun)
 }
-attr(rxUdfUi.linModD, "nargs") <- 3L
+
+# To allow this to go to the next step, you need to declare how many
+# arguments this argument has, in this case 1.  Bu adding the
+# attribute "nargs", rxode2 lower level parser knows how to handle
+# this new function.  This allows rxode2 to generate the model
+# variables and send it to the next step.
+
+attr(rxUdfUi.testMod1, "nargs") <- 1L
+
+# If you are in a package, you can use the rxoygen tag @export to
+# register this as a rxode2 model definition.
+#
+# If you are using this in your own script, you need to register the s3 function
+# One way to do this is:
+rxode2::.s3register("rxode2::rxUdfUi", "testMod1")
+
+## These are some examples of this function in use:
+
+f <- function() {
+  model({
+    a <- b + testMod1(3)
+  })
+}
+
+f <- f()
+
+print(f)
+
+f <- function() {
+  model({
+    a <- testMod1(c)
+  })
+}
+
+f <- f()
+
+print(f)
+
+f <- function() {
+  model({
+    a <- testMod1(1)
+  })
+}
+
+f <- f()
+
+print(f)
+
 ```
 
-- Since the number of arguments are specified, you can return the
-  `linMod()` in the standardized form and allow it to be re-parsed
-  when data are present; to do this use the return `$uiUseData`, you
-  could customize further what happens by choosing extra steps for
-  different "estimation" methods.
+### Using data for `rxode2` ui modification models
+
+The same steps are needed to use the data in the model replacement;
+You can then use the data and the model to replace the values inside
+the model.  A worked example `linMod()` is included
+that has the ability to use:
+
+- model variables,
+- put lines before or after the model,
+- add initial conditions
+- And use data in the initial estimates
+
+```{r linMod}
+
+# You can print the code:
+linMod
+
+# You can also print the s3 method that is used for this method
+
+rxode2:::rxUdfUi.linMod
+```
