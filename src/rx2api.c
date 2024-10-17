@@ -189,5 +189,8 @@ int getRxNobs2(rx_solve *rx) {
 // Get solve vector for ith solve
 ////////////////////////////////////////////////////////////////////////
 double * getOpIndSolve(rx_solving_options* op, rx_solving_options_ind* ind, int idx) {
+  if (idx  < 0 || idx >= ind->n_all_times) {
+    Rf_error("[getOpIndSolve]: the individual should be between [0, %d); neq: %d nlin: %d", ind->n_all_times, op->neq, op->nlin);
+  }
   return ind->solve + (op->neq + op->nlin)*(idx);
 }
