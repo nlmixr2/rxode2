@@ -615,3 +615,35 @@ warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
   }
   invisible()
 }
+
+#' This function tests if this object is a iniDf as needed by the UI
+#'
+#'
+#' @param iniDf the object to test if it is a rxode2 ui `iniDf` data.frame
+#' @param extra information to append to the error message
+#' @inheritParams checkmate::testDataFrame
+#' @return boolean, indicating if the object is a valid initialization data frame
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' testIniDf(TRUE)
+testIniDf <- function(iniDf) {
+  if (checkmate::testDataFrame(iniDf)) {
+    checkmate::testSubset(names(iniDf),
+                          c("ntheta", "neta1", "neta2", "name", "lower", "est", "upper",
+                            "fix", "label", "backTransform", "condition", "err"))
+  } else {
+    FALSE
+  }
+}
+#' @describeIn testIniDf Assert that the object is a valid rxode2 ui initialization data frame
+#' @export
+assertIniDf <- function(iniDf, extra="", .var.name=.vname(iniDf), null.ok = FALSE) {
+  if (testIniDf(iniDf)) {
+    return(invisible(iniDf))
+  }
+  if (null.ok && is.null(iniDf)) {
+    return(invisible(NULL))
+  }
+  stop("'", .var.name, "' is not a rxode2 ui initial conditions data.frame", extra, call.=FALSE)
+}

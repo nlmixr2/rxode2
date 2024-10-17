@@ -64,7 +64,7 @@ toC <- function(x, doOpt=TRUE) {
       } else if (any(deparse1(x[[1]]) == .fun)) {
         return(x[[1]])
       }
-      return(as.call(lapply(x, f)));
+      return(as.call(lapply(x, f)))
     } else {
       stop("Don't know how to handle type ", typeof(x),
            call. = FALSE)
@@ -392,7 +392,7 @@ f <- function(x){
       }
       stop("^")
     }
-    return(as.call(lapply(x, f)));
+    return(as.call(lapply(x, f)))
   } else {
     stop("Don't know how to handle type ", typeof(x),
          call. = FALSE)
