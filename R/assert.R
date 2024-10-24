@@ -625,6 +625,7 @@ warnRxBounded <- function(ui, extra="", .var.name=.vname(ui)) {
 #' @return boolean, indicating if the object is a valid initialization data frame
 #' @export
 #' @author Matthew L. Fidler
+#' @family Assertions
 #' @examples
 #' testIniDf(TRUE)
 testIniDf <- function(iniDf) {

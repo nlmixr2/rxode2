@@ -36,6 +36,17 @@ This function tests if this object is a iniDf as needed by the UI
 \examples{
 testIniDf(TRUE)
 }
+\seealso{
+Other Assertions: 
+\code{\link{assertCompartmentExists}()},
+\code{\link{assertCompartmentName}()},
+\code{\link{assertCompartmentNew}()},
+\code{\link{assertRxUi}()},
+\code{\link{assertVariableExists}()},
+\code{\link{assertVariableNew}()},
+\code{\link{testRxUnbounded}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Assertions}

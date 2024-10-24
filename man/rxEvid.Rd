@@ -7,6 +7,7 @@
 \alias{[.rxEvid}
 \alias{as.character.rxEvid}
 \alias{[[.rxEvid}
+\alias{units<-.rxEvid}
 \alias{c.rxRateDur}
 \alias{format.rxEvid}
 \alias{format.rxRateDur}
@@ -25,6 +26,8 @@ as.rxEvid(x)
 
 \method{[[}{rxEvid}(x, ...)
 
+\method{units}{rxEvid}(x) <- value
+
 \method{c}{rxRateDur}(x, ...)
 
 \method{format}{rxEvid}(x, ...)
@@ -37,6 +40,8 @@ as.rxEvid(x)
 \item{x}{Item to be converted to a rxode2 EVID specification.}
 
 \item{...}{Other parameters}
+
+\item{value}{It will be an error to set units for evid}
 }
 \value{
 rxEvid specification

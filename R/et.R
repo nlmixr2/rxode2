@@ -1376,10 +1376,12 @@ as.character.rxEvid <- function(x, ...) {
   as.rxEvid(NextMethod())
 }
 
+#' @rdname rxEvid
+#' @param value It will be an error to set units for evid
+#' @export
 `units<-.rxEvid` <- function(x, value) {
   stop("'evid' is unitless", call. = FALSE)
 }
-
 
 #' @export
 `[<-.rxEvid` <- function(x, i, value) {

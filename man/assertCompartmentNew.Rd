@@ -24,6 +24,7 @@ Other Assertions:
 \code{\link{assertRxUi}()},
 \code{\link{assertVariableExists}()},
 \code{\link{assertVariableNew}()},
+\code{\link{testIniDf}()},
 \code{\link{testRxUnbounded}()}
 }
 \author{

@@ -95,9 +95,8 @@ rxUdfUi.default <- function(fun) {
 #'   `rxUdfUi()` for details.
 #'
 #' @export
-#'
+#' @family User functions
 #' @author Matthew L. Fidler
-#'
 #' @examples
 #'
 #' linMod(x, 3)
@@ -239,10 +238,13 @@ linMod <- function(variable, power, dv="dv",
         warning(.dv, "not found in data, so no initial estimates will be set to zero")
       } else {
         names(.dat)[.wdv] <- .dv
-        .model <- stats::lm(as.formula(paste0(.dv, " ~ stats::poly(", .var, ",",
-                                              power, ")",
-                                              ifelse(intercept, "", "+0"))),
-                            data=rxUdfUiData())
+        .model <-
+          stats::lm(
+            stats::as.formula(
+              paste0(.dv, " ~ stats::poly(", .var, ",", power, ")",
+                     ifelse(intercept, "", "+0"))),
+            data=rxUdfUiData()
+          )
         .est <- coef(.model)
       }
     }
