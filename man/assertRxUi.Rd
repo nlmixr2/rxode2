@@ -103,6 +103,7 @@ Other Assertions:
 \code{\link{assertCompartmentNew}()},
 \code{\link{assertVariableExists}()},
 \code{\link{assertVariableNew}()},
+\code{\link{testIniDf}()},
 \code{\link{testRxUnbounded}()}
 }
 \author{

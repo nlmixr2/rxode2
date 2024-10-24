@@ -65,7 +65,8 @@ Other Assertions:
 \code{\link{assertCompartmentNew}()},
 \code{\link{assertRxUi}()},
 \code{\link{assertVariableExists}()},
-\code{\link{assertVariableNew}()}
+\code{\link{assertVariableNew}()},
+\code{\link{testIniDf}()}
 }
 \author{
 Matthew L. Fidler

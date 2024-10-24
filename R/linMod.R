@@ -95,9 +95,8 @@ rxUdfUi.default <- function(fun) {
 #'   `rxUdfUi()` for details.
 #'
 #' @export
-#'
+#' @family User functions
 #' @author Matthew L. Fidler
-#'
 #' @examples
 #'
 #' linMod(x, 3)
