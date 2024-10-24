@@ -40,6 +40,8 @@ as.rxEvid(x)
 \item{x}{Item to be converted to a rxode2 EVID specification.}
 
 \item{...}{Other parameters}
+
+\item{value}{It will be an error to set units for evid}
 }
 \value{
 rxEvid specification
