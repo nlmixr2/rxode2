@@ -1348,24 +1348,24 @@ c.rxEvid <- function(x, ...) {
 #' @export
 as.character.rxEvid <- function(x, ...) {
   .x <- unclass(x)
-  .x <-
-    ifelse(.x == 0, "0:Observation",
-      ifelse(.x == 1, "1:Dose (Add)",
-        ifelse(.x == 2, "2:Other",
-          ifelse(.x == 3, "3:Reset",
-            ifelse(.x == 4, "4:Reset&Dose",
-              ifelse(.x == 5, "5:Replace",
-                ifelse(.x == 6, "6:Multiply",
-                  ifelse(.x == 7, "7:Transit",
-                         paste0(.x, ":Invalid"))
-                )
-              )
-            )
-          )
-        )
+  if (is.numeric(.x)) {
+    .x <-
+      dplyr::case_match(
+        .x,
+        0 ~ "0:Observation",
+        1 ~ "1:Dose (Add)",
+        2 ~ "2:Other",
+        3 ~ "3:Reset",
+        4 ~ "4:Reset&Dose",
+        5 ~ "5:Replace",
+        6 ~ "6:Multiply",
+        7 ~ "7:Transit",
+        .default = paste0(.x, ":Invalid")
       )
-    )
-  return(.x)
+  } else {
+    .x <- paste0(.x, ":Invalid")
+  }
+  .x
 }
 
 
