@@ -1324,24 +1324,24 @@ c.rxEvid <- function(x, ...) {
 }
 .colorFmt.rxEvid <- function(x, ...) {
   .x <- unclass(x)
-  .x <-
-    ifelse(.x == 0, paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
-      ifelse(.x == 1, paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)")),
-        ifelse(.x == 2, paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other")),
-          ifelse(.x == 3, paste0(crayon::blue$bold("3"), ":", crayon::red("Reset")),
-            ifelse(.x == 4, paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
-              ifelse(.x == 5, paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
-                ifelse(.x == 6, paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
-                  ifelse(.x == 7, paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
-                  paste0(crayon::blue$red(.x), ":", crayon::red("Invalid")))
-                )
-              )
-            )
-          )
-        )
+  if (is.numeric(.x)) {
+    .x <-
+      dplyr::case_match(
+        .x,
+        0 ~ paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
+        1 ~ paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)")),
+        2 ~ paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other")),
+        3 ~ paste0(crayon::blue$bold("3"), ":", crayon::red("Reset")),
+        4 ~ paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
+        5 ~ paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
+        6 ~ paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
+        7 ~ paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
+        .default = paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
       )
-    )
-  return(format(.x, justify = "left"))
+  } else {
+    .x <- paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
+  }
+  format(.x, justify = "left")
 }
 
 #' @rdname rxEvid
