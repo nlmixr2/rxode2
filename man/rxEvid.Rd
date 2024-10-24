@@ -7,6 +7,7 @@
 \alias{[.rxEvid}
 \alias{as.character.rxEvid}
 \alias{[[.rxEvid}
+\alias{units<-.rxEvid}
 \alias{c.rxRateDur}
 \alias{format.rxEvid}
 \alias{format.rxRateDur}
@@ -24,6 +25,8 @@ as.rxEvid(x)
 \method{as.character}{rxEvid}(x, ...)
 
 \method{[[}{rxEvid}(x, ...)
+
+\method{units}{rxEvid}(x) <- value
 
 \method{c}{rxRateDur}(x, ...)
 
