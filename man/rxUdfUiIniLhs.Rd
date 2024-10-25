@@ -17,6 +17,16 @@ Return the lhs parsed language expression
 rxUdfUiIniLhs()
 
 }
+\seealso{
+Other User functions: 
+\code{\link{linMod}()},
+\code{\link{rxUdfUiData}()},
+\code{\link{rxUdfUiEst}()},
+\code{\link{rxUdfUiMv}()},
+\code{\link{rxUdfUiNum}()},
+\code{\link{rxUdfUiParsing}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

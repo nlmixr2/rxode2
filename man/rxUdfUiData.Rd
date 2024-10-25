@@ -20,6 +20,16 @@ Return the data.frame that is being processed or setup data.frame for processing
 rxUdfUiData()
 
 }
+\seealso{
+Other User functions: 
+\code{\link{linMod}()},
+\code{\link{rxUdfUiEst}()},
+\code{\link{rxUdfUiIniLhs}()},
+\code{\link{rxUdfUiMv}()},
+\code{\link{rxUdfUiNum}()},
+\code{\link{rxUdfUiParsing}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

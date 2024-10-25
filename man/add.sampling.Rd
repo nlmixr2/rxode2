@@ -26,7 +26,7 @@ piping syntax through magrittr.  It can also be accessed by
 }
 \examples{
 
-\donttest{
+\dontrun{
 
 library(rxode2)
 library(units)
@@ -58,16 +58,17 @@ mod1 <-function(){
 ## These are making the more complex regimens of the rxode2 tutorial
 
 ## bid for 5 days
-bid <- et(timeUnits="hr") \%>\%
+bid <- et(timeUnits="hr") |>
        et(amt=10000,ii=12,until=set_units(5, "days"))
 
 ## qd for 5 days
-qd <- et(timeUnits="hr") \%>\%
+qd <- et(timeUnits="hr") |>
       et(amt=20000,ii=24,until=set_units(5, "days"))
 
 ## bid for 5 days followed by qd for 5 days
 
-et <- seq(bid,qd) \%>\% et(seq(0,11*24,length.out=100))
+et <- seq(bid,qd) |>
+      et(seq(0,11*24,length.out=100))
 
 bidQd <- rxSolve(mod1, et)
 
@@ -77,11 +78,12 @@ plot(bidQd, C2)
 ## Now Infusion for 5 days followed by oral for 5 days
 
 ##  note you can dose to a named compartment instead of using the compartment number
-infusion <- et(timeUnits = "hr") \%>\%
+infusion <- et(timeUnits = "hr") |>
       et(amt=10000, rate=5000, ii=24, until=set_units(5, "days"), cmt="centr")
 
 
-qd <- et(timeUnits = "hr") \%>\% et(amt=10000, ii=24, until=set_units(5, "days"), cmt="depot")
+qd <- et(timeUnits = "hr") |>
+  et(amt=10000, ii=24, until=set_units(5, "days"), cmt="depot")
 
 et <- seq(infusion,qd)
 
@@ -91,9 +93,10 @@ plot(infusionQd, C2)
 
 ## 2wk-on, 1wk-off
 
-qd <- et(timeUnits = "hr") \%>\% et(amt=10000, ii=24, until=set_units(2, "weeks"), cmt="depot")
+qd <- et(timeUnits = "hr") |>
+      et(amt=10000, ii=24, until=set_units(2, "weeks"), cmt="depot")
 
-et <- seq(qd, set_units(1,"weeks"), qd) \%>\%
+et <- seq(qd, set_units(1,"weeks"), qd) |>
      add.sampling(set_units(seq(0, 5.5,by=0.005),weeks))
 
 wkOnOff <- rxSolve(mod1, et)
@@ -102,10 +105,11 @@ plot(wkOnOff, C2)
 
 ## You can also repeat the cycle easily with the rep function
 
-qd <-et(timeUnits = "hr") \%>\% et(amt=10000, ii=24, until=set_units(2, "weeks"), cmt="depot")
+qd <-et(timeUnits = "hr") |>
+     et(amt=10000, ii=24, until=set_units(2, "weeks"), cmt="depot")
 
-et <- etRep(qd, times=4, wait=set_units(1,"weeks")) \%>\%
-     add.sampling(set_units(seq(0, 12.5,by=0.005),weeks))
+et <- etRep(qd, times=4, wait=set_units(1,"weeks")) |>
+      add.sampling(set_units(seq(0, 12.5,by=0.005),weeks))
 
 repCycle4 <- rxSolve(mod1, et)
 
