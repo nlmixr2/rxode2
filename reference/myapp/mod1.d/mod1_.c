@@ -1,119 +1,124 @@
-#define _getRxSolve_ _rxmod1_a2cf3e655e4508f27d1f71af51e5c0030
-#define _evalUdf _rxmod1_a2cf3e655e4508f27d1f71af51e5c0031
-#define _solveData _rxmod1_a2cf3e655e4508f27d1f71af51e5c0032
-#define _assign_ptr _rxmod1_a2cf3e655e4508f27d1f71af51e5c0033
-#define _rxRmModelLib _rxmod1_a2cf3e655e4508f27d1f71af51e5c0034
-#define _rxGetModelLib _rxmod1_a2cf3e655e4508f27d1f71af51e5c0035
-#define _old_c _rxmod1_a2cf3e655e4508f27d1f71af51e5c0036
-#define _ptrid _rxmod1_a2cf3e655e4508f27d1f71af51e5c0037
-#define _rxIsCurrentC _rxmod1_a2cf3e655e4508f27d1f71af51e5c0038
-#define _sumPS _rxmod1_a2cf3e655e4508f27d1f71af51e5c0039
-#define _prodPS _rxmod1_a2cf3e655e4508f27d1f71af51e5c00310
-#define _prodType _rxmod1_a2cf3e655e4508f27d1f71af51e5c00311
-#define _sumType _rxmod1_a2cf3e655e4508f27d1f71af51e5c00312
-#define _update_par_ptr _rxmod1_a2cf3e655e4508f27d1f71af51e5c00313
-#define _getParCov _rxmod1_a2cf3e655e4508f27d1f71af51e5c00314
-#define _rxode2_rxAssignPtr _rxmod1_a2cf3e655e4508f27d1f71af51e5c00315
-#define _rxQr _rxmod1_a2cf3e655e4508f27d1f71af51e5c00316
-#define _compareFactorVal _rxmod1_a2cf3e655e4508f27d1f71af51e5c00317
-#define _sum _rxmod1_a2cf3e655e4508f27d1f71af51e5c00318
-#define _udf _rxmod1_a2cf3e655e4508f27d1f71af51e5c00319
-#define _sign _rxmod1_a2cf3e655e4508f27d1f71af51e5c00320
-#define _prod _rxmod1_a2cf3e655e4508f27d1f71af51e5c00321
-#define _max _rxmod1_a2cf3e655e4508f27d1f71af51e5c00322
-#define _min _rxmod1_a2cf3e655e4508f27d1f71af51e5c00323
-#define _transit4P _rxmod1_a2cf3e655e4508f27d1f71af51e5c00324
-#define _transit3P _rxmod1_a2cf3e655e4508f27d1f71af51e5c00325
-#define _assignFuns0 _rxmod1_a2cf3e655e4508f27d1f71af51e5c00326
-#define _assignFuns _rxmod1_a2cf3e655e4508f27d1f71af51e5c00327
-#define _rxord _rxmod1_a2cf3e655e4508f27d1f71af51e5c00328
-#define __assignFuns2 _rxmod1_a2cf3e655e4508f27d1f71af51e5c00329
-#define _llikCauchyDscale _rxmod1_a2cf3e655e4508f27d1f71af51e5c00330
-#define _llikCauchyDlocation _rxmod1_a2cf3e655e4508f27d1f71af51e5c00331
-#define _llikCauchy _rxmod1_a2cf3e655e4508f27d1f71af51e5c00332
-#define _llikGammaDrate _rxmod1_a2cf3e655e4508f27d1f71af51e5c00333
-#define _llikGammaDshape _rxmod1_a2cf3e655e4508f27d1f71af51e5c00334
-#define _llikGamma _rxmod1_a2cf3e655e4508f27d1f71af51e5c00335
-#define _llikWeibullDscale _rxmod1_a2cf3e655e4508f27d1f71af51e5c00336
-#define _llikWeibullDshape _rxmod1_a2cf3e655e4508f27d1f71af51e5c00337
-#define _llikWeibull _rxmod1_a2cf3e655e4508f27d1f71af51e5c00338
-#define _llikUnifDbeta _rxmod1_a2cf3e655e4508f27d1f71af51e5c00339
-#define _llikUnifDalpha _rxmod1_a2cf3e655e4508f27d1f71af51e5c00340
-#define _llikUnif _rxmod1_a2cf3e655e4508f27d1f71af51e5c00341
-#define _llikGeomDp _rxmod1_a2cf3e655e4508f27d1f71af51e5c00342
-#define _llikGeom _rxmod1_a2cf3e655e4508f27d1f71af51e5c00343
-#define _llikFDdf2 _rxmod1_a2cf3e655e4508f27d1f71af51e5c00344
-#define _llikFDdf1 _rxmod1_a2cf3e655e4508f27d1f71af51e5c00345
-#define _llikF _rxmod1_a2cf3e655e4508f27d1f71af51e5c00346
-#define _llikExpDrate _rxmod1_a2cf3e655e4508f27d1f71af51e5c00347
-#define _llikExp _rxmod1_a2cf3e655e4508f27d1f71af51e5c00348
-#define _llikChisqDdf _rxmod1_a2cf3e655e4508f27d1f71af51e5c00349
-#define _llikChisq _rxmod1_a2cf3e655e4508f27d1f71af51e5c00350
-#define _llikTDsd _rxmod1_a2cf3e655e4508f27d1f71af51e5c00351
-#define _llikTDmean _rxmod1_a2cf3e655e4508f27d1f71af51e5c00352
-#define _llikTDdf _rxmod1_a2cf3e655e4508f27d1f71af51e5c00353
-#define _llikT _rxmod1_a2cf3e655e4508f27d1f71af51e5c00354
-#define _llikBetaDshape2 _rxmod1_a2cf3e655e4508f27d1f71af51e5c00355
-#define _llikBetaDshape1 _rxmod1_a2cf3e655e4508f27d1f71af51e5c00356
-#define _llikBeta _rxmod1_a2cf3e655e4508f27d1f71af51e5c00357
-#define _llikNbinomMuDmu _rxmod1_a2cf3e655e4508f27d1f71af51e5c00358
-#define _llikNbinomMu _rxmod1_a2cf3e655e4508f27d1f71af51e5c00359
-#define _llikNbinomDprob _rxmod1_a2cf3e655e4508f27d1f71af51e5c00360
-#define _llikNbinom _rxmod1_a2cf3e655e4508f27d1f71af51e5c00361
-#define _llikBinomDprob _rxmod1_a2cf3e655e4508f27d1f71af51e5c00362
-#define _llikBinom _rxmod1_a2cf3e655e4508f27d1f71af51e5c00363
-#define _llikPoisDlambda _rxmod1_a2cf3e655e4508f27d1f71af51e5c00364
-#define _llikPois _rxmod1_a2cf3e655e4508f27d1f71af51e5c00365
-#define _llikNormDsd _rxmod1_a2cf3e655e4508f27d1f71af51e5c00366
-#define _llikNormDmean _rxmod1_a2cf3e655e4508f27d1f71af51e5c00367
-#define _llikNorm _rxmod1_a2cf3e655e4508f27d1f71af51e5c00368
-#define simeps _rxmod1_a2cf3e655e4508f27d1f71af51e5c00369
-#define simeta _rxmod1_a2cf3e655e4508f27d1f71af51e5c00370
-#define expit _rxmod1_a2cf3e655e4508f27d1f71af51e5c00371
-#define logit _rxmod1_a2cf3e655e4508f27d1f71af51e5c00372
-#define gammapDer _rxmod1_a2cf3e655e4508f27d1f71af51e5c00373
-#define lowergamma _rxmod1_a2cf3e655e4508f27d1f71af51e5c00374
-#define uppergamma _rxmod1_a2cf3e655e4508f27d1f71af51e5c00375
-#define gammaqInva _rxmod1_a2cf3e655e4508f27d1f71af51e5c00376
-#define gammaqInv _rxmod1_a2cf3e655e4508f27d1f71af51e5c00377
-#define gammapInva _rxmod1_a2cf3e655e4508f27d1f71af51e5c00378
-#define gammapInv _rxmod1_a2cf3e655e4508f27d1f71af51e5c00379
-#define gammaq _rxmod1_a2cf3e655e4508f27d1f71af51e5c00380
-#define gammap _rxmod1_a2cf3e655e4508f27d1f71af51e5c00381
-#define phi _rxmod1_a2cf3e655e4508f27d1f71af51e5c00382
-#define riweibull _rxmod1_a2cf3e655e4508f27d1f71af51e5c00383
-#define riunif _rxmod1_a2cf3e655e4508f27d1f71af51e5c00384
-#define rit_ _rxmod1_a2cf3e655e4508f27d1f71af51e5c00385
-#define ripois _rxmod1_a2cf3e655e4508f27d1f71af51e5c00386
-#define ribeta _rxmod1_a2cf3e655e4508f27d1f71af51e5c00387
-#define rigamma _rxmod1_a2cf3e655e4508f27d1f71af51e5c00388
-#define rigeom _rxmod1_a2cf3e655e4508f27d1f71af51e5c00389
-#define rif _rxmod1_a2cf3e655e4508f27d1f71af51e5c00390
-#define riexp _rxmod1_a2cf3e655e4508f27d1f71af51e5c00391
-#define richisq _rxmod1_a2cf3e655e4508f27d1f71af51e5c00392
-#define ricauchy _rxmod1_a2cf3e655e4508f27d1f71af51e5c00393
-#define rinbinomMu _rxmod1_a2cf3e655e4508f27d1f71af51e5c00394
-#define rinbinom _rxmod1_a2cf3e655e4508f27d1f71af51e5c00395
-#define ribinom _rxmod1_a2cf3e655e4508f27d1f71af51e5c00396
-#define rinorm _rxmod1_a2cf3e655e4508f27d1f71af51e5c00397
-#define rxweibull _rxmod1_a2cf3e655e4508f27d1f71af51e5c00398
-#define rxunif _rxmod1_a2cf3e655e4508f27d1f71af51e5c00399
-#define rxt_ _rxmod1_a2cf3e655e4508f27d1f71af51e5c003100
-#define rxpois _rxmod1_a2cf3e655e4508f27d1f71af51e5c003101
-#define rxbeta _rxmod1_a2cf3e655e4508f27d1f71af51e5c003102
-#define rxgamma _rxmod1_a2cf3e655e4508f27d1f71af51e5c003103
-#define rxgeom _rxmod1_a2cf3e655e4508f27d1f71af51e5c003104
-#define rxf _rxmod1_a2cf3e655e4508f27d1f71af51e5c003105
-#define rxexp _rxmod1_a2cf3e655e4508f27d1f71af51e5c003106
-#define rxchisq _rxmod1_a2cf3e655e4508f27d1f71af51e5c003107
-#define rxcauchy _rxmod1_a2cf3e655e4508f27d1f71af51e5c003108
-#define rxnbinomMu _rxmod1_a2cf3e655e4508f27d1f71af51e5c003109
-#define rxnbinom _rxmod1_a2cf3e655e4508f27d1f71af51e5c003110
-#define rxbinom _rxmod1_a2cf3e655e4508f27d1f71af51e5c003111
-#define rxnorm _rxmod1_a2cf3e655e4508f27d1f71af51e5c003112
-#define linCmtC _rxmod1_a2cf3e655e4508f27d1f71af51e5c003113
-#define linCmtB _rxmod1_a2cf3e655e4508f27d1f71af51e5c003114
-#define linCmtA _rxmod1_a2cf3e655e4508f27d1f71af51e5c003115
+// Define translation state order for 4 states
+#define __DDT0__ 0 // depot
+#define __DDT1__ 1 // centr
+#define __DDT2__ 2 // peri
+#define __DDT3__ 3 // eff
+#define _getRxSolve_ _rxmod1_b87310e4f005e2d914d0da73a5c390c90
+#define _evalUdf _rxmod1_b87310e4f005e2d914d0da73a5c390c91
+#define _solveData _rxmod1_b87310e4f005e2d914d0da73a5c390c92
+#define _assign_ptr _rxmod1_b87310e4f005e2d914d0da73a5c390c93
+#define _rxRmModelLib _rxmod1_b87310e4f005e2d914d0da73a5c390c94
+#define _rxGetModelLib _rxmod1_b87310e4f005e2d914d0da73a5c390c95
+#define _old_c _rxmod1_b87310e4f005e2d914d0da73a5c390c96
+#define _ptrid _rxmod1_b87310e4f005e2d914d0da73a5c390c97
+#define _rxIsCurrentC _rxmod1_b87310e4f005e2d914d0da73a5c390c98
+#define _sumPS _rxmod1_b87310e4f005e2d914d0da73a5c390c99
+#define _prodPS _rxmod1_b87310e4f005e2d914d0da73a5c390c910
+#define _prodType _rxmod1_b87310e4f005e2d914d0da73a5c390c911
+#define _sumType _rxmod1_b87310e4f005e2d914d0da73a5c390c912
+#define _update_par_ptr _rxmod1_b87310e4f005e2d914d0da73a5c390c913
+#define _getParCov _rxmod1_b87310e4f005e2d914d0da73a5c390c914
+#define _rxode2_rxAssignPtr _rxmod1_b87310e4f005e2d914d0da73a5c390c915
+#define _rxQr _rxmod1_b87310e4f005e2d914d0da73a5c390c916
+#define _compareFactorVal _rxmod1_b87310e4f005e2d914d0da73a5c390c917
+#define _sum _rxmod1_b87310e4f005e2d914d0da73a5c390c918
+#define _udf _rxmod1_b87310e4f005e2d914d0da73a5c390c919
+#define _sign _rxmod1_b87310e4f005e2d914d0da73a5c390c920
+#define _prod _rxmod1_b87310e4f005e2d914d0da73a5c390c921
+#define _max _rxmod1_b87310e4f005e2d914d0da73a5c390c922
+#define _min _rxmod1_b87310e4f005e2d914d0da73a5c390c923
+#define _transit4P _rxmod1_b87310e4f005e2d914d0da73a5c390c924
+#define _transit3P _rxmod1_b87310e4f005e2d914d0da73a5c390c925
+#define _assignFuns0 _rxmod1_b87310e4f005e2d914d0da73a5c390c926
+#define _assignFuns _rxmod1_b87310e4f005e2d914d0da73a5c390c927
+#define _rxord _rxmod1_b87310e4f005e2d914d0da73a5c390c928
+#define __assignFuns2 _rxmod1_b87310e4f005e2d914d0da73a5c390c929
+#define _llikCauchyDscale _rxmod1_b87310e4f005e2d914d0da73a5c390c930
+#define _llikCauchyDlocation _rxmod1_b87310e4f005e2d914d0da73a5c390c931
+#define _llikCauchy _rxmod1_b87310e4f005e2d914d0da73a5c390c932
+#define _llikGammaDrate _rxmod1_b87310e4f005e2d914d0da73a5c390c933
+#define _llikGammaDshape _rxmod1_b87310e4f005e2d914d0da73a5c390c934
+#define _llikGamma _rxmod1_b87310e4f005e2d914d0da73a5c390c935
+#define _llikWeibullDscale _rxmod1_b87310e4f005e2d914d0da73a5c390c936
+#define _llikWeibullDshape _rxmod1_b87310e4f005e2d914d0da73a5c390c937
+#define _llikWeibull _rxmod1_b87310e4f005e2d914d0da73a5c390c938
+#define _llikUnifDbeta _rxmod1_b87310e4f005e2d914d0da73a5c390c939
+#define _llikUnifDalpha _rxmod1_b87310e4f005e2d914d0da73a5c390c940
+#define _llikUnif _rxmod1_b87310e4f005e2d914d0da73a5c390c941
+#define _llikGeomDp _rxmod1_b87310e4f005e2d914d0da73a5c390c942
+#define _llikGeom _rxmod1_b87310e4f005e2d914d0da73a5c390c943
+#define _llikFDdf2 _rxmod1_b87310e4f005e2d914d0da73a5c390c944
+#define _llikFDdf1 _rxmod1_b87310e4f005e2d914d0da73a5c390c945
+#define _llikF _rxmod1_b87310e4f005e2d914d0da73a5c390c946
+#define _llikExpDrate _rxmod1_b87310e4f005e2d914d0da73a5c390c947
+#define _llikExp _rxmod1_b87310e4f005e2d914d0da73a5c390c948
+#define _llikChisqDdf _rxmod1_b87310e4f005e2d914d0da73a5c390c949
+#define _llikChisq _rxmod1_b87310e4f005e2d914d0da73a5c390c950
+#define _llikTDsd _rxmod1_b87310e4f005e2d914d0da73a5c390c951
+#define _llikTDmean _rxmod1_b87310e4f005e2d914d0da73a5c390c952
+#define _llikTDdf _rxmod1_b87310e4f005e2d914d0da73a5c390c953
+#define _llikT _rxmod1_b87310e4f005e2d914d0da73a5c390c954
+#define _llikBetaDshape2 _rxmod1_b87310e4f005e2d914d0da73a5c390c955
+#define _llikBetaDshape1 _rxmod1_b87310e4f005e2d914d0da73a5c390c956
+#define _llikBeta _rxmod1_b87310e4f005e2d914d0da73a5c390c957
+#define _llikNbinomMuDmu _rxmod1_b87310e4f005e2d914d0da73a5c390c958
+#define _llikNbinomMu _rxmod1_b87310e4f005e2d914d0da73a5c390c959
+#define _llikNbinomDprob _rxmod1_b87310e4f005e2d914d0da73a5c390c960
+#define _llikNbinom _rxmod1_b87310e4f005e2d914d0da73a5c390c961
+#define _llikBinomDprob _rxmod1_b87310e4f005e2d914d0da73a5c390c962
+#define _llikBinom _rxmod1_b87310e4f005e2d914d0da73a5c390c963
+#define _llikPoisDlambda _rxmod1_b87310e4f005e2d914d0da73a5c390c964
+#define _llikPois _rxmod1_b87310e4f005e2d914d0da73a5c390c965
+#define _llikNormDsd _rxmod1_b87310e4f005e2d914d0da73a5c390c966
+#define _llikNormDmean _rxmod1_b87310e4f005e2d914d0da73a5c390c967
+#define _llikNorm _rxmod1_b87310e4f005e2d914d0da73a5c390c968
+#define simeps _rxmod1_b87310e4f005e2d914d0da73a5c390c969
+#define simeta _rxmod1_b87310e4f005e2d914d0da73a5c390c970
+#define expit _rxmod1_b87310e4f005e2d914d0da73a5c390c971
+#define logit _rxmod1_b87310e4f005e2d914d0da73a5c390c972
+#define gammapDer _rxmod1_b87310e4f005e2d914d0da73a5c390c973
+#define lowergamma _rxmod1_b87310e4f005e2d914d0da73a5c390c974
+#define uppergamma _rxmod1_b87310e4f005e2d914d0da73a5c390c975
+#define gammaqInva _rxmod1_b87310e4f005e2d914d0da73a5c390c976
+#define gammaqInv _rxmod1_b87310e4f005e2d914d0da73a5c390c977
+#define gammapInva _rxmod1_b87310e4f005e2d914d0da73a5c390c978
+#define gammapInv _rxmod1_b87310e4f005e2d914d0da73a5c390c979
+#define gammaq _rxmod1_b87310e4f005e2d914d0da73a5c390c980
+#define gammap _rxmod1_b87310e4f005e2d914d0da73a5c390c981
+#define phi _rxmod1_b87310e4f005e2d914d0da73a5c390c982
+#define riweibull _rxmod1_b87310e4f005e2d914d0da73a5c390c983
+#define riunif _rxmod1_b87310e4f005e2d914d0da73a5c390c984
+#define rit_ _rxmod1_b87310e4f005e2d914d0da73a5c390c985
+#define ripois _rxmod1_b87310e4f005e2d914d0da73a5c390c986
+#define ribeta _rxmod1_b87310e4f005e2d914d0da73a5c390c987
+#define rigamma _rxmod1_b87310e4f005e2d914d0da73a5c390c988
+#define rigeom _rxmod1_b87310e4f005e2d914d0da73a5c390c989
+#define rif _rxmod1_b87310e4f005e2d914d0da73a5c390c990
+#define riexp _rxmod1_b87310e4f005e2d914d0da73a5c390c991
+#define richisq _rxmod1_b87310e4f005e2d914d0da73a5c390c992
+#define ricauchy _rxmod1_b87310e4f005e2d914d0da73a5c390c993
+#define rinbinomMu _rxmod1_b87310e4f005e2d914d0da73a5c390c994
+#define rinbinom _rxmod1_b87310e4f005e2d914d0da73a5c390c995
+#define ribinom _rxmod1_b87310e4f005e2d914d0da73a5c390c996
+#define rinorm _rxmod1_b87310e4f005e2d914d0da73a5c390c997
+#define rxweibull _rxmod1_b87310e4f005e2d914d0da73a5c390c998
+#define rxunif _rxmod1_b87310e4f005e2d914d0da73a5c390c999
+#define rxt_ _rxmod1_b87310e4f005e2d914d0da73a5c390c9100
+#define rxpois _rxmod1_b87310e4f005e2d914d0da73a5c390c9101
+#define rxbeta _rxmod1_b87310e4f005e2d914d0da73a5c390c9102
+#define rxgamma _rxmod1_b87310e4f005e2d914d0da73a5c390c9103
+#define rxgeom _rxmod1_b87310e4f005e2d914d0da73a5c390c9104
+#define rxf _rxmod1_b87310e4f005e2d914d0da73a5c390c9105
+#define rxexp _rxmod1_b87310e4f005e2d914d0da73a5c390c9106
+#define rxchisq _rxmod1_b87310e4f005e2d914d0da73a5c390c9107
+#define rxcauchy _rxmod1_b87310e4f005e2d914d0da73a5c390c9108
+#define rxnbinomMu _rxmod1_b87310e4f005e2d914d0da73a5c390c9109
+#define rxnbinom _rxmod1_b87310e4f005e2d914d0da73a5c390c9110
+#define rxbinom _rxmod1_b87310e4f005e2d914d0da73a5c390c9111
+#define rxnorm _rxmod1_b87310e4f005e2d914d0da73a5c390c9112
+#define linCmtC _rxmod1_b87310e4f005e2d914d0da73a5c390c9113
+#define linCmtB _rxmod1_b87310e4f005e2d914d0da73a5c390c9114
+#define linCmtA _rxmod1_b87310e4f005e2d914d0da73a5c390c9115
 #include <rxode2_model_shared.h>
 #define __MAX_PROD__ 0
 #define _CMT CMT
@@ -234,6 +239,7 @@ double _prod(double *input, double *p, int type, int n, ...){
   return _prodPS(input, p, n, type);
 }
 double _udf(const char *funName, double *input, int n, ...) {
+  if (n == -42) Rf_error("%s", "this has a ui user function that cannot be called directly");
   va_list valist;
   va_start(valist, n);
   for (unsigned int i = 0; i < n; i++){
@@ -347,13 +353,13 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
   return exp(_safe_log(podo)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 void _assignFuns0(void) {
-  _evalUdf = (_udf_type) R_GetCCallable("rxode2parse", "_rxode2parse_evalUdf");
+  _evalUdf = (_udf_type) R_GetCCallable("rxode2", "_rxode2_evalUdf");
   _getRxSolve_ = (_getRxSolve_t) R_GetCCallable("rxode2","getRxSolve_");
   _assign_ptr=(rxode2_assign_ptr) R_GetCCallable("rxode2","rxode2_assign_fn_pointers");
   _rxRmModelLib=(_rxRmModelLibType) R_GetCCallable("rxode2","rxRmModelLib");
   _rxGetModelLib=(_rxGetModelLibType) R_GetCCallable("rxode2","rxGetModelLib");
   _rxode2_rxAssignPtr=(_rx_asgn)R_GetCCallable("rxode2","_rxode2_rxAssignPtr");
-  _rxQr=(_rx_asgn)R_GetCCallable("rxode2parse","_rxode2parse_rxQr");
+  _rxQr=(_rx_asgn)R_GetCCallable("rxode2","_rxode2_rxQr");
   _rxIsCurrentC = (_rxIsCurrentC_type)R_GetCCallable("rxode2","rxIsCurrentC");
   _sumPS  = (_rxSumType) R_GetCCallable("PreciseSums","PreciseSums_sum_r");
   _prodPS = (_rxProdType) R_GetCCallable("PreciseSums","PreciseSums_prod_r");
@@ -403,8 +409,8 @@ void _assignFuns0(void) {
   _llikNormDsd = (rxode2_llikNormFun) R_GetCCallable("rxode2ll", "rxLlikNormDsd");
   _llikNormDmean = (rxode2_llikNormFun) R_GetCCallable("rxode2ll", "rxLlikNormDmean");
   _llikNorm = (rxode2_llikNormFun) R_GetCCallable("rxode2ll", "rxLlikNorm");
-  simeps = (_simfun) R_GetCCallable("rxode2random", "simeps");
-  simeta = (_simfun) R_GetCCallable("rxode2random", "simeta");
+  simeps = (_simfun) R_GetCCallable("rxode2", "simeps");
+  simeta = (_simfun) R_GetCCallable("rxode2", "simeta");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
   gammapDer = (rxode2_fn2) R_GetCCallable("rxode2", "gammapDer");
@@ -416,40 +422,40 @@ void _assignFuns0(void) {
   gammapInv = (rxode2_fn2) R_GetCCallable("rxode2", "gammapInv");
   gammaq = (rxode2_fn2) R_GetCCallable("rxode2", "gammaq");
   gammap = (rxode2_fn2) R_GetCCallable("rxode2", "gammap");
-  phi = (rxode2_fn) R_GetCCallable("rxode2random", "phi");
-  riweibull = (rxode2i2_fn2) R_GetCCallable("rxode2random", "riweibull");
-  riunif = (rxode2i2_fn2) R_GetCCallable("rxode2random", "riunif");
-  rit_ = (rxode2i2_fn) R_GetCCallable("rxode2random", "rit_");
-  ripois = (rxode2i2_ifn) R_GetCCallable("rxode2random", "ripois");
-  ribeta = (rxode2i2_fn2) R_GetCCallable("rxode2random", "ribeta");
-  rigamma = (rxode2i2_fn2) R_GetCCallable("rxode2random", "rigamma");
-  rigeom = (rxode2i2_ifn) R_GetCCallable("rxode2random", "rigeom");
-  rif = (rxode2i2_fn2) R_GetCCallable("rxode2random", "rif");
-  riexp = (rxode2i2_fn) R_GetCCallable("rxode2random", "riexp");
-  richisq = (rxode2i2_fn) R_GetCCallable("rxode2random", "richisq");
-  ricauchy = (rxode2i2_fn2) R_GetCCallable("rxode2random", "ricauchy");
-  rinbinomMu = (rxode2i2_ribinom) R_GetCCallable("rxode2random", "rinbinomMu");
-  rinbinom = (rxode2i2_ribinom) R_GetCCallable("rxode2random", "rinbinom");
-  ribinom = (rxode2i2_ribinom) R_GetCCallable("rxode2random", "ribinom");
-  rinorm = (rxode2i2_fn2) R_GetCCallable("rxode2random", "rinorm");
-  rxweibull = (rxode2i_fn2) R_GetCCallable("rxode2random", "rxweibull");
-  rxunif = (rxode2i_fn2) R_GetCCallable("rxode2random", "rxunif");
-  rxt_ = (rxode2i_fn) R_GetCCallable("rxode2random", "rxt_");
-  rxpois = (rxode2i_ifn) R_GetCCallable("rxode2random", "rxpois");
-  rxbeta = (rxode2i_fn2) R_GetCCallable("rxode2random", "rxbeta");
-  rxgamma = (rxode2i_fn2) R_GetCCallable("rxode2random", "rxgamma");
-  rxgeom = (rxode2i_ifn) R_GetCCallable("rxode2random", "rxgeom");
-  rxf = (rxode2i_fn2) R_GetCCallable("rxode2random", "rxf");
-  rxexp = (rxode2i_fn) R_GetCCallable("rxode2random", "rxexp");
-  rxchisq = (rxode2i_fn) R_GetCCallable("rxode2random", "rxchisq");
-  rxcauchy = (rxode2i_fn2) R_GetCCallable("rxode2random", "rxcauchy");
-  rxnbinomMu = (rxode2i_rxbinom) R_GetCCallable("rxode2random", "rxnbinomMu");
-  rxnbinom = (rxode2i_rxbinom) R_GetCCallable("rxode2random", "rxnbinom");
-  rxbinom = (rxode2i_rxbinom) R_GetCCallable("rxode2random", "rxbinom");
-  rxnorm = (rxode2i_fn2) R_GetCCallable("rxode2random", "rxnorm");
-  linCmtC = (linCmtA_p) R_GetCCallable("rxode2parse", "linCmtC");
-  linCmtB = (linCmtB_p) R_GetCCallable("rxode2parse", "linCmtB");
-  linCmtA = (linCmtA_p) R_GetCCallable("rxode2parse", "linCmtA");
+  phi = (rxode2_fn) R_GetCCallable("rxode2", "phi");
+  riweibull = (rxode2i2_fn2) R_GetCCallable("rxode2", "riweibull");
+  riunif = (rxode2i2_fn2) R_GetCCallable("rxode2", "riunif");
+  rit_ = (rxode2i2_fn) R_GetCCallable("rxode2", "rit_");
+  ripois = (rxode2i2_ifn) R_GetCCallable("rxode2", "ripois");
+  ribeta = (rxode2i2_fn2) R_GetCCallable("rxode2", "ribeta");
+  rigamma = (rxode2i2_fn2) R_GetCCallable("rxode2", "rigamma");
+  rigeom = (rxode2i2_ifn) R_GetCCallable("rxode2", "rigeom");
+  rif = (rxode2i2_fn2) R_GetCCallable("rxode2", "rif");
+  riexp = (rxode2i2_fn) R_GetCCallable("rxode2", "riexp");
+  richisq = (rxode2i2_fn) R_GetCCallable("rxode2", "richisq");
+  ricauchy = (rxode2i2_fn2) R_GetCCallable("rxode2", "ricauchy");
+  rinbinomMu = (rxode2i2_ribinom) R_GetCCallable("rxode2", "rinbinomMu");
+  rinbinom = (rxode2i2_ribinom) R_GetCCallable("rxode2", "rinbinom");
+  ribinom = (rxode2i2_ribinom) R_GetCCallable("rxode2", "ribinom");
+  rinorm = (rxode2i2_fn2) R_GetCCallable("rxode2", "rinorm");
+  rxweibull = (rxode2i_fn2) R_GetCCallable("rxode2", "rxweibull");
+  rxunif = (rxode2i_fn2) R_GetCCallable("rxode2", "rxunif");
+  rxt_ = (rxode2i_fn) R_GetCCallable("rxode2", "rxt_");
+  rxpois = (rxode2i_ifn) R_GetCCallable("rxode2", "rxpois");
+  rxbeta = (rxode2i_fn2) R_GetCCallable("rxode2", "rxbeta");
+  rxgamma = (rxode2i_fn2) R_GetCCallable("rxode2", "rxgamma");
+  rxgeom = (rxode2i_ifn) R_GetCCallable("rxode2", "rxgeom");
+  rxf = (rxode2i_fn2) R_GetCCallable("rxode2", "rxf");
+  rxexp = (rxode2i_fn) R_GetCCallable("rxode2", "rxexp");
+  rxchisq = (rxode2i_fn) R_GetCCallable("rxode2", "rxchisq");
+  rxcauchy = (rxode2i_fn2) R_GetCCallable("rxode2", "rxcauchy");
+  rxnbinomMu = (rxode2i_rxbinom) R_GetCCallable("rxode2", "rxnbinomMu");
+  rxnbinom = (rxode2i_rxbinom) R_GetCCallable("rxode2", "rxnbinom");
+  rxbinom = (rxode2i_rxbinom) R_GetCCallable("rxode2", "rxbinom");
+  rxnorm = (rxode2i_fn2) R_GetCCallable("rxode2", "rxnorm");
+  linCmtC = (linCmtA_p) R_GetCCallable("rxode2", "linCmtC");
+  linCmtB = (linCmtB_p) R_GetCCallable("rxode2", "linCmtB");
+  linCmtA = (linCmtA_p) R_GetCCallable("rxode2", "linCmtA");
   // dynamic stop
   _solveData = _getRxSolve_();
 }
@@ -472,9 +478,9 @@ void __assignFuns2(rx_solve rx,
                    t_handle_evidL handleEvid,
                    t_getDur getdur) {
   // assign start
-    static rxode2_assignFuns2 rxode2parse_assignFuns2 = NULL;
-    if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2parse", "_rxode2parse_assignFuns2"));
-    rxode2parse_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
+    static rxode2_assignFuns2_t rxode2_assignFuns2 = NULL;
+    if (rxode2_assignFuns2 == NULL) rxode2_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
+    rxode2_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
   // assign stop
 }
 extern void  mod1__ode_solver_solvedata (rx_solve *solve){
@@ -539,17 +545,17 @@ void mod1__dydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStat
   Kout = _PP[6];
   EC50 = _PP[7];
 
-  depot = __zzStateVar__[0]*((double)(_ON[0]));
-  centr = __zzStateVar__[1]*((double)(_ON[1]));
-  peri = __zzStateVar__[2]*((double)(_ON[2]));
-  eff = __zzStateVar__[3]*((double)(_ON[3]));
+  depot = __zzStateVar__[__DDT0__]*((double)(_ON[__DDT0__]));
+  centr = __zzStateVar__[__DDT1__]*((double)(_ON[__DDT1__]));
+  peri = __zzStateVar__[__DDT2__]*((double)(_ON[__DDT2__]));
+  eff = __zzStateVar__[__DDT3__]*((double)(_ON[__DDT3__]));
 
-  C2=centr/safe_zero(V2);
-  C3=peri/safe_zero(V3);
-  __DDtStateVar__[0] = ((double)(_ON[0]))*(_IR[0] -KA*depot);
-  __DDtStateVar__[1] = ((double)(_ON[1]))*(_IR[1] + KA*depot-CL*C2-Q*C2+Q*C3);
-  __DDtStateVar__[2] = ((double)(_ON[2]))*(_IR[2] + Q*C2-Q*C3);
-  __DDtStateVar__[3] = ((double)(_ON[3]))*(_IR[3] + Kin-Kout*(1-C2/safe_zero((EC50+C2)))*eff);
+  C2=centr/_div0(V2);
+  C3=peri/_div0(V3);
+  __DDtStateVar__[__DDT0__] = ((double)(_ON[__DDT0__]))*(_IR[__DDT0__] -KA*depot);
+  __DDtStateVar__[__DDT1__] = ((double)(_ON[__DDT1__]))*(_IR[__DDT1__] + KA*depot-CL*C2-Q*C2+Q*C3);
+  __DDtStateVar__[__DDT2__] = ((double)(_ON[__DDT2__]))*(_IR[__DDT2__] + Q*C2-Q*C3);
+  __DDtStateVar__[__DDT3__] = ((double)(_ON[__DDT3__]))*(_IR[__DDT3__] + Kin-Kout*(1-C2/_div0((EC50+C2)))*eff);
   (&_solveData->subjects[_cSub])->dadt_counter[0]++;
 }
 
@@ -629,17 +635,17 @@ void mod1__calc_lhs(int _cSub, double __t, double *__zzStateVar__, double *_lhs)
   Kout = _PP[6];
   EC50 = _PP[7];
 
-  depot = __zzStateVar__[0]*((double)(_ON[0]));
-  centr = __zzStateVar__[1]*((double)(_ON[1]));
-  peri = __zzStateVar__[2]*((double)(_ON[2]));
-  eff = __zzStateVar__[3]*((double)(_ON[3]));
+  depot = __zzStateVar__[__DDT0__]*((double)(_ON[__DDT0__]));
+  centr = __zzStateVar__[__DDT1__]*((double)(_ON[__DDT1__]));
+  peri = __zzStateVar__[__DDT2__]*((double)(_ON[__DDT2__]));
+  eff = __zzStateVar__[__DDT3__]*((double)(_ON[__DDT3__]));
 
-  C2=centr/safe_zero(V2);
-  C3=peri/safe_zero(V3);
-  __DDtStateVar_0__ = ((double)(_ON[0]))*(_IR[0] -KA*depot);
-  __DDtStateVar_1__ = ((double)(_ON[1]))*(_IR[1] + KA*depot-CL*C2-Q*C2+Q*C3);
-  __DDtStateVar_2__ = ((double)(_ON[2]))*(_IR[2] + Q*C2-Q*C3);
-  __DDtStateVar_3__ = ((double)(_ON[3]))*(_IR[3] + Kin-Kout*(1-C2/safe_zero((EC50+C2)))*eff);
+  C2=centr/_div0(V2);
+  C3=peri/_div0(V3);
+  __DDtStateVar_0__ = ((double)(_ON[__DDT0__]))*(_IR[__DDT0__] -KA*depot);
+  __DDtStateVar_1__ = ((double)(_ON[__DDT1__]))*(_IR[__DDT1__] + KA*depot-CL*C2-Q*C2+Q*C3);
+  __DDtStateVar_2__ = ((double)(_ON[__DDT2__]))*(_IR[__DDT2__] + Q*C2-Q*C3);
+  __DDtStateVar_3__ = ((double)(_ON[__DDT3__]))*(_IR[__DDT3__] + Kin-Kout*(1-C2/_div0((EC50+C2)))*eff);
 
   _lhs[0]=C2;
   _lhs[1]=C3;
@@ -683,10 +689,10 @@ extern SEXP mod1__model_vars(void){
   int pro=0;
   SEXP _mv = PROTECT(_rxGetModelLib("mod1__model_vars"));pro++;
   if (!_rxIsCurrentC(_mv)){
-    SEXP hash    = PROTECT(allocVector(STRSXP, 1));pro++;
-#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAAjnzAAAv7#aT)^XQ$MAI<8a=W6xYB/1#e|dB8o!6S#v6Csgg\?OJf2J%%CM6RZX*jVD9YY+HHc+;T(dbxx8tuc)@#`$}<AqXMD@Y$giJt,A_CfDj$91gYDmR)0s7It!i3n{guX;_p5r&x,a*=}0WL/om}MjbvL3&vF\"fr:aH2R#KLos:&hE([\?)eE$5Vr$T]k/2brW|~ETmtOSZa)~@7]IE!ZzyK_zMRkO|2@j3Dcr4XuMofjB=fbL,)u2ZQSx+CA9n4ISCgmgZmCxDkjg4fv#NmVp`ZZwjjnLU$5MwHTAT+57LfvoBJ7TXndj$)df]%%k8jn\?PD8|&PKz>XHa*Nfe8z$.cQ^5!ak!}goqY@pfmG~g9nyg<g$yh@O83pr=fGZT0g|n.yp=YoZ@=(mx=56dIoy%%1L)M{lJMMAa!qi0a$u>/|/YdhnL0ch)k@moeYt\"#Qnj|72K&A]z{}xyuWK`t\?`VQqi=Zr!d&nIu6:c9U47%%7!mTi2|dReoZktO1gk\?jZv:Le)~,gbKj3FdzAyg4f<HW<.Y4xTJ{>Ou\?`CCy&]lK!i(QmowGLBGQ7G&k</PI&>A+P.Px|Z$%%RQSCl~@o\?I@\"^>&#}NdG_C#><:&l.`{\"F^nKrG3G0rr~r/<HR4wQ\?Wb+NY*ya^$dPG(R4Fejar>#D~~N;f#/>&XensG|;0!eCI]06yx\"K/{$3j%%|_YE:Y^#_%%yD7}P[I3a3J;K_$jU!Th@j,eGeaG}f\?04,5f29[w<)1E^@l}62gkz+RhN0Ai3e9xZx~Ik5Xv*z^Z;SDA3WbHB8<WEAi*&Dnz;B]5(qHu0)1q\?16};#Zr3<$sr}GL%%&TFiNpMv~F@fH~=l#vO#95:~{898~f2mC~ln%%*(+:@tHYSpS~9C<xML\?f+XC9xRj_UExd&Zn8Mc_h4iMOWC>Zg+Qo\?e*m9\"o[%%|q[VeqA)Q^zM0c5WKLmWKv(JNSNqB>)+/yn\?x<Z@n`B)z#G}YMJJ]nYyyt!/H)kN/QaQ3P]^(EYaXvG>1.<y2{WV$($/LA");
-    char buf[1056];
-#define __doBufN__ 1056
+    SEXP hash    = PROTECT(Rf_allocVector(STRSXP, 1));pro++;
+#define __doBuf__  snprintf(buf, __doBufN__, "un]\"BAAA@QRtHACAAAAAAAjn7AAAv7#aT)^fQ$OABR@di\"\?*6t1)3rCZO5/Hh5~cP!(\?:Wg8[_pGFQH65zj>FMazJsVB|_<9mGbi\?a>~moO=|SA&f6{dsK8tN6]%%lA,BZNTX\">hy^5L)j^!f!jssa(UT:;lH|$)Q22`y(l={DpPkuGY}hkd/P)Vz\?X6^(k:&XSjUg!r[:nTquwh8@`K}TxZG2<k\?G~HmQlHe,J0M;gL=sFAS78#aWPg433rNH9ci9FIc,|^cx}=j:xk~Ce&=GD,QMy[0yHTTx1d]aoQi}4(QxDKM3SN\?SGDC\";Rt,8C&w}3,3Tl<%%)EM]DOI(rT@$^:n[1SQ\"X,]e*kaELJ*aJlXr\"D%%vYRV0m@RFPZT=g1D$ZPMJY|Qc6F.klx)[\?389y/alBMJbxjIGx%%^}5dPr@aoI)%%tvwC<rEBGL(0I2n`!}&jS=Rtnz/*%%|Nu`#G3S1/s}TRobGH=$NG^[Iwj*BMF8Yc)anXjkkC$Gbq\?Ru0Rf7c:1.^p<3t6sN67Y_K6K*I]J9Z)$lBBt|@`*%%FkGo#1OCUo^vy>&&Wpg4j`eCKIc0P#;F+]frqvU%%ld#<eba=XvvLmY@b#!oSbzkS=Ff8fomL:\?,Ax.Z9%%B$c(+frmHczY&L%%&0}Lo\"DRQP6VFe<f`m)n7#Moz%%Z0Ks]&y}vF1=UbyGb,id3RKec4@BoU3qJx@:aGfufS9@TvAR>m/O81wN9+xo(27oncS>`<6t*Rb0v=Dk2GK)d7!l}&`([\?g|fIJ[iA\"Q:d3/Vp>%%dl\"asn]iN`ZWh%%7s{q[3]Ts%%e)i\"52VYZYJrhf}A.Ll@|5DVrAR]RNKH_v<X%%(f>_~ZB:^q$UbQFp*W8++mGp`H6v~.f:MN!m9xNb~I^c;I`M8DhjNA3WXH*wetyWeeNO`QBz4uoz77C9b43#HXgQad2}P)iW[TqZ~Sk:jKSWO}2k@FD~9_ctgf;b`=jK^2~)kB(Ys=2a^cY/H[GM5lMz(LWxV7L5LxfcjJL4.,)a&Gtp}fF]&Hd*6r+s)Kv;eJ[BQDB^F#R~<[qR(7m)EQ[N*JMV~d#v^1}s8]c_^9#!J8$:jprR6rMBl0)0G3R;H>H*Ox(|C/85DuQ.]QF*(Qi:J4l\"EtCZB=SDI3_/3li<l~=*.CD]Y..0G+LhDe^qC@t\?gSj`!&bK<l0GDzAw:iHmH29IlwAbL!B!N[A");
+    char buf[1219];
+#define __doBufN__ 1219
     __doBuf__
 #undef __doBuf__
 #undef __doBufN__

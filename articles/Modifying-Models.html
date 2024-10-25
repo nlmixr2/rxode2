@@ -5,7 +5,6 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="description" content="rxode2">
 <title>Modifying Models • rxode2</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
@@ -15,27 +14,22 @@
 <link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js" integrity="sha512-7O5pXpc0oCRrxk8RUfDYFgn0nO1t+jLuIOQdOMRp4APB7uZ4vSjspzp5y6YDtDs4VzUSTbWzBFZ/LKJhnyFOKw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Modifying Models">
-<meta property="og:description" content="rxode2">
-<meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png">
-<!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
-<script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]--><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Modifying Models">
+<meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
-    
 
-    <nav class="navbar fixed-top navbar-dark navbar-expand-lg bg-primary" data-bs-theme="dark"><div class="container">
-    
+
+    <nav class="navbar navbar-expand-lg fixed-top bg-primary" data-bs-theme="dark" aria-label="Site navigation"><div class="container">
+
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.1.9000</small>
 
-    
+
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -43,111 +37,73 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="active nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown--articles">
-    <span class="fas fa fas fa-book"></span>
-     
-    Articles
-  </a>
-  <div class="dropdown-menu" aria-labelledby="dropdown--articles">
-    <h6 class="dropdown-header" data-toc-skip>Getting started</h6>
-    <a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a>
-    <a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a>
-    <a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a>
-    <a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a>
-    <a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a>
-    <a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a>
-    <div class="dropdown-divider"></div>
-    <h6 class="dropdown-header" data-toc-skip>Advanced Features, Model Types, Technical Details</h6>
-    <a class="dropdown-item" href="../articles/rxode2-model-types.html">rxode2 model types</a>
-    <a class="dropdown-item" href="../articles/rxode2-cmt.html">Chainging rxode2 compartment numbers</a>
-    <a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">rxode2 transit compartment models</a>
-    <a class="dropdown-item" href="../articles/rxode2-shiny.html">Using Shiny with rxode2</a>
-    <a class="dropdown-item" href="../articles/rxode2-covariates.html">rxode2 covariates</a>
-    <a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff Systems and Jacobian specification</a>
-    <a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled rxode2 models to your package</a>
-  </div>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-book"></span> Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini language syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/Modifying-Models.html">rxode2 model modification %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">rxode2 pipeline ie %&gt;%</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up rxode2 ODE solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive Data Frames with rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced Features, Model Types, Technical Details</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-model-types.html">rxode2 model types</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Chainging rxode2 compartment numbers</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">rxode2 transit compartment models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Using Shiny with rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">rxode2 covariates</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff Systems and Jacobian specification</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled rxode2 models to your package</a></li>
+  </ul>
 </li>
 <li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown--dosing-events">
-    <span class="fas fa fas fa-stethoscope"></span>
-     
-    Dosing/Events
-  </a>
-  <div class="dropdown-menu" aria-labelledby="dropdown--dosing-events">
-    <a class="dropdown-item" href="../articles/rxode2-datasets.html">nlmixr/rxode2 dataset overview</a>
-    <a class="dropdown-item" href="../articles/rxode2-event-types.html">Supported Event Types</a>
-    <a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy rxode2 Event Tables</a>
-    <a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic rxode2 events explained</a>
-  </div>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-dosing-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Dosing/Events</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-dosing-events">
+<li><a class="dropdown-item" href="../articles/rxode2-datasets.html">nlmixr/rxode2 dataset overview</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-types.html">Supported Event Types</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy rxode2 Event Tables</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic rxode2 events explained</a></li>
+  </ul>
 </li>
 <li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown--simulations">
-    <span class="fas fa fas fa-desktop"></span>
-     
-    Simulations
-  </a>
-  <div class="dropdown-menu" aria-labelledby="dropdown--simulations">
-    <a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single Subject ODE solving</a>
-    <a class="dropdown-item" href="../articles/rxode2-sim-var.html">Multiple Subject rxode2 Simulation</a>
-    <a class="dropdown-item" href="../articles/rxode2-prior-data.html">Using Prior Data for ODE solving</a>
-  </div>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulations" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulations</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-simulations">
+<li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single Subject ODE solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Multiple Subject rxode2 Simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Using Prior Data for ODE solving</a></li>
+  </ul>
 </li>
 <li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown--help">
-    <span class="fas fa fas fa-life-ring"></span>
-     
-    Help
-  </a>
-  <div class="dropdown-menu" aria-labelledby="dropdown--help">
-    <a class="dropdown-item" href="../articles/rxode2-tutorials.html">Running the interactive tutorials</a>
-    <a class="external-link dropdown-item" href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4728294/pdf/PSP4-5-03.pdf">2015 CPT tutorial</a>
-    <div class="dropdown-divider"></div>
-    <a class="dropdown-item" href="../articles/rxode2-covariates.html">Adding Circadian Rythmn (time-varying covariates)</a>
-    <a class="dropdown-item" href="../articles/rxode2-wt.html">Weight Based Dosing</a>
-    <a class="dropdown-item" href="../articles/rxode2-nesting.html">Simulating Multiple levels of nesting (iov, between study etc)</a>
-    <div class="dropdown-divider"></div>
-    <a class="dropdown-item" href="../news/index.html">Changes/News</a>
-  </div>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-help" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-life-ring"></span> Help</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-help">
+<li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Running the interactive tutorials</a></li>
+    <li><a class="external-link dropdown-item" href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4728294/pdf/PSP4-5-03.pdf">2015 CPT tutorial</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Adding Circadian Rythmn (time-varying covariates)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight Based Dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Simulating Multiple levels of nesting (iov, between study etc)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../news/index.html">Changes/News</a></li>
+  </ul>
 </li>
-<li class="nav-item">
-  <a class="nav-link" href="https://nlmixr2.github.io/rxode2/reference/index.html">
-    <span class="fa fa-file-code-o"></span>
-     
-    Functions
-  </a>
-</li>
+<li class="nav-item"><a class="nav-link" href="https://nlmixr2.github.io/rxode2/reference/index.html"><span class="fa fa-file-code-o"></span> Functions</a></li>
       </ul>
-<form class="form-inline my-2 my-lg-0" role="search">
-        <input type="search" class="form-control me-sm-2" aria-label="Toggle navigation" name="search-input" data-search-index="../search.json" id="search-input" placeholder="Search for" autocomplete="off">
-</form>
-
-      <ul class="navbar-nav">
+<ul class="navbar-nav">
 <li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown--">
-    <span class="fas fa fas fa-archive"></span>
-     
-  </a>
-  <div class="dropdown-menu" aria-labelledby="dropdown--">
-    <a class="dropdown-item" href="https://nlmixr2.github.io/rxode2-manual/">rxode2 User Guide</a>
-    <a class="external-link dropdown-item" href="https://nlmixr2.org/">nlmixr2</a>
-  </div>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-archive"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-">
+<li><a class="dropdown-item" href="https://nlmixr2.github.io/rxode2-manual/">rxode2 User Guide</a></li>
+    <li><a class="external-link dropdown-item" href="https://nlmixr2.org/">nlmixr2</a></li>
+  </ul>
 </li>
-<li class="nav-item">
-  <a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2">
-    <span class="fa fa-github"></span>
-     
-  </a>
-</li>
-<li class="nav-item">
-  <a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/releases">
-    <span class="fa fa-download"></span>
-     
-  </a>
-</li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2"><span class="fa fa-github"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/releases"><span class="fa fa-download"></span></a></li>
       </ul>
 </div>
 
-    
+
   </div>
 </nav><div class="container template-article">
 
@@ -159,7 +115,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Modifying Models</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/HEAD/vignettes/articles/Modifying-Models.Rmd" class="external-link"><code>vignettes/articles/Modifying-Models.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/articles/Modifying-Models.Rmd" class="external-link"><code>vignettes/articles/Modifying-Models.Rmd</code></a></small>
       <div class="d-none name"><code>Modifying-Models.Rmd</code></div>
     </div>
 
@@ -167,7 +123,7 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; rxode2 2.1.3.9000 using 2 threads (see ?getRxThreads)</span></span>
+<span><span class="co">#&gt; rxode2 3.0.1.9000 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre></div>
 <p>There are two fundamental operations that you may wish to do in
 <code>rxode2</code>/<code>nlmixr2</code>. First you might want to modify
@@ -230,9 +186,10 @@ the model piping expression:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="va">one.compartment</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">ka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tka</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove between subject variability `eta.ka`</span></span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove between subject variability `eta.ka`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -282,12 +239,11 @@ initial estimate for the between subject variability is dropped since it
 is no longer part of the model.</p>
 <p>If for some reason you wanted to add it back to the model you can
 modify the model and add it back:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod2</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">ka</span> <span class="op">&lt;-</span> <span class="va">tka</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add between subject variability `eta.ka` and set estimate to 1</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add between subject variability `eta.ka` and set estimate to 1</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -351,14 +307,13 @@ names are assumed to be between subject variability parameters:</p>
 </ul>
 <p>If this is not functioning correctly you can change it to a covariate
 which you can add a type of initial estimate to later:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod2</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">ka</span> <span class="op">&lt;-</span> <span class="va">tka</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span> <span class="op">+</span> <span class="va">WT</span> <span class="op">*</span> <span class="va">covWt</span>, cov<span class="op">=</span><span class="st">"eta.ka"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `eta.ka` (as requested by cov option)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `WT`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add population parameter `covWt` and set estimate to 1</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add population parameter `covWt` and set estimate to 1</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -426,14 +381,13 @@ name starting with (or ending with):</p>
 assumed to be covariates.</p>
 <p>If you don’t want any automatic variable conversion, you can also use
 <code>auto=FALSE</code>:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod3</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">ka</span> <span class="op">&lt;-</span> <span class="va">tka</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span> <span class="op">+</span> <span class="va">WT</span> <span class="op">*</span> <span class="va">covWt</span>, auto<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `eta.ka`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `WT`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `covWt`</span></span></code></pre></div>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariate `covWt`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -488,14 +442,14 @@ the dataset.</p>
 <p>The automatic detection of variables is convenient for many models
 but may not suit your style; If you do not like it you can always change
 it by using <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code>:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>rxode2.autoVarPiping<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>With this option disabled, all variables will be assumed to be
 covariates and you will have to promote them to population parameters
 with the <code>ini</code> block</p>
 <p>In the last example with this option enabled none of the variables
 starting with <code>t</code> will be added to the model</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod7</span> <span class="op">&lt;-</span> <span class="va">mod3</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">emax</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">temax</span><span class="op">)</span></span>
@@ -555,7 +509,7 @@ starting with <code>t</code> will be added to the model</p>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>Of course you could use it and then turn it back on:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>rxode2.autoVarPiping<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">mod8</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -570,9 +524,8 @@ starting with <code>t</code> will be added to the model</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `eta.e0` to between subject variability with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tec50` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkin` to population parameter with initial estimate 1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkout` to population parameter with initial estimate 1</span></span></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkout` to population parameter with initial estimate 1</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod8</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -637,7 +590,7 @@ to turn the option on temporarily.</p>
 change them as well with <code><a href="../reference/rxSetPipingAuto.html">rxSetPipingAuto()</a></code></p>
 <p>For example if you only wanted variables starting or ending with
 <code>te</code> you can change this with:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSetPipingAuto.html">rxSetPipingAuto</a></span><span class="op">(</span>thetamodelVars <span class="op">=</span> <span class="fu">rex</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/rex/man/rex.html" class="external-link">rex</a></span><span class="op">(</span><span class="st">"te"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mod9</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
@@ -651,9 +604,8 @@ change them as well with <code><a href="../reference/rxSetPipingAuto.html">rxSet
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `temax` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `te0` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `eta.e0` to between subject variability with initial estimate 1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tec50` to population parameter with initial estimate 1</span></span></code></pre></div>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tec50` to population parameter with initial estimate 1</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod9</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -713,7 +665,7 @@ change them as well with <code><a href="../reference/rxSetPipingAuto.html">rxSet
 <code>te</code> are added to the <code>ini</code> block.</p>
 <p>If you want to reset the defaults you simply call
 <code><a href="../reference/rxSetPipingAuto.html">rxSetPipingAuto()</a></code> without any arguments:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxSetPipingAuto.html">rxSetPipingAuto</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">mod10</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -742,15 +694,14 @@ the same compound and you have noticed that they both have different
 variability.</p>
 <p>You can modify the model above by adding some lines to the end of the
 model by using <code>append=TRUE</code>:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod4</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">cp2</span> <span class="op">&lt;-</span> <span class="va">cp</span></span>
 <span>    <span class="va">cp2</span> <span class="op">~</span> <span class="fu">lnorm</span><span class="op">(</span><span class="va">lnorm.sd</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>, append<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add residual parameter `lnorm.sd` and set estimate to 1</span></span></code></pre></div>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add residual parameter `lnorm.sd` and set estimate to 1</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -808,7 +759,7 @@ model by using <code>append=TRUE</code>:</p>
 addition to the concentrations, you can choose where to add this: with
 <code>append=lhsVar</code> where <code>lhsVar</code> is the left handed
 variable above where you want to insert the new lines:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod5</span> <span class="op">&lt;-</span> <span class="va">mod</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">PD</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">-</span><span class="va">emax</span><span class="op">*</span><span class="va">cp</span><span class="op">/</span><span class="op">(</span><span class="va">ec50</span><span class="op">+</span><span class="va">cp</span><span class="op">)</span></span>
@@ -819,7 +770,7 @@ variable above where you want to insert the new lines:</p>
 <span>  <span class="op">}</span>, append<span class="op">=</span><span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>The last type of insertion you may wish to do is to add lines to the
 beginning of the model by using <code>append=FALSE</code>:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod6</span> <span class="op">&lt;-</span> <span class="va">mod5</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">emax</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">temax</span><span class="op">)</span></span>
@@ -833,9 +784,8 @@ beginning of the model by using <code>append=FALSE</code>:</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `eta.e0` to between subject variability with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tec50` to population parameter with initial estimate 1</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkin` to population parameter with initial estimate 1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkout` to population parameter with initial estimate 1</span></span></code></pre></div>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tkout` to population parameter with initial estimate 1</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod6</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -905,12 +855,11 @@ beginning of the model by using <code>append=FALSE</code>:</p>
 <p>The lines in a model can be removed in one of 2 ways either use
 <code>-param</code> or <code>param &lt;- NULL</code> in model
 piping:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod7</span> <span class="op">&lt;-</span> <span class="va">mod6</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">-</span><span class="va">emax</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove population parameter `temax`</span></span></code></pre></div>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove population parameter `temax`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod7</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -970,16 +919,14 @@ piping:</p>
 <span><span class="co">#&gt;         cp = center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># Equivalently</span></span>
 <span></span>
 <span><span class="va">mod8</span> <span class="op">&lt;-</span> <span class="va">mod6</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">emax</span> <span class="op">&lt;-</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove population parameter `temax`</span></span></code></pre></div>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> remove population parameter `temax`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod8</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1049,7 +996,7 @@ with <code><a href="../reference/rxRename.html">rxRename()</a></code>. When <cod
 even replace it with <code><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename()</a></code>. The semantics are similar
 between the two functions, that is you assigning
 <code>newVar=oldVar</code>. For example:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod11</span> <span class="op">&lt;-</span> <span class="va">mod10</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/rxRename.html">rxRename</a></span><span class="op">(</span>drug1kout<span class="op">=</span><span class="va">kout</span>, tv.drug1kout<span class="op">=</span><span class="va">tkout</span><span class="op">)</span></span>
 <span></span>
@@ -1116,7 +1063,7 @@ between the two functions, that is you assigning
 renamed inside the <code>model</code> and <code>ini</code> block.</p>
 <p>For completeness you can see this with the <code>dplyr</code> verb
 (since it is a S3 method):</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
@@ -1125,9 +1072,8 @@ renamed inside the <code>model</code> and <code>ini</code> block.</p>
 <span><span class="co">#&gt;     filter, lag</span></span>
 <span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span></code></pre></div>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mod12</span> <span class="op">&lt;-</span> <span class="va">mod10</span> <span class="op">|&gt;</span></span>
+<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
+<span><span class="va">mod12</span> <span class="op">&lt;-</span> <span class="va">mod10</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>drug1kout<span class="op">=</span><span class="va">kout</span>, tv.drug1kout<span class="op">=</span><span class="va">tkout</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod12</span><span class="op">)</span></span>
@@ -1199,7 +1145,7 @@ to combine. This is because you generally want the models to link
 between each other. In the below example a pk and pd model this is done
 by renaming <code>cp</code> in the first model to <code>ceff</code> in
 the second model:</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ocmt</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fl">0.45</span><span class="op">)</span> <span class="co"># Ka</span></span>
@@ -1237,7 +1183,10 @@ the second model:</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/rxAppendModel.html">rxAppendModel</a></span><span class="op">(</span><span class="va">ocmt</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/rxRename.html">rxRename</a></span><span class="op">(</span>ceff<span class="op">=</span><span class="va">cp</span><span class="op">)</span>, <span class="va">idr</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
@@ -1261,11 +1210,8 @@ the second model:</p>
 <span><span class="co">#&gt; function() {</span></span>
 <span><span class="co">#&gt;     ini({</span></span>
 <span><span class="co">#&gt;         tka &lt;- 1.56831218549017</span></span>
-<span><span class="co">#&gt;         label("Ka")</span></span>
 <span><span class="co">#&gt;         tcl &lt;- 2.71828182845905</span></span>
-<span><span class="co">#&gt;         label("Cl")</span></span>
 <span><span class="co">#&gt;         tv &lt;- 31.5003923087479</span></span>
-<span><span class="co">#&gt;         label("log V")</span></span>
 <span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
 <span><span class="co">#&gt;         tkin &lt;- 0</span></span>
 <span><span class="co">#&gt;         tkout &lt;- 0</span></span>
@@ -1291,18 +1237,23 @@ the second model:</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>You will get an error if you try to combine models without variables
 in common:</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu"><a href="../reference/rxAppendModel.html">rxAppendModel</a></span><span class="op">(</span><span class="va">ocmt</span>, <span class="va">idr</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; Error : not all the models have variables in common (use `common=FALSE` to allow this)</span></span></code></pre></div>
 <p>If you want to combine the models without respecting the having the
 variables in common, you can use <code>common=FALSE</code>:</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxAppendModel.html">rxAppendModel</a></span><span class="op">(</span><span class="va">ocmt</span>, <span class="va">idr</span>, common<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span>ceff<span class="op">=</span><span class="va">cp</span>, append<span class="op">=</span><span class="va">ic50</span><span class="op">)</span> <span class="co"># here we add the translation after the</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments will be replaced by 'label()'</span></span></code></pre></div>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span>                              <span class="co"># ic50 line to make it reasonable</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span>                              <span class="co"># ic50 line to make it reasonable</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mod2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 3-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -1328,11 +1279,8 @@ variables in common, you can use <code>common=FALSE</code>:</p>
 <span><span class="co">#&gt; function() {</span></span>
 <span><span class="co">#&gt;     ini({</span></span>
 <span><span class="co">#&gt;         tka &lt;- 1.56831218549017</span></span>
-<span><span class="co">#&gt;         label("Ka")</span></span>
 <span><span class="co">#&gt;         tcl &lt;- 2.71828182845905</span></span>
-<span><span class="co">#&gt;         label("Cl")</span></span>
 <span><span class="co">#&gt;         tv &lt;- 31.5003923087479</span></span>
-<span><span class="co">#&gt;         label("log V")</span></span>
 <span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
 <span><span class="co">#&gt;         tkin &lt;- 0</span></span>
 <span><span class="co">#&gt;         tkout &lt;- 0</span></span>
@@ -1366,7 +1314,7 @@ are some helper functions to help you create functions to do more. We
 will discuss how to extract the model from the function and how to
 update it.</p>
 <p>Lets start with a model:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
@@ -1387,8 +1335,10 @@ update it.</p>
 <p>Lets assume for a moment you want to remove an eta to
 <code>cl</code>. First you probably want to get all the model lines. You
 can do that with <code><a href="../reference/modelExtract.html">modelExtract()</a></code>:</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">totLines</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/modelExtract.html">modelExtract</a></span><span class="op">(</span><span class="va">f</span>, endpoint<span class="op">=</span><span class="cn">NA</span><span class="op">)</span> <span class="co"># endpoints should be included</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">totLines</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "ka &lt;- exp(tka + eta.ka)"                   </span></span>
@@ -1399,11 +1349,13 @@ can do that with <code><a href="../reference/modelExtract.html">modelExtract()</
 <span><span class="co">#&gt; [6] "cp &lt;- center/v"</span></span></code></pre></div>
 <p>Now you want to only worry about the <code>cl</code> line, you can
 subset here:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">clLine</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/modelExtract.html">modelExtract</a></span><span class="op">(</span><span class="va">f</span>, <span class="va">cl</span>, lines<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="va">line</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">clLine</span>, <span class="st">"lines"</span><span class="op">)</span></span></code></pre></div>
 <p>Now I wish to change the line to “cl &lt;- exp(tcl+eta.cl)”</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">totLines</span><span class="op">[</span><span class="va">line</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"cl &lt;- exp(tcl+eta.cl)"</span></span>
 <span></span>
 <span><span class="co"># For now lets remove the entire `ini` block (so you don't have to</span></span>
@@ -1412,12 +1364,13 @@ subset here:</p>
 <span><span class="co">#</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">totLines</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span></code></pre></div>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span>
 <span><span class="co">#&gt; function () </span></span>
 <span><span class="co">#&gt; {</span></span>
@@ -1432,7 +1385,7 @@ subset here:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55e6a0eaaef8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x561828fea060&gt;</span></span></code></pre></div>
 <p>Note that these functions do not modify the <code>ini({})</code>
 block. You may have to modify the ini block first to make it a valid
 <code>rxode2</code>/<code>nlmixr2</code> model.</p>
@@ -1454,6 +1407,8 @@ parameters and endpoints follow the correct rules</p>
 <li><p>Change the initial condition type</p></li>
 <li><p>Change labels and transformations</p></li>
 <li><p>Reorder parameters</p></li>
+<li><p>Remove covariances between all parameters or a group of
+parameters</p></li>
 </ul>
 <p>You may wish to create your own functions; we will discuss this
 too.</p>
@@ -1465,7 +1420,7 @@ value to whatever is in the model function, this is done by piping the
 model parameter name (like <code>tka</code>) and setting it equal to
 <code>fix</code> (<code>%&gt;% ini(tka=fix)</code>). Below is a full
 example:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
@@ -1488,9 +1443,10 @@ example:</p>
 <span></span>
 <span><span class="va">f2</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="va">fix</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> fix `tka` to `0.45`</span></span></code></pre></div>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> fix `tka` to `0.45`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1537,7 +1493,7 @@ is very similar you can specify the value to fix inside of a
 <code>fix</code> pseudo-function as follows:
 <code>%&gt;% ini(tka=fix(0.1))</code>. A fully worked example is
 below:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
@@ -1560,10 +1516,11 @@ below:</p>
 <span></span>
 <span><span class="va">f2</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/utils/fix.html" class="external-link">fix</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> fix `tka` to `0.45`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span></code></pre></div>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1614,7 +1571,7 @@ the <code>fix</code> keyword, you use the <code>unfix</code> keyword. So
 to unfix a parameter (keeping its value) you would pipe the model using
 (<code>|&gt; ini(tka=unfix)</code>). Starting with the fixed model above
 a fully worked example is:</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1655,13 +1612,11 @@ a fully worked example is:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f2</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="va">unfix</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> unfix `tka` keeping initial estimate `0.1`</span></span></code></pre></div>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> unfix `tka` keeping initial estimate `0.1`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1705,7 +1660,7 @@ a fully worked example is:</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>You can also unfix and change the initial estimate with
 <code>ini(parameter=unfix(newEst))</code>:</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1746,15 +1701,13 @@ a fully worked example is:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f2</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">unfix</span><span class="op">(</span><span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> unfix `tka` keeping initial estimate `0.1`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `10`</span></span></code></pre></div>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `10`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1812,15 +1765,16 @@ a fully worked example is:</p>
 <p>In the case of a vector you can specify them and then pipe the
 model.</p>
 <p>For example:</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ini1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fl">0.1</span>, tcl<span class="op">=</span><span class="fl">1</span>, tv<span class="op">=</span><span class="fl">3</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">ini1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `1`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `3`</span></span></code></pre></div>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `3`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1861,19 +1815,19 @@ model.</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># or equivalently</span></span>
 <span></span>
 <span><span class="va">ini1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fl">0.1</span>, tcl<span class="op">=</span><span class="fl">1</span>, tv<span class="op">=</span><span class="fl">3</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">f4a</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">ini1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `1`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `3`</span></span></code></pre></div>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `3`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -1917,14 +1871,15 @@ model.</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>This can also be added with multiple lines or commas separating
 estimates:</p>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># commas separating values:</span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fl">0.1</span>, tcl<span class="op">=</span><span class="fl">1</span>, tv<span class="op">=</span><span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `1`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `3`</span></span></code></pre></div>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `3`</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
@@ -1964,9 +1919,8 @@ estimates:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># multiple lines in {}</span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -1974,11 +1928,12 @@ estimates:</p>
 <span>    <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
 <span>    <span class="va">tv</span> <span class="op">&lt;-</span> <span class="fl">6</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.2`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `2`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `6`</span></span></code></pre></div>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tv` to `6`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2021,16 +1976,17 @@ estimates:</p>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>You could also use a matrix to specify the covariance:</p>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ome</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.ka</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>,</span>
 <span>                                <span class="fl">0.01</span>, <span class="fl">10.1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">ome</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.ka` to `0.6`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariance between `eta.v` and `eta.ka` with initial estimate `0.01`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.v` to `10.1`</span></span></code></pre></div>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.v` to `10.1`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2059,7 +2015,8 @@ estimates:</p>
 <span><span class="co">#&gt;         tcl &lt;- 1</span></span>
 <span><span class="co">#&gt;         tv &lt;- 3.45</span></span>
 <span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
-<span><span class="co">#&gt;         eta.ka + eta.v ~ c(0.6, 0.01, 10.1)</span></span>
+<span><span class="co">#&gt;         eta.ka ~ 0.6</span></span>
+<span><span class="co">#&gt;         eta.v ~ c(0.01, 10.1)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt;     model({</span></span>
 <span><span class="co">#&gt;         ka &lt;- exp(tka + eta.ka)</span></span>
@@ -2070,18 +2027,18 @@ estimates:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># or equavialtly use the lotri-type syntax for the omega:</span></span>
 <span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">eta.ka</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>,</span>
 <span>                                  <span class="fl">0.01</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.ka` to `0.6`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> add covariance between `eta.v` and `eta.ka` with initial estimate `0.01`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.v` to `0.2`</span></span></code></pre></div>
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.v` to `0.2`</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
@@ -2109,7 +2066,8 @@ estimates:</p>
 <span><span class="co">#&gt;         tcl &lt;- 1</span></span>
 <span><span class="co">#&gt;         tv &lt;- 3.45</span></span>
 <span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
-<span><span class="co">#&gt;         eta.ka + eta.v ~ c(0.6, 0.01, 0.2)</span></span>
+<span><span class="co">#&gt;         eta.ka ~ 0.6</span></span>
+<span><span class="co">#&gt;         eta.v ~ c(0.01, 0.2)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt;     model({</span></span>
 <span><span class="co">#&gt;         ka &lt;- exp(tka + eta.ka)</span></span>
@@ -2130,22 +2088,25 @@ simply use <code>ini(parameter=newValue)</code>. You can also use
 <code>&lt;-</code> or <code>~</code> to change the value:</p>
 <p>A fully worked example showing all three types of initial value
 modification is:</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.1</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span></code></pre></div>
-<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span>
+<span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fl">0.1</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span></code></pre></div>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span>
+<span></span>
 <span><span class="va">f5</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">~</span> <span class="fl">0.1</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span></code></pre></div>
-<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tka` to `0.1`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f5</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2190,12 +2151,13 @@ modification is:</p>
 <p>You can change the bounds like you do in the model specification by
 using a numeric vector of <code>c(low, estimate)</code> or
 <code>c(low, estimate, hi)</code>. Here is a worked example:</p>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and upper/lower bound (0 to 0.2) of `tka`</span></span></code></pre></div>
-<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and upper/lower bound (0 to 0.2) of `tka`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2236,15 +2198,15 @@ using a numeric vector of <code>c(low, estimate)</code> or
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span></span>
 <span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and lower bound (0) of `tka`</span></span></code></pre></div>
-<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and lower bound (0) of `tka`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2288,12 +2250,13 @@ using a numeric vector of <code>c(low, estimate)</code> or
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>Note by changing the parameters to their default values they might
 not show up in the parameter printout:</p>
-<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and upper/lower bound (0 to 0.2) of `tka`</span></span></code></pre></div>
-<div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and upper/lower bound (0 to 0.2) of `tka`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2334,15 +2297,13 @@ not show up in the parameter printout:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># Now reassign</span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f3</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="cn">Inf</span>, <span class="fl">0.1</span>, <span class="cn">Inf</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and upper/lower bound (-Inf to Inf) of `tka`</span></span></code></pre></div>
-<div class="sourceCode" id="cb72"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate (0.1) and upper/lower bound (-Inf to Inf) of `tka`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2393,13 +2354,14 @@ not show up in the parameter printout:</p>
 <code>~par</code> to toggle between population and individual
 parameters.</p>
 <p>Here is an example that does all 3:</p>
-<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Switch population parameter to between subject variability parameter:</span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span> <span class="op">~</span> <span class="va">tcl</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> convert 'tcl' from population parameter to between subject variability</span></span></code></pre></div>
-<div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> convert 'tcl' from population parameter to between subject variability</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2441,15 +2403,13 @@ parameters.</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># Switch back to population parameter</span></span>
 <span><span class="va">f5</span> <span class="op">&lt;-</span> <span class="va">f4</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span> <span class="op">~</span> <span class="va">tcl</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> convert 'tcl' from between subject variability to population parameter</span></span></code></pre></div>
-<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> convert 'tcl' from between subject variability to population parameter</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f5</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2490,17 +2450,15 @@ parameters.</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># Change the variable to a covariate parameter (ie it doesn't have an</span></span>
 <span><span class="co"># initial estimate so remove it with the `-` operator):</span></span>
 <span></span>
 <span><span class="va">f6</span> <span class="op">&lt;-</span> <span class="va">f4</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">-</span><span class="va">tcl</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> changing between subject variability parameter 'tcl' to covariate parameter</span></span></code></pre></div>
-<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> changing between subject variability parameter 'tcl' to covariate parameter</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f6</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2540,17 +2498,15 @@ parameters.</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># You can change the covariate or remove the parameter estimate by</span></span>
 <span><span class="co"># `tcl &lt;- NULL`:</span></span>
 <span></span>
 <span><span class="va">f6</span> <span class="op">&lt;-</span> <span class="va">f4</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">&lt;-</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> changing between subject variability parameter 'tcl' to covariate parameter</span></span></code></pre></div>
-<div class="sourceCode" id="cb80"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> changing between subject variability parameter 'tcl' to covariate parameter</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f6</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2590,18 +2546,16 @@ parameters.</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb81"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span><span class="co"># to add it back as a between subject variability or population</span></span>
 <span><span class="co"># parameter you can pipe it as follows:</span></span>
 <span></span>
 <span><span class="va">f7</span> <span class="op">&lt;-</span> <span class="va">f6</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tcl<span class="op">=</span><span class="fl">4</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tcl` to population parameter with initial estimate 4</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `4`</span></span></code></pre></div>
-<div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `4`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f7</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2642,16 +2596,14 @@ parameters.</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
-<span><span class="co">#&gt; }</span></span></code></pre></div>
-<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
 <span></span>
 <span><span class="va">f8</span> <span class="op">&lt;-</span> <span class="va">f6</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">~</span> <span class="fl">0.1</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `tcl` to between subject variability with initial estimate 0.1</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `0.1`</span></span></code></pre></div>
-<div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tcl` to `0.1`</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f8</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
 <span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
@@ -2700,9 +2652,11 @@ parameters.</p>
 </h4>
 <p>If you want to change/add a parameter label you assign the parameter
 to <code>label("label to add")</code>. For example:</p>
-<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">label</span><span class="op">(</span><span class="st">"Typical Ka (1/hr)"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -2747,9 +2701,11 @@ to <code>label("label to add")</code>. For example:</p>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>You can also change the order while performing operations:</p>
-<div class="sourceCode" id="cb86"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f5</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">label</span><span class="op">(</span><span class="st">"Typical Ka (1/hr)"</span><span class="op">)</span>, append<span class="op">=</span><span class="va">tcl</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f5</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -2795,9 +2751,11 @@ to <code>label("label to add")</code>. For example:</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>If you want to remove the labels you can remove them with
 <code>ini(par=label(NULL))</code>; For example:</p>
-<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f6</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">label</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f6</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -2849,9 +2807,11 @@ to <code>label("label to add")</code>. For example:</p>
 of the labels.</p>
 <p>Here you use <code>|&gt; ini(tka=backTransform(exp))</code> to add an
 exponential back-transformation for data:</p>
-<div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f7</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">backTransform</span><span class="op">(</span><span class="va">exp</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f7</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -2897,9 +2857,11 @@ exponential back-transformation for data:</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>If you wish to remove them you can also do that with
 <code>|&gt; ini(tka=backTransform(NULL))</code>:</p>
-<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f8</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">backTransform</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f8</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
@@ -2945,14 +2907,198 @@ exponential back-transformation for data:</p>
 </div>
 </div>
 <div class="section level3">
+<h3 id="removing-covariances-between-between-subject-varaibilities">Removing covariances between between subject varaibilities<a class="anchor" aria-label="anchor" href="#removing-covariances-between-between-subject-varaibilities"></a>
+</h3>
+<p>There are two approaches to removing covarinaces for between subject
+variabilities: <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> and <code>-cov(var1, var2)</code></p>
+<p>The <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> removes either all covariance elements (with
+no arguments) or any covariance elements included in the argument
+list:</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fd</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
+<span>    <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">tv</span> <span class="op">&lt;-</span> <span class="fl">3.45</span></span>
+<span>    <span class="va">add.sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.7</span><span class="op">)</span></span>
+<span>    <span class="va">eta.ka</span> <span class="op">~</span> <span class="fl">0.6</span></span>
+<span>    <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.1</span><span class="op">)</span></span>
+<span>    <span class="va">eta.cl</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.01</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">ka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">+</span> <span class="va">eta.ka</span><span class="op">)</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tcl</span> <span class="op">+</span> <span class="va">eta.cl</span><span class="op">)</span></span>
+<span>    <span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">tv</span> <span class="op">+</span> <span class="va">eta.v</span><span class="op">)</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span></span>
+<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">center</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ka</span> <span class="op">*</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span><span class="op">/</span><span class="va">v</span> <span class="op">*</span> <span class="va">center</span></span>
+<span>    <span class="va">cp</span> <span class="op">&lt;-</span> <span class="va">center</span><span class="op">/</span><span class="va">v</span></span>
+<span>    <span class="va">cp</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># If you want to remove all covariances you can use diag() with no</span></span>
+<span><span class="co"># arguments</span></span>
+<span></span>
+<span><span class="va">fd</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka,eta.v)`</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka,eta.cl)`</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.v,eta.cl)`</span></span>
+<span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
+<span><span class="co">#&gt;    tka    tcl     tv add.sd </span></span>
+<span><span class="co">#&gt;   0.45   1.00   3.45   0.70 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Omega</span> (<span style="color: #0000BB; font-weight: bold;">$omega</span>): </span></span>
+<span><span class="co">#&gt;        eta.ka eta.v eta.cl</span></span>
+<span><span class="co">#&gt; eta.ka    0.6   0.0      0</span></span>
+<span><span class="co">#&gt; eta.v     0.0   0.1      0</span></span>
+<span><span class="co">#&gt; eta.cl    0.0   0.0      1</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co"><span style="font-weight: bold;">#&gt; States</span> (<span style="color: #0000BB; font-weight: bold;">$state</span> or <span style="color: #0000BB; font-weight: bold;">$stateDf</span>): </span></span>
+<span><span class="co">#&gt;   Compartment Number Compartment Name</span></span>
+<span><span class="co">#&gt; 1                  1            depot</span></span>
+<span><span class="co">#&gt; 2                  2           center</span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">μ-referencing (</span><span style="color: #0000BB; font-weight: bold;">$muRefTable</span><span style="font-weight: bold;">):</span> ──  </span></span>
+<span><span class="co">#&gt;   theta    eta level</span></span>
+<span><span class="co">#&gt; 1   tka eta.ka    id</span></span>
+<span><span class="co">#&gt; 2   tcl eta.cl    id</span></span>
+<span><span class="co">#&gt; 3    tv  eta.v    id</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Model (Normalized Syntax):</span> ── </span></span>
+<span><span class="co">#&gt; function() {</span></span>
+<span><span class="co">#&gt;     ini({</span></span>
+<span><span class="co">#&gt;         tka &lt;- 0.45</span></span>
+<span><span class="co">#&gt;         tcl &lt;- 1</span></span>
+<span><span class="co">#&gt;         tv &lt;- 3.45</span></span>
+<span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
+<span><span class="co">#&gt;         eta.ka ~ 0.6</span></span>
+<span><span class="co">#&gt;         eta.v ~ 0.1</span></span>
+<span><span class="co">#&gt;         eta.cl ~ 1</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt;     model({</span></span>
+<span><span class="co">#&gt;         ka &lt;- exp(tka + eta.ka)</span></span>
+<span><span class="co">#&gt;         cl &lt;- exp(tcl + eta.cl)</span></span>
+<span><span class="co">#&gt;         v &lt;- exp(tv + eta.v)</span></span>
+<span><span class="co">#&gt;         d/dt(depot) &lt;- -ka * depot</span></span>
+<span><span class="co">#&gt;         d/dt(center) &lt;- ka * depot - cl/v * center</span></span>
+<span><span class="co">#&gt;         cp &lt;- center/v</span></span>
+<span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
+<span><span class="co"># if you want to remove only covariances with eta.ka  you can use:</span></span>
+<span><span class="va">fd</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">eta.ka</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka,eta.v)`</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka,eta.cl)`</span></span>
+<span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
+<span><span class="co">#&gt;    tka    tcl     tv add.sd </span></span>
+<span><span class="co">#&gt;   0.45   1.00   3.45   0.70 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Omega</span> (<span style="color: #0000BB; font-weight: bold;">$omega</span>): </span></span>
+<span><span class="co">#&gt;        eta.cl eta.v eta.ka</span></span>
+<span><span class="co">#&gt; eta.cl   1.00  0.01    0.0</span></span>
+<span><span class="co">#&gt; eta.v    0.01  0.10    0.0</span></span>
+<span><span class="co">#&gt; eta.ka   0.00  0.00    0.6</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co"><span style="font-weight: bold;">#&gt; States</span> (<span style="color: #0000BB; font-weight: bold;">$state</span> or <span style="color: #0000BB; font-weight: bold;">$stateDf</span>): </span></span>
+<span><span class="co">#&gt;   Compartment Number Compartment Name</span></span>
+<span><span class="co">#&gt; 1                  1            depot</span></span>
+<span><span class="co">#&gt; 2                  2           center</span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">μ-referencing (</span><span style="color: #0000BB; font-weight: bold;">$muRefTable</span><span style="font-weight: bold;">):</span> ──  </span></span>
+<span><span class="co">#&gt;   theta    eta level</span></span>
+<span><span class="co">#&gt; 1   tka eta.ka    id</span></span>
+<span><span class="co">#&gt; 2   tcl eta.cl    id</span></span>
+<span><span class="co">#&gt; 3    tv  eta.v    id</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Model (Normalized Syntax):</span> ── </span></span>
+<span><span class="co">#&gt; function() {</span></span>
+<span><span class="co">#&gt;     ini({</span></span>
+<span><span class="co">#&gt;         tka &lt;- 0.45</span></span>
+<span><span class="co">#&gt;         tcl &lt;- 1</span></span>
+<span><span class="co">#&gt;         tv &lt;- 3.45</span></span>
+<span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
+<span><span class="co">#&gt;         eta.cl ~ 1</span></span>
+<span><span class="co">#&gt;         eta.v ~ c(0.01, 0.1)</span></span>
+<span><span class="co">#&gt;         eta.ka ~ 0.6</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt;     model({</span></span>
+<span><span class="co">#&gt;         ka &lt;- exp(tka + eta.ka)</span></span>
+<span><span class="co">#&gt;         cl &lt;- exp(tcl + eta.cl)</span></span>
+<span><span class="co">#&gt;         v &lt;- exp(tv + eta.v)</span></span>
+<span><span class="co">#&gt;         d/dt(depot) &lt;- -ka * depot</span></span>
+<span><span class="co">#&gt;         d/dt(center) &lt;- ka * depot - cl/v * center</span></span>
+<span><span class="co">#&gt;         cp &lt;- center/v</span></span>
+<span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt; }</span></span>
+<span></span>
+<span><span class="co"># if you want to remove only the covariances with eta.ka and eta.v you can use:</span></span>
+<span><span class="va">fd</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov</a></span><span class="op">(</span><span class="va">eta.ka</span>, <span class="va">eta.v</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> remove covariance `(eta.ka, eta.v)`</span></span>
+<span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
+<span><span class="co">#&gt;    tka    tcl     tv add.sd </span></span>
+<span><span class="co">#&gt;   0.45   1.00   3.45   0.70 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Omega</span> (<span style="color: #0000BB; font-weight: bold;">$omega</span>): </span></span>
+<span><span class="co">#&gt;        eta.v eta.cl eta.ka</span></span>
+<span><span class="co">#&gt; eta.v   0.10   0.01   0.00</span></span>
+<span><span class="co">#&gt; eta.cl  0.01   1.00   0.01</span></span>
+<span><span class="co">#&gt; eta.ka  0.00   0.01   0.60</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co"><span style="font-weight: bold;">#&gt; States</span> (<span style="color: #0000BB; font-weight: bold;">$state</span> or <span style="color: #0000BB; font-weight: bold;">$stateDf</span>): </span></span>
+<span><span class="co">#&gt;   Compartment Number Compartment Name</span></span>
+<span><span class="co">#&gt; 1                  1            depot</span></span>
+<span><span class="co">#&gt; 2                  2           center</span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">μ-referencing (</span><span style="color: #0000BB; font-weight: bold;">$muRefTable</span><span style="font-weight: bold;">):</span> ──  </span></span>
+<span><span class="co">#&gt;   theta    eta level</span></span>
+<span><span class="co">#&gt; 1   tka eta.ka    id</span></span>
+<span><span class="co">#&gt; 2   tcl eta.cl    id</span></span>
+<span><span class="co">#&gt; 3    tv  eta.v    id</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Model (Normalized Syntax):</span> ── </span></span>
+<span><span class="co">#&gt; function() {</span></span>
+<span><span class="co">#&gt;     ini({</span></span>
+<span><span class="co">#&gt;         tka &lt;- 0.45</span></span>
+<span><span class="co">#&gt;         tcl &lt;- 1</span></span>
+<span><span class="co">#&gt;         tv &lt;- 3.45</span></span>
+<span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
+<span><span class="co">#&gt;         eta.v ~ 0.1</span></span>
+<span><span class="co">#&gt;         eta.cl ~ c(0.01, 1)</span></span>
+<span><span class="co">#&gt;         eta.ka ~ c(0, 0.01, 0.6)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt;     model({</span></span>
+<span><span class="co">#&gt;         ka &lt;- exp(tka + eta.ka)</span></span>
+<span><span class="co">#&gt;         cl &lt;- exp(tcl + eta.cl)</span></span>
+<span><span class="co">#&gt;         v &lt;- exp(tv + eta.v)</span></span>
+<span><span class="co">#&gt;         d/dt(depot) &lt;- -ka * depot</span></span>
+<span><span class="co">#&gt;         d/dt(center) &lt;- ka * depot - cl/v * center</span></span>
+<span><span class="co">#&gt;         cp &lt;- center/v</span></span>
+<span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
+</div>
+<div class="section level3">
 <h3 id="more-granular-access-of-initial-conditions">More granular access of initial conditions<a class="anchor" aria-label="anchor" href="#more-granular-access-of-initial-conditions"></a>
 </h3>
 <p>Just like with <code><a href="../reference/model.html">model()</a></code> you can modify the underlying
 data frame that represents the <code><a href="../reference/ini.html">ini()</a></code> block. In this case I
 will simply change the initial estimate of the first parameter
 (<code>tka</code>):</p>
-<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
 <span></span>
 <span><span class="va">ini</span> <span class="op">&lt;-</span> <span class="va">f</span><span class="op">$</span><span class="va">iniDf</span></span>
 <span></span>
@@ -2970,9 +3116,8 @@ will simply change the initial estimate of the first parameter
 <span><span class="co">#&gt; 3      &lt;NA&gt; &lt;NA&gt;</span></span>
 <span><span class="co">#&gt; 4        cp  add</span></span>
 <span><span class="co">#&gt; 5        id &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 6        id &lt;NA&gt;</span></span></code></pre></div>
-<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; 6        id &lt;NA&gt;</span></span>
+<span></span>
 <span><span class="va">ini</span><span class="op">$</span><span class="va">est</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">7</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">ini</span></span>
@@ -3020,26 +3165,26 @@ will simply change the initial estimate of the first parameter
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 </div>
 </div>
-  </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
 </div>
 
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Matthew L. Fidler, Melissa Hallow, Wenping Wang.</p>
+  <p>Developed by Matthew L. Fidler, Wenping Wang, Melissa Hallow.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
     </footer>
 </div>
 
-  
 
-  
+
+
 
   </body>
 </html>
