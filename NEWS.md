@@ -1,4 +1,7 @@
-# rxode2 (development version)
+# rxode2 3.0.2
+
+- Bug fix for `api`, the censoring function pointer has been updated
+  (#801).
 
 - Query `rxode2.verbose.pipe` at run time instead of requiring it to
   be set before loading `rxode2`.
