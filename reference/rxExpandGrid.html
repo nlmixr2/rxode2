@@ -75,7 +75,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Faster expand.grid</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/R/rxJacobian.R" class="external-link"><code>R/rxJacobian.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/v3.0.2/R/rxJacobian.R" class="external-link"><code>R/rxJacobian.R</code></a></small>
       <div class="d-none name"><code>rxExpandGrid.Rd</code></div>
     </div>
 
@@ -809,12 +809,12 @@ type=1L is Jacobian expand grid (adds symbols)</p></dd>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">rxExpandGrid</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span>, <span class="fu">expand.grid.jc</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Unit: microseconds</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min     lq     mean median      uq</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 23.303 24.000 38.71533 25.142 25.5125</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 15.970 17.092 31.65967 17.823 18.7050</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min      lq     mean  median      uq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 22.963 23.7545  56.0141 24.3355 25.4625</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 15.559 16.8220 129.9022 17.6280 18.6400</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       max neval</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1404.568   100</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1384.692   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2602.304   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3066.270   100</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
