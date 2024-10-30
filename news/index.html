@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,8 +79,9 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
-<ul><li><p>Query <code>rxode2.verbose.pipe</code> at run time instead of requiring it to be set before loading <code>rxode2</code>.</p></li>
+<h2 class="pkg-version" data-toc-text="3.0.2" id="rxode2-302">rxode2 3.0.2<a class="anchor" aria-label="anchor" href="#rxode2-302"></a></h2>
+<ul><li><p>Bug fix for <code>api</code>, the censoring function pointer has been updated (<a href="https://github.com/nlmixr2/rxode2/issues/801" class="external-link">#801</a>).</p></li>
+<li><p>Query <code>rxode2.verbose.pipe</code> at run time instead of requiring it to be set before loading <code>rxode2</code>.</p></li>
 <li><p>Have correct values at boundaries for <code>logit</code>, <code>expit</code>, <code>probit</code>, and <code>probitInv</code> (instead of <code>NA</code>). For most cases this does not break anything.</p></li>
 <li><p>Add a new style of user function that modifies the <code>ui</code> while parsing or just before using the function (in the presence of <code>data</code>).</p></li>
 <li><p>Used the new user function interface to allow all random functions in <code>rxode2</code> ui functions to be named. For example, you can use <code>rxnorm(sd=3)</code> instead of having to use <code>rxnorm(0, 3)</code>, although <code><a href="../reference/rxnormV.html">rxnorm()</a></code> still works.</p></li>
