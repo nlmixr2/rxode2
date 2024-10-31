@@ -9,6 +9,7 @@
 ^Meta$
 ^doc$
 .Rdata
+.projectile
 ^\.travis.yml$
 ^\.lintr$
 ^.git.*$

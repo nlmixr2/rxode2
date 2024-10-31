@@ -1,6 +1,35 @@
-# rxode2 (development version)
+# rxode2 3.0.2
+
+- Bug fix for `api`, the censoring function pointer has been updated
+  (#801).
+
+- Query `rxode2.verbose.pipe` at run time instead of requiring it to
+  be set before loading `rxode2`.
+
+- Have correct values at boundaries for `logit`, `expit`, `probit`,
+  and `probitInv` (instead of `NA`). For most cases this does not
+  break anything.
+
+- Add a new style of user function that modifies the `ui` while
+  parsing or just before using the function (in the presence of
+  `data`).
+
+- Used the new user function interface to allow all random functions
+  in `rxode2` ui functions to be named.  For example, you can use
+  `rxnorm(sd=3)` instead of having to use `rxnorm(0, 3)`, although
+  `rxnorm()` still works.
+
+# rxode2 3.0.1
+
+- Explicitly initialize the order vector to stop valgrind warning
+  (requested from CRAN)
+
+# rxode2 3.0.0
 
 ## Breaking Changes
+
+- The model properties was moved from `$params` to `$props` so it does
+  not conflict with the low level `rxode2` model `$params`
 
 - Error when specifying `wd` without `modName`
 
@@ -12,12 +41,64 @@
   the algorithm will look forward until it finds the first non-missing
   value (or if all are missing, start looking backward).
 
+- The order of ODEs is now only determined by the order of `cmt()` and
+  `d/dt()`. Compartment properties, `tad()` and other compartment
+  related variables no no longer affect compartment sorting.  The
+  option `rxode2.syntax.require.ode.first` no longer does anything.
+
+- The handling of zeros "safely" has changed (see #775)
+
+  - when `safeZero=TRUE` and the denominator of a division expression
+    is zero, use the Machine's small number/`eps` (you can see this
+    value with `.Machine$double.eps`)
+
+  - when `saveLog=TRUE` and the x in the `log(x)` is less than or
+    equal to zero, change this to `log(eps)`
+
+  - when `safePow=TRUE` and the expression `x^y` has a zero for `x`
+    and a negative number for `y` replace `x` with `eps`.
+
+  Since the protection for divide by zero has changed, the results
+  will also change. This is a more conservative protection mechanism
+  than was applied previously.
+
+- Random numbers from `rxode2` are different when using `dop853`,
+  `lsoda` or `indLin` methods.  These now seed the random numbers in
+  the same way as `liblsoda`, so the random number provided will be
+  the same with different solving methods.
+
+- The arguments saved in the `rxSolve` for items like `thetaMat` will
+  be the reduced matrices used in solving, not the full matrices (this
+  will likely not break very many items)
+
 ## Possible breaking changes (though unlikely)
 
 - `iCov` is no longer merged to the event dataset.  This makes solving
   with `iCov` slightly faster (#743)
 
+
 ## New features
+
+- You can remove covariances for every omega by piping with `%>%
+  ini(diag())` you can be a bit more granular by removing all
+  covariances that have either `eta.ka` or `eta.cl` by: `%>%
+  ini(diag(eta.ka, eta.cl))` or anything with correlations with
+  `eta.cl` with `%>% ini(diag(eta.cl))`
+
+- You can also remove individual covariances by `%>% ini(-cov(a, b))`
+  or `%>% ini(-cor(a,b))`.
+
+- You can specify the type of interpolation applied for added dosing
+  records (or other added records) for columns that are kept with the
+  `keep=` option in `rxSolve()`. This new option is
+  `keepInterpolation` and can be `locf` for last observation carried
+  forward, `nocb` which is the next observation carried backward, as
+  well as `NA` which puts a `NA` in all imputed data rows. See #756.
+
+   - Note: when interpolation is linear/midpoint for
+     factors/characters it changes to locf with a warning (#759)
+
+   - Also note, that the default keep interpolation is `na`
 
 - Now you can specify the interpolation method per covariate in the model:
 
@@ -35,6 +116,16 @@
   and `dvid()` declarations are now ignored when loading a `rxode2`
   model with `rxS()`
 
+- Strings can be assigned to variables in `rxode2`.
+
+- Strings can now be enclosed with a single quote as well as a double
+  quote.  This limitation was only in the rxode2 using string since
+  the R-parser changes single quotes to double quotes. (This has no
+  impact with `rxode2({})` and ui/function form).
+
+- More robust string encoding for symengine (adapted from
+  `utils::URLencode()` and `utils::URLdecode()`)
+
 - Empty arguments to `rxRename()` give a warning (#688)
 
 - Promoting from covariates to parameters with model piping (via `ini()`) now
@@ -48,15 +139,44 @@
   compartment name, nlmixr2 compartment/variable exists in the model,
   variable name, or parameter value (#726; #733)
 
+- Added `assertRxUnbounded()`, `testRxUnbounded()`, `warnRxBounded()`
+  to allow `nlmixr2` warn about methods that ignore boundaries #760
+
 - Added functions `tad0()`, `tafd0()`, `tlast0()` and `tfirst0()` that
   will give `0` instead of `NA` when the dose has not been
   administered yet.  This is useful for use in ODEs since `NA`s will
   break the solving (so can be used a bit more robustly with models
   like Weibull absorption).
 
+- `rxode2` is has no more binary link to `lotri`, which means that
+  changes in the `lotri` package will not require `rxode2` to be
+  recompiled (in most cases) and will not crash the system.
+
+- `rxode2` also has no more binary linkage to `PreciseSums`
+
+- The binary linkage for `dparser` is reduced to C structures only,
+  making changes in dparser less likely to cause segmentation faults
+  in `rxode2` if it wasn't recompiled.
+
+- A new model property has been added to `$props$cmtProp` and
+  `$statePropDf`.  Both are data-frames showing which compartment has
+  properties (currently `ini`, `f`, `alag`, `rate` and `dur`)
+  in the `rxode2` ui model.  This comes from the lower
+  level model variable `$stateProp` which has this information
+  encoded in integers for each state.
+
+- A new generic method `rxUiDeparse` can be used to deparse meta
+  information into more readable expressions; This currently by
+  default supports lower triangular matrices by lotri, but can be
+  extended to support other types of objects like 'nlmixr2's
+  `foceiControl()` for instance.
+
 ## Bug fixes
 
-- Fix `ui$params` when the ui is a linear compartment model without `ka` defined.
+- Fix `ui$props$endpoint` when the ui endpoint is defined in terms of
+  the ode instead of lhs. See #754
+
+- Fix `ui$props` when the ui is a linear compartment model without `ka` defined.
 
 - Model extraction `modelExtract()` will now extract model properties.  Note that the model property of `alag(cmt)` and `lag(cmt)` will give the same value. See #745
 
@@ -64,6 +184,16 @@
 
 - Linear interpolation will now adjust the times as well as the values
   when `NA` values are observed.
+
+- Fix when keeping data has `NA` values that it will not crash R; Also
+  fixed some incorrect `NA` interpolations. See #756
+
+- When using `cmt()` sometimes the next statement would be corrupted
+  in the normalized syntax (like for instance `locf`); This bug was
+  fixed (#763)
+
+- `keep` will now error when trying to keep items that are in the
+  rxode2 output data-frame and will be calculated (#764)
 
 ## Big change
 

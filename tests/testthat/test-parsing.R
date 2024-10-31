@@ -359,6 +359,12 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\nmtime(z)=d/dt(x)+3"
   )
 
+  withr::with_options(list("rxode2.syntax.require.ode.first" = FALSE), {
+    goodParse(
+      "verbose output",
+      "d/dt(x) = -k*x"
+    )
+  })
   goodParse(
     "functional initialization ok",
     "x(0) = y + 3\nd/dt(x) =-3*z"
@@ -419,9 +425,10 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
 
-  badParse(
-    "Still cannot take undefined compartments",
-    "popCl <- 1
+  withr::with_options(list("rxode2.syntax.require.ode.first" = TRUE), {
+    badParse(
+      "Still cannot take undefined compartments",
+      "popCl <- 1
     popV <- 20
     popKa <- 1
     popVp <- 10
@@ -463,7 +470,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
-  )
+    )
+  })
 
   badParse("cmt(depot) doesn't work with linCmt()", "popCl <- 1
     cmt(depot)
@@ -1030,6 +1038,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
 
+  withr::with_options(list("rxode2.syntax.require.ode.first" = TRUE), {
   badParse(
     "Still cannot take undefined compartments",
     "popCl <- 1
@@ -1070,11 +1079,11 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     alag(central) <- popLagCentral * exp(bsvLagCentral)
     rate(central) <- popRateCentral * exp(bsvRateCentral)
     dur(central) <- popDurCentral * exp(bsvDurCentral)
-    dur(matt) <- 3
+    dur(matta) <- 3 # undefined compartment
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
-  )
+  )})
 
   badParse("cmt(depot) doesn't work with linCmt()", "popCl <- 1
     cmt(depot)
@@ -1349,6 +1358,11 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
       expect_true(any(regexpr("=_rxNotFun_pow*2", lines, fixed=TRUE) != -1))
       expect_true(any(regexpr("(_CMT==5)", lines, fixed=TRUE)) != -1)
     }
+  })
+
+  test_that("cmt/locf interaction", {
+    expect_equal(rxNorm(rxModelVars("cmt(a);\nlocf(b);d/dt(a)=b*kel")),
+                 "cmt(a);\nlocf(b);\nd/dt(a)=b*kel;\n")
   })
 
 })

@@ -5,27 +5,26 @@
 #define STRICT_R_HEADER
 #include <RcppArmadillo.h>
 #include "nearPD.h"
+#include <lotri.h>
+
+lotriNearPDarmaSetup
 
 using namespace arma;
 using namespace Rcpp;
 
-Function getRxFn(std::string name);
-
 bool rxNearPD(arma::mat &ret, const arma::mat in) {
-  Function mnearpd = getRxFn(".nearPD");
-  RObject retRO = mnearpd(in);
-  if (Rf_isMatrix(retRO)) {
-    ret = as<arma::mat>(retRO);
+  if (lotriNearPDarma(ret,  in)) {
     return true;
+  } else {
+    ret = in;
+    return false;
   }
-  ret = in;
-  return false;
+  return false;  // nocov
 }
 
 unsigned int rxNearPdChol(Rcpp::NumericMatrix &ret, Rcpp::NumericMatrix x, bool isChol) {
   arma::mat tmpM = as<arma::mat>(x);
   arma::mat reta;
-
   if (!x.hasAttribute("dimnames")) {
     return rxNearPdChol_not_named;
   } else if (isChol) {

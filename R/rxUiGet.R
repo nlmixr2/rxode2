@@ -49,6 +49,21 @@ rxUiGet <- function(x, ...) {
   UseMethod("rxUiGet")
 }
 
+#' @rdname rxUiGet
+#' @export
+rxUiGet.levels <- function(x, ...) {
+  .x <- x[[1]]
+  .mv <- rxModelVars(.x)
+  .str <- .mv$strAssign
+  .names <- names(.str)
+  lapply(vapply(seq_along(.str), function(i) {
+    paste0("levels(", .names[i], ") <- ",
+           deparse1(.str[[i]]))
+  }, character(1), USE.NAMES=FALSE),
+  str2lang)
+}
+
+#' @rdname rxUiGet
 #' @export
 rxUiGet.state <- function(x, ...) {
   .ui <- x[[1]]
@@ -56,6 +71,7 @@ rxUiGet.state <- function(x, ...) {
 }
 attr(rxUiGet.state, "desc") <- "states associated with the model (in order)"
 
+#' @rdname rxUiGet
 #' @export
 rxUiGet.stateDf <- function(x, ...) {
   .ui <- x[[1]]
@@ -67,7 +83,38 @@ attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
 
 #' @export
 #' @rdname rxUiGet
-rxUiGet.params <- function(x, ...) {
+rxUiGet.statePropDf <- function(x,...) {
+  .ui <- x[[1]]
+  .mv <- rxModelVars(.ui)
+  do.call(rbind, lapply(seq_along(.mv$stateProp),
+                 function(i) {
+                   .prop <- .mv$stateProp[i]
+                   if (.prop == 0) return(NULL)
+                   .name <- names(.mv$stateProp)[i]
+                   .props <- character(0)
+                   if (bitwAnd(.prop, 1)) {
+                     .props <- c(.props, "ini")
+                   }
+                   if (bitwAnd(.prop, 2)) {
+                     .props <- c(.props, "f")
+                   }
+                   if (bitwAnd(.prop, 4)) {
+                     .props <- c(.props, "alag")
+                   }
+                   if (bitwAnd(.prop, 8)) {
+                     .props <- c(.props, "rate")
+                   }
+                   if (bitwAnd(.prop, 16)) {
+                     .props <- c(.props, "dur")
+                   }
+                   data.frame("Compartment"=.name,
+                              "Property"=.props)
+                 }))
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.props <- function(x, ...) {
   .x <- x[[1]]
   .ini <- .x$iniDf
   .w <- !is.na(.ini$ntheta) & is.na(.ini$err)
@@ -106,8 +153,9 @@ rxUiGet.params <- function(x, ...) {
   .dose <- c(.doseExtra, .x$state)
   names(.var) <- .cnds
   .lhs <- .mv$lhs
+  .state <- .mv$state
   .end <- .x$predDf$var
-  .end <- .end[.end %in% .lhs]
+  .end <- .end[.end %in% c(.lhs, .state)]
   .lhs <- .lhs[!(.lhs %in% .end)]
   .varLhs <- .x$varLhs
   .primary <- .lhs[.lhs %in% .varLhs]
@@ -120,9 +168,10 @@ rxUiGet.params <- function(x, ...) {
        output=list(primary=.primary,
                    secondary=.secondary,
                    endpoint=.end,
-                   state=.x$state))
+                   state=.x$state),
+       cmtProp=rxUiGet.statePropDf(x,...))
 }
-attr(rxUiGet.params, "desc") <- "Parameter names"
+attr(rxUiGet.props, "desc") <- "rxode2 model properties"
 
 #' @export
 #' @rdname rxUiGet
@@ -235,6 +284,49 @@ rxUiGet.multipleEndpoint <- function(x, ...) {
 }
 attr(rxUiGet.multipleEndpoint, "desc") <- "table of multiple endpoint translations"
 
+#' This is a generic function for deparsing certain objects when
+#' printing out a rxode2 object.  Currently it is used for any meta-information
+#'
+#' @param object object to be deparsed
+#' @param var variable name to be assigned
+#' @return parsed R expression that can be used for printing and
+#'   `as.function()` calls.
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' mat <- matrix(c(1, 0.1, 0.1, 1), 2, 2, dimnames=list(c("a", "b"), c("a", "b")))
+#'
+#' rxUiDeparse(matrix(c(1, 0.1, 0.1, 1), 2, 2, dimnames=list(c("a", "b"), c("a", "b"))), "x")
+rxUiDeparse <- function(object, var) {
+ UseMethod("rxUiDeparse")
+}
+
+#' @rdname rxUiDeparse
+#' @export
+rxUiDeparse.lotriFix <- function(object, var) {
+  .val <- lotri::lotriAsExpression(object)
+  bquote(.(str2lang(var)) <- .(.val))
+}
+
+#' @rdname rxUiDeparse
+#' @export
+rxUiDeparse.default <- function(object, var) {
+  # This is a default method for deparsing objects
+  if (checkmate::testMatrix(object, any.missing=FALSE,
+                            row.names="strict", col.names="strict")) {
+    .dn <- dimnames(object)
+    if (identical(.dn[[1]], .dn[[2]]) && isSymmetric(object)) {
+      return(rxUiDeparse.lotriFix(object, var))
+    }
+  }
+  .ret <- try(str2lang(paste0(var, "<-", deparse1(object))))
+  if (inherits(.ret, "try-error")) {
+    .ret <- str2lang("NULL")
+  }
+  .ret
+}
+
 #' @rdname rxUiGet
 #' @export
 rxUiGet.funPrint <- function(x, ...) {
@@ -246,20 +338,7 @@ rxUiGet.funPrint <- function(x, ...) {
   for (.i in seq_along(.ls)) {
     .var <- .ls[.i]
     .val <- .x$meta[[.ls[.i]]]
-    .isLotri <- FALSE
-    if (checkmate::testMatrix(.val, any.missing=FALSE, row.names="strict", col.names="strict")) {
-      .dn <- dimnames(.val)
-      if (identical(.dn[[1]], .dn[[2]]) && isSymmetric(.val)) {
-        class(.val) <- c("lotriFix", class(.val))
-        .val <- as.expression(.val)
-        .val <- bquote(.(str2lang(.var)) <- .(.val))
-        .ret[[.i + 1]] <- .val
-        .isLotri <- TRUE
-      }
-    }
-    if (!.isLotri) {
-      .ret[[.i + 1]] <- eval(parse(text=paste("quote(", .var, "<-", deparse1(.val), ")")))
-    }
+    .ret[[.i + 1]] <- rxUiDeparse(.val, .var)
   }
   .theta <- x$theta
   .omega <- x$omega

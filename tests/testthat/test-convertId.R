@@ -31,6 +31,7 @@ rxTest({
       )
 
     f <- rxSolve(f, dMod)
+
     expect_error(print(f), NA)
 
   })

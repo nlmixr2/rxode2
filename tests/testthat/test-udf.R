@@ -362,3 +362,283 @@ rxTest({
   })
 
 })
+
+
+test_that("udf type 2 (that changes ui models upon parsing)", {
+
+  expect_error(rxModelVars("a <- linMod(x, 3)"), NA)
+  expect_error(rxModelVars("a <- linMod(x, 3, b)"))
+  expect_error(rxModelVars("a <- linMod(x)"))
+  expect_error(rxModelVars("a <- linMod()"))
+
+  f <- rxode2({
+    a <- linMod(x, 3)
+  })
+
+  e <- et(1:10)
+
+  expect_error(rxSolve(f, e, c(x=2)), "ui user function")
+
+  # Test a linear model construction
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod(time, 3)
+      b <-  d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(tmp$iniDf$name,
+               c("d", "rx.linMod.time1a", "rx.linMod.time1b", "rx.linMod.time1c",
+                 "rx.linMod.time1d"))
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.time1a + rx.linMod.time1b * time + rx.linMod.time1c * time^2 + rx.linMod.time1d * time^3)")
+
+  # Test a linear model construction without an intercept
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(time, 3) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(tmp$iniDf$name,
+               c("d", "rx.linMod.time1a", "rx.linMod.time1b", "rx.linMod.time1c"))
+
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.time1a * time + rx.linMod.time1b * time^2 + rx.linMod.time1c * time^3) + d")
+
+  # Now test the use of 2 linear models in the UI
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod(time, 3)
+      b <- linMod(time, 3)
+      c <- d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(tmp$iniDf$name,
+               c("d", "rx.linMod.time1a", "rx.linMod.time1b", "rx.linMod.time1c", "rx.linMod.time1d",
+                 "rx.linMod.time2a", "rx.linMod.time2b", "rx.linMod.time2c", "rx.linMod.time2d"))
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.time1a + rx.linMod.time1b * time + rx.linMod.time1c * time^2 + rx.linMod.time1d * time^3)")
+
+  expect_equal(modelExtract(tmp, b),
+               "b <- (rx.linMod.time2a + rx.linMod.time2b * time + rx.linMod.time2c * time^2 + rx.linMod.time2d * time^3)")
+
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linModB(time, 3)
+      b <-  d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, rx.linMod.time.f1),
+               "rx.linMod.time.f1 <- rx.linMod.time1a + rx.linMod.time1b * time + rx.linMod.time1c * time^2 + rx.linMod.time1d * time^3")
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- rx.linMod.time.f1")
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linModB0(time, 3) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, rx.linMod.time.f1),
+               "rx.linMod.time.f1 <- rx.linMod.time1a * time + rx.linMod.time1b * time^2 + rx.linMod.time1c * time^3")
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- rx.linMod.time.f1 + d")
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linModA(time, 1) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, rx.linMod.time.f1),
+               "rx.linMod.time.f1 <- rx.linMod.time1a + rx.linMod.time1b * time")
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- 0 + d")
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linModA0(time, 1) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, rx.linMod.time.f1),
+               "rx.linMod.time.f1 <- rx.linMod.time1a * time")
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- 0 + d")
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod(power=3, variable="x") + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.x1a + rx.linMod.x1b * x + rx.linMod.x1c * x^2 + rx.linMod.x1d * x^3) + d")
+
+  expect_false(tmp$uiUseData)
+
+
+  ## Formula interface
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(dv~x^3) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- linModD0(x, 3, dv) + d")
+  expect_true(tmp$uiUseData)
+
+  ## Formula interface
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(~x^3) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.x1a * x + rx.linMod.x1b * x^2 + rx.linMod.x1c * x^3) + d")
+
+  ## Formula interface
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linMod0(~x^6) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (rx.linMod.x1a * x + rx.linMod.x1b * x^2 + rx.linMod.x1c * x^3 + rx.linMod.x1d * x^4 + rx.linMod.x1e * x^5 + rx.linMod.x1f * x^6) + d")
+
+
+  # This checks to make sure that the variables are not in the model
+  # before adding them
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linModM0(~x^6) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (x1a * x + x1b * x^2 + x1c * x^3 + x1d * x^4 + x1e * x^5 + x1f * x^6) + d")
+
+
+  f <- function() {
+    ini({
+      d <- 4
+    })
+    model({
+      a <- linModM(~x^6) + d
+    })
+  }
+
+  tmp <- f()
+
+  expect_equal(modelExtract(tmp, a),
+               "a <- (x1a + x1b * x + x1c * x^2 + x1d * x^3 + x1e * x^4 + x1f * x^5 + x1g * x^6) + d")
+
+  rxWithSeed(42, {
+
+    q <- seq(from=0, to=20, by=0.1)
+
+    y <- 500 + 42*q^2 + 0.4 * (q-10)^3
+
+    df <- data.frame(q=q, y=y)
+
+    f <- function() {
+      model({
+        a <- linMod(y~q^3)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, a),
+                 "a <- linModD(q, 3, y)")
+
+    rxUdfUiData(df)
+
+    try({
+      if (f$uiUseData) {
+        f <- rxode2(as.function(f))
+        expect_false(any(f$theta == 0))
+      }
+    })
+    rxUdfUiData(NULL)
+  })
+
+
+
+
+})

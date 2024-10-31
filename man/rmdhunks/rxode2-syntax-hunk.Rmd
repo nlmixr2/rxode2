@@ -1,6 +1,6 @@
 ---
-editor_options: 
-  markdown: 
+editor_options:
+  markdown:
     wrap: 72
 ---
 
@@ -18,7 +18,7 @@ printing statements (for debugging/testing).
 Assignment statements can be:
 
 -   **simple** assignments, where the left hand is an identifier (i.e.,
-    variable)
+    variable).  This includes string assignments
 
 -   special **time-derivative** assignments, where the left hand
     specifies the change of the amount in the corresponding state
@@ -33,8 +33,7 @@ Assignment statements can be:
     (`rate(depot)=2`) and **modeled duration** (`dur(depot)=2`). An
     example of these model features and the event specification for the
     modeled infusions the rxode2 data specification is found in [rxode2
-    events
-    vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
+    events vignette](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html).
 
 -   special **change point syntax, or model times**. These model times
     are specified by `mtime(var)=time`
@@ -46,6 +45,12 @@ Assignment statements can be:
     some advantage to obtaining the solution or specifying the Jacobian
     for very stiff ODE systems. However, for the few stiff systems we
     tried with LSODA, this actually slightly slowed down the solving.
+
+- Special **string value declarations** which tell what values a
+  string variable will take within a `rxode2` solving structure.
+  These values will then cause a factor to be created for this
+  variable on solving the `rxode2` model.  As such, they are declared
+  in much the same way as `R`, that is: `labels(a) <- c("a1", "a2")`.
 
 Note that assignment can be done by `=`, `<-` or `~`.
 
@@ -67,9 +72,16 @@ Special statements can be:
     parameter order the same when using 2 different ODE models. These
     are specified by `param(par1, par2,...)`
 
+-   **Variable interpolation statements**, which tells the
+    interpolation for specific covariates.  These include `locf(cov1,
+    cov2, ...)` for last observation carried forward, `nocb(cov1,
+    cov2, ...)`  for next observation carried backward, `linear(cov1,
+    cov2, ...)` for linear interpolation and `midpoint(cov1, cov2,
+    ...)` for midpoint interpolation.
+
 An example model is shown below:
 
-```         
+```
    # simple assignment
    C2 <- centr/V2
 
@@ -125,7 +137,12 @@ assigned, or used as a state but can be accessed in the rxode2 code:
 -   `dvid`
 -   `addl`
 -   `ss`
+-   `amt`
+-   `dur`
 -   `rate`
+-   `Rprintf`
+-   `print`
+-   `printf`
 -   `id`
 
 However the following variables are cannot be used in a model
@@ -147,7 +164,7 @@ Logical operators support the standard R operators `==`, `!=` `>=` `<=`
 `ifelse()` expressions. Additionally they can be in a standard
 assignment. For instance, the following is valid:
 
-```         
+```
 cov1 = covm*(sexf == "female") + covm*(sexf != "female")
 ```
 
@@ -356,3 +373,62 @@ In general all the that are supported are in the following table
 ```{r rxResidualError, echo=FALSE, screenshot.force=FALSE}
 .rxDocTable(rxResidualError, "rxode2/nlmixr2 esidual error specification")
 ```
+
+# Note on strings in rxode2
+
+Strings are converted to double values inside of `rxode2`, hence you
+can refer to them as an integer corresponding to the string value or
+the string value itself.  For covariates these are calculated on the
+fly based on your data and you should likely not try this, though you
+should be aware.  For strings defined in the model, this is fixed and
+both could be used.
+
+For example:
+```
+if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
+    tAPGAR <- "High"
+  } else if (APGAR == 1 || APGAR == 2 || APGAR == 3) {
+    tAPGAR <- "Low"
+  } else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) {
+    tAPGAR <- "Med"
+  } else {
+    tAPGAR<- "Med"
+  }
+```
+
+Could also be replaced by:
+
+```
+if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
+    tAPGAR <- "High"
+  } else if (APGAR == 1 || APGAR == 2 || APGAR == 3) {
+    tAPGAR <- "Low"
+  } else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) {
+    tAPGAR <- "Med"
+  } else {
+    tAPGAR<- 3
+  }
+```
+
+Since `"Med"` is already defined
+
+If you wanted you can pre-declare what levels it has (and the order)
+to give you better control of this:
+
+```
+levels(tAPGAR) <- c("Med", "Low", "High")
+if (APGAR == 10 || APGAR == 8 || APGAR == 9) {
+    tAPGAR <- 3
+  } else if (APGAR == 1 || APGAR == 2 || APGAR == 3) {
+    tAPGAR <- 2
+  } else if (APGAR == 4 || APGAR == 5 || APGAR == 6 || APGAR == 7) {
+    tAPGAR <- 1
+  } else {
+    tAPGAR<- 1
+  }
+```
+
+You can see that the number changed since the declaration change the
+numbers in each variable for `tAPGAR`.  These `levels()` statements
+need to be declared before the variable occurs to ensure the numbering
+is consistent with what is declared.

@@ -202,10 +202,7 @@
         })
       } else if (inherits(.cur, "matrix")) {
         .cur2 <- .cur
-        if (!inherits(.cur, "lotriFix")) {
-          class(.cur2) <- c("lotriFix", class(.cur))
-        }
-        .unlistedBrackets <- as.list(as.expression(.cur2)[[-1]])[-1]
+        .unlistedBrackets <- as.list(lotri::lotriAsExpression(.cur2, plusNames=TRUE)[[-1]])[-1]
       } else if (inherits(.cur, "character") && !is.null(names(.cur))) {
         .unlistedBrackets <- lapply(paste(names(.cur),"=", setNames(.cur, NULL)),
                                     str2lang)
@@ -238,8 +235,96 @@
   .expandedForm
 }
 
-.nsEnv <- new.env(parent=emptyenv())
+#' This function collapses the lotri line form to the plus form
+#'
+#' @param expressionList Expression list that is input to change into
+#'   matrix expression form the new line expressions to the classic
+#'   plus expressions.
+#' @return expression list where lotri line for covariance matrices
+#'   are translated to classic plus form.
+#' @author Matthew L. Fidler
+#' @noRd
+#' @examples
+#'
+#' tmp <- list(str2lang("d ~ 1"),
+#'             str2lang("e ~ c(0.5, 3)"),
+#'             str2lang("cp ~ add(add.sd)"),
+#'             str2lang("cp ~ add(add.sd) + prop(prop.sd)"),
+#'             str2lang("cp ~ + add(add.sd)"))
+#'
+#' .collapseLotriLineFormToPlusForm(tmp)
+#'
+.collapseLotriLineFormToPlusForm <- function(expressionList) {
+  .env <- new.env(parent=emptyenv())
+  .env$ret <- expressionList
+  .env$lst <- list()
+  .env$last <- NA_integer_
 
+  .f <- function() {
+    if (!is.na(.env$last)) {
+      .val <- as.call(c(list(quote(`{`)), .env$lst))
+      .val <- as.call(c(str2lang("lotri::lotri"), .val))
+      .val <- suppressMessages(try(eval(.val), silent=TRUE))
+      if (inherits(.val, "try-error")) {
+        for (.j in seq_along(.env$lst)) {
+          .env$ret[[.env$last + .j - 1L]] <- .env$lst[[.j]]
+        }
+      } else {
+        .val <- lotri::lotriAsExpression(.val, plusNames=TRUE)
+        .val <- lapply(seq_along(.val)[-1],
+                       function(i){
+                         .val[[i]]
+                       })[[1]]
+        .val <- lapply(seq_along(.val)[-1],
+                       function(i){
+                         .val[[i]]
+                       })
+        for (.j in seq_along(.val)) {
+          .env$ret[[.env$last + .j - 1L]] <- .val[[.j]]
+        }
+      }
+      .env$lst <- list()
+      .env$last <- NA_integer_
+    }
+  }
+  for (.i in seq_along(.env$ret)) {
+    .cur <- .env$ret[[.i]]
+    if (is.call(.cur) && identical(.cur[[1]], quote(`~`)) &&
+          length(.cur) == 3L &&
+          length(.cur[[2]]) == 1L # excludes ll(cp) ~ 1
+        ) {
+      .isLotri <- TRUE
+      # Check to see if this is an error call
+      if (is.call(.cur[[3]])) {
+        .call <- deparse1(.cur[[3]][[1]])
+        if (.call == "+" &&
+              length(.cur[[3]]) >= 2 &&
+              is.call(.cur[[3]][[2]])) {
+          .call <- deparse1(.cur[[3]][[2]][[1]])
+        }
+        if (.call %in% names(.errDist)) {
+          .isLotri <- FALSE
+        }
+      }
+      if (.isLotri) {
+        if (is.na(.env$last)) {
+          .env$last <- .i
+        }
+        .env$ret[[.i]] <- NA
+        .env$lst <- c(.env$lst, .cur)
+      }
+    } else {
+      .f()
+    }
+  }
+  .f()
+  .w <- which(vapply(seq_along(.env$ret), function(i) {
+    !(length(.env$ret[[i]]) == 1L && is.na(.env$ret[[i]]))
+  }, logical(1), USE.NAMES=FALSE))
+  lapply(.w, function(i) { .env$ret[[i]]})
+}
+
+.nsEnv <- new.env(parent=emptyenv())
 
 .nsEnv$.quoteCallInfoLinesAppend <- NULL
 #' Returns quoted call information
@@ -289,8 +374,18 @@
       warning("empty argument ignored")
       return(NULL)
     } else if (length(.quoted) == 1) {
-      .bracket[i] <- TRUE
-      assign(".bracket", .bracket, envir=.env)
+      if (identical(.quoted, quote(`diag`)) ||
+            (is.call(.quoted) && identical(.quoted[[1]], quote(`diag`)))) {
+        .quoted <- str2lang("~diag()")
+      } else {
+        .bracket[i] <- TRUE
+        assign(".bracket", .bracket, envir=.env)
+      }
+    } else if (length(.quoted) >= 1 &&
+                 identical(.quoted[[1]], quote(`diag`))) {
+      .quoted <- as.call(c(list(quote(`~`)), .quoted))
+    } else if (identical(.quoted[[1]], quote(`diag`))) {
+
     } else if (identical(.quoted[[1]], quote(`{`)) ||
           identical(.quoted[[1]], quote(`c`)) ||
           identical(.quoted[[1]], quote(`list`))) {
@@ -299,7 +394,7 @@
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
     } else if (identical(.quoted[[1]], quote(`~`))) {
-      if (length(.quoted) == 3L) {
+      if (length(.quoted) == 3L && !is.null(.quoted[[3]])) {
         .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
         if (identical(.quoted[[3]], quote(`fix`)) ||
               identical(.quoted[[3]], quote(`unfix`))) {
@@ -329,8 +424,7 @@
     }
     .ret[[i]]
   })
-
-  .ret[vapply(seq_along(.ret), function(i) {
+  .collapseLotriLineFormToPlusForm(.ret[vapply(seq_along(.ret), function(i) {
     !is.null(.ret[[i]])
-  }, logical(1), USE.NAMES=FALSE)]
+  }, logical(1), USE.NAMES=FALSE)])
 }

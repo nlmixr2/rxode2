@@ -33,25 +33,33 @@ reference:
   - rxCbindStudyIndividual
 - title: Functions for working with nlmixr2/rxode2 functions
   contents:
-  - model
-  - modelExtract
-  - ini
-  - zeroRe
+  - as.ini
+  - as.model
+  - as.rxUi
+  - assertCompartmentExists
+  - assertCompartmentName
+  - assertCompartmentNew
   - assertRxUi
+  - assertVariableExists
+  - assertVariableNew
+  - ini
+  - ini<-
+  - model
+  - model<-
+  - modelExtract
   - rxAppendModel
   - rxFixPop
   - rxRename
-  - update.rxUi
-  - as.rxUi
-  - ini<-
-  - model<-
-  - rxode2<-
   - rxSetCovariateNamesForPiping
   - rxSetPipingAuto
-  - rxUiDecompress
   - rxUiCompress
-  - as.ini
-  - as.model
+  - rxUiDecompress
+  - rxode2<-
+  - testIniDf
+  - testRxLinCmt
+  - testRxUnbounded
+  - update.rxUi
+  - zeroRe
 - title: ggplot2/plot support functions
   contents:
   - stat_cens
@@ -106,6 +114,7 @@ reference:
   - rxValidate
 - title: Special Functions for rxode2
   contents:
+    - boxCox
     - erf
     - forderForceBase
     - gammap
@@ -152,6 +161,18 @@ reference:
   - rxSymInvChol
   - swapMatListWithCube
   - uppergamma
+- title: User functions
+  contents:
+  - linMod
+  - rxIntToBase
+  - rxIntToLetter
+  - rxUdfUiData
+  - rxUdfUiEst
+  - rxUdfUiIniDf
+  - rxUdfUiIniLhs
+  - rxUdfUiMv
+  - rxUdfUiNum
+  - rxUdfUiParsing
 - title: Internal Functions
   contents:
   - .cbindOme
@@ -164,6 +185,7 @@ reference:
   - .rxLinCmtGen
   - .rxWithOptions
   - .rxWithWd
+  - .rxode2ptrs
   - .toClassicEvid
   - .vecDf
   - invWR1d
@@ -212,6 +234,7 @@ reference:
   - rxode2parseGetPointerAssignment
   - rxode2parseGetTranslation
   - summary.rxode2
+  - rxUiDeparse
 - title: Rxode2 data sets
   contents:
   - rxResidualError

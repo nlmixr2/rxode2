@@ -9,9 +9,10 @@
 #include "dop853.h"
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define STRICT_R_HEADERS
-#include <PreciseSums.h>
+#include <PreciseSumsPtr.h>
 #include "../inst/include/rxode2.h"
 
+iniPreciseSums
 //--------------------------------------------------------------------------
 
 // These are now allocated via R structures in Rcpp.
@@ -68,16 +69,6 @@ extern double rxode2_sumV(int n, ...){
   double s = PreciseSums_sum(p, n);
   R_Free(p);
   return s;
-}
-
-extern double rxode2_sumV_r(double *p, long double *pld, int m, int type, int n, ...){
-  va_list valist;
-  va_start(valist, n);
-  for (unsigned int i = (unsigned int)n; i--;){
-    p[i] = va_arg(valist, double);
-  }
-  va_end(valist);
-  return PreciseSums_sum_r(p, n, pld, m, type);
 }
 
 extern double rxode2_prod(double *input, int len){

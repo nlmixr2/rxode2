@@ -48,6 +48,7 @@ rxSolve(
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
   naInterpolation = c("locf", "nocb"),
+  keepInterpolation = c("na", "locf", "nocb"),
   addCov = TRUE,
   sigma = NULL,
   sigmaDf = NULL,
@@ -113,6 +114,8 @@ rxSolve(
   ssAtol = 1e-08,
   ssRtol = 1e-06,
   safeZero = TRUE,
+  safeLog = TRUE,
+  safePow = TRUE,
   sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
   prodType = c("long double", "double", "logify"),
   sensType = c("advan", "autodiff", "forward", "central"),
@@ -376,6 +379,17 @@ instantaneously missing, or the next value when instantaneously
 missing.  If all the covariates are missing and you find the
 end/beginning of the individual record, switch direction.  If all
 are really missing, then return missing.}
+
+\item{keepInterpolation}{specifies the interpolation method for
+variables in the \code{keep} column.  When \code{nlmixr2} creates \code{mtime},
+\code{addl} doses etc, these items were not originally in the dataset.
+The interpolation methods you can choose are:
+\itemize{
+\item \code{"locf"} -- last observation carried forward (default)
+\item \code{"nocb"} -- next observation carried backward.
+\item \code{"na"} -- no interpolation, simply put \code{NA} for the
+interpolated \code{keep} covariates.
+}}
 
 \item{addCov}{A boolean indicating if covariates should be added
 to the output matrix or data frame. By default this is
@@ -723,8 +737,13 @@ a vector based on each state.}
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
 vector based on each state.}
 
-\item{safeZero}{Use safe zero divide and log routines.  By default
+\item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
+
+\item{safeLog}{Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return \verb{log(machine epsilon)}.  By default this is turned on.}
+
+\item{safePow}{Use safe powers.  When enabled if your power is
+negative and your base is zero, this will return the \verb{machine epsilon^(negative power)}.  By default this is turned on.}
 
 \item{sumType}{Sum type to use for \code{sum()} in
 rxode2 code blocks.

@@ -116,25 +116,6 @@ etRep_ <- function(curEt, times, wait, ids, handleSamples, waitType, ii) {
     .Call(`_rxode2_etRep_`, curEt, times, wait, ids, handleSamples, waitType, ii)
 }
 
-#' Force using base order for rxode2 radix sorting
-#'
-#' @param forceBase boolean indicating if rxode2 should use R's
-#'   [order()] for radix sorting instead of
-#'   `data.table`'s parallel radix sorting.
-#'
-#' @return NILL; called for side effects
-#'
-#' @examples
-#' \donttest{
-#' forderForceBase(TRUE) # Use base `order` for rxode2 sorts
-#' forderForceBase(FALSE) # Use `data.table` for rxode2 sorts
-#' }
-#' @export
-#' @keywords internal
-forderForceBase <- function(forceBase = FALSE) {
-    .Call(`_rxode2_forderForceBase`, forceBase)
-}
-
 #' Set Initial conditions to time zero instead of the first observed/dosed time
 #'
 #' @param ini0 When `TRUE` (default), set initial conditions to time

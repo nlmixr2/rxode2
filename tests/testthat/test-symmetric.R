@@ -34,7 +34,7 @@ rxTest({
   Gp(0) = kcp*Gss*Vg/kpc;
   Ie(0) = Iss;
   I(0) = Iss*Vi;
-  Isec(0) = Iss*ki*Vi;
+  Isec_0 = Iss*ki*Vi;
 
   d/dt(depot) = -absg;
   d/dt(trn) = absg - ka*trn;

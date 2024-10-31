@@ -203,7 +203,6 @@ rxRmFunParse <- function(name) {
       .udfEnv$envir <- env[[1]]
     } else {
       .udfEnv$envir <- env
-
     }
   }
   .udfAddToSearch(env)
@@ -291,6 +290,20 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .getUdfInfo <- function(fun, nargs) {
+  .nargs <- .rxUdfUiNarg(fun)
+  if (is.integer(.nargs) && !is.na(.nargs)) {
+    if (.nargs > 0L && nargs != .nargs) {
+      return(list(nargs=NA_integer_,
+                  sprintf("rxode2 ui user defined R function has %d arguments, but supplied %d",
+                          .nargs, nargs)))
+    } else if (.nargs <= 0L) {
+      return(list(nargs=NA_integer_,
+                  "rxode2 ui user defined R needs to be setup with a positive number of arguments"))
+    } else {
+      return(list(nargs=-42L,
+                  ".rxUiUdfNone"))
+    }
+  }
   if (is.null(.udfEnv$envir)) {
     return(list(nargs=NA_integer_,
                 "rxode2 cannot determine which environment the user defined functions are located"))

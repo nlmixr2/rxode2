@@ -137,14 +137,17 @@
 #'
 #' 'omega' values can be set as a single value or as the values of a
 #' lower-triangular matrix.  The values may be set as either a
-#' variance-covariance matrix (the default) or as a correlation matrix for the
-#' off-diagonals with the standard deviations on the diagonals.  Names may be
-#' set on the left side of the \code{~}.  To set a variance-covariance matrix
-#' with variance values of 2 and 3 and a covariance of -2.5 use \code{~c(2, 2.5,
-#' 3)}.  To set the same matrix with names of \code{iivKa} and \code{iivCL}, use
-#' \code{iivKa + iivCL~c(2, 2.5, 3)}.  To set a correlation matrix with standard
-#' deviations on the diagonal, use \code{cor()} like \code{iivKa + iivCL~cor(2,
-#' -0.5, 3)}.
+#' variance-covariance matrix (the default) or as a correlation matrix
+#' for the off-diagonals with the standard deviations on the
+#' diagonals.  Names may be set on the left side of the \code{~}.  To
+#' set a variance-covariance matrix with variance values of 2 and 3
+#' and a covariance of -2.5 use \code{~c(2, 2.5, 3)}.  To set the same
+#' matrix with names of \code{iivKa} and \code{iivCL}, use \code{iivKa
+#' + iivCL~c(2, 2.5, 3)}.  To set a correlation matrix with standard
+#' deviations on the diagonal, use \code{cor()} like \code{iivKa +
+#' iivCL~cor(2, -0.5, 3)}.  As of rxode2 3.0 you can also use
+#' \code{iivKa ~ 2, iivCL ~ c(2.5, 3)} for covariance matrices as
+#' well.
 #'
 #' Values may be fixed (and therefore not estimated) using either the name
 #' \code{fixed} at the end of the assignment or by calling \code{fixed()} as a
@@ -172,6 +175,14 @@
 #' estimation.  The typical way to set a label so that the parameter \code{tvCL}
 #' has a label of "Typical Value of Clearance (L/hr)" is \code{tvCL <- 1;
 #' label("Typical Value of Clearance (L/hr)")}.
+#'
+#' Off diagonal values of 'omega' can be set to zero using the
+#' \code{diag()} to remove all off-diagonals can be removed with
+#' `ini(diag())`.  To remove covariances of 'omega' item with `iivKa`,
+#' you can use `%>% ini(diag(iivKa))`.  Or to remove covariances that
+#' contain either `iivKa` or `iivCl` you can use `%>% ini(diag(iivKa,
+#' iivCl))`.  For finer control you can remove the covariance between
+#' two items (like `iivKa` and `iivCl`) by `%>% ini(-cov(iivKa, iivCl))
 #'
 #' \code{rxode2}/\code{nlmixr2} will attempt to determine some
 #' back-transformations for the user.  For example, \code{CL <- exp(tvCL)} will
@@ -226,7 +237,9 @@
 #' @export
 ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {
-    .ini <- eval(bquote(lotri(.(substitute(x)))), envir=envir)
+    .ini <- eval(bquote(lotri::lotri(.(substitute(x)),
+                                     cov=TRUE, rcm=TRUE)),
+                 envir=envir)
     assignInMyNamespace(".lastIni", .ini)
     assignInMyNamespace(".lastIniQ", bquote(.(substitute(x))))
     return(invisible(.ini))

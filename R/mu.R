@@ -212,7 +212,7 @@
     .lhs <- deparse1(env$curLhs)
     if (any(.n == env$info$theta)) {
       return(.n)
-    } 
+    }
     return(NULL)
   } else if (is.call(x)) {
     return(do.call(`c`, lapply(x[-1], .muRefExtractTheta, env=env)))
@@ -260,7 +260,7 @@
 #' @return A list of covariates with estimates attached
 #'
 #' @author Matthew Fidler
-#' 
+#'
 #' @noRd
 .muRefExtractMultiplyMuCovariates <- function(x, doubleNames, env) {
   c(doubleNames, do.call(`c`, lapply(x, function(y) {
@@ -708,7 +708,8 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxMuRefHandleNonPlusCall <- function(x, env) {
-  assign(".curEval", as.character(x[[1]]), env)
+  .curEval <- as.character(x[[1]])
+  assign(".curEval", .curEval, env)
   env$curHi <- NA_real_
   env$curLow <- NA_real_
   if (env$.curEval == "probitInv" ||
@@ -935,7 +936,7 @@
                             .est, ") needs to be below ", .range[2]))
       }
       if (.lower < .range[1]) {
-        if (rxode2.verbose.pipe && is.finite(.lower)) {
+        if (isTRUE(getOption("rxode2.verbose.pipe", TRUE)) && is.finite(.lower)) {
           .minfo(paste0("'", .name, "' lower bound (",
                         .lower, ") needs to be equal or above ", .range[1],
                         "; adjusting"))
@@ -943,7 +944,7 @@
         .lower <- .range[1]
       }
       if (.upper > .range[2]) {
-        if (rxode2.verbose.pipe && is.finite(.upper)) {
+        if (isTRUE(getOption("rxode2.verbose.pipe", TRUE)) && is.finite(.upper)) {
           .minfo(paste0("'", .name, "' upper bound (", .upper,
                         ") needs to be equal or below ", .range[2],
                         "; adjusting"))

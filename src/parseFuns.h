@@ -158,11 +158,10 @@ static inline int handleFunctionLogit(transFunctions *tf) {
       D_ParseNode *xpn = d_get_child(tf->pn, 2);
       char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       if (allSpaces(v2)){
-	updateSyntaxCol();
-	sPrint(&_gbuf, _("'%s' takes 1-3 arguments '%s(x,low,high)'"),
-	       tf->v, tf->v);
-	/* Free(v2); */
-	trans_syntax_error_report_fn(_gbuf.s);
+        updateSyntaxCol();
+        sPrint(&_gbuf, _("'%s' takes 1-3 arguments '%s(x,low,high)'"),
+               tf->v, tf->v);
+        trans_syntax_error_report_fn(_gbuf.s);
       }
       /* Free(v2); */
       sAppend(&sb, "_%s1(", tf->v);
@@ -194,16 +193,16 @@ static inline int handleFunctionSum(transFunctions *tf) {
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
       !strcmp("rxord", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
-    if (!strcmp("prod", tf->v)){
+    if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       sAppend(&sbDt, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       if (maxSumProdN < ii){
         maxSumProdN = ii;
       }
-    } else if (!strcmp("sum", tf->v)){
+    } else if (!strcmp("sum", tf->v)) {
       sAppend(&sb, "_sum(_p, _pld, -__MAX_PROD__, _solveData->sumType, %d, (double) ", ii);
       sAppend(&sbDt, "_sum(_p, _pld, -__MAX_PROD__, _solveData->sumType, %d, (double) ", ii);
-      if (SumProdLD < ii){
+      if (SumProdLD < ii) {
         SumProdLD = ii;
       }
     } else if (!strcmp("rxord", tf->v)) {
@@ -334,6 +333,12 @@ static inline int handleBadFunctions(transFunctions *tf) {
   }
   if (foundFun == 0){
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+    if (ii == 1) {
+      D_ParseNode *xpn = d_get_child(tf->pn, 2);
+      char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+      int allSpace=allSpaces(v2);
+      if (allSpace) ii = 0;
+    }
     SEXP lst = PROTECT(rxode2_getUdf2(tf->v, ii));
     int udf = INTEGER(VECTOR_ELT(lst, 0))[0];
     const char *udfInfo = R_CHAR(STRING_ELT(VECTOR_ELT(lst, 1), 0));
@@ -343,7 +348,15 @@ static inline int handleBadFunctions(transFunctions *tf) {
       updateSyntaxCol();
       trans_syntax_error_report_fn(_gbuf.s);
     } else {
-      if (udf != ii) {
+      if (udf == -42) {
+        sAppend(&sb, "_udf(\".rxUiUdfNone\", (double *) NULL, -42, (double) ", ii);
+        sAppend(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", ii);
+        sAppend(&sbt, "%s(", tf->v);
+        tb.thread = notThreadSafe;
+        tf->i[0] = 1;// Parse next arguments
+        tf->depth[0]=1;
+        return 1;
+      } else if (udf != ii) {
         sPrint(&_gbuf, _("user function '%s' takes %d arguments, supplied %d"),
                tf->v, udf, ii);
         updateSyntaxCol();

@@ -294,7 +294,7 @@ rxPreferredDistributionName <- function(dist) {
 #'   rxDemoteAddErr()
 #'
 #' # This is used for logitNorm(NA), the additive portion is stripped
-#' 
+#'
 #' @keywords internal
 rxDemoteAddErr <- function(errType) {
   if (inherits(errType, "factor")) {
@@ -1035,6 +1035,74 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   }
 }
 
+#' Get a blank, theta1, or eta1 initialization block for iniDf
+#'
+#' @param type type of initialization block to return
+#' @return A data.frame with the appropriate number/type of columns.
+#'
+#' For type="empty", the data.frame will have 0 rows but all the correct types.
+#'
+#' For type="theta", the data.frame will have 1 row with the correct
+#' types and default values.  The "name" and "est" will likely need to
+#' be updated.
+#'
+#' For type="eta", the data.frame will have 1 row with the correct
+#' types and default values for the a single eta being added.  The
+#' "name" and "est" will likely need to be updated.
+#'
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @examples
+#'
+#' .rxBlankIni("empty")
+#'
+#' .rxBlankIni("theta")
+#'
+#' .rxBlankIni("eta")
+#'
+.rxBlankIni <- function(type=c("empty", "theta", "eta")) {
+  type <- match.arg(type)
+  if (type == "empty") {
+    data.frame(ntheta=integer(0),
+               neta1=integer(0),
+               neta2=integer(0),
+               name=character(0),
+               lower=numeric(0),
+               est=numeric(0),
+               upper=numeric(0),
+               fix=logical(0),
+               err=character(0),
+               label=character(0),
+               stringsAsFactors=FALSE)
+  } else if (type == "theta") {
+    data.frame(ntheta=1L,
+               neta1=NA_integer_,
+               neta2=NA_integer_,
+               name=NA_character_,
+               lower=-Inf,
+               est=0,
+               upper=Inf,
+               fix=FALSE,
+               err=NA_character_,
+               label=NA_character_,
+               stringsAsFactors=FALSE)
+  } else {
+    data.frame(ntheta=NA_integer_,
+               neta1=1L,
+               neta2=1L,
+               name=NA_character_,
+               lower=0,
+               est=0.1,
+               upper=Inf,
+               fix=FALSE,
+               err=NA_character_,
+               label=NA_character_,
+               stringsAsFactors=FALSE)
+  }
+}
+
 #' Process the errors in the quoted expression
 #'
 #' @param x Quoted expression for parsing
@@ -1077,10 +1145,24 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
 #' @noRd
 .errProcessExpression <- function(x, ini,
                                   linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
-                                  verbose=FALSE, checkMissing=TRUE) {
+                                  verbose=FALSE, checkMissing=TRUE, mv=rxUdfUiMv()) {
+  on.exit({
+    .udfUiEnv$num <- 1L
+    .udfUiEnv$iniDf <- NULL
+    .udfUiEnv$lhs <- NULL
+    .udfUiEnv$parsing <- FALSE
+  })
+  .udfUiEnv$parsing <- TRUE
   # ntheta neta1 neta2   name lower       est   upper   fix  err  label
   # backTransform condition trLow trHi
   .env <- new.env(parent=emptyenv())
+  .env$uiUseData <- FALSE
+  .env$uiUseMv <- FALSE
+  rxUdfUiEst(NULL)
+  rxUdfUiMv(mv)
+  .env$rxUdfUiCount <- new.env(parent=emptyenv())
+  .env$before <- list()
+  .env$after <- list()
   .env$eta <- dimnames(ini)[[1]]
   .env$top <- TRUE
   if (!inherits(ini, "lotriFix") && inherits(ini, "matrix")) {
@@ -1109,10 +1191,47 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       .env$lstErr <- vector(length(.y), mode="list")
       .env$lstExpr <- vector(length(.y), mode="list")
       .env$hasErrors <- FALSE
-      for (.i in seq_along(.y)) {
+      .i <- 1L
+      .y <- lapply(seq_along(.y), function(i) {
+        .y[[i]]
+      })
+      while(.i <= length(.y)) {
         .env$line <- .i
         if (identical(.y[[.i]][[1]], quote(`~`))) {
           .errHandleTilde(.y[[.i]], .env)
+        } else {
+          .env$redo <- FALSE
+          .cur <- .y[[.i]]
+          if (length(.cur) >= 3 && identical(.cur[[1]], quote(`<-`))) {
+            .env$lhs <- .cur[[2]]
+          } else if (length(.cur)>= 3 && identical(.cur[[1]], quote(`=`))) {
+            .env$lhs <- .cur[[2]]
+          } else {
+            .env$lhs <- NULL
+          }
+          .cur <- .handleUdfUi(.cur, .env)
+          .len <- length(.y)
+          .y <- c(lapply(seq_len(.i - 1),
+                         function(i) {
+                           .y[[i]]
+                         }), .env$before, .cur, .env$after,
+                  lapply(seq_len(.len - .i),
+                         function(i) {
+                           .y[[i + .i]]
+                         }))
+          if (length(.y) != .len) {
+            # Update the lengths of lstChr, lstErr, lstExpr
+            .len <- length(.env$before) + length(.env$after)
+            .env$lstChr <- c(.env$lstChr, character(.len))
+            .env$lstErr <- c(.env$lstErr, vector(.len, mode="list"))
+            .env$lstExpr <- c(.env$lstExpr, vector(.len, mode="list"))
+            .env$before <- list()
+            .env$after <- list()
+            # redo the parsing since the length of the expression has changed
+            next
+          } else if (.env$redo) {
+            next
+          }
         }
         .env$lstChr[[.i]] <- deparse1(.y[[.i]])
         .env$lstExpr[[.i]] <- .y[[.i]]
@@ -1121,6 +1240,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
           .env$err <- NULL
           .env$hasErrors <- TRUE
         }
+        .i <- .i + 1L
       }
       .env$iniDf <- .env$df
       if (is.null(.env$predDf)) {
@@ -1169,6 +1289,16 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
       } else {
         .env$mv0 <- rxModelVars(paste(.env$lstChr, collapse="\n"))
       }
+      if (isTRUE(.env$uiUseMv) && is.null(mv)) {
+        # ui function requests model variables, so re-process
+        on.exit({
+          rxUdfUiMv(NULL)
+        })
+        return(.errProcessExpression(x=x, ini=ini,
+                                     linCmtSens = linCmtSens,
+                                     verbose=verbose, checkMissing=checkMissing,
+                                     mv=.env$mv0))
+      }
       .env$errParams0 <- rxUiGet.errParams(list(.env, TRUE))
       if (.Call(`_rxode2_isLinCmt`) == 1L) {
         .env$.linCmtM <- rxNorm(.env$mv0)
@@ -1211,7 +1341,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
                          "lastDistAssign", "line", "needsToBeAnErrorExpression",
                          "needToDemoteAdditiveExpression",
                          "top", "trLimit", ".numeric", "a", "b", "c", "d", "e", "f",  "lambda",
-                         "curCmt", "errGlobal", "linCmt", "ll", "distribution"),
+                         "curCmt", "errGlobal", "linCmt", "ll", "distribution", "rxUdfUiCount", "before", "after",
+                         "lhs"),
                        ls(envir=.env, all.names=TRUE))
       if (length(.rm) > 0) rm(list=.rm, envir=.env)
       if (checkMissing) .checkForMissingOrDupliacteInitials(.env)
@@ -1303,4 +1434,3 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     stop(paste(.env$err, collapse="\n"), call.=FALSE)
   }
 }
-

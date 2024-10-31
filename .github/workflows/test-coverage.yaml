@@ -26,12 +26,13 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          cache-version: 6
+          cache-version: 8
           extra-packages: |
             any::covr
             nlmixr2/dparser-R
             nlmixr2/lotri
             nlmixr2/rxode2ll
+            nlmixr2/PreciseSums
           needs: coverage
 
       - name: Test coverage

@@ -162,8 +162,14 @@
 #'     upper range to make sure all state values are in the
 #'     reasonable range.
 #'
-#' @param safeZero Use safe zero divide and log routines.  By default
+#' @param safeZero Use safe zero divide. By default
 #'     this is turned on but you may turn it off if you wish.
+#'
+#' @param safePow Use safe powers.  When enabled if your power is
+#'   negative and your base is zero, this will return the `machine
+#'   epsilon^(negative power)`.  By default this is turned on.
+#'
+#' @param safeLog Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return `log(machine epsilon)`.  By default this is turned on.
 #'
 #' @param sumType Sum type to use for `sum()` in
 #'     rxode2 code blocks.
@@ -260,6 +266,19 @@
 #'   missing.  If all the covariates are missing and you find the
 #'   end/beginning of the individual record, switch direction.  If all
 #'   are really missing, then return missing.
+#'
+#' @param keepInterpolation specifies the interpolation method for
+#'   variables in the `keep` column.  When `nlmixr2` creates `mtime`,
+#'   `addl` doses etc, these items were not originally in the dataset.
+#'   The interpolation methods you can choose are:
+#'
+#'   * `"locf"` -- last observation carried forward (default)
+#'
+#'   * `"nocb"` -- next observation carried backward.
+#'
+#'   * `"na"` -- no interpolation, simply put `NA` for the
+#'   interpolated `keep` covariates.
+#'
 #'
 #' @param addCov A boolean indicating if covariates should be added
 #'     to the output matrix or data frame. By default this is
@@ -686,6 +705,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     cores,
                     covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
                     naInterpolation = c("locf", "nocb"),
+                    keepInterpolation=c("na", "locf", "nocb"),
                     addCov = TRUE, sigma = NULL, sigmaDf = NULL,
                     sigmaLower = -Inf, sigmaUpper = Inf,
                     nCoresRV = 1L, sigmaIsChol = FALSE,
@@ -702,7 +722,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
                     omegaLower = -Inf, omegaUpper = Inf,
                     nSub = 1L, thetaMat = NULL, thetaDf = NULL, thetaIsChol = FALSE,
-                    nStud = 1L, dfSub = 0.0, dfObs = 0.0, returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
+                    nStud = 1L, dfSub = 0.0, dfObs = 0.0,
+                    returnType = c("rxSolve", "matrix", "data.frame", "data.frame.TBS", "data.table", "tbl", "tibble"),
                     seed = NULL, nsim = NULL,
                     minSS = 10L, maxSS = 1000L,
                     infSSstep = 12,
@@ -729,6 +750,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtol = 1.0e-8,
                     ssRtol = 1.0e-6,
                     safeZero = TRUE,
+                    safeLog = TRUE,
+                    safePow = TRUE,
                     sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
                     prodType = c("long double", "double", "logify"),
                     sensType = c("advan", "autodiff", "forward", "central"),
@@ -819,10 +842,15 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)[match.arg(covsInterpolation)]
     }
-    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0, upper=2, any.missing=FALSE)) {
+    if (checkmate::testIntegerish(naInterpolation, len=1, lower=0, upper=1, any.missing=FALSE)) {
       naInterpolation <- as.integer(naInterpolation)
     } else {
       naInterpolation <- c("locf"=1L, "nocb"=0L)[match.arg(naInterpolation)]
+    }
+    if (checkmate::testIntegerish(keepInterpolation, len=1, lower=0, upper=2, any.missing=FALSE)) {
+      keepInterpolation <- as.integer(keepInterpolation)
+    } else {
+      keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)[match.arg(keepInterpolation)]
     }
     if (missing(naTimeHandle) && !is.null(getOption("rxode2.naTimeHandle", NULL))) {
       naTimeHandle <- getOption("rxode2.naTimeHandle")
@@ -895,6 +923,14 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       checkmate::assertLogical(safeZero, len=1, any.missing=FALSE)
     }
     safeZero <- as.integer(safeZero)
+    if (!checkmate::testIntegerish(safeLog, lower=0, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(safeLog, len=1, any.missing=FALSE)
+    }
+    safeLog <- as.integer(safeLog)
+    if (!checkmate::testIntegerish(safePow, lower=0, upper=1, len=1, any.missing=FALSE)) {
+      checkmate::assertLogical(safePow, len=1, any.missing=FALSE)
+    }
+    safePow <- as.integer(safePow)
     if (is.null(scale)) {
     } else if (is.list(scale)) {
       checkmate::assertList(scale, types="double", any.missing=FALSE,names="strict")
@@ -989,7 +1025,23 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(dfObs, len=1, any.missing=FALSE, finite=TRUE, lower=0.0)
     # iCov = data.frame
     checkmate::assertDataFrame(iCov, null.ok=TRUE)
-    checkmate::assertCharacter(keep, any.missing=FALSE, null.ok=TRUE)
+    .invalidKeep <- c("id", "sim.id", "resetno", "time")
+    .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
+    if (length(.invalidKeep) > 0) {
+      .w <- which(tolower(keep) %in% .invalidKeep)
+      keep <- keep[-.w]
+      warning("'keep' contains ", paste(.invalidKeep, collapse=", "), "\nwhich are output when needed, ignoring these items", call.=FALSE)
+    }
+    .invalidKeep <- c("evid",  "ss", "amt", "rate", "dur", "ii")
+    .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
+    if (length(.invalidKeep) > 0) {
+      stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using addDosing=TRUE or merging to original dataset", call.=FALSE)
+    }
+    .invalidKeep <- c ("rxLambda", "rxYj", "rxLow", "rxHi")
+    .invalidKeep <- intersect(tolower(keep), tolower(.invalidKeep))
+    if (length(.invalidKeep) > 0) {
+      stop("'keep' cannot contain ", paste(.invalidKeep, collapse=", "), "\nconsider using returnType=\"data.frame.TBS\"", call.=FALSE)
+    }
     checkmate::assertCharacter(drop, any.missing=FALSE, null.ok=TRUE)
     checkmate::assertLogical(warnDrop, len=1, any.missing=FALSE)
     checkmate::assertNumeric(omegaLower, any.missing=FALSE, null.ok=TRUE)
@@ -1158,6 +1210,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ssAtDoseTime=ssAtDoseTime,
       ss2cancelAllPending=ss2cancelAllPending,
       naInterpolation=naInterpolation,
+      keepInterpolation=keepInterpolation,
+      safeLog=safeLog,
+      safePow=safePow,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
@@ -1170,6 +1225,19 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                              theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
+  if (rxIs(events, "event.data.frame")) {
+    rxUdfUiData(events)
+  } else if (rxIs(params, "event.data.frame")) {
+    rxUdfUiData(params)
+  } else {
+    stop("Cannot detect an event data frame to use while re-parsing the model",
+         call.=FALSE)
+  }
+  rxUdfUiEst("rxSolve")
+  on.exit({
+    rxUdfUiReset()
+  })
   .udfEnvSet(list(envir, parent.frame(1)))
   .object <- rxode2(object)
   do.call("rxSolve", c(list(object=.object, params = params, events = events, inits = inits),
@@ -1320,6 +1388,27 @@ rxSolve.function <- function(object, params = NULL, events = NULL, inits = NULL,
 #' @export
 rxSolve.rxUi <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                          theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
+  if (isTRUE(object$uiUseData)) {
+    # this needs to be re-parsed
+    if (rxIs(events, "event.data.frame")) {
+      rxUdfUiData(events)
+      rxUdfUiMv(rxModelVars(object))
+    } else if (rxIs(params, "event.data.frame")) {
+      rxUdfUiData(params)
+      rxUdfUiMv(rxModelVars(object))
+    } else {
+      stop("Cannot detect an event data frame to use while re-parsing the model",
+           call.=FALSE)
+    }
+    rxUdfUiEst("rxSolve")
+    on.exit({
+      rxUdfUiReset()
+    })
+    # Now re-parse
+    object <- as.function(object)
+    object <- suppressMessages(rxode2(object))
+  }
   .udfEnvSet(list(object$meta, envir, parent.frame(1)))
   if (inherits(object, "rxUi")) {
     object <- rxUiDecompress(object)
@@ -1368,6 +1457,7 @@ rxSolve.rxode2tos <- rxSolve.rxUi
 #' @export
 rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                                    theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
   .lst <- .rxSolveFromUi(object, params = params, events = events, inits = inits, ..., theta = theta, eta = eta)
   .rxControl <- .lst[[2]]
@@ -1377,11 +1467,13 @@ rxSolve.nlmixr2FitData <- function(object, params = NULL, events = NULL, inits =
     .oldControl <- get("control", envir=.env)
     assign("control", .rxControl, envir=.env)
     on.exit({
+      rxUdfUiReset()
       assign("control", .oldControl, envir=.env)
     })
   } else {
     assign("control", .rxControl, envir=.env)
     on.exit({
+      rxUdfUiReset()
       rm(list="control", envir=.env)
     })
   }
@@ -1403,8 +1495,10 @@ rxSolve.nlmixr2FitCore <- rxSolve.nlmixr2FitData
 #' @export
 rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, ...,
                             theta = NULL, eta = NULL, envir=parent.frame()) {
+  rxUdfUiReset()
   .udfEnvSet(list(envir, parent.frame(1)))
   on.exit({
+    rxUdfUiReset()
     .clearPipe()
     .asFunctionEnv$rx <- NULL
   })
@@ -1709,16 +1803,9 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
   .envReset$unload <- FALSE
   # take care of too many DLLs or not provided simulation errors
   .names <- NULL
-  if (inherits(.ctl$thetaMat, "matrix")) {
-    .mv <- rxModelVars(object)
-    .col <- colnames(.ctl$thetaMat)
-    .w <- .col %in% .mv$params
-    .ignore <- .col[!.w]
-    if (length(.ignore)>0) {
-      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
-    }
-    .names <- c(.names, .col[.w])
-  }
+
+  .extraNames <- character(0)
+
   if (inherits(.ctl$omega, "matrix")) {
     .mv <- rxModelVars(object)
     .col <- colnames(.ctl$omega)
@@ -1727,8 +1814,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.ignore)>0) {
       .minfo(paste0("omega has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
+    .ctl$omega <-.ctl$omega[.w, .w, drop=FALSE]
+    if (dim(.ctl$omega)[1] == 0) {
+      .ctl$omega <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$omega, "character")) {
+    .extraNames <- c(.extraNames, .ctl$omega)
     .mv <- rxModelVars(object)
     .col <- .ctl$omega
     .w <- .col %in% .mv$params
@@ -1746,8 +1839,14 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
     if (length(.ignore)>0) {
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
+    .ctl$sigma <-.ctl$sigma[.w, .w, drop=FALSE]
+    if (dim(.ctl$sigma)[1] == 0) {
+      .ctl$sigma <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
     .names <- c(.names, .col[.w])
   } else if ( inherits(.ctl$sigma, "character")) {
+    .extraNames <- c(.extraNames, .ctl$sigma)
     .mv <- rxModelVars(object)
     .col <- .ctl$sigma
     .w <- .col %in% .mv$params
@@ -1756,6 +1855,36 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
       .minfo(paste0("sigma has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
     }
     .names <- c(.names, .col[.w])
+  }
+
+  if (inherits(.ctl$thetaMat, "matrix")) {
+    .mv <- rxModelVars(object)
+    .col <- colnames(.ctl$thetaMat)
+    .w <- .col %in% c(.mv$params, .extraNames)
+    .ignore <- .col[!.w]
+    if (length(.ignore)>0) {
+      .minfo(paste0("thetaMat has too many items, ignored: '", paste(.ignore, collapse="', '"), "'"))
+    }
+    .ctl$thetaMat <-.ctl$thetaMat[.w, .w, drop=FALSE]
+    if (dim(.ctl$thetaMat)[1] == 0) {
+      .ctl$thetaMat <- NULL
+      .ctl <- do.call(rxControl, .ctl)
+    }
+    .names <- c(.names, .col[.w])
+
+    # now look for zero diagonals
+    .col <- colnames(.ctl$thetaMat)
+    .d <- diag(.ctl$thetaMat)
+    .w <- which(.d == 0)
+    if (length(.w) > 0) {
+      .minfo(paste0("thetaMat has zero diagonal items, ignored: '", paste(.col[.w], collapse="', '"), "'"))
+      .ctl$thetaMat <-.ctl$thetaMat[-.w, -.w, drop=FALSE]
+      if (dim(.ctl$thetaMat)[1] == 0) {
+        .ctl$thetaMat <- NULL
+        .ctl <- do.call(rxControl, .ctl)
+      }
+      .names <- c(.names, .col[-.w])
+    }
   }
   rxSetCovariateNamesForPiping(NULL)
   if (length(.ctl$.zeros) > 0) {
@@ -2199,4 +2328,66 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
   rxControl$ssAtol <- c(rep(rxControl$ssAtol[1], ncmt - sensCmt), rep(rxControl$ssAtolSens, sensCmt))
   rxControl$ssRtol <- c(rep(rxControl$ssRtol[1], ncmt - sensCmt), rep(rxControl$ssRtolSens, sensCmt))
   rxControl
+}
+
+
+#' rxUiDeparse.rxControl(rxControl(covsInterpolation="linear", method="dop853",
+#'  naInterpolation="nocb", keepInterpolation="nocb", sigmaXform="variance",
+#'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify",
+#'  sensType="central"), "ctl")
+
+#' @rdname rxUiDeparse
+#' @export
+rxUiDeparse.rxControl <- function(object, var) {
+  .ret <- rxControl()
+
+  .w <- which(vapply(names(.ret), function(x) {
+    if (is.integer(.ret[[x]]) && is.integer(object[[x]])) {
+      .ret[[x]] != object[[x]]
+    } else {
+      !identical(.ret[[x]], object[[x]])
+    }
+  }, logical(1)))
+
+  .retD <- vapply(names(.ret)[.w], function(x) {
+    if (x == "covsInterpolation") {
+      .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
+      paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
+    } else if (x == "method")  {
+      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+      paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
+    } else if (x == "naInterpolation") {
+      .naInterpolation <- c("locf"=1L, "nocb"=0L)
+      paste0(x, " =", deparse1(names(.naInterpolation)[which(object[[x]] == .naInterpolation)]))
+    } else if (x == "keepInterpolation") {
+      .keepInterpolation <- c("locf"=1L, "nocb"=0L, "na"=2L)
+      paste0(x, " =", deparse1(names(.keepInterpolation)[which(object[[x]] == .keepInterpolation)]))
+    } else if (x %in% c("sigmaXform", "omegaXform")) {
+      .sigmaXform <- c(
+        "variance" = 6L, "log" = 5L, "identity" = 4L,
+        "nlmixrSqrt" = 1L, "nlmixrLog" = 2L,
+        "nlmixrIdentity" = 3L)
+      paste0(x, " =", deparse1(names(.sigmaXform)[which(object[[x]] == .sigmaXform)]))
+    } else if (x == "returnType") {
+      .matrixIdx <- c(
+        "rxSolve" = 0L, "matrix" = 1L, "data.frame" = 2L, "data.frame.TBS" = 3L, "data.table" = 4L,
+        "tbl" = 5L, "tibble" = 5L)
+      paste0(x, " =", deparse1(names(.matrixIdx)[which(object[[x]] == .matrixIdx)]))
+    } else if (x == "sumType") {
+      .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)
+      paste0(x, " = ", deparse1(names(.sum)[which(object[[x]] == .sum)]))
+    } else if (x == "prodType") {
+      .prod <- c("long double"=1L, "double"=1L, "logify"=1L)
+      paste0(x, " = ", deparse1(names(.prod)[which(object[[x]] == .prod)]))
+    } else if (x == "sensType") {
+      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)
+      paste0(x, " = ", deparse1(names(.sensType)[which(object[[x]] == .sensType)]))
+    } else if (x == "naTimeHandle") {
+      .naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)
+      paste0(x, " = ", deparse1(names(.naTimeHandle)[which(object[[x]] == .naTimeHandle)]))
+    }  else {
+      paste0(x, "=", deparse1(object[[x]]))
+    }
+  }, character(1), USE.NAMES=FALSE)
+  str2lang(paste(var, " <- rxControl(", paste(.retD, collapse=","),")"))
 }

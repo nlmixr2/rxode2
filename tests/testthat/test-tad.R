@@ -346,32 +346,7 @@ rxTest({
   })
 
   test_that("test parsing of ode", {
-    suppressMessages(withr::with_options(
-      # Default option set
-      list(rxode2.syntax.require.ode.first=NULL),
-      expect_error(rxode2({
-        KA <- 2.94E-01
-        CL <- 1.86E+01
-        V2 <- 4.02E+01
-        Q <- 1.05E+01
-        V3 <- 2.97E+02
-        Kin <- 1
-        Kout <- 1
-        EC50 <- 200
-        C2 <- centr / V2
-        C3 <- peri / V3
-        ## error in capturing early
-        f <- tad(eff)
-        d / dt(depot) <- -KA * depot
-        d / dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
-        d / dt(peri) <- Q * C2 - Q * C3
-        d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
-      }))
-    ))
-
     ## now change the option
-    withr::with_options(
-      list(rxode2.syntax.require.ode.first = FALSE),
       expect_error(rxode2({
         KA <- 2.94E-01
         CL <- 1.86E+01
@@ -390,7 +365,6 @@ rxTest({
         d / dt(peri) <- Q * C2 - Q * C3
         d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
       }), NA)
-    )
   })
 
   # context("tad family of functions with linCmt()")

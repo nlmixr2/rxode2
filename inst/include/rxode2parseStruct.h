@@ -41,6 +41,7 @@ typedef struct {
   char modNamePtr[1000];
   int *par_cov;
   int *par_cov_interp;
+  int *lhs_str;
 
   double *inits;
   double *scale;
@@ -48,6 +49,7 @@ typedef struct {
   // approx fun options
   int is_locf;
   int instant_backward;
+  int keep_interp;
   int cores;
   int doesRandom;
   int extraCmt;
@@ -246,6 +248,8 @@ typedef struct {
   int cens;
   int limit;
   int safeZero;
+  int safeLog;
+  int safePow;
   int sumType;
   int prodType;
   int sensType;
@@ -268,6 +272,7 @@ typedef struct {
   int hasEvid2;
   int useStdPow;
   bool ss2cancelAllPending;
+  int npars;
 } rx_solve;
 
 

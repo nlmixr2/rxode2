@@ -103,8 +103,8 @@ static inline int isStateLhsI(int i) {
     int doCont=0;
     for (int j = 0; j < tb.de.n; j++) {
       if (tb.di[j] == i) {
-	if (!tb.idu[j]) doCont = 1;
-	break;
+        if (!tb.idu[j]) doCont = 1;
+        break;
       }
     }
     if (doCont) return 1;
@@ -118,9 +118,10 @@ static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
   case print_paramLags:
     return (tb.lag[i] == notLHS || tb.lh[i] == isState);
   case print_lhsLags:
-    return (tb.lag[i] == 0 || tb.lh[i] != isLHS);
+    return (tb.lag[i] == 0 || (tb.lh[i] != isLHS && tb.lh[i] != isLHSstr));
   case print_lastLhsValue:
-    return !(tb.lh[i] == isLHS || tb.lh[i] == isLhsStateExtra || tb.lh[i] == isLHSparam);
+    return !(tb.lh[i] == isLHS || tb.lh[i] == isLHSstr ||
+             tb.lh[i] == isLhsStateExtra || tb.lh[i] == isLHSparam);
   }
   return (lhs && tb.lh[i]>0 && tb.lh[i] != isLHSparam);
 }

@@ -34,7 +34,9 @@ Other Assertions:
 \code{\link{assertCompartmentName}()},
 \code{\link{assertCompartmentNew}()},
 \code{\link{assertRxUi}()},
-\code{\link{assertVariableNew}()}
+\code{\link{assertVariableNew}()},
+\code{\link{testIniDf}()},
+\code{\link{testRxUnbounded}()}
 }
 \author{
 Matthew L. Fidler

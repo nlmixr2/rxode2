@@ -118,34 +118,8 @@ static inline bool asBool(SEXP in, const char *what) {
 }
 
 Function getRxFn(std::string name);
+
 Environment rxode2env();
-
-Environment dataTable;
-bool getForder_b=false;
-Function getRxFn(std::string name);
-bool dtForder = false;
-bool forderForceBase_ = false;
-
-//' Force using base order for rxode2 radix sorting
-//'
-//' @param forceBase boolean indicating if rxode2 should use R's
-//'   [order()] for radix sorting instead of
-//'   `data.table`'s parallel radix sorting.
-//'
-//' @return NILL; called for side effects
-//'
-//' @examples
-//' \donttest{
-//' forderForceBase(TRUE) # Use base `order` for rxode2 sorts
-//' forderForceBase(FALSE) # Use `data.table` for rxode2 sorts
-//' }
-//' @export
-//' @keywords internal
-//[[Rcpp::export]]
-RObject forderForceBase(bool forceBase = false){
-  forderForceBase_=forceBase;
-  return R_NilValue;
-}
 
 IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   IntegerVector id = asIv(inCmt, "inCmt");
@@ -155,42 +129,6 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
     return Rcpp::match(id, udvid);
   }
   return id;
-}
-extern "C" SEXP getForder(void) {
-  if (!getForder_b){
-    Function fn = getRxFn(".getDTEnv");
-    dataTable = fn();
-    getForder_b=true;
-  }
-  if (!forderForceBase_ && dataTable.exists("forder")){
-    dtForder=true;
-    return wrap(dataTable["forder"]);
-  }
-  Environment b=Rcpp::Environment::base_namespace();
-  dtForder=false;
-  return wrap(b["order"]);
-}
-
-Function getChin() {
-  if (!getForder_b){
-    Function fn = getRxFn(".getDTEnv");
-    dataTable = fn();
-    getForder_b=true;
-  }
-  if (!forderForceBase_ && dataTable.exists("%chin%")){
-    return dataTable["%chin%"];
-  }
-  Environment b=Rcpp::Environment::base_namespace();
-  return b["%in%"];
-}
-
-extern "C" SEXP chin(SEXP x, SEXP table) {
-  Function chin_ = getChin();
-  return chin_(x, table);
-}
-
-extern "C" int useForder(void){
-  return (int)(getForder_b);
 }
 
 IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
@@ -825,19 +763,22 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   NumericVector nvTmp, nvTmp2;
   bool hasCmt = false;
   int cmtI =0;
+  List strAssign = mv[RxMv_strAssign];
+  List strAssignN = strAssign.names();
   List inDataF(covCol.size());
-  List inDataLvl(covCol.size());
+  List inDataLvlN(covCol.size()+strAssign.size());
+  List inDataLvl(covCol.size()+strAssign.size());
   for (i = covCol.size(); i--;){
     int covColi = covCol[i];
     if (covColi >= 0) {
-      covUnitsN[i] = lName[covColi];
+      inDataLvlN[i] = covUnitsN[i] = lName[covColi];
     } else {
       // Get from iCov; when found the i was pushed back as:
       //   covCol.push_back(-i-1);
       // Using some algebra you have
       // -i-1 = covColi
       // i    = -covColi-1
-      covUnitsN[i] = liName[-covColi-1];
+      inDataLvlN[i] = covUnitsN[i] = liName[-covColi-1];
     }
     nvTmp2 = NumericVector::create(1.0);
     if (hasCmt || covColi >= 0 && as<std::string>(lName[covColi]) != "cmt"){
@@ -869,7 +810,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     covUnits[i] = nvTmp2;
   }
-  Rf_setAttrib(inDataLvl, R_NamesSymbol, covUnitsN);
+  for (i = 0; i < strAssign.size(); ++i){
+    inDataLvlN[i+covCol.size()] = strAssignN[i];
+    inDataLvl[i+covCol.size()] = strAssign[i];
+  }
+  Rf_setAttrib(inDataLvl, R_NamesSymbol, inDataLvlN);
   Rf_setAttrib(covUnits, R_NamesSymbol, covUnitsN);
   // EVID = 0; Observations
   // EVID = 1; is illegal, but converted from NONMEM
@@ -980,7 +925,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<double> dv;
   dv.reserve(resSize);
   std::vector<int> idxOutput;
-  idxOutput.reserve(resSize);
   std::vector<int> idxIcov;
   std::vector<int> cens;
   cens.reserve(resSize);
@@ -1185,7 +1129,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   double cii;
   double dur =0.0;
   double camt;
-  int curIdx=0;
   double cdv, climit;
   int nobs=0, ndose=0;
 
@@ -1206,6 +1149,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool hasReset = false;
   double maxShift = 0;
   bool warnNaTime=false;
+  // This section of the code:
+  // - Loops over the input dataset
+  // - Changes nonmem-style evid to classic rxode events
+  // - adds infusion endings and additional doses
   for (int i = 0; i < inTime.size(); i++) {
     if (idCol == -1) cid = 1;
     else cid = inId[i];
@@ -1233,7 +1180,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     } else if (lastId != cid) {
       lastId = cid;
     } else if (lastTime > ctime) {
-      if (inEvid[i] != 3 && inEvid[i] != 4) {
+      if (!hasEvid || (inEvid[i] != 3 && inEvid[i] != 4)) {
         isSorted = false; // The prior EVID=3 w/reset a reset time
         // REprintf("\t not sorted");
       } else if (lastTime > ctime) {
@@ -1269,8 +1216,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         dv.push_back(NA_REAL);
         cens.push_back(0);
         limit.push_back(NA_REAL);
+
         idxInput.push_back(-1);
-        idxOutput.push_back(curIdx);curIdx++;
       }
       nid++;
     }
@@ -1525,7 +1472,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         amt.push_back(NA_REAL);
         ii.push_back(0.0);
-        idxInput.push_back(i);
         cens.push_back(ccens);
         if (ccens!=0) censNone=false;
         if (ccens == 1 && !std::isinf(climit)){
@@ -1544,7 +1490,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           dv.push_back(cdv);
           limit.push_back(climit);
         }
-        idxOutput.push_back(curIdx);curIdx++;
+
+        idxInput.push_back(i);
         cevid = -1;
       }
       break;
@@ -1594,11 +1541,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         amt.push_back(NA_REAL);
         ii.push_back(0.0);
-        idxInput.push_back(i);
         dv.push_back(NA_REAL);
         limit.push_back(NA_REAL);
         cens.push_back(0);
-        idxOutput.push_back(curIdx);curIdx++;
+
+        idxInput.push_back(i);
         ndose++;
         // + cmt needs to turn on cmts.
         // This gives a zero dose to cmt
@@ -1610,11 +1557,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           time.push_back(ctime);
           amt.push_back(0.0);
           ii.push_back(0.0);
-          idxInput.push_back(i);
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
-          idxOutput.push_back(curIdx);curIdx++;
+
+          idxInput.push_back(i);
           ndose++;
         }
         cevid = -1;
@@ -1640,11 +1587,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
       amt.push_back(NA_REAL);
       ii.push_back(0.0);
-      idxInput.push_back(i);
       dv.push_back(NA_REAL);
       limit.push_back(NA_REAL);
       cens.push_back(0);
-      idxOutput.push_back(curIdx);curIdx++;
+
+      idxInput.push_back(i);
       ndose++;
       cevid = -1;
       break;
@@ -1668,11 +1615,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
       amt.push_back(NA_REAL);
       ii.push_back(0.0);
-      idxInput.push_back(-1);
       dv.push_back(NA_REAL);
       limit.push_back(NA_REAL);
       cens.push_back(0);
-      idxOutput.push_back(curIdx);curIdx++;
+
+      idxInput.push_back(-1);
       ndose++;
       // Now use the transformed compartment
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
@@ -1737,11 +1684,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         keepIIadl = true;
         //stop(_("'ss' with 'addl' not supported (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
       }
-      idxInput.push_back(i);
       dv.push_back(NA_REAL);
       limit.push_back(NA_REAL);
       cens.push_back(0);
-      idxOutput.push_back(curIdx);curIdx++;
+
+      idxInput.push_back(i);
       ndose++;
       if (rateI > 2 && rateI != 4 && rateI != 5 && flg != 40){
         // modeled rate/duration
@@ -1764,11 +1711,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           time.push_back(ctime);
           //ii.push_back(cii);
           ii.push_back(0.0);
-          idxInput.push_back(-1);
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
-          idxOutput.push_back(curIdx);curIdx++;
+
+          idxInput.push_back(-1);
           ndose++;
         }
         // turn off
@@ -1778,11 +1725,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         time.push_back(ctime);
         amt.push_back(camt);
         ii.push_back(0.0);
-        idxInput.push_back(-1);
         dv.push_back(NA_REAL);
         limit.push_back(NA_REAL);
         cens.push_back(0);
-        idxOutput.push_back(curIdx);curIdx++;
+
+        idxInput.push_back(-1);
         ndose++;
       } else if (rateI == 1 || rateI == 2){
         // In this case amt needs to be changed.
@@ -1800,11 +1747,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           amt.push_back(-rate);
           time.push_back(ctime);
           ii.push_back(cii);
-          idxInput.push_back(-1);
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
-          idxOutput.push_back(curIdx);curIdx++;
+
+          idxInput.push_back(-1);
           ndose++;
 
           nevidLag = cmt100*100000+rateI*10000+cmt99*100+1;
@@ -1815,11 +1762,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           time.push_back(ctime);
           //ii.push_back(cii);
           ii.push_back(0.0);
-          idxInput.push_back(-1);
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
-          idxOutput.push_back(curIdx);curIdx++;
+
+          idxInput.push_back(-1);
           ndose++;
         }
         // turn off
@@ -1834,11 +1781,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           time.push_back(ctime+dur);
           amt.push_back(-rate);
           ii.push_back(0.0);
-          idxInput.push_back(-1);
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
-          idxOutput.push_back(curIdx);curIdx++;
+
+          idxInput.push_back(-1);
           ndose++;
         }
       } else {
@@ -1855,11 +1802,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           time.push_back(ctime);
           //ii.push_back(cii);
           ii.push_back(0.0);
-          idxInput.push_back(-1);
           dv.push_back(NA_REAL);
           limit.push_back(NA_REAL);
           cens.push_back(0);
-          idxOutput.push_back(curIdx);curIdx++;
+
+          idxInput.push_back(-1);
           ndose++;
         }
       }
@@ -1894,15 +1841,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           } else {
             ii.push_back(0.0);
           }
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+
           if (addlKeepsCov) {
             idxInput.push_back(i);
           } else {
             idxInput.push_back(-1);
           }
-          dv.push_back(NA_REAL);
-          limit.push_back(NA_REAL);
-          cens.push_back(0);
-          idxOutput.push_back(curIdx);curIdx++;
           ndose++;
           if (rateI > 2 && rateI != 4 && rateI != 5) {
             amt.push_back(camt);
@@ -1912,16 +1859,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               cmtF.push_back(cmt);
               time.push_back(ctime);
               ii.push_back(0.0);
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+              amt.push_back(camt);
+
               if (addlKeepsCov) {
                 idxInput.push_back(i);
               } else {
                 idxInput.push_back(-1);
               }
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-              amt.push_back(camt);
-              idxOutput.push_back(curIdx);curIdx++;
               ndose++;
             }
             // turn off
@@ -1931,15 +1878,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             time.push_back(ctime);
             amt.push_back(camt);
             ii.push_back(0.0);
+            dv.push_back(NA_REAL);
+            limit.push_back(NA_REAL);
+            cens.push_back(0);
+
             if (addlKeepsCov) {
               idxInput.push_back(i);
             } else {
               idxInput.push_back(-1);
             }
-            dv.push_back(NA_REAL);
-            limit.push_back(NA_REAL);
-            cens.push_back(0);
-            idxOutput.push_back(curIdx);curIdx++;
             ndose++;
           } else if (rateI == 1 || rateI == 2){
             amt.push_back(rate);
@@ -1955,15 +1902,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
                 ii.push_back(0.0);
               }
               //ii.push_back(0.0);
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+
               if (addlKeepsCov) {
                 idxInput.push_back(i);
               } else {
                 idxInput.push_back(-1);
               }
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-              idxOutput.push_back(curIdx);curIdx++;
               ndose++;
 
               id.push_back(cid);
@@ -1971,16 +1918,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               cmtF.push_back(cmt);
               time.push_back(ctime);
               ii.push_back(0.0);
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+              amt.push_back(rate);
+
               if (addlKeepsCov) {
                 idxInput.push_back(i);
               } else {
                 idxInput.push_back(-1);
               }
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-              amt.push_back(rate);
-              idxOutput.push_back(curIdx);curIdx++;
               ndose++;
             }
             // turn off
@@ -1994,16 +1941,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             time.push_back(ctime+dur);
             amt.push_back(-rate);
             ii.push_back(0.0);
+            dv.push_back(NA_REAL);
+            limit.push_back(NA_REAL);
+            cens.push_back(0);
+
             if (addlKeepsCov) {
               idxInput.push_back(i);
             } else {
               idxInput.push_back(-1);
             }
-            idxInput.push_back(-1);
-            dv.push_back(NA_REAL);
-            limit.push_back(NA_REAL);
-            cens.push_back(0);
-            idxOutput.push_back(curIdx);curIdx++;
             ndose++;
           } else {
             amt.push_back(camt);
@@ -2013,16 +1959,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
               cmtF.push_back(cmt);
               time.push_back(ctime);
               ii.push_back(0.0);
+              dv.push_back(NA_REAL);
+              limit.push_back(NA_REAL);
+              cens.push_back(0);
+              amt.push_back(camt);
+
               if (addlKeepsCov) {
                 idxInput.push_back(i);
               } else {
                 idxInput.push_back(-1);
               }
-              dv.push_back(NA_REAL);
-              limit.push_back(NA_REAL);
-              cens.push_back(0);
-              amt.push_back(camt);
-              idxOutput.push_back(curIdx);curIdx++;
               ndose++;
             }
           }
@@ -2101,8 +2047,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             dv.push_back(NA_REAL);
             limit.push_back(NA_REAL);
             cens.push_back(0);
+
             idxInput.push_back(-1);
-            idxOutput.push_back(curIdx);curIdx++;
           }
         }
       }
@@ -2118,6 +2064,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector ivId = wrap(id);
   NumericVector nvTime = wrap(time);
   IntegerVector ivEvid = clone(wrap(evid));
+
   if (!keepDosingOnly && doseId.size() > 0){
 #define sortID if (ivEvid[j]==3){               \
       ivEvid[j] = NA_INTEGER+1;                 \
@@ -2139,41 +2086,25 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
   }
 #undef sortID
-  Function order = as<Function>(getForder());
+  Function order3  = getRxFn(".order3");
+  Function order1  = getRxFn(".order1");
   IntegerVector ord;
   IntegerVector ordI;
-  if (useForder()){
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(true));
-    ord = ord - 1;
-    // na.last isn't =NA isn't quite working
-    idxOutput = as<std::vector<int>>(ord);
-    while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])){
-      idxOutput.pop_back();
-    }
-    if (hasIcov) {
-      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true));
-      ordI = ordI-1;
-      idxIcov = as<std::vector<int>>(ordI);
-    }
-  } else {
-    ord = order(ivId, nvTime, ivEvid,
-                _["na.last"] = LogicalVector::create(NA_LOGICAL),
-                _["method"]="radix");
-    ord = ord - 1;
-    idxOutput = as<std::vector<int>>(ord);
-    if (hasIcov) {
-      ordI = order(inIdCov, _["na.last"] = LogicalVector::create(true),
-                   _["method"]="radix");
-      ordI = ordI-1;
-      idxIcov = as<std::vector<int>>(ordI);
-    }
+  ord = order3(ivId, nvTime, ivEvid);
+  ord = ord - 1;
+  idxOutput = as<std::vector<int>>(ord);
+  while (idxOutput.size() > 0 && IntegerVector::is_na(ivId[idxOutput.back()])){
+    idxOutput.pop_back();
+  }
+  if (hasIcov) {
+    ordI = order1(inIdCov);
+    ordI = ordI-1;
+    idxIcov = as<std::vector<int>>(ordI);
   }
 #ifdef rxSolveT
   REprintf("  Time8: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
-
   if (idxOutput.size()==0) stop(_("no rows in event table or input data"));
   lastId = id[idxOutput.back()]+42;
   int rmAmt = 0;
@@ -2312,6 +2243,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   CharacterVector keepN(keepCol.size());
   IntegerVector keepLc(keepCol.size());
   for (j = 0; j < (int)(keepCol.size()); j++){
+    // size = the same size as the output with exception of the rmAmt or tr
     keepL[j] = NumericVector(idxOutput.size()-rmAmt);
     int keepColj = keepCol[j];
     const char* cmp;
@@ -2347,7 +2279,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool calcIcovKeepIdx = false;
   IntegerVector iCovKeepIdx;
   std::vector<int> covParInterpMv = as<std::vector<int>>(mv[RxMv_interp]);
-  for (j = 0; j < (int)(keepCol.size()); j++){
+  for (j = 0; j < (int)(keepCol.size()); j++) {
     int keepColj = keepCol[j];
     SEXP cur;
     if (keepColj >= 0) {
@@ -2473,7 +2405,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       jj--;
       ivTmp = as<IntegerVector>(lst[0]);
       ivTmp[jj] = id[idxOutput[i]];
-      if (lastId != id[idxOutput[i]]){
+      if (lastId != id[idxOutput[i]]) {
         maxItemsPerId = max2(curItems, maxItemsPerId);
         curItems=0;
         addId=true;
@@ -2516,18 +2448,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
       // Now add the other items.
       added=false;
-      for (j = 0; j < (int)(keepCol.size()); j++){
-        // idxOutput is the output id
-        nvTmp = as<NumericVector>(keepL[j]);
-        if (idxInput[idxOutput[i]] == -1) { // Not in data.
-          // Implement LOCF
-          if (addId){
-            nvTmp[jj] = NA_REAL;
-          } else {
-            // LOCF
-            nvTmp[jj] = nvTmp[jj-1];
-          }
-        } else {
+      if (idxInput[idxOutput[i]] == -1) {
+        // not in data
+        for (j = 0; j < (int)(keepCol.size()); j++){
+          nvTmp = as<NumericVector>(keepL[j]);
+          nvTmp[jj] = NA_REAL;
+        }
+      } else {
+        for (j = 0; j < (int)(keepCol.size()); j++){
+          // idxOutput is the output id
+          nvTmp = as<NumericVector>(keepL[j]);
           // These keep variables are added.
           SEXP cur = inDataFK[j];
           nvTmp[jj] = REAL(cur)[idxInput[idxOutput[i]]];
@@ -2535,7 +2465,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
       for (j = 0; j < (int)(covCol.size()); j++){
         int covColj = covCol[j];
-        if (hasCmt && covColj >= 0 &&j == cmtI){
+        if (hasCmt && covColj >= 0 &&j == cmtI) {
           ivTmp = as<IntegerVector>(lst[baseSize+j]);
           ivTmp[jj] = cmtF[idxOutput[i]];
           if (!cmtFadd){

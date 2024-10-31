@@ -23,7 +23,9 @@ Other Assertions:
 \code{\link{assertCompartmentName}()},
 \code{\link{assertCompartmentNew}()},
 \code{\link{assertRxUi}()},
-\code{\link{assertVariableExists}()}
+\code{\link{assertVariableExists}()},
+\code{\link{testIniDf}()},
+\code{\link{testRxUnbounded}()}
 }
 \author{
 Matthew L. Fidler

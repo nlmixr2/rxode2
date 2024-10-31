@@ -50,13 +50,14 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          cache-version: 7
+          cache-version: 9
           pak-version: stable
           extra-packages: |
             any::rcmdcheck
             nlmixr2/dparser-R
             nlmixr2/lotri
             nlmixr2/rxode2ll
+            nlmixr2/PreciseSums
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2

@@ -23,29 +23,6 @@
   .m$idxi
 }
 
-.DTEnv <- NULL
-.getDTEnv <- function() {
-  if (is.null(.DTEnv)) {
-    if (requireNamespace("data.table", quietly = TRUE)) {
-      .env <- loadNamespace("data.table")
-      if (utils::compareVersion(
-        as.character(
-          utils::packageVersion("data.table")
-        ),
-        "1.12.4"
-      ) >= 0) {
-        assignInMyNamespace(".DTEnv", .env)
-        return(.env)
-      }
-    }
-    .env <- new.env(parent = emptyenv())
-    assignInMyNamespace(".DTEnv", .env)
-    return(.env)
-  } else {
-    return(.DTEnv)
-  }
-}
-
 .convertExtra <- function(dat) {
   d <- as.data.frame(dat)
   .colNames0 <- colnames(d)

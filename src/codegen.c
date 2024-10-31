@@ -341,13 +341,14 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           if(tb.idu[i] != 0){
             if (show_ode == ode_lag || show_ode == ode_dur || show_ode == ode_rate){
               sAppendN(&sbOut, "  ", 2);
+              int assignOne = 0;
               doDot(&sbOut, buf);
               sAppend(&sbOut, " = NA_REAL;\n", i, i);
             } else {
               // stateExtra
               sAppendN(&sbOut, "  ", 2);
               doDot(&sbOut, buf);
-              sAppend(&sbOut, " = __zzStateVar__[%d]*((double)(_ON[%d]));\n", i, i);
+              sAppend(&sbOut, " = __zzStateVar__[__DDT%d__]*((double)(_ON[__DDT%d__]));\n", i, i);
             }
           } else {
             break;
@@ -388,7 +389,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           if (show_ode != ode_mexp && show_ode != ode_indLinVec){
             if (sbPm.lProp[i] >= 0 ){
               tb.ix = sbPm.lProp[i];
-              if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam){
+              if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSstr ||
+                  tb.lh[tb.ix] == isLHSparam){
                 sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
               }
             }
@@ -443,6 +445,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             sAppend(&sbOut,"  %s", sbPm.line[i]);
           }
           break;
+        case TNONE: // no code is output (just props)
+          break;
         default:
           RSprintf("line Number: %d\n", i);
           RSprintf("type: %d\n", sbPm.lType[i]);
@@ -481,7 +485,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         for (i = 0; i < tb.de.n; i++) {
           if (tb.idu[i]) {
             buf=tb.ss.line[tb.di[i]];
-            sAppend(&sbOut, "  __zzStateVar__[%d]=((double)(_ON[%d]))*(",i,i);
+            sAppend(&sbOut, "  __zzStateVar__[__DDT%d__]=((double)(_ON[__DDT%d__]))*(",i,i);
             doDot(&sbOut, buf);
             sAppendN(&sbOut,  ");\n", 3);
           }
@@ -494,7 +498,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
     } else if (show_ode == ode_lhs && tb.li){
       sAppendN(&sbOut,  "\n", 1);
       for (i=0, j=0; i<NV; i++) {
-        if (tb.lh[i] != isLHS && tb.lh[i] != isLhsStateExtra && tb.lh[i] != isLHSparam) continue;
+        if (tb.lh[i] != isLHS && tb.lh[i] != isLhsStateExtra &&
+            tb.lh[i] != isLHSparam && tb.lh[i] != isLHSstr) continue;
         buf = tb.ss.line[i];
         sAppend(&sbOut,  "  _lhs[%d]=", j);
         doDot(&sbOut, buf);
@@ -547,7 +552,7 @@ extern SEXP _goodFuns;
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP timeId, SEXP mvLast,
-                          SEXP goodFuns){
+                          SEXP goodFuns) {
   _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
@@ -563,6 +568,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   }
   fpIO = fopen(CHAR(STRING_ELT(c_file,0)), "wb");
   err_msg((intptr_t) fpIO, "error opening output c file\n", -2);
+
   if (badMd5){
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, mkChar(""));
   } else {
@@ -617,11 +623,25 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(trans, 21, mkChar(buf.s)); // IndF
   }
   sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
-  UNPROTECT(pro);
   sFree(&buf);
   //SET_STRING_ELT(tran, 0, mkChar());
   sFree(&sbOut);
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
+
+  SEXP stateOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_stateOrd)); pro++;
+  int nOrd = Rf_length(stateOrd);
+  if (nOrd > 0) {
+    SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
+    int *stateOrdInt = INTEGER(stateOrd);
+    sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
+    for (int i = 0; i < nOrd; i++){
+      sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
+              CHAR(STRING_ELT(stateOrdNames, i)));
+    }
+    writeSb(&sbOut, fpIO);
+    sbOut.o = 0;
+  }
+  UNPROTECT(pro);
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
   // show_ode = 3 Ini statement
@@ -666,6 +686,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
       sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei);
     }
     writeSb(&sbOut, fpIO);
+    sbOut.o = 0;
   }
   gCode(1); // d/dt()
   gCode(2); // jac

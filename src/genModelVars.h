@@ -76,10 +76,22 @@ static inline void calcNparamsNlhsNslhs(void) {
   int sli=0, li=0, pi=0;
   for (int i=0; i<NV; i++) {
     int islhs = tb.lh[i];
-    if (islhs>1 && islhs != isLhsStateExtra && islhs != isLHSparam && islhs != isSuppressedLHS) continue;      /* is a state var */
-    if (islhs == isSuppressedLHS){
+    if (islhs>1 &&
+        islhs != isLhsStateExtra &&
+        islhs != isLHSparam &&
+        islhs != isSuppressedLHS &&
+        islhs != isLHSstr &&
+        islhs != isSuppressedLHSstr) {
+      continue;      /* is a state var */
+    }
+    if (islhs == isSuppressedLHS ||
+        islhs == isSuppressedLHSstr){
       sli++;
-    } else if (islhs == isLHS || islhs == isLhsStateExtra || islhs == isLHSparam){
+    } else if (islhs == isLHS ||
+               islhs == isLHSstr ||
+               islhs == isLhsStateExtra ||
+               islhs == isLHSparam ||
+               islhs == isLHSstr){
       li++;
       if (islhs == isLHSparam) pi++;
     } else {
@@ -128,19 +140,11 @@ static inline void calcExtracmt(void) {
     } else {
       extraCmt=1;
     }
-    if (tb.hasDepotCmt){
+    if (tb.hasDepotCmt == -1){
       trans_syntax_error_report_fn0(_("'cmt(depot)' does not work with 'linCmt()'"));
     }
-    if (tb.hasCentralCmt) {
+    if (tb.hasCentralCmt == -1) {
       trans_syntax_error_report_fn0("'cmt(central)' does not work with 'linCmt()'");
-    }
-  } else {
-    if (tb.hasDepot && rx_syntax_require_ode_first){
-      sPrint(&_bufw2, ODEFIRST, "depot");
-      trans_syntax_error_report_fn0(_bufw2.s);
-    } else if (tb.hasCentral && rx_syntax_require_ode_first){
-      sPrint(&_bufw2, ODEFIRST, "depot");
-      trans_syntax_error_report_fn0(_bufw2.s);
     }
   }
 }
@@ -193,20 +197,95 @@ static inline SEXP calcIniVals(void) {
   return ini;
 }
 
-static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, int *stateRm, SEXP extraState) {
+SEXP orderForderS1(SEXP ordIn);
+
+static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
+  if (prop == 0 || pass == 1) {
+    return 1;
+  }
+  if ((prop & prop0) != 0) {
+    sAppend(&sbt, "'%s(0)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propF) != 0) {
+    sAppend(&sbt, "'f(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propAlag) != 0) {
+    sAppend(&sbt, "'alag(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propRate) != 0) {
+    sAppend(&sbt, "'rate(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propDur) != 0) {
+    sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  // Take off trailing "',
+  sbt.o -= 2;
+  sbt.s[sbt.o] = 0;
+  sAppend(&sbt, " present, but d/dt(%s) not defined\n", tb.ss.line[tb.di[i]]);
+  return 0;
+}
+
+static inline SEXP sortStateVectors(SEXP ordS) {
+  int *ord = INTEGER(ordS);
+  for (int i = 0; i < Rf_length(ordS); i++) {
+    ord[i] = 0; // explicitly initialize to avoid valgrind warning
+  }
+  sbt.o = 0; // we can use sbt.o since all the code has already been output
+  sbt.s[0] = 0;
+  for (int i = 0; i < tb.de.n; i++) {
+    int cur = tb.didx[i];
+    int prop = tb.dprop[i];
+    int pass = 0;
+    if (tb.linCmt){
+      if (tb.hasDepotCmt == 1 && !strcmp("depot", tb.ss.line[tb.di[i]])){
+        pass = 1;
+      } else if ((tb.hasCentralCmt == 1 || tb.hasDepotCmt == 1)  &&
+                 !strcmp("central", tb.ss.line[tb.di[i]])) {
+        pass = 1;
+      }
+    }
+    if (cur == 0) {
+      // This has a property without an ODE or cmt() statement; should error here.
+      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
+    } else if (cur < 0) {
+      // This is a compartment only defined by CMT() and is used for
+      // dvid ordering, no properties should be defined.
+      ord[i] = -cur;
+      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
+    } else {
+      ord[i] = cur;
+    }
+  }
+  if (sbt.o != 0) {
+    sbt.o--; // remove last newline
+    sbt.s[sbt.o] = 0;
+    sPrint(&_gbuf, "%s", sbt.s);
+    return R_NilValue;
+  }
+  return orderForderS1(ordS);
+}
+
+static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, int *stateRm, SEXP extraState, SEXP stateProp, SEXP sensProp, SEXP normProp, int *ordFp) {
   int k=0, j=0, m=0, p=0;
   char *buf;
+  int *statePropI = INTEGER(stateProp);
+  int *sensPropI = INTEGER(sensProp);
+  int *normPropI = INTEGER(normProp);
   for (int i=0; i<tb.de.n; i++) {                     /* name state vars */
-    buf=tb.ss.line[tb.di[i]];
+    buf=tb.ss.line[tb.di[ordFp[i]-1]] ;
     if (tb.idu[i] == 1){
       if (strncmp(buf,"rx__sens_", 9) == 0){
+        statePropI[k] = tb.dprop[ordFp[i]-1];
+        sensPropI[j] = tb.dprop[ordFp[i]-1];
         SET_STRING_ELT(sens,j++,mkChar(buf));
         SET_STRING_ELT(state,k++,mkChar(buf));
-        stateRm[k-1]=tb.idi[i];
+        stateRm[k-1]=tb.idi[ordFp[i]-1];
       } else {
+        statePropI[k] = tb.dprop[ordFp[i]-1];
+        normPropI[m] = tb.dprop[ordFp[i]-1];
         SET_STRING_ELT(normState,m++,mkChar(buf));
         SET_STRING_ELT(state,k++,mkChar(buf));
-        stateRm[k-1]=tb.idi[i];
+        stateRm[k-1]=tb.idi[ordFp[i]-1];
       }
     } else {
       SET_STRING_ELT(extraState, p++, mkChar(buf));
@@ -246,7 +325,8 @@ static inline void populateDfdy(SEXP dfdy) {
 }
 
 static inline int assertStateCannotHaveDiff(int islhs, int i, char *buf) {
-  if (islhs>1 && islhs != isLhsStateExtra && islhs != isLHSparam) {
+  if (islhs>1 && islhs != isLhsStateExtra && islhs != isLHSparam &&
+      islhs != isLHSstr) {
     if (tb.lag[i] != 0){
       buf=tb.ss.line[i];
       if (islhs == isState){
@@ -263,9 +343,11 @@ static inline int assertStateCannotHaveDiff(int islhs, int i, char *buf) {
 }
 
 static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *buf,
-                                        int *li, int *pi) {
-  if (islhs == isLHS || islhs == isLhsStateExtra || islhs == isLHSparam) {
+                                        int *li, int *pi, SEXP lhsStr) {
+  if (islhs == isLHS || islhs == isLHSstr ||
+      islhs == isLhsStateExtra || islhs == isLHSparam) {
     SET_STRING_ELT(lhs, li[0], mkChar(buf));
+    INTEGER(lhsStr)[li[0]] = islhs == isLHSstr;
     li[0] = li[0]+1;
     if (islhs == isLHSparam) {
       if (!strcmp("CMT", buf)) {
@@ -319,12 +401,12 @@ static inline void assertLhsAndDualLhsDiffNotLegal(int islhs, int i, char *buf) 
   }
 }
 
-static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *interp) {
+static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *interp, SEXP lhsStr) {
   int li=0, pi=0, sli = 0;
   char *buf;
   for (int i=0; i<NV; i++) {
     int islhs = tb.lh[i];
-    if (islhs == isSuppressedLHS){
+    if (islhs == isSuppressedLHS || islhs == isSuppressedLHSstr){
       SET_STRING_ELT(slhs, sli++, mkChar(tb.ss.line[i]));
     }
     buf=tb.ss.line[i];
@@ -332,7 +414,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
     if (assertStateCannotHaveDiff(islhs, i, buf)) continue;
     assertLhsAndDualLhsDiffNotLegal(islhs, i, buf);
     /* is a state var */
-    if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi)) {
+    if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi, lhsStr)) {
       paramSubThetaEtaToBufw(buf);
       interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
       SET_STRING_ELT(params, pi++, mkChar(_bufw.s));

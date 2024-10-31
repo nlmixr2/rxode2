@@ -56,19 +56,13 @@ static inline int handleFunctionTadEmptyCcode(transFunctions *tf,char *v2) {
 static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2) {
 	sAppend(&sb, "_%s1(", tf->v);
 	sAppend(&sbDt, "_%s1(", tf->v);
-	if (new_de(v2)){
+	if (new_de(v2, 0)){
 		if (!strcmp("depot", v2)){
 			tb.hasDepot = 1;
 			aAppendN("_DEPOT_)", 8);
 		} else if (!strcmp("central", v2)){
 			tb.hasCentral = 1;
 			aAppendN("_CENTRAL_)", 10);
-		} else if (rx_syntax_require_ode_first){
-			updateSyntaxCol();
-			sPrint(&_gbuf,ODEFIRST,v2);
-			trans_syntax_error_report_fn(_gbuf.s);
-			/* Free(v2); */
-			/* Free(tf->v); */
 		} else {
 			tb.statei++;
 			sAppend(&sb, "%d)", tb.de.n);
