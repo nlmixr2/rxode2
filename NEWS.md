@@ -1,3 +1,9 @@
+# rxode2 (development version)
+
+- Add `getRxNpars` to api.  This allows the development version of
+  `babelmixr2` to better check what model is loaded and unload/reload
+  as necessary.
+
 # rxode2 3.0.2
 
 - Bug fix for `api`, the censoring function pointer has been updated
