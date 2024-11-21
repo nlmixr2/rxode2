@@ -15,6 +15,7 @@ rxUdfUiReset <- function() {
   .udfUiEnv$lhs <- NULL
   .udfUiEnv$data <- NULL
   .udfUiEnv$est <- NULL
+  .udfUiEnv$control <- NULL
   .udfUiEnv$parsing <- FALSE
   .udfUiEnv$mv <- NULL
   invisible(NULL)
@@ -132,6 +133,35 @@ rxUdfUiData <- function(value) {
     stop("rxUdfUiData must be called with a data.frame, NULL, or without any arguments",
          call.=FALSE)
   }
+}
+
+#' Return the control that is being processed or setup control for processing
+#'
+#' @param value when specified, this assigns the control to be
+#'   processed, or resets it by assigning it to be `NULL`.
+#'
+#' @return value of the `data.frame` being processed or `NULL`.
+#'
+#' @export
+#' @family User functions
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' rxUdfUiControl()
+#'
+rxUdfUiControl <- function(value) {
+  if (missing(value)) {
+    .udfUiEnv$control
+  } else if (is.list(value)) {
+    .udfUiEnv$control <- value
+  } else if (is.null(value)) {
+    .udfUiEnv$control <- value
+  } else {
+    stop("rxUdfUiControl must be called with a list, NULL, or without any arguments",
+         call.=FALSE)
+  }
+  invisible(.udfUiEnv$control)
+
 }
 #' Return the current estimation method for the UI processing
 #'

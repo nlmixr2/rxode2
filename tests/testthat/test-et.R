@@ -829,3 +829,20 @@ rxTest({
 
   })
 })
+
+test_that("as.character.rxEvid", {
+  expect_equal(
+    as.character.rxEvid(-1:9),
+    c("-1:Invalid", "0:Observation", "1:Dose (Add)", "2:Other", "3:Reset",
+      "4:Reset&Dose", "5:Replace", "6:Multiply", "7:Transit", "8:Invalid",
+      "9:Invalid")
+  )
+  expect_equal(
+    as.character.rxEvid("A"),
+    "A:Invalid"
+  )
+  expect_equal(
+    as.character.rxEvid(0.5),
+    "0.5:Invalid"
+  )
+})
