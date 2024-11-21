@@ -1326,17 +1326,16 @@ c.rxEvid <- function(x, ...) {
   .x <- unclass(x)
   if (is.numeric(.x)) {
     .x <-
-      dplyr::case_match(
-        .x,
-        0 ~ paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
-        1 ~ paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)")),
-        2 ~ paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other")),
-        3 ~ paste0(crayon::blue$bold("3"), ":", crayon::red("Reset")),
-        4 ~ paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
-        5 ~ paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
-        6 ~ paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
-        7 ~ paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
-        .default = paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
+      data.table::fcase(
+        .x == 0, paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
+        .x == 1, paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)")),
+        .x == 2, paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other")),
+        .x == 3, paste0(crayon::blue$bold("3"), ":", crayon::red("Reset")),
+        .x == 4, paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
+        .x == 5, paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
+        .x == 6, paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
+        .x == 7, paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
+        default=paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
       )
   } else {
     .x <- paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
@@ -1376,10 +1375,12 @@ as.character.rxEvid <- function(x, ...) {
   as.rxEvid(NextMethod())
 }
 
+#' @rdname rxEvid
+#' @param value It will be an error to set units for evid
+#' @export
 `units<-.rxEvid` <- function(x, value) {
   stop("'evid' is unitless", call. = FALSE)
 }
-
 
 #' @export
 `[<-.rxEvid` <- function(x, i, value) {
