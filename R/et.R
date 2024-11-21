@@ -1324,48 +1324,46 @@ c.rxEvid <- function(x, ...) {
 }
 .colorFmt.rxEvid <- function(x, ...) {
   .x <- unclass(x)
-  .x <-
-    ifelse(.x == 0, paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
-      ifelse(.x == 1, paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)")),
-        ifelse(.x == 2, paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other")),
-          ifelse(.x == 3, paste0(crayon::blue$bold("3"), ":", crayon::red("Reset")),
-            ifelse(.x == 4, paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
-              ifelse(.x == 5, paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
-                ifelse(.x == 6, paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
-                  ifelse(.x == 7, paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
-                  paste0(crayon::blue$red(.x), ":", crayon::red("Invalid")))
-                )
-              )
-            )
-          )
-        )
+  if (is.numeric(.x)) {
+    .x <-
+      data.table::fcase(
+        .x == 0, paste0(crayon::blue$bold("0"), ":", crayon::white("Observation")),
+        .x == 1, paste0(crayon::blue$bold("1"), ":", crayon::yellow("Dose (Add)")),
+        .x == 2, paste0(crayon::blue$bold("2"), ":", crayon::yellow("Other")),
+        .x == 3, paste0(crayon::blue$bold("3"), ":", crayon::red("Reset")),
+        .x == 4, paste0(crayon::blue$bold("4"), ":", crayon::red("Reset"), "&", crayon::yellow("Dose")),
+        .x == 5, paste0(crayon::blue$bold("5"), ":", crayon::red("Replace")),
+        .x == 6, paste0(crayon::blue$bold("6"), ":", crayon::yellow("Multiply")),
+        .x == 7, paste0(crayon::blue$bold("7"), ":", crayon::yellow("Transit")),
+        default=paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
       )
-    )
-  return(format(.x, justify = "left"))
+  } else {
+    .x <- paste0(crayon::blue$red(.x), ":", crayon::red("Invalid"))
+  }
+  format(.x, justify = "left")
 }
 
 #' @rdname rxEvid
 #' @export
 as.character.rxEvid <- function(x, ...) {
   .x <- unclass(x)
-  .x <-
-    ifelse(.x == 0, "0:Observation",
-      ifelse(.x == 1, "1:Dose (Add)",
-        ifelse(.x == 2, "2:Other",
-          ifelse(.x == 3, "3:Reset",
-            ifelse(.x == 4, "4:Reset&Dose",
-              ifelse(.x == 5, "5:Replace",
-                ifelse(.x == 6, "6:Multiply",
-                  ifelse(.x == 7, "7:Transit",
-                         paste0(.x, ":Invalid"))
-                )
-              )
-            )
-          )
-        )
+  if (is.numeric(.x)) {
+    .x <-
+      data.table::fcase(
+        .x == 0, "0:Observation",
+        .x == 1, "1:Dose (Add)",
+        .x == 2, "2:Other",
+        .x == 3, "3:Reset",
+        .x == 4, "4:Reset&Dose",
+        .x == 5, "5:Replace",
+        .x == 6, "6:Multiply",
+        .x == 7, "7:Transit",
+        default = paste0(.x, ":Invalid")
       )
-    )
-  return(.x)
+  } else {
+    .x <- paste0(.x, ":Invalid")
+  }
+  .x
 }
 
 
