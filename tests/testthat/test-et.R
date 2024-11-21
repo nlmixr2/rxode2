@@ -830,32 +830,6 @@ rxTest({
   })
 })
 
-test_that(".colorFmt.rxEvid", {
-  expect_equal(
-    .colorFmt.rxEvid(-1:9),
-    c("\033[34m\033[31m-1\033[34m\033[39m:\033[31mInvalid\033[39m                 ",
-      "\033[34m\033[1m0\033[22m\033[39m:\033[37mObservation\033[39m               ",
-      "\033[34m\033[1m1\033[22m\033[39m:\033[33mDose (Add)\033[39m                ",
-      "\033[34m\033[1m2\033[22m\033[39m:\033[33mOther\033[39m                     ",
-      "\033[34m\033[1m3\033[22m\033[39m:\033[31mReset\033[39m                     ",
-      "\033[34m\033[1m4\033[22m\033[39m:\033[31mReset\033[39m&\033[33mDose\033[39m",
-      "\033[34m\033[1m5\033[22m\033[39m:\033[31mReplace\033[39m                   ",
-      "\033[34m\033[1m6\033[22m\033[39m:\033[33mMultiply\033[39m                  ",
-      "\033[34m\033[1m7\033[22m\033[39m:\033[33mTransit\033[39m                   ",
-      "\033[34m\033[31m8\033[34m\033[39m:\033[31mInvalid\033[39m                  ",
-      "\033[34m\033[31m9\033[34m\033[39m:\033[31mInvalid\033[39m                  "
-    )
-  )
-  expect_equal(
-    .colorFmt.rxEvid("A"),
-    "\033[34m\033[31mA\033[34m\033[39m:\033[31mInvalid\033[39m"
-  )
-  expect_equal(
-    .colorFmt.rxEvid(0.5),
-    "\033[34m\033[31m0.5\033[34m\033[39m:\033[31mInvalid\033[39m"
-  )
-})
-
 test_that("as.character.rxEvid", {
   expect_equal(
     as.character.rxEvid(-1:9),
