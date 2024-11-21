@@ -52,13 +52,8 @@ if (.Platform$OS.type == "windows") {
   .i <- "I"
 } else {
   .makevars <- file("src/Makevars", "wb")
-  if (file.exists("/etc/os-release")) {
-    .os <- readLines("/etc/os-release")
-    if (any(grepl("Pop!_OS", .os, fixed=TRUE))) {
-      .i <- "isystem"
-    } else {
-      .i <- "I"
-    }
+  if (any(grepl("Pop!_OS", utils::osVersion, fixed=TRUE))) {
+    .i <- "isystem"
   } else {
     .i <- "I"
   }
