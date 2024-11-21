@@ -104,6 +104,7 @@ linMod(x, 3)
 }
 \seealso{
 Other User functions: 
+\code{\link{rxUdfUiControl}()},
 \code{\link{rxUdfUiData}()},
 \code{\link{rxUdfUiEst}()},
 \code{\link{rxUdfUiIniLhs}()},

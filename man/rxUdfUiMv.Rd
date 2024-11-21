@@ -26,6 +26,7 @@ rxUdfUiMv()
 \seealso{
 Other User functions: 
 \code{\link{linMod}()},
+\code{\link{rxUdfUiControl}()},
 \code{\link{rxUdfUiData}()},
 \code{\link{rxUdfUiEst}()},
 \code{\link{rxUdfUiIniLhs}()},
