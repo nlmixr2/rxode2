@@ -323,14 +323,14 @@
 #' Handle the single error for normal or t distributions
 #'
 #' @param env Environment for the parsed model
-#' 
+#'
 #' @param pred1 The `data.frame` of the current error
 #'
 #' @param errNum The number of the error specification in the nlmixr2 model
-#' 
+#'
 #' @param rxPredLlik A boolean indicating if the log likelihood should
 #'   be calculated for non-normal distributions.  By default `TRUE`.
-#' 
+#'
 #' @return A list of the lines added.  The lines will contain
 #'
 #' - `rx_yj_` which is an integer that corresponds to the
@@ -347,7 +347,7 @@
 #' - `rx_pred_` The transformed prediction function
 #'
 #' - `rx_r_` The transformed variance
-#' 
+#'
 #' @author Matthew Fidler
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
@@ -474,7 +474,7 @@
     .first <- vapply(seq(2, length(.c)), function(i) {
       paste0("(DV==",(i-1),")*(",
              deparse1(.c[[i]]),")")
-      
+
     }, character(1), USE.NAMES=FALSE)
     .last <- vapply(seq(2, length(.c)), function(i) {
       paste0("(", deparse1(.c[[i]]), ")")
