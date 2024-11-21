@@ -166,6 +166,7 @@ reference:
   - linMod
   - rxIntToBase
   - rxIntToLetter
+  - rxUdfUiControl
   - rxUdfUiData
   - rxUdfUiEst
   - rxUdfUiIniDf
