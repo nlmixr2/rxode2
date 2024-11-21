@@ -1349,17 +1349,16 @@ as.character.rxEvid <- function(x, ...) {
   .x <- unclass(x)
   if (is.numeric(.x)) {
     .x <-
-      dplyr::case_match(
-        .x,
-        0 ~ "0:Observation",
-        1 ~ "1:Dose (Add)",
-        2 ~ "2:Other",
-        3 ~ "3:Reset",
-        4 ~ "4:Reset&Dose",
-        5 ~ "5:Replace",
-        6 ~ "6:Multiply",
-        7 ~ "7:Transit",
-        .default = paste0(.x, ":Invalid")
+      data.table::fcase(
+        .x == 0, "0:Observation",
+        .x == 1, "1:Dose (Add)",
+        .x == 2, "2:Other",
+        .x == 3, "3:Reset",
+        .x == 4, "4:Reset&Dose",
+        .x == 5, "5:Replace",
+        .x == 6, "6:Multiply",
+        .x == 7, "7:Transit",
+        default = paste0(.x, ":Invalid")
       )
   } else {
     .x <- paste0(.x, ":Invalid")
