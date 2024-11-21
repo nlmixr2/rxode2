@@ -120,6 +120,9 @@ extern "C" {
   // Get the number of observations excluding evid=2
   int getRxNobs2(rx_solve *rx);
 
+  // Get the number of parameters loaded
+  int getRxNpars(rx_solve *rx);
+
   double * getOpIndSolve(rx_solving_options* op, rx_solving_options_ind* ind, int idx);
 
 #if defined(__cplusplus)

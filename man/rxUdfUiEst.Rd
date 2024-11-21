@@ -21,6 +21,17 @@ Return the current estimation method for the UI processing
 rxUdfUiEst()
 
 }
+\seealso{
+Other User functions: 
+\code{\link{linMod}()},
+\code{\link{rxUdfUiControl}()},
+\code{\link{rxUdfUiData}()},
+\code{\link{rxUdfUiIniLhs}()},
+\code{\link{rxUdfUiMv}()},
+\code{\link{rxUdfUiNum}()},
+\code{\link{rxUdfUiParsing}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

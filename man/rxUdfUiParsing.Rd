@@ -15,6 +15,17 @@ Returns if the current ui function is being parsed
 \examples{
 rxUdfUiParsing()
 }
+\seealso{
+Other User functions: 
+\code{\link{linMod}()},
+\code{\link{rxUdfUiControl}()},
+\code{\link{rxUdfUiData}()},
+\code{\link{rxUdfUiEst}()},
+\code{\link{rxUdfUiIniLhs}()},
+\code{\link{rxUdfUiMv}()},
+\code{\link{rxUdfUiNum}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

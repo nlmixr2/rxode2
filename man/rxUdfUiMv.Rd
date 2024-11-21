@@ -23,6 +23,17 @@ variables for processing
 rxUdfUiMv()
 
 }
+\seealso{
+Other User functions: 
+\code{\link{linMod}()},
+\code{\link{rxUdfUiControl}()},
+\code{\link{rxUdfUiData}()},
+\code{\link{rxUdfUiEst}()},
+\code{\link{rxUdfUiIniLhs}()},
+\code{\link{rxUdfUiNum}()},
+\code{\link{rxUdfUiParsing}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

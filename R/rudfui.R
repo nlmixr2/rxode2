@@ -15,6 +15,7 @@ rxUdfUiReset <- function() {
   .udfUiEnv$lhs <- NULL
   .udfUiEnv$data <- NULL
   .udfUiEnv$est <- NULL
+  .udfUiEnv$control <- NULL
   .udfUiEnv$parsing <- FALSE
   .udfUiEnv$mv <- NULL
   invisible(NULL)
@@ -30,12 +31,12 @@ rxUdfUiReset()
 #' UI functions
 #'
 #' @return integer greater than 1L
+#' @family User functions
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
 #'
 #' rxUdfUiNum()
-#'
 rxUdfUiNum <- function() {
   if (checkmate::testIntegerish(.udfUiEnv$num, lower=1L, len=1L, any.missing=FALSE))  {
     as.integer(.udfUiEnv$num)
@@ -64,6 +65,7 @@ rxUdfUiIniDf <- function() {
 #' Return the lhs parsed language expression
 #'
 #' @return lhs language expression or NULL
+#' @family User functions
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -87,6 +89,7 @@ rxUdfUiIniLhs <- function() {
 #'
 #' @return value of the `modelVariables` being processed or `NULL`.
 #'
+#' @family User functions
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -113,6 +116,7 @@ rxUdfUiMv <- function(value) {
 #' @return value of the `data.frame` being processed or `NULL`.
 #'
 #' @export
+#' @family User functions
 #' @author Matthew L. Fidler
 #' @examples
 #'
@@ -130,11 +134,41 @@ rxUdfUiData <- function(value) {
          call.=FALSE)
   }
 }
+
+#' Return the control that is being processed or setup control for processing
+#'
+#' @param value when specified, this assigns the control to be
+#'   processed, or resets it by assigning it to be `NULL`.
+#'
+#' @return value of the `data.frame` being processed or `NULL`.
+#'
+#' @export
+#' @family User functions
+#' @author Matthew L. Fidler
+#' @examples
+#'
+#' rxUdfUiControl()
+#'
+rxUdfUiControl <- function(value) {
+  if (missing(value)) {
+    .udfUiEnv$control
+  } else if (is.list(value)) {
+    .udfUiEnv$control <- value
+  } else if (is.null(value)) {
+    .udfUiEnv$control <- value
+  } else {
+    stop("rxUdfUiControl must be called with a list, NULL, or without any arguments",
+         call.=FALSE)
+  }
+  invisible(.udfUiEnv$control)
+
+}
 #' Return the current estimation method for the UI processing
 #'
 #' @param value when specified, this assigns the character value of
 #'   the estimation method or NULL if there is nothing being estimated
 #' @return value of the estimation method being processed or NULL
+#' @family User functions
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -156,6 +190,7 @@ rxUdfUiEst <- function(value) {
 #' Returns if the current ui function is being parsed
 #'
 #' @return logical if the current ui function is being parsed
+#' @family User functions
 #' @export
 #' @author Matthew L. Fidler
 #' @examples

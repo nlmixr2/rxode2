@@ -55,6 +55,7 @@ reference:
   - rxUiCompress
   - rxUiDecompress
   - rxode2<-
+  - testIniDf
   - testRxLinCmt
   - testRxUnbounded
   - update.rxUi
@@ -160,6 +161,19 @@ reference:
   - rxSymInvChol
   - swapMatListWithCube
   - uppergamma
+- title: User functions
+  contents:
+  - linMod
+  - rxIntToBase
+  - rxIntToLetter
+  - rxUdfUiControl
+  - rxUdfUiData
+  - rxUdfUiEst
+  - rxUdfUiIniDf
+  - rxUdfUiIniLhs
+  - rxUdfUiMv
+  - rxUdfUiNum
+  - rxUdfUiParsing
 - title: Internal Functions
   contents:
   - .cbindOme

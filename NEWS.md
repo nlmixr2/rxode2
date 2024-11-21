@@ -1,5 +1,17 @@
 # rxode2 (development version)
 
+- Add `getRxNpars` to api.  This allows the development version of
+  `babelmixr2` to better check what model is loaded and unload/reload
+  as necessary.
+
+- Add `rxUdfUiControl()` to rxode2 user function to get control
+  information from something like `nlmixr2`
+
+# rxode2 3.0.2
+
+- Bug fix for `api`, the censoring function pointer has been updated
+  (#801).
+
 - Query `rxode2.verbose.pipe` at run time instead of requiring it to
   be set before loading `rxode2`.
 

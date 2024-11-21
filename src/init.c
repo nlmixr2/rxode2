@@ -402,7 +402,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2getIndDv = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndDv, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndYj = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndYj, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndLimit = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndLimit, R_NilValue, R_NilValue)); pro++;
-  SEXP rxode2getIndCens = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndLimit, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getIndCens = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndCens, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getIndIdx = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getIndIdx, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getOpNeq = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getOpNeq, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2setOpNeq =  PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setOpNeq, R_NilValue, R_NilValue)); pro++;
@@ -419,9 +419,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2getRxNobs = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNobs, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getRxNobs2 = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNobs2, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getOpIndSolve = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getOpIndSolve, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getRxNpars = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxNpars,
+                                                      R_NilValue, R_NilValue)); pro++;
 
 
-#define nVec 48
+#define nVec 49
 
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
@@ -472,6 +474,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 45, rxode2getRxNobs);
   SET_VECTOR_ELT(ret, 46, rxode2getRxNobs2);
   SET_VECTOR_ELT(ret, 47, rxode2getOpIndSolve);
+  SET_VECTOR_ELT(ret, 48, rxode2getRxNpars);
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
   SET_STRING_ELT(retN, 0, Rf_mkChar("rxode2rxRmvnSEXP"));
@@ -522,7 +525,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 45, Rf_mkChar("rxode2getRxNobs"));
   SET_STRING_ELT(retN, 46, Rf_mkChar("rxode2getRxNobs2"));
   SET_STRING_ELT(retN, 47, Rf_mkChar("rxode2getOpIndSolve"));
-
+  SET_STRING_ELT(retN, 48, Rf_mkChar("rxode2getRxNpars"));
 #undef nVec
 
   // Set the names attribute of the list

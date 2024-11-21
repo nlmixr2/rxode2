@@ -1,5 +1,5 @@
 Package: rxode2
-Version: 3.0.1.9000
+Version: 3.0.2.9000
 Title: Facilities for Simulating from ODE-Based Models
 Authors@R: c(
    person("Matthew L.","Fidler", role = c("aut", "cre"), email = "matthew.fidler@gmail.com", comment=c(ORCID="0000-0001-8538-6691")),

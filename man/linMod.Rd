@@ -102,6 +102,17 @@ Linear model to replace in rxode2 ui model
 
 linMod(x, 3)
 }
+\seealso{
+Other User functions: 
+\code{\link{rxUdfUiControl}()},
+\code{\link{rxUdfUiData}()},
+\code{\link{rxUdfUiEst}()},
+\code{\link{rxUdfUiIniLhs}()},
+\code{\link{rxUdfUiMv}()},
+\code{\link{rxUdfUiNum}()},
+\code{\link{rxUdfUiParsing}()}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}
