@@ -18,6 +18,90 @@ static inline double _safe_log_(double a, rx_solve *rx) {
     return log(a);
   }
 }
+
+static inline double ReLU(double x) {
+  return (x > 0.0) ? x : 0.0;
+}
+
+static inline double dReLU(double x) {
+  return (x > 0.0) ? 1.0 : 0.0;
+}
+
+//
+static inline double GELU(double x) {
+  return 0.5 * x * (1.0 + erf(x * M_SQRT1_2));
+}
+
+static inline double dGELU(double x) {
+  return 0.5 * (1.0 + erf(x * M_SQRT1_2)) + x * M_1_SQRT_2PI * exp(-0.5 * x * x);
+}
+
+static inline double ELU(double x, double alpha) {
+  return (x > 0.0) ? x : (exp(x) - 1.0) * alpha;
+}
+
+static inline double dELU(double x, double alpha) {
+  return (x > 0.0) ? 1.0 : exp(x)*alpha;
+}
+
+static inline double dELUa(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : (exp(x) - 1.0);
+}
+
+static inline double softplus(double x) {
+  return log(1.0 + exp(x));
+}
+
+static inline double dsoftplus(double x) {
+  return 1.0 / (1.0 + exp(-x));
+}
+
+static inline double SELU(double x) {
+#define alpha 1.6732632423543772848170429916717
+#define scale 1.0507009873554804934193349852946
+  return (x > 0.0) ? scale * x : scale * alpha * (exp(x) - 1.0);
+#undef alpha
+#undef scale
+}
+
+static inline double dSELU(double x) {
+#define alpha 1.6732632423543772848170429916717
+#define scale 1.0507009873554804934193349852946
+  return (x > 0.0) ? scale : scale * alpha * exp(x);
+#undef alpha
+#undef scale
+}
+
+static inline double lReLU(double x) {
+  return (x > 0.0) ? x : 0.01 * x;
+}
+
+static inline double dlReLU(double x) {
+  return (x > 0.0) ? 1.0 : 0.01;
+}
+
+static inline double PReLU(double x, double alpha) {
+  return (x >= 0.0) ? x : alpha * x;
+}
+
+static inline double dPReLU(double x, double alpha) {
+  return (x >= 0.0) ? 1.0 : alpha;
+}
+
+static inline double dPReLUa(double x, double alpha) {
+  return (x >= 0.0) ? 0.0 : x;
+}
+
+static inline double Swish(double x) {
+  return x / (1.0 + exp(-x));
+}
+
+static inline double dSwish(double x) {
+  double ex = exp(x);
+  double den = 1.0 + ex;
+  return ex / (den * den) + x * ex / (den * den);
+}
+
 #define _safe_log(a) _safe_log_(a, _solveData)
 static inline double _div0_(double denom, rx_solve *rx) {
   if (rx->safeZero) {
