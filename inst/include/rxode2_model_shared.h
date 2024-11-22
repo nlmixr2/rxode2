@@ -36,16 +36,44 @@ static inline double dGELU(double x) {
   return 0.5 * (1.0 + erf(x * M_SQRT1_2)) + x * M_1_SQRT_2PI * exp(-0.5 * x * x);
 }
 
+static inline double d2GELU(double x) {
+  return (2.0- x*x) * exp(-0.5* x * x)*M_1_SQRT_2PI;
+}
+
+static inline double d3GELU(double x) {
+  return x * exp(-0.5 * x * x) * M_1_SQRT_2PI * (x * x - 4.0);
+}
+
+static inline double d4GELU(double x) {
+  return exp(-0.5*x*x)*M_1_SQRT_2PI*(7.0*x*x - 4.0 - x*x*x*x);
+}
+
 static inline double ELU(double x, double alpha) {
   return (x > 0.0) ? x : (exp(x) - 1.0) * alpha;
 }
 
+// derivative of ELU with respect to x
 static inline double dELU(double x, double alpha) {
   return (x > 0.0) ? 1.0 : exp(x)*alpha;
 }
 
+// derivative of dELU with respect to x
+static inline double d2ELU(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : exp(x)*alpha;
+}
+
+// derivative of dELU with respect to alpha
+static inline double d2aELU(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : exp(x);
+}
+
+// derivative of ELU with respect to alpha
 static inline double dELUa(double x, double alpha) {
   return (x > 0.0) ? 0.0 : (exp(x) - 1.0);
+}
+// derivative of dELAa with respect to x
+static inline double d2ELUa(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : exp(x);
 }
 
 static inline double softplus(double x) {
@@ -54,6 +82,25 @@ static inline double softplus(double x) {
 
 static inline double dsoftplus(double x) {
   return 1.0 / (1.0 + exp(-x));
+}
+
+static inline double d2softplus(double x) {
+  double ex = exp(x);
+  return ex / ((1.0 + ex) * (1.0 + ex));
+}
+
+static inline double d3softplus(double x) {
+  double ex = exp(-x);
+  double ex1 = (1.0 + ex);
+  return 2.0*exp(-2.0*x)/(ex1*ex1*ex1) - 1.0*ex/(ex1*ex1);
+}
+
+static inline double d4softplus(double x) {
+  double ex = exp(-x);
+  double ex1 = (1.0 + ex);
+  return 6.0*exp(-3.0*x)/(ex1*ex1*ex1*ex1) -
+    6.0*exp(-2.0*x)/(ex1*ex1*ex1) +
+    1.0*ex/(ex1*ex1);
 }
 
 static inline double SELU(double x) {
@@ -90,6 +137,10 @@ static inline double dPReLU(double x, double alpha) {
 
 static inline double dPReLUa(double x, double alpha) {
   return (x >= 0.0) ? 0.0 : x;
+}
+
+static inline double dPReLUa1(double x, double alpha) {
+  return (x >= 0.0) ? 0.0 : 1.0;
 }
 
 static inline double Swish(double x) {

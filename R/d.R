@@ -624,24 +624,185 @@
   }
 )
 
+.rxD$ReLU <- list(
+  function(x) {
+    paste0("dReLU(", x, ")")
+  }
+)
+
+.rxD$dReLU <- list(
+  function(x) {
+    paste0("0")
+  }
+)
+
+.rxD$GELU <- list(
+  function(x) {
+    paste0("dGELU(", x, ")")
+  }
+)
+
+.rxD$dGELU <- list(
+  function(x) {
+    paste0("d2GELU(", x, ")")
+  }
+)
+
+.rxD$d2GELU <- list(
+  function(x) {
+    paste0("d3GELU(", x, ")")
+  }
+)
+
+.rxD$d3GELU <- list(
+  function(x) {
+    paste0("d4GELU(", x, ")")
+  }
+)
+
+.rxD$ELU <- list(
+  function(x, alpha) {
+    paste0("dELU(", x, ", ", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("dELUa(", x, ", ", alpha, ")")
+  })
+
+.rxD$dELU <- list(
+  function(x, alpha) {
+    paste0("d2ELU(", x, ", ", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("d2aELU(", x, ", ", alpha, ")")
+  })
+
+.rxD$dELUa <- list(
+  function(x, alpha) {
+    paste0("d2ELUa(", x, ", ", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("0")
+  }
+)
+.rxD$d2ELUa <- list(
+  function(x, alpha) {
+    paste0("d2ELUa(", x, ", ", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("0")
+  }
+)
+
+.rxD$d2ELU <- list(
+  function(x, alpha) {
+    paste0("d2ELU(", x, ", ", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("d2aELU(", x, ", ", alpha, ")")
+  })
+
+.rxD$d2aELU <- list(
+  function(x, alpha) {
+    paste0("d2aELU(", x, ", ", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("0")
+  })
+
+.rxD$softplus <- list(
+  function(x) {
+    paste0("dsoftplus(", x, ")")
+  })
+
+.rxD$dsoftplus <- list(
+  function(x) {
+    paste0("d2softplus(", x, ")")
+  })
+
+.rxD$d2softplus <- list(
+  function(x) {
+    paste0("d3softplus(", x, ")")
+  })
+
+.rxD$d3softplus <- list(
+  function(x) {
+    paste0("d4softplus(", x, ")")
+  })
+
+.rxD$SELU <- list(
+  function(x) {
+    paste0("dSELU(", x, ")")
+  })
+
+
+.rxD$lReLU <- list(
+  function(x) {
+    paste0("dlReLU(", x, ")")
+  }
+)
+
+.rxD$dlReLU <- list(
+  function(x) {
+    paste0("0")
+  }
+)
+
+.rxD$PReLU <- list(
+  function(x, alpha) {
+    paste0("dPReLU(", x, ",", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("dPReLUa(", x, ",", alpha, ")")
+  })
+
+.rxD$dPReLU <- list(
+  function(x, alpha) {
+    paste0("0")
+  },
+  function(x, alpha) {
+    paste0("dPReLUa1(", x, ",", alpha, ")")
+  })
+
+.rxD$dPReLUa <- list(
+  function(x, alpha) {
+    paste0("dPReLUa1(", x, ",", alpha, ")")
+  },
+  function(x, alpha) {
+    paste0("0")
+  })
+
+.rxD$dPReLUa1 <- list(
+  function(x, alpha) {
+    paste0("0")
+  },
+  function(x, alpha) {
+    paste0("0")
+  }
+)
+
+.rxD$Swish <- list(
+  function(x) {
+    paste0("dSwish(", x, ")")
+  }
+)
 
 #' This gives the derivative table for rxode2
 #'
-#' This will help allow registration of functions in `rxode2` 
-#' 
+#' This will help allow registration of functions in `rxode2`
+#'
 #' @return Derivative table environment for rxode2
 #' @details
-#' 
+#'
 #' This environment is a derivative table;
-#' 
+#'
 #' For example:
-#' 
+#'
 #' Derivative(f(a,b,c), a) = fa()
 #' Derivative(f(a,b,c), b) = fb()
 #' Derivative(f(a,b,c), c) = fc()
-#' 
+#'
 #' Then the derivative table for `f` would be:
-#' 
+#'
 #' assign("f", list(fa(a,b,c), fb(a,b,c), fc(a,b,c)), rxode2parseD())
 #'
 #'  fa translates the arguments to the derivative with respect to a

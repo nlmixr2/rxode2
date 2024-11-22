@@ -259,6 +259,57 @@ rxTest({
     )
   })
 
+  test_that("NN Activation functions derivatives", {
+
+    expect_equal(rxFromSE("Derivative(ReLU(x), x)"), "dReLU(x)")
+    expect_equal(rxFromSE("Derivative(dReLU(x), x)"), "0")
+
+    expect_equal(rxFromSE("Derivative(GELU(x), x)"), "dGELU(x)")
+    expect_equal(rxFromSE("Derivative(dGELU(x), x)"), "d2GELU(x)")
+    expect_equal(rxFromSE("Derivative(d2GELU(x), x)"), "d3GELU(x)")
+    expect_equal(rxFromSE("Derivative(d3GELU(x), x)"), "d4GELU(x)")
+
+    expect_equal(rxFromSE("Derivative(ELU(x, alpha), x)"), "dELU(x, alpha)")
+    expect_equal(rxFromSE("Derivative(ELU(x, alpha), alpha)"), "dELUa(x, alpha)")
+
+    expect_equal(rxFromSE("Derivative(dELU(x, alpha), x)"), "d2ELU(x, alpha)")
+    expect_equal(rxFromSE("Derivative(dELU(x, alpha), alpha)"), "d2aELU(x, alpha)")
+
+    expect_equal(rxFromSE("Derivative(dELUa(x, alpha), x)"), "d2ELUa(x, alpha)")
+    expect_equal(rxFromSE("Derivative(dELUa(x, alpha), alpha)"), "0")
+
+    expect_equal(rxFromSE("Derivative(d2ELUa(x, alpha), x)"), "d2ELUa(x, alpha)")
+    expect_equal(rxFromSE("Derivative(d2ELUa(x, alpha), alpha)"), "0")
+
+    expect_equal(rxFromSE("Derivative(d2aELU(x, alpha), x)"), "d2aELU(x, alpha)")
+    expect_equal(rxFromSE("Derivative(d2aELU(x, alpha), alpha)"), "0")
+
+    expect_equal(rxFromSE("Derivative(softplus(x), x)"),   "dsoftplus(x)")
+    expect_equal(rxFromSE("Derivative(dsoftplus(x), x)"),  "d2softplus(x)")
+    expect_equal(rxFromSE("Derivative(d2softplus(x), x)"), "d3softplus(x)")
+    expect_equal(rxFromSE("Derivative(d3softplus(x), x)"), "d4softplus(x)")
+
+    expect_equal(rxFromSE("Derivative(SELU(x), x)"), "dSELU(x)")
+
+    expect_equal(rxFromSE("Derivative(lReLU(x), x)"), "dlReLU(x)")
+    expect_equal(rxFromSE("Derivative(dlReLU(x), x)"), "0")
+
+    expect_equal(rxFromSE("Derivative(PReLU(x, alpha), x)"), "dPReLU(x,alpha)")
+    expect_equal(rxFromSE("Derivative(PReLU(x, alpha), alpha)"), "dPReLUa(x,alpha)")
+
+    expect_equal(rxFromSE("Derivative(dPReLU(x, alpha), x)"), "0")
+    expect_equal(rxFromSE("Derivative(dPReLU(x, alpha), alpha)"), "dPReLUa1(x,alpha)")
+
+    expect_equal(rxFromSE("Derivative(dPReLUa(x, alpha), x)"), "dPReLUa1(x,alpha)")
+    expect_equal(rxFromSE("Derivative(dPReLUa(x, alpha), alpha)"), "0")
+
+    expect_equal(rxFromSE("Derivative(dPReLUa1(x, alpha), x)"), "0")
+    expect_equal(rxFromSE("Derivative(dPReLUa1(x, alpha), alpha)"), "0")
+
+    expect_equal(rxFromSE("Derivative(Swish(x), x)"), "dSwish(x)")
+
+  })
+
   test_that("logic tests", {
     expect_equal(rxFromSE("rxEq(a,b)"), "(a==b)")
     expect_equal(rxFromSE("rxNeq(a,b)"), "(a!=b)")
