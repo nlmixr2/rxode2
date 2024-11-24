@@ -1197,6 +1197,23 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
+.rxToSEd4GELU <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (length(x) == 2) {
+    if (isEnv) {
+      .lastCall <- envir$..curCall
+      envir$..curCall <- c(envir$..curCall, "erf")
+    }
+    .x <- .rxToSE(x[[2]], envir = envir)
+    if (isEnv) envir$..curCall <- .lastCall
+    return(
+      paste0("exp(-(", .x, ")^2/2)*(7*(", .x, ")^2 - 4 - (", .x, ")^4)/sqrt(2*pi)")
+    )
+  } else {
+    stop("'d4GELU' can only take 1 argument", call. = FALSE)
+  }
+
+}
+
 .rxToSETransit <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (length(x) == 4) {
     ## transit(n, mtt, bio)
@@ -1255,6 +1272,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   if (length(.xrest) == 0) return(.ret)
   return(.rxToSEMax(c(.ret, .xrest), min=min))
 }
+
 
 .rxToSECall <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (identical(x[[1]], quote(`(`))) {
@@ -1315,6 +1333,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     if (length(x) != 2) stop("abs only takes 1 argument", call.=FALSE)
     .r <- .rxToSE(x[[2]], envir = envir)
     return(paste0("(2.0*(", .r, ")*rxGt(", .r, ",0.0)-(", .r, "))"))
+  } else if (identical(x[[1]], quote(`d4GELU`))) {
+    return(.rxToSEd4GELU(x, envir = envir, progress = progress, isEnv=isEnv))
   } else {
     if (length(x[[1]]) == 1) {
       .x1 <- as.character(x[[1]])

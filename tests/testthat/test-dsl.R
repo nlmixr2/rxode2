@@ -269,6 +269,8 @@ rxTest({
     expect_equal(rxFromSE("Derivative(d2GELU(x), x)"), "d3GELU(x)")
     expect_equal(rxFromSE("Derivative(d3GELU(x), x)"), "d4GELU(x)")
 
+    expect_equal(rxToSE("d4GELU(x)"), "exp(-(x)^2/2)*(7*(x)^2 - 4 - (x)^4)/sqrt(2*pi)")
+
     expect_equal(rxFromSE("Derivative(ELU(x, alpha), x)"), "dELU(x, alpha)")
     expect_equal(rxFromSE("Derivative(ELU(x, alpha), alpha)"), "dELUa(x, alpha)")
 
