@@ -725,9 +725,9 @@ double Swish(double x) {
 }
 
 double dSwish(double x) {
-  double ex = exp(x);
-  double den = 1.0 + ex;
-  return ex / (den * den) + x * ex / (den * den);
+  double ex = exp(-x);
+  double den = (1.0 + ex);
+  return x*ex/(den*den) + 1.0/den;
 }
 
 SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {

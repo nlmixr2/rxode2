@@ -718,7 +718,6 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   }
 }
 
-
 .rxToSECurlyBrace <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   .x2 <- x[-1]
   if (progress) {
@@ -1249,6 +1248,25 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 
 }
 
+.rxToSEdSwish <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (length(x) == 2) {
+    if (isEnv) {
+      .lastCall <- envir$..curCall
+      envir$..curCall <- c(envir$..curCall, "dSwish")
+    }
+    .x <- .rxToSE(x[[2]], envir = envir)
+    if (isEnv) envir$..curCall <- .lastCall
+    # x*exp(-x)/(1.0 + exp(-x))^2 + (1.0 + exp(-x))^(-1);
+    return(
+      paste0("((", .x, ")*exp(-(", .x, "))/(1.0 + exp(-(", .x,
+             ")))^2 + 1.0/(1.0 + exp(-(", .x, ")))")
+      )
+  } else {
+    stop("'dSwish' can only take 1 argument", call. = FALSE)
+  }
+
+}
+
 .rxToSETransit <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (length(x) == 4) {
     ## transit(n, mtt, bio)
@@ -1374,6 +1392,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEd4softplus(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`dSELU`))) {
     .rxToSEdSELU(x, envir=envir, progress=progress, isEnv=isEnv)
+  } else if (identical(x[[1]], quote(`dSwish`))) {
+    .rxToSEdSwish(x, envir=envir, progress=progress, isEnv=isEnv)
   } else {
     if (length(x[[1]]) == 1) {
       .x1 <- as.character(x[[1]])

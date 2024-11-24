@@ -316,6 +316,9 @@ rxTest({
 
     expect_equal(rxFromSE("Derivative(Swish(x), x)"), "dSwish(x)")
 
+    expect_equal(rxToSE("dSwish(x)"),
+                 "((x)*exp(-(x))/(1.0 + exp(-(x)))^2 + 1.0/(1.0 + exp(-(x)))")
+
   })
 
   test_that("logic tests", {
