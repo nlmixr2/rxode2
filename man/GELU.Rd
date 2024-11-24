@@ -28,11 +28,13 @@ rxSolve(r, et)
 \seealso{
 Other Activation Functions: 
 \code{\link{ELU}()},
+\code{\link{PReLU}()},
 \code{\link{ReLU}()},
 \code{\link{SELU}()},
 \code{\link{Swish}()},
 \code{\link{dELU}()},
 \code{\link{dGELU}()},
+\code{\link{dPReLU}()},
 \code{\link{dReLU}()},
 \code{\link{dSELU}()},
 \code{\link{dSwish}()},

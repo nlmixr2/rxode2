@@ -24,7 +24,7 @@ ELU <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
   .df <- data.frame(x=x, alpha=alpha)
-  .Call(`_rxode2_activationF`, .df$x, .df$alpha, 1L)
+  .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 1L)
 }
 #' Derivatives of the Exponential Linear Unit (ELU) Activation Function
 #'
@@ -60,7 +60,7 @@ dELU <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
   .df <- data.frame(x=x, alpha=alpha)
-  .Call(`_rxode2_activationF`, .df$x, .df$alpha, 2L)
+  .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 2L)
 }
 
 #' @rdname dELU
@@ -69,7 +69,7 @@ d2ELU <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
   .df <- data.frame(x=x, alpha=alpha)
-  .Call(`_rxode2_activationF`, .df$x, .df$alpha, 3L)
+  .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 3L)
 }
 
 #' @rdname dELU
@@ -78,7 +78,7 @@ d2aELU <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
   .df <- data.frame(x=x, alpha=alpha)
-  .Call(`_rxode2_activationF`, .df$x, .df$alpha, 4L)
+  .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 4L)
 }
 
 #' @rdname dELU
@@ -87,7 +87,7 @@ dELUa <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
   .df <- data.frame(x=x, alpha=alpha)
-  .Call(`_rxode2_activationF`, .df$x, .df$alpha, 5L)
+  .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 5L)
 }
 
 #' @rdname dELU
@@ -96,5 +96,5 @@ d2ELUa <- function(x, alpha=1) {
   checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
   checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
   .df <- data.frame(x=x, alpha=alpha)
-  .Call(`_rxode2_activationF`, .df$x, .df$alpha, 6L)
+  .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 6L)
 }
