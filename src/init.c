@@ -112,6 +112,35 @@ SEXP _gammaqInva(SEXP, SEXP);
 
 double expit(double, double, double);
 double logit(double, double, double);
+double ReLU(double x);
+double dReLU(double x);
+double GELU(double x);
+double dGELU(double x);
+double d2GELU(double x);
+double d3GELU(double x);
+double d4GELU(double x);
+double ELU(double x, double alpha);
+double dELU(double x, double alpha);
+double d2ELU(double x, double alpha);
+double d2aELU(double x, double alpha);
+double dELUa(double x, double alpha);
+double d2ELUa(double x, double alpha);
+double softplus(double x);
+double dsoftplus(double x);
+double d2softplus(double x);
+double d3softplus(double x);
+double d4softplus(double x);
+double SELU(double x);
+double dSELU(double x);
+double lReLU(double x);
+double dlReLU(double x);
+double PReLU(double x, double alpha);
+double dPReLU(double x, double alpha);
+double dPReLUa(double x, double alpha);
+double dPReLUa1(double x, double alpha);
+double Swish(double x);
+double dSwish(double x);
+
 SEXP _linCmtParse(SEXP vars, SEXP inStr, SEXP verbose);
 SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 
@@ -540,8 +569,10 @@ SEXP _rxode2_rxode2Ptr(void) {
 
 SEXP _rxode2_powerD(SEXP, SEXP, SEXP, SEXP, SEXP,
                     SEXP);
+SEXP _rxode2_activationF(SEXP xS, SEXP typeS);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_activationF", (DL_FUNC) &_rxode2_activationF, 2},
     {"_rxode2_itoletter", (DL_FUNC) &_rxode2_itoletter, 2},
     {"_rxode2_itostr", (DL_FUNC) &_rxode2_itostr, 2},
     {"_rxode2_powerD", (DL_FUNC) &_rxode2_powerD, 6},
@@ -716,7 +747,34 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "getSilentErr", (DL_FUNC) &getSilentErr);
   R_RegisterCCallable("rxode2", "logit", (DL_FUNC) &logit);
   R_RegisterCCallable("rxode2", "expit", (DL_FUNC) &expit);
-
+  R_RegisterCCallable("rxode2", "ReLU", (DL_FUNC) &ReLU);
+  R_RegisterCCallable("rxode2", "dReLU", (DL_FUNC) &dReLU);
+  R_RegisterCCallable("rxode2", "GELU", (DL_FUNC) &GELU);
+  R_RegisterCCallable("rxode2", "dGELU", (DL_FUNC) &dGELU);
+  R_RegisterCCallable("rxode2", "d2GELU", (DL_FUNC) &d2GELU);
+  R_RegisterCCallable("rxode2", "d3GELU", (DL_FUNC) &d3GELU);
+  R_RegisterCCallable("rxode2", "d4GELU", (DL_FUNC) &d4GELU);
+  R_RegisterCCallable("rxode2", "ELU", (DL_FUNC) &ELU);
+  R_RegisterCCallable("rxode2", "dELU", (DL_FUNC) &dELU);
+  R_RegisterCCallable("rxode2", "d2ELU", (DL_FUNC) &d2ELU);
+  R_RegisterCCallable("rxode2", "d2aELU", (DL_FUNC) &d2aELU);
+  R_RegisterCCallable("rxode2", "dELUa", (DL_FUNC) &dELUa);
+  R_RegisterCCallable("rxode2", "d2ELUa", (DL_FUNC) &d2ELUa);
+  R_RegisterCCallable("rxode2", "softplus", (DL_FUNC) &softplus);
+  R_RegisterCCallable("rxode2", "dsoftplus", (DL_FUNC) &dsoftplus);
+  R_RegisterCCallable("rxode2", "d2softplus", (DL_FUNC) &d2softplus);
+  R_RegisterCCallable("rxode2", "d3softplus", (DL_FUNC) &d3softplus);
+  R_RegisterCCallable("rxode2", "d4softplus", (DL_FUNC) &d4softplus);
+  R_RegisterCCallable("rxode2", "SELU", (DL_FUNC) &SELU);
+  R_RegisterCCallable("rxode2", "dSELU", (DL_FUNC) &dSELU);
+  R_RegisterCCallable("rxode2", "lReLU", (DL_FUNC) &lReLU);
+  R_RegisterCCallable("rxode2", "dlReLU", (DL_FUNC) &dlReLU);
+  R_RegisterCCallable("rxode2", "PReLU", (DL_FUNC) &PReLU);
+  R_RegisterCCallable("rxode2", "dPReLU", (DL_FUNC) &dPReLU);
+  R_RegisterCCallable("rxode2", "dPReLUa", (DL_FUNC) &dPReLUa);
+  R_RegisterCCallable("rxode2", "dPReLUa1", (DL_FUNC) &dPReLUa1);
+  R_RegisterCCallable("rxode2", "Swish", (DL_FUNC) &Swish);
+  R_RegisterCCallable("rxode2", "dSwish", (DL_FUNC) &dSwish);
   R_RegisterCCallable("rxode2", "powerDi", (DL_FUNC) &powerDi);
   R_RegisterCCallable("rxode2", "powerD", (DL_FUNC) &powerD);
   R_RegisterCCallable("rxode2", "powerDD", (DL_FUNC) &powerDD);
