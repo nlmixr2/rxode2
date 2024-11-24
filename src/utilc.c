@@ -677,7 +677,7 @@ double d4softplus(double x) {
   double ex1 = (1.0 + ex);
   return 6.0*exp(-3.0*x)/(ex1*ex1*ex1*ex1) -
     6.0*exp(-2.0*x)/(ex1*ex1*ex1) +
-    1.0*ex/(ex1*ex1);
+    ex/(ex1*ex1);
 }
 
 double SELU(double x) {
@@ -773,6 +773,18 @@ SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
       break;
     case 12:
       REAL(ret)[i] = d4GELU(x);
+      break;
+    case 13:
+      REAL(ret)[i] = dsoftplus(x);
+      break;
+    case 14:
+      REAL(ret)[i] = d2softplus(x);
+      break;
+    case 15:
+      REAL(ret)[i] = d3softplus(x);
+      break;
+    case 16:
+      REAL(ret)[i] = d4softplus(x);
       break;
     default:
       REAL(ret)[i] = x;

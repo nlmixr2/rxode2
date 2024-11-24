@@ -45,6 +45,8 @@ Other Activation Functions:
 \code{\link{ReLU}()},
 \code{\link{dReLU}()},
 \code{\link{dlReLU}()},
-\code{\link{lReLU}()}
+\code{\link{dsoftplus}()},
+\code{\link{lReLU}()},
+\code{\link{softplus}()}
 }
 \concept{Activation Functions}

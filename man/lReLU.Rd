@@ -31,6 +31,8 @@ Other Activation Functions:
 \code{\link{ReLU}()},
 \code{\link{dGELU}()},
 \code{\link{dReLU}()},
-\code{\link{dlReLU}()}
+\code{\link{dlReLU}()},
+\code{\link{dsoftplus}()},
+\code{\link{softplus}()}
 }
 \concept{Activation Functions}

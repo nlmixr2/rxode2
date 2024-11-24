@@ -291,6 +291,9 @@ rxTest({
     expect_equal(rxFromSE("Derivative(d2softplus(x), x)"), "d3softplus(x)")
     expect_equal(rxFromSE("Derivative(d3softplus(x), x)"), "d4softplus(x)")
 
+    expect_equal(rxToSE("d4softplus(x)"),
+                 "6.0*exp(-3.0*(x))/(((1.0 + exp(-(x))))^4) - 6.0*exp(-2.0*(x))/(((1.0 + exp(-(x))))^3) + exp(-(x))/(((1.0 + exp(-(x))))^2)")
+
     expect_equal(rxFromSE("Derivative(SELU(x), x)"), "dSELU(x)")
 
     expect_equal(rxFromSE("Derivative(lReLU(x), x)"), "dlReLU(x)")
