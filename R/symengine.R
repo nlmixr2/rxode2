@@ -1228,8 +1228,25 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
              ")^3) + exp(-(", .x, "))/((", .ex1, ")^2)")
     )
   } else {
-    stop("'d4GELU' can only take 1 argument", call. = FALSE)
+    stop("'d4softplus' can only take 1 argument", call. = FALSE)
   }
+}
+
+.rxToSEdSELU <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (length(x) == 2) {
+    if (isEnv) {
+      .lastCall <- envir$..curCall
+      envir$..curCall <- c(envir$..curCall, "dSELU")
+    }
+    .x <- .rxToSE(x[[2]], envir = envir)
+    if (isEnv) envir$..curCall <- .lastCall
+    return(
+      paste0("(rxGt(", .x, ", 0)*1.0507009873554804934193349852946 + 1.0507009873554804934193349852946*1.6732632423543772848170429916717*exp(", .x, ")*rxLeq(", .x, ", 0))")
+    )
+  } else {
+    stop("'dSELU' can only take 1 argument", call. = FALSE)
+  }
+
 }
 
 .rxToSETransit <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
@@ -1355,6 +1372,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     return(.rxToSEd4GELU(x, envir = envir, progress = progress, isEnv=isEnv))
   } else if (identical(x[[1]], quote(`d4softplus`))) {
     return(.rxToSEd4softplus(x, envir = envir, progress = progress, isEnv=isEnv))
+  } else if (identical(x[[1]], quote(`dSELU`))) {
+    .rxToSEdSELU(x, envir=envir, progress=progress, isEnv=isEnv)
   } else {
     if (length(x[[1]]) == 1) {
       .x1 <- as.character(x[[1]])

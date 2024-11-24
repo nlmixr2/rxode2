@@ -296,6 +296,9 @@ rxTest({
 
     expect_equal(rxFromSE("Derivative(SELU(x), x)"), "dSELU(x)")
 
+    expect_equal(rxToSE("dSELU(x)"),
+                 "(rxGt(x, 0)*1.0507009873554804934193349852946 + 1.0507009873554804934193349852946*1.6732632423543772848170429916717*exp(x)*rxLeq(x, 0))")
+
     expect_equal(rxFromSE("Derivative(lReLU(x), x)"), "dlReLU(x)")
     expect_equal(rxFromSE("Derivative(dlReLU(x), x)"), "0")
 

@@ -43,7 +43,9 @@ rxSolve(r, et)
 Other Activation Functions: 
 \code{\link{GELU}()},
 \code{\link{ReLU}()},
+\code{\link{SELU}()},
 \code{\link{dReLU}()},
+\code{\link{dSELU}()},
 \code{\link{dlReLU}()},
 \code{\link{dsoftplus}()},
 \code{\link{lReLU}()},
