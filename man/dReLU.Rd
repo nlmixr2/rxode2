@@ -32,6 +32,10 @@ rxSolve(x, e)
 }
 \seealso{
 Other Activation Functions: 
-\code{\link{ReLU}()}
+\code{\link{GELU}()},
+\code{\link{ReLU}()},
+\code{\link{dGELU}()},
+\code{\link{dlReLU}()},
+\code{\link{lReLU}()}
 }
 \concept{Activation Functions}

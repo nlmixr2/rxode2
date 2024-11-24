@@ -697,11 +697,11 @@ double dSELU(double x) {
 }
 
 double lReLU(double x) {
-  return (x > 0.0) ? x : 0.01 * x;
+  return (x >= 0.0) ? x : 0.01 * x;
 }
 
 double dlReLU(double x) {
-  return (x > 0.0) ? 1.0 : 0.01;
+  return (x >= 0.0) ? 1.0 : 0.01;
 }
 
 double PReLU(double x, double alpha) {
@@ -758,6 +758,21 @@ SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
       break;
     case 7:
       REAL(ret)[i] = dReLU(x);
+      break;
+    case 8:
+      REAL(ret)[i] = dlReLU(x);
+      break;
+    case 9:
+      REAL(ret)[i] = dGELU(x);
+      break;
+    case 10:
+      REAL(ret)[i] = d2GELU(x);
+      break;
+    case 11:
+      REAL(ret)[i] = d3GELU(x);
+      break;
+    case 12:
+      REAL(ret)[i] = d4GELU(x);
       break;
     default:
       REAL(ret)[i] = x;
