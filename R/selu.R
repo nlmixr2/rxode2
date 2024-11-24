@@ -1,9 +1,5 @@
 #' Scaled Exponential Linear Unit (SELU) Activation Function
 #'
-#' The Scaled Exponential Linear Unit (SELU) activation function is a
-#' piecewise linear function that allows for negative values to be
-#' passed through the network.
-#'
 #' @family Activation Functions
 #' @param x A numeric vector. All elements must be finite and
 #'   non-missing.

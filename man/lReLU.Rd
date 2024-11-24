@@ -27,10 +27,12 @@ rxSolve(r, e)
 }
 \seealso{
 Other Activation Functions: 
+\code{\link{ELU}()},
 \code{\link{GELU}()},
 \code{\link{ReLU}()},
 \code{\link{SELU}()},
 \code{\link{Swish}()},
+\code{\link{dELU}()},
 \code{\link{dGELU}()},
 \code{\link{dReLU}()},
 \code{\link{dSELU}()},

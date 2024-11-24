@@ -15,9 +15,7 @@ A numeric vector where the ReLU function has been applied
 to each element of \code{x}.
 }
 \description{
-The Scaled Exponential Linear Unit (SELU) activation function is a
-piecewise linear function that allows for negative values to be
-passed through the network.
+Scaled Exponential Linear Unit (SELU) Activation Function
 }
 \examples{
 
@@ -35,9 +33,11 @@ rxSolve(x, e)
 }
 \seealso{
 Other Activation Functions: 
+\code{\link{ELU}()},
 \code{\link{GELU}()},
 \code{\link{ReLU}()},
 \code{\link{Swish}()},
+\code{\link{dELU}()},
 \code{\link{dGELU}()},
 \code{\link{dReLU}()},
 \code{\link{dSELU}()},

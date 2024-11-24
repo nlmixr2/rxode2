@@ -570,8 +570,10 @@ SEXP _rxode2_rxode2Ptr(void) {
 SEXP _rxode2_powerD(SEXP, SEXP, SEXP, SEXP, SEXP,
                     SEXP);
 SEXP _rxode2_activationF(SEXP xS, SEXP typeS);
+SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_activationF2", (DL_FUNC) &_rxode2_activationF2, 3},
     {"_rxode2_activationF", (DL_FUNC) &_rxode2_activationF, 2},
     {"_rxode2_itoletter", (DL_FUNC) &_rxode2_itoletter, 2},
     {"_rxode2_itostr", (DL_FUNC) &_rxode2_itostr, 2},

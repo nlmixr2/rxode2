@@ -730,6 +730,55 @@ double dSwish(double x) {
   return x*ex/(den*den) + 1.0/den;
 }
 
+SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS) {
+  int type = INTEGER(typeS)[0];
+  int typex = TYPEOF(xS);
+  int typea = TYPEOF(aS);
+  int lenx = Rf_length(xS);
+  SEXP ret = PROTECT(Rf_allocVector(REALSXP, lenx));
+  for (int i = 0; i < lenx; ++i) {
+    double x = (typex == REALSXP) ? REAL(xS)[i] : (double)INTEGER(xS)[i];
+    double a = (typea == REALSXP) ? REAL(aS)[i] : (double)INTEGER(aS)[i];
+    switch (type) {
+    case 1:
+      REAL(ret)[i] = ELU(x, a);
+      break;
+    case 2:
+      REAL(ret)[i] = dELU(x, a);
+      break;
+    case 3:
+      REAL(ret)[i] = d2ELU(x, a);
+      break;
+    case 4:
+      REAL(ret)[i] = d2aELU(x, a);
+      break;
+    case 5:
+      REAL(ret)[i] = dELUa(x, a);
+      break;
+    case 6:
+      REAL(ret)[i] = d2ELUa(x, a);
+      break;
+    case 7:
+      REAL(ret)[i] = PReLU(x, a);
+      break;
+    case 8:
+      REAL(ret)[i] = dPReLU(x, a);
+      break;
+    case 9:
+      REAL(ret)[i] = dPReLUa(x, a);
+      break;
+    case 10:
+      REAL(ret)[i] = dPReLUa1(x, a);
+      break;
+    default:
+      REAL(ret)[i] = NA_REAL;
+      break;
+    }
+  }
+  UNPROTECT(1);
+  return(ret);
+}
+
 SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
   int type = INTEGER(typeS)[0];
   int typex = TYPEOF(xS);
@@ -793,7 +842,7 @@ SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
       REAL(ret)[i] = dSwish(x);
       break;
     default:
-      REAL(ret)[i] = x;
+      REAL(ret)[i] = NA_REAL;
       break;
     }
   }
