@@ -789,6 +789,9 @@ SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
     case 17:
       REAL(ret)[i] = dSELU(x);
       break;
+    case 18:
+      REAL(ret)[i] = dSwish(x);
+      break;
     default:
       REAL(ret)[i] = x;
       break;
