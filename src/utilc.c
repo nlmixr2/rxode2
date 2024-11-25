@@ -618,7 +618,8 @@ double d2GELU(double x) {
 }
 
 double d3GELU(double x) {
-  return x * exp(-0.5 * x * x) * M_1_SQRT_2PI * (x * x - 4.0);
+  double x2 = x*x;
+  return -8.0*x*exp(-x2*0.5)*0.5*M_1_SQRT_2PI + 4.0*x2*x*exp(-x2*0.5)*0.25*M_1_SQRT_2PI;
 }
 
 double d4GELU(double x) {
@@ -701,23 +702,23 @@ double lReLU(double x) {
 }
 
 double dlReLU(double x) {
-  return (x >= 0.0) ? 1.0 : 0.01;
+  return (x > 0.0) ? 1.0 : 0.01;
 }
 
 double PReLU(double x, double alpha) {
-  return (x >= 0.0) ? x : alpha * x;
+  return (x > 0.0) ? x : alpha * x;
 }
 
 double dPReLU(double x, double alpha) {
-  return (x >= 0.0) ? 1.0 : alpha;
+  return (x > 0.0) ? 1.0 : alpha;
 }
 
 double dPReLUa(double x, double alpha) {
-  return (x >= 0.0) ? 0.0 : x;
+  return (x > 0.0) ? 0.0 : x;
 }
 
 double dPReLUa1(double x, double alpha) {
-  return (x >= 0.0) ? 0.0 : 1.0;
+  return (x > 0.0) ? 0.0 : 1.0;
 }
 
 double Swish(double x) {
