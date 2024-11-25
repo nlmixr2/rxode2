@@ -9,6 +9,9 @@ ELU(x, alpha = 1)
 \arguments{
 \item{x}{A numeric vector. All elements must be finite and
 non-missing.}
+
+\item{alpha}{A numeric scalar. All elements must be finite and
+non-missing.}
 }
 \value{
 A numeric vector where the ReLU function has been applied

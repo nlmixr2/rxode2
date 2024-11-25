@@ -209,17 +209,17 @@ rxSolve(
 
 \method{update}{rxSolve}(object, ...)
 
-predict.rxode2(object, ...)
+\method{predict}{rxode2}(object, ...)
 
-predict.function(object, ...)
+\method{predict}{`function`}(object, ...)
 
-predict.rxUi(object, ...)
+\method{predict}{rxUi}(object, ...)
 
-predict.rxSolve(object, ...)
+\method{predict}{rxSolve}(object, ...)
 
-predict.rxEt(object, ...)
+\method{predict}{rxEt}(object, ...)
 
-predict.rxParams(object, ...)
+\method{predict}{rxParams}(object, ...)
 
 \method{simulate}{rxode2}(object, nsim = 1L, seed = NULL, ...)
 

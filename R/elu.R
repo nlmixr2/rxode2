@@ -3,6 +3,8 @@
 #' @family Activation Functions
 #' @param x A numeric vector. All elements must be finite and
 #'   non-missing.
+#' @param alpha A numeric scalar. All elements must be finite and
+#'  non-missing.
 #' @return A numeric vector where the ReLU function has been applied
 #'   to each element of `x`.
 #' @author Matthew Fidler
