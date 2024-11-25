@@ -30,6 +30,12 @@
 <url><loc>https://nlmixr2.github.io/rxode2/authors.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/index.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/news/index.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/ELU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/GELU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/PReLU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/ReLU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/SELU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/Swish.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/add.dosing.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/add.sampling.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/as.et.html</loc></url>
@@ -46,7 +52,14 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/boxCox.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/coef.rxode2.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/cvPost.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dELU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dGELU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dPReLU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dReLU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dSELU.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dSwish.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dfWishart.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dlReLU.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-assertRenameErrorModelLine.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-cbindOme.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-clearPipe.html</loc></url>
@@ -101,6 +114,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-udfMd5Info.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-useUtf.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/dot-vecDf.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/dsoftplus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/erf.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/et.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/etExpand.html</loc></url>
@@ -129,6 +143,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/is.rxEt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/is.rxSolve.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/is.rxStackData.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/lReLU.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/linMod.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/llikBeta.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/llikBinom.html</loc></url>
@@ -318,6 +333,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxunif.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/rxweibull.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/softplus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/stat_amt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/stat_cens.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/summary.rxDll.html</loc></url>
