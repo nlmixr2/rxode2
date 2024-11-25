@@ -18,6 +18,7 @@ static inline double _safe_log_(double a, rx_solve *rx) {
     return log(a);
   }
 }
+
 #define _safe_log(a) _safe_log_(a, _solveData)
 static inline double _div0_(double denom, rx_solve *rx) {
   if (rx->safeZero) {
