@@ -236,6 +236,24 @@ reference:
   - rxode2parseGetTranslation
   - summary.rxode2
   - rxUiDeparse
+- title: Neural Network Activation functions
+  contents:
+  - ELU
+  - GELU
+  - PReLU
+  - ReLU
+  - SELU
+  - Swish
+  - dELU
+  - dGELU
+  - dPReLU
+  - dReLU
+  - dSELU
+  - dSwish
+  - dlReLU
+  - dsoftplus
+  - lReLU
+  - softplus
 - title: Rxode2 data sets
   contents:
   - rxResidualError
