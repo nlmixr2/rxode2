@@ -596,6 +596,262 @@ double probitInv(double alpha, double low, double high) {
   return _powerDi(alpha, 1.0, 6, low, high);
 }
 
+double ReLU(double x) {
+  return (x > 0.0) ? x : 0.0;
+}
+
+double dReLU(double x) {
+  return (x > 0.0) ? 1.0 : 0.0;
+}
+
+//
+double GELU(double x) {
+  return 0.5 * x * (1.0 + erf(x * M_SQRT1_2));
+}
+
+double dGELU(double x) {
+  return 0.5 * (1.0 + erf(x * M_SQRT1_2)) + x * M_1_SQRT_2PI * exp(-0.5 * x * x);
+}
+
+double d2GELU(double x) {
+  return (2.0- x*x) * exp(-0.5* x * x)*M_1_SQRT_2PI;
+}
+
+double d3GELU(double x) {
+  double x2 = x*x;
+  return -8.0*x*exp(-x2*0.5)*0.5*M_1_SQRT_2PI + 4.0*x2*x*exp(-x2*0.5)*0.25*M_1_SQRT_2PI;
+}
+
+double d4GELU(double x) {
+  return exp(-0.5*x*x)*M_1_SQRT_2PI*(7.0*x*x - 4.0 - x*x*x*x);
+}
+
+double ELU(double x, double alpha) {
+  return (x > 0.0) ? x : (exp(x) - 1.0) * alpha;
+}
+
+// derivative of ELU with respect to x
+double dELU(double x, double alpha) {
+  return (x > 0.0) ? 1.0 : exp(x)*alpha;
+}
+
+// derivative of dELU with respect to x
+double d2ELU(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : exp(x)*alpha;
+}
+
+// derivative of dELU with respect to alpha
+double d2aELU(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : exp(x);
+}
+
+// derivative of ELU with respect to alpha
+double dELUa(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : (exp(x) - 1.0);
+}
+// derivative of dELAa with respect to x
+double d2ELUa(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : exp(x);
+}
+
+double softplus(double x) {
+  return log(1.0 + exp(x));
+}
+
+double dsoftplus(double x) {
+  return 1.0 / (1.0 + exp(-x));
+}
+
+double d2softplus(double x) {
+  double ex = exp(x);
+  return ex / ((1.0 + ex) * (1.0 + ex));
+}
+
+double d3softplus(double x) {
+  double ex = exp(-x);
+  double ex1 = (1.0 + ex);
+  return 2.0*exp(-2.0*x)/(ex1*ex1*ex1) - 1.0*ex/(ex1*ex1);
+}
+
+double d4softplus(double x) {
+  double ex = exp(-x);
+  double ex1 = (1.0 + ex);
+  return 6.0*exp(-3.0*x)/(ex1*ex1*ex1*ex1) -
+    6.0*exp(-2.0*x)/(ex1*ex1*ex1) +
+    ex/(ex1*ex1);
+}
+
+double SELU(double x) {
+#define alpha 1.6732632423543772848170429916717
+#define scale 1.0507009873554804934193349852946
+  return (x > 0.0) ? scale * x : scale * alpha * (exp(x) - 1.0);
+#undef alpha
+#undef scale
+}
+
+double dSELU(double x) {
+#define alpha 1.6732632423543772848170429916717
+#define scale 1.0507009873554804934193349852946
+  return (x > 0.0) ? scale : scale * alpha * exp(x);
+#undef alpha
+#undef scale
+}
+
+double lReLU(double x) {
+  return (x >= 0.0) ? x : 0.01 * x;
+}
+
+double dlReLU(double x) {
+  return (x > 0.0) ? 1.0 : 0.01;
+}
+
+double PReLU(double x, double alpha) {
+  return (x > 0.0) ? x : alpha * x;
+}
+
+double dPReLU(double x, double alpha) {
+  return (x > 0.0) ? 1.0 : alpha;
+}
+
+double dPReLUa(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : x;
+}
+
+double dPReLUa1(double x, double alpha) {
+  return (x > 0.0) ? 0.0 : 1.0;
+}
+
+double Swish(double x) {
+  return x / (1.0 + exp(-x));
+}
+
+double dSwish(double x) {
+  double ex = exp(-x);
+  double den = (1.0 + ex);
+  return x*ex/(den*den) + 1.0/den;
+}
+
+SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS) {
+  int type = INTEGER(typeS)[0];
+  int typex = TYPEOF(xS);
+  int typea = TYPEOF(aS);
+  int lenx = Rf_length(xS);
+  SEXP ret = PROTECT(Rf_allocVector(REALSXP, lenx));
+  for (int i = 0; i < lenx; ++i) {
+    double x = (typex == REALSXP) ? REAL(xS)[i] : (double)INTEGER(xS)[i];
+    double a = (typea == REALSXP) ? REAL(aS)[i] : (double)INTEGER(aS)[i];
+    switch (type) {
+    case 1:
+      REAL(ret)[i] = ELU(x, a);
+      break;
+    case 2:
+      REAL(ret)[i] = dELU(x, a);
+      break;
+    case 3:
+      REAL(ret)[i] = d2ELU(x, a);
+      break;
+    case 4:
+      REAL(ret)[i] = d2aELU(x, a);
+      break;
+    case 5:
+      REAL(ret)[i] = dELUa(x, a);
+      break;
+    case 6:
+      REAL(ret)[i] = d2ELUa(x, a);
+      break;
+    case 7:
+      REAL(ret)[i] = PReLU(x, a);
+      break;
+    case 8:
+      REAL(ret)[i] = dPReLU(x, a);
+      break;
+    case 9:
+      REAL(ret)[i] = dPReLUa(x, a);
+      break;
+    case 10:
+      REAL(ret)[i] = dPReLUa1(x, a);
+      break;
+    default:
+      REAL(ret)[i] = NA_REAL;
+      break;
+    }
+  }
+  UNPROTECT(1);
+  return(ret);
+}
+
+SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
+  int type = INTEGER(typeS)[0];
+  int typex = TYPEOF(xS);
+  int lenx = Rf_length(xS);
+  SEXP ret = PROTECT(Rf_allocVector(REALSXP, lenx));
+  for (int i = 0; i < lenx; ++i) {
+    double x = (typex == REALSXP) ? REAL(xS)[i] : (double)INTEGER(xS)[i];
+    switch (type) {
+    case 1:
+      REAL(ret)[i] = GELU(x);
+      break;
+    case 2:
+      REAL(ret)[i] = ReLU(x);
+      break;
+    case 3:
+      REAL(ret)[i] = softplus(x);
+      break;
+    case 4:
+      REAL(ret)[i] = SELU(x);
+      break;
+    case 5:
+      REAL(ret)[i] = lReLU(x);
+      break;
+    case 6:
+      REAL(ret)[i] = Swish(x);
+      break;
+    case 7:
+      REAL(ret)[i] = dReLU(x);
+      break;
+    case 8:
+      REAL(ret)[i] = dlReLU(x);
+      break;
+    case 9:
+      REAL(ret)[i] = dGELU(x);
+      break;
+    case 10:
+      REAL(ret)[i] = d2GELU(x);
+      break;
+    case 11:
+      REAL(ret)[i] = d3GELU(x);
+      break;
+    case 12:
+      REAL(ret)[i] = d4GELU(x);
+      break;
+    case 13:
+      REAL(ret)[i] = dsoftplus(x);
+      break;
+    case 14:
+      REAL(ret)[i] = d2softplus(x);
+      break;
+    case 15:
+      REAL(ret)[i] = d3softplus(x);
+      break;
+    case 16:
+      REAL(ret)[i] = d4softplus(x);
+      break;
+    case 17:
+      REAL(ret)[i] = dSELU(x);
+      break;
+    case 18:
+      REAL(ret)[i] = dSwish(x);
+      break;
+    default:
+      REAL(ret)[i] = NA_REAL;
+      break;
+    }
+  }
+  UNPROTECT(1);
+  return(ret);
+}
+
+
 SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEXP yjS, SEXP inverseS) {
   int typex = TYPEOF(xS);
   int typelow = TYPEOF(lowS);

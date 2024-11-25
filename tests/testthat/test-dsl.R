@@ -269,6 +269,8 @@ rxTest({
     expect_equal(rxFromSE("Derivative(d2GELU(x), x)"), "d3GELU(x)")
     expect_equal(rxFromSE("Derivative(d3GELU(x), x)"), "d4GELU(x)")
 
+    expect_equal(rxToSE("d4GELU(x)"), "exp(-(x)^2/2)*(7*(x)^2 - 4 - (x)^4)/sqrt(2*pi)")
+
     expect_equal(rxFromSE("Derivative(ELU(x, alpha), x)"), "dELU(x, alpha)")
     expect_equal(rxFromSE("Derivative(ELU(x, alpha), alpha)"), "dELUa(x, alpha)")
 
@@ -289,7 +291,13 @@ rxTest({
     expect_equal(rxFromSE("Derivative(d2softplus(x), x)"), "d3softplus(x)")
     expect_equal(rxFromSE("Derivative(d3softplus(x), x)"), "d4softplus(x)")
 
+    expect_equal(rxToSE("d4softplus(x)"),
+                 "6.0*exp(-3.0*(x))/(((1.0 + exp(-(x))))^4) - 6.0*exp(-2.0*(x))/(((1.0 + exp(-(x))))^3) + exp(-(x))/(((1.0 + exp(-(x))))^2)")
+
     expect_equal(rxFromSE("Derivative(SELU(x), x)"), "dSELU(x)")
+
+    expect_equal(rxToSE("dSELU(x)"),
+                 "(rxGt(x, 0)*1.0507009873554804934193349852946 + 1.0507009873554804934193349852946*1.6732632423543772848170429916717*exp(x)*rxLeq(x, 0))")
 
     expect_equal(rxFromSE("Derivative(lReLU(x), x)"), "dlReLU(x)")
     expect_equal(rxFromSE("Derivative(dlReLU(x), x)"), "0")
@@ -307,6 +315,9 @@ rxTest({
     expect_equal(rxFromSE("Derivative(dPReLUa1(x, alpha), alpha)"), "0")
 
     expect_equal(rxFromSE("Derivative(Swish(x), x)"), "dSwish(x)")
+
+    expect_equal(rxToSE("dSwish(x)"),
+                 "((x)*exp(-(x))/(1.0 + exp(-(x)))^2 + 1.0/(1.0 + exp(-(x)))")
 
   })
 
