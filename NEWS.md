@@ -7,6 +7,8 @@
 - Add `rxUdfUiControl()` to rxode2 user function to get control
   information from something like `nlmixr2`
 
+- Add Neural Network Activation functions in the `rxode2` package.
+
 # rxode2 3.0.2
 
 - Bug fix for `api`, the censoring function pointer has been updated
