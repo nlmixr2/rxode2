@@ -27,9 +27,10 @@ test_that("activation functions", {
     el <- ELU(time, alpha)
     del <- dELU(time, alpha)
     d2el <- d2ELU(time, alpha)
+    d2a <- dELUa(time, alpha)
     d2ael <- d2aELU(time, alpha)
     dael <- d2aELU(time, alpha)
-    d2ael <- d2ELUa(time, alpha)
+    d2aela <- d2ELUa(time, alpha)
   })
 
   e <- et(seq(-10, 10, length.out = 41))
@@ -104,5 +105,63 @@ test_that("activation functions", {
                         M_SQRT1_2 <- 1/sqrt(2)
                         -8.0*exp(-x^2*M_SQRT1_2^2)*M_SQRT1_2^3/sqrt(pi) + 28.0*x^2*exp(-x^2*M_SQRT1_2^2)*M_SQRT1_2^5/sqrt(pi) - 8.0*x^4*exp(-x^2*M_SQRT1_2^2)*M_SQRT1_2^7/sqrt(pi)
                       }, double(1)))
+
+  expect_equal(Swish(e$time), s$s)
+  expect_equal(Swish(e$time), vapply(e$time,
+                                     function(x) {
+                                        x/(1 + exp(-x))
+                                     }, double(1)))
+
+  expect_equal(dSwish(e$time), s$ds)
+  expect_equal(dSwish(e$time), vapply(e$time,
+                                     function(x) {
+                                       x*exp(-x)/(1 + exp(-x))^2 + (1 + exp(-x))^(-1)
+                                     }, double(1)))
+
+  expect_equal(softplus(e$time), s$sp)
+  expect_equal(softplus(e$time), vapply(e$time,
+                                        function(x) {
+                                          log(1 + exp(x))
+                                        }, double(1)))
+
+  expect_equal(dsoftplus(e$time), s$dsp)
+  expect_equal(dsoftplus(e$time), vapply(e$time,
+                                        function(x) {
+                                          exp(x)/(1 + exp(x))
+                                        }, double(1)))
+
+  expect_equal(ELU(e$time, 2), s$el)
+  expect_equal(ELU(e$time, 2), vapply(e$time,
+                                      function(x) {
+                                        (x > 0)*x + (x <= 0)*2*(exp(x) - 1)
+                                      }, double(1)))
+
+  # dELU/dx
+  expect_equal(dELU(e$time, 2), s$del)
+  expect_equal(dELU(e$time, 2), vapply(e$time,
+                                      function(x) {
+                                        (x > 0) + (x <= 0)*2*exp(x)
+                                      }, double(1)))
+
+  # d2ELU/d2x
+  expect_equal(d2ELU(e$time, 2), s$d2el)
+  expect_equal(d2ELU(e$time, 2), vapply(e$time,
+                                        function(x) {
+                                          (x <= 0)*2*exp(x)
+                                        }, double(1)))
+
+  # dELU/dalpha
+  expect_equal(dELUa(e$time, 2), s$d2a)
+  expect_equal(dELUa(e$time, 2), vapply(e$time,
+                                        function(x) {
+                                          (x <= 0)*(exp(x) - 1)
+                                        }, double(1)))
+
+  # d2ELU/dalphad2x
+  expect_equal(d2ELUa(e$time, 2), s$d2ael)
+  expect_equal(d2ELUa(e$time, 2), vapply(e$time,
+                                        function(x) {
+                                          (x <= 0)*exp(x)
+                                        }, double(1)))
 
 })
