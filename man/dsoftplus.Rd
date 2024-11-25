@@ -27,17 +27,11 @@ Default Softplus Activation Function
 \examples{
 
 dsoftplus(c(-1, 0, 1, 2))
-d2softplus(c(-1, 0, 1, 2))
-d3softplus(c(-1, 0, 1, 2))
-d4softplus(c(-1, 0, 1, 2))
 
 # You can use rxode2 too:
 
 r <- rxode2({
  s1 <- dsoftplus(time)
- s2 <- d2softplus(time)
- s3 <- d3softplus(time)
- s4 <- d4softplus(time)
 })
 
 e <- et(c(-1, 0, 1, 2))

@@ -22,7 +22,7 @@ softplus(c(-1, 0, 1, 2))
 # You can use rxode2 too:
 
 r <- rxode2({
- s <- softplus(x)
+ s <- softplus(time)
 })
 
 e <- et(c(-1, 0, 1, 2))

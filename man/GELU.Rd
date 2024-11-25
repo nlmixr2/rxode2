@@ -20,7 +20,9 @@ GELU activation function
 GELU(c(-2, -1, 0, 1, 2))
 
 # you can use rxode2 as well
-r <- rxode2({r = GELU(x)})
+r <- rxode2({
+  r = GELU(time)
+})
 et <- et(c(-2, -1, 0, 1, 2))
 rxSolve(r, et)
 

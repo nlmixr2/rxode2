@@ -3,12 +3,15 @@
 #' @param x numeric vector
 #' @return numeric vector
 #' @family Activation Functions
+#' @export
 #' @examples
 #'
 #' GELU(c(-2, -1, 0, 1, 2))
 #'
 #' # you can use rxode2 as well
-#' r <- rxode2({r = GELU(x)})
+#' r <- rxode2({
+#'   r = GELU(time)
+#' })
 #' et <- et(c(-2, -1, 0, 1, 2))
 #' rxSolve(r, et)
 #'
@@ -23,6 +26,7 @@ GELU <- function(x) {
 #' @param x numeric vector
 #' @return numeric vector
 #' @family Activation Functions
+#' @export
 #' @examples
 #' dGELU(c(-2, -1, 0, 1, 2))
 #' d2GELU(c(-2, -1, 0, 1, 2))
@@ -30,10 +34,10 @@ GELU <- function(x) {
 #' d4GELU(c(-2, -1, 0, 1, 2))
 #' # you can use rxode2 as well
 #' r <- rxode2({
-#'    r1 <- dGELU(x)
-#'    r2 <- d2GELU(x)
-#'    r3 <- d3GELU(x)
-#'    r4 <- d4GELU(x)
+#'    r1 <- dGELU(time)
+#'    r2 <- d2GELU(time)
+#'    r3 <- d3GELU(time)
+#'    r4 <- d4GELU(time)
 #' })
 #' et <- et(c(-2, -1, 0, 1, 2))
 #' rxSolve(r, et)
