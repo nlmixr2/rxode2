@@ -57,21 +57,25 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 	sAppend(&sb, "_%s1(", tf->v);
 	sAppend(&sbDt, "_%s1(", tf->v);
 	if (new_de(v2, 0)){
-		// cannot be lhs statements in tad style assignments
-		// also cannot be from anywhere
-		// temporarily turn off that this is a function
-		// This is not a function
-		int fn = tb.fn;
-		tb.fn = 0;
-		// this is NOT an assignment
-		nodeInfo ni2;
-    niReset(&ni2);
-    char *name = tf->v;
-		ni2.assignment = 0;
-		ni2.ini = 0;
-		add_de(ni2, name, v2, 0, 0);
-		// turn back on that this is a function
-		tb.fn = fn;
+		if (!strcmp("depot", v2)) {
+      tb.hasDepot = 1;
+      aAppendN("_DEPOT_)", 8);
+			return 1;
+		} else if (!strcmp("central", v2)) {
+			tb.hasCentral = 1;
+			aAppendN("_CENTRAL_)", 10);
+			return 1;
+		} else {
+      // cannot be lhs statements in tad style assignments
+      // also cannot be from anywhere
+      // temporarily turn off that this is a function
+      // This is not a function
+      int fn = tb.fn;
+      tb.fn = 0;
+      add_de(tf->ni, tf->name, v2, 0, 0);
+      // turn back on that this is a function
+      tb.fn = fn;
+		}
 	} else {
 		new_or_ith(v2);
 	}

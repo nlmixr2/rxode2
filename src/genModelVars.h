@@ -268,7 +268,7 @@ static inline SEXP sortStateVectors(SEXP ordS) {
     int cur = tb.didx[i];
     int prop = tb.dprop[i];
     int pass = 0;
-    if (tb.linCmt){
+    if (tb.linCmt) {
       if (tb.hasDepotCmt == 1 && !strcmp("depot", tb.ss.line[tb.di[i]])){
         pass = 1;
       } else if ((tb.hasCentralCmt == 1 || tb.hasDepotCmt == 1)  &&

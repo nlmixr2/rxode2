@@ -546,9 +546,33 @@ rxTest({
       })
     }
 
-    mod2 <- mod2()
+    expect_error(mod2())
 
-    mod2$simulationModel
+    mod2 <- function() {
+      ini({
+        ## Table 3 from Savic 2007
+        cl  <- 17.2 # (L/hr)
+        vc  <- 45.1 # L
+        ka  <- 0.38 # 1/hr
+        mtt <- 1.37 # hr
+        f2 <-0.5    # Fraction of 1st Order portion
+        n   <- 20.1
+      })
+      model({
+        k           <- cl/vc
+        bio <- 1-f2
+        ktr = (n+1)/mtt
+        ## note that lgammafn is the same as lgamma in R.
+        d/dt(depot1) = exp(log(bio*podo(depot1))+
+                             log(ktr)+n*log(ktr*tad(depot1))-
+                             ktr*tad(depot1)-lgammafn(n+1))-ka*depot1
+        d/dt(depot2) <- -ka*depot2
+        f(depot2) <-f2
+        d/dt(cen)   <- ka*depot1 + ka*depot2-k*cen
+      })
+    }
+
+    mod2 <- mod2()
 
   })
 })
