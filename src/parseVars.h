@@ -115,6 +115,7 @@ static inline int skipReservedVariables(const char *s) {
 /* new symbol? if no, find it's ith */
 static inline int new_or_ith(const char *s) {
   int i;
+  tb.ix=-2;
   if (tb.fn) {tb.ix=-2; return 0;}
   if (!strcmp("lhs", s)){tb.ix=-1; return 0;}
   if (assertForbiddenVariables(s) == 0) return 0;

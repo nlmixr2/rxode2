@@ -73,7 +73,10 @@ static inline int add_deCmtProp(nodeInfo ni, char *name, char *v, int hasLhs, in
 }
 
 static inline int add_deState(nodeInfo ni, char *name, char *v, int hasLhs, int fromWhere) {
-  new_or_ith(v);
+  if (new_or_ith(v)) {
+    addSymbolStr(v);
+    new_or_ith(v);
+  }
   if (((tb.ini[tb.ix] == 1 && tb.ini0[tb.ix] == 0) ||
        (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSparam))){
     updateSyntaxCol();
