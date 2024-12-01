@@ -331,7 +331,6 @@ static inline int handleRemainingAssignmentsCalcProps(nodeInfo ni, char *name, i
   return 0;
 }
 
-
 static inline int finalizeLineParam(nodeInfo ni, char *name) {
   if (nodeHas(param_statement)) {
     sbDt.o = 0; sbt.o = 0;

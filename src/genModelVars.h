@@ -218,6 +218,36 @@ static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
   if ((prop & propDur) != 0) {
     sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
   }
+  if ((prop & propTad) != 0) {
+    sAppend(&sbt, "'tad(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propTad0) != 0) {
+    sAppend(&sbt, "'tad0(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propTafd) != 0) {
+    sAppend(&sbt, "'tafd(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propTafd0) != 0) {
+    sAppend(&sbt, "'tafd0(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propTlast) != 0) {
+    sAppend(&sbt, "'tlast(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propTlast0) != 0) {
+    sAppend(&sbt, "'tlast0(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propTfirst) != 0) {
+    sAppend(&sbt, "'tfirst(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propTfirst0) != 0) {
+    sAppend(&sbt, "'tfirst0(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propPodo) != 0) {
+    sAppend(&sbt, "'podo(%s)', ", tb.ss.line[tb.di[i]]);
+  }
+  if ((prop & propDose) != 0) {
+    sAppend(&sbt, "'dose(%s)', ", tb.ss.line[tb.di[i]]);
+  }
   // Take off trailing "',
   sbt.o -= 2;
   sbt.s[sbt.o] = 0;

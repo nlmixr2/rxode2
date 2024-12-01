@@ -57,23 +57,37 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 	sAppend(&sb, "_%s1(", tf->v);
 	sAppend(&sbDt, "_%s1(", tf->v);
 	if (new_de(v2, 0)){
-		if (!strcmp("depot", v2)){
-			tb.hasDepot = 1;
-			aAppendN("_DEPOT_)", 8);
-		} else if (!strcmp("central", v2)){
-			tb.hasCentral = 1;
-			aAppendN("_CENTRAL_)", 10);
-		} else {
-			tb.statei++;
-			sAppend(&sb, "%d)", tb.de.n);
-			sAppend(&sbDt, "%d)", tb.de.n);
-		}
+		// cannot be lhs statements in tad style assignments
+		// also cannot be from anywhere
+		add_de(tf->ni, tf->name, v2, 0, 0);
+		aProp(tb.de.n);
 	} else {
 		new_or_ith(v2);
-		sAppend(&sb, "%d)", tb.id);
-		sAppend(&sbDt, "%d)", tb.id);
+    aProp(tb.ix);
 	}
-	// tad(cmt)
+  sAppend(&sb, "__DDT%d__)", tb.id);
+  sAppend(&sbDt, "__DDT%d__)", tb.id);
+	if (tf->isTad && (tb.dprop[tb.id] & propTad) == 0) {
+    tb.dprop[tb.id] += propTad;
+  } else if (tf->isTad0 && (tb.dprop[tb.id] & propTad0) == 0) {
+    tb.dprop[tb.id] += propTad0;
+  } else if (tf->isTafd && (tb.dprop[tb.id] & propTafd) == 0) {
+		tb.dprop[tb.id] += propTafd;
+	} else if (tf->isTafd0 && (tb.dprop[tb.id] & propTafd0) == 0) {
+		tb.dprop[tb.id] += propTafd0;
+	} else if (tf->isTlast && (tb.dprop[tb.id] & propTlast) == 0) {
+		tb.dprop[tb.id] += propTlast;
+	} else if (tf->isTlast0 && (tb.dprop[tb.id] & propTlast0) == 0) {
+		tb.dprop[tb.id] += propTlast0;
+	} else if (tf->isTfirst && (tb.dprop[tb.id] & propTfirst) == 0) {
+		tb.dprop[tb.id] += propTfirst;
+	} else if (tf->isTfirst0 && (tb.dprop[tb.id] & propTfirst0) == 0) {
+		tb.dprop[tb.id] += propTfirst0;
+	} else if (tf->isDose && (tb.dprop[tb.id] & propDose) == 0) {
+		tb.dprop[tb.id] += propDose;
+	} else if (tf->isPodo && (tb.dprop[tb.id] & propPodo) == 0) {
+		tb.dprop[tb.id] += propPodo;
+	}
 	return 1;
 }
 
