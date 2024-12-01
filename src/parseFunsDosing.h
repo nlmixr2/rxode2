@@ -59,11 +59,14 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 	if (new_de(v2, 0)){
 		// cannot be lhs statements in tad style assignments
 		// also cannot be from anywhere
+		// temporarily turn off that this is a function
+		int fn = tb.fn;
+		tb.fn = 0;
 		add_de(tf->ni, tf->name, v2, 0, 0);
-		aProp(tb.de.n);
+		// turn back on that this is a function
+		tb.fn = fn;
 	} else {
 		new_or_ith(v2);
-    aProp(tb.ix);
 	}
   sAppend(&sb, "__DDT%d__)", tb.id);
   sAppend(&sbDt, "__DDT%d__)", tb.id);

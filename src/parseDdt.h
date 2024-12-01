@@ -40,7 +40,7 @@ static inline int new_de(const char *s, int fromWhere) {
 
 static inline int isCmtLhsStatement(nodeInfo ni, char *name, char *v) {
   int hasLhs = 0;
-  if (nodeHas(cmt_statement)){
+  if (nodeHas(cmt_statement)) {
     new_or_ith(v);
     if (tb.lh[tb.ix] || tb.ini[tb.ix]){
       hasLhs=1;

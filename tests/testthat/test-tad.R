@@ -519,4 +519,36 @@ rxTest({
     expect_false(isTRUE(all.equal(x$tad, x$tade)))
 
   })
+
+  test_that("tad parsing", {
+
+    mod2 <- function() {
+      ini({
+        ## Table 3 from Savic 2007
+        cl  <- 17.2 # (L/hr)
+        vc  <- 45.1 # L
+        ka  <- 0.38 # 1/hr
+        mtt <- 1.37 # hr
+        f2 <-0.5    # Fraction of 1st Order portion
+        n   <- 20.1
+      })
+      model({
+        k           <- cl/vc
+        bio <- 1-f2
+        ktr = (n+1)/mtt
+        ## note that lgammafn is the same as lgamma in R.
+        d/dt(depot1) = exp(log(bio*podo(depot))+
+                             log(ktr)+n*log(ktr*tad(depot))-
+                             ktr*tad(depot)-lgammafn(n+1))-ka*depot1
+        d/dt(depot2) <- -ka*depot2
+        f(depot2) <-f2
+        d/dt(cen)   <- ka*depot1 + ka*depot2-k*cen
+      })
+    }
+
+    mod2 <- mod2()
+
+    mod2$simulationModel
+
+  })
 })
