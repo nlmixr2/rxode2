@@ -1,5 +1,9 @@
 # rxode2 (development version)
 
+- Rework the `tad()` and related functions so they use the same
+  interface as compartments (this way they do not depend on the order
+  of compartments); See #815
+
 - Add `getRxNpars` to api.  This allows the development version of
   `babelmixr2` to better check what model is loaded and unload/reload
   as necessary.
