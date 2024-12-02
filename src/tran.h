@@ -84,8 +84,6 @@ lhs symbols?
   int maxtheta;
   int hasCmt;
   int maxeta;
-  int hasDepot;
-  int hasCentral;
   int hasDepotCmt;
   int hasCentralCmt;
   int hasKa;

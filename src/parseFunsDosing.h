@@ -57,12 +57,12 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 	sAppend(&sb, "_%s1(", tf->v);
 	sAppend(&sbDt, "_%s1(", tf->v);
 	if (new_de(v2, 0)){
-		if (!strcmp("depot", v2)) {
-      tb.hasDepot = 1;
+		if (tb.linCmt && !strcmp("depot", v2)) {
+      tb.hasDepotCmt = 1;
       aAppendN("_DEPOT_)", 8);
 			return 1;
-		} else if (!strcmp("central", v2)) {
-			tb.hasCentral = 1;
+		} else if (tb.linCmt && !strcmp("central", v2)) {
+			tb.hasCentralCmt = 1;
 			aAppendN("_CENTRAL_)", 10);
 			return 1;
 		} else {
