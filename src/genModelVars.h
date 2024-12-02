@@ -105,13 +105,13 @@ static inline void calcNparamsNlhsNslhs(void) {
 
 static inline void calcNextra(void) {
   int offCmt=0,nExtra = 0;
-  char *buf, buf2[200];
+  char *buf=NULL, buf2[200];
   for (int i = 0; i < tb.statei; i++){
     if (offCmt == 0 && tb.idu[i] == 0){
+      buf=tb.ss.line[tb.di[i]];
       offCmt = 1;
       nExtra++;
-      buf=tb.ss.line[tb.di[i]];
-    } else if (offCmt == 1 && tb.idu[i] == 1){
+    } else if (offCmt == 1 && tb.idu[i] == 1) {
       // There is an compartment that doesn't have a derivative
       if (tb.linCmt == 0){
         char *v = rc_dup_str(buf, 0);
@@ -200,28 +200,60 @@ static inline SEXP calcIniVals(void) {
 SEXP orderForderS1(SEXP ordIn);
 
 static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
-  if (prop == 0 || pass == 1) {
+  if (prop == 0 || pass == 1 || tb.dummyLhs == 1) {
     return 1;
   }
+  char *buf = NULL;
+  buf = tb.ss.line[tb.di[i]];
   if ((prop & prop0) != 0) {
-    sAppend(&sbt, "'%s(0)', ", tb.ss.line[tb.di[i]]);
+    sAppend(&sbt, "'%s(0)', ", buf);
   }
   if ((prop & propF) != 0) {
-    sAppend(&sbt, "'f(%s)', ", tb.ss.line[tb.di[i]]);
+    sAppend(&sbt, "'f(%s)', ", buf);
   }
   if ((prop & propAlag) != 0) {
-    sAppend(&sbt, "'alag(%s)', ", tb.ss.line[tb.di[i]]);
+    sAppend(&sbt, "'alag(%s)', ", buf);
   }
   if ((prop & propRate) != 0) {
-    sAppend(&sbt, "'rate(%s)', ", tb.ss.line[tb.di[i]]);
+    sAppend(&sbt, "'rate(%s)', ", buf);
   }
   if ((prop & propDur) != 0) {
-    sAppend(&sbt, "'dur(%s)', ", tb.ss.line[tb.di[i]]);
+    sAppend(&sbt, "'dur(%s)', ", buf);
+  }
+  if ((prop & propTad) != 0) {
+    sAppend(&sbt, "'tad(%s)', ", buf);
+  }
+  if ((prop & propTad0) != 0) {
+    sAppend(&sbt, "'tad0(%s)', ", buf);
+  }
+  if ((prop & propTafd) != 0) {
+    sAppend(&sbt, "'tafd(%s)', ", buf);
+  }
+  if ((prop & propTafd0) != 0) {
+    sAppend(&sbt, "'tafd0(%s)', ", buf);
+  }
+  if ((prop & propTlast) != 0) {
+    sAppend(&sbt, "'tlast(%s)', ", buf);
+  }
+  if ((prop & propTlast0) != 0) {
+    sAppend(&sbt, "'tlast0(%s)', ", buf);
+  }
+  if ((prop & propTfirst) != 0) {
+    sAppend(&sbt, "'tfirst(%s)', ", buf);
+  }
+  if ((prop & propTfirst0) != 0) {
+    sAppend(&sbt, "'tfirst0(%s)', ", buf);
+  }
+  if ((prop & propPodo) != 0) {
+    sAppend(&sbt, "'podo(%s)', ", buf);
+  }
+  if ((prop & propDose) != 0) {
+    sAppend(&sbt, "'dose(%s)', ", buf);
   }
   // Take off trailing "',
   sbt.o -= 2;
   sbt.s[sbt.o] = 0;
-  sAppend(&sbt, " present, but d/dt(%s) not defined\n", tb.ss.line[tb.di[i]]);
+  sAppend(&sbt, " present, but d/dt(%s) not defined\n", buf);
   return 0;
 }
 
@@ -236,7 +268,7 @@ static inline SEXP sortStateVectors(SEXP ordS) {
     int cur = tb.didx[i];
     int prop = tb.dprop[i];
     int pass = 0;
-    if (tb.linCmt){
+    if (tb.linCmt) {
       if (tb.hasDepotCmt == 1 && !strcmp("depot", tb.ss.line[tb.di[i]])){
         pass = 1;
       } else if ((tb.hasCentralCmt == 1 || tb.hasDepotCmt == 1)  &&

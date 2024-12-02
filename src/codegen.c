@@ -676,8 +676,8 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     if (tb.hasKa == 1) {
       sAppend(&sbOut, "#define _DEPOT_ %d\n", tb.statei);
       sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei+1);
-    } else if (tb.hasCentral == 1) {
-      if (tb.hasDepot){
+    } else if (tb.hasCentralCmt == 1) {
+      if (tb.hasDepotCmt){
         fclose(fpIO);
         _rxode2parse_unprotect();
         err_trans("linCmt() does not have 'depot' compartment without a 'ka'");

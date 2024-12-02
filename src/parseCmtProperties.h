@@ -183,6 +183,9 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
       // New assignment
       tb.ixL = tb.ix;
       tb.lh[tb.ix] = isLHS;
+      if (!strcmp(v, "rxdummyLhs")) {
+        tb.dummyLhs = 1;
+      }
     } else if (tb.ix < 0){
       if (!strcmp("rxlin___", v)) {
         tb.ixL=-1;
@@ -216,6 +219,9 @@ static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, c
         tb.lh[tb.ix] = isLHSparam;
       } else {
         tb.lh[tb.ix] = isLHS;
+        if (!strcmp(v, "rxdummyLhs")) {
+          tb.dummyLhs = 1;
+        }
       }
       tb.ixL=-1;
     }
@@ -299,6 +305,9 @@ static inline int handleRemainingAssignmentsCalcPropIni(nodeInfo ni, char *name,
         /* Rprintf("Duplicate %s; %d %d\n", v, tb.lh[tb.ix], tb.ini0[tb.ix]); */
         if (tb.lh[tb.ix] != isLHS){
           tb.lh[tb.ix] = isLHS;
+          if (!strcmp(v, "rxdummyLhs")) {
+            tb.dummyLhs = 1;
+          }
           if (nodeHas(ini0) && tb.ini0[tb.ix] == 1){
             sPrint(&_gbuf,"cannot have conditional initial conditions for '%s'",v);
             updateSyntaxCol();
@@ -330,7 +339,6 @@ static inline int handleRemainingAssignmentsCalcProps(nodeInfo ni, char *name, i
   }
   return 0;
 }
-
 
 static inline int finalizeLineParam(nodeInfo ni, char *name) {
   if (nodeHas(param_statement)) {

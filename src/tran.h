@@ -84,8 +84,6 @@ lhs symbols?
   int maxtheta;
   int hasCmt;
   int maxeta;
-  int hasDepot;
-  int hasCentral;
   int hasDepotCmt;
   int hasCentralCmt;
   int hasKa;
@@ -109,6 +107,7 @@ lhs symbols?
   int lastDdt;
   int nLlik;
   int lvlStr;
+  int dummyLhs;
 } symtab;
 
 extern symtab tb;
@@ -369,10 +368,25 @@ void _rxode2parse_unprotect(void);
 
 char *getLine (char *src, int line, int *lloc);
 
-#define prop0    1
-#define propF    2
-#define propAlag 4
-#define propRate 8
-#define propDur  16
+#define prop0     1
+#define propF     2
+#define propAlag  4
+#define propRate  8
+#define propDur   16
+// tad
+#define propTad   32
+#define propTad0  64
+// tafd
+#define propTafd  128
+#define propTafd0 256
+// tlast
+#define propTlast 512
+#define propTlast0 1024
+// tfirst
+#define propTfirst 2048
+#define propTfirst0 4096
+// podo and dose
+#define propPodo 8192
+#define propDose 16384
 
 #endif // __TRAN_H__
