@@ -204,4 +204,36 @@ transit = matt + fun
 ")
     expect_s3_class(mod, "rxode2")
   })
+
+  test_that("transit compartment works well with dual absorption (#804, #819)", {
+
+    mod <- function() {
+      ini({
+        ## Table 3 from Savic 2007
+        cl  <- 17.2 # (L/hr)
+        vc  <- 45.1 # L
+        ka  <- 0.38 # 1/hr
+        mtt <- 1.37 # hr
+        f2 <-0.5    # Fraction of 1st Order portion
+        n   <- 20.101
+      })
+      model({
+        k           <- cl/vc
+        bio <- 1-f2
+        d/dt(depot1) <- transit(n,mtt,bio)-ka*depot1
+        d/dt(depot2) <- -ka*depot2
+        f(depot2) <-f2
+        d/dt(cen)   <- ka*depot1 + ka*depot2-k*cen
+      })
+    }
+
+    ev1 <- et(0, 7, length.out=200) %>%
+      et(amt=20, cmt='depot1', evid=7) %>%
+      et(amt=20, cmt='depot2', evid=1)
+
+    case1 <- rxSolve(mod, ev1)
+
+    expect_true(max(case1$depot1) > 7.7)
+
+  })
 })
