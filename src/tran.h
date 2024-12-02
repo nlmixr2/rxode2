@@ -107,6 +107,7 @@ lhs symbols?
   int lastDdt;
   int nLlik;
   int lvlStr;
+  int dummyLhs;
 } symtab;
 
 extern symtab tb;

@@ -200,7 +200,7 @@ static inline SEXP calcIniVals(void) {
 SEXP orderForderS1(SEXP ordIn);
 
 static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
-  if (prop == 0 || pass == 1) {
+  if (prop == 0 || pass == 1 || tb.dummyLhs == 1) {
     return 1;
   }
   char *buf = NULL;

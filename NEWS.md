@@ -2,7 +2,8 @@
 
 - Rework the `tad()` and related functions so they use the same
   interface as compartments (this way they do not depend on the order
-  of compartments); See #815
+  of compartments); See #815.  Also allow dummy variables to ignore
+  state requirements (for parsing mu-referenced equations).
 
 - Add `getRxNpars` to api.  This allows the development version of
   `babelmixr2` to better check what model is loaded and unload/reload

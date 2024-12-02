@@ -422,6 +422,7 @@ void reset(void) {
   tb.linExtra   = false;
   tb.nwhile     = 0;
   tb.lvlStr     = 0;
+  tb.dummyLhs   = 0;
   tb.nInd       = 0;
   tb.simflg     = 0;
   tb.nLlik      = 0;
