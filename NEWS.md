@@ -12,6 +12,9 @@
 - Add `rxUdfUiControl()` to rxode2 user function to get control
   information from something like `nlmixr2`
 
+- Bug fix for tracking time after dose when dosing to 2 compartments
+  occur at the exact same time (#804, #819)
+
 # rxode2 3.0.2
 
 - Bug fix for `api`, the censoring function pointer has been updated
