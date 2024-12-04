@@ -36,7 +36,10 @@ static inline int isFunctionTadType(transFunctions *tf) {
     (tf->isTfirst0 = !strcmp("tfirst0", tf->v)) ||
 
 		(tf->isDose = !strcmp("dose", tf->v)) ||
-		(tf->isPodo = !strcmp("podo", tf->v));
+		(tf->isPodo = !strcmp("podo", tf->v)) ||
+
+		(tf->isPodo0 = !strcmp("podo0", tf->v)) ||
+		(tf->isDose0 = !strcmp("dose0", tf->v));
 }
 static inline int handleFunctionTadEmptyCcode(transFunctions *tf,char *v2) {
 	if (allSpaces(v2)){
@@ -101,6 +104,10 @@ static inline int handleFunctionTadSingleStateCcode(transFunctions *tf,char *v2)
 		tb.dprop[tb.id] += propDose;
 	} else if (tf->isPodo && (tb.dprop[tb.id] & propPodo) == 0) {
 		tb.dprop[tb.id] += propPodo;
+	} else if (tf->isPodo0 && (tb.dprop[tb.id] & propPodo0) == 0) {
+		tb.dprop[tb.id] += propPodo0;
+	} else if (tf->isDose0 && (tb.dprop[tb.id] & propDose0) == 0) {
+		tb.dprop[tb.id] += propDose0;
 	}
 	return 1;
 }
