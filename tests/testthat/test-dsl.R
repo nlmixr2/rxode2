@@ -210,21 +210,22 @@ rxTest({
 
     expect_equal(
       rxToSE(transit(n, mtt, bio)),
-      "exp(log((bio)*(podo()))+log(n + 1)-log(mtt)+(n)*((log(n+1)-log(mtt))+log(t-tlast()))-((n+1)/(mtt))*(t-tlast())-lgamma(1+n))")
+      "exp(log((bio)*(podo0()))+log(n + 1)-log(mtt)+(n)*((log(n+1)-log(mtt))+log(t-tlast0()))-((n+1)/(mtt))*(t-tlast0())-lgamma(1+n))")
 
     expect_equal(
       rxToSE(transit(n, mtt)),
-      "exp(log(podo())+(log(n+1)-log(mtt))+(n)*((log(n+1)-log(mtt))+ log(t-tlast()))-((n + 1)/(mtt))*(t-tlast())-lgamma(1+n))")
+      "exp(log(podo0())+(log(n+1)-log(mtt))+(n)*((log(n+1)-log(mtt))+ log(t-tlast0()))-((n + 1)/(mtt))*(t-tlast0())-lgamma(1+n))")
 
     tmp <- rxode("d/dt(depot) <- transit(n, mtt, bio)-ka*depot\nd/dt(center)=ka*depot-kel*center")
+
     tmp2 <- rxS(tmp)
     tmp3 <- tmp2$rx__d_dt_depot__
-    expect_equal(rxFromSE(tmp3), "-ka*depot+exp(n*(-log(mtt)+log1p(n)+log(t-tlast(depot)))-(t-tlast(depot))*(1+n)/mtt-log(mtt)+log(bio*podo(depot))+log1p(n)-lgamma1p(n))")
+    expect_equal(rxFromSE(tmp3), "-ka*depot+exp(n*(-log(mtt)+log1p(n)+log(t-tlast0(depot)))-(1+n)*(t-tlast0(depot))/mtt-log(mtt)+log(bio*podo0(depot))+log1p(n)-lgamma1p(n))")
 
     tmp <- rxode("d/dt(depot) <- transit(n, mtt) - ka*depot\nd/dt(center)=ka*depot-kel*center")
     tmp2 <- rxS(tmp)
     tmp3 <- tmp2$rx__d_dt_depot__
-    expect_equal(rxFromSE(tmp3), "-ka*depot+exp(n*(-log(mtt)+log1p(n)+log(t-tlast(depot)))-(t-tlast(depot))*(1+n)/mtt-log(mtt)+log1p(n)+log(podo(depot))-lgamma1p(n))")
+    expect_equal(rxFromSE(tmp3), "-ka*depot+exp(n*(-log(mtt)+log1p(n)+log(t-tlast0(depot)))-(1+n)*(t-tlast0(depot))/mtt-log(mtt)+log1p(n)+log(podo0(depot))-lgamma1p(n))")
 
   })
 
@@ -517,6 +518,13 @@ rxTest({
     expect_equal(rxToSE("tad(matt)"), "(t-tlast(matt))")
     expect_error(rxToSE("tad(matt,f)"))
     expect_error(rxToSE("tad(matt+f)"))
+  })
+
+  test_that("tad0()", {
+    expect_equal(rxToSE("tad0()"), "(t-tlast0())")
+    expect_equal(rxToSE("tad0(matt)"), "(t-tlast0(matt))")
+    expect_error(rxToSE("tad0(matt,f)"))
+    expect_error(rxToSE("tad0(matt+f)"))
   })
 
   test_that("tafd()", {
