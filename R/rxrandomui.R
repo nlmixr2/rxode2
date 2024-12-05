@@ -4,14 +4,14 @@
     .mean <- as.character(substitute(mean))
     .tmp <- suppressWarnings(try(force(mean), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .mean <- mean
         }
     }
     .sd <- as.character(substitute(sd))
     .tmp <- suppressWarnings(try(force(sd), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .sd <- sd
         }
     }
@@ -28,7 +28,7 @@ rxUdfUi.rxnorm <- rxUdfUi.rxpois
     .lambda <- as.character(substitute(lambda))
     .tmp <- suppressWarnings(try(force(lambda), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .lambda <- lambda
         }
     }
@@ -45,7 +45,7 @@ rxUdfUi.rxpois <- rxUdfUi.rxpois
     .df <- as.character(substitute(df))
     .tmp <- suppressWarnings(try(force(df), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df <- df
         }
     }
@@ -62,14 +62,14 @@ rxUdfUi.rxt <- rxUdfUi.rxpois
     .min <- as.character(substitute(min))
     .tmp <- suppressWarnings(try(force(min), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .min <- min
         }
     }
     .max <- as.character(substitute(max))
     .tmp <- suppressWarnings(try(force(max), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .max <- max
         }
     }
@@ -86,18 +86,18 @@ rxUdfUi.rxunif <- rxUdfUi.rxpois
     .shape <- as.character(substitute(shape))
     .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape <- shape
         }
     }
     .scale <- as.character(substitute(scale))
     .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .scale <- scale
         }
     }
-    list(replace = paste0("rxweibull(", .shape, ", ", .scale, 
+    list(replace = paste0("rxweibull(", .shape, ", ", .scale,
         ")"))
 }
 
@@ -111,7 +111,7 @@ rxUdfUi.rxweibull <- rxUdfUi.rxpois
     .prob <- as.character(substitute(prob))
     .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .prob <- prob
         }
     }
@@ -128,18 +128,18 @@ rxUdfUi.rxgeom <- rxUdfUi.rxpois
     .shape1 <- as.character(substitute(shape1))
     .tmp <- suppressWarnings(try(force(shape1), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape1 <- shape1
         }
     }
     .shape2 <- as.character(substitute(shape2))
     .tmp <- suppressWarnings(try(force(shape2), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape2 <- shape2
         }
     }
-    list(replace = paste0("rxbeta(", .shape1, ", ", .shape2, 
+    list(replace = paste0("rxbeta(", .shape1, ", ", .shape2,
         ")"))
 }
 
@@ -153,14 +153,14 @@ rxUdfUi.rxbeta <- rxUdfUi.rxpois
     .shape <- as.character(substitute(shape))
     .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape <- shape
         }
     }
     .rate <- as.character(substitute(rate))
     .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .rate <- rate
         }
     }
@@ -177,14 +177,14 @@ rxUdfUi.rxgamma <- rxUdfUi.rxpois
     .df1 <- as.character(substitute(df1))
     .tmp <- suppressWarnings(try(force(df1), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df1 <- df1
         }
     }
     .df2 <- as.character(substitute(df2))
     .tmp <- suppressWarnings(try(force(df2), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df2 <- df2
         }
     }
@@ -201,7 +201,7 @@ rxUdfUi.rxf <- rxUdfUi.rxpois
     .rate <- as.character(substitute(rate))
     .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .rate <- rate
         }
     }
@@ -218,7 +218,7 @@ rxUdfUi.rxexp <- rxUdfUi.rxpois
     .df <- as.character(substitute(df))
     .tmp <- suppressWarnings(try(force(df), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df <- df
         }
     }
@@ -235,18 +235,18 @@ rxUdfUi.rxchisq <- rxUdfUi.rxpois
     .location <- as.character(substitute(location))
     .tmp <- suppressWarnings(try(force(location), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .location <- location
         }
     }
     .scale <- as.character(substitute(scale))
     .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .scale <- scale
         }
     }
-    list(replace = paste0("rxcauchy(", .location, ", ", .scale, 
+    list(replace = paste0("rxcauchy(", .location, ", ", .scale,
         ")"))
 }
 
@@ -260,14 +260,14 @@ rxUdfUi.rxcauchy <- rxUdfUi.rxpois
     .size <- as.character(substitute(size))
     .tmp <- suppressWarnings(try(force(size), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .size <- size
         }
     }
     .prob <- as.character(substitute(prob))
     .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .prob <- prob
         }
     }
@@ -284,14 +284,14 @@ rxUdfUi.rxbinom <- rxUdfUi.rxpois
     .mean <- as.character(substitute(mean))
     .tmp <- suppressWarnings(try(force(mean), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .mean <- mean
         }
     }
     .sd <- as.character(substitute(sd))
     .tmp <- suppressWarnings(try(force(sd), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .sd <- sd
         }
     }
@@ -308,7 +308,7 @@ rxUdfUi.rinorm <- rxUdfUi.rxpois
     .lambda <- as.character(substitute(lambda))
     .tmp <- suppressWarnings(try(force(lambda), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .lambda <- lambda
         }
     }
@@ -325,7 +325,7 @@ rxUdfUi.ripois <- rxUdfUi.rxpois
     .df <- as.character(substitute(df))
     .tmp <- suppressWarnings(try(force(df), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df <- df
         }
     }
@@ -342,14 +342,14 @@ rxUdfUi.rit <- rxUdfUi.rxpois
     .min <- as.character(substitute(min))
     .tmp <- suppressWarnings(try(force(min), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .min <- min
         }
     }
     .max <- as.character(substitute(max))
     .tmp <- suppressWarnings(try(force(max), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .max <- max
         }
     }
@@ -366,18 +366,18 @@ rxUdfUi.riunif <- rxUdfUi.rxpois
     .shape <- as.character(substitute(shape))
     .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape <- shape
         }
     }
     .scale <- as.character(substitute(scale))
     .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .scale <- scale
         }
     }
-    list(replace = paste0("riweibull(", .shape, ", ", .scale, 
+    list(replace = paste0("riweibull(", .shape, ", ", .scale,
         ")"))
 }
 
@@ -391,7 +391,7 @@ rxUdfUi.riweibull <- rxUdfUi.rxpois
     .prob <- as.character(substitute(prob))
     .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .prob <- prob
         }
     }
@@ -408,18 +408,18 @@ rxUdfUi.rigeom <- rxUdfUi.rxpois
     .shape1 <- as.character(substitute(shape1))
     .tmp <- suppressWarnings(try(force(shape1), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape1 <- shape1
         }
     }
     .shape2 <- as.character(substitute(shape2))
     .tmp <- suppressWarnings(try(force(shape2), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape2 <- shape2
         }
     }
-    list(replace = paste0("ribeta(", .shape1, ", ", .shape2, 
+    list(replace = paste0("ribeta(", .shape1, ", ", .shape2,
         ")"))
 }
 
@@ -433,14 +433,14 @@ rxUdfUi.ribeta <- rxUdfUi.rxpois
     .shape <- as.character(substitute(shape))
     .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .shape <- shape
         }
     }
     .rate <- as.character(substitute(rate))
     .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .rate <- rate
         }
     }
@@ -457,14 +457,14 @@ rxUdfUi.rigamma <- rxUdfUi.rxpois
     .df1 <- as.character(substitute(df1))
     .tmp <- suppressWarnings(try(force(df1), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df1 <- df1
         }
     }
     .df2 <- as.character(substitute(df2))
     .tmp <- suppressWarnings(try(force(df2), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df2 <- df2
         }
     }
@@ -481,7 +481,7 @@ rxUdfUi.rif <- rxUdfUi.rxpois
     .rate <- as.character(substitute(rate))
     .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .rate <- rate
         }
     }
@@ -498,7 +498,7 @@ rxUdfUi.riexp <- rxUdfUi.rxpois
     .df <- as.character(substitute(df))
     .tmp <- suppressWarnings(try(force(df), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .df <- df
         }
     }
@@ -515,18 +515,18 @@ rxUdfUi.richisq <- rxUdfUi.rxpois
     .location <- as.character(substitute(location))
     .tmp <- suppressWarnings(try(force(location), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .location <- location
         }
     }
     .scale <- as.character(substitute(scale))
     .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .scale <- scale
         }
     }
-    list(replace = paste0("ricauchy(", .location, ", ", .scale, 
+    list(replace = paste0("ricauchy(", .location, ", ", .scale,
         ")"))
 }
 
@@ -540,14 +540,14 @@ rxUdfUi.ricauchy <- rxUdfUi.rxpois
     .size <- as.character(substitute(size))
     .tmp <- suppressWarnings(try(force(size), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .size <- size
         }
     }
     .prob <- as.character(substitute(prob))
     .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
     if (!inherits(.tmp, "try-error")) {
-        if (is.character(.tmp)) {
+        if (is.character(.tmp) || is.numeric(.tmp)) {
             .prob <- prob
         }
     }
