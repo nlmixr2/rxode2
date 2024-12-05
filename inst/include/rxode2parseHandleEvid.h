@@ -248,9 +248,10 @@ static inline void handleTlastInline(double *time, rx_solving_options_ind *ind) 
   } else {
     evid = getEvid(ind, ind->ix[ind->idx]);
   }
-  if (op->neq + op->extraCmt != 0 && ind->tlast != _time &&
+  if (op->neq + op->extraCmt != 0 &&
       isDose(evid) &&
-      ind->cmt < op->neq + op->extraCmt) {
+      ind->cmt < op->neq + op->extraCmt &&
+      ind->tlastS[ind->cmt] != _time) {
     double curDose = getDoseIndex(ind, ind->idx), tinf = NA_REAL;
     if (handleTlastInlineUpateDosingInformation(ind, &curDose, &tinf) == 0) return;
     ind->dosenum++;

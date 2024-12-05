@@ -546,6 +546,8 @@
 .rxD$podo <- list(function(a) {
   return("0")
 })
+.rxD$podo0 <- .rxD$podo
+.rxD$dose0 <- .rxD$dose
 
 .rxD$tlast <- list(function(a) {
   return("0")
@@ -553,6 +555,10 @@
 .rxD$tfirst <- list(function(a) {
   return("0")
 })
+
+.rxD$tlast0 <- .rxD$tlast
+.rxD$tfirst0 <- .rxD$tfirst
+
 .rxD$first <- list(function(a) {
   return("0")
 })

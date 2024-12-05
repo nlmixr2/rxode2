@@ -250,6 +250,12 @@ static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
   if ((prop & propDose) != 0) {
     sAppend(&sbt, "'dose(%s)', ", buf);
   }
+  if ((prop & propPodo0) != 0) {
+    sAppend(&sbt, "'podo0(%s)', ", buf);
+  }
+  if ((prop & propDose0) != 0) {
+    sAppend(&sbt, "'dose0(%s)', ", buf);
+  }
   // Take off trailing "',
   sbt.o -= 2;
   sbt.s[sbt.o] = 0;

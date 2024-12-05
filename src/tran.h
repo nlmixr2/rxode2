@@ -389,4 +389,7 @@ char *getLine (char *src, int line, int *lloc);
 #define propPodo 8192
 #define propDose 16384
 
+#define propPodo0 32768
+#define propDose0 65536
+
 #endif // __TRAN_H__
