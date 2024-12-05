@@ -511,14 +511,14 @@ expit <- function(alpha, low = 0, high = 1) {
   .x <- as.character(substitute(x))
   .tmp <- suppressWarnings(try(force(x), silent = TRUE))
   if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp)) {
+    if (is.character(.tmp) || is.numeric(.tmp)) {
       .x <- x
     }
   }
   .low <- as.character(substitute(low))
   .tmp <- suppressWarnings(try(force(low), silent = TRUE))
   if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp)) {
+    if (is.character(.tmp) || is.numeric(.tmp)) {
       .low <- low
     }
   }
@@ -535,7 +535,7 @@ expit <- function(alpha, low = 0, high = 1) {
 .expit <- function(x, low = 0, high=1) {
   .x <- as.character(substitute(x))
   .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-  if (!inherits(.tmp, "try-error")) {
+  if (!inherits(.tmp, "try-error") || is.numeric(.tmp)) {
     if (is.character(.tmp)) {
       .x <- x
     }
@@ -543,14 +543,14 @@ expit <- function(alpha, low = 0, high = 1) {
   .low <- as.character(substitute(low))
   .tmp <- suppressWarnings(try(force(low), silent = TRUE))
   if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp)) {
+    if (is.character(.tmp) || is.numeric(.tmp)) {
       .low <- low
     }
   }
   .high <- as.character(substitute(high))
   .tmp <- suppressWarnings(try(force(high), silent = TRUE))
   if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp)) {
+    if (is.character(.tmp) || is.numeric(.tmp)) {
       .high <- high
     }
   }
