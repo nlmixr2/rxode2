@@ -507,6 +507,67 @@ expit <- function(alpha, low = 0, high = 1) {
   .rxTransform(alpha, 1.0, low, high, 4L, TRUE)
 }
 
+.logit <- function(x, low = 0, high=1) {
+  .x <- as.character(substitute(x))
+  .tmp <- suppressWarnings(try(force(x), silent = TRUE))
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .x <- x
+    }
+  }
+  .low <- as.character(substitute(low))
+  .tmp <- suppressWarnings(try(force(low), silent = TRUE))
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .low <- low
+    }
+  }
+  .high <- as.character(substitute(high))
+  .tmp <- suppressWarnings(try(force(high), silent = TRUE))
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .high <- high
+    }
+  }
+  list(replace = paste0("logit(", .x, ", ", .low, ", ", .high, ")"))
+}
+
+.expit <- function(x, low = 0, high=1) {
+  .x <- as.character(substitute(x))
+  .tmp <- suppressWarnings(try(force(x), silent = TRUE))
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .x <- x
+    }
+  }
+  .low <- as.character(substitute(low))
+  .tmp <- suppressWarnings(try(force(low), silent = TRUE))
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .low <- low
+    }
+  }
+  .high <- as.character(substitute(high))
+  .tmp <- suppressWarnings(try(force(high), silent = TRUE))
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp)) {
+      .high <- high
+    }
+  }
+  list(replace = paste0("expit(", .x, ", ", .low, ", ", .high, ")"))
+}
+
+#' @export
+rxUdfUi.logit <- function(fun) {
+  .fun <- fun
+  .fun[[1]] <- str2lang(paste0(".", deparse1(fun[[1]])))
+  eval(.fun)
+}
+
+#' @export
+rxUdfUi.expit <- rxUdfUi.logit
+
+
 #' @rdname logit
 #' @export
 logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, ...) {
