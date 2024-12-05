@@ -1,5 +1,11 @@
 # rxode2 (development version)
 
+- Add `logit`/`expit` named expressions, that is `logit(x, high=20)`
+  becomes `logit(x, 0, 20)` in ui models.
+
+- Updated random ui models like `rxnorm(sd=10)` to accept complex
+  numeric expressions like `rxnorm(sd=10+1)`.
+
 - Rework the `tad()` and related functions so they use the same
   interface as compartments (this way they do not depend on the order
   of compartments); See #815.  For mu-referencing, Also allow dummy
