@@ -507,7 +507,20 @@ expit <- function(alpha, low = 0, high = 1) {
   .rxTransform(alpha, 1.0, low, high, 4L, TRUE)
 }
 
-
+#' Handle arguments for ui functions
+#'
+#' Note this is an internal function but it is exported in case it is
+#' useful.
+#'
+#' @param char This is the character equivalent of the argument
+#' @param f This is the forced equivalent of the argument
+#' @return character representing the underlying rxode2 code for the argument
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @examples
+#'
+#' .uiArg("1.0", 1.0)
 .uiArg <- function(char, f) {
   if (!inherits(f, "try-error")) {
     if (is.numeric(f)) {
@@ -519,47 +532,6 @@ expit <- function(alpha, low = 0, high = 1) {
   }
   char
 }
-
-.logit <- function(x, low = 0, high=1) {
-  .x <- as.character(substitute(x))
-  .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-  .x <- .uiArg(.x, .tmp)
-
-  .low <- as.character(substitute(low))
-  .tmp <- suppressWarnings(try(force(low), silent = TRUE))
-  .low <- .uiArg(.low, .tmp)
-
-  .high <- as.character(substitute(high))
-  .tmp <- suppressWarnings(try(force(high), silent = TRUE))
-  .high <- .uiArg(.high, .tmp)
-  list(replace = paste0("logit(", .x, ", ", .low, ", ", .high, ")"))
-}
-
-.expit <- function(x, low = 0, high=1) {
-  .x <- as.character(substitute(x))
-  .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-  .x <- .uiArg(.x, .tmp)
-
-  .low <- as.character(substitute(low))
-  .tmp <- suppressWarnings(try(force(low), silent = TRUE))
-  .low <- .uiArg(.low, .tmp)
-
-  .high <- as.character(substitute(high))
-  .tmp <- suppressWarnings(try(force(high), silent = TRUE))
-  .high <- .uiArg(.high, .tmp)
-  list(replace = paste0("expit(", .x, ", ", .low, ", ", .high, ")"))
-}
-
-#' @export
-rxUdfUi.logit <- function(fun) {
-  .fun <- fun
-  .fun[[1]] <- str2lang(paste0(".", deparse1(fun[[1]])))
-  eval(.fun)
-}
-
-#' @export
-rxUdfUi.expit <- rxUdfUi.logit
-
 
 #' @rdname logit
 #' @export

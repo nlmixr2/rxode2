@@ -69,11 +69,7 @@ d/dt(blood)     = a*intestine - b*blood
               .ret <- bquote({
                 .(.dotArg) <- as.character(substitute(.(.arg)))
                 .tmp <- suppressWarnings(try(force(.(.arg)), silent=TRUE))
-                if (!inherits(.tmp, "try-error")) {
-                  if (is.character(.tmp)) {
-                    .(.dotArg) <- .(.arg)
-                  }
-                }
+                .(.dotArg) <- .uiArg(.(.dotArg), .tmp)
               })
               lapply(seq_along(.ret)[-1], function(i) {
                 .ret[[i]]
@@ -108,7 +104,9 @@ d/dt(blood)     = a*intestine - b*blood
                "rxexp"="rate",
                "rxchisq"="df",
                "rxcauchy"=c(location = 0, scale = 1),
-               "rxbinom"=c("size", "prob"))
+               "rxbinom"=c("size", "prob"),
+               "logit"=c("x"=NA, "low"=0, "hi"=1),
+               "expit"=c("x"=NA, "low"=0, "hi"=1))
   .lst2 <- .lst
   names(.lst2) <- gsub("rx", "ri", names(.lst2))
   .lst <- c(.lst, .lst2)
