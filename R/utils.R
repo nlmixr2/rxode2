@@ -508,53 +508,45 @@ expit <- function(alpha, low = 0, high = 1) {
 }
 
 
+.uiArg <- function(char, f) {
+  if (!inherits(f, "try-error")) {
+    if (is.numeric(f)) {
+      return(as.character(f))
+    }
+    if (is.character(f)) {
+      return(f)
+    }
+  }
+  char
+}
+
 .logit <- function(x, low = 0, high=1) {
   .x <- as.character(substitute(x))
   .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-  if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp) || is.numeric(.tmp)) {
-      .x <- x
-    }
-  }
+  .x <- .uiArg(.x, .tmp)
+
   .low <- as.character(substitute(low))
   .tmp <- suppressWarnings(try(force(low), silent = TRUE))
-  if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp) || is.numeric(.tmp)) {
-      .low <- low
-    }
-  }
+  .low <- .uiArg(.low, .tmp)
+
   .high <- as.character(substitute(high))
   .tmp <- suppressWarnings(try(force(high), silent = TRUE))
-  if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp) || is.numeric(.tmp)) {
-      .high <- high
-    }
-  }
+  .high <- .uiArg(.high, .tmp)
   list(replace = paste0("logit(", .x, ", ", .low, ", ", .high, ")"))
 }
 
 .expit <- function(x, low = 0, high=1) {
   .x <- as.character(substitute(x))
   .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-  if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp) || is.numeric(.tmp)) {
-      .x <- x
-    }
-  }
+  .x <- .uiArg(.x, .tmp)
+
   .low <- as.character(substitute(low))
   .tmp <- suppressWarnings(try(force(low), silent = TRUE))
-  if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp) || is.numeric(.tmp)) {
-      .low <- low
-    }
-  }
+  .low <- .uiArg(.low, .tmp)
+
   .high <- as.character(substitute(high))
   .tmp <- suppressWarnings(try(force(high), silent = TRUE))
-  if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp) || is.numeric(.tmp)) {
-      .high <- high
-    }
-  }
+  .high <- .uiArg(.high, .tmp)
   list(replace = paste0("expit(", .x, ", ", .low, ", ", .high, ")"))
 }
 
