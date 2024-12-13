@@ -1,6 +1,6 @@
 rxTest({
 
-  test_test("logit ui test", {
+  test_that("logit ui test", {
 
     f <- function() {
       model({
