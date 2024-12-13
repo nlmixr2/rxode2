@@ -507,6 +507,7 @@ expit <- function(alpha, low = 0, high = 1) {
   .rxTransform(alpha, 1.0, low, high, 4L, TRUE)
 }
 
+
 .logit <- function(x, low = 0, high=1) {
   .x <- as.character(substitute(x))
   .tmp <- suppressWarnings(try(force(x), silent = TRUE))
@@ -525,7 +526,7 @@ expit <- function(alpha, low = 0, high = 1) {
   .high <- as.character(substitute(high))
   .tmp <- suppressWarnings(try(force(high), silent = TRUE))
   if (!inherits(.tmp, "try-error")) {
-    if (is.character(.tmp)) {
+    if (is.character(.tmp) || is.numeric(.tmp)) {
       .high <- high
     }
   }
@@ -535,8 +536,8 @@ expit <- function(alpha, low = 0, high = 1) {
 .expit <- function(x, low = 0, high=1) {
   .x <- as.character(substitute(x))
   .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-  if (!inherits(.tmp, "try-error") || is.numeric(.tmp)) {
-    if (is.character(.tmp)) {
+  if (!inherits(.tmp, "try-error")) {
+    if (is.character(.tmp) || is.numeric(.tmp)) {
       .x <- x
     }
   }
