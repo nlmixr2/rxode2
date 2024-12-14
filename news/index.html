@@ -80,7 +80,10 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
-<ul><li><p>Rework the <code>tad()</code> and related functions so they use the same interface as compartments (this way they do not depend on the order of compartments); See <a href="https://github.com/nlmixr2/rxode2/issues/815" class="external-link">#815</a>. For mu-referencing, Also allow dummy variables to ignore state requirements (ie <code>podo(depot)</code> in a single line will not error when parsing mu-referenced equations).</p></li>
+<ul><li><p>Add <code>logit</code>/<code>expit</code> named expressions, that is <code>logit(x, high=20)</code> becomes <code>logit(x, 0, 20)</code> in ui models.</p></li>
+<li><p>Updated random ui models like <code>rxnorm(sd=10)</code> to accept complex numeric expressions like <code>rxnorm(sd=10+1)</code>.</p></li>
+<li><p>Updated random ui models to accept complex non-numeric expressions like <code>rxnorm(sd=a+b)</code></p></li>
+<li><p>Rework the <code>tad()</code> and related functions so they use the same interface as compartments (this way they do not depend on the order of compartments); See <a href="https://github.com/nlmixr2/rxode2/issues/815" class="external-link">#815</a>. For mu-referencing, Also allow dummy variables to ignore state requirements (ie <code>podo(depot)</code> in a single line will not error when parsing mu-referenced equations).</p></li>
 <li><p>Add <code>getRxNpars</code> to api. This allows the development version of <code>babelmixr2</code> to better check what model is loaded and unload/reload as necessary.</p></li>
 <li><p>Add <code><a href="../reference/rxUdfUiControl.html">rxUdfUiControl()</a></code> to rxode2 user function to get control information from something like <code>nlmixr2</code></p></li>
 <li><p>Bug fix for tracking time after dose when dosing to 2 compartments occur at the exact same time (<a href="https://github.com/nlmixr2/rxode2/issues/804" class="external-link">#804</a>, <a href="https://github.com/nlmixr2/rxode2/issues/819" class="external-link">#819</a>)</p></li>
