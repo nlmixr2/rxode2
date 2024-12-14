@@ -6,6 +6,9 @@
 - Updated random ui models like `rxnorm(sd=10)` to accept complex
   numeric expressions like `rxnorm(sd=10+1)`.
 
+- Updated random ui models to accept complex non-numeric expressions
+  like `rxnorm(sd=a+b)`
+
 - Rework the `tad()` and related functions so they use the same
   interface as compartments (this way they do not depend on the order
   of compartments); See #815.  For mu-referencing, Also allow dummy
