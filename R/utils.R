@@ -514,14 +514,15 @@ expit <- function(alpha, low = 0, high = 1) {
 #'
 #' @param char This is the character equivalent of the argument
 #' @param f This is the forced equivalent of the argument
+#' @param dp This is deparsed expression
 #' @return character representing the underlying rxode2 code for the argument
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @examples
 #'
-#' .uiArg("1.0", 1.0)
-.uiArg <- function(char, f) {
+#' .uiArg("1.0", 1.0, "1.0")
+.uiArg <- function(char, f, dp) {
   if (!inherits(f, "try-error")) {
     if (is.numeric(f)) {
       return(as.character(f))
@@ -530,7 +531,11 @@ expit <- function(alpha, low = 0, high = 1) {
       return(f)
     }
   }
-  char
+  if (length(char) > 1) {
+    dp
+  } else {
+    char
+  }
 }
 
 #' @rdname logit

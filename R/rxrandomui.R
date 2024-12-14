@@ -2,21 +2,13 @@
 ## nocov start
 .rxnorm <- function(mean = 0, sd = 1) {
     .mean <- as.character(substitute(mean))
-    if (is.character(.mean) && length(.mean) > 1) {
-        .mean <- deparse1(substitute(mean))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(mean), silent = TRUE))
-        .mean <- .uiArg(.mean, .tmp)
-    }
+    .dp <- deparse1(substitute(mean))
+    .tmp <- suppressWarnings(try(force(mean), silent = TRUE))
+    .mean <- .uiArg(.mean, .tmp, .dp)
     .sd <- as.character(substitute(sd))
-    if (is.character(.sd) && length(.sd) > 1) {
-        .sd <- deparse1(substitute(sd))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(sd), silent = TRUE))
-        .sd <- .uiArg(.sd, .tmp)
-    }
+    .dp <- deparse1(substitute(sd))
+    .tmp <- suppressWarnings(try(force(sd), silent = TRUE))
+    .sd <- .uiArg(.sd, .tmp, .dp)
     list(replace = paste0("rxnorm(", .mean, ", ", .sd, ")"))
 }
 
@@ -28,13 +20,9 @@ rxUdfUi.rxnorm <- rxUdfUi.rxpois
 ## nocov start
 .rxpois <- function(lambda) {
     .lambda <- as.character(substitute(lambda))
-    if (is.character(.lambda) && length(.lambda) > 1) {
-        .lambda <- deparse1(substitute(lambda))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(lambda), silent = TRUE))
-        .lambda <- .uiArg(.lambda, .tmp)
-    }
+    .dp <- deparse1(substitute(lambda))
+    .tmp <- suppressWarnings(try(force(lambda), silent = TRUE))
+    .lambda <- .uiArg(.lambda, .tmp, .dp)
     list(replace = paste0("rxpois(", .lambda, ")"))
 }
 
@@ -46,13 +34,9 @@ rxUdfUi.rxpois <- rxUdfUi.rxpois
 ## nocov start
 .rxt <- function(df) {
     .df <- as.character(substitute(df))
-    if (is.character(.df) && length(.df) > 1) {
-        .df <- deparse1(substitute(df))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df), silent = TRUE))
-        .df <- .uiArg(.df, .tmp)
-    }
+    .dp <- deparse1(substitute(df))
+    .tmp <- suppressWarnings(try(force(df), silent = TRUE))
+    .df <- .uiArg(.df, .tmp, .dp)
     list(replace = paste0("rxt(", .df, ")"))
 }
 
@@ -64,21 +48,13 @@ rxUdfUi.rxt <- rxUdfUi.rxpois
 ## nocov start
 .rxunif <- function(min = 0, max = 1) {
     .min <- as.character(substitute(min))
-    if (is.character(.min) && length(.min) > 1) {
-        .min <- deparse1(substitute(min))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(min), silent = TRUE))
-        .min <- .uiArg(.min, .tmp)
-    }
+    .dp <- deparse1(substitute(min))
+    .tmp <- suppressWarnings(try(force(min), silent = TRUE))
+    .min <- .uiArg(.min, .tmp, .dp)
     .max <- as.character(substitute(max))
-    if (is.character(.max) && length(.max) > 1) {
-        .max <- deparse1(substitute(max))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(max), silent = TRUE))
-        .max <- .uiArg(.max, .tmp)
-    }
+    .dp <- deparse1(substitute(max))
+    .tmp <- suppressWarnings(try(force(max), silent = TRUE))
+    .max <- .uiArg(.max, .tmp, .dp)
     list(replace = paste0("rxunif(", .min, ", ", .max, ")"))
 }
 
@@ -90,21 +66,13 @@ rxUdfUi.rxunif <- rxUdfUi.rxpois
 ## nocov start
 .rxweibull <- function(shape, scale = 1) {
     .shape <- as.character(substitute(shape))
-    if (is.character(.shape) && length(.shape) > 1) {
-        .shape <- deparse1(substitute(shape))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
-        .shape <- .uiArg(.shape, .tmp)
-    }
+    .dp <- deparse1(substitute(shape))
+    .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
+    .shape <- .uiArg(.shape, .tmp, .dp)
     .scale <- as.character(substitute(scale))
-    if (is.character(.scale) && length(.scale) > 1) {
-        .scale <- deparse1(substitute(scale))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
-        .scale <- .uiArg(.scale, .tmp)
-    }
+    .dp <- deparse1(substitute(scale))
+    .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
+    .scale <- .uiArg(.scale, .tmp, .dp)
     list(replace = paste0("rxweibull(", .shape, ", ", .scale, 
         ")"))
 }
@@ -117,13 +85,9 @@ rxUdfUi.rxweibull <- rxUdfUi.rxpois
 ## nocov start
 .rxgeom <- function(prob) {
     .prob <- as.character(substitute(prob))
-    if (is.character(.prob) && length(.prob) > 1) {
-        .prob <- deparse1(substitute(prob))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
-        .prob <- .uiArg(.prob, .tmp)
-    }
+    .dp <- deparse1(substitute(prob))
+    .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
+    .prob <- .uiArg(.prob, .tmp, .dp)
     list(replace = paste0("rxgeom(", .prob, ")"))
 }
 
@@ -135,21 +99,13 @@ rxUdfUi.rxgeom <- rxUdfUi.rxpois
 ## nocov start
 .rxbeta <- function(shape1, shape2) {
     .shape1 <- as.character(substitute(shape1))
-    if (is.character(.shape1) && length(.shape1) > 1) {
-        .shape1 <- deparse1(substitute(shape1))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape1), silent = TRUE))
-        .shape1 <- .uiArg(.shape1, .tmp)
-    }
+    .dp <- deparse1(substitute(shape1))
+    .tmp <- suppressWarnings(try(force(shape1), silent = TRUE))
+    .shape1 <- .uiArg(.shape1, .tmp, .dp)
     .shape2 <- as.character(substitute(shape2))
-    if (is.character(.shape2) && length(.shape2) > 1) {
-        .shape2 <- deparse1(substitute(shape2))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape2), silent = TRUE))
-        .shape2 <- .uiArg(.shape2, .tmp)
-    }
+    .dp <- deparse1(substitute(shape2))
+    .tmp <- suppressWarnings(try(force(shape2), silent = TRUE))
+    .shape2 <- .uiArg(.shape2, .tmp, .dp)
     list(replace = paste0("rxbeta(", .shape1, ", ", .shape2, 
         ")"))
 }
@@ -162,21 +118,13 @@ rxUdfUi.rxbeta <- rxUdfUi.rxpois
 ## nocov start
 .rxgamma <- function(shape, rate = 1) {
     .shape <- as.character(substitute(shape))
-    if (is.character(.shape) && length(.shape) > 1) {
-        .shape <- deparse1(substitute(shape))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
-        .shape <- .uiArg(.shape, .tmp)
-    }
+    .dp <- deparse1(substitute(shape))
+    .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
+    .shape <- .uiArg(.shape, .tmp, .dp)
     .rate <- as.character(substitute(rate))
-    if (is.character(.rate) && length(.rate) > 1) {
-        .rate <- deparse1(substitute(rate))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
-        .rate <- .uiArg(.rate, .tmp)
-    }
+    .dp <- deparse1(substitute(rate))
+    .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
+    .rate <- .uiArg(.rate, .tmp, .dp)
     list(replace = paste0("rxgamma(", .shape, ", ", .rate, ")"))
 }
 
@@ -188,21 +136,13 @@ rxUdfUi.rxgamma <- rxUdfUi.rxpois
 ## nocov start
 .rxf <- function(df1, df2) {
     .df1 <- as.character(substitute(df1))
-    if (is.character(.df1) && length(.df1) > 1) {
-        .df1 <- deparse1(substitute(df1))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df1), silent = TRUE))
-        .df1 <- .uiArg(.df1, .tmp)
-    }
+    .dp <- deparse1(substitute(df1))
+    .tmp <- suppressWarnings(try(force(df1), silent = TRUE))
+    .df1 <- .uiArg(.df1, .tmp, .dp)
     .df2 <- as.character(substitute(df2))
-    if (is.character(.df2) && length(.df2) > 1) {
-        .df2 <- deparse1(substitute(df2))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df2), silent = TRUE))
-        .df2 <- .uiArg(.df2, .tmp)
-    }
+    .dp <- deparse1(substitute(df2))
+    .tmp <- suppressWarnings(try(force(df2), silent = TRUE))
+    .df2 <- .uiArg(.df2, .tmp, .dp)
     list(replace = paste0("rxf(", .df1, ", ", .df2, ")"))
 }
 
@@ -214,13 +154,9 @@ rxUdfUi.rxf <- rxUdfUi.rxpois
 ## nocov start
 .rxexp <- function(rate) {
     .rate <- as.character(substitute(rate))
-    if (is.character(.rate) && length(.rate) > 1) {
-        .rate <- deparse1(substitute(rate))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
-        .rate <- .uiArg(.rate, .tmp)
-    }
+    .dp <- deparse1(substitute(rate))
+    .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
+    .rate <- .uiArg(.rate, .tmp, .dp)
     list(replace = paste0("rxexp(", .rate, ")"))
 }
 
@@ -232,13 +168,9 @@ rxUdfUi.rxexp <- rxUdfUi.rxpois
 ## nocov start
 .rxchisq <- function(df) {
     .df <- as.character(substitute(df))
-    if (is.character(.df) && length(.df) > 1) {
-        .df <- deparse1(substitute(df))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df), silent = TRUE))
-        .df <- .uiArg(.df, .tmp)
-    }
+    .dp <- deparse1(substitute(df))
+    .tmp <- suppressWarnings(try(force(df), silent = TRUE))
+    .df <- .uiArg(.df, .tmp, .dp)
     list(replace = paste0("rxchisq(", .df, ")"))
 }
 
@@ -250,21 +182,13 @@ rxUdfUi.rxchisq <- rxUdfUi.rxpois
 ## nocov start
 .rxcauchy <- function(location = 0, scale = 1) {
     .location <- as.character(substitute(location))
-    if (is.character(.location) && length(.location) > 1) {
-        .location <- deparse1(substitute(location))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(location), silent = TRUE))
-        .location <- .uiArg(.location, .tmp)
-    }
+    .dp <- deparse1(substitute(location))
+    .tmp <- suppressWarnings(try(force(location), silent = TRUE))
+    .location <- .uiArg(.location, .tmp, .dp)
     .scale <- as.character(substitute(scale))
-    if (is.character(.scale) && length(.scale) > 1) {
-        .scale <- deparse1(substitute(scale))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
-        .scale <- .uiArg(.scale, .tmp)
-    }
+    .dp <- deparse1(substitute(scale))
+    .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
+    .scale <- .uiArg(.scale, .tmp, .dp)
     list(replace = paste0("rxcauchy(", .location, ", ", .scale, 
         ")"))
 }
@@ -277,21 +201,13 @@ rxUdfUi.rxcauchy <- rxUdfUi.rxpois
 ## nocov start
 .rxbinom <- function(size, prob) {
     .size <- as.character(substitute(size))
-    if (is.character(.size) && length(.size) > 1) {
-        .size <- deparse1(substitute(size))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(size), silent = TRUE))
-        .size <- .uiArg(.size, .tmp)
-    }
+    .dp <- deparse1(substitute(size))
+    .tmp <- suppressWarnings(try(force(size), silent = TRUE))
+    .size <- .uiArg(.size, .tmp, .dp)
     .prob <- as.character(substitute(prob))
-    if (is.character(.prob) && length(.prob) > 1) {
-        .prob <- deparse1(substitute(prob))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
-        .prob <- .uiArg(.prob, .tmp)
-    }
+    .dp <- deparse1(substitute(prob))
+    .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
+    .prob <- .uiArg(.prob, .tmp, .dp)
     list(replace = paste0("rxbinom(", .size, ", ", .prob, ")"))
 }
 
@@ -303,21 +219,13 @@ rxUdfUi.rxbinom <- rxUdfUi.rxpois
 ## nocov start
 .rinorm <- function(mean = 0, sd = 1) {
     .mean <- as.character(substitute(mean))
-    if (is.character(.mean) && length(.mean) > 1) {
-        .mean <- deparse1(substitute(mean))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(mean), silent = TRUE))
-        .mean <- .uiArg(.mean, .tmp)
-    }
+    .dp <- deparse1(substitute(mean))
+    .tmp <- suppressWarnings(try(force(mean), silent = TRUE))
+    .mean <- .uiArg(.mean, .tmp, .dp)
     .sd <- as.character(substitute(sd))
-    if (is.character(.sd) && length(.sd) > 1) {
-        .sd <- deparse1(substitute(sd))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(sd), silent = TRUE))
-        .sd <- .uiArg(.sd, .tmp)
-    }
+    .dp <- deparse1(substitute(sd))
+    .tmp <- suppressWarnings(try(force(sd), silent = TRUE))
+    .sd <- .uiArg(.sd, .tmp, .dp)
     list(replace = paste0("rinorm(", .mean, ", ", .sd, ")"))
 }
 
@@ -329,13 +237,9 @@ rxUdfUi.rinorm <- rxUdfUi.rxpois
 ## nocov start
 .ripois <- function(lambda) {
     .lambda <- as.character(substitute(lambda))
-    if (is.character(.lambda) && length(.lambda) > 1) {
-        .lambda <- deparse1(substitute(lambda))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(lambda), silent = TRUE))
-        .lambda <- .uiArg(.lambda, .tmp)
-    }
+    .dp <- deparse1(substitute(lambda))
+    .tmp <- suppressWarnings(try(force(lambda), silent = TRUE))
+    .lambda <- .uiArg(.lambda, .tmp, .dp)
     list(replace = paste0("ripois(", .lambda, ")"))
 }
 
@@ -347,13 +251,9 @@ rxUdfUi.ripois <- rxUdfUi.rxpois
 ## nocov start
 .rit <- function(df) {
     .df <- as.character(substitute(df))
-    if (is.character(.df) && length(.df) > 1) {
-        .df <- deparse1(substitute(df))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df), silent = TRUE))
-        .df <- .uiArg(.df, .tmp)
-    }
+    .dp <- deparse1(substitute(df))
+    .tmp <- suppressWarnings(try(force(df), silent = TRUE))
+    .df <- .uiArg(.df, .tmp, .dp)
     list(replace = paste0("rit(", .df, ")"))
 }
 
@@ -365,21 +265,13 @@ rxUdfUi.rit <- rxUdfUi.rxpois
 ## nocov start
 .riunif <- function(min = 0, max = 1) {
     .min <- as.character(substitute(min))
-    if (is.character(.min) && length(.min) > 1) {
-        .min <- deparse1(substitute(min))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(min), silent = TRUE))
-        .min <- .uiArg(.min, .tmp)
-    }
+    .dp <- deparse1(substitute(min))
+    .tmp <- suppressWarnings(try(force(min), silent = TRUE))
+    .min <- .uiArg(.min, .tmp, .dp)
     .max <- as.character(substitute(max))
-    if (is.character(.max) && length(.max) > 1) {
-        .max <- deparse1(substitute(max))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(max), silent = TRUE))
-        .max <- .uiArg(.max, .tmp)
-    }
+    .dp <- deparse1(substitute(max))
+    .tmp <- suppressWarnings(try(force(max), silent = TRUE))
+    .max <- .uiArg(.max, .tmp, .dp)
     list(replace = paste0("riunif(", .min, ", ", .max, ")"))
 }
 
@@ -391,21 +283,13 @@ rxUdfUi.riunif <- rxUdfUi.rxpois
 ## nocov start
 .riweibull <- function(shape, scale = 1) {
     .shape <- as.character(substitute(shape))
-    if (is.character(.shape) && length(.shape) > 1) {
-        .shape <- deparse1(substitute(shape))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
-        .shape <- .uiArg(.shape, .tmp)
-    }
+    .dp <- deparse1(substitute(shape))
+    .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
+    .shape <- .uiArg(.shape, .tmp, .dp)
     .scale <- as.character(substitute(scale))
-    if (is.character(.scale) && length(.scale) > 1) {
-        .scale <- deparse1(substitute(scale))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
-        .scale <- .uiArg(.scale, .tmp)
-    }
+    .dp <- deparse1(substitute(scale))
+    .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
+    .scale <- .uiArg(.scale, .tmp, .dp)
     list(replace = paste0("riweibull(", .shape, ", ", .scale, 
         ")"))
 }
@@ -418,13 +302,9 @@ rxUdfUi.riweibull <- rxUdfUi.rxpois
 ## nocov start
 .rigeom <- function(prob) {
     .prob <- as.character(substitute(prob))
-    if (is.character(.prob) && length(.prob) > 1) {
-        .prob <- deparse1(substitute(prob))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
-        .prob <- .uiArg(.prob, .tmp)
-    }
+    .dp <- deparse1(substitute(prob))
+    .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
+    .prob <- .uiArg(.prob, .tmp, .dp)
     list(replace = paste0("rigeom(", .prob, ")"))
 }
 
@@ -436,21 +316,13 @@ rxUdfUi.rigeom <- rxUdfUi.rxpois
 ## nocov start
 .ribeta <- function(shape1, shape2) {
     .shape1 <- as.character(substitute(shape1))
-    if (is.character(.shape1) && length(.shape1) > 1) {
-        .shape1 <- deparse1(substitute(shape1))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape1), silent = TRUE))
-        .shape1 <- .uiArg(.shape1, .tmp)
-    }
+    .dp <- deparse1(substitute(shape1))
+    .tmp <- suppressWarnings(try(force(shape1), silent = TRUE))
+    .shape1 <- .uiArg(.shape1, .tmp, .dp)
     .shape2 <- as.character(substitute(shape2))
-    if (is.character(.shape2) && length(.shape2) > 1) {
-        .shape2 <- deparse1(substitute(shape2))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape2), silent = TRUE))
-        .shape2 <- .uiArg(.shape2, .tmp)
-    }
+    .dp <- deparse1(substitute(shape2))
+    .tmp <- suppressWarnings(try(force(shape2), silent = TRUE))
+    .shape2 <- .uiArg(.shape2, .tmp, .dp)
     list(replace = paste0("ribeta(", .shape1, ", ", .shape2, 
         ")"))
 }
@@ -463,21 +335,13 @@ rxUdfUi.ribeta <- rxUdfUi.rxpois
 ## nocov start
 .rigamma <- function(shape, rate = 1) {
     .shape <- as.character(substitute(shape))
-    if (is.character(.shape) && length(.shape) > 1) {
-        .shape <- deparse1(substitute(shape))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
-        .shape <- .uiArg(.shape, .tmp)
-    }
+    .dp <- deparse1(substitute(shape))
+    .tmp <- suppressWarnings(try(force(shape), silent = TRUE))
+    .shape <- .uiArg(.shape, .tmp, .dp)
     .rate <- as.character(substitute(rate))
-    if (is.character(.rate) && length(.rate) > 1) {
-        .rate <- deparse1(substitute(rate))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
-        .rate <- .uiArg(.rate, .tmp)
-    }
+    .dp <- deparse1(substitute(rate))
+    .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
+    .rate <- .uiArg(.rate, .tmp, .dp)
     list(replace = paste0("rigamma(", .shape, ", ", .rate, ")"))
 }
 
@@ -489,21 +353,13 @@ rxUdfUi.rigamma <- rxUdfUi.rxpois
 ## nocov start
 .rif <- function(df1, df2) {
     .df1 <- as.character(substitute(df1))
-    if (is.character(.df1) && length(.df1) > 1) {
-        .df1 <- deparse1(substitute(df1))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df1), silent = TRUE))
-        .df1 <- .uiArg(.df1, .tmp)
-    }
+    .dp <- deparse1(substitute(df1))
+    .tmp <- suppressWarnings(try(force(df1), silent = TRUE))
+    .df1 <- .uiArg(.df1, .tmp, .dp)
     .df2 <- as.character(substitute(df2))
-    if (is.character(.df2) && length(.df2) > 1) {
-        .df2 <- deparse1(substitute(df2))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df2), silent = TRUE))
-        .df2 <- .uiArg(.df2, .tmp)
-    }
+    .dp <- deparse1(substitute(df2))
+    .tmp <- suppressWarnings(try(force(df2), silent = TRUE))
+    .df2 <- .uiArg(.df2, .tmp, .dp)
     list(replace = paste0("rif(", .df1, ", ", .df2, ")"))
 }
 
@@ -515,13 +371,9 @@ rxUdfUi.rif <- rxUdfUi.rxpois
 ## nocov start
 .riexp <- function(rate) {
     .rate <- as.character(substitute(rate))
-    if (is.character(.rate) && length(.rate) > 1) {
-        .rate <- deparse1(substitute(rate))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
-        .rate <- .uiArg(.rate, .tmp)
-    }
+    .dp <- deparse1(substitute(rate))
+    .tmp <- suppressWarnings(try(force(rate), silent = TRUE))
+    .rate <- .uiArg(.rate, .tmp, .dp)
     list(replace = paste0("riexp(", .rate, ")"))
 }
 
@@ -533,13 +385,9 @@ rxUdfUi.riexp <- rxUdfUi.rxpois
 ## nocov start
 .richisq <- function(df) {
     .df <- as.character(substitute(df))
-    if (is.character(.df) && length(.df) > 1) {
-        .df <- deparse1(substitute(df))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(df), silent = TRUE))
-        .df <- .uiArg(.df, .tmp)
-    }
+    .dp <- deparse1(substitute(df))
+    .tmp <- suppressWarnings(try(force(df), silent = TRUE))
+    .df <- .uiArg(.df, .tmp, .dp)
     list(replace = paste0("richisq(", .df, ")"))
 }
 
@@ -551,21 +399,13 @@ rxUdfUi.richisq <- rxUdfUi.rxpois
 ## nocov start
 .ricauchy <- function(location = 0, scale = 1) {
     .location <- as.character(substitute(location))
-    if (is.character(.location) && length(.location) > 1) {
-        .location <- deparse1(substitute(location))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(location), silent = TRUE))
-        .location <- .uiArg(.location, .tmp)
-    }
+    .dp <- deparse1(substitute(location))
+    .tmp <- suppressWarnings(try(force(location), silent = TRUE))
+    .location <- .uiArg(.location, .tmp, .dp)
     .scale <- as.character(substitute(scale))
-    if (is.character(.scale) && length(.scale) > 1) {
-        .scale <- deparse1(substitute(scale))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
-        .scale <- .uiArg(.scale, .tmp)
-    }
+    .dp <- deparse1(substitute(scale))
+    .tmp <- suppressWarnings(try(force(scale), silent = TRUE))
+    .scale <- .uiArg(.scale, .tmp, .dp)
     list(replace = paste0("ricauchy(", .location, ", ", .scale, 
         ")"))
 }
@@ -578,21 +418,13 @@ rxUdfUi.ricauchy <- rxUdfUi.rxpois
 ## nocov start
 .ribinom <- function(size, prob) {
     .size <- as.character(substitute(size))
-    if (is.character(.size) && length(.size) > 1) {
-        .size <- deparse1(substitute(size))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(size), silent = TRUE))
-        .size <- .uiArg(.size, .tmp)
-    }
+    .dp <- deparse1(substitute(size))
+    .tmp <- suppressWarnings(try(force(size), silent = TRUE))
+    .size <- .uiArg(.size, .tmp, .dp)
     .prob <- as.character(substitute(prob))
-    if (is.character(.prob) && length(.prob) > 1) {
-        .prob <- deparse1(substitute(prob))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
-        .prob <- .uiArg(.prob, .tmp)
-    }
+    .dp <- deparse1(substitute(prob))
+    .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
+    .prob <- .uiArg(.prob, .tmp, .dp)
     list(replace = paste0("ribinom(", .size, ", ", .prob, ")"))
 }
 
@@ -604,29 +436,17 @@ rxUdfUi.ribinom <- rxUdfUi.rxpois
 ## nocov start
 .logit <- function(x, low = 0, high = 1) {
     .x <- as.character(substitute(x))
-    if (is.character(.x) && length(.x) > 1) {
-        .x <- deparse1(substitute(x))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-        .x <- .uiArg(.x, .tmp)
-    }
+    .dp <- deparse1(substitute(x))
+    .tmp <- suppressWarnings(try(force(x), silent = TRUE))
+    .x <- .uiArg(.x, .tmp, .dp)
     .low <- as.character(substitute(low))
-    if (is.character(.low) && length(.low) > 1) {
-        .low <- deparse1(substitute(low))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(low), silent = TRUE))
-        .low <- .uiArg(.low, .tmp)
-    }
+    .dp <- deparse1(substitute(low))
+    .tmp <- suppressWarnings(try(force(low), silent = TRUE))
+    .low <- .uiArg(.low, .tmp, .dp)
     .high <- as.character(substitute(high))
-    if (is.character(.high) && length(.high) > 1) {
-        .high <- deparse1(substitute(high))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(high), silent = TRUE))
-        .high <- .uiArg(.high, .tmp)
-    }
+    .dp <- deparse1(substitute(high))
+    .tmp <- suppressWarnings(try(force(high), silent = TRUE))
+    .high <- .uiArg(.high, .tmp, .dp)
     list(replace = paste0("logit(", .x, ", ", .low, ", ", .high, 
         ")"))
 }
@@ -639,29 +459,17 @@ rxUdfUi.logit <- rxUdfUi.rxpois
 ## nocov start
 .expit <- function(x, low = 0, high = 1) {
     .x <- as.character(substitute(x))
-    if (is.character(.x) && length(.x) > 1) {
-        .x <- deparse1(substitute(x))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(x), silent = TRUE))
-        .x <- .uiArg(.x, .tmp)
-    }
+    .dp <- deparse1(substitute(x))
+    .tmp <- suppressWarnings(try(force(x), silent = TRUE))
+    .x <- .uiArg(.x, .tmp, .dp)
     .low <- as.character(substitute(low))
-    if (is.character(.low) && length(.low) > 1) {
-        .low <- deparse1(substitute(low))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(low), silent = TRUE))
-        .low <- .uiArg(.low, .tmp)
-    }
+    .dp <- deparse1(substitute(low))
+    .tmp <- suppressWarnings(try(force(low), silent = TRUE))
+    .low <- .uiArg(.low, .tmp, .dp)
     .high <- as.character(substitute(high))
-    if (is.character(.high) && length(.high) > 1) {
-        .high <- deparse1(substitute(high))
-    }
-    else {
-        .tmp <- suppressWarnings(try(force(high), silent = TRUE))
-        .high <- .uiArg(.high, .tmp)
-    }
+    .dp <- deparse1(substitute(high))
+    .tmp <- suppressWarnings(try(force(high), silent = TRUE))
+    .high <- .uiArg(.high, .tmp, .dp)
     list(replace = paste0("expit(", .x, ", ", .low, ", ", .high, 
         ")"))
 }

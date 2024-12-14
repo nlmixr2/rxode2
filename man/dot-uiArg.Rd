@@ -4,12 +4,14 @@
 \alias{.uiArg}
 \title{Handle arguments for ui functions}
 \usage{
-.uiArg(char, f)
+.uiArg(char, f, dp)
 }
 \arguments{
 \item{char}{This is the character equivalent of the argument}
 
 \item{f}{This is the forced equivalent of the argument}
+
+\item{dp}{This is deparsed expression}
 }
 \value{
 character representing the underlying rxode2 code for the argument
@@ -20,7 +22,7 @@ useful.
 }
 \examples{
 
-.uiArg("1.0", 1.0)
+.uiArg("1.0", 1.0, "1.0")
 }
 \author{
 Matthew L. Fidler
