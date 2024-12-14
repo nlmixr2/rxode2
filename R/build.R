@@ -68,8 +68,13 @@ d/dt(blood)     = a*intestine - b*blood
               .arg <- str2lang(arg)
               .ret <- bquote({
                 .(.dotArg) <- as.character(substitute(.(.arg)))
-                .tmp <- suppressWarnings(try(force(.(.arg)), silent=TRUE))
-                .(.dotArg) <- .uiArg(.(.dotArg), .tmp)
+                if (is.character(.(.dotArg)) &&
+                      length(.(.dotArg)) > 1) {
+                  .(.dotArg) <- deparse1(substitute(.(.arg)))
+                } else {
+                  .tmp <- suppressWarnings(try(force(.(.arg)), silent=TRUE))
+                  .(.dotArg) <- .uiArg(.(.dotArg), .tmp)
+                }
               })
               lapply(seq_along(.ret)[-1], function(i) {
                 .ret[[i]]
