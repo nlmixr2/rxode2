@@ -1,4 +1,37 @@
 rxTest({
+
+  test_that("logit ui test", {
+
+    f <- function() {
+      model({
+        a <- logit(x, high=10)
+      })
+    }
+
+    expect_equal((f() %>% modelExtract),
+                 "a <- logit(x, 0, 10)")
+
+    f <- function() {
+      model({
+        a <- expit(x, high=10+1)
+      })
+    }
+
+    expect_equal((f() %>% modelExtract),
+                 "a <- expit(x, 0, 11)")
+
+    f <- function() {
+      model({
+        a <- expit(high=10+1, low=a, x)
+      })
+    }
+
+    expect_equal((f() %>% modelExtract),
+                 "a <- expit(x, a, 11)")
+
+
+  })
+
   test_that("logit tests", {
     expect_equal(
       rxToSE("logit(a)"),
