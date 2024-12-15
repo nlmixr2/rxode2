@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 3.0.3
 
 - Add `logit`/`expit` named expressions, that is `logit(x, high=20)`
   becomes `logit(x, 0, 20)` in ui models.
@@ -27,6 +27,8 @@
 
 - Change `transit()` model so that it uses `tad0()`, `podo0()` and
   related functions for a bit more stable simulation and estimation
+
+- Fix compile flags to work with BH 1.87 (#826)
 
 # rxode2 3.0.2
 
