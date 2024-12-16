@@ -272,7 +272,7 @@ rxode2 <- # nolint
            wd = getwd(),
            filename = NULL, extraC = NULL, debug = FALSE, calcJac = NULL, calcSens = NULL,
            collapseModel = FALSE, package = NULL, ...,
-           linCmtSens = c("linCmtA", "linCmtB", "linCmtC"),
+           linCmtSens = c("linCmtA", "linCmtB"),
            indLin = FALSE,
            verbose = FALSE,
            fullPrint=getOption("rxode2.fullPrint", FALSE),
@@ -370,8 +370,7 @@ rxode2 <- # nolint
         .vars,
         setNames(
           c(
-            "linCmtA" = 1L, "linCmtB" = 2L,
-            "linCmtC" = 3L
+            "linCmtA" = 1L, "linCmtB" = 2L
           )[match.arg(linCmtSens)],
           NULL
         ), verbose

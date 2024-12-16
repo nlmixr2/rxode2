@@ -92,9 +92,6 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "erfc" = 1,
   "exp" = 1,
   "gamma" = 1,
-  "linCmtA" = 20,
-  "linCmtC" = 20,
-  "linCmtB" = 21,
   "log" = 1,
   "polygamma" = 2,
   "rxTBS" = 5,
@@ -1451,15 +1448,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .SEeq <- c(.rxSEeq, rxode2::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
-    if (.promoteLinB && .curName == "linCmtA") {
-      .ret0 <- c(
-        list("linCmtB"),
-        .ret0[2:6],
-        list("0"),
-        .ret0[-c(1, 2:6)]
-      )
-      .nargs <- .nargs + 1
-    }
+    ## if (.promoteLinB && .curName == "linCmtA") {
+    ##   .ret0 <- c(
+    ##     list("linCmtB"),
+    ##     .ret0[2:6],
+    ##     list("0"),
+    ##     .ret0[-c(1, 2:6)]
+    ##   )
+    ##   .nargs <- .nargs + 1
+    ## }
     if (!is.na(.nargs)) {
       if (.nargs == length(.ret0) - 1) {
         .ret <- paste0(.ret0[[1]], "(")
@@ -2470,7 +2467,8 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .rxD <- rxode2parseD()
   for (.f in c(
     ls(.symengineFs()),
-    ls(.rxD), "linCmtA", "linCmtB", "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
+    ls(.rxD),
+    "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
     "rxTBSi"
   )) {

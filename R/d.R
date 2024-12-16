@@ -581,48 +581,6 @@
   return("0")
 })
 
-
-## Approx a>=b by
-## 1/2-1/2*tanh(k*x+delta)=1-tol
-## 1/2-1+tol=1/2*tanh(k*x+delta)
-## atanh(2*tol-1)= delta
-## 1/2-1/2*tanh(k*(a-b)+delta)
-
-.linCmtBgen <- function(i) {
-  .fun <- function(...) {}
-  body(.fun) <- bquote({
-    .args <- unlist(list(...))
-    if (.args[6] != "0") stop("cannot take a second derivative", call. = FALSE)
-    .args[6] <- .(i)
-    return(paste0("linCmtB(", paste(.args, collapse = ","), ")"))
-  })
-  return(.fun)
-}
-
-.rxD$linCmtB <- c(
-  list(
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    },
-    function(...) {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
-    }
-  ),
-  lapply(1:15, .linCmtBgen)
-)
-
 .rxD$gammap <- list(
   NULL,
   function(a, z) {
