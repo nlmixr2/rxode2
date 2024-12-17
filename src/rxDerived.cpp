@@ -15,6 +15,8 @@
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
+extern "C" void _rxode2parse_unprotect(void);
+
 static inline int parTransPtr(int *transp,
                               double *p1, double *v1,
                               double *p2, double *p3,
@@ -22,7 +24,7 @@ static inline int parTransPtr(int *transp,
                               unsigned int *ncmtp,
                               double *rx_k, double *rx_v, double *rx_k12,
                               double *rx_k21, double *rx_k13, double *rx_k31) {
-  int ncmt = *ncmtp, trans=*transp;
+  int ncmt = ncmtp[0], trans=*transp;
   Eigen::Matrix<double, Eigen::Dynamic, 1> params(2*ncmt, 1);
   params(0, 0) = p1[0];
   params(1, 0) = v1[0];
@@ -35,8 +37,8 @@ static inline int parTransPtr(int *transp,
     }
   }
   Eigen::Matrix<double, Eigen::Dynamic, 2> g = stan::math::macros2micros(params, ncmt, trans);
-  *rx_k = g(0,0);
-  *rx_v = g(0,1);
+  *rx_k = g(0,1);
+  *rx_v = g(0,0);
   if (ncmt >=2) {
     *rx_k12 = g(1, 0);
     *rx_k21 = g(1, 1);
@@ -231,12 +233,23 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
 
   Rf_setAttrib(ret, R_NamesSymbol, retN);
 
-  unsigned int ncmta=0;
+  unsigned int ncmta=1;
 
-  for (int i = lenOut; i--;){
-    parTransPtr(&trans, ((lenP == 1) ? p1 : p1++),
-                ((lenV == 1) ? v1 : v1++), &zer, &zer, &zer, &zer,
-                &ncmta, kel, vc, &zer, &zer, &zer, &zer);
+  for (int i = 0; i < lenOut; ++i) {
+    parTransPtr(&trans,
+                p1,
+                v1,
+                &zer,
+                &zer,
+                &zer,
+                &zer,
+                &ncmta,
+                kel,
+                vc,
+                &zer,
+                &zer,
+                &zer,
+                &zer);
     linCmtPar1(vc, kel, vss, cl, A, fracA, alpha, thalf);
     if (dig > 0){
       (*vc) = Rf_fprec((*vc), dig);
@@ -248,7 +261,7 @@ extern "C" SEXP derived1(int trans, SEXP inp, double dig) {
       (*thalf) = Rf_fprec((*thalf), dig);
     }
     vc++; kel++; vss++; cl++; A++; fracA++; alpha++; thalf++;
-
+    p1++; v1++;
   }
   UNPROTECT(pro);
   return ret;
@@ -383,7 +396,7 @@ extern "C" SEXP derived2(int trans, SEXP inp, double dig) {
 
   Rf_setAttrib(ret, R_NamesSymbol, retN);
 
-  unsigned int ncmta=0;
+  unsigned int ncmta=2;
 
   for (int i = lenOut; i--;){
     parTransPtr(&trans, ((lenP1 == 1) ? p1 : p1++), ((lenV == 1) ? v1 : v1++),
@@ -596,12 +609,15 @@ extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
 
   Rf_setAttrib(ret, R_NamesSymbol, retN);
 
-  unsigned int ncmta=0;
+  unsigned int ncmta=3;
 
   for (int i = lenOut; i--;){
-    parTransPtr(&trans, ((lenP1 == 1) ? p1 : p1++), ((lenV == 1) ? v1 : v1++),
-                ((lenP2 == 1) ? p2 : p2++), ((lenP3 == 1) ? p3 : p3++),
-                ((lenP4 == 1) ? p4 : p4++), ((lenP5 == 1) ? p5 : p5++),
+    parTransPtr(&trans, ((lenP1 == 1) ? p1 : p1++),
+                ((lenV == 1) ? v1 : v1++),
+                ((lenP2 == 1) ? p2 : p2++),
+                ((lenP3 == 1) ? p3 : p3++),
+                ((lenP4 == 1) ? p4 : p4++),
+                ((lenP5 == 1) ? p5 : p5++),
                 &ncmta, kel, vc, k12, k21, k13, k31);
     linCmtPar3(vc, kel, k12, k21, k13, k31,
                vp, vp2, vss, cl, q, q2,
@@ -640,4 +656,46 @@ extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
   }
   UNPROTECT(pro);
   return ret;
+}
+
+
+extern "C" SEXP _rxode2_calcDerived(SEXP ncmtSXP, SEXP transSXP, SEXP inp, SEXP sigdigSXP) {
+BEGIN_RCPP
+  int tInp = TYPEOF(inp);
+  int trans=-1;
+  if (TYPEOF(transSXP) == REALSXP){
+    trans = (int)(REAL(transSXP)[0]);
+  }
+  int ncmt=-1;
+  if (TYPEOF(ncmtSXP) == REALSXP) {
+    ncmt = (int)(REAL(ncmtSXP)[0]);
+  }
+  double dig=0.0;
+  int tDig = TYPEOF(sigdigSXP);
+  if (tDig == INTSXP) {
+    dig = (double)(INTEGER(sigdigSXP)[0]);
+  } else if (tDig == REALSXP) {
+    dig = REAL(sigdigSXP)[0];
+  }
+  if (tInp == VECSXP){
+    switch (ncmt){
+    case 1:
+      return derived1(trans, inp, dig);
+      break;
+    case 2:
+      return derived2(trans, inp, dig);
+      break;
+    case 3:
+      return derived3(trans, inp, dig);
+      break;
+    default:
+      _rxode2parse_unprotect();
+      Rf_errorcall(R_NilValue, _("'ncmt' needs to be 1-3"));
+    }
+  } else {
+    _rxode2parse_unprotect();
+    Rf_errorcall(R_NilValue, _("'inp' needs to be list/data frame"));
+  }
+  return R_NilValue;
+END_RCPP
 }

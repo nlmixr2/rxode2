@@ -1395,7 +1395,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
     .linCmt <- .Call(
       `_linCmtParse`, names(.lst)[.w],
       c(
-        "with(.lst,.Call(`_calcDerived`, ", "list(", "0, 0, 0, 0, ",
+        "with(.lst,.Call(`_rxode2_calcDerived`, ", "list(", "0, 0, 0, 0, ",
         ", 0, 0, 0, 0),digits))"
       ),
       verbose
