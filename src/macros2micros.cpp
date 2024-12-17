@@ -4,10 +4,6 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <stan/math.hpp>
-#ifndef NDEBUG
-#define NDEBUG // just in case
-#endif
-#include <Rcpp.h>
 #include "macros2micros.h"
 
 namespace stan {

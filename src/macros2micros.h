@@ -205,7 +205,7 @@ namespace stan {
 #undef p2
 #undef p3
 #undef p4
-#undef p4
+#undef p5
 
 #undef k
 #undef v
@@ -218,6 +218,7 @@ namespace stan {
 
   }
 }
+
 
 
 #endif
