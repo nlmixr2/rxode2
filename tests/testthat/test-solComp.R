@@ -24,4 +24,7 @@ test_that("test the matrices of the linear compartment solutions .solComp2", {
                              -0.043931174098703, -0.425042885072013, 0.462606566056063),
                            dim = c(3L,  3L)))
 
+  expect_equal(.solComp3(k10=0.1, k12=3, k21=1, k13=2, k31=0.5),
+               v)
+
 })
