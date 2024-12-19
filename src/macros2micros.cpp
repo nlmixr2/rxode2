@@ -1,3 +1,4 @@
+#ifndef __MACROS2MICROS_H__
 #ifndef NDEBUG
 #define NDEBUG // just in case
 #endif
@@ -5,31 +6,6 @@
 #define STRICT_R_HEADERS
 #include <stan/math.hpp>
 #include "macros2micros.h"
-
-namespace stan {
-  namespace math {
-
-  using std::exp;
-  using stan::math::exp;
-  using std::sqrt;
-  using stan::math::sqrt;
-  using std::pow;
-  using stan::math::pow;
-  using std::acos;
-  using stan::math::acos;
-  using std::cos;
-  using stan::math::cos;
-
-    template <class T>
-    Eigen::Matrix<T, Eigen::Dynamic, 2>
-    macros2micros(Eigen::Matrix<T, Eigen::Dynamic, 1>& params,
-                        const int trans,
-                        const int ncmt) {
-      Eigen::Matrix<T, Eigen::Dynamic, 2> g(ncmt, 3);
-      return macros2micros(params, ncmt, trans);
-    }
-  }
-}
 
 extern "C" SEXP _rxode2_macros2micros(SEXP p1, SEXP v1,
                                       SEXP p2, SEXP p3,
@@ -53,3 +29,5 @@ BEGIN_RCPP
   return ret;
 END_RCPP
 }
+
+#endif

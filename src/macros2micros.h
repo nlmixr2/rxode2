@@ -1,4 +1,5 @@
 #ifndef __MICROS2MACROS_H__
+#define __MICROS2MACROS_H__
 #ifndef NDEBUG
 #define NDEBUG // just in case
 #endif
@@ -32,7 +33,7 @@ namespace stan {
     macros2micros(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p,
                   const int& ncmt,
                   const int& trans){
-      Eigen::Matrix<T, Eigen::Dynamic, 2> g(ncmt,3);
+      Eigen::Matrix<T, Eigen::Dynamic, 2> g(ncmt, 3);
       T btemp, ctemp, dtemp;
 #define p1    p[0]
 #define v1    p[1]
@@ -218,7 +219,5 @@ namespace stan {
 
   }
 }
-
-
 
 #endif
