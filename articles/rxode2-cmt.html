@@ -114,7 +114,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Changing rxode2 compartment numbers</h1>
             
-            <h4 data-toc-skip class="date">2024-12-17</h4>
+            <h4 data-toc-skip class="date">2024-12-24</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-cmt.Rmd" class="external-link"><code>vignettes/rxode2-cmt.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-cmt.Rmd</code></div>
@@ -130,9 +130,11 @@ example, with the Mavoglurant PBPK model the following model may be
 used:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">#&gt; Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
+<span><span class="co">#&gt;   object 'type_sum.accel' not found</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; rxode2 3.0.3 using 2 threads (see ?getRxThreads)</span></span>
 <span><span class="co">#&gt;   no cache: create with `rxCreateCache()`</span></span></code></pre>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">KbBR</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">lKbBR</span><span class="op">)</span></span>
@@ -225,7 +227,7 @@ used:</p>
 <span><span class="op">}</span></span></code></pre></div>
 <p>If you look at the printout, you can see where rxode2 assigned the
 compartment number(s)</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="fu">pbpk</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt;  <span style="color: #00BBBB;">--</span> <span style="font-weight: bold;">rxode2-based free-form 16-cmt ODE model</span> <span style="color: #00BBBB;">-------------------------------------</span> </span></span>
@@ -332,13 +334,13 @@ compartment number(s)</p>
 <span><span class="co">#&gt; }</span></span></code></pre>
 <p>You can also see this with the classic rxode2 model. In that case you
 use the <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> function:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="va">pbpk</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.3 model named <span style="color: #BBBB00; font-weight: bold;">rx_f628dc736ee83a58e788cd9a2faf563d</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/Rtmp0Qanky/rxode2/rx_f628dc736ee83a58e788cd9a2faf563d__.rxd/rx_f628dc736ee83a58e788cd9a2faf563d_.so</span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.3 model named <span style="color: #BBBB00; font-weight: bold;">rx_8b29ffc440bb911dafc997793bcc4d60</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmpWvtQA5/rxode2/rx_8b29ffc440bb911dafc997793bcc4d60__.rxd/rx_8b29ffc440bb911dafc997793bcc4d60_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -443,7 +445,7 @@ you simply need to pre-declare the compartments with <code>cmt</code>.
 For example specifying is <code>Venous_Blood</code> and
 <code>Skin</code> to be the 1st and 2nd compartments, respectively, is
 simple:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="co">## Now this is the first compartment, ie cmt=1</span></span>
@@ -539,7 +541,7 @@ simple:</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>You can see this change in the simple printout</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk2</span> <span class="op">&lt;-</span> <span class="fu">pbpk2</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">pbpk2</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt;  <span style="color: #00BBBB;">--</span> <span style="font-weight: bold;">rxode2-based free-form 16-cmt ODE model</span> <span style="color: #00BBBB;">-------------------------------------</span> </span></span>
@@ -656,7 +658,7 @@ simple:</p>
 solving internals, you cannot add fake compartments to the model until
 after all the differential equations are defined.</p>
 <p>For example this is legal:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ode.1c.ka</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span><span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">C2</span> <span class="op">=</span> <span class="va">center</span><span class="op">/</span><span class="va">V</span></span>
@@ -685,10 +687,10 @@ after all the differential equations are defined.</p>
 <span><span class="co">#&gt; }</span></span></code></pre>
 <p>You can see this more clearly with the underlying classic
 <code>rxode2</code> model:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ode.1c.ka</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0’</span></span></code></pre>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.3 model named <span style="color: #BBBB00; font-weight: bold;">rx_73c2db6d3293ab813596e3bb11a71b4a</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.3 model named <span style="color: #BBBB00; font-weight: bold;">rx_b8c7a0a9c812e12cc74cdc4db7fa0fb8</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: V, KA, CL</span></span>
