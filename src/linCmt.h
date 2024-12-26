@@ -65,7 +65,6 @@ namespace stan {
 
       const int ncmt_, oral0_, trans_;
       double *rate_; // This comes from the ode system
-      double *A_;
       linCmtStan(const int ncmt,
                  const int oral0,
                  const int trans) :
@@ -103,7 +102,6 @@ namespace stan {
         if (oral0_ == 1) {
           ret(0, 0) = rDepot*(1.0 - Ea)/ka + pDepot*Ea;
         }
-
 #undef k10
         return ret;
       }
@@ -130,7 +128,8 @@ namespace stan {
         Eigen::Matrix<T, 2, 1> E = exp(-sol2.L * dt);
         Eigen::Matrix<T, 2, 1> Ea = E;
 
-        Xo = (yp(oral0_, 0)*sol2.C1) * E + (yp(oral0_ + 1, 0)*sol2.C2) * E;
+        Xo = (yp(oral0_, 0)*sol2.C1) * E +
+          (yp(oral0_ + 1, 0)*sol2.C2) * E;
 
         if (oral0_ == 1 && yp(0, 0) > 0.0) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
@@ -256,7 +255,6 @@ namespace stan {
             AlastA(i, 0) -= AlastG(i, 2*ncmt_)*ka_;
           }
         }
-
         for (int i = oral0_ + ncmt_; i--;){
           Alast(i, 0) = AlastA(i, 0) +
             theta(0, 0)*AlastG(i, 0) +
@@ -292,7 +290,8 @@ namespace stan {
         }
       }
 
-      void setAlastPtr(Eigen::Matrix<stan::math::var, -1, -1> Alast, Eigen::Matrix<double, -1, -1> J) {
+      void setAlastPtr(Eigen::Matrix<stan::math::var, -1, -1> Alast,
+                       Eigen::Matrix<double, -1, -1> J) {
         A_[ncmt_ + oral0_ + 0] = J(0, 0);
         A_[ncmt_ + oral0_ + 1] = J(0, 1);
         if (ncmt_ >=2){
@@ -320,7 +319,7 @@ namespace stan {
               A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1)+ 5] = J(i+1, 5);
             }
           }
-          if (oral0) {
+          if (oral0_) {
             //(3*ncmt+oral0)+2*ncmt
             A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1)+ 2*ncmt_] = J(i+1, 2*ncmt_);
           }
@@ -330,7 +329,7 @@ namespace stan {
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
-      Eigen::Matrix<T, -1, 1> operator()(const Eigen::Matrix<T, -1, 1>& theta) const {
+      Eigen::Matrix<T, -1, 1> operator()(const Eigen::Matrix<T, -1, 1>& theta, T ka, double dt) const {
         Eigen::Matrix<double, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
@@ -350,8 +349,5 @@ namespace stan {
 
   }
 }
-
-
-
 
 #endif
