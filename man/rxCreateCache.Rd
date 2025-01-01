@@ -2,9 +2,16 @@
 % Please edit documentation in R/rxode-options.R
 \name{rxCreateCache}
 \alias{rxCreateCache}
-\title{This will create the cache directory for rxode2 to save between sessions}
+\alias{rxRemoveCache}
+\title{Create the cache directory for rxode2 to save between sessions}
 \usage{
-rxCreateCache()
+rxCreateCache(subdir = "")
+
+rxRemoveCache(subdir = "")
+}
+\arguments{
+\item{subdir}{Subdirectory to use for the cache under the package cache
+directory, "" for no subdirectory}
 }
 \value{
 nothing
@@ -13,6 +20,12 @@ nothing
 When run, if the \code{R_user_dir} for rxode2's cache isn't present,
 create the cache
 }
+\section{Functions}{
+\itemize{
+\item \code{rxRemoveCache()}: Remove the cache directory for rxode2 and unset
+related variables
+
+}}
 \author{
 Matthew Fidler
 }

@@ -1,3 +1,9 @@
+# rxode2 3.0.3.9000
+
+- Added `rxRemoveCache()` and add `subdir` argument to `rxCreateCache()` which
+  allow simpler cache cleaning and the use of alternate cache directories within
+  the typical cache directory.
+
 # rxode2 3.0.3
 
 - Add `logit`/`expit` named expressions, that is `logit(x, high=20)`

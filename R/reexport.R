@@ -102,3 +102,7 @@ ggplot2::expand_limits
 #' @importFrom magrittr %>%
 #' @export
 magrittr::`%>%`
+
+#' @importFrom digest sha1
+#' @export
+digest::sha1

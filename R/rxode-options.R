@@ -187,24 +187,40 @@ rxTempDir <- function() {
     return(.tmp)
   }
 }
-#' This will create the cache directory for rxode2 to save between sessions
+#' Create the cache directory for rxode2 to save between sessions
 #'
 #' When run, if the `R_user_dir` for rxode2's cache isn't present,
 #' create the cache
+#'
+#' @param subdir Subdirectory to use for the cache under the package cache
+#'   directory, "" for no subdirectory
 #'
 #' @return nothing
 #'
 #' @author Matthew Fidler
 #'
 #' @export
-rxCreateCache <- function() {
-  .tmp <- R_user_dir("rxode2", "cache")
-  assignInMyNamespace(".cacheDefault", R_user_dir("rxode2", "cache"))
+rxCreateCache <- function(subdir = "") {
+  .tmp <- file.path(R_user_dir(package = "rxode2", which = "cache"), subdir)
+  utils::assignInMyNamespace(".cacheDefault", .tmp)
   .mkCache(.tmp)
   .tmp <- .normalizePath(.tmp)
   Sys.setenv(rxTempDir = .tmp)
   utils::assignInMyNamespace(".rxTempDir0", .tmp)
   utils::assignInMyNamespace("rxode2.cache.directory", .tmp)
+  invisible()
+}
+#' @describeIn rxCreateCache Remove the cache directory for rxode2 and unset
+#'   related variables
+#' @export
+rxRemoveCache <- function(subdir = "") {
+  .tmp <- file.path(R_user_dir(package = "rxode2", which = "cache"), subdir)
+  # Unload all models so that the cache directory can be deleted
+  rxUnloadAll()
+  unlink(.tmp, recursive = TRUE, force = TRUE)
+  utils::assignInMyNamespace(".cacheDefault", NULL)
+  utils::assignInMyNamespace(".rxTempDir0", NULL)
+  utils::assignInMyNamespace("rxode2.cache.directory", NULL)
   invisible()
 }
 
