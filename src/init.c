@@ -382,6 +382,15 @@ SEXP _rxode2_getClassicEvid(SEXP, SEXP, SEXP, SEXP, SEXP,
                             SEXP, SEXP);
 SEXP _rxode2_rxQs(SEXP);
 
+SEXP _rxode2_solComp2(SEXP, SEXP, SEXP);
+SEXP _rxode2_solComp3(SEXP, SEXP, SEXP, SEXP, SEXP);
+
+SEXP _rxode2_comp1c(SEXP, SEXP, SEXP, SEXP, SEXP,
+                    SEXP);
+
+SEXP _rxode2_solComp2cpp(SEXP, SEXP, SEXP);
+SEXP _rxode2_solComp3cpp(SEXP, SEXP, SEXP, SEXP, SEXP);
+
 SEXP iniLotriPtr(SEXP ptr);
 SEXP iniPreciseSumsPtr(SEXP ptr);
 
@@ -573,6 +582,11 @@ SEXP _rxode2_activationF(SEXP xS, SEXP typeS);
 SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS);
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_solComp2cpp", (DL_FUNC) &_rxode2_solComp2cpp, 3},
+    {"_rxode2_solComp3cpp", (DL_FUNC) &_rxode2_solComp3cpp, 5},
+    {"_rxode2_comp1c", (DL_FUNC) &_rxode2_comp1c, 6},
+    {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
+    {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_activationF2", (DL_FUNC) &_rxode2_activationF2, 3},
     {"_rxode2_activationF", (DL_FUNC) &_rxode2_activationF, 2},
     {"_rxode2_itoletter", (DL_FUNC) &_rxode2_itoletter, 2},

@@ -22,6 +22,8 @@
 - Add `rxUdfUiControl()` to rxode2 user function to get control
   information from something like `nlmixr2`
 
+- Add Neural Network Activation functions in the `rxode2` package.
+
 - Bug fix for tracking time after dose when dosing to 2 compartments
   occur at the exact same time (#804, #819)
 
