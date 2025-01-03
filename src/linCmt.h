@@ -76,8 +76,8 @@ namespace stan {
       { }
 
       template <typename T>
-      Eigen::Matrix<T, -1, 1> linCmtStan1(Eigen::Matrix<T, -1, 1>& g,
-                                          Eigen::Matrix<T, -1, 1>& yp,
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 1>& g,
+                                                      Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
                                           T ka,
                                           double dt) {
 #define k10   g(0, 1)
@@ -93,7 +93,7 @@ namespace stan {
           rDepot = rate_[0];
           R = rDepot + R;
         }
-        Eigen::Matrix<T, -1, 1> ret = yp;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret = yp;
         ret(oral0_, 0) = yp(oral0_, 0)*E + R*(1.0-E)/(k10);
         bool isSme = (abs(ka-k10)  <= DBL_EPSILON*max2(abs(ka), abs(k10)));
         if (isSme) {
@@ -109,8 +109,8 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, -1, 1> linCmtStan2(Eigen::Matrix<T, -1, 1>& g,
-                                          Eigen::Matrix<T, -1, 1>& yp,
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 1>& g,
+                                                      Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
                                           T ka,
                                           double dt) {
 #define k12   g(1, 0)
@@ -120,7 +120,7 @@ namespace stan {
         stan::math::solComp2struct<T> sol2 =
           stan::math::computeSolComp2(k10, k12, k21);
 
-        Eigen::Matrix<T, -1, 1> ret = yp;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret = yp;
 
         T rDepot = 0.0;
         T R      = rate_[oral0_];
@@ -157,8 +157,8 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, -1, 1> linCmtStan3(Eigen::Matrix<T, -1, 1>& g,
-                                          Eigen::Matrix<T, -1, 1>& yp,
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 1>& g,
+                                                      Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
                                           T ka,
                                           double dt) {
 #define k12   g(1, 0)
@@ -169,7 +169,7 @@ namespace stan {
         stan::math::solComp3struct<T> sol3 =
           stan::math::computeSolComp3(k10, k12, k21, k13, k31);
 
-        Eigen::Matrix<T, -1, 1> ret = yp;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret = yp;
 
         T rDepot = 0.0;
         T R      = rate_[oral0_];
@@ -210,18 +210,18 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, -1, -1> getAlast(const Eigen::Matrix<T, -1, 1>& theta) {
+      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) {
         if (typeid(T) == typeid(double)) {
-          Eigen::Matrix<double, -1, -1> Alast(ncmt_ + oral0_, 1);
+          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Alast(ncmt_ + oral0_, 1);
           for (int i = oral0_ + ncmt_; i--;){
             Alast(i, 0) = A_[i];
           }
           return Alast;
         } else {
-          Eigen::Matrix<double, -1, -1> AlastG(ncmt_ + oral0_,
+          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> AlastG(ncmt_ + oral0_,
                                                ncmt_*2 + oral0_);
-          Eigen::Matrix<double, -1, -1> AlastA(ncmt_ + oral0_, 1);
-          Eigen::Matrix<T, -1, -1> Alast(ncmt_ + oral0_, 1);
+          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> AlastA(ncmt_ + oral0_, 1);
+          Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Alast(ncmt_ + oral0_, 1);
 
           double p1_ = theta[0];
           double v1_ = theta[1];
@@ -229,6 +229,10 @@ namespace stan {
           double p3_ = theta[3];
           double p4_ = theta[4];
           double p5_ = theta[5];
+          double ka_ = 0.0;
+          if (oral0_) {
+            ka_ = theta[6];
+          }
 
           for (int i = 0; i < ncmt_ + oral0_; i++) {
             AlastG(i, 0) = A_[ncmt_ + oral0_ +
@@ -261,7 +265,7 @@ namespace stan {
               AlastG(i, 2*ncmt_) = A_[ncmt_ + oral0_ +
                                       (2*ncmt_ + oral0_)*(i+1) +
                                       2*ncmt_];
-              AlastA(i, 0) -= AlastG(i, 2*ncmt_)*ka;
+              AlastA(i, 0) -= AlastG(i, 2*ncmt_)*ka_;
             }
           }
           for (int i = oral0_ + ncmt_; i--;){
@@ -284,15 +288,15 @@ namespace stan {
         }
       }
 
-      void setAlastPtr(Eigen::Matrix<double, -1, -1> Alast) {
+      void setAlastPtr(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Alast) {
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           //(3*ncmt+2*oral0)+0
           A_[i] = Alast(i, 0);
         }
       }
 
-      void setAlastPtr(Eigen::Matrix<stan::math::var, -1, -1> Alast,
-                       Eigen::Matrix<double, -1, -1> J) {
+      void setAlastPtr(Eigen::Matrix<stan::math::var, Eigen::Dynamic, Eigen::Dynamic> Alast,
+                       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
         A_[ncmt_ + oral0_ + 0] = J(0, 0);
         A_[ncmt_ + oral0_ + 1] = J(0, 1);
         if (ncmt_ >=2){
@@ -309,7 +313,8 @@ namespace stan {
         // Save A1-A4
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           //(3*ncmt+2*oral0)+0
-          A_[i] = stan::math::var_value<double>(Alast(i, 0));
+          stan::math::var smv = Alast(i, 0);
+          A_[i] = smv.val();
           A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1) + 0] = J(i+1, 0);
           A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1) + 1] = J(i+1, 1);
           if (ncmt_ >=2){
@@ -330,13 +335,15 @@ namespace stan {
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
-      Eigen::Matrix<T, -1, 1> operator()(const Eigen::Matrix<T, -1, 1>& theta, T ka, double dt) const {
+      Eigen::Matrix<T, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta, T ka, double dt) const {
         Eigen::Matrix<double, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
-        Eigen::Matrix<Eigen::Dynamic, -1, -1> yp(ncmt_ + oral0_, 1);
+        Eigen::Matrix<T,
+                      Eigen::Dynamic,
+                      Eigen::Dynamic> yp(ncmt_ + oral0_, 1);
         yp = getAlast(theta);
-        Eigen::Matrix<T, -1, 1> ret;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
         if (ncmt_ == 1) {
           ret = linCmtStan1(g, yp, ka, dt);
         } else if (ncmt_ == 2) {
