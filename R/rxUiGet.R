@@ -384,12 +384,14 @@ rxUiGet.funPartsDigest <- function(x, ...) {
 rxUiGet.md5 <- function(x, ...) {
   digest::digest(rxUiGet.funPartsDigest(x, ...), algo="md5")
 }
+attr(rxUiGet.sha1, "desc") <- "MD5 hash of the UI model"
 
 #' @export
 #' @rdname rxUiGet
 rxUiGet.sha1 <- function(x, ...) {
   digest::digest(rxUiGet.funPartsDigest(x, ...), algo="sha1")
 }
+attr(rxUiGet.sha1, "desc") <- "SHA1 hash of the UI model"
 
 #' @export
 #' @rdname rxUiGet
