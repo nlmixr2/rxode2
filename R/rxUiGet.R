@@ -384,7 +384,7 @@ rxUiGet.funPartsDigest <- function(x, ...) {
     # Defined lower level functions and udf functions
     definedFuns=  ls(.udfEnv$symengineFs, all.names=TRUE),
     # Defined rxUdfUi methods
-    uiFuns=as.character(methods("rxUdfUi")),
+    uiFuns=as.character(utils::methods("rxUdfUi")),
     # Add version of rxode2
     rxVersion=rxode2::rxVersion()
   )
