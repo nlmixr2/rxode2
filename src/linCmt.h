@@ -335,10 +335,14 @@ namespace stan {
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta, T ka, double dt) const {
+      Eigen::Matrix<T, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta, double dt) const {
         Eigen::Matrix<double, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
+        T ka = 0.0;
+        if (oral0_) {
+          ka = theta[6];
+        }
         Eigen::Matrix<T,
                       Eigen::Dynamic,
                       Eigen::Dynamic> yp(ncmt_ + oral0_, 1);
