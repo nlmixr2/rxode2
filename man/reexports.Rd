@@ -3,7 +3,6 @@
 \docType{import}
 \name{reexports}
 \alias{reexports}
-\alias{sha1}
 \alias{scale_type}
 \alias{ggplot}
 \alias{aes}
@@ -32,8 +31,6 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
-  \item{digest}{\code{\link[digest]{sha1}}}
-
   \item{ggplot2}{\code{\link[ggplot2]{aes}}, \code{\link[ggplot2]{expand_limits}}, \code{\link[ggplot2]{facet_wrap}}, \code{\link[ggplot2:geom_path]{geom_line}}, \code{\link[ggplot2]{ggplot}}, \code{\link[ggplot2:labellers]{label_both}}, \code{\link[ggplot2:labellers]{label_context}}, \code{\link[ggplot2:labellers]{label_context}}, \code{\link[ggplot2:labellers]{label_value}}, \code{\link[ggplot2:labellers]{label_wrap_gen}}, \code{\link[ggplot2]{scale_type}}, \code{\link[ggplot2:scale_continuous]{scale_x_continuous}}, \code{\link[ggplot2:scale_date]{scale_x_date}}, \code{\link[ggplot2:scale_discrete]{scale_x_discrete}}, \code{\link[ggplot2:scale_continuous]{scale_y_continuous}}, \code{\link[ggplot2:scale_date]{scale_y_date}}, \code{\link[ggplot2:scale_discrete]{scale_y_discrete}}, \code{\link[ggplot2]{waiver}}, \code{\link[ggplot2:labs]{xlab}}, \code{\link[ggplot2:labs]{ylab}}}
 
   \item{lotri}{\code{\link[lotri]{lotri}}}
