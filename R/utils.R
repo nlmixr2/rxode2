@@ -507,6 +507,37 @@ expit <- function(alpha, low = 0, high = 1) {
   .rxTransform(alpha, 1.0, low, high, 4L, TRUE)
 }
 
+#' Handle arguments for ui functions
+#'
+#' Note this is an internal function but it is exported in case it is
+#' useful.
+#'
+#' @param char This is the character equivalent of the argument
+#' @param f This is the forced equivalent of the argument
+#' @param dp This is deparsed expression
+#' @return character representing the underlying rxode2 code for the argument
+#' @export
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @examples
+#'
+#' .uiArg("1.0", 1.0, "1.0")
+.uiArg <- function(char, f, dp) {
+  if (!inherits(f, "try-error")) {
+    if (is.numeric(f)) {
+      return(as.character(f))
+    }
+    if (is.character(f)) {
+      return(f)
+    }
+  }
+  if (length(char) > 1) {
+    dp
+  } else {
+    char
+  }
+}
+
 #' @rdname logit
 #' @export
 logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, ...) {

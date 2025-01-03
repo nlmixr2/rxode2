@@ -405,8 +405,6 @@ void reset(void) {
   tb.maxtheta   = 0;
   tb.hasCmt     = 0;
   tb.maxeta     = 0;
-  tb.hasDepot   = 0;
-  tb.hasCentral = 0;
   tb.hasDepotCmt = 0;
   tb.hasCentralCmt = 0;
   tb.hasKa      = 0;
@@ -424,6 +422,7 @@ void reset(void) {
   tb.linExtra   = false;
   tb.nwhile     = 0;
   tb.lvlStr     = 0;
+  tb.dummyLhs   = 0;
   tb.nInd       = 0;
   tb.simflg     = 0;
   tb.nLlik      = 0;

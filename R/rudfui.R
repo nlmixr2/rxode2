@@ -248,7 +248,8 @@ rxUdfUiParsing <- function() {
         }
         expr <- .t
       } else {
-        stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed in the",
+
+        stop("rxode2 ui user function '", .c, "' failed to produce code that could be parsed",
              call.=FALSE)
       }
       .handleUdifUiBeforeOrAfter("before", .e, env, .c)
