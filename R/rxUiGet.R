@@ -371,7 +371,7 @@ attr(rxUiGet.fun, "desc") <- "Normalized model function"
 rxUiGet.funPartsDigest <- function(x, ...) {
   .ui <- x[[1]]
   rxSyncOptions()
-  .ret <- list(
+  list(
     normModel = .ui$mv0$model["normModel"],
     iniDf = .ui$iniDf,
     errLinesI = .ui$predDf$line,
@@ -388,8 +388,6 @@ rxUiGet.funPartsDigest <- function(x, ...) {
     # Add version of rxode2
     rxVersion=rxode2::rxVersion()
   )
-  print(.ret)
-  .ret
 }
 
 #' @export
