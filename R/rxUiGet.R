@@ -404,7 +404,6 @@ rxUiGet.sha1 <- function(x, ...) {
 }
 attr(rxUiGet.sha1, "desc") <- "SHA1 hash of the UI model"
 
-#' @export
 sha1.rxUi <- function(x, digits = 14L, zapsmall = 7L, ..., algo = "sha1")  {
   digest::sha1(rxUiGet.funPartsDigest(list(x)),
                digits=digits, zapsmall=zapsmall, ..., algo=algo)
