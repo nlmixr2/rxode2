@@ -50,7 +50,6 @@
     .s3register("dplyr::rename", "rxUi")
     .s3register("dplyr::rename", "function")
   }
-
   if (requireNamespace("nlme", quietly=TRUE)) {
     .s3register("nlme::fixef", "rxUi")
     .s3register("nlme::fixef", "function")
@@ -64,6 +63,9 @@
     assignInMyNamespace(".hasUnits", TRUE)
   } else {
     assignInMyNamespace(".hasUnits", FALSE)
+  }
+  if (requireNamespace("digest", quietly = TRUE)) {
+    .s3register("digest::sha1", "rxUi")
   }
   backports::import(pkgname)
   ## Setup rxode2.prefer.tbl

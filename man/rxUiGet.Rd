@@ -25,7 +25,9 @@
 \alias{rxUiGet.multipleEndpoint}
 \alias{rxUiGet.funPrint}
 \alias{rxUiGet.fun}
+\alias{rxUiGet.funPartsDigest}
 \alias{rxUiGet.md5}
+\alias{rxUiGet.sha1}
 \alias{rxUiGet.ini}
 \alias{rxUiGet.iniFun}
 \alias{rxUiGet.modelFun}
@@ -92,7 +94,11 @@ rxUiGet(x, ...)
 
 \method{rxUiGet}{fun}(x, ...)
 
+\method{rxUiGet}{funPartsDigest}(x, ...)
+
 \method{rxUiGet}{md5}(x, ...)
+
+\method{rxUiGet}{sha1}(x, ...)
 
 \method{rxUiGet}{ini}(x, ...)
 
