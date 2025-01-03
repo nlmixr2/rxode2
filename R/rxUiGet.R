@@ -368,8 +368,27 @@ attr(rxUiGet.fun, "desc") <- "Normalized model function"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.funPartsDigest <- function(x, ...) {
+  .ui <- x[[1]]
+  list(
+    normModel = .ui$mv0$model["normModel"],
+    iniDf = .ui$iniDf,
+    errLines = lapply(.ui$predDf$line, function(l) {
+      .ui$lstExpr[l]
+    })
+  )
+}
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.md5 <- function(x, ...) {
-  digest::digest(rxUiGet.funPrint(x, ...))
+  digest::digest(rxUiGet.funPartsDigest(x, ...), algo="md5")
+}
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.sha1 <- function(x, ...) {
+  digest::digest(rxUiGet.funPartsDigest(x, ...), algo="sha1")
 }
 
 #' @export
