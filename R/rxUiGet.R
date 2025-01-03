@@ -382,7 +382,7 @@ rxUiGet.funPartsDigest <- function(x, ...) {
     # This changes how models can be expressed (and their output)
     allow.ini=rxode2.syntax.allow.ini,
     # Defined lower level functions and udf functions
-    definedFuns=.udfMd5Info(),
+    definedFuns=  ls(.udfEnv$symengineFs, all.names=TRUE),
     # Defined rxUdfUi methods
     uiFuns=as.character(methods("rxUdfUi")),
     # Add version of rxode2
