@@ -1,3 +1,7 @@
+#' @importFrom digest sha1
+#' @export
+digest::sha1
+
 #' @importFrom ggplot2 scale_type
 #' @export
 ggplot2::scale_type
