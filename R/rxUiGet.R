@@ -368,8 +368,45 @@ attr(rxUiGet.fun, "desc") <- "Normalized model function"
 
 #' @export
 #' @rdname rxUiGet
+rxUiGet.funPartsDigest <- function(x, ...) {
+  .ui <- x[[1]]
+  rxSyncOptions()
+  list(
+    normModel = .ui$mv0$model["normModel"],
+    iniDf = .ui$iniDf,
+    errLinesI = .ui$predDf$line,
+    errLines = vapply(.ui$predDf$line, function(l) {
+      deparse1(.ui$lstExpr[[l]])
+    }, character(1), USE.NAMES=FALSE),
+    # Now get environment specific differences in the model
+    # This changes how models can be expressed (and their output)
+    allow.ini=rxode2.syntax.allow.ini,
+    # Defined lower level functions and udf functions
+    definedFuns=  ls(.udfEnv$symengineFs, all.names=TRUE),
+    # Defined rxUdfUi methods
+    uiFuns=as.character(utils::methods("rxUdfUi")),
+    # Add version of rxode2
+    rxVersion=rxode2::rxVersion()
+  )
+}
+
+#' @export
+#' @rdname rxUiGet
 rxUiGet.md5 <- function(x, ...) {
-  digest::digest(rxUiGet.funPrint(x, ...))
+  digest::digest(rxUiGet.funPartsDigest(x, ...), algo="md5")
+}
+attr(rxUiGet.md5, "desc") <- "MD5 hash of the UI model"
+
+#' @export
+#' @rdname rxUiGet
+rxUiGet.sha1 <- function(x, ...) {
+  digest::digest(rxUiGet.funPartsDigest(x, ...), algo="sha1")
+}
+attr(rxUiGet.sha1, "desc") <- "SHA1 hash of the UI model"
+
+sha1.rxUi <- function(x, digits = 14L, zapsmall = 7L, ..., algo = "sha1")  {
+  digest::sha1(rxUiGet.funPartsDigest(list(x)),
+               digits=digits, zapsmall=zapsmall, ..., algo=algo)
 }
 
 #' @export
