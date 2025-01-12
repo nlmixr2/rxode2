@@ -281,6 +281,10 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
+linCmtModelDouble <- function(p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans) {
+    .Call(`_rxode2_linCmtModelDouble`, p1, v1, p2, p3, p4, p5, ka, ncmt, oral0, trans)
+}
+
 rxQs <- function(x) {
     .Call(`_rxode2_rxQs`, x)
 }
