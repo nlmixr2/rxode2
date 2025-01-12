@@ -332,6 +332,10 @@ namespace stan {
         }
       }
 
+      void setRate(double *R) {
+        rate_ = R;
+      }
+
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
