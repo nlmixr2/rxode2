@@ -67,6 +67,7 @@ namespace stan {
       const int ncmt_, oral0_, trans_;
       double *rate_; // This comes from the ode system
       double *A_;    // This comes from the ode system
+      double dt_;
       linCmtStan(const int ncmt,
                  const int oral0,
                  const int trans) :
@@ -76,19 +77,18 @@ namespace stan {
       { }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 1>& g,
-                                                      Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
-                                          T ka,
-                                          double dt) {
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 1> g,
+                                                      Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
+                                                      T ka) const {
 #define k10   g(0, 1)
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-        T E      = exp(-k10 * dt);
+        T E      = exp(-k10 * dt_);
         T Ea     = E;
         T pDepot = 0.0;
         T rDepot = 0.0;
         T R      = rate_[oral0_];
         if (oral0_  == 1) {
-          Ea = exp(-ka*dt);
+          Ea = exp(-ka*dt_);
           pDepot = yp(0, 0);
           rDepot = rate_[0];
           R = rDepot + R;
@@ -97,7 +97,7 @@ namespace stan {
         ret(oral0_, 0) = yp(oral0_, 0)*E + R*(1.0-E)/(k10);
         bool isSme = (abs(ka-k10)  <= DBL_EPSILON*max2(abs(ka), abs(k10)));
         if (isSme) {
-          ret(oral0_, 0) += (pDepot*k10 - rDepot)*dt*E;
+          ret(oral0_, 0) += (pDepot*k10 - rDepot)*dt_*E;
         } else {
           ret(oral0_, 0) += (pDepot*ka - rDepot)*(E - Ea)/(ka - k10);
         }
@@ -109,10 +109,9 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 1>& g,
-                                                      Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
-                                          T ka,
-                                          double dt) {
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 1> g,
+                                                      Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
+                                                      T ka) const {
 #define k12   g(1, 0)
 #define k21   g(1, 1)
 #define k10   g(0, 1)
@@ -127,25 +126,27 @@ namespace stan {
 
         Eigen::Matrix<T, 2, 1> Xo;
         Eigen::Matrix<T, 2, 1> Rm;
-        Eigen::Matrix<T, 2, 1> E = exp(-sol2.L * dt);
+        Eigen::Matrix<T, 2, 1> E = exp(-sol2.L * dt_);
         Eigen::Matrix<T, 2, 1> Ea = E;
 
-        Xo = (yp(oral0_, 0)*sol2.C1) * E +
+        Xo =(yp(oral0_, 0)*sol2.C1) * E +
           (yp(oral0_ + 1, 0)*sol2.C2) * E;
 
         if (oral0_ == 1 && yp(0, 0) > 0.0) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
-          T expa = exp(-ka*dt);
-          Ea =  (E - expa)/(ka - sol2.L);
+          Eigen::Matrix<T, 2, 1> expa = Eigen::Matrix<T, 2, 1>::Constant(2, 1, exp(-ka*dt_));
+          Eigen::Matrix<T, 2, 1> ka2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka);
+          Ea =  (E - expa).array()/(ka2 - sol2.L).array();
           T cf = ka*yp(0, 0) - rDepot;
           Xo += (cf*sol2.C1)*Ea;
-          ret(0, 0) = rDepot*(1.0-expa)/ka + yp(0, 0)*expa;
+          ret(0, 0) = rDepot*(1.0-expa(0, 0))/ka + yp(0, 0)*expa(0, 0);
         }
         if (R > 0.0) {
           // Xo = Xo + ((cR*Co[, , 1]) %*% ((1 - E)/L)) # Infusion
-          Rm = (1.0 - E)/sol2.L;
+          Eigen::Matrix<T, 2, 1> o2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, 1.0);
+          Rm = (o2 - E).array()/sol2.L.array();
           Xo += (R*sol2.C1)*Rm;
         }
         ret(oral0_, 0)     = Xo(0, 0);
@@ -157,10 +158,9 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 1>& g,
-                                                      Eigen::Matrix<T, Eigen::Dynamic, 1>& yp,
-                                          T ka,
-                                          double dt) {
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 1> g,
+                                                      Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
+                                                      T ka) const {
 #define k12   g(1, 0)
 #define k21   g(1, 1)
 #define k13   g(2, 0)
@@ -174,10 +174,10 @@ namespace stan {
         T rDepot = 0.0;
         T R      = rate_[oral0_];
 
-        Eigen::Matrix<T, 2, 1> Xo;
-        Eigen::Matrix<T, 2, 1> Rm;
-        Eigen::Matrix<T, 2, 1> E = exp(-sol3.L * dt);
-        Eigen::Matrix<T, 2, 1> Ea = E;
+        Eigen::Matrix<T, 3, 1> Xo;
+        Eigen::Matrix<T, 3, 1> Rm;
+        Eigen::Matrix<T, 3, 1> E = exp(-sol3.L * dt_);
+        Eigen::Matrix<T, 3, 1> Ea = E;
 
         Xo = (yp(oral0_, 0)*sol3.C1) * E  +
           (yp(oral0_ + 1, 0)*sol3.C2) * E +
@@ -187,15 +187,18 @@ namespace stan {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
-          T expa = exp(-ka*dt);
-          Ea =  (E - expa)/(ka - sol3.L);
+          Eigen::Matrix<T, 3, 1> expa = Eigen::Matrix<T, 3, 1>::Constant(3, 1, exp(-ka*dt_));
+          Eigen::Matrix<T, 3, 1> ka3 = Eigen::Matrix<T, 3, 1>::Constant(3, 1, ka);
+
+          Ea =  (E - expa).array()/(ka3 - sol3.L).array();
           T cf = ka*yp(0, 0) - rDepot;
           Xo += (cf*sol3.C1)*Ea;
-          ret(0, 0) = rDepot*(1.0-expa)/ka + yp(0, 0)*expa;
+          ret(0, 0) = rDepot*(1.0-expa(0, 0))/ka + yp(0, 0)*expa(0, 0);
         }
         if (R > 0.0) {
           // Xo = Xo + ((cR*Co[, , 1]) %*% ((1 - E)/L)) # Infusion
-          Rm = (1.0 - E)/sol3.L;
+          Eigen::Matrix<T, 3, 1> o3 = Eigen::Matrix<T, 3, 1>::Constant(3, 1, 1.0);
+          Rm = (o3 - E).array()/sol3.L.array();
           Xo += (R*sol3.C1)*Rm;
         }
         ret(oral0_, 0)     = Xo(0, 0);
@@ -210,7 +213,7 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) {
+      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
         if (typeid(T) == typeid(double)) {
           Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Alast(ncmt_ + oral0_, 1);
           for (int i = oral0_ + ncmt_; i--;){
@@ -219,7 +222,7 @@ namespace stan {
           return Alast;
         } else {
           Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> AlastG(ncmt_ + oral0_,
-                                               ncmt_*2 + oral0_);
+                                                                       ncmt_*2 + oral0_);
           Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> AlastA(ncmt_ + oral0_, 1);
           Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Alast(ncmt_ + oral0_, 1);
 
@@ -336,10 +339,14 @@ namespace stan {
         rate_ = R;
       }
 
+      void setDt(double dt) {
+        dt_ = dt;
+      }
+
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta, double dt) const {
+      Eigen::Matrix<T, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
         Eigen::Matrix<double, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
@@ -347,19 +354,16 @@ namespace stan {
         if (oral0_) {
           ka = theta[6];
         }
-        Eigen::Matrix<T,
-                      Eigen::Dynamic,
-                      Eigen::Dynamic> yp(ncmt_ + oral0_, 1);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
         yp = getAlast(theta);
-        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
         if (ncmt_ == 1) {
-          ret = linCmtStan1(g, yp, ka, dt);
+          return linCmtStan1<T>(g, yp, ka);
         } else if (ncmt_ == 2) {
-          ret = linCmtStan2(g, yp, ka, dt);
+          return linCmtStan2<T>(g, yp, ka);
         } else if (ncmt_ == 3) {
-          ret = linCmtStan3(g, yp, ka, dt);
+          return linCmtStan3<T>(g, yp, ka);
         }
-        return ret;
+        Rcpp::stop("ncmt not supported");
       }
     };
 

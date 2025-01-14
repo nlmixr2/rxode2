@@ -10,7 +10,8 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-RObject linCmtModelDouble(double p1, double v1, double p2,
+RObject linCmtModelDouble(double dt,
+                          double p1, double v1, double p2,
                           double p3, double p4, double p5,
                           double ka,
                           NumericVector alastNV, NumericVector rateNV,
@@ -72,5 +73,7 @@ RObject linCmtModelDouble(double p1, double v1, double p2,
   }
   lc.setAlastPtr(alast0);
   lc.setRate(rate.data());
-
+  lc.setDt(dt);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> ret = lc(theta);
+  return wrap(ret);
 }

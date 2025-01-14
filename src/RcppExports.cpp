@@ -543,11 +543,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // linCmtModelDouble
-RObject linCmtModelDouble(double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector alastNV, NumericVector rateNV, const int ncmt, const int oral0, const int trans);
-RcppExport SEXP _rxode2_linCmtModelDouble(SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP alastNVSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP) {
+RObject linCmtModelDouble(double dt, double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector alastNV, NumericVector rateNV, const int ncmt, const int oral0, const int trans);
+RcppExport SEXP _rxode2_linCmtModelDouble(SEXP dtSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP alastNVSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type dt(dtSEXP);
     Rcpp::traits::input_parameter< double >::type p1(p1SEXP);
     Rcpp::traits::input_parameter< double >::type v1(v1SEXP);
     Rcpp::traits::input_parameter< double >::type p2(p2SEXP);
@@ -560,7 +561,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type ncmt(ncmtSEXP);
     Rcpp::traits::input_parameter< const int >::type oral0(oral0SEXP);
     Rcpp::traits::input_parameter< const int >::type trans(transSEXP);
-    rcpp_result_gen = Rcpp::wrap(linCmtModelDouble(p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans));
+    rcpp_result_gen = Rcpp::wrap(linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans));
     return rcpp_result_gen;
 END_RCPP
 }
