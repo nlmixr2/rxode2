@@ -33,7 +33,7 @@ namespace stan {
     macros2micros(const Eigen::Matrix<T, Eigen::Dynamic, 1>& p,
                   const int& ncmt,
                   const int& trans){
-      Eigen::Matrix<T, Eigen::Dynamic, 2> g(ncmt, 3);
+      Eigen::Matrix<T, Eigen::Dynamic, 2> g(ncmt, 2);
       T btemp, ctemp, dtemp;
 #define p1    p[0]
 #define v1    p[1]

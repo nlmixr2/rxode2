@@ -77,7 +77,7 @@ namespace stan {
       { }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 1> g,
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                                                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
                                                       T ka) const {
 #define k10   g(0, 1)
@@ -109,7 +109,7 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 1> g,
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                                                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
                                                       T ka) const {
 #define k12   g(1, 0)
@@ -158,7 +158,7 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 1> g,
+      Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                                                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
                                                       T ka) const {
 #define k12   g(1, 0)
@@ -213,18 +213,18 @@ namespace stan {
       }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
+      Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
         if (typeid(T) == typeid(double)) {
-          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Alast(ncmt_ + oral0_, 1);
+          Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
           for (int i = oral0_ + ncmt_; i--;){
             Alast(i, 0) = A_[i];
           }
           return Alast;
         } else {
-          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> AlastG(ncmt_ + oral0_,
+          Eigen::Matrix<double, Eigen::Dynamic, 1> AlastG(ncmt_ + oral0_,
                                                                        ncmt_*2 + oral0_);
-          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> AlastA(ncmt_ + oral0_, 1);
-          Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Alast(ncmt_ + oral0_, 1);
+          Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
+          Eigen::Matrix<T, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
 
           double p1_ = theta[0];
           double v1_ = theta[1];
@@ -291,14 +291,14 @@ namespace stan {
         }
       }
 
-      void setAlastPtr(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Alast) {
+      void setAlastPtr(Eigen::Matrix<double, Eigen::Dynamic, 1> Alast) {
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           //(3*ncmt+2*oral0)+0
           A_[i] = Alast(i, 0);
         }
       }
 
-      void setAlastPtr(Eigen::Matrix<stan::math::var, Eigen::Dynamic, Eigen::Dynamic> Alast,
+      void setAlastPtr(Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> Alast,
                        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
         A_[ncmt_ + oral0_ + 0] = J(0, 0);
         A_[ncmt_ + oral0_ + 1] = J(0, 1);
@@ -356,14 +356,15 @@ namespace stan {
         }
         Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
         yp = getAlast(theta);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret(ncmt_ + oral0_, 1);
         if (ncmt_ == 1) {
-          return linCmtStan1<T>(g, yp, ka);
+          ret = linCmtStan1<T>(g, yp, ka);
         } else if (ncmt_ == 2) {
-          return linCmtStan2<T>(g, yp, ka);
+          ret = linCmtStan2<T>(g, yp, ka);
         } else if (ncmt_ == 3) {
-          return linCmtStan3<T>(g, yp, ka);
+          ret = linCmtStan3<T>(g, yp, ka);
         }
-        Rcpp::stop("ncmt not supported");
+        return ret;
       }
     };
 
