@@ -28,3 +28,33 @@ test_that("test the matrices of the linear compartment solutions .solComp2", {
                v)
 
 })
+
+test_that("1 compartment model tests (no AD)", {
+
+  ode.1c <- rxode2({
+    C2 <- center/V
+    d/dt(center) <- -CL * C2
+  })
+
+  f <- function(dt, CL=25, V=20) {
+    e <- et(amt=100) |> et(time=dt)
+    o <- rxSolve(ode.1c, e, params=c(CL=CL, V=V), returnType="data.frame")$C2
+    p1 <- CL
+    v1 <- V
+    p2 <- 0
+    p3 <- 0
+    p4 <- 0
+    p5 <- 0
+    ka <- 0
+    alastNV <- 100
+    rateNV <- 0
+    oral0 <- 0
+    trans <- 1
+    ncmt <- 1
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans)
+    c(ode=o, l=l)
+  }
+
+
+
+})
