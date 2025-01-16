@@ -55,6 +55,6 @@ test_that("1 compartment model tests (no AD)", {
     c(ode=o, l=l)
   }
 
-
+  f(.025)
 
 })
