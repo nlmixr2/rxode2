@@ -212,6 +212,12 @@ namespace stan {
         return ret;
       }
 
+      void setPtr(double *A, double *R) {
+        A_ = A;
+        rate_ = R;
+      }
+
+
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
         if (typeid(T) == typeid(double)) {
@@ -291,15 +297,16 @@ namespace stan {
         }
       }
 
-      void setAlastPtr(Eigen::Matrix<double, Eigen::Dynamic, 1> Alast) {
+
+      void setAlast(Eigen::Matrix<double, Eigen::Dynamic, 1> Alast) {
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           //(3*ncmt+2*oral0)+0
           A_[i] = Alast(i, 0);
         }
       }
 
-      void setAlastPtr(Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> Alast,
-                       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
+      void setAlast(Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> Alast,
+                    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
         A_[ncmt_ + oral0_ + 0] = J(0, 0);
         A_[ncmt_ + oral0_ + 1] = J(0, 1);
         if (ncmt_ >=2){
@@ -346,7 +353,7 @@ namespace stan {
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
+      Eigen::Matrix<T, 1, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
         Eigen::Matrix<double, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
@@ -356,13 +363,23 @@ namespace stan {
         }
         Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
         yp = getAlast(theta);
-        Eigen::Matrix<T, Eigen::Dynamic, 1> ret(ncmt_ + oral0_, 1);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
         if (ncmt_ == 1) {
-          ret = linCmtStan1<T>(g, yp, ka);
+          ret0 = linCmtStan1<T>(g, yp, ka);
         } else if (ncmt_ == 2) {
-          ret = linCmtStan2<T>(g, yp, ka);
+          ret0 = linCmtStan2<T>(g, yp, ka);
         } else if (ncmt_ == 3) {
-          ret = linCmtStan3<T>(g, yp, ka);
+          ret0 = linCmtStan3<T>(g, yp, ka);
+        }
+        Eigen::Matrix<T, 1, 1> ret(1, 1);
+        if (trans_ != 10 || ncmt_ == 1) {
+          ret(0, 0) = ret0(0, 0) / theta(1, 0);
+        } else if (ncmt_ == 2) {
+          ret(0, 0) = ret0(0, 0) / (theta(1, 0) + theta(3, 0));
+        } else if (ncmt_ == 3) {
+          ret(0, 0) = ret0(0, 0) / (theta(1, 0) + theta(3, 0) + theta(5, 0));
+        } else {
+          ret(0, 0) = ret0(0, 0);
         }
         return ret;
       }

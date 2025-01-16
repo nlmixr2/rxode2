@@ -71,9 +71,14 @@ RObject linCmtModelDouble(double dt,
   default:
     stop("Invalid number of compartments");
   }
-  lc.setAlastPtr(alast0);
+  double *a = new double[ncmt+oral0];
+  double *r = new double[1+oral0];
+  lc.setPtr(a, r);
+  lc.setAlast(alast0);
   lc.setRate(rate.data());
   lc.setDt(dt);
-  Eigen::Matrix<double, Eigen::Dynamic, 1> ret = lc(theta);
+  Eigen::Matrix<double, 1, 1> ret = lc(theta);
+  delete[] a;
+  delete[] r;
   return wrap(ret);
 }
