@@ -349,7 +349,6 @@ namespace stan {
       void setDt(double dt) {
         dt_ = dt;
       }
-
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
@@ -359,7 +358,7 @@ namespace stan {
 
         T ka = 0.0;
         if (oral0_) {
-          ka = theta[6];
+          ka = theta[ncmt_*2];
         }
         Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
         yp = getAlast(theta);
@@ -373,13 +372,13 @@ namespace stan {
         }
         Eigen::Matrix<T, 1, 1> ret(1, 1);
         if (trans_ != 10 || ncmt_ == 1) {
-          ret(0, 0) = ret0(0, 0) / theta(1, 0);
+          ret(0, 0) = ret0(oral0_, 0) / theta(1, 0);
         } else if (ncmt_ == 2) {
-          ret(0, 0) = ret0(0, 0) / (theta(1, 0) + theta(3, 0));
+          ret(0, 0) = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0));
         } else if (ncmt_ == 3) {
-          ret(0, 0) = ret0(0, 0) / (theta(1, 0) + theta(3, 0) + theta(5, 0));
+          ret(0, 0) = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0) + theta(5, 0));
         } else {
-          ret(0, 0) = ret0(0, 0);
+          ret(0, 0) = ret0(oral0_, 0);
         }
         return ret;
       }

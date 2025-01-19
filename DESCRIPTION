@@ -74,7 +74,8 @@ Suggests:
     patchwork,
     nlmixr2data,
     lifecycle,
-    kableExtra
+    kableExtra,
+    pmxTools
 Imports:
     PreciseSums (>= 0.7),
     Rcpp (>= 0.12.3),
