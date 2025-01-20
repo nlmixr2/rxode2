@@ -85,4 +85,40 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
            })
          })
 
+
+  f <- function(t, CL=25, V=20, DOSE=100, tinf=1) {
+    p1 <- CL
+    v1 <- V
+    p2 <- 0
+    p3 <- 0
+    p4 <- 0
+    p5 <- 0
+    ka <- 0
+    if (t < tinf) {
+      alastNV <- 0
+      rateNV <- DOSE/tinf
+      dt <- t
+    } else {
+      alastNV <- pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=tinf, dose=DOSE, tinf=tinf)*V # amt not conc
+      rateNV <- 0
+      dt <- t - tinf
+    }
+    oral0 <- 0
+    trans <- 1
+    ncmt <- 1
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans)
+    c(s=pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t, dose=DOSE, tinf=tinf),
+      l=l)
+  }
+
+  lapply(seq(.1, 10, by=0.1),
+         function(d) {
+           test_that(paste0("test the oral 1-cmt linear compartment solution at ", d), {
+             v <- f(d)
+             expect_equal(stats::setNames(v["s"], NULL),
+                          stats::setNames(v["l"], NULL))
+           })
+         })
+
+
  }
