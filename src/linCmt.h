@@ -63,10 +63,10 @@ namespace stan {
     //
 
     struct linCmtStan {
-
       const int ncmt_, oral0_, trans_;
       double *rate_; // This comes from the ode system
       double *A_;    // This comes from the ode system
+      double *Asave_; // This comes from the ode system
       double dt_;
       linCmtStan(const int ncmt,
                  const int oral0,
@@ -228,19 +228,25 @@ namespace stan {
           return Alast;
         } else {
           Eigen::Matrix<double, Eigen::Dynamic, 1> AlastG(ncmt_ + oral0_,
-                                                                       ncmt_*2 + oral0_);
+                                                          ncmt_*2 + oral0_);
           Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
           Eigen::Matrix<T, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
 
           double p1_ = theta[0];
           double v1_ = theta[1];
-          double p2_ = theta[2];
-          double p3_ = theta[3];
-          double p4_ = theta[4];
-          double p5_ = theta[5];
-          double ka_ = 0.0;
+          double p2_, p3_, p4_, p5_, ka_;
+          p2_ = p3_ = p4_ = p5_ = ka_ = 0.0;
+          if (ncmt_ >= 2) {
+            p2_ = theta[2];
+            p3_ = theta[3];
+          }
+          if (ncmt_ >= 3) {
+            p4_ = theta[4];
+            p5_ = theta[5];
+
+          }
           if (oral0_) {
-            ka_ = theta[6];
+            ka_ = theta[ncmt_*2];
           }
 
           for (int i = 0; i < ncmt_ + oral0_; i++) {
