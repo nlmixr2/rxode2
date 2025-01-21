@@ -147,6 +147,33 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
            })
          })
 
+  f <- function(dt, V = 40, CL = 18, V2 = 297, Q = 10, DOSE=100, tinf=1) {
+    p1 <- CL
+    v1 <- V
+    p2 <- Q
+    p3 <- V2
+    p4 <- 0
+    p5 <- 0
+    ka <- 0
+    alastNV <- c(0, 0)
+    rateNV <- DOSE/tinf
+    oral0 <- 0
+    trans <- 1
+    ncmt <- 2
+    if (dt <= tinf) {
+    } else {
+      l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans)
+      dt <- dt - tinf
+      rateNV <- 0
+      alastNV <- l$Alast
+    }
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans)$val
+    c(s=pmxTools::calc_sd_2cmt_linear_infusion(CL=CL, V=V, V2=V2, Q=Q,
+                                               t=dt, dose=DOSE, tinf=tinf),
+      l=l)
+  }
+
+
 
 
  }
