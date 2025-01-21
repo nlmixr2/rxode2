@@ -210,8 +210,8 @@ Lets see how this very simple function performs:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;      expr      min       lq     mean   median       uq       max neval</span></span>
-<span><span class="co">#&gt;  withoutC 8.719231 8.847230 9.456215 8.903274 9.189459 14.455325   100</span></span>
-<span><span class="co">#&gt;     withC 2.861860 2.935613 3.230185 2.989424 3.521477  7.608187   100</span></span></code></pre></div>
+<span><span class="co">#&gt;  withoutC 8.641763 8.751071 9.324376 8.788597 8.988715 13.483881   100</span></span>
+<span><span class="co">#&gt;     withC 2.807434 2.874084 3.199078 2.914594 3.530373  7.253664   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -792,7 +792,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5601f07edc90&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55d5bf2fa408&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -802,7 +802,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5601f13a9448&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55d5bfedad90&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
