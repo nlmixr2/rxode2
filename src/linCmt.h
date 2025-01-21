@@ -212,9 +212,10 @@ namespace stan {
         return ret;
       }
 
-      void setPtr(double *A, double *R) {
+      void setPtr(double *A, double *R, double *Asave) {
         A_ = A;
         rate_ = R;
+        Asave_ = Asave;
       }
 
 
@@ -303,6 +304,15 @@ namespace stan {
         }
       }
 
+      void setAsaveD(Eigen::Matrix<double, Eigen::Dynamic, 1> ret0) {
+      }
+
+      void setAsaveV(Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> ret0) {
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          stan::math::var smv = ret0(i, 0);
+          Asave_[i] = smv.val();
+        }
+      }
 
       void setAlast(Eigen::Matrix<double, Eigen::Dynamic, 1> Alast) {
         for (int i = 0; i < ncmt_ + oral0_; i++) {
@@ -315,10 +325,10 @@ namespace stan {
                     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
         A_[ncmt_ + oral0_ + 0] = J(0, 0);
         A_[ncmt_ + oral0_ + 1] = J(0, 1);
-        if (ncmt_ >=2){
+        if (ncmt_ >=2) {
           A_[ncmt_ + oral0_ + 2] = J(0, 2);
           A_[ncmt_ + oral0_ + 3] = J(0, 3);
-          if (ncmt_ == 3){
+          if (ncmt_ == 3) {
             A_[ncmt_ + oral0_ + 4] = J(0, 4);
             A_[ncmt_ + oral0_ + 5] = J(0, 5);
           }
@@ -333,7 +343,7 @@ namespace stan {
           A_[i] = smv.val();
           A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1) + 0] = J(i+1, 0);
           A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1) + 1] = J(i+1, 1);
-          if (ncmt_ >=2){
+          if (ncmt_ >=2) {
             A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1) + 2] = J(i+1, 2);
             A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i+1) + 3] = J(i+1, 3);
             if (ncmt_ == 3){
@@ -375,6 +385,16 @@ namespace stan {
           ret0 = linCmtStan2<T>(g, yp, ka);
         } else if (ncmt_ == 3) {
           ret0 = linCmtStan3<T>(g, yp, ka);
+        }
+        if (typeid(T) == typeid(double)) {
+          for (int i = 0; i < ncmt_ + oral0_; i++) {
+            Asave_[i] = ret0(i, 0);
+          }
+        } else {
+          for (int i = 0; i < ncmt_ + oral0_; i++) {
+            stan::math::var smv = ret0(i, 0);
+            Asave_[i] = smv.val();
+          }
         }
         Eigen::Matrix<T, 1, 1> ret(1, 1);
         if (trans_ != 10 || ncmt_ == 1) {

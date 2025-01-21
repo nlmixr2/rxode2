@@ -73,12 +73,20 @@ RObject linCmtModelDouble(double dt,
   }
   double *a = new double[ncmt+oral0];
   double *r = new double[1+oral0];
-  lc.setPtr(a, r);
+  double *asave = new double[ncmt+oral0];
+  lc.setPtr(a, r, asave);
   lc.setAlast(alast0);
   lc.setRate(rate.data());
   lc.setDt(dt);
   Eigen::Matrix<double, 1, 1> ret = lc(theta);
+  NumericVector Alast(ncmt+oral0);
+  for (int i = 0; i < ncmt+oral0; i++) {
+    Alast[i] = asave[i];
+  }
+  List retList = List::create(_["val"] = wrap(ret),
+                              _["Alast"] = Alast);
   delete[] a;
   delete[] r;
-  return wrap(ret);
+  delete[] asave;
+  return retList;
 }
