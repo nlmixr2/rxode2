@@ -218,7 +218,6 @@ namespace stan {
         Asave_ = Asave;
       }
 
-
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
         if (typeid(T) == typeid(double)) {

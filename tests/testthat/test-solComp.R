@@ -160,18 +160,29 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     oral0 <- 0
     trans <- 1
     ncmt <- 2
+    extra <- 0
     if (dt <= tinf) {
     } else {
       l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans)
       dt <- dt - tinf
+      extra <- tinf
       rateNV <- 0
       alastNV <- l$Alast
     }
     l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans)$val
     c(s=pmxTools::calc_sd_2cmt_linear_infusion(CL=CL, V=V, V2=V2, Q=Q,
-                                               t=dt, dose=DOSE, tinf=tinf),
+                                               t=dt+extra, dose=DOSE, tinf=tinf),
       l=l)
   }
+
+  lapply(seq(.1, 10, by=0.1),
+         function(d) {
+           test_that(paste0("test the two compartment iv infusion linear compartment solution at ", d), {
+             v <- f(d)
+             expect_equal(stats::setNames(v["s"], NULL),
+                          stats::setNames(v["l"], NULL))
+           })
+         })
 
 
 
