@@ -2,6 +2,8 @@
 
 - Add stable hashes for rxUi objects (#838, #689)
 
+- Fix for iov simulation (#842)
+
 # rxode2 3.0.3
 
 - Add `logit`/`expit` named expressions, that is `logit(x, high=20)`
