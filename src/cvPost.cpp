@@ -832,7 +832,6 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
     if (Rf_isNull(lotriAbove)) {
       aboveSEXP = R_NilValue;
       rxModelsAssign(".nestEvents", events);
-      rxModelsAssign(".nestEta",    R_NilValue);
       rxModelsAssign(".nestTheta",  R_NilValue);
     }
 

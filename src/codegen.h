@@ -297,7 +297,7 @@ static inline void printCModelVars(const char *prefix) {
   }
   sAppendN(&sbOut, "\");\n", 4);
   sAppend(&sbOut,"    char buf[%d];\n#define __doBufN__ %d\n    __doBuf__\n#undef __doBuf__\n#undef __doBufN__\n", off+1, off+1);
-  sAppendN(&sbOut,"    SET_STRING_ELT(hash, 0, mkChar(buf));\n", 42);
+  sAppendN(&sbOut,"    SET_STRING_ELT(hash, 0, Rf_mkChar(buf));\n", 45);
   sAppendN(&sbOut, "    SEXP lst      = PROTECT(_rxQr(hash));pro++;\n", 48);
   sAppendN(&sbOut, "    _assign_ptr(lst);\n", 22);
   sAppendN(&sbOut, "    UNPROTECT(pro);\n", 20);
@@ -339,7 +339,7 @@ static inline void printRInit(const char *libname, const char *libname2, const c
   sAppendN(&sbOut, "\n}\n", 3);
   sAppend(&sbOut, "\nvoid R_unload_%s (DllInfo *info){\n  // Free resources required for single subject solve.\n  SEXP _mv = PROTECT(_rxGetModelLib(\"%smodel_vars\"));\n",
 	  libname2, prefix);
-  sAppend(&sbOut, "  if (!isNull(_mv)){\n    _rxRmModelLib(\"%smodel_vars\");\n  }\n  UNPROTECT(1);\n}\n", prefix);
+  sAppend(&sbOut, "  if (!Rf_isNull(_mv)){\n    _rxRmModelLib(\"%smodel_vars\");\n  }\n  UNPROTECT(1);\n}\n", prefix);
 }
 
 void print_aux_info(char *model, const char *prefix, const char *libname, const char *pMd5, const char *timeId,

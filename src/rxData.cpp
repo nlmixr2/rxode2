@@ -2413,7 +2413,7 @@ List getEtRxsolve(Environment e) {
 
 inline void updateParNames0(CharacterVector &ret, Environment &e,
                             const std::string& what){
-  if (e.exists(what)){
+  if (e.exists(what)) {
     CharacterVector out = e[what];
     CharacterVector in = out.names();
     for (unsigned int i = ret.size(); i--;){
