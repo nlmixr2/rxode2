@@ -362,7 +362,7 @@ void rxExpandNestingRep(CharacterVector &thetaNest,
       std::string curPar = as<std::string>(nestVars[i]);
       retS += curPar + "=";
       for (int k = 0; k < nnest; ++k) {
-        theta = thetaVar + std::to_string(lastTheta+i+k*nnest+firstTheta) + "]";
+        theta = thetaVar + std::to_string(lastTheta+k+i*nnest+firstTheta) + "]";
         retS += "(" + curNest + "==" + std::to_string(k+1)+")*" + theta;
         thetaNestTran[thCnt] = curPar + "(" + curNest + "==" +
           as<std::string>(curNestLvl[k])+")";
