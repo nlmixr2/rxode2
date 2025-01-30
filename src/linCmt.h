@@ -76,6 +76,27 @@ namespace stan {
         trans_(trans)
       { }
 
+      int getNpars() {
+        if (oral0_) {
+          return 2*ncmt_ + 1;
+        } else {
+          return 2*ncmt_;
+        }
+      }
+
+      int getNalast(bool grad) {
+        if (grad) {
+          int ncmt = ncmt_ + oral0_;
+          return ncmt+ncmt*getNpars();
+        } else {
+          return ncmt_ + oral0_;
+        }
+        return 0;
+      }
+
+      int getNrate() {
+        return 1 + oral0_;
+      }
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                                                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
