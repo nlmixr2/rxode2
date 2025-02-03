@@ -252,22 +252,35 @@ namespace stan {
                                                           ncmt_*2 + oral0_);
           Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
           Eigen::Matrix<T, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
-
-          double p1_ = theta[0];
-          double v1_ = theta[1];
+          T cur = theta(0, 0);
+          double val = cur.val();
+          double p1_ = val;
+          cur = theta(1, 0);
+          val = cur.val();
+          double v1_ = val;
           double p2_, p3_, p4_, p5_, ka_;
           p2_ = p3_ = p4_ = p5_ = ka_ = 0.0;
           if (ncmt_ >= 2) {
-            p2_ = theta[2];
-            p3_ = theta[3];
+            cur = theta(2, 0);
+            val = cur.val();
+            p2_ = val;
+            cur = theta(3, 0);
+            val = cur.val();
+            p3_ = val;
           }
           if (ncmt_ >= 3) {
-            p4_ = theta[4];
-            p5_ = theta[5];
+            cur = theta(4, 0);
+            val = cur.val();
+            p4_ = val;
+            cur = theta(5, 0);
+            val = cur.val();
+            p5_ = val;
 
           }
           if (oral0_) {
-            ka_ = theta[ncmt_*2];
+            cur = theta(ncmt_*2, 0);
+            val = cur.val();
+            ka_ = val;
           }
 
           for (int i = 0; i < ncmt_ + oral0_; i++) {
@@ -389,7 +402,7 @@ namespace stan {
       // (the parameters)
       template <typename T>
       Eigen::Matrix<T, 1, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
-        Eigen::Matrix<double, Eigen::Dynamic, 2> g =
+        Eigen::Matrix<T, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
         T ka = 0.0;
@@ -406,15 +419,9 @@ namespace stan {
         } else if (ncmt_ == 3) {
           ret0 = linCmtStan3<T>(g, yp, ka);
         }
-        if (typeid(T) == typeid(double)) {
-          for (int i = 0; i < ncmt_ + oral0_; i++) {
-            Asave_[i] = ret0(i, 0);
-          }
-        } else {
-          for (int i = 0; i < ncmt_ + oral0_; i++) {
-            stan::math::var smv = ret0(i, 0);
-            Asave_[i] = smv.val();
-          }
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          T smv = ret0(i, 0);
+          Asave_[i] = smv.val();
         }
         Eigen::Matrix<T, 1, 1> ret(1, 1);
         if (trans_ != 10 || ncmt_ == 1) {

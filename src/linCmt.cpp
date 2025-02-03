@@ -61,12 +61,16 @@ RObject linCmtModelDouble(double dt,
   lc.setAlast(alast0);
   lc.setRate(rate.data());
   lc.setDt(dt);
-  Eigen::Matrix<double, 1, 1> ret = lc(theta);
+  Eigen::VectorXd fx;
+  Eigen::Matrix<double, -1, -1> J;
+  stan::math::jacobian(lc, theta, fx, J);
+  // fx = lc(theta);
   NumericVector Alast(nAlast);
   for (int i = 0; i < nAlast; i++) {
     Alast[i] = asave[i];
   }
-  List retList = List::create(_["val"] = wrap(ret),
+  List retList = List::create(_["val"] = wrap(fx),
+                              _["J"] = wrap(J),
                               _["Alast"] = Alast);
   delete[] a;
   delete[] r;
