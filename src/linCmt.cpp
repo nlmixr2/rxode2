@@ -15,7 +15,8 @@ RObject linCmtModelDouble(double dt,
                           double p3, double p4, double p5,
                           double ka,
                           NumericVector alastNV, NumericVector rateNV,
-                          const int ncmt, const int oral0, const int trans) {
+                          const int ncmt, const int oral0, const int trans,
+                          bool deriv) {
 
   stan::math::linCmtStan lc(ncmt, oral0, trans);
   Eigen::Matrix<double, -1, 1> theta;
@@ -61,17 +62,31 @@ RObject linCmtModelDouble(double dt,
   lc.setAlast(alast0);
   lc.setRate(rate.data());
   lc.setDt(dt);
-  Eigen::VectorXd fx;
-  Eigen::Matrix<double, -1, -1> J;
-  stan::math::jacobian(lc, theta, fx, J);
-  // fx = lc(theta);
-  NumericVector Alast(nAlast);
-  for (int i = 0; i < nAlast; i++) {
-    Alast[i] = asave[i];
+  List retList;
+  if (deriv) {
+    Eigen::VectorXd fx;
+    Eigen::Matrix<double, -1, -1> J;
+    stan::math::jacobian(lc, theta, fx, J);
+    // fx = lc(theta);
+    NumericVector Alast(nAlast);
+    for (int i = 0; i < nAlast; i++) {
+      Alast[i] = asave[i];
+    }
+    retList = List::create(_["val"] = wrap(fx),
+                           _["J"] = wrap(J),
+                           _["Alast"] = Alast);
+
+  } else {
+    Eigen::VectorXd fx;
+    fx = lc(theta);
+    NumericVector Alast(nAlast);
+    for (int i = 0; i < nAlast; i++) {
+      Alast[i] = asave[i];
+    }
+    retList = List::create(_["val"] = wrap(fx),
+                           _["Alast"] = Alast);
+
   }
-  List retList = List::create(_["val"] = wrap(fx),
-                              _["J"] = wrap(J),
-                              _["Alast"] = Alast);
   delete[] a;
   delete[] r;
   delete[] asave;

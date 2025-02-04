@@ -360,7 +360,7 @@ SEXP _rxode2_iniDparserPtr(SEXP ptr);
 
 SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP, SEXP, SEXP, SEXP,
-                               SEXP, SEXP, SEXP);
+                               SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
@@ -557,7 +557,7 @@ SEXP _rxode2_solComp3(SEXP k10S, SEXP k12S, SEXP k21S,
 
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
-    {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 13},
+    {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 14},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
     {"_rxode2_macros2micros", (DL_FUNC) &_rxode2_macros2micros, 8},

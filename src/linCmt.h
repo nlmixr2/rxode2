@@ -241,100 +241,92 @@ namespace stan {
 
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
-        if (typeid(T) == typeid(double)) {
-          Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
-          for (int i = oral0_ + ncmt_; i--;){
-            Alast(i, 0) = A_[i];
-          }
-          return Alast;
-        } else {
-          Eigen::Matrix<double, Eigen::Dynamic, 1> AlastG(ncmt_ + oral0_,
-                                                          ncmt_*2 + oral0_);
-          Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
-          Eigen::Matrix<T, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
-          T cur = theta(0, 0);
-          double val = cur.val();
-          double p1_ = val;
-          cur = theta(1, 0);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> AlastG(ncmt_ + oral0_,
+                                                        ncmt_*2 + oral0_);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
+        T cur = theta(0, 0);
+        double val = cur.val();
+        double p1_ = val;
+        cur = theta(1, 0);
+        val = cur.val();
+        double v1_ = val;
+        double p2_, p3_, p4_, p5_, ka_;
+        p2_ = p3_ = p4_ = p5_ = ka_ = 0.0;
+        if (ncmt_ >= 2) {
+          cur = theta(2, 0);
           val = cur.val();
-          double v1_ = val;
-          double p2_, p3_, p4_, p5_, ka_;
-          p2_ = p3_ = p4_ = p5_ = ka_ = 0.0;
-          if (ncmt_ >= 2) {
-            cur = theta(2, 0);
-            val = cur.val();
-            p2_ = val;
-            cur = theta(3, 0);
-            val = cur.val();
-            p3_ = val;
-          }
-          if (ncmt_ >= 3) {
-            cur = theta(4, 0);
-            val = cur.val();
-            p4_ = val;
-            cur = theta(5, 0);
-            val = cur.val();
-            p5_ = val;
+          p2_ = val;
+          cur = theta(3, 0);
+          val = cur.val();
+          p3_ = val;
+        }
+        if (ncmt_ >= 3) {
+          cur = theta(4, 0);
+          val = cur.val();
+          p4_ = val;
+          cur = theta(5, 0);
+          val = cur.val();
+          p5_ = val;
 
+        }
+        if (oral0_) {
+          cur = theta(ncmt_*2, 0);
+          val = cur.val();
+          ka_ = val;
+        }
+
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          AlastG(i, 0) = A_[ncmt_ + oral0_ +
+                            (2*ncmt_ + oral0_)*(i+1) + 0];
+          AlastG(i, 1) = A_[ncmt_ + oral0_ +
+                            (2*ncmt_ + oral0_)*(i+1) + 1];
+          // Alast Adjusted
+          AlastA(i, 0) = A_[i];
+          AlastA(i, 0) -= AlastG(i, 0)*p1_;
+          AlastA(i, 0) -= AlastG(i, 1)*v1_;
+          if (ncmt_ >=2){
+            AlastG(i, 2) = A_[ncmt_ + oral0_ +
+                              (2*ncmt_ + oral0_)*(i+1) + 2];
+            AlastG(i, 3) = A_[ncmt_ + oral0_ +
+                              (2*ncmt_ + oral0_)*(i+1) + 3];
+            // Adjust alast
+            AlastA(i, 0) -= AlastG(i, 2)*p2_;
+            AlastA(i, 0) -= AlastG(i, 3)*p3_;
+            if (ncmt_ >= 3){
+              AlastG(i, 4) = A_[ncmt_ + oral0_ +
+                                (2*ncmt_ + oral0_)*(i+1) + 4];
+              AlastG(i, 5) = A_[ncmt_ + oral0_ +
+                                (2*ncmt_ + oral0_)*(i+1) + 5];
+              // Adjust Alast
+              AlastA(i, 0) -= AlastG(i, 4) * p4_;
+              AlastA(i, 0) -= AlastG(i, 5) * p5_;
+            }
           }
           if (oral0_) {
-            cur = theta(ncmt_*2, 0);
-            val = cur.val();
-            ka_ = val;
+            AlastG(i, 2*ncmt_) = A_[ncmt_ + oral0_ +
+                                    (2*ncmt_ + oral0_)*(i+1) +
+                                    2*ncmt_];
+            AlastA(i, 0) -= AlastG(i, 2*ncmt_)*ka_;
           }
-
-          for (int i = 0; i < ncmt_ + oral0_; i++) {
-            AlastG(i, 0) = A_[ncmt_ + oral0_ +
-                              (2*ncmt_ + oral0_)*(i+1) + 0];
-            AlastG(i, 1) = A_[ncmt_ + oral0_ +
-                              (2*ncmt_ + oral0_)*(i+1) + 1];
-            // Alast Adjusted
-            AlastA(i, 0) = A_[i];
-            AlastA(i, 0) -= AlastG(i, 0)*p1_;
-            AlastA(i, 0) -= AlastG(i, 1)*v1_;
-            if (ncmt_ >=2){
-              AlastG(i, 2) = A_[ncmt_ + oral0_ +
-                                (2*ncmt_ + oral0_)*(i+1) + 2];
-              AlastG(i, 3) = A_[ncmt_ + oral0_ +
-                                (2*ncmt_ + oral0_)*(i+1) + 3];
-              // Adjust alast
-              AlastA(i, 0) -= AlastG(i, 2)*p2_;
-              AlastA(i, 0) -= AlastG(i, 3)*p3_;
-              if (ncmt_ >= 3){
-                AlastG(i, 4) = A_[ncmt_ + oral0_ +
-                                  (2*ncmt_ + oral0_)*(i+1) + 4];
-                AlastG(i, 5) = A_[ncmt_ + oral0_ +
-                                  (2*ncmt_ + oral0_)*(i+1) + 5];
-                // Adjust Alast
-                AlastA(i, 0) -= AlastG(i, 4) * p4_;
-                AlastA(i, 0) -= AlastG(i, 5) * p5_;
-              }
-            }
-            if (oral0_) {
-              AlastG(i, 2*ncmt_) = A_[ncmt_ + oral0_ +
-                                      (2*ncmt_ + oral0_)*(i+1) +
-                                      2*ncmt_];
-              AlastA(i, 0) -= AlastG(i, 2*ncmt_)*ka_;
-            }
-          }
-          for (int i = oral0_ + ncmt_; i--;){
-            Alast(i, 0) = AlastA(i, 0) +
-              theta(0, 0)*AlastG(i, 0) +
-              theta(1, 0)*AlastG(i, 1);
-            if (ncmt_ >= 2) {
-              Alast(i, 0) += theta(2, 0)*AlastG(i, 2) +
-                theta(3, 0)*AlastG(i, 3);
-              if (ncmt_ == 3) {
-                Alast(i, 0) += theta(4, 0)*AlastG(i, 4) +
-                  theta(5, 0)*AlastG(i, 5);
-              }
-            }
-            if (oral0_) {
-              Alast(i, 0) += theta(2*ncmt_, 0)*AlastG(i, 2*ncmt_);
-            }
-          }
-          return Alast;
         }
+        for (int i = oral0_ + ncmt_; i--;){
+          Alast(i, 0) = AlastA(i, 0) +
+            theta(0, 0)*AlastG(i, 0) +
+            theta(1, 0)*AlastG(i, 1);
+          if (ncmt_ >= 2) {
+            Alast(i, 0) += theta(2, 0)*AlastG(i, 2) +
+              theta(3, 0)*AlastG(i, 3);
+            if (ncmt_ == 3) {
+              Alast(i, 0) += theta(4, 0)*AlastG(i, 4) +
+                theta(5, 0)*AlastG(i, 5);
+            }
+          }
+          if (oral0_) {
+            Alast(i, 0) += theta(2*ncmt_, 0)*AlastG(i, 2*ncmt_);
+          }
+        }
+        return Alast;
       }
 
       void setAsaveD(Eigen::Matrix<double, Eigen::Dynamic, 1> ret0) {
@@ -398,6 +390,16 @@ namespace stan {
       void setDt(double dt) {
         dt_ = dt;
       }
+
+      template <typename T>
+      void saveAlast(Eigen::Matrix<T, Eigen::Dynamic, 1> ret0) const {
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          T smv = ret0(i, 0);
+          Asave_[i] = smv.val();
+        }
+      }
+
+
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       template <typename T>
@@ -419,10 +421,7 @@ namespace stan {
         } else if (ncmt_ == 3) {
           ret0 = linCmtStan3<T>(g, yp, ka);
         }
-        for (int i = 0; i < ncmt_ + oral0_; i++) {
-          T smv = ret0(i, 0);
-          Asave_[i] = smv.val();
-        }
+        saveAlast<T>(ret0);
         Eigen::Matrix<T, 1, 1> ret(1, 1);
         if (trans_ != 10 || ncmt_ == 1) {
           ret(0, 0) = ret0(oral0_, 0) / theta(1, 0);
@@ -437,7 +436,25 @@ namespace stan {
       }
     };
 
-  }
-}
+    // Double initialization need to be outside of the linCmtStan struct
+    template <>
+    void linCmtStan::saveAlast<double>(Eigen::Matrix<double, Eigen::Dynamic, 1> ret0) const {
+      for (int i = 0; i < ncmt_ + oral0_; i++) {
+        Asave_[i] = ret0(i, 0);
+      }
+    }
+
+    template <>
+    Eigen::Matrix<double, Eigen::Dynamic, 1> linCmtStan::getAlast(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) const {
+      Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
+      for (int i = oral0_ + ncmt_; i--;){
+        Alast(i, 0) = A_[i];
+      }
+      return Alast;
+    }
+
+
+  } // namespace math
+} // namespace stan
 
 #endif
