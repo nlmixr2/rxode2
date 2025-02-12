@@ -127,6 +127,7 @@ rxTest({
   })
 
   test_that("rxnbinom()", {
+
     rxWithSeed(1024, {
 
       n <- 1e5
@@ -140,6 +141,16 @@ rxTest({
       mnr <- round(mean(r), 1)
 
       expect_equal(mn, mnr)
+
+      mu <- 23.3
+
+      r <- rxnbinomMu(size=size, mu=mu, n=n)
+
+      # Theoretical mean of the negative binomial distribution:
+      mnr <- round(mean(r), 1)
+
+      expect_equal(mu, mnr)
+
 
     })
   })

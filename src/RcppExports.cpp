@@ -2223,12 +2223,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // rxnbinom_
-IntegerVector rxnbinom_(int size, double prob, int n, int ncores);
+IntegerVector rxnbinom_(double size, double prob, int n, int ncores);
 RcppExport SEXP _rxode2_rxnbinom_(SEXP sizeSEXP, SEXP probSEXP, SEXP nSEXP, SEXP ncoresSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type size(sizeSEXP);
+    Rcpp::traits::input_parameter< double >::type size(sizeSEXP);
     Rcpp::traits::input_parameter< double >::type prob(probSEXP);
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
     Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
