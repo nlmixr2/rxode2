@@ -126,6 +126,24 @@ rxTest({
 
   })
 
+  test_that("rxnbinom()", {
+    rxWithSeed(1024, {
+
+      n <- 1e5
+      size <- 10
+      prob <- 0.3
+      # Call the function to generate negative binomial random deviates
+      r <- rxnbinom(size=size, prob=prob, n=n)
+
+      # Theoretical mean of the negative binomial distribution:
+      mn <- round(size * (1 - prob) / prob, 1)
+      mnr <- round(mean(r), 1)
+
+      expect_equal(mn, mnr)
+
+    })
+  })
+
   test_that("rcauchy", {
 
     rxWithSeed(1024, {
