@@ -130,7 +130,7 @@ rxTest({
 
     rxWithSeed(1024, {
 
-      n <- 1e5
+      n <- 10000
       size <- 10
       prob <- 0.3
       # Call the function to generate negative binomial random deviates

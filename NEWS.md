@@ -4,6 +4,8 @@
 
 - Fix for iov simulation (#842)
 
+- Fix for `rxnbinom()` called directly from R (#847)
+
 # rxode2 3.0.3
 
 - Add `logit`/`expit` named expressions, that is `logit(x, high=20)`
