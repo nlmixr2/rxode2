@@ -1291,3 +1291,28 @@ rxUdfUi.rxpois <- function(fun) {
   .fun[[1]] <- str2lang(paste0(".", deparse1(fun[[1]])))
   eval(.fun)
 }
+
+#'@export
+rxUdfUi.rxnbinom <- rxUdfUi.rxpois
+
+.rxnbinom <- function(size, prob, mu) {
+  .size <- as.character(substitute(size))
+  .dp <- deparse1(substitute(size))
+  .tmp <- suppressWarnings(try(force(size), silent = TRUE))
+  .size <- .uiArg(.size, .tmp, .dp)
+
+  if (!missing(mu)) {
+    if (!missing(prob))
+      stop("'prob' and 'mu' both specified")
+    .mu <- as.character(substitute(mu))
+    .dp <- deparse1(substitute(mu))
+    .tmp <- suppressWarnings(try(force(mu), silent = TRUE))
+    .mu <- .uiArg(.mu, .tmp, .dp)
+    list(replace=paste0("rxnbinomMu(", .size, ", ", .mu, ")"))
+  }
+  .prob <- as.character(substitute(prob))
+  .dp <- deparse1(substitute(prob))
+  .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
+  .prob <- .uiArg(.prob, .tmp, .dp)
+  list(replace = paste0("rxnbinom(", .size, ", ",  .prob, ")"))
+}

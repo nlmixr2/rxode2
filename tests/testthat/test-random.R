@@ -151,7 +151,16 @@ rxTest({
 
       expect_equal(mu, mnr)
 
+      rx <- rxode2({
+        x1 <- rxnbinom(10, 0.3)
+        x2 <- rxnbinomMu(10, 23.3)
+      })
 
+      ev <- et(1:10000)
+
+      f <- suppressMessages(rxSolve(rx, ev, cores = 2))
+      expect_equal(mu, round(mean(f$x1)))
+      expect_equal(mu, round(mean(f$x2)))
     })
   })
 
