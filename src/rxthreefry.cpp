@@ -918,7 +918,6 @@ IntegerVector rxnbinom_(double size, double prob, int n, int ncores){
   int n2 = ret.size();
   int *retD = ret.begin();
 
-  REprintf("size: %f; prob: %f", size, prob);
 #ifdef _OPENMP
 #pragma omp parallel num_threads(ncores) if(ncores > 1)
   {
