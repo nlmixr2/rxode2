@@ -82,6 +82,7 @@ namespace boost {
         {
           return !(lhs == rhs);
         }
+
     private:
       RealType _k;
       RealType _p;
@@ -198,7 +199,6 @@ namespace boost {
     }
 
     private:
-
     /// @cond \show_private
 
     template<class CharT, class Traits>
@@ -280,6 +280,7 @@ namespace boost {
         {
           return !(lhs == rhs);
         }
+
       private:
         RealType _k;
         RealType _mu;
@@ -397,7 +398,6 @@ namespace boost {
       }
 
     private:
-
       /// @cond \show_private
 
       template<class CharT, class Traits>
