@@ -119,7 +119,8 @@ namespace boost {
       }
       if (_p == 1) return 0;
       IntType k = _k;
-      if(!R_FINITE(_k)) k = DBL_MAX / 2.;
+      // this gives an overflow warning, give max int - 1
+      if (!R_FINITE(_k)) k = 2147483646;
       gamma_distribution<RealType> gamma(k, (1-_p)/_p);
       poisson_distribution<IntType, RealType> poisson(gamma(urng));
       return poisson(urng);
@@ -316,7 +317,9 @@ namespace boost {
           return std::numeric_limits<IntType>::quiet_NaN();
         }
         RealType k = _k;
-        if(!R_FINITE(_k)) k = DBL_MAX / 2.;
+        // this gives an overflow warning, give max int - 1
+        if (!R_FINITE(_k)) k = 2147483646;
+
         if (_mu == 0) return 0;
 
         gamma_distribution<RealType> gamma(_k, _mu / _k);
