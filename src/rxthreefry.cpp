@@ -2,6 +2,7 @@
 //#undef NDEBUG
 #define STRICT_R_HEADERS
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
+#include <limits>
 #include <RcppArmadillo.h>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parse.h"
@@ -34,6 +35,8 @@ using namespace arma;
 #include <boost/random/poisson_distribution.hpp>
 #include <boost/random/student_t_distribution.hpp>
 #include <boost/random/weibull_distribution.hpp>
+
+#include "rxnbinom.h"
 
 extern "C" {
   extern rx_solve rx_global;
@@ -852,17 +855,23 @@ RObject rxSeedEng(int ncores = 1){
   return R_NilValue;
 }
 
+static inline int _rxnbinom__(double size, double p) {
+  boost::random::negative_binomial_distribution_r<> dist(size, p);
+  return dist(_eng[rx_get_thread(op_global.cores)]);
+}
+
+static inline int _rxnbinom_mu_(double size, double mu) {
+  boost::random::negative_binomial_distribution_mu<> dist(size, mu);
+  return dist(_eng[rx_get_thread(op_global.cores)]);
+}
+
 extern "C" int rxnbinomMu(rx_solving_options_ind* ind, int size, double mu) {
-  double p = ((double)size)/(((double)size) + mu);
-  boost::random::negative_binomial_distribution<int> d(size, p);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return _rxnbinom_mu_(size, mu);
 }
 
 extern "C" int rinbinomMu(rx_solving_options_ind* ind, int id, int size, double mu){
   if (ind->isIni == 1) {
-    double p = ((double)size)/(((double)size) + mu);
-    boost::random::negative_binomial_distribution<int> d(size, p);
-    ind->simIni[id] = (double) d(_eng[rx_get_thread(op_global.cores)]);
+    ind->simIni[id] = (double) _rxnbinom_mu_(size, mu);
   }
   return (int)ind->simIni[id];
 }
@@ -871,8 +880,6 @@ extern "C" int rinbinomMu(rx_solving_options_ind* ind, int id, int size, double 
 IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
   IntegerVector ret(n);
   int n2 = ret.size();
-  double p = ((double)size)/(((double)size) + mu);
-  boost::random::binomial_distribution<int> d(size, p);
   int *retD = ret.begin();
 
 #ifdef _OPENMP
@@ -885,7 +892,7 @@ IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
 #endif
     for (int thread = 0; thread < ncores; thread++) {
       for (int i = thread; i < n2; i += ncores){
-        retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+        retD[i] = _rxnbinom_mu_(size, mu);
       }
     }
 #ifdef _OPENMP
@@ -895,23 +902,20 @@ IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
 }
 
 extern "C" int rxnbinom(rx_solving_options_ind* ind, int size, double prob) {
-  boost::random::negative_binomial_distribution<int> d(size, prob);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return _rxnbinom__(size, prob);
 }
 
 extern "C" int rinbinom(rx_solving_options_ind* ind, int id, int size, double prob){
   if (ind->isIni == 1) {
-    boost::random::negative_binomial_distribution<int> d(size, prob);
-    ind->simIni[id] = (double) d(_eng[rx_get_thread(op_global.cores)]);
+    ind->simIni[id] = (double) _rxnbinom__(size, prob);
   }
   return (int)ind->simIni[id];
 }
 
 //[[Rcpp::export]]
-IntegerVector rxnbinom_(int size, double prob, int n, int ncores){
+IntegerVector rxnbinom_(double size, double prob, int n, int ncores){
   IntegerVector ret(n);
   int n2 = ret.size();
-  boost::random::binomial_distribution<int> d(size, prob);
   int *retD = ret.begin();
 
 #ifdef _OPENMP
@@ -924,7 +928,7 @@ IntegerVector rxnbinom_(int size, double prob, int n, int ncores){
 #endif
     for (int thread = 0; thread < ncores; thread++) {
       for (int i = thread; i < n2; i += ncores){
-        retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+        retD[i] = _rxnbinom__(size, prob);
       }
     }
 #ifdef _OPENMP
@@ -1264,7 +1268,6 @@ IntegerVector rxgeom_(double prob, int n, int ncores){
   return ret;
 }
 
-// FIXME rnbinom
 extern "C" double rxnorm(rx_solving_options_ind* ind, double mean, double sd){
   if (!ind->inLhs) return 0.0;
   boost::random::normal_distribution<double> d(mean, sd);
@@ -1387,14 +1390,19 @@ NumericVector rxt__(double df, int n, int ncores){
 
 extern "C" double rxunif(rx_solving_options_ind* ind, double low, double hi){
   if (!ind->inLhs) return 0.0;
+  if (low >= hi) return std::numeric_limits<double>::quiet_NaN();
   std::uniform_real_distribution<double> d(low, hi);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double riunif(rx_solving_options_ind* ind, int id, double low, double hi){
   if (ind->isIni == 1) {
-    std::uniform_real_distribution<double> d(low, hi);
-    ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
+    if (low >= hi) {
+      ind->simIni[id] = std::numeric_limits<double>::quiet_NaN();
+    } else {
+      std::uniform_real_distribution<double> d(low, hi);
+      ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
+    }
   }
   return ind->simIni[id];
 }
@@ -1416,7 +1424,11 @@ NumericVector rxunif_(double low, double hi, int n, int ncores){
 #endif
     for (int thread = 0; thread < ncores; ++thread) {
       for (int i = thread; i < n2; i += ncores) {
-	retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+        if (low >= hi) {
+          retD[i] = std::numeric_limits<double>::quiet_NaN();
+        } else {
+          retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+        }
       }
     }
 #ifdef _OPENMP

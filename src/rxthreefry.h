@@ -43,6 +43,7 @@ extern "C" {
   double phi(double qn);
 
 #if defined(__cplusplus)
+
 }
 #endif
 #endif // __THREEFRY_H__
