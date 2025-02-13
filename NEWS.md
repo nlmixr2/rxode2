@@ -6,7 +6,7 @@
 
 - Fix for `rxnbinom()` called directly from R (#847) and expand it to
   match more close with R's `rnbinom()` including allowing named `mu=`
-  calls.  In rxode2 ui, these are also allowed.
+  calls.  In rxode2 ui, these are also now allowed.
 
 # rxode2 3.0.3
 
