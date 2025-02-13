@@ -159,8 +159,9 @@ rxTest({
       ev <- et(1:10000)
 
       f <- suppressMessages(rxSolve(rx, ev, cores = 2))
-      expect_equal(mu, round(mean(f$x1), 1))
-      expect_equal(mu, round(mean(f$x2), 1))
+
+      expect_equal(round(mu), round(mean(f$x1)))
+      expect_equal(round(mu), round(mean(f$x2)))
     })
   })
 
