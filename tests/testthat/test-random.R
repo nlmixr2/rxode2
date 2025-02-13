@@ -1170,4 +1170,12 @@ rxTest({
 
   })
 
+  test_that("udf handling of rxbinomMu", {
+    f <- function() {
+      model({
+        x <- rxnbinom(size=10, mu=0.5)
+      })
+    }
+  })
+
 })
