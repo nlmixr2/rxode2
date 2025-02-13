@@ -1171,11 +1171,56 @@ rxTest({
   })
 
   test_that("udf handling of rxbinomMu", {
+
     f <- function() {
       model({
         x <- rxnbinom(size=10, mu=0.5)
       })
     }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinomMu(10, 0.5)")
+
+    f <- function() {
+      model({
+        x <- rxnbinom(mu=0.5, size=10)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinomMu(10, 0.5)")
+
+    f <- function() {
+      model({
+        x <- rxnbinom(prob=0.5, size=10)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinom(10, 0.5)")
+
+    f <- f()
+
+    f <- function() {
+      model({
+        x <- rxnbinom(size=10, prob=0.5)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinom(10, 0.5)")
+
+
+
+
   })
 
 })
