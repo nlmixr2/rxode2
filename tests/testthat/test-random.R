@@ -1205,8 +1205,6 @@ rxTest({
     expect_equal(modelExtract(f, "x"),
                  "x <- rxnbinom(10, 0.5)")
 
-    f <- f()
-
     f <- function() {
       model({
         x <- rxnbinom(size=10, prob=0.5)
