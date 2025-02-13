@@ -1390,14 +1390,19 @@ NumericVector rxt__(double df, int n, int ncores){
 
 extern "C" double rxunif(rx_solving_options_ind* ind, double low, double hi){
   if (!ind->inLhs) return 0.0;
+  if (low >= hi) return std::numeric_limits<double>::quiet_NaN();
   std::uniform_real_distribution<double> d(low, hi);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double riunif(rx_solving_options_ind* ind, int id, double low, double hi){
   if (ind->isIni == 1) {
-    std::uniform_real_distribution<double> d(low, hi);
-    ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
+    if (low >= hi) {
+      ind->simIni[id] = std::numeric_limits<double>::quiet_NaN();
+    } else {
+      std::uniform_real_distribution<double> d(low, hi);
+      ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
+    }
   }
   return ind->simIni[id];
 }
@@ -1419,7 +1424,11 @@ NumericVector rxunif_(double low, double hi, int n, int ncores){
 #endif
     for (int thread = 0; thread < ncores; ++thread) {
       for (int i = thread; i < n2; i += ncores) {
-	retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+        if (low >= hi) {
+          retD[i] = std::numeric_limits<double>::quiet_NaN();
+        } else {
+          retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+        }
       }
     }
 #ifdef _OPENMP
