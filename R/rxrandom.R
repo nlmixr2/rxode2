@@ -650,7 +650,16 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #' s <- rxSolve(rx, et)
 #' }
 #' @export
-rxnbinom <- function(size, prob, n = 1L, ncores = 1L) {
+rxnbinom <- function(size, prob, mu, n = 1L, ncores = 1L) {
+
+  if (!missing(mu)) {
+    if (!missing(prob)) {
+      stop("only one of 'mu' or 'prob' can be specified",
+           call.=FALSE)
+    } else {
+      return(rxnbinomMu(size=size, mu=mu, n=n, ncores=ncores))
+    }
+  }
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
   checkmate::assertCount(size)
   checkmate::assertCount(n)
@@ -1295,6 +1304,22 @@ rxUdfUi.rxpois <- function(fun) {
 #'@export
 rxUdfUi.rxnbinom <- rxUdfUi.rxpois
 
+#'  This processes the ui named functions to produce the correct
+#'  underlying rxode2 code.
+#'
+#' In general this allows `rxnbinom()` and `ribinom()`to work more or less like
+#' `rnbinom()` from R.
+#'
+#'
+#' @inheritParams rbinom
+#'
+#' @param pre The prefix is to determine if this is a residual
+#'   simulation (rx) or an individual simualtion (ri)
+#'
+#' @return A string for replacement in the ui code.
+#'
+#' @noRd
+#' @author Matthew L. Fidler
 .rxnbinom <- function(size, prob, mu, pre="rx") {
   .size <- as.character(substitute(size))
   .dp <- deparse1(substitute(size))

@@ -1218,7 +1218,10 @@ rxTest({
     expect_equal(modelExtract(f, "x"),
                  "x <- rxnbinom(10, 0.5)")
 
+    expect_error(rxnbinom(size=10, prob=.05, mu=30))
 
+    expect_equal(rxWithSeed(1024, rxnbinom(size=10, mu=30)),
+                 rxWithSeed(1024, rxnbinomMu(size=10, mu=30)))
 
 
   })
