@@ -4,7 +4,9 @@
 
 - Fix for iov simulation (#842)
 
-- Fix for `rxnbinom()` called directly from R (#847)
+- Fix for `rxnbinom()` called directly from R (#847) and expand it to
+  match more close with R's `rnbinom()` including allowing named `mu=`
+  calls.  In rxode2 ui, these are also allowed.
 
 # rxode2 3.0.3
 
