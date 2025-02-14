@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">rxode2</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">3.0.4.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -75,7 +75,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Faster expand.grid</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/v3.0.4/R/rxJacobian.R" class="external-link"><code>R/rxJacobian.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/R/rxJacobian.R" class="external-link"><code>R/rxJacobian.R</code></a></small>
       <div class="d-none name"><code>rxExpandGrid.Rd</code></div>
     </div>
 
@@ -809,12 +809,12 @@ type=1L is Jacobian expand grid (adds symbols)</p></dd>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="fu">microbenchmark</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/microbenchmark/man/microbenchmark.html" class="external-link">microbenchmark</a></span><span class="op">(</span><span class="fu">rxExpandGrid</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span>, <span class="fu">expand.grid.jc</span><span class="op">(</span><span class="va">letters</span>, <span class="va">letters</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Unit: microseconds</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min      lq      mean  median      uq</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 23.945 26.6895  58.19824 27.0005 28.2125</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 15.319 16.6360 111.78093 17.6680 18.4990</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              expr    min     lq      mean  median      uq</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    rxExpandGrid(letters, letters) 23.714 26.950  54.86263 27.3060 28.2975</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  expand.grid.jc(letters, letters) 15.729 16.831 123.52787 18.0135 19.0750</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       max neval</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1855.354   100</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  2658.732   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2283.305   100</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2828.160   100</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
