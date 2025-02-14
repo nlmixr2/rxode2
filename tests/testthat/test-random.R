@@ -126,6 +126,45 @@ rxTest({
 
   })
 
+  test_that("rxnbinom()", {
+
+    rxWithSeed(1024, {
+
+      n <- 1e5
+      size <- 10
+      prob <- 0.3
+      # Call the function to generate negative binomial random deviates
+      r <- rxnbinom(size=size, prob=prob, n=n)
+
+      # Theoretical mean of the negative binomial distribution:
+      mn <- round(size * (1 - prob) / prob, 1)
+      mnr <- round(mean(r), 1)
+
+      expect_equal(mn, mnr)
+
+      mu <- 23.3
+
+      r <- rxnbinomMu(size=size, mu=mu, n=n)
+
+      # Theoretical mean of the negative binomial distribution:
+      mnr <- round(mean(r), 1)
+
+      expect_equal(mu, mnr)
+
+      rx <- rxode2({
+        x1 <- rxnbinom(10, 0.3)
+        x2 <- rxnbinomMu(10, 23.3)
+      })
+
+      ev <- et(1:10000)
+
+      f <- suppressMessages(rxSolve(rx, ev, cores = 2))
+
+      expect_equal(round(mu), round(mean(f$x1)))
+      expect_equal(round(mu), round(mean(f$x2)))
+    })
+  })
+
   test_that("rcauchy", {
 
     rxWithSeed(1024, {
@@ -1128,6 +1167,60 @@ rxTest({
       expect_equal(mean(x2), mweibull(7.5), tolerance = 0.01)
       expect_equal(sd(x2), sweibull(7.5), tolerance = 0.01)
     })
+
+  })
+
+  test_that("udf handling of rxbinomMu", {
+
+    f <- function() {
+      model({
+        x <- rxnbinom(size=10, mu=0.5)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinomMu(10, 0.5)")
+
+    f <- function() {
+      model({
+        x <- rxnbinom(mu=0.5, size=10)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinomMu(10, 0.5)")
+
+    f <- function() {
+      model({
+        x <- rxnbinom(prob=0.5, size=10)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinom(10, 0.5)")
+
+    f <- function() {
+      model({
+        x <- rxnbinom(size=10, prob=0.5)
+      })
+    }
+
+    f <- f()
+
+    expect_equal(modelExtract(f, "x"),
+                 "x <- rxnbinom(10, 0.5)")
+
+    expect_error(rxnbinom(size=10, prob=.05, mu=30))
+
+    expect_equal(rxWithSeed(1024, rxnbinom(size=10, mu=30)),
+                 rxWithSeed(1024, rxnbinomMu(size=10, mu=30)))
+
 
   })
 
