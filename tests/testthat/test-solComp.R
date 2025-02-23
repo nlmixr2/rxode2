@@ -295,4 +295,46 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
            })
          })
 
+
+  ####################################################
+  ## AD linCmt()
+  ####################################################
+
+  f <- function(dt, CL=25, V=20, DOSE=100,
+                alastNV=c(DOSE, 0, 0)) {
+    p1 <- CL
+    v1 <- V
+    p2 <- 0
+    p3 <- 0
+    p4 <- 0
+    p5 <- 0
+    ka <- 0
+    rateNV <- 0
+    oral0 <- 0
+    trans <- 1
+    ncmt <- 1
+    deriv <- TRUE
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv)
+    l
+    #c(s=pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=dt, dose=DOSE), l=l$val)
+  }
+
+  test_that("saving and restoring values will give correct solution and gradient", {
+    f1 <- f(.5)
+
+    f2 <- f(.5, alastNV=f1$Alast)
+
+    f3 <- f(1)
+
+    expect_equal(f2$val, f3$val)
+
+    expect_equal(f2$J, f3$J)
+
+    expect_equal(f2$Alast, f3$Alast)
+
+  })
+
+
+  ## f(.01)
+
  }

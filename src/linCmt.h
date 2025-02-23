@@ -477,7 +477,6 @@ namespace stan {
 
     template <>
     Eigen::Matrix<double, Eigen::Dynamic, 1> linCmtStan::getAlast(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) const {
-      REprintf("getAlast\n");
       Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
       for (int i = oral0_ + ncmt_; i--;){
         Alast(i, 0) = A_[i];

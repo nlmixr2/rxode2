@@ -75,7 +75,6 @@ RObject linCmtModelDouble(double dt,
     retList = List::create(_["val"] = wrap(fx),
                            _["J"] = wrap(J),
                            _["Alast"] = Alast);
-
   } else {
     Eigen::VectorXd fx;
     fx = lc(theta);
@@ -85,7 +84,6 @@ RObject linCmtModelDouble(double dt,
     }
     retList = List::create(_["val"] = wrap(fx),
                            _["Alast"] = Alast);
-
   }
   delete[] a;
   delete[] r;
