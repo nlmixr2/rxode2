@@ -72,12 +72,18 @@ RObject linCmtModelDouble(double dt,
     for (int i = 0; i < nAlast; i++) {
       Alast[i] = asave[i];
     }
+    // Jacobian needs to be adjusted first so that fx adjustment
+    // doesn't affect gradient
+    J = lc.adjustJac(J, fx, theta);
+    // fx adjustment is done last
+    fx = lc.adjustF(fx, theta);
     retList = List::create(_["val"] = wrap(fx),
                            _["J"] = wrap(J),
                            _["Alast"] = Alast);
   } else {
     Eigen::VectorXd fx;
     fx = lc(theta);
+    fx = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
     for (int i = 0; i < nAlast; i++) {
       Alast[i] = asave[i];

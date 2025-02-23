@@ -320,16 +320,20 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
   }
 
   test_that("saving and restoring values will give correct solution and gradient", {
+
     f1 <- f(.5)
 
     f2 <- f(.5, alastNV=f1$Alast)
 
     f3 <- f(1)
 
+    # Value is in concentration
     expect_equal(f2$val, f3$val)
 
+    # Jacobian adjusted to concentration
     expect_equal(f2$J, f3$J)
 
+    # Alast and gradients are in amounts
     expect_equal(f2$Alast, f3$Alast)
 
   })

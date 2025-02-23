@@ -100,6 +100,7 @@ namespace stan {
       int getNrate() {
         return 1 + oral0_;
       }
+
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                                                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
@@ -245,8 +246,8 @@ namespace stan {
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
 
-        Eigen::Matrix<double, Eigen::Dynamic, 1> AlastG(ncmt_ + oral0_,
-                                                        ncmt_*2 + oral0_);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> AlastG(ncmt_ + oral0_,
+                                                                     ncmt_*2 + oral0_);
         // AlastG.setZero();
 
         Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
@@ -292,8 +293,12 @@ namespace stan {
                             (2*ncmt_ + oral0_)*i + 1];
           // Alast Adjusted
           AlastA(i, 0) = A_[i];
+
           AlastA(i, 0) -= AlastG(i, 0)*p1_;
+
           AlastA(i, 0) -= AlastG(i, 1)*v1_;
+
+
           if (ncmt_ >=2){
             AlastG(i, 2) = A_[ncmt_ + oral0_ +
                               (2*ncmt_ + oral0_)*i + 2];
@@ -346,8 +351,8 @@ namespace stan {
       }
 
       void saveJac(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
-        Asave_[ncmt_ + oral0_ + 0] = J(0, 0);
-        Asave_[ncmt_ + oral0_ + 1] = J(0, 1);
+        Asave_[ncmt_ + oral0_ + 0] = J(0, 0); // p1
+        Asave_[ncmt_ + oral0_ + 1] = J(0, 1); // v1
         if (ncmt_ >=2) {
           Asave_[ncmt_ + oral0_ + 2] = J(0, 2);
           Asave_[ncmt_ + oral0_ + 3] = J(0, 3);
@@ -454,17 +459,49 @@ namespace stan {
         }
         saveAlast<T>(ret0);
         Eigen::Matrix<T, 1, 1> ret(1, 1);
+        ret(0, 0) = ret0(oral0_, 0);
+        // if (trans_ != 10 || ncmt_ == 1) {
+        //   ret(0, 0) = ret0(oral0_, 0) / theta(1, 0);
+        // } else if (ncmt_ == 2) {
+        //   ret(0, 0) = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0));
+        // } else if (ncmt_ == 3) {
+        //   ret(0, 0) = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0) + theta(5, 0));
+        // } else {
+        //   ret(0, 0) = ret0(oral0_, 0);
+        // }
+        return ret;
+      }
+      Eigen::Matrix<double, -1, -1> adjustJac(const Eigen::Matrix<double, -1, -1> J,
+                                              const Eigen::VectorXd ret0,
+                                              const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+        Eigen::Matrix<double, -1, -1> Jf = J;
         if (trans_ != 10 || ncmt_ == 1) {
-          ret(0, 0) = ret0(oral0_, 0) / theta(1, 0);
+          for (int i = 0; i < getNpars(); i++) {
+            if (i == 1) {
+              Jf(i, 0) = -ret0(0, 0)/(theta(1, 0) * theta(1, 0)) + J(i, 0) / theta(1, 0);
+            } else {
+              Jf(i, 0) = J(i, 0)  / theta(1, 0);
+            }
+          }
+        }
+        return Jf;
+      }
+
+      Eigen::VectorXd adjustF(const Eigen::VectorXd ret0,
+                              const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+        Eigen::Matrix<double, 1, 1> ret(1, 1);
+        if (trans_ != 10 || ncmt_ == 1) {
+          ret(0, 0) = ret0(0, 0) / theta(1, 0);
         } else if (ncmt_ == 2) {
-          ret(0, 0) = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0));
+          ret(0, 0) = ret0(0, 0) / (theta(1, 0) + theta(3, 0));
         } else if (ncmt_ == 3) {
-          ret(0, 0) = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0) + theta(5, 0));
+          ret(0, 0) = ret0(0, 0) / (theta(1, 0) + theta(3, 0) + theta(5, 0));
         } else {
-          ret(0, 0) = ret0(oral0_, 0);
+          ret(0, 0) = ret0(0, 0);
         }
         return ret;
       }
+
     };
 
     // Double initialization need to be outside of the linCmtStan struct
