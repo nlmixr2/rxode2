@@ -475,13 +475,24 @@ namespace stan {
                                               const Eigen::VectorXd ret0,
                                               const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         Eigen::Matrix<double, -1, -1> Jf = J;
-        if (trans_ != 10 || ncmt_ == 1) {
-          for (int i = 0; i < getNpars(); i++) {
-            if (i == 1) {
-              Jf(i, 0) = -ret0(0, 0)/(theta(1, 0) * theta(1, 0)) + J(i, 0) / theta(1, 0);
-            } else {
-              Jf(i, 0) = J(i, 0)  / theta(1, 0);
-            }
+        for (int i = 0; i < getNpars(); i++) {
+          bool adjExtra = false;
+          // Set denominator and if the derivative contains volume
+          if (trans_ != 10 || ncmt_ == 1) {
+            Jf(i, 0) = theta(1, 0);
+            adjExtra = (i == 1);
+          } else if (ncmt_ == 2) {
+            Jf(i, 0) = theta(1, 0) + theta(3, 0);
+            adjExtra = (i == 1 || i == 3);
+          } else if (ncmt_ == 3) {
+            Jf(i, 0) = theta(1, 0) + theta(3, 0) + theta(5, 0);
+            adjExtra = (i == 1 || i == 3 || i == 5);
+          }
+          // Adjust the gradients
+          if (adjExtra) {
+            Jf(i, 0) = -ret0(0, 0)/(Jf(i, 0)*Jf(i, 0)) + J(i, 0) / Jf(i, 0);
+          } else {
+            Jf(i, 0) = J(i, 0)  / Jf(i, 0);
           }
         }
         return Jf;
