@@ -18,11 +18,11 @@ RObject linCmtModelDouble(double dt,
                           const int ncmt, const int oral0, const int trans,
                           bool deriv) {
 
-  stan::math::linCmtStan lc(ncmt, oral0, trans);
+  stan::math::linCmtStan lc(ncmt, oral0, trans, deriv);
   Eigen::Matrix<double, -1, 1> theta;
   Eigen::Matrix<double, -1, 1> alast0 = as<Eigen::Matrix<double, -1, 1> >(alastNV);
   Eigen::Matrix<double, -1, 1> rate = as<Eigen::Matrix<double, -1, 1> >(rateNV);
-  int nAlast = lc.getNalast(false);
+  int nAlast = lc.getNalast();
 
   if (alast0.size() != nAlast) {
     Rcpp::stop("Alast0 size needs to be %d", nAlast);
@@ -54,12 +54,11 @@ RObject linCmtModelDouble(double dt,
   default:
     stop("Invalid number of compartments");
   }
-
   double *a = new double[nAlast];
   double *asave = new double[nAlast];
   double *r = new double[lc.getNrate()];
   lc.setPtr(a, r, asave);
-  lc.setAlast(alast0);
+  lc.setAlast(alast0, nAlast);
   lc.setRate(rate.data());
   lc.setDt(dt);
   List retList;
@@ -67,6 +66,7 @@ RObject linCmtModelDouble(double dt,
     Eigen::VectorXd fx;
     Eigen::Matrix<double, -1, -1> J;
     stan::math::jacobian(lc, theta, fx, J);
+    lc.saveJac(J);
     // fx = lc(theta);
     NumericVector Alast(nAlast);
     for (int i = 0; i < nAlast; i++) {
