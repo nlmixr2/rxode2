@@ -300,7 +300,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
   ## AD linCmt()
   ####################################################
 
-  f <- function(dt, CL=25, V=20, DOSE=100,
+  f0 <- function(dt, CL=25, V=20, DOSE=100,
                 alastNV=c(DOSE, 0, 0)) {
     p1 <- CL
     v1 <- V
@@ -319,26 +319,33 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     #c(s=pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=dt, dose=DOSE), l=l$val)
   }
 
-  test_that("saving and restoring values will give correct solution and gradient", {
+  f <-  function(dt, CL=25, V=20, DOSE=100) {
+    test_that(paste0("one compartment bolus t=", dt, ";CL=", CL,
+                     "; V=", V, "; DOSE=", DOSE), {
+      t0 <- dt/2
+      f1 <- f0(t0, CL=CL, V=V, DOSE=DOSE)
+      expect_equal(pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=t0, dose=DOSE),
+                   f1$val)
+      #
+      f2 <- f0(t0, CL=CL, V=V, DOSE=DOSE, alastNV=f1$Alast)
+      #
+      f3 <- f0(t0*2, CL=CL, V=V, DOSE=DOSE)
+      #
+      expect_equal(pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=dt, dose=DOSE),
+                   f3$val)
+      # Value is in concentration
+      expect_equal(f2$val, f3$val)
+      # Jacobian adjusted to concentration
+      expect_equal(f2$J, f3$J)
+      # Alast and gradients are in amounts
+      expect_equal(f2$Alast, f3$Alast)
+    })
+  }
 
-    f1 <- f(.5)
+  lapply(seq(.1, 10, by=0.1),
+         function(d) {
+           f(d, CL=25, V=20, DOSE=100)
+         })
 
-    f2 <- f(.5, alastNV=f1$Alast)
-
-    f3 <- f(1)
-
-    # Value is in concentration
-    expect_equal(f2$val, f3$val)
-
-    # Jacobian adjusted to concentration
-    expect_equal(f2$J, f3$J)
-
-    # Alast and gradients are in amounts
-    expect_equal(f2$Alast, f3$Alast)
-
-  })
-
-
-  ## f(.01)
 
  }
