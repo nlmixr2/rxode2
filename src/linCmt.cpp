@@ -63,32 +63,29 @@ RObject linCmtModelDouble(double dt,
   lc.setDt(dt);
   List retList;
   if (deriv) {
-    Eigen::VectorXd fx;
+    Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     Eigen::Matrix<double, -1, -1> J;
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    // fx = lc(theta);
+    Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
+    double val = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
     for (int i = 0; i < nAlast; i++) {
       Alast[i] = asave[i];
     }
-    // Jacobian needs to be adjusted first so that fx adjustment
-    // doesn't affect gradient
-    J = lc.adjustJac(J, fx, theta);
-    // fx adjustment is done last
-    fx = lc.adjustF(fx, theta);
-    retList = List::create(_["val"] = wrap(fx),
+    retList = List::create(_["val"] = wrap(val),
                            _["J"] = wrap(J),
+                           _["Jg"] = wrap(Jg),
                            _["Alast"] = Alast);
   } else {
-    Eigen::VectorXd fx;
+    Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     fx = lc(theta);
-    fx = lc.adjustF(fx, theta);
+    double val = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
     for (int i = 0; i < nAlast; i++) {
       Alast[i] = asave[i];
     }
-    retList = List::create(_["val"] = wrap(fx),
+    retList = List::create(_["val"] = wrap(val),
                            _["Alast"] = Alast);
   }
   delete[] a;
