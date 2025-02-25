@@ -422,13 +422,13 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       # Now a simple eliminiation; Handles the case where the infusion has already past
       dt <- t
     } else if (t < tinf) {
-      alastNV <- alastNV
-      rateNV <- rateNV
+      # infusion not complete
       dt <- t
     } else {
-      rateNV <- DOSE/tinf
+      #Infusion completes during the time
       v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv)
       if (t == tinf) return(v)
+      # Infusion is now complete
       alastNV <- v$Alast
       rateNV <- 0
       dt <- t - tinf
@@ -481,6 +481,26 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
                          # Value is in concentration
                          expect_equal(f2$val, f3$val)
                        } else {
+                         rateNV <- DOSE/tinf
+                         f1 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, rateNV=rateNV)
+                         expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0, dose=DOSE, tinf=tinf),
+                                      f1$val)
+                         f3 <- f0(t0*2, CL=CL, V=V, DOSE=DOSE, tinf=tinf)
+                         expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0*2, dose=DOSE, tinf=tinf),
+                                      f3$val)
+                         tinf2 <- tinf-t0
+                         f2 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf2, rateNV=rateNV,
+                                  alastNV=f1$Alast)
+                         expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0*2, dose=DOSE, tinf=tinf),
+                                      f3$val)
+                         # Unadjusted Jacobian
+                         expect_equal(f2$J, f3$J)
+                         # Jacobian adjusted to concentration
+                         expect_equal(f2$Jg, f3$Jg)
+                         # Alast and gradients are in amounts
+                         expect_equal(f2$Alast, f3$Alast)
+                         # Value is in concentration
+                         expect_equal(f2$val, f3$val)
                        }
                      })
   }
