@@ -621,4 +621,129 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
            f(d,V = 40, CL = 18, V2 = 297, Q = 10, DOSE=100)
          })
 
+  ## One compartment IV infusion
+
+  f0i <- function(t, CL=25, V=20, V2 = 297, Q = 10, DOSE=100, tinf=1,
+                  alastNV=rep(0, 10), rateNV=DOSE/tinf) {
+    p1 <- CL
+    v1 <- V
+    p2 <- Q
+    p3 <- V2
+    p4 <- 0
+    p5 <- 0
+    ka <- 0
+    deriv <- TRUE
+    oral0 <- 0
+    trans <- 1
+    ncmt <- 2
+    if (all(rateNV == 0)) {
+      # Now a simple eliminiation; Handles the case where the infusion has already past
+      dt <- t
+    } else if (t < tinf) {
+      # infusion not complete
+      dt <- t
+    } else {
+      #Infusion completes during the time
+      v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv)
+      if (t == tinf) return(v)
+      # Infusion is now complete
+      alastNV <- v$Alast
+      rateNV <- 0
+      dt <- t - tinf
+    }
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv)
+  }
+
+  f <-  function(dt, CL=25, V=20, V2 = 297, Q = 10, DOSE=100, tinf=1) {
+    test_that(paste0("two compartment infusion t=", dt, ";CL=", CL,
+                     "; V2 = ", V2, "; Q = ", Q,
+                     "; V=", V, "; tinf=", tinf, "; DOSE=", DOSE), {
+                       t0 <- dt/2
+                       # See if more care is needed for IV comparison
+                       if (dt < tinf) {
+                         f1 <- f0i(t0, CL=CL, V=V, V2=V2, Q=Q, DOSE=DOSE, tinf=tinf)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2,
+                           t=t0, dose=DOSE, tinf=tinf),
+                           f1$val)
+                         #
+                         f2 <- f0i(t0, CL=CL, V=V, V2=V2, Q=Q,
+                                   DOSE=DOSE, tinf=tinf, alastNV=f1$Alast)
+                         #
+                         f3 <- f0i(t0*2, CL=CL, V=V, Q=Q, V2=V2, DOSE=DOSE)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2,
+                           t=t0*2, dose=DOSE, tinf=tinf),
+                           f3$val)
+                         # Unadjusted Jacobian
+                         expect_equal(f2$J, f3$J)
+                         # Jacobian adjusted to concentration
+                         expect_equal(f2$Jg, f3$Jg)
+                         # Alast and gradients are in amounts
+                         expect_equal(f2$Alast, f3$Alast)
+                         # Value is in concentration
+                         expect_equal(f2$val, f3$val)
+                       } else if (t0 > tinf) {
+                         rateNV <- DOSE/tinf
+                         f1 <- f0i(t0, CL=CL, V=V, V2=V2, Q=Q,
+                                   DOSE=DOSE, tinf=tinf, rateNV=rateNV)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2, t=t0, dose=DOSE, tinf=tinf),
+                           f1$val)
+                         #
+                         f2 <- f0i(t0, CL=CL, V=V, V2=V2, Q=Q,
+                                   DOSE=DOSE, tinf=tinf, rateNV=0,
+                                   alastNV=f1$Alast)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2, t=t0*2, dose=DOSE, tinf=tinf),
+                                      f2$val)
+                         f3 <- f0i(t0*2, CL=CL, V=V, Q=Q, V2=V2,
+                                   DOSE=DOSE, tinf=tinf)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2, t=t0*2, dose=DOSE, tinf=tinf),
+                                      f3$val)
+                         # Unadjusted Jacobian
+                         expect_equal(f2$J, f3$J)
+                         # Jacobian adjusted to concentration
+                         expect_equal(f2$Jg, f3$Jg)
+                         # Alast and gradients are in amounts
+                         expect_equal(f2$Alast, f3$Alast)
+                         # Value is in concentration
+                         expect_equal(f2$val, f3$val)
+                       } else {
+                         rateNV <- DOSE/tinf
+                         f1 <- f0i(t0, CL=CL, V=V, Q=Q, V2=V2,
+                                   DOSE=DOSE, tinf=tinf, rateNV=rateNV)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2, t=t0, dose=DOSE, tinf=tinf),
+                           f1$val)
+                         f3 <- f0i(t0*2, CL=CL, V=V, Q=Q, V2=V2,
+                                   DOSE=DOSE, tinf=tinf)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2, t=t0*2, dose=DOSE, tinf=tinf),
+                           f3$val)
+                         tinf2 <- tinf-t0
+                         f2 <- f0i(t0, CL=CL, V=V, Q=Q, V2=V2,
+                                   DOSE=DOSE, tinf=tinf2, rateNV=rateNV,
+                                   alastNV=f1$Alast)
+                         expect_equal(pmxTools::calc_sd_2cmt_linear_infusion(
+                           CL=CL, V=V, Q=Q, V2=V2, t=t0*2, dose=DOSE, tinf=tinf),
+                           f3$val)
+                         # Unadjusted Jacobian
+                         expect_equal(f2$J, f3$J)
+                         # Jacobian adjusted to concentration
+                         expect_equal(f2$Jg, f3$Jg)
+                         # Alast and gradients are in amounts
+                         expect_equal(f2$Alast, f3$Alast)
+                         # Value is in concentration
+                         expect_equal(f2$val, f3$val)
+                       }
+                     })
+  }
+
+  lapply(seq(.1, 10, by=0.1),
+         function(d) {
+           f(d, CL=25, V=20, tinf=1, DOSE=100)
+         })
+
  }
