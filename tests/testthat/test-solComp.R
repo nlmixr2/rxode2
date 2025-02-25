@@ -110,7 +110,6 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 1
     l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv)
-    print(l)
     l <- l$val
     c(s=pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t, dose=DOSE, tinf=tinf),
       l=l)
@@ -405,8 +404,8 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
 
   ## One compartment IV infusion
 
-  f0 <- function(t, CL=25, V=20, DOSE=100, tinf=1,
-                alastNV=rep(0, 3), rateNV=DOSE/tinf) {
+  f0i <- function(t, CL=25, V=20, DOSE=100, tinf=1,
+                 alastNV=rep(0, 3), rateNV=DOSE/tinf) {
     p1 <- CL
     v1 <- V
     p2 <- 0
@@ -442,13 +441,13 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
                        t0 <- dt/2
                        # See if more care is needed for IV comparison
                        if (dt < tinf) {
-                         f1 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf)
+                         f1 <- f0i(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0, dose=DOSE, tinf=tinf),
                                       f1$val)
                          #
-                         f2 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, alastNV=f1$Alast)
+                         f2 <- f0i(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, alastNV=f1$Alast)
                          #
-                         f3 <- f0(t0*2, CL=CL, V=V, DOSE=DOSE)
+                         f3 <- f0i(t0*2, CL=CL, V=V, DOSE=DOSE)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0*2, dose=DOSE, tinf=tinf),
                                       f3$val)
                          # Unadjusted Jacobian
@@ -461,15 +460,15 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
                          expect_equal(f2$val, f3$val)
                        } else if (t0 > tinf) {
                          rateNV <- DOSE/tinf
-                         f1 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, rateNV=rateNV)
+                         f1 <- f0i(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, rateNV=rateNV)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0, dose=DOSE, tinf=tinf),
                                       f1$val)
                          #
-                         f2 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, rateNV=0,
+                         f2 <- f0i(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, rateNV=0,
                                   alastNV=f1$Alast)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0*2, dose=DOSE, tinf=tinf),
                                       f2$val)
-                         f3 <- f0(t0*2, CL=CL, V=V, DOSE=DOSE, tinf=tinf)
+                         f3 <- f0i(t0*2, CL=CL, V=V, DOSE=DOSE, tinf=tinf)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0*2, dose=DOSE, tinf=tinf),
                                       f3$val)
                          # Unadjusted Jacobian
@@ -482,14 +481,14 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
                          expect_equal(f2$val, f3$val)
                        } else {
                          rateNV <- DOSE/tinf
-                         f1 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, rateNV=rateNV)
+                         f1 <- f0i(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf, rateNV=rateNV)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0, dose=DOSE, tinf=tinf),
                                       f1$val)
-                         f3 <- f0(t0*2, CL=CL, V=V, DOSE=DOSE, tinf=tinf)
+                         f3 <- f0i(t0*2, CL=CL, V=V, DOSE=DOSE, tinf=tinf)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0*2, dose=DOSE, tinf=tinf),
                                       f3$val)
                          tinf2 <- tinf-t0
-                         f2 <- f0(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf2, rateNV=rateNV,
+                         f2 <- f0i(t0, CL=CL, V=V, DOSE=DOSE, tinf=tinf2, rateNV=rateNV,
                                   alastNV=f1$Alast)
                          expect_equal(pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t0*2, dose=DOSE, tinf=tinf),
                                       f3$val)
