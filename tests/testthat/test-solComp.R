@@ -806,4 +806,66 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
          })
 
 
+  ## Three compartment model oral
+  f0 <- function(dt, V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400,
+                 ka=2,
+                 DOSE=100,
+                 alastNV=c(DOSE, rep(0, 25))) {
+    p1 <- CL
+    v1 <- V
+    p2 <- Q
+    p3 <- V2
+    p4 <- Q2
+    p5 <- V3
+    ka <- ka
+    alastNV <- alastNV
+    rateNV <- c(0, 0)
+    oral0 <- TRUE
+    trans <- 1
+    ncmt <- 3
+    deriv <- TRUE
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv)
+  }
+
+  f <-  function(dt,  V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400,
+                 ka=2, DOSE=100) {
+    test_that(paste0("three compartment oral t=", dt, ";CL=", CL,
+                     "; V=", V, "; Q=", Q, "; V2=", V2, "; ka=", ka,
+                     "; Q2=", Q2, "; V3=", V3, "; ka=", ka,
+                     "; DOSE=", DOSE), {
+                       t0 <- dt/2
+                       f1 <- f0(t0, CL=CL, V=V, Q=Q, V2=V2, Q2=Q2, V3=V3, ka=ka, DOSE=DOSE)
+                       expect_equal(pmxTools::calc_sd_3cmt_linear_oral_1(
+                         CL=CL, V=V,
+                         V2=V2, Q=Q, Q3=Q2, V3=V3, ka=ka,
+                         t=t0, dose=DOSE),
+                         f1$val)
+                       #
+                       f2 <- f0(t0, CL=CL, V=V, Q=Q, V2=V2, Q2=Q2, V3=V3, ka=ka,
+                                DOSE=DOSE, alastNV=f1$Alast)
+                       #
+                       f3 <- f0(t0*2, CL=CL, V=V, Q=Q, V2=V2, Q2=Q2, V3=V3, ka=ka,
+                                DOSE=DOSE)
+                       #
+                       expect_equal(
+                         pmxTools::calc_sd_3cmt_linear_oral_1(
+                           CL=CL, V=V, V2=V2, Q=Q, V3=V3, Q3=Q2, ka=ka,
+                           t=dt, dose=DOSE),
+                         f3$val)
+                       # Value is in concentration
+                       expect_equal(f2$val, f3$val)
+                       # Unadjusted Jacobian
+                       expect_equal(f2$J, f3$J)
+                       # Jacobian adjusted to concentration
+                       expect_equal(f2$Jg, f3$Jg)
+                       # Alast and gradients are in amounts
+                       expect_equal(f2$Alast, f3$Alast)
+                     })
+  }
+
+  lapply(seq(.1, 10, by=0.1),
+         function(d) {
+           f(d,V = 40, CL = 18, V2 = 297, Q = 10, DOSE=100)
+         })
+
  }
