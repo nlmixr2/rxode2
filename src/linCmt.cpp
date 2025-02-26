@@ -149,11 +149,19 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     lc.setDt(_t - ind->curShift);
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     fx = lc(theta);
-    ind->linCmtF = lc.adjustF(fx, theta);
+    ind->linCmtSave[0] = lc.adjustF(fx, theta);
     ind->linCmtDt = _t;
   }
   if (which < 0) {
-    return ind->linCmtF;
+    double ret = ind->linCmtSave[oral0];
+    if (trans != 10 || ncmt == 1) {
+      ret = ret / v1;
+    } else if (ncmt == 2) {
+      ret = ret / (v1 + p3);
+    } else if (ncmt == 3) {
+      ret = ret / (v1 + p3 + p5);
+    }
+    return ret;
   } else {
     return ind->linCmtSave[which];
   }
