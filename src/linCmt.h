@@ -242,6 +242,15 @@ namespace stan {
         Asave_ = Asave;
       }
 
+      Eigen::Matrix<double,Eigen::Dynamic, 1> restoreFx(double *A) const {
+        // Save A1-A4
+        Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Alast(i, 0) = A[i];
+        }
+        return Alast;
+      }
+
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> restoreJac(double *A) const {
         // Save A1-A4
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,

@@ -166,3 +166,90 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     return ind->linCmtSave[which];
   }
 }
+
+
+extern "C" double linCmtB(rx_solve *rx, int id,
+                          int trans, int ncmt, int oral0,
+                          int which1, int which2,
+                          double _t,
+                          double p1, double v1,
+                          double p2, double p3,
+                          double p4, double p5,
+                          // Oral parameters
+                          double ka) {
+  rx_solving_options_ind *ind = &(rx->subjects[id]);
+  rx_solving_options *op = rx->op;
+  int idx = ind->idx;
+  double t = _t - ind->curShift;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+  Eigen::Matrix<double, -1, -1> J;
+  Eigen::Matrix<double, -1, 1> theta;
+  stan::math::linCmtStan lc(ncmt, oral0, trans, true);
+  int nAlast = lc.getNalast();
+  int nPars =  lc.getNpars();
+  theta.resize(nPars);
+  switch (ncmt) {
+  case 1:
+    if (oral0 == 1) {
+      theta << p1, v1, ka;
+    } else {
+      theta << p1, v1;
+    }
+    break;
+  case 2:
+    if (oral0 == 1) {
+      theta << p1, v1, p2, p3, ka;
+    } else {
+      theta << p1, v1, p2, p3;
+    }
+    break;
+  case 3:
+    if (oral0 == 1) {
+      theta << p1, v1, p2, p3, p4, p5, ka;
+    } else {
+      theta << p1, v1, p2, p3, p4, p5;
+    }
+    break;
+  default:
+    return NA_REAL;
+  }
+
+  double *aLastPtr = getAdvan(idx);
+  lc.setPtr(aLastPtr, ind->linCmtRate, ind->linCmtSave);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
+  std::copy(aLastPtr, aLastPtr + nAlast, Alast.data());
+  lc.setAlast(Alast, nAlast);
+  lc.setRate(ind->linCmtRate);
+  lc.setDt(_t - ind->curShift);
+  if (ind->linCmtDt != _t) {
+    stan::math::jacobian(lc, theta, fx, J);
+    lc.saveJac(J);
+    // Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
+    ind->linCmtDt = _t;
+  } else {
+    fx = lc.restoreFx(aLastPtr);
+    J = lc.restoreJac(aLastPtr);
+  }
+  if (which1 >= 0 && which2 >= 0) {
+    // w1, w2 are > 0
+    return J(which1, which2);
+  } else if (which1 == -1 && which2 == -1) {
+    // -1, -1 is the function value
+    double ret = fx(oral0);
+    if (trans != 10 || ncmt == 1) {
+      ret = ret / v1;
+    } else if (ncmt == 2) {
+      ret = ret / (v1 + p3);
+    } else if (ncmt == 3) {
+      ret = ret / (v1 + p3 + p5);
+    }
+    return ret;
+  } else if (which1 >= 0 && which2 == -2) {
+    // w2 < 0
+    return fx(which1);
+  } else if (which1 == -2 && which2 >= 0) {
+    Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
+    return Jg(which2);
+  }
+  return NA_REAL;
+}
