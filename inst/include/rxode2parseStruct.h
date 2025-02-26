@@ -172,8 +172,8 @@ typedef struct {
   int solved;
   double *linCmtAdvan;
   double *linCmtRate;
+  double *linCmtSave;
   int linCmt;
-  int linCmtAdvanSetup;
   int cacheME;
   int inLhs;
   // Cache alag
