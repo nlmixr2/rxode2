@@ -97,6 +97,7 @@ RObject linCmtModelDouble(double dt,
 
 extern "C" double linCmtA(rx_solve *rx, int id,
                           int trans, int ncmt, int oral0,
+                          int which,
                           double _t,
                           double p1, double v1,
                           double p2, double p3,
@@ -105,47 +106,55 @@ extern "C" double linCmtA(rx_solve *rx, int id,
                           double ka) {
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
-  double t = _t - ind->curShift;
   int idx = ind->idx;
-  Eigen::Matrix<double, -1, 1> theta;
+  double t = _t - ind->curShift;
+  if (ind->linCmtDt != t) {
+    Eigen::Matrix<double, -1, 1> theta;
 
-  stan::math::linCmtStan lc(ncmt, oral0, trans, false);
-  int nAlast = lc.getNalast();
-  int nPars =  lc.getNpars();
-  theta.resize(nPars);
-  switch (ncmt) {
-  case 1:
-    if (oral0 == 1) {
-      theta << p1, v1, ka;
-    } else {
-      theta << p1, v1;
+    stan::math::linCmtStan lc(ncmt, oral0, trans, false);
+    int nAlast = lc.getNalast();
+    int nPars =  lc.getNpars();
+    theta.resize(nPars);
+    switch (ncmt) {
+    case 1:
+      if (oral0 == 1) {
+        theta << p1, v1, ka;
+      } else {
+        theta << p1, v1;
+      }
+      break;
+    case 2:
+      if (oral0 == 1) {
+        theta << p1, v1, p2, p3, ka;
+      } else {
+        theta << p1, v1, p2, p3;
+      }
+      break;
+    case 3:
+      if (oral0 == 1) {
+        theta << p1, v1, p2, p3, p4, p5, ka;
+      } else {
+        theta << p1, v1, p2, p3, p4, p5;
+      }
+      break;
+    default:
+      return NA_REAL;
     }
-    break;
-  case 2:
-    if (oral0 == 1) {
-      theta << p1, v1, p2, p3, ka;
-    } else {
-      theta << p1, v1, p2, p3;
-    }
-    break;
-  case 3:
-    if (oral0 == 1) {
-      theta << p1, v1, p2, p3, p4, p5, ka;
-    } else {
-      theta << p1, v1, p2, p3, p4, p5;
-    }
-    break;
-  default:
-    return NA_REAL;
+    double *aLastPtr = getAdvan(idx);
+    lc.setPtr(aLastPtr, ind->linCmtRate, ind->linCmtSave);
+    Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
+    std::copy(aLastPtr, aLastPtr + nAlast, Alast.data());
+    lc.setAlast(Alast, nAlast);
+    lc.setRate(ind->linCmtRate);
+    lc.setDt(_t - ind->curShift);
+    Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+    fx = lc(theta);
+    ind->linCmtF = lc.adjustF(fx, theta);
+    ind->linCmtDt = _t;
   }
-  double *aLastPtr = getAdvan(idx);
-  lc.setPtr(aLastPtr, ind->linCmtRate, ind->linCmtSave);
-  Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
-  std::copy(aLastPtr, aLastPtr + nAlast, Alast.data());
-  lc.setAlast(Alast, nAlast);
-  lc.setRate(ind->linCmtRate);
-  lc.setDt(_t - ind->curShift);
-  Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-  fx = lc(theta);
-  return lc.adjustF(fx, theta);
+  if (which < 0) {
+    return ind->linCmtF;
+  } else {
+    return ind->linCmtSave[which];
+  }
 }
