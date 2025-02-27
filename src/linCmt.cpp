@@ -94,7 +94,6 @@ RObject linCmtModelDouble(double dt,
   return retList;
 }
 
-
 extern "C" double linCmtA(rx_solve *rx, int id,
                           int trans, int ncmt, int oral0,
                           int which,
@@ -108,7 +107,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   double t = _t - ind->curShift;
-  if (ind->linCmtDt != t) {
+  if (ind->linCmtLastT != _t) {
     Eigen::Matrix<double, -1, 1> theta;
 
     stan::math::linCmtStan lc(ncmt, oral0, trans, false);
@@ -150,7 +149,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     fx = lc(theta);
     ind->linCmtSave[0] = lc.adjustF(fx, theta);
-    ind->linCmtDt = _t;
+    ind->linCmtLastT = _t;
   }
   if (which < 0) {
     double ret = ind->linCmtSave[oral0];
