@@ -167,7 +167,83 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   }
 }
 
-
+/*
+ *  linCmtB
+ *
+ *  This function is called from Rcpp to compute both the jacobian of
+ *  the linear co and the function value.
+ *
+ *  @param rx The rxSolve object
+ *
+ *  @param id The subject id
+ *
+ *  @param trans The transformation id
+ *
+ *  @param ncmt The number of compartments
+ *
+ *  @param oral0 A indicator of 0 or 1 saying if this was an oral dose
+ *
+ *  @param which1 The first index of the Jacobian (0 indexed)
+ *  @param which2 The second index of the Jacobian (0 indexed)
+ *
+ *  When which1 and which2 are both -1, the solved linear compartment
+ *  model value returned
+ *
+ *  When which2 is -2, the amounts in the saved function are returned
+ *  with which1 (zero indexed)
+ *
+ *  The order of the amounts is as follows:
+ *
+ *   (depot if present), central, peripheral, second peripheral
+ *
+ *  When which1 is -2, the gradient of the linear compartment model
+ *  with respect to the parameter is returned.
+ *
+ *  The parameter order is as follows:
+ *
+ *   p1, v1, p2, p3, p4, p5, ka; for 3 compartment models
+ *
+ *   p1, v1, p2, p3, ka; for 2 compartment models
+ *
+ *   p1, v1, ka; for 1 compartment models
+ *
+ *  The ka is only appended for oral model
+ *
+ *  @param _t The time where the function/jacobian is evaluated
+ *
+ *  @param p1 The first parameter, can be clearance
+ *
+ *  @param v1 The central volume
+ *
+ *  @param p2 The second parameter, can be inter-comparmental clearance
+ *
+ *  @param p3 The third parameter, can be second peripheral volume
+ *
+ *  @param p4 The fourth parameter, can be second inter-compartmental
+ *            clearance
+ *
+ *  @param p5 The fifth parameter, can be second peripheral volume
+ *
+ *  @param ka The first order oral absorption rate constant
+ *
+ *  @return The function value or the jacobian value
+ *
+ * This function will likely be called multiple times in the same ODE
+ * system when running focei.
+ *
+ * The first time linCmtB is called time _t and a specific id
+ * called the function and gradients are calculated. The time
+ * is then stored in linCmtLastT.
+ *
+ * For this reason, the initialization of an ID sets linCmtLastT to
+ * NA_REAL
+ *
+ * If the time is the same as linCmtLastT, then the function value
+ * and the jacobian are restored from the last call (or calculated simply)
+ *
+ * @author Matthew Fidler
+ *
+*/
 extern "C" double linCmtB(rx_solve *rx, int id,
                           int trans, int ncmt, int oral0,
                           int which1, int which2,
@@ -213,7 +289,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   default:
     return NA_REAL;
   }
-
   double *aLastPtr = getAdvan(idx);
   lc.setPtr(aLastPtr, ind->linCmtRate, ind->linCmtSave);
   Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
@@ -221,11 +296,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   lc.setAlast(Alast, nAlast);
   lc.setRate(ind->linCmtRate);
   lc.setDt(_t - ind->curShift);
-  if (ind->linCmtDt != _t) {
+  if (ind->linCmtLastT != _t) {
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
     // Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
-    ind->linCmtDt = _t;
+    ind->linCmtLastT = _t;
   } else {
     fx = lc.restoreFx(aLastPtr);
     J = lc.restoreJac(aLastPtr);
