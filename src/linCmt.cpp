@@ -94,6 +94,64 @@ RObject linCmtModelDouble(double dt,
   return retList;
 }
 
+/*
+ *  linCmtB
+ *
+ *  This function is called from rxode2 to compute the linear function
+ *  values as well as the compartment amounts.
+ *
+ *  @param rx The rxSolve object
+ *
+ *  @param id The subject id
+ *
+ *  @param trans The transformation id
+ *
+ *  @param ncmt The number of compartments
+ *
+ *  @param oral0 A indicator of 0 or 1 saying if this was an oral dose
+ *
+ *  @param which1 The index of the amount to be returned. When less
+ *  than zero, this returns the linear compartment model value for the
+ *  time.  When greater than zero it returns the amount in the linear
+ *  compartment models which can be:
+ *
+ *   depot, central, peripheral, second peripheral
+ *
+ *  @param _t The time where the function/jacobian is evaluated
+ *
+ *  @param p1 The first parameter, can be clearance
+ *
+ *  @param v1 The central volume
+ *
+ *  @param p2 The second parameter, can be inter-comparmental clearance
+ *
+ *  @param p3 The third parameter, can be second peripheral volume
+ *
+ *  @param p4 The fourth parameter, can be second inter-compartmental
+ *            clearance
+ *
+ *  @param p5 The fifth parameter, can be second peripheral volume
+ *
+ *  @param ka The first order oral absorption rate constant
+ *
+ *  @return The function value or the jacobian value
+ *
+ * This function can bebe called multiple times in the same function.
+ *
+ * The first time linCmtA is called time _t and a specific id
+ * called the function and gradients are calculated. The time
+ * is then stored in linCmtLastT.
+ *
+ * For this reason, the initialization of an ID sets linCmtLastT to
+ * NA_REAL
+ *
+ * If the time is the same as linCmtLastT, then the function value
+ * and the amounts are restored from the last call (or calculated simply)
+ *
+ * @author Matthew Fidler
+ *
+ */
+
 extern "C" double linCmtA(rx_solve *rx, int id,
                           int trans, int ncmt, int oral0,
                           int which,
@@ -169,8 +227,8 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 /*
  *  linCmtB
  *
- *  This function is called from Rcpp to compute both the jacobian of
- *  the linear co and the function value.
+ *  This function is called from rxode2 to compute both the jacobian of
+ *  the linear model and the function value.
  *
  *  @param rx The rxSolve object
  *
