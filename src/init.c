@@ -555,8 +555,13 @@ SEXP _rxode2_solComp2(SEXP k10S, SEXP k12S, SEXP k21S);
 SEXP _rxode2_solComp3(SEXP k10S, SEXP k12S, SEXP k21S,
                       SEXP k13S, SEXP k31S);
 
+double linCmtA(rx_solve *rx, int id, int trans, int ncmt, int oral0,
+               int which, double _t, double p1, double v1, double p2,
+               double p3, double p4, double p5, double ka);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"linCmtA", (DL_FUNC) &linCmtA, 14},
     {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 14},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
