@@ -99,7 +99,6 @@ lhs symbols?
   int depotN;
   int centralN;
   // linCmt extras
-  bool linExtra;
   int nwhile;
   int nInd;
   int simflg;

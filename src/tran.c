@@ -419,7 +419,6 @@ void reset(void) {
   tb.curPropN	= 0;
   tb.depotN	= -1;
   tb.centralN	= -1;
-  tb.linExtra   = false;
   tb.nwhile     = 0;
   tb.lvlStr     = 0;
   tb.dummyLhs   = 0;

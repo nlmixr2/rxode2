@@ -341,7 +341,6 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           if(tb.idu[i] != 0){
             if (show_ode == ode_lag || show_ode == ode_dur || show_ode == ode_rate){
               sAppendN(&sbOut, "  ", 2);
-              int assignOne = 0;
               doDot(&sbOut, buf);
               sAppend(&sbOut, " = NA_REAL;\n", i, i);
             } else {

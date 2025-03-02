@@ -111,10 +111,6 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
     tb.ncmt = toInt(v2+1);
     if (tf->isLinB) tf->isLinB=1;
     tb.linB = tf->isLinB;
-    if (!tb.slinExtra) {
-      handleFunctionLinCmtKa(tf, xpn1, xpn2);
-      tb.linExtra=true; // Only first call
-    }
     aType(TLIN);
     if (tb.linB) {
       xpn2 = d_get_child(xpn1, 4);
