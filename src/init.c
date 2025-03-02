@@ -565,8 +565,6 @@ double linCmtB(rx_solve *rx, int id, int trans, int ncmt, int oral0,
 
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
-    {"linCmtA", (DL_FUNC) &linCmtA, 14},
-    {"linCmtB", (DL_FUNC) &linCmtB, 15},
     {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 14},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},
     {"_rxode2_solComp2", (DL_FUNC) &_rxode2_solComp2, 3},
@@ -732,6 +730,8 @@ void R_init_rxode2(DllInfo *info){
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
+  R_RegisterCCallable("rxode2", "linCmtA", (DL_FUNC) &linCmtA);
+  R_RegisterCCallable("rxode2", "linCmtB", (DL_FUNC) &linCmtB);
   R_RegisterCCallable("rxode2", "_rxode2_rxRmvnSEXP",
                       (DL_FUNC) &_rxode2_rxRmvnSEXP);
   R_RegisterCCallable("rxode2", "_rxode2_evalUdf", (DL_FUNC) &_rxode2_evalUdf);
