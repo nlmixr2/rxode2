@@ -19,7 +19,7 @@ rxode2_fn0i _sumType = NULL;
 _update_par_ptr_p _update_par_ptr=NULL;
 _getParCov_p _getParCov=NULL;
 linCmtA_p linCmtA;
-linCmtA_p linCmtB;
+linCmtB_p linCmtB;
 _rx_asgn _rxode2_rxAssignPtr =NULL;
 _rx_asgn _rxQr =NULL;
 
