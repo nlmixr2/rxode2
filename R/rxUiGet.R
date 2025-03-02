@@ -320,7 +320,7 @@ rxUiDeparse.default <- function(object, var) {
       return(rxUiDeparse.lotriFix(object, var))
     }
   }
-  .ret <- try(str2lang(paste0(var, "<-", deparse1(object))))
+  .ret <- try(str2lang(paste0(var, "<-", deparse1(object))), silent=TRUE)
   if (inherits(.ret, "try-error")) {
     .ret <- str2lang("NULL")
   }

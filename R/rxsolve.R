@@ -1939,7 +1939,7 @@ rxSolve.default <- function(object, params = NULL, events = NULL, inits = NULL, 
             # reset
             gc()
             .minfo("try resetting cache and unloading all rxode2 models")
-            try(rxode2::rxUnloadAll())
+            try(rxode2::rxUnloadAll(), silent=TRUE)
             rxode2::rxClean()
             .envReset$unload <- TRUE
             .envReset$reset <- TRUE

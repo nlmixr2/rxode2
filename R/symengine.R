@@ -2395,8 +2395,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"),
         .fun <- paste(.ret0[[1]])
         .g <- try(get(.fun, envir=.rxFromSE.envir$parent, mode="function"), silent=TRUE)
         if (inherits(.g, "try-error")) {
-          .g <- try(get(.fun, envir=.udfEnvSet(NULL),
-                        mode="function"), silent=TRUE)
+          .g <- try(get(.fun, envir=.udfEnvSet(NULL), mode="function"), silent=TRUE)
         }
         if (inherits(.g, "try-error")) {
           stop(sprintf(gettext("'%s' not supported in symengine->rxode2"), .fun),
