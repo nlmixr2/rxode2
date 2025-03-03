@@ -1392,6 +1392,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
     if (verbose) {
       message("parameters: ", paste(names(.lst)[.w], collapse = ","))
     }
+    .lst <- as.data.frame(.lst)
     .linCmt <- .Call(
       `_linCmtParse`, names(.lst)[.w],
       c(
