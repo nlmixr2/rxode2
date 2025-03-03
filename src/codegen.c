@@ -217,7 +217,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
                 prefix);
       }
     } else if (show_ode == ode_lag){
-      if (foundLag){
+      if (foundLag) {
         int nnn = tb.de.n;
         if (tb.linCmt){
           if (tb.hasKa){
