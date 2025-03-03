@@ -297,16 +297,26 @@ typedef void(*_simfun)(int id);
 
 typedef double(*_rxProdType)(double*, double*, int, int);
 
-typedef double (*linCmtA_p) (rx_solve *rx, int id, int trans, int ncmt, int oral0,
-                             int which, double _t, double p1, double v1, double p2,
-                             double p3, double p4, double p5, double ka);
+typedef double (*linCmtA_p) (rx_solve *rx, int id,
+                             double _t,
+                             int linCmt, int ncmt,
+                             int oral0, int which,
+                             int trans,
+                             double p1, double v1,
+                             double p2, double p3,
+                             double p4, double p5,
+                             // Oral parameters
+                             double ka);
 
-typedef double (*linCmtB_p) (rx_solve *rx, int id, int trans,
+typedef double (*linCmtB_p) (rx_solve *rx, int id,
+                             double _t, int linCmt,
                              int ncmt, int oral0,
                              int which1, int which2,
-                             double _t, double p1, double v1,
+                             int trans,
+                             double p1, double v1,
                              double p2, double p3,
-                             double p4, double p5, double ka);
+                             double p4, double p5,
+                             double ka);
 
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
 

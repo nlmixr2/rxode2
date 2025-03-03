@@ -104,6 +104,8 @@ RObject linCmtModelDouble(double dt,
  *
  *  @param id The subject id
  *
+ *  @param linCmt the compartment number of the linear compartment model
+ *
  *  @param trans The transformation id
  *
  *  @param ncmt The number of compartments
@@ -151,11 +153,11 @@ RObject linCmtModelDouble(double dt,
  * @author Matthew Fidler
  *
  */
-
 extern "C" double linCmtA(rx_solve *rx, int id,
-                          int trans, int ncmt, int oral0,
-                          int which,
                           double _t,
+                          int linCmt, int ncmt,
+                          int oral0, int which,
+                          int trans,
                           double p1, double v1,
                           double p2, double p3,
                           double p4, double p5,
@@ -234,6 +236,8 @@ extern "C" double linCmtA(rx_solve *rx, int id,
  *
  *  @param id The subject id
  *
+ *  @param linCmt the compartment number of the linear compartment model
+ *
  *  @param trans The transformation id
  *
  *  @param ncmt The number of compartments
@@ -302,9 +306,10 @@ extern "C" double linCmtA(rx_solve *rx, int id,
  *
 */
 extern "C" double linCmtB(rx_solve *rx, int id,
-                          int trans, int ncmt, int oral0,
+                          double _t, int linCmt,
+                          int ncmt, int oral0,
                           int which1, int which2,
-                          double _t,
+                          int trans,
                           double p1, double v1,
                           double p2, double p3,
                           double p4, double p5,

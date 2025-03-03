@@ -31,7 +31,13 @@ static inline void linCmtParseFinalizeStrings(linCmtStruct *lin, int verbose,
     linCmtParseTransAlpha(lin, verbose);
   }
   sAppend(&(lin->ret), "%s", first);
-  sAppend(&(lin->ret), "%d, %s", lin->ncmt, lin->ret0.s);
+  sAppend(&(lin->ret), "%d, %d, -1",
+          lin->ncmt,
+          lin->ka == -1 ? 0 : 1);
+  if (tb.linB) {
+    sAppendN(&(lin->ret), ", -1", 4);
+  }
+  sAppend(&(lin->ret), ", %s", lin->ret0.s);
   sAppend(&(lin->ret), "%s", end1);
   if (lin->ka == -1) {
     sAppendN(&(lin->ret), "0.0", 3);
@@ -118,27 +124,27 @@ static inline int linCmtGenFinalize(linCmtGenStruct *linG, SEXP linCmt, SEXP var
     if (sbNrmL.lProp[i]== -100){
       char *line = sbNrmL.line[i];
       if (line[0] != '\0') {
-	while (strncmp(line, "linCmt(", 7)){
-	  if (line[0] == '\0') {
-	    return 1;
-	  }
-	  else sPut(&(linG->last2), line[0]);
-	  line++;
-	}
+        while (strncmp(line, "linCmt(", 7)){
+          if (line[0] == '\0') {
+            return 1;
+          }
+          else sPut(&(linG->last2), line[0]);
+          line++;
+        }
       }
       if (strlen(line) > 7) line +=7;
       else {
-	return 1;
+        return 1;
       }
       sAppend(&(linG->last2), "%s", CHAR(STRING_ELT(VECTOR_ELT(linCmtP, 0), 0)));
       while (line[0] != ')'){
-	if (line[0] == '\0') {
-	  return 1;
-	}
-	if (line[0] == '('){
-	  return 2;
-	}
-	line++;
+        if (line[0] == '\0') {
+          return 1;
+        }
+        if (line[0] == '('){
+          return 2;
+        }
+        line++;
       }
       if (line[0] != '\0') sAppend(&(linG->last2), "%s", ++line);
     } else {
@@ -157,7 +163,7 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
   }
   // These no longer do anything
   SET_STRING_ELT(inStr, 2, mkChar(""));
-  SET_STRING_ELT(inStr, 3, mkChar(""));
+  SET_STRING_ELT(inStr, 3, mkChar(")"));
   sClear(&(linG->last));
   if (doSens == 2){
     sAppend(&(linG->last), "linCmtB(rx__PTR__, t, %d, ", INTEGER(linCmt)[0]);
@@ -165,7 +171,8 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
     SET_STRING_ELT(inStr, 1, mkChar("0, "));
   } else {
     if (doSens == 1){
-      sAppend(&(linG->last), "linCmtA(rx__PTR__, t, %d, ", INTEGER(linCmt)[0]);
+      sAppend(&(linG->last), "linCmtA(rx__PTR__, t, %d, ",
+              INTEGER(linCmt)[0]);
     }
     SET_STRING_ELT(inStr, 0, mkChar(linG->last.s));
     SET_STRING_ELT(inStr, 1, mkChar(""));
