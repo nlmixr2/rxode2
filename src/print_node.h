@@ -50,7 +50,7 @@ static inline int nodeAmt(char *value) {
   }
   return 0;
 }
- 
+
 static inline int nodeTlast(char *value) {
   if (!rxstrcmpi("tlast",value)){
     aAppendN("_solveData->subjects[_cSub].tlast", 33);
@@ -167,16 +167,6 @@ static inline int nodeFunLinCmtB(char *value) {
   if (!strcmp("linCmtB",value)){
     aAppendN("linCmtB", 7);
     sAppendN(&sbt,"linCmtB", 7);
-    tb.linCmt=2;
-    return 1;
-  }
-  return 0;
-}
-
-static inline int nodeFunLinCmtC(char *value){
-  if (!strcmp("linCmtC",value)){
-    aAppendN("linCmtC", 7);
-    sAppendN(&sbt,"linCmtC", 7);
     tb.linCmt=2;
     return 1;
   }

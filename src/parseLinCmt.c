@@ -266,8 +266,6 @@ static inline SEXP linCmtGenSEXP(linCmtGenStruct *linG, SEXP linCmt, SEXP vars, 
   } else {
     if (doSens == 1){
       sAppend(&(linG->last), "linCmtA(rx__PTR__, t, %d, ", INTEGER(linCmt)[0]);
-    } else if (doSens == 3) {
-      sAppend(&(linG->last), "linCmtC(rx__PTR__, t, %d, ", INTEGER(linCmt)[0]);
     }
     SET_STRING_ELT(inStr, 0, mkChar(linG->last.s));
     SET_STRING_ELT(inStr, 1, mkChar(""));
