@@ -148,11 +148,10 @@ static inline int finalizeLineAssign(nodeInfo ni, char *name, D_ParseNode *pn) {
         addLine(&centralLines, "%s", c);
       }
       /* RSprintf("c: %s, lType: %d\n", c, sbPm.lType[sbPm.n], isDepot); */
-    } else {
-      addLine(&sbNrmL, "%s;\n", sbt.s);
     }
     addLine(&sbPm,     "%s;\n", sb.s);
     addLine(&sbPmDt,   "%s;\n", sbDt.s);
+    addLine(&sbNrmL, "%s;\n", sbt.s);
     sAppend(&sbNrm, "%s;\n", sbt.s);
     ENDLINE;
     if (sbExtra.o != 0) {
