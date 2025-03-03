@@ -232,14 +232,6 @@ SEXP _rxode2_linCmtGen(SEXP linCmt, SEXP vars, SEXP linCmtSens, SEXP verbose);
 
 typedef struct linCmtGenStruct {
   sbuf last;
-  sbuf d_tlag;
-  sbuf d_tlag2;
-  sbuf d_F;
-  sbuf d_F2;
-  sbuf d_rate1;
-  sbuf d_dur1;
-  sbuf d_rate2;
-  sbuf d_dur2;
   sbuf last2;
 } linCmtGenStruct;
 
@@ -247,47 +239,14 @@ extern linCmtGenStruct _linCmtGenStruct;
 
 static inline void linCmtGenIni(linCmtGenStruct *linG) {
   sNull(&(linG->last));
-  sNull(&(linG->d_tlag));
-  sNull(&(linG->d_tlag2));
-  sNull(&(linG->d_F));
-  sNull(&(linG->d_F2));
-  sNull(&(linG->d_rate1));
-  sNull(&(linG->d_dur1));
-  sNull(&(linG->d_rate2));
-  sNull(&(linG->d_dur2));
   sNull(&(linG->last2));
-  
-  sIni(&(linG->last));
-  sIni(&(linG->d_tlag));
-  sIni(&(linG->d_tlag2));
-  sIni(&(linG->d_F));
-  sIni(&(linG->d_F2));
-  sIni(&(linG->d_rate1));
-  sIni(&(linG->d_dur1));
-  sIni(&(linG->d_rate2));
-  sIni(&(linG->d_dur2));
-  sIni(&(linG->last2));
 
-  sAppendN(&(linG->d_tlag),"0.0, ", 5);
-  sAppendN(&(linG->d_tlag2), ", 0.0, ", 7);
-  sAppendN(&(linG->d_F), "1.0, ", 5);
-  sAppendN(&(linG->d_F2), "1.0, ", 5);
-  sAppendN(&(linG->d_rate1), "0.0, ", 5);
-  sAppendN(&(linG->d_dur1), "0.0, ", 5);
-  sAppendN(&(linG->d_rate2), "0.0, ", 5);
-  sAppendN(&(linG->d_dur2), "0.0)", 4);
+  sIni(&(linG->last));
+  sIni(&(linG->last2));
 }
 
 static inline void linCmtGenFree(linCmtGenStruct *linG) {
   sFree(&(linG->last));
-  sFree(&(linG->d_tlag));
-  sFree(&(linG->d_tlag2));
-  sFree(&(linG->d_F));
-  sFree(&(linG->d_F2));
-  sFree(&(linG->d_rate1));
-  sFree(&(linG->d_dur1));
-  sFree(&(linG->d_rate2));
-  sFree(&(linG->d_dur2));
   sFree(&(linG->last2));
 }
 
