@@ -79,7 +79,6 @@ typedef struct {
   int nlin;
   int nlin2;
   int nlinR;
-  int linBflag;
   bool cTlag;
   double hTlag;
   bool cF;

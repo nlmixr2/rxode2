@@ -32,7 +32,7 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[3] = tb.maxeta;
   INTEGER(sLinCmt)[4] = tb.maxtheta;
   INTEGER(sLinCmt)[6] = tb.linCmtN;
-  INTEGER(sLinCmt)[7] = tb.linCmtFlg;
+  INTEGER(sLinCmt)[7] = 0;
   INTEGER(sLinCmt)[8] = tb.nInd;
   INTEGER(sLinCmt)[9] = tb.simflg;
   INTEGER(sLinCmt)[10]= tb.thread;
@@ -135,11 +135,11 @@ static inline void calcNextra(void) {
 static inline void calcExtracmt(void) {
   extraCmt = 0;
   if (tb.linCmt){
-    if (tb.hasKa){
-      extraCmt=2;
-    } else {
-      extraCmt=1;
-    }
+    /* if (tb.hasKa){ */
+    /*   extraCmt=2; */
+    /* } else { */
+    /*   extraCmt=1; */
+    /* } */
     if (tb.hasDepotCmt == -1){
       trans_syntax_error_report_fn0(_("'cmt(depot)' does not work with 'linCmt()'"));
     }
@@ -199,8 +199,8 @@ static inline SEXP calcIniVals(void) {
 
 SEXP orderForderS1(SEXP ordIn);
 
-static inline int sortStateVectorsErrHandle(int prop, int pass, int i) {
-  if (prop == 0 || pass == 1 || tb.dummyLhs == 1) {
+static inline int sortStateVectorsErrHandle(int prop, int i) {
+  if (prop == 0 || tb.dummyLhs == 1) {
     return 1;
   }
   char *buf = NULL;
@@ -270,26 +270,18 @@ static inline SEXP sortStateVectors(SEXP ordS) {
   }
   sbt.o = 0; // we can use sbt.o since all the code has already been output
   sbt.s[0] = 0;
+
   for (int i = 0; i < tb.de.n; i++) {
     int cur = tb.didx[i];
     int prop = tb.dprop[i];
-    int pass = 0;
-    if (tb.linCmt) {
-      if (tb.hasDepotCmt == 1 && !strcmp("depot", tb.ss.line[tb.di[i]])){
-        pass = 1;
-      } else if ((tb.hasCentralCmt == 1 || tb.hasDepotCmt == 1)  &&
-                 !strcmp("central", tb.ss.line[tb.di[i]])) {
-        pass = 1;
-      }
-    }
     if (cur == 0) {
       // This has a property without an ODE or cmt() statement; should error here.
-      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
+      if (sortStateVectorsErrHandle(prop, i)) continue;
     } else if (cur < 0) {
       // This is a compartment only defined by CMT() and is used for
       // dvid ordering, no properties should be defined.
       ord[i] = -cur;
-      if (sortStateVectorsErrHandle(prop, pass, i)) continue;
+      if (sortStateVectorsErrHandle(prop, i)) continue;
     } else {
       ord[i] = cur;
     }
@@ -311,7 +303,7 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
   int *normPropI = INTEGER(normProp);
   for (int i=0; i<tb.de.n; i++) {                     /* name state vars */
     buf=tb.ss.line[tb.di[ordFp[i]-1]] ;
-    if (tb.idu[i] == 1){
+    if (tb.idu[ordFp[i]-1] == 1){
       if (strncmp(buf,"rx__sens_", 9) == 0){
         statePropI[k] = tb.dprop[ordFp[i]-1];
         sensPropI[j] = tb.dprop[ordFp[i]-1];

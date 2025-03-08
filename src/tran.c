@@ -396,7 +396,6 @@ void reset(void) {
   tb.isNA       = 0;
   tb.linCmt     = 0;
   tb.linCmtN    = -100;
-  tb.linCmtFlg  = 0;
   tb.df		= R_Calloc(MXSYM, int);
   tb.dy		= R_Calloc(MXSYM, int);
   tb.sdfdy	= R_Calloc(MXSYM, int);
@@ -668,7 +667,6 @@ SEXP _rxode2_parseModel(SEXP type){
       SET_STRING_ELT(pm, i, mkChar(sbPmDt.line[i]));
     }
     break;
-
   default:
     pm = PROTECT(Rf_allocVector(STRSXP, sbPm.n));
     for (int i = 0; i < sbPm.n; i++){
@@ -735,4 +733,86 @@ void transIniNull(void) {
   sNull(&(_bufw));
   sNull(&(_bufw2));
   lineNull(&(_dupStrs));
+}
+
+
+void calcLinCmt(void) {
+  // Now we check for the linCmt extra compartments and then add them
+  // as needed.
+  nodeInfo ni;
+  niReset(&ni);
+  // we can use sbt.o since all the code has already been output
+  int linCmtErr = 0;
+  if (tb.linCmt) {
+    if (tb.hasKa) {
+      if (new_de("depot", fromDDT)) {
+        add_de(ni, "linCmt()", "depot", 0, fromDDT);
+      } else {
+        if (tb.dprop[tb.id] == 0)  {
+          // defined d/dt(depot) AND properties
+          sAppendN(&sbt, "'depot', ", 9);
+          linCmtErr = 1;
+        }
+      }
+    }
+    if (new_de("central", fromDDT)) {
+      add_de(ni, "linCmt()", "central", 0, fromDDT);
+    } else {
+      if (tb.dprop[tb.id] == 0)  {
+        sAppendN(&sbt, "'central', ", 11);
+        linCmtErr = 1;
+      }
+    }
+    switch (tb.ncmt) {
+    case 1:
+      break;
+    case 2:
+      if (new_de("peripheral1", fromDDT)) {
+        add_de(ni, "linCmt()", "peripheral1", 0, fromDDT);
+      } else {
+        if (tb.dprop[tb.id] == 0)  {
+          sAppendN(&sbt, "'peripheral1', ", 15);
+          linCmtErr = 1;
+        }
+      }
+      break;
+    case 3:
+      if (new_de("peripheral1", fromDDT)) {
+        add_de(ni, "linCmt()", "peripheral1", 0, fromDDT);
+      } else {
+        if (tb.dprop[tb.id] == 0)  {
+          sAppendN(&sbt, "'peripheral1', ", 15);
+          linCmtErr = 1;
+        }
+      }
+      if (new_de("peripheral2", fromDDT)) {
+        add_de(ni, "linCmt()", "peripheral2", 0, fromDDT);
+      } else {
+        if (tb.dprop[tb.id] == 0)  {
+          sAppendN(&sbt, "'peripheral2', ", 15);
+          linCmtErr = 1;
+        }
+      }
+
+      break;
+    }
+    if (tb.linB) {
+      // Sensitivities are also present.
+      switch (tb.ncmt) {
+      case 1:
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+      }
+    }
+    // Take off trailing "',
+    if (linCmtErr) {
+      sbt.o -= 2;
+      sbt.s[sbt.o] = 0;
+      sAppendN(&sbt, " are required for linCmt() but defined in ODE too, rename ODEs\n",
+               63);
+    }
+  }
 }

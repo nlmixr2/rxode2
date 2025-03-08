@@ -4852,7 +4852,6 @@ static inline void iniRx(rx_solve* rx) {
   op->nlin = 0;
   op->nlin2 = 0;
   op->nlinR = 0;
-  op->linBflag = 0;
   op->cTlag = false;
   op->hTlag = 0;
   op->cF = false;
@@ -5572,11 +5571,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int linNcmt = linCmtI[RxMvFlag_ncmt];
     int linKa = linCmtI[RxMvFlag_ka];
     int linB = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linB];
-    op->linBflag=0;
     rx->linKa = linKa;
     rx->linNcmt = linNcmt;
     if (linB) {
-      int linBflag = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtFlg];
       if (rx->sensType == 4) {
         // This is the ADVAN senstivities
         if (linKa) {
@@ -5605,32 +5602,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           }
         }
         op->nlin2 = op->nlin;
-        op->linBflag = linBflag;
-        // Add the other components
-        if (linBflag & 64){ // tlag 64= bitwShiftL(1, 7-1)
-          op->nlin++;
-        }
-        if (linBflag & 128){ // f 128 = 1 << 8-1
-          op->nlin++;
-        }
-        if (linBflag & 256){ // rate 256 = 1 << 9-1
-          op->nlin++;
-        }
-        if (linBflag & 512){ // dur 512 = 1 << 10-1
-          op->nlin++;
-        }
-        if (linBflag & 2048) { // tlag2 2048 = 1 << 12 - 1
-          op->nlin++;
-        }
-        if (linBflag & 4096) { // f2 4096 = 1 << 13 - 1
-          op->nlin++;
-        }
-        if (linBflag & 8192) { // rate2 8192 = 1 << 14 - 1
-          op->nlin++;
-        }
-        if (linBflag & 16384) { // dur2 16384 = 1 << 15 - 1
-          op->nlin++;
-        }
       } else {
         op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;//(4+linNcmt+linKa)*linNcmt+(2+linNcmt+linKa)*linKa+1;
         // ncmt + oral0 + (2*ncmt+oral)*(ncmt+oral0+1) + 2*ncmt

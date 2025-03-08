@@ -647,46 +647,6 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   // show_ode = 0 LHS
   // show_ode = 5 functional bioavailibility
   // show_ode = 6 functional rate
-  if (tb.linCmt != 0) {
-    char *buf;
-    int badCentral=false, badDepot=false;
-    for (int i=tb.de.n; i--;) {                     /* name state vars */
-      buf=tb.ss.line[tb.di[i]];
-      if (tb.hasKa == 1 && !strcmp(buf,"depot")){
-        badDepot=true;
-      } else if (!strcmp(buf, "central")) {
-        badCentral=true;
-      }
-    }
-    if (badCentral && badDepot){
-      fclose(fpIO);
-      _rxode2parse_unprotect();
-      err_trans("linCmt() and ode have 'central' and 'depot' compartments, rename ODE 'central'/'depot'");
-    } else if (badCentral) {
-      fclose(fpIO);
-      _rxode2parse_unprotect();
-      err_trans("linCmt() and ode has a 'central' compartment, rename ODE 'central'");
-    } else if (badDepot) {
-      fclose(fpIO);
-      _rxode2parse_unprotect();
-      err_trans("linCmt() and ode has a 'depot' compartment, rename ODE 'depot'");
-    }
-    (&sbOut)->s[0]='\0';
-    if (tb.hasKa == 1) {
-      sAppend(&sbOut, "#define _DEPOT_ %d\n", tb.statei);
-      sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei+1);
-    } else if (tb.hasCentralCmt == 1) {
-      if (tb.hasDepotCmt){
-        fclose(fpIO);
-        _rxode2parse_unprotect();
-        err_trans("linCmt() does not have 'depot' compartment without a 'ka'");
-        return R_NilValue;
-      }
-      sAppend(&sbOut, "#define _CENTRAL_ %d\n", tb.statei);
-    }
-    writeSb(&sbOut, fpIO);
-    sbOut.o = 0;
-  }
   gCode(1); // d/dt()
   gCode(2); // jac
   gCode(3); // ini()

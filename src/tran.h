@@ -74,7 +74,6 @@ lhs symbols?
   int isNA; // # pi?
   int linCmt; // Unparsed linear compartment
   int linCmtN; // Unparsed linear compartment
-  int linCmtFlg; // Linear compartment flag
   // Save Jacobian information
   int *df;
   int *dy;
