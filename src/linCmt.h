@@ -280,6 +280,7 @@ namespace stan {
         return J;
       }
 
+
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,
