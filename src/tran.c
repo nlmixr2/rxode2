@@ -735,6 +735,29 @@ void transIniNull(void) {
   lineNull(&(_dupStrs));
 }
 
+/*
+ * This function adds a linear compartment from linCmt() to the model.
+ *
+ * @param ni is the node information (which is likely a dummy parsing node)
+ *
+ *@param cmt is the compartment name (const char *)
+ *
+ * @param linCmtErr is a pointer to an integer that will be set to 1 if there is an error
+ *
+ * These are called just before model variables are calculated.
+ *
+ */
+void addLinCmt(nodeInfo ni, const char *cmt, int *linCmtErr) {
+  if (new_de(cmt, fromDDT)) {
+    add_de(ni, "linCmt()", cmt, 0, fromDDT);
+  } else {
+    if (tb.dprop[tb.id] == 0)  {
+      // defined d/dt(depot) AND properties
+      sAppend(&sbt, "'%s', ", cmt);
+      *linCmtErr = 1;
+    }
+  }
+}
 
 void calcLinCmt(void) {
   // Now we check for the linCmt extra compartments and then add them
@@ -745,65 +768,85 @@ void calcLinCmt(void) {
   int linCmtErr = 0;
   if (tb.linCmt) {
     if (tb.hasKa) {
-      if (new_de("depot", fromDDT)) {
-        add_de(ni, "linCmt()", "depot", 0, fromDDT);
-      } else {
-        if (tb.dprop[tb.id] == 0)  {
-          // defined d/dt(depot) AND properties
-          sAppendN(&sbt, "'depot', ", 9);
-          linCmtErr = 1;
-        }
-      }
+      addLinCmt(ni, "depot", &linCmtErr);
     }
-    if (new_de("central", fromDDT)) {
-      add_de(ni, "linCmt()", "central", 0, fromDDT);
-    } else {
-      if (tb.dprop[tb.id] == 0)  {
-        sAppendN(&sbt, "'central', ", 11);
-        linCmtErr = 1;
-      }
-    }
+    addLinCmt(ni, "central", &linCmtErr);
     switch (tb.ncmt) {
     case 1:
       break;
     case 2:
-      if (new_de("peripheral1", fromDDT)) {
-        add_de(ni, "linCmt()", "peripheral1", 0, fromDDT);
-      } else {
-        if (tb.dprop[tb.id] == 0)  {
-          sAppendN(&sbt, "'peripheral1', ", 15);
-          linCmtErr = 1;
-        }
-      }
+      addLinCmt(ni, "peripheral1", &linCmtErr);
       break;
     case 3:
-      if (new_de("peripheral1", fromDDT)) {
-        add_de(ni, "linCmt()", "peripheral1", 0, fromDDT);
-      } else {
-        if (tb.dprop[tb.id] == 0)  {
-          sAppendN(&sbt, "'peripheral1', ", 15);
-          linCmtErr = 1;
-        }
-      }
-      if (new_de("peripheral2", fromDDT)) {
-        add_de(ni, "linCmt()", "peripheral2", 0, fromDDT);
-      } else {
-        if (tb.dprop[tb.id] == 0)  {
-          sAppendN(&sbt, "'peripheral2', ", 15);
-          linCmtErr = 1;
-        }
-      }
-
+      addLinCmt(ni, "peripheral1", &linCmtErr);
+      addLinCmt(ni, "peripheral2", &linCmtErr);
       break;
     }
     if (tb.linB) {
       // Sensitivities are also present.
       switch (tb.ncmt) {
       case 1:
+        // here we have d_central
+        addLinCmt(ni, "rx__lin_s_central_p1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_v1", &linCmtErr);
+        if (tb.hasKa) {
+          addLinCmt(ni, "rx__lin_s_central_ka", &linCmtErr);
+          addLinCmt(ni, "rx__lin_s_depot_ka", &linCmtErr);
+        }
         break;
       case 2:
+        // here we have d_central
+        addLinCmt(ni, "rx__lin_s_central_p1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_v1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_p2", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_p3", &linCmtErr);
+        if (tb.hasKa) {
+          addLinCmt(ni, "rx__lin_s_central_ka", &linCmtErr);
+        }
+        // Now d_perip1
+        addLinCmt(ni, "rx__lin_s_peripheral1_p1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_v1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_p2", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_p3", &linCmtErr);
+        if (tb.hasKa) {
+          addLinCmt(ni, "rx__lin_s_peripheral1_ka", &linCmtErr);
+          addLinCmt(ni, "rx__lin_s_depot_ka", &linCmtErr);
+        }
         break;
       case 3:
+        // here we have d_central
+        addLinCmt(ni, "rx__lin_s_central_p1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_v1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_p2", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_p3", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_p4", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_central_p5", &linCmtErr);
+        if (tb.hasKa) {
+          addLinCmt(ni, "rx__lin_s_central_ka", &linCmtErr);
+        }
+        // Now d_perip1
+        addLinCmt(ni, "rx__lin_s_peripheral1_p1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_v1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_p2", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_p3", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_p4", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral1_p5", &linCmtErr);
+
+        if (tb.hasKa) {
+          addLinCmt(ni, "rx__lin_s_peripheral1_ka", &linCmtErr);
+        }
+        // Now d_perip2
+        addLinCmt(ni, "rx__lin_s_peripheral2_p1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral2_v1", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral2_p2", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral2_p3", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral2_p4", &linCmtErr);
+        addLinCmt(ni, "rx__lin_s_peripheral2_p5", &linCmtErr);
+
+        if (tb.hasKa) {
+          addLinCmt(ni, "rx__lin_s_peripheral2_ka", &linCmtErr);
+          addLinCmt(ni, "rx__lin_s_depot_ka", &linCmtErr);
+        }
         break;
       }
     }
