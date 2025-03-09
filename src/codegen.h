@@ -98,8 +98,9 @@ static inline void printPDStateVar(int show_ode, int scenario) {
   }
 }
 
+
 /*
- * This determines if the variable should be printed or not.
+ * This determines if the variable should skip printing
  *
  * This is used when declaring variables based on different types of functions.
  *
@@ -116,7 +117,6 @@ static inline void printPDStateVar(int show_ode, int scenario) {
  *
  */
 static inline int shouldSkipPrintLhsI(int scenario, int lhs, int i) {
-  if (tb.lh[i] == isState) return 0; // always print states
   switch(scenario){
   case print_paramLags:
     return (tb.lag[i] == notLHS || tb.lh[i] == isState);
