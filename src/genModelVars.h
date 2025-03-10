@@ -32,7 +32,7 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[3] = tb.maxeta;
   INTEGER(sLinCmt)[4] = tb.maxtheta;
   INTEGER(sLinCmt)[6] = tb.linCmtN;
-  INTEGER(sLinCmt)[7] = 0;
+  INTEGER(sLinCmt)[7] = tb.linCmtFlg;
   INTEGER(sLinCmt)[8] = tb.nInd;
   INTEGER(sLinCmt)[9] = tb.simflg;
   INTEGER(sLinCmt)[10]= tb.thread;

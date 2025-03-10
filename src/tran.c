@@ -396,6 +396,7 @@ void reset(void) {
   tb.isNA       = 0;
   tb.linCmt     = 0;
   tb.linCmtN    = -100;
+  tb.linCmtFlg  = 0;
   tb.df		= R_Calloc(MXSYM, int);
   tb.dy		= R_Calloc(MXSYM, int);
   tb.sdfdy	= R_Calloc(MXSYM, int);
@@ -766,20 +767,23 @@ void calcLinCmt(void) {
   niReset(&ni);
   // we can use sbt.o since all the code has already been output
   int linCmtErr = 0;
+  int nLin = 0;
+  int numSens = 0;
+  int depot=0;
   if (tb.linCmt) {
     if (tb.hasKa) {
-      addLinCmt(ni, "depot", &linCmtErr);
+      addLinCmt(ni, "depot", &linCmtErr); nLin++; depot=1;
     }
-    addLinCmt(ni, "central", &linCmtErr);
+    addLinCmt(ni, "central", &linCmtErr); nLin++;
     switch (tb.ncmt) {
     case 1:
       break;
     case 2:
-      addLinCmt(ni, "peripheral1", &linCmtErr);
+      addLinCmt(ni, "peripheral1", &linCmtErr); nLin++;
       break;
     case 3:
-      addLinCmt(ni, "peripheral1", &linCmtErr);
-      addLinCmt(ni, "peripheral2", &linCmtErr);
+      addLinCmt(ni, "peripheral1", &linCmtErr); nLin++;
+      addLinCmt(ni, "peripheral2", &linCmtErr); nLin++;
       break;
     }
     if (tb.linB) {
@@ -787,65 +791,65 @@ void calcLinCmt(void) {
       switch (tb.ncmt) {
       case 1:
         // here we have d_central
-        addLinCmt(ni, "rx__lin_s_central_p1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_v1", &linCmtErr);
+        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__lin_s_central_ka", &linCmtErr);
-          addLinCmt(ni, "rx__lin_s_depot_ka", &linCmtErr);
+          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
         }
         break;
       case 2:
         // here we have d_central
-        addLinCmt(ni, "rx__lin_s_central_p1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_v1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_p2", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_p3", &linCmtErr);
+        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_p3", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__lin_s_central_ka", &linCmtErr);
+          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
         }
         // Now d_perip1
-        addLinCmt(ni, "rx__lin_s_peripheral1_p1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_v1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_p2", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_p3", &linCmtErr);
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p3", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__lin_s_peripheral1_ka", &linCmtErr);
-          addLinCmt(ni, "rx__lin_s_depot_ka", &linCmtErr);
+          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
         }
         break;
       case 3:
         // here we have d_central
-        addLinCmt(ni, "rx__lin_s_central_p1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_v1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_p2", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_p3", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_p4", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_central_p5", &linCmtErr);
+        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_p4", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_central_BY_p5", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__lin_s_central_ka", &linCmtErr);
+          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
         }
         // Now d_perip1
-        addLinCmt(ni, "rx__lin_s_peripheral1_p1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_v1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_p2", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_p3", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_p4", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral1_p5", &linCmtErr);
-
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p4", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p5", &linCmtErr); numSens++;
+        //
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__lin_s_peripheral1_ka", &linCmtErr);
+          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr); numSens++;
         }
         // Now d_perip2
-        addLinCmt(ni, "rx__lin_s_peripheral2_p1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral2_v1", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral2_p2", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral2_p3", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral2_p4", &linCmtErr);
-        addLinCmt(ni, "rx__lin_s_peripheral2_p5", &linCmtErr);
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p4", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p5", &linCmtErr); numSens++;
 
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__lin_s_peripheral2_ka", &linCmtErr);
-          addLinCmt(ni, "rx__lin_s_depot_ka", &linCmtErr);
+          addLinCmt(ni, "rx__sens_peripheral2_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
         }
         break;
       }
@@ -857,5 +861,6 @@ void calcLinCmt(void) {
       sAppendN(&sbt, " are required for linCmt() but defined in ODE too, rename ODEs\n",
                63);
     }
+    tb.linCmtFlg = numSens*100+nLin*10 + depot;
   }
 }

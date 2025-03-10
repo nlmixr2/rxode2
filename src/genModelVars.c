@@ -27,12 +27,14 @@ SEXP generateModelVars(void) {
   SEXP tran  = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
   SEXP trann = PROTECT(Rf_allocVector(STRSXP, 22));pro++;
 
+  // These are the normal states
   SEXP state      = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.nExtra));pro++;
   SEXP stateProp  = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
 
   SEXP stateRmS   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
   int *stateRm    = INTEGER(stateRmS);
   SEXP extraState = PROTECT(Rf_allocVector(STRSXP,tb.nExtra));pro++;
+
   SEXP sens       = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;
   SEXP sensProp   = PROTECT(Rf_allocVector(INTSXP,tb.sensi));pro++;
 
