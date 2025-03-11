@@ -89,7 +89,7 @@ static inline void addSymbolStr(char *value) {
 
 
 sbuf sb, sbDt; /* buffer w/ current parsed & translated line */
-sbuf sbt;
+sbuf sbt, sbt2;
 
 sbuf firstErr;
 
@@ -257,6 +257,7 @@ void parseFree(int last) {
   sFree(&sb);
   sFree(&sbDt);
   sFree(&sbt);
+  sFree(&sbt2);
   sFree(&sbNrm);
   sFree(&sbExtra);
   sFree(&s_inits);
@@ -331,6 +332,7 @@ void reset(void) {
   sIniTo(&sb, MXSYM);
   sIniTo(&sbDt, MXDER);
   sIniTo(&sbt, SBUF_MXBUF);
+  sIniTo(&sbt2, SBUF_MXBUF);
   sIniTo(&sbNrm, SBUF_MXBUF);
   sIniTo(&sbExtra,SBUF_MXBUF);
   sIniTo(&_gbuf, 1024);
@@ -720,6 +722,7 @@ void transIniNull(void) {
   sNull(&(sb));
   sNull(&(sbDt));
   sNull(&(sbt));
+  sNull(&(sbt2));
   sNull(&(firstErr));
   sNull(&(sbNrm));
   sNull(&(sbExtra));
@@ -736,134 +739,4 @@ void transIniNull(void) {
   lineNull(&(_dupStrs));
 }
 
-/*
- * This function adds a linear compartment from linCmt() to the model.
- *
- * @param ni is the node information (which is likely a dummy parsing node)
- *
- *@param cmt is the compartment name (const char *)
- *
- * @param linCmtErr is a pointer to an integer that will be set to 1 if there is an error
- *
- * These are called just before model variables are calculated.
- *
- */
-void addLinCmt(nodeInfo ni, const char *cmt, int *linCmtErr) {
-  if (new_de(cmt, fromDDT)) {
-    add_de(ni, "linCmt()", cmt, 0, fromDDT);
-    tb.idu[tb.id]=1;
-  } else {
-    if (tb.dprop[tb.id] == 0)  {
-      // defined d/dt(depot) AND properties
-      sAppend(&sbt, "'%s', ", cmt);
-      *linCmtErr = 1;
-    } else {
-      tb.idu[tb.id]=1;
-    }
-  }
-}
-
-void calcLinCmt(void) {
-  // Now we check for the linCmt extra compartments and then add them
-  // as needed.
-  nodeInfo ni;
-  niReset(&ni);
-  // we can use sbt.o since all the code has already been output
-  int linCmtErr = 0;
-  int nLin = 0;
-  int numSens = 0;
-  int depot=0;
-  if (tb.linCmt) {
-    if (tb.hasKa) {
-      addLinCmt(ni, "depot", &linCmtErr); nLin++; depot=1;
-    }
-    addLinCmt(ni, "central", &linCmtErr); nLin++;
-    switch (tb.ncmt) {
-    case 1:
-      break;
-    case 2:
-      addLinCmt(ni, "peripheral1", &linCmtErr); nLin++;
-      break;
-    case 3:
-      addLinCmt(ni, "peripheral1", &linCmtErr); nLin++;
-      addLinCmt(ni, "peripheral2", &linCmtErr); nLin++;
-      break;
-    }
-    if (tb.linB) {
-      // Sensitivities are also present.
-      switch (tb.ncmt) {
-      case 1:
-        // here we have d_central
-        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
-        if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
-          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
-        }
-        break;
-      case 2:
-        // here we have d_central
-        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p3", &linCmtErr); numSens++;
-        if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
-        }
-        // Now d_perip1
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p3", &linCmtErr); numSens++;
-        if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr); numSens++;
-          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
-        }
-        break;
-      case 3:
-        // here we have d_central
-        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p3", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p5", &linCmtErr); numSens++;
-        if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
-        }
-        // Now d_perip1
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p3", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p5", &linCmtErr); numSens++;
-        //
-        if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr); numSens++;
-        }
-        // Now d_perip2
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p3", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p5", &linCmtErr); numSens++;
-
-        if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral2_BY_ka", &linCmtErr); numSens++;
-          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
-        }
-        break;
-      }
-    }
-    // Take off trailing "',
-    if (linCmtErr) {
-      sbt.o -= 2;
-      sbt.s[sbt.o] = 0;
-      sAppendN(&sbt, " are required for linCmt() but defined in ODE too, rename ODEs\n",
-               63);
-    }
-    tb.linCmtFlg = numSens*100+nLin*10 + depot;
-  }
-}
+#include "parseLinCmtApplyCmts.h"
