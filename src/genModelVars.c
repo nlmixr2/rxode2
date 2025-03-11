@@ -10,6 +10,7 @@ SEXP generateModelVars(void) {
   calcNparamsNlhsNslhs();
   calcNextra();
 
+
   int pro = 0;
   SEXP lst   = PROTECT(Rf_allocVector(VECSXP, 28));pro++;
   SEXP names = PROTECT(Rf_allocVector(STRSXP, 28));pro++;
@@ -33,6 +34,7 @@ SEXP generateModelVars(void) {
 
   SEXP stateRmS   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.nExtra));pro++;
   int *stateRm    = INTEGER(stateRmS);
+
   SEXP extraState = PROTECT(Rf_allocVector(STRSXP,tb.nExtra));pro++;
 
   SEXP sens       = PROTECT(Rf_allocVector(STRSXP,tb.sensi));pro++;

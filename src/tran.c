@@ -791,65 +791,65 @@ void calcLinCmt(void) {
       switch (tb.ncmt) {
       case 1:
         // here we have d_central
-        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_v1", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
-          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_central_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_depot_BY_ka", &linCmtErr); numSens++;
         }
         break;
       case 2:
         // here we have d_central
-        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p3", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_central_BY_ka", &linCmtErr); numSens++;
         }
         // Now d_perip1
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p3", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr); numSens++;
-          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_peripheral1_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_depot_BY_ka", &linCmtErr); numSens++;
         }
         break;
       case 3:
         // here we have d_central
-        addLinCmt(ni, "rx__sens_central_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p3", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_central_BY_p5", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p4", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_central_BY_p5", &linCmtErr); numSens++;
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_central_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_central_BY_ka", &linCmtErr); numSens++;
         }
         // Now d_perip1
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p3", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p5", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p4", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral1_BY_p5", &linCmtErr); numSens++;
         //
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_peripheral1_BY_ka", &linCmtErr); numSens++;
         }
         // Now d_perip2
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p3", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p5", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral2_BY_p1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral2_BY_v1", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral2_BY_p2", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral2_BY_p3", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral2_BY_p4", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx_l_sens_peripheral2_BY_p5", &linCmtErr); numSens++;
 
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral2_BY_ka", &linCmtErr); numSens++;
-          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_peripheral2_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx_l_sens_depot_BY_ka", &linCmtErr); numSens++;
         }
         break;
       }
