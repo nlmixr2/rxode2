@@ -1041,9 +1041,9 @@ test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
   })
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "depot", "central"))
 
-  expect_equal(rx$stateExtra, c("depot", "central"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtA[(]", rxModelVars(rx)$model["normModel"]))
 
@@ -1083,13 +1083,13 @@ test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
     c=peripheral1
   }, linCmtSens="linCmtB")
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce",
+                           "depot", "central",
+                           "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                           "rx__sens_central_BY_ka",
+                           "rx__sens_depot_BY_ka"))
 
-  expect_equal(rx$stateExtra,
-               c("depot", "central",
-                 "rx__lin_s_central_p1", "rx__lin_s_central_v1",
-                 "rx__lin_s_central_ka",
-                 "rx__lin_s_depot_ka"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
 })
@@ -1128,9 +1128,9 @@ test_that("rxode2 parsing of linCmt() 1 compartment without ka", {
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
   })
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "central"))
 
-  expect_equal(rx$stateExtra, "central")
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtA[(]", rxModelVars(rx)$model["normModel"]))
 
@@ -1168,11 +1168,11 @@ test_that("rxode2 parsing of linCmt() 1 compartment without ka", {
     c=peripheral1
   }, linCmtSens="linCmtB")
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce",
+                           "central",
+                           "rx__sens_central_BY_p1", "rx__sens_central_BY_v1"))
 
-  expect_equal(rx$stateExtra,
-               c("central",
-                 "rx__lin_s_central_p1", "rx__lin_s_central_v1"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
 })
@@ -1218,10 +1218,9 @@ test_that("rxode2 parsing of linCmt() 2 compartment without ka", {
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
   })
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "central", "peripheral1"))
 
-  expect_equal(rx$stateExtra,
-               c("central", "peripheral1"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtA[(]", rxModelVars(rx)$model["normModel"]))
 
@@ -1265,21 +1264,21 @@ test_that("rxode2 parsing of linCmt() 2 compartment without ka", {
     c=peripheral1
   }, linCmtSens="linCmtB")
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "central", "peripheral1",
+                           "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                           "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+                           #
+                           "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+                           "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3"))
 
-  expect_equal(rx$stateExtra,
-               c("central", "peripheral1",
-                 "rx__lin_s_central_p1", "rx__lin_s_central_v1",
-                 "rx__lin_s_central_p2", "rx__lin_s_central_p3",
-                 #
-                 "rx__lin_s_peripheral1_p1", "rx__lin_s_peripheral1_v1",
-                 "rx__lin_s_peripheral1_p2", "rx__lin_s_peripheral1_p3"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
 })
 
 
 test_that("rxode2 parsing of linCmt() 2 compartment with ka", {
+
   rx <- rxode2({
     popCl <- 1
     popV <- 20
@@ -1324,10 +1323,9 @@ test_that("rxode2 parsing of linCmt() 2 compartment with ka", {
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
   })
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "depot", "central", "peripheral1"))
 
-  expect_equal(rx$stateExtra,
-               c("depot", "central", "peripheral1"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtA[(]", rxModelVars(rx)$model["normModel"]))
 
@@ -1378,25 +1376,25 @@ test_that("rxode2 parsing of linCmt() 2 compartment with ka", {
     c=peripheral1
   }, linCmtSens="linCmtB")
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "depot", "central", "peripheral1",
+                 "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                 "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+                 "rx__sens_central_BY_ka",
+                 #
+                 "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+                 "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3",
+                 "rx__sens_peripheral1_BY_ka",
+                 #
+                 "rx__sens_depot_BY_ka"))
 
-  expect_equal(rx$stateExtra,
-               c("depot", "central", "peripheral1",
-                 "rx__lin_s_central_p1", "rx__lin_s_central_v1",
-                 "rx__lin_s_central_p2", "rx__lin_s_central_p3",
-                 "rx__lin_s_central_ka",
-                 #
-                 "rx__lin_s_peripheral1_p1", "rx__lin_s_peripheral1_v1",
-                 "rx__lin_s_peripheral1_p2", "rx__lin_s_peripheral1_p3",
-                 "rx__lin_s_peripheral1_ka",
-                 #
-                 "rx__lin_s_depot_ka"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
 })
 
 
 test_that("rxode2 parsing of linCmt() 3 compartment without ka", {
+
   rx <- rxode2({
     popCl <- 1
     popV <- 20
@@ -1439,10 +1437,9 @@ test_that("rxode2 parsing of linCmt() 3 compartment without ka", {
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
   })
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "central", "peripheral1", "peripheral2"))
 
-  expect_equal(rx$stateExtra,
-               c("central", "peripheral1", "peripheral2"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtA[(]", rxModelVars(rx)$model["normModel"]))
 
@@ -1490,22 +1487,21 @@ test_that("rxode2 parsing of linCmt() 3 compartment without ka", {
     c=peripheral1
   }, linCmtSens="linCmtB")
 
-  expect_equal(rx$state, "ce")
-
-  expect_equal(rx$stateExtra,
-               c("central", "peripheral1", "peripheral2",
-                 "rx__lin_s_central_p1", "rx__lin_s_central_v1",
-                 "rx__lin_s_central_p2", "rx__lin_s_central_p3",
-                 "rx__lin_s_central_p4", "rx__lin_s_central_p5",
+  expect_equal(rx$state, c("ce", "central", "peripheral1", "peripheral2",
+                 "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                 "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+                 "rx__sens_central_BY_p4", "rx__sens_central_BY_p5",
                  #
-                 "rx__lin_s_peripheral1_p1", "rx__lin_s_peripheral1_v1",
-                 "rx__lin_s_peripheral1_p2", "rx__lin_s_peripheral1_p3",
-                 "rx__lin_s_peripheral1_p4", "rx__lin_s_peripheral1_p5",
+                 "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+                 "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3",
+                 "rx__sens_peripheral1_BY_p4", "rx__sens_peripheral1_BY_p5",
                  #
-                 "rx__lin_s_peripheral2_p1", "rx__lin_s_peripheral2_v1",
-                 "rx__lin_s_peripheral2_p2", "rx__lin_s_peripheral2_p3",
-                 "rx__lin_s_peripheral2_p4", "rx__lin_s_peripheral2_p5"
+                 "rx__sens_peripheral2_BY_p1", "rx__sens_peripheral2_BY_v1",
+                 "rx__sens_peripheral2_BY_p2", "rx__sens_peripheral2_BY_p3",
+                 "rx__sens_peripheral2_BY_p4", "rx__sens_peripheral2_BY_p5"
                  ))
+
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
 })
@@ -1557,10 +1553,9 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
   })
 
-  expect_equal(rx$state, "ce")
+  expect_equal(rx$state, c("ce", "depot", "central", "peripheral1", "peripheral2"))
 
-  expect_equal(rx$stateExtra,
-               c("depot", "central", "peripheral1", "peripheral2"))
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtA[(]", rxModelVars(rx)$model["normModel"]))
 
@@ -1610,27 +1605,26 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
     c=peripheral1
   }, linCmtSens="linCmtB")
 
-  expect_equal(rx$state, "ce")
-
-  expect_equal(rx$stateExtra,
-               c("depot", "central", "peripheral1", "peripheral2",
-                 "rx__lin_s_central_p1", "rx__lin_s_central_v1",
-                 "rx__lin_s_central_p2", "rx__lin_s_central_p3",
-                 "rx__lin_s_central_p4", "rx__lin_s_central_p5",
-                 "rx__lin_s_central_ka",
+  expect_equal(rx$state, c("ce", "depot", "central", "peripheral1", "peripheral2",
+                 "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                 "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+                 "rx__sens_central_BY_p4", "rx__sens_central_BY_p5",
+                 "rx__sens_central_BY_ka",
                  #
-                 "rx__lin_s_peripheral1_p1", "rx__lin_s_peripheral1_v1",
-                 "rx__lin_s_peripheral1_p2", "rx__lin_s_peripheral1_p3",
-                 "rx__lin_s_peripheral1_p4", "rx__lin_s_peripheral1_p5",
-                 "rx__lin_s_peripheral1_ka",
+                 "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+                 "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3",
+                 "rx__sens_peripheral1_BY_p4", "rx__sens_peripheral1_BY_p5",
+                 "rx__sens_peripheral1_BY_ka",
                  #
-                 "rx__lin_s_peripheral2_p1", "rx__lin_s_peripheral2_v1",
-                 "rx__lin_s_peripheral2_p2", "rx__lin_s_peripheral2_p3",
-                 "rx__lin_s_peripheral2_p4", "rx__lin_s_peripheral2_p5",
-                 "rx__lin_s_peripheral2_ka",
+                 "rx__sens_peripheral2_BY_p1", "rx__sens_peripheral2_BY_v1",
+                 "rx__sens_peripheral2_BY_p2", "rx__sens_peripheral2_BY_p3",
+                 "rx__sens_peripheral2_BY_p4", "rx__sens_peripheral2_BY_p5",
+                 "rx__sens_peripheral2_BY_ka",
                  #
-                 "rx__lin_s_depot_ka"
+                 "rx__sens_depot_BY_ka"
                  ))
+
+  expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
 })
