@@ -211,23 +211,23 @@ extern void calcLinCmt(void) {
         addLinCmt(ni, "rx__sens_peripheral1_BY_v1", &linCmtErr, 0); numSens++;
         addLinCmt(ni, "rx__sens_peripheral1_BY_p2", &linCmtErr, 0); numSens++;
         addLinCmt(ni, "rx__sens_peripheral1_BY_p3", &linCmtErr, 0); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral1_BY_p5", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p4", &linCmtErr, 0); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral1_BY_p5", &linCmtErr, 0); numSens++;
         //
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx__sens_peripheral1_BY_ka", &linCmtErr, 0); numSens++;
         }
         // Now d_perip2
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_v1", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p2", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p3", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p4", &linCmtErr); numSens++;
-        addLinCmt(ni, "rx__sens_peripheral2_BY_p5", &linCmtErr); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p1", &linCmtErr, 0); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_v1", &linCmtErr, 0); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p2", &linCmtErr, 0); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p3", &linCmtErr, 0); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p4", &linCmtErr, 0); numSens++;
+        addLinCmt(ni, "rx__sens_peripheral2_BY_p5", &linCmtErr, 0); numSens++;
 
         if (tb.hasKa) {
-          addLinCmt(ni, "rx__sens_peripheral2_BY_ka", &linCmtErr); numSens++;
-          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr); numSens++;
+          addLinCmt(ni, "rx__sens_peripheral2_BY_ka", &linCmtErr, 0); numSens++;
+          addLinCmt(ni, "rx__sens_depot_BY_ka", &linCmtErr, 0); numSens++;
         }
         break;
       }
