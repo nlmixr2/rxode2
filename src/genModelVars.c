@@ -6,6 +6,7 @@ SEXP _rxode2parse_getUdf(void);
 extern void calcLinCmt(void);
 SEXP generateModelVars(void) {
   calcLinCmt();
+  assertNoLinCmtDepotCentral();
   calcExtracmt();
   calcNparamsNlhsNslhs();
   calcNextra();
@@ -116,7 +117,7 @@ SEXP generateModelVars(void) {
 
   SET_STRING_ELT(names, 13, mkChar("extraCmt"));
   SEXP sExtraCmt = PROTECT(Rf_allocVector(INTSXP,1));pro++;
-  INTEGER(sExtraCmt)[0] = extraCmt;
+  INTEGER(sExtraCmt)[0] = 0;
   SET_VECTOR_ELT(lst, 13, sExtraCmt);
 
   SET_STRING_ELT(names, 14, mkChar("stateExtra"));

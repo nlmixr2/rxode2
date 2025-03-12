@@ -132,14 +132,9 @@ static inline void calcNextra(void) {
   tb.nExtra=nExtra;
 }
 
-static inline void calcExtracmt(void) {
+static inline void assertNoLinCmtDepotCentral(void) {
   extraCmt = 0;
   if (tb.linCmt){
-    /* if (tb.hasKa){ */
-    /*   extraCmt=2; */
-    /* } else { */
-    /*   extraCmt=1; */
-    /* } */
     if (tb.hasDepotCmt == -1){
       trans_syntax_error_report_fn0(_("'cmt(depot)' does not work with 'linCmt()'"));
     }
