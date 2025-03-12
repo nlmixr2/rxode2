@@ -849,24 +849,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   CharacterVector state0 = as<CharacterVector>(mv[RxMv_state]);
   CharacterVector stateE = as<CharacterVector>(mv[RxMv_stateExtra]);
   CharacterVector stateS = as<CharacterVector>(mv[RxMv_sens]);
-  int extraCmt  = as<int>(mv[RxMv_extraCmt]);
-  // Enlarge compartments
-  if (extraCmt == 2){
-    CharacterVector newState(state0.size()+2);
-    newState[0] = "depot";
-    newState[1] = "central";
-    for (int j = state0.size();j--;) newState[j+2] = state0[j];
-    // for (int j = state0.size();j--;) newState[j] = state0[j];
-    // newState[state0.size()] = "depot";
-    // newState[state0.size()+1] = "central";
-    state0 = newState;
-  } else if (extraCmt==1){
-    CharacterVector newState(state0.size()+1);
-    newState[0] = "central";
-    for (int j = state0.size();j--;) newState[j+1] = state0[j];
-    // newState[state0.size()] = "central";
-    state0 = newState;
-  }
   CharacterVector state(state0.size() + stateE.size());
   for (int i = 0; i < state0.size(); i++){
     state[i] = state0[i];

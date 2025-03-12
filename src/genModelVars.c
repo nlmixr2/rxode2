@@ -7,7 +7,6 @@ extern void calcLinCmt(void);
 SEXP generateModelVars(void) {
   calcLinCmt();
   assertNoLinCmtDepotCentral();
-  calcExtracmt();
   calcNparamsNlhsNslhs();
   calcNextra();
 
