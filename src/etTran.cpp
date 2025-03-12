@@ -551,6 +551,7 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
  * @param numSens represents the number of sensitivity compartments in the model
  *
  * @return an integer that tells if this compartment supports infusion
+ *
  */
 int cmtSupportsInfusion(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
                         int numSens) {
@@ -592,6 +593,65 @@ int cmtSupportsInfusion(int cmt, int numLin, int numLinSens, int depotLin, int n
   // No infusions in linear sensitivites
   return 0;
 }
+
+/*
+ * Determine if NONMEM-style evid compartment can be turned off (linear cannot)
+ *
+ * @param cmt The compartment number provided with traditional NONMEM numbering
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param numLinSens The number of linear sensitivity compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @param numCmt represents the number of compartments in the model
+ *
+ * @param numSens represents the number of sensitivity compartments in the model
+ *
+ * @return an integer that tells if this compartment supports infusion
+ *
+ */
+int cmtSupportsOff(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
+                   int numSens) {
+  if (cmt == 0) return 0;
+  // For ODEs, all compartments support turning off the compartment
+  if (numLin == 0 && depotLin == 0) {
+    return 1;
+  }
+  // Negative values give same values as positive values
+  if (cmt < 0) {
+    // The same rules apply for negative compartments (called recursively)
+    return cmtSupportsOff(-cmt, numLin, numLinSens, depotLin, numCmt,
+                          numSens);
+  }
+  int numOff = 1 + depotLin;
+
+  int nODEsens = numSens - numLinSens;
+  int nODE = numCmt - numLin - numLinSens - numSens;
+  This is covered by the next case
+  if (cmt <= numOff) {
+    // Depot / central compartment cannot be turned off
+    return 0;
+  }
+  if (cmt <= numOff+nODE) {
+    // This is an ODE compartment, supports turning off
+    return 1;
+  }
+  // This is the peripharal compartments
+  if (cmt <= nODE+numLin) {
+    // This is the peripharal compartments, does not support turning off
+    return 0;
+  }
+  // ODE sensitivities
+  if (cmt <= nODE+numLin+nODEsens) {
+    // Can turn off
+    return 1;
+  }
+  // Cannot turn off linear sensitivites
+  return 0;
+}
+
 
 List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
