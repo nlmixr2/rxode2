@@ -456,6 +456,143 @@ RObject etTranGetAttrKeep(SEXP in) {
   return as<RObject>(ret);
 }
 
+/*
+ * Get the compartment number, adjusting for linear solved systems
+ *
+ * This will swap cmt 1 with the depot and cmt 2 with the central when
+ * an oral linear compartment is present in the model.
+ *
+ * This will also swap cmt 1 with the central compartment when a
+ * linear compartment is present in the model
+ *
+ * @param cmt The compartment number provided with traditional NONMEM numbering
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param numLinSens The number of linear sensitivity compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @param numCmt The number of compartments in the model (including linear and sensitivity)
+ *
+ * @param numSens The number of sensitivity compartments in the model
+ *
+ * @return The compartment number adjusted for linear solved systems
+ */
+int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
+              int numSens) {
+  // With no linear compartments, the compartment number is the same
+  if (numLin == 0 && depotLin == 0) {
+    return cmt;
+  }
+  if (cmt == 0) return 0;
+  if (cmt < 0) {
+    // The same rules apply for negative compartments (called recursively)
+    return -getCmtNum(-cmt, numLin, numLinSens, depotLin, numCmt,
+                      numSens);
+  }
+  // With a oral linear compartment:
+  // 1. The depot is always the first compartment
+  // 2. The central compartment is always the second compartment
+  // 3. The non-senstivity ODE compartments are next, and shifted by 2.
+  // 4. The peripheral compartments are next, and shifted by 2+the number of ODEs
+  // 5. The ODE and linear sensitivites are the very last values
+  //
+  // But the actual ODEs/linCmt parameters are defined by:
+  // 1. The ODE compartments
+  // 2. The Senstivitiy ODE compartments
+  // 3. The linear compartments
+  // 4. The linear sensitivity compartments
+
+  // This is similar to the linear compartment, but there is no depot.
+  int numOff = 1 + depotLin;
+
+  int nODEsens = numSens - numLinSens;
+  int nODE = numCmt - numLin - numLinSens - numSens;
+  if (cmt <= numOff) {
+    // This pushes the 1 (and 2) compartment to true compartment in the middle
+    return cmt+nODE+nODEsens;
+  }
+  if (cmt <= numOff+nODE) {
+    // This removes the offset for the ODE compartments
+    return cmt-numOff;
+  }
+  // This is the peripharal compartments
+  if (cmt <= nODE+numLin) {
+    // This is the peripharal compartments
+    // The input offset is cmt-nODE-numOff
+    // The output is nODE+nODEsens+(cmt-nODE-numOff), which reduces to
+    return nODEsens + cmt - numOff;
+  }
+  // ODE sensitivities
+  if (cmt <= nODE+numLin+nODEsens) {
+    // This is the ODE sensitivities
+    // The input offset is cmt-nODE-numLin
+    // The output is nODE+(cmt-nODE-numLin)
+    // which reduces to
+    return cmt-numLin;
+  }
+  // Linear sensitivities, these should be the same compartments
+  return cmt;
+}
+/*
+ * Determine if NONMEM-style evid compartment supports infusions
+ *
+ * @param cmt The compartment number provided with traditional NONMEM numbering
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param numLinSens The number of linear sensitivity compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @param numCmt represents the number of compartments in the model
+ *
+ * @param numSens represents the number of sensitivity compartments in the model
+ *
+ * @return an integer that tells if this compartment supports infusion
+ */
+int cmtSupportsInfusion(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
+                        int numSens) {
+  if (cmt == 0) return 0;
+  // For ODEs, all compartments support infusion
+  if (numLin == 0 && depotLin == 0) {
+    return 1;
+  }
+  // Negative values give same values as positive values
+  if (cmt < 0) {
+    // The same rules apply for negative compartments (called recursively)
+    return cmtSupportsInfusion(-cmt, numLin, numLinSens, depotLin, numCmt,
+                               numSens);
+  }
+  int numOff = 1 + depotLin;
+
+  int nODEsens = numSens - numLinSens;
+  int nODE = numCmt - numLin - numLinSens - numSens;
+  // This is covered by the next case
+  // if (cmt <= numOff) {
+  //   // Depot / central compartment supports infusions
+  //   return 1;
+  // }
+  if (cmt <= numOff+nODE) {
+    // This is an ODE compartment, supports infusion
+    return 1;
+  }
+  // This is the peripharal compartments
+  if (cmt <= nODE+numLin) {
+    // This is the peripharal compartments
+    // These do not support infusions
+    return 0;
+  }
+  // ODE sensitivities
+  if (cmt <= nODE+numLin+nODEsens) {
+    // Technically support infusions
+    return 1;
+  }
+  // No infusions in linear sensitivites
+  return 0;
+}
+
 List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
 //'
@@ -512,6 +649,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   clock_t _lastT0 = clock();
 #endif
   List mv = rxModelVars_(obj);
+  IntegerVector flags = mv[RxMv_flags];
+  int linCmtFlg = flags[RxMvFlag_linCmtFlg];
+  // numSens*100+nLin*10 + depot
+  int numLinSens = std::floor(linCmtFlg/100);
+  int numLin = std::floor((linCmtFlg - numLinSens)/10);
+  int depotLin = std::floor((linCmtFlg - numLinSens)/10);
   bool hasIcov = false;
   List iCov_;
   if (!iCov.isNull()){
@@ -1394,7 +1537,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       {
         bool goodCmt = false;
         int cmpCmt;
-        if ((curDvid.size()) > 1){
+        if ((curDvid.size()) > 1) {
           for (j=curDvid.size();j--;){
             if (curDvid[j] > 0){
               if (curDvid[j] == cmt || curDvid[j] == -cmt){
