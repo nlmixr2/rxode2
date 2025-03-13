@@ -589,7 +589,9 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
 }
 
 //' Get the real compartment number based on NONMEM-style compartment
-//' adjusting for linear solved systems
+//' adjusting for linear solved systems.
+//'
+//' This export is mostly for testing purposes.
 //'
 //' @param cmt The compartment number provided with traditional NONMEM numbering
 //'
@@ -645,31 +647,54 @@ int cmtSupportsInfusion(int cmt, int numLin, int numLinSens, int depotLin, int n
                                numSens);
   }
   int numOff = 1 + depotLin;
-
   int nODEsens = numSens - numLinSens;
-  int nODE = numCmt - numLin - numLinSens - numSens;
-  // This is covered by the next case
-  // if (cmt <= numOff) {
-  //   // Depot / central compartment supports infusions
-  //   return 1;
-  // }
+  int nODE = numCmt - numLin - numSens;
+
+  if (cmt <= numOff) { // infusion for central/depot
+    return 1;
+  }
   if (cmt <= numOff+nODE) {
-    // This is an ODE compartment, supports infusion
+    // This removes the offset for the ODE compartments
+    // Infusions for ODEs
     return 1;
   }
   // This is the peripharal compartments
   if (cmt <= nODE+numLin) {
-    // This is the peripharal compartments
-    // These do not support infusions
+    // No infusion for peripharal compartments
     return 0;
   }
   // ODE sensitivities
   if (cmt <= nODE+numLin+nODEsens) {
-    // Technically support infusions
     return 1;
   }
   // No infusions in linear sensitivites
   return 0;
+}
+
+//' See if the NONMEM compartment number supports infusion
+//'
+//' This export is mostly for testing purposes.
+//'
+//' @param cmt The compartment number provided with traditional NONMEM numbering
+//'
+//' @param mv The model variables list
+//'
+//' @return An integer vector with the real compartment numbers
+//'
+//' @noRd
+//[[Rcpp::export]]
+LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  LogicalVector ret(cmt.size());
+  CharacterVector state = mv[RxMv_state];
+  CharacterVector sens = mv[RxMv_sens];
+  for (int i = cmt.size(); i--;){
+    ret[i] = cmtSupportsInfusion(cmt[i], numLin, numLinSens, depotLin,
+                                 state.size(), sens.size());
+  }
+  return ret;
 }
 
 /*

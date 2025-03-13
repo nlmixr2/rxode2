@@ -174,7 +174,7 @@ as.data.frame.rxEtTran <- function(x, row.names = NULL, optional = FALSE, ...) {
   .Call(`_rxode2_rxEtTransAsDataFrame_`, x)
 }
 
-#' Get the compartment numbers based on a model
+#' Get the real compartment numbers based on a linCmt()
 #'
 #' @param mv  object where model variables can be extracted
 #' @param cmt compartment numbers to translate; default is 1...nState

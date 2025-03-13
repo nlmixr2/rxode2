@@ -145,7 +145,9 @@ getLinInfo_ <- function(mv) {
 }
 
 #' Get the real compartment number based on NONMEM-style compartment
-#' adjusting for linear solved systems
+#' adjusting for linear solved systems.
+#'
+#' This export is mostly for testing purposes.
 #'
 #' @param cmt The compartment number provided with traditional NONMEM numbering
 #'
@@ -156,6 +158,21 @@ getLinInfo_ <- function(mv) {
 #' @noRd
 getCmtNum_ <- function(cmt, mv) {
     .Call(`_rxode2_getCmtNum_`, cmt, mv)
+}
+
+#' See if the NONMEM compartment number supports infusion
+#'
+#' This export is mostly for testing purposes.
+#'
+#' @param cmt The compartment number provided with traditional NONMEM numbering
+#'
+#' @param mv The model variables list
+#'
+#' @return An integer vector with the real compartment numbers
+#'
+#' @noRd
+cmtSupportsInfusion_ <- function(cmt, mv) {
+    .Call(`_rxode2_cmtSupportsInfusion_`, cmt, mv)
 }
 
 #' Event translation for rxode2
