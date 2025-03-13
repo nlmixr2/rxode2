@@ -1005,6 +1005,14 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
          })
 }
 
+testVal <- function(rx, val) {
+  state <- rx$state
+  state <- setNames(seq_along(state), state)
+
+  expect_equal(.getCmtNum(rx),
+               state[val])
+}
+
 test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
 
   rx <- rxode2({
@@ -1043,6 +1051,8 @@ test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
 
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 0L, numLin = 2L, depotLin = 1L))
+
+  testVal(rx, c("depot", "central", "ce"))
 
   expect_equal(rx$state, c("ce", "depot", "central"))
 
@@ -1088,6 +1098,10 @@ test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
 
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 4L, numLin = 2L, depotLin = 1L))
+
+  testVal(rx, c("depot", "central", "ce",
+                "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                "rx__sens_central_BY_ka", "rx__sens_depot_BY_ka"))
 
 
   expect_equal(rx$state, c("ce",
@@ -1139,6 +1153,7 @@ test_that("rxode2 parsing of linCmt() 1 compartment without ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 0L, numLin = 1L, depotLin = 0L))
 
+  testVal(rx, c("central", "ce"))
 
   expect_equal(rx$state, c("ce", "central"))
 
@@ -1183,6 +1198,8 @@ test_that("rxode2 parsing of linCmt() 1 compartment without ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 2L, numLin = 1L, depotLin = 0L))
 
+  testVal(rx, c("central","ce",
+                "rx__sens_central_BY_p1", "rx__sens_central_BY_v1"))
 
   expect_equal(rx$state, c("ce",
                            "central",
@@ -1239,6 +1256,8 @@ test_that("rxode2 parsing of linCmt() 2 compartment without ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 0L, numLin = 2L, depotLin = 0L))
 
+  testVal(rx, c("central", "ce", "peripheral1"))
+
   expect_equal(rx$state, c("ce", "central", "peripheral1"))
 
   expect_equal(rx$stateExtra, character(0))
@@ -1288,6 +1307,12 @@ test_that("rxode2 parsing of linCmt() 2 compartment without ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 8L, numLin = 2L, depotLin = 0L))
 
+  testVal(rx, c("central", "ce", "peripheral1",
+                "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+                #
+                "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+                "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3"))
 
   expect_equal(rx$state, c("ce", "central", "peripheral1",
                            "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
@@ -1351,6 +1376,8 @@ test_that("rxode2 parsing of linCmt() 2 compartment with ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 0L, numLin = 3L, depotLin = 1L))
 
+  testVal(rx, c("depot", "central", "ce", "peripheral1"))
+
   expect_equal(rx$state, c("ce", "depot", "central", "peripheral1"))
 
   expect_equal(rx$stateExtra, character(0))
@@ -1403,6 +1430,17 @@ test_that("rxode2 parsing of linCmt() 2 compartment with ka", {
     b=central
     c=peripheral1
   }, linCmtSens="linCmtB")
+
+  testVal(rx, c("depot", "central", "ce", "peripheral1",
+                "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+                "rx__sens_central_BY_ka",
+                #
+                "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+                "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3",
+                "rx__sens_peripheral1_BY_ka",
+                #
+                "rx__sens_depot_BY_ka"))
 
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 11L, numLin = 3L, depotLin = 1L))
@@ -1471,6 +1509,8 @@ test_that("rxode2 parsing of linCmt() 3 compartment without ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 0L, numLin = 3L, depotLin = 0L))
 
+  testVal(rx, c("central", "ce", "peripheral1", "peripheral2"))
+
   expect_equal(rx$state, c("ce", "central", "peripheral1", "peripheral2"))
 
   expect_equal(rx$stateExtra, character(0))
@@ -1524,6 +1564,19 @@ test_that("rxode2 parsing of linCmt() 3 compartment without ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 18L, numLin = 3L, depotLin = 0L))
 
+  testVal(rx,c("central", "ce", "peripheral1", "peripheral2",
+               "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+               "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+               "rx__sens_central_BY_p4", "rx__sens_central_BY_p5",
+               #
+               "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+               "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3",
+               "rx__sens_peripheral1_BY_p4", "rx__sens_peripheral1_BY_p5",
+               #
+               "rx__sens_peripheral2_BY_p1", "rx__sens_peripheral2_BY_v1",
+               "rx__sens_peripheral2_BY_p2", "rx__sens_peripheral2_BY_p3",
+               "rx__sens_peripheral2_BY_p4", "rx__sens_peripheral2_BY_p5"))
+
   expect_equal(rx$state, c("ce", "central", "peripheral1", "peripheral2",
                  "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
                  "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
@@ -1541,6 +1594,7 @@ test_that("rxode2 parsing of linCmt() 3 compartment without ka", {
   expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
+
 })
 
 
@@ -1592,6 +1646,9 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
 
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 0L, numLin = 4L, depotLin = 1L))
+
+  testVal(rx,
+          c("depot", "central", "ce", "peripheral1", "peripheral2"))
 
   expect_equal(rx$state, c("ce", "depot", "central", "peripheral1", "peripheral2"))
 
@@ -1648,6 +1705,26 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 22L, numLin = 4L, depotLin = 1L))
 
+  testVal(rx,
+          c("depot", "central", "ce", "peripheral1", "peripheral2",
+            "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+            "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
+            "rx__sens_central_BY_p4", "rx__sens_central_BY_p5",
+            "rx__sens_central_BY_ka",
+            #
+            "rx__sens_peripheral1_BY_p1", "rx__sens_peripheral1_BY_v1",
+            "rx__sens_peripheral1_BY_p2", "rx__sens_peripheral1_BY_p3",
+            "rx__sens_peripheral1_BY_p4", "rx__sens_peripheral1_BY_p5",
+            "rx__sens_peripheral1_BY_ka",
+            #
+            "rx__sens_peripheral2_BY_p1", "rx__sens_peripheral2_BY_v1",
+            "rx__sens_peripheral2_BY_p2", "rx__sens_peripheral2_BY_p3",
+            "rx__sens_peripheral2_BY_p4", "rx__sens_peripheral2_BY_p5",
+            "rx__sens_peripheral2_BY_ka",
+            #
+            "rx__sens_depot_BY_ka"))
+
+
   expect_equal(rx$state, c("ce", "depot", "central", "peripheral1", "peripheral2",
                  "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
                  "rx__sens_central_BY_p2", "rx__sens_central_BY_p3",
@@ -1670,54 +1747,4 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
   expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
-})
-
-
-test_that("access 3 cmt", {
-
-  rx <- rxode2({
-    popCl <- 1
-    popKa <- 4
-    popV <- 20
-    popVp <- 10
-    popQ <- 2
-    popVp2 <- 1
-    popQ2 <- 2
-    bsvCl <-0
-    bsvV <- 0
-    bsvVp <- 0
-    bsvQ <-0
-    popKeo <- 1.4
-    bsvKeo <- 0
-    popE0 <- 0
-    popEmax <- 1
-    popEC50 <- 5
-    popGamma <- 1
-    bsvE0 <- 0
-    bsvEmax <- 0
-    bsvEC50 <- 0
-    ##
-    ka ~ popKa
-    cl ~ popCl * exp(bsvCl)
-    v ~ popV * exp(bsvV)
-    q ~ popQ * exp(bsvQ)
-    vp ~ popVp * exp(bsvVp)
-    vp2 ~ popVp2
-    q2 ~ popQ2
-    keo ~ popKeo * exp(bsvKeo)
-    popLagCentral <- 0
-    popRateCentral <- 0
-    popDurCentral <- 0
-    bsvLagCentral <- 0
-    bsvRateCentral <- 0
-    bsvDurCentral <- 0
-    alag(central) <- popLagCentral * exp(bsvLagCentral)
-    rate(central) <- popRateCentral * exp(bsvRateCentral)
-    dur(central) <- popDurCentral * exp(bsvDurCentral)
-    cp <- linCmt()
-    d/dt(ce) = keo*(cp-ce)
-    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
-  })
-
-
 })

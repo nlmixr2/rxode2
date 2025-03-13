@@ -173,3 +173,21 @@
 as.data.frame.rxEtTran <- function(x, row.names = NULL, optional = FALSE, ...) {
   .Call(`_rxode2_rxEtTransAsDataFrame_`, x)
 }
+
+#' Get the compartment numbers based on a model
+#'
+#' @param mv  object where model variables can be extracted
+#' @param cmt compartment numbers to translate; default is 1...nState
+#' @return Translated (and named) compartment numbers
+#' @noRd
+#' @author Matthew L. Fidler
+.getCmtNum <- function(mv, cmt) {
+  .mv <- rxModelVars(mv)
+  if (missing(cmt)) {
+    cmt <- seq_along(.mv$state)
+  }
+  .cmt <- getCmtNum_(cmt, .mv)
+  setNames(.cmt, vapply(.cmt, function(x) {
+    .mv$state[x]
+  }, character(1), USE.NAMES = FALSE))
+}

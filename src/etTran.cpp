@@ -551,9 +551,17 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
   int numOff = 1 + depotLin;
 
   int nODEsens = numSens - numLinSens;
-  int nODE = numCmt - numLin - numLinSens - numSens;
+
+  int nODE = numCmt - numLin - numSens;
+
+  // REprintf("cmt: %d, numLin: %d, numLinSens: %d, depotLin: %d, numCmt: %d, numSens: %d\n", cmt, numLin, numLinSens, depotLin, numCmt, numSens);
+
+  // REprintf("\tnumOff: %d, nODEsens: %d, nODE: %d\n", numOff, nODEsens, nODE);
+
   if (cmt <= numOff) {
     // This pushes the 1 (and 2) compartment to true compartment in the middle
+    // REprintf("\tcmt <= numOff\n");
+    // REprintf("\treturn: %d\n", cmt+nODE+nODEsens);
     return cmt+nODE+nODEsens;
   }
   if (cmt <= numOff+nODE) {
@@ -565,7 +573,8 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
     // This is the peripharal compartments
     // The input offset is cmt-nODE-numOff
     // The output is nODE+nODEsens+(cmt-nODE-numOff), which reduces to
-    return nODEsens + cmt - numOff;
+    //return nODE+nODEsens+numOff+cmt-nODE-numOff;//numOff;
+    return nODEsens+cmt;
   }
   // ODE sensitivities
   if (cmt <= nODE+numLin+nODEsens) {
@@ -578,6 +587,32 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
   // Linear sensitivities, these should be the same compartments
   return cmt;
 }
+
+//' Get the real compartment number based on NONMEM-style compartment
+//' adjusting for linear solved systems
+//'
+//' @param cmt The compartment number provided with traditional NONMEM numbering
+//'
+//' @param mv The model variables list
+//'
+//' @return An integer vector with the real compartment numbers
+//'
+//' @noRd
+//[[Rcpp::export]]
+IntegerVector getCmtNum_(IntegerVector cmt, List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  IntegerVector ret(cmt.size());
+  CharacterVector state = mv[RxMv_state];
+  CharacterVector sens = mv[RxMv_sens];
+  for (int i = cmt.size(); i--;){
+    ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
+                       state.size(), sens.size());
+  }
+  return ret;
+}
+
 /*
  * Determine if NONMEM-style evid compartment supports infusions
  *

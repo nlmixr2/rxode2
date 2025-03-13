@@ -566,8 +566,11 @@ double linCmtB(rx_solve *rx, int id, double _t, int linCmt, int ncmt,
 
 SEXP _rxode2_getLinInfo_(SEXP);
 
+SEXP _rxode2_getCmtNum_(SEXP, SEXP);
+
 void R_init_rxode2(DllInfo *info){
   R_CallMethodDef callMethods[]  = {
+    {"_rxode2_getCmtNum_", (DL_FUNC) &_rxode2_getCmtNum_, 2},
     {"_rxode2_getLinInfo_", (DL_FUNC) &_rxode2_getLinInfo_, 1},
     {"_rxode2_linCmtModelDouble", (DL_FUNC) &_rxode2_linCmtModelDouble, 14},
     {"_rxode2_solComp3", (DL_FUNC) &_rxode2_solComp3, 5},

@@ -144,6 +144,20 @@ getLinInfo_ <- function(mv) {
     .Call(`_rxode2_getLinInfo_`, mv)
 }
 
+#' Get the real compartment number based on NONMEM-style compartment
+#' adjusting for linear solved systems
+#'
+#' @param cmt The compartment number provided with traditional NONMEM numbering
+#'
+#' @param mv The model variables list
+#'
+#' @return An integer vector with the real compartment numbers
+#'
+#' @noRd
+getCmtNum_ <- function(cmt, mv) {
+    .Call(`_rxode2_getCmtNum_`, cmt, mv)
+}
+
 #' Event translation for rxode2
 #'
 #' @param inData Data frame to translate
