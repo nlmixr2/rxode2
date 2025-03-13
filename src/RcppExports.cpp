@@ -251,28 +251,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rxSetIni0
-bool rxSetIni0(bool ini0);
-RcppExport SEXP _rxode2_rxSetIni0(SEXP ini0SEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< bool >::type ini0(ini0SEXP);
-    rcpp_result_gen = Rcpp::wrap(rxSetIni0(ini0));
-    return rcpp_result_gen;
-END_RCPP
-}
-// etTransEvidIsObs
-RObject etTransEvidIsObs(SEXP isObsSexp);
-RcppExport SEXP _rxode2_etTransEvidIsObs(SEXP isObsSexpSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type isObsSexp(isObsSexpSEXP);
-    rcpp_result_gen = Rcpp::wrap(etTransEvidIsObs(isObsSexp));
-    return rcpp_result_gen;
-END_RCPP
-}
 // getLinInfo_
 IntegerVector getLinInfo_(List mv);
 RcppExport SEXP _rxode2_getLinInfo_(SEXP mvSEXP) {
@@ -293,6 +271,28 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerVector >::type cmt(cmtSEXP);
     Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
     rcpp_result_gen = Rcpp::wrap(getCmtNum_(cmt, mv));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rxSetIni0
+bool rxSetIni0(bool ini0);
+RcppExport SEXP _rxode2_rxSetIni0(SEXP ini0SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type ini0(ini0SEXP);
+    rcpp_result_gen = Rcpp::wrap(rxSetIni0(ini0));
+    return rcpp_result_gen;
+END_RCPP
+}
+// etTransEvidIsObs
+RObject etTransEvidIsObs(SEXP isObsSexp);
+RcppExport SEXP _rxode2_etTransEvidIsObs(SEXP isObsSexpSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type isObsSexp(isObsSexpSEXP);
+    rcpp_result_gen = Rcpp::wrap(etTransEvidIsObs(isObsSexp));
     return rcpp_result_gen;
 END_RCPP
 }

@@ -131,13 +131,177 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   return id;
 }
 
-IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
+
+/*
+ * Get the linear compartment information from the model variables
+ *
+ * @param mv The model variables list
+ *
+ * @param numLinSens The number of linear sensitivity compartments in
+ * the model, will be assigned
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @return None, but the values are assigned to the input variables
+ */
+void getLinInfo(List mv, int &numLinSens,
+                int &numLin, int &depotLin) {
+  IntegerVector flags = mv[RxMv_flags];
+  int linCmtFlg = flags[RxMvFlag_linCmtFlg];
+  // numSens*100+nLin*10 + depot
+  numLinSens = std::floor(linCmtFlg/100);
+  numLin = std::floor((linCmtFlg - numLinSens*100)/10);
+  depotLin = std::floor((linCmtFlg - numLinSens*100- numLin*10));
+}
+
+//' Get the Linear Compartment Information based on the model variables
+//'
+//' @param obj The model variables object
+//'
+//' @return A named integer vector with the linear sensitivity compartments.
+//'
+//' @noRd
+//[[Rcpp::export]]
+IntegerVector getLinInfo_(List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  return IntegerVector::create(_["numLinSens"] = numLinSens,
+                               _["numLin"] = numLin,
+                               _["depotLin"] = depotLin);
+}
+
+
+
+/*
+ * Get the compartment number, adjusting for linear solved systems
+ *
+ * This will swap cmt 1 with the depot and cmt 2 with the central when
+ * an oral linear compartment is present in the model.
+ *
+ * This will also swap cmt 1 with the central compartment when a
+ * linear compartment is present in the model
+ *
+ * @param cmt The compartment number provided with traditional NONMEM numbering
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param numLinSens The number of linear sensitivity compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @param numCmt The number of compartments in the model (including linear and sensitivity)
+ *
+ * @param numSens The number of sensitivity compartments in the model
+ *
+ * @return The compartment number adjusted for linear solved systems
+ */
+int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
+              int numSens) {
+  // With no linear compartments, the compartment number is the same
+  if (numLin == 0 && depotLin == 0) {
+    return cmt;
+  }
+  if (cmt == NA_INTEGER) return NA_INTEGER;
+  if (cmt == 0) return 0;
+  if (cmt < 0) {
+    // The same rules apply for negative compartments (called recursively)
+    return -getCmtNum(-cmt, numLin, numLinSens, depotLin, numCmt,
+                      numSens);
+  }
+  // With a oral linear compartment:
+  // 1. The depot is always the first compartment
+  // 2. The central compartment is always the second compartment
+  // 3. The non-senstivity ODE compartments are next, and shifted by 2.
+  // 4. The peripheral compartments are next, and shifted by 2+the number of ODEs
+  // 5. The ODE and linear sensitivites are the very last values
+  //
+  // But the actual ODEs/linCmt parameters are defined by:
+  // 1. The ODE compartments
+  // 2. The Senstivitiy ODE compartments
+  // 3. The linear compartments
+  // 4. The linear sensitivity compartments
+
+  // This is similar to the linear compartment, but there is no depot.
+  int numOff = 1 + depotLin;
+
+  int nODEsens = numSens - numLinSens;
+
+  int nODE = numCmt - numLin - numSens;
+
+  // REprintf("cmt: %d, numLin: %d, numLinSens: %d, depotLin: %d, numCmt: %d, numSens: %d\n", cmt, numLin, numLinSens, depotLin, numCmt, numSens);
+
+  // REprintf("\tnumOff: %d, nODEsens: %d, nODE: %d\n", numOff, nODEsens, nODE);
+
+  if (cmt <= numOff) {
+    // This pushes the 1 (and 2) compartment to true compartment in the middle
+    // REprintf("\tcmt <= numOff\n");
+    // REprintf("\treturn: %d\n", cmt+nODE+nODEsens);
+    return cmt+nODE+nODEsens;
+  }
+  if (cmt <= numOff+nODE) {
+    // This removes the offset for the ODE compartments
+    return cmt-numOff;
+  }
+  // This is the peripharal compartments
+  if (cmt <= nODE+numLin) {
+    // This is the peripharal compartments
+    // The input offset is cmt-nODE-numOff
+    // The output is nODE+nODEsens+(cmt-nODE-numOff), which reduces to
+    //return nODE+nODEsens+numOff+cmt-nODE-numOff;//numOff;
+    return nODEsens+cmt;
+  }
+  // ODE sensitivities
+  if (cmt <= nODE+numLin+nODEsens) {
+    // This is the ODE sensitivities
+    // The input offset is cmt-nODE-numLin
+    // The output is nODE+(cmt-nODE-numLin)
+    // which reduces to
+    return cmt-numLin;
+  }
+  // Linear sensitivities, these should be the same compartments
+  return cmt;
+}
+
+//' Get the real compartment number based on NONMEM-style compartment
+//' adjusting for linear solved systems.
+//'
+//' This export is mostly for testing purposes.
+//'
+//' @param cmt The compartment number provided with traditional NONMEM numbering
+//'
+//' @param mv The model variables list
+//'
+//' @return An integer vector with the real compartment numbers
+//'
+//' @noRd
+//[[Rcpp::export]]
+IntegerVector getCmtNum_(IntegerVector cmt, List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  IntegerVector ret(cmt.size());
+  CharacterVector state = mv[RxMv_state];
+  CharacterVector sens = mv[RxMv_sens];
+  for (int i = cmt.size(); i--;){
+    ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
+                       state.size(), sens.size());
+  }
+  return ret;
+}
+
+IntegerVector toCmt(RObject inCmt, CharacterVector& state,
+                    const bool isDvid,
                     const int stateSize, const int sensSize, IntegerVector& curDvid,
-                    const IntegerVector& inId, const CharacterVector& idLvl){
+                    const IntegerVector& inId, const CharacterVector& idLvl,
+                    int &numLin, int &numLinSens, int &depotLin, int &numCmt,
+                    int &numSens, int &cmt1){
   RObject cmtInfo = R_NilValue;
   List extraCmt;
-  if (rxIsNumIntLgl(inCmt)){
-    if (rxIsFactor(inCmt)){
+  if (rxIsNumIntLgl(inCmt)) {
+    if (rxIsFactor(inCmt)) {
       CharacterVector lvl = Rf_getAttrib(as<SEXP>(inCmt), R_LevelsSymbol);
       IntegerVector lvlI(lvl.size());
       int i, j, k=0;
@@ -200,7 +364,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
       ret.attr("cmtNames") = newCmt;
       return ret;
     } else {
-      if (isDvid){
+      if (isDvid) {
         // This converts DVID to cmt; Things that don't match become -9999
         Environment rx = rxode2env();
         IntegerVector in = convertDvid_(inCmt, curDvid.length());
@@ -246,26 +410,14 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
         }
         return out;
       } else {
-        IntegerVector in = as<IntegerVector>(inCmt);
+        IntegerVector in = asIv(inCmt, "inCmt");
         IntegerVector out(in.size());
-        int baseSize = stateSize - sensSize;
-        // Sensitivity equations are ignored in CMT data items.
         for (int i = in.size(); i--;){
-          if (in[i] == NA_INTEGER) {
-            out[i] = in[i];
-          } else if (in[i] > 0 && in[i] <= baseSize){
-            out[i] = in[i];
-          } else if (in[i] > 0) {
-            out[i] = in[i]+sensSize;
-          } else if (in[i] < 0 && in[i] >= -baseSize){
-            out[i] = in[i];
-          } else if (in[i] < 0){
-            out[i] = in[i] - sensSize;
-          } else {
-            out[i] = 0;
-          }
+          out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
+                             numSens);
         }
-        return out;
+        Rcpp::print(out);
+        return as<IntegerVector>(out);
       }
     }
   } else if (rxIsChar(inCmt)) {
@@ -288,7 +440,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state, const bool isDvid,
       foundState=false;
       if (strCmt == "(default)" || strCmt == "(obs)" || CharacterVector::is_na(iCmt[i])){
         foundState=true;
-        newCmt.push_back(1);
+        newCmt.push_back(cmt1);
       } else {
         for (j = state.size(); j--;){
           if (as<std::string>(state[j]) == strCmt){
@@ -456,164 +608,6 @@ RObject etTranGetAttrKeep(SEXP in) {
   return as<RObject>(ret);
 }
 
-/*
- * Get the linear compartment information from the model variables
- *
- * @param mv The model variables list
- *
- * @param numLinSens The number of linear sensitivity compartments in
- * the model, will be assigned
- *
- * @param numLin The number of linear compartments in the model
- *
- * @param depotLin If the solved linear model has a depot compartment
- *
- * @return None, but the values are assigned to the input variables
- */
-void getLinInfo(List mv, int &numLinSens,
-                int &numLin, int &depotLin) {
-  IntegerVector flags = mv[RxMv_flags];
-  int linCmtFlg = flags[RxMvFlag_linCmtFlg];
-  // numSens*100+nLin*10 + depot
-  numLinSens = std::floor(linCmtFlg/100);
-  numLin = std::floor((linCmtFlg - numLinSens*100)/10);
-  depotLin = std::floor((linCmtFlg - numLinSens*100- numLin*10));
-}
-
-//' Get the Linear Compartment Information based on the model variables
-//'
-//' @param obj The model variables object
-//'
-//' @return A named integer vector with the linear sensitivity compartments.
-//'
-//' @noRd
-//[[Rcpp::export]]
-IntegerVector getLinInfo_(List mv) {
-  int numLinSens, numLin, depotLin;
-  getLinInfo(mv, numLinSens,
-             numLin, depotLin);
-  return IntegerVector::create(_["numLinSens"] = numLinSens,
-                               _["numLin"] = numLin,
-                               _["depotLin"] = depotLin);
-}
-
-
-
-/*
- * Get the compartment number, adjusting for linear solved systems
- *
- * This will swap cmt 1 with the depot and cmt 2 with the central when
- * an oral linear compartment is present in the model.
- *
- * This will also swap cmt 1 with the central compartment when a
- * linear compartment is present in the model
- *
- * @param cmt The compartment number provided with traditional NONMEM numbering
- *
- * @param numLin The number of linear compartments in the model
- *
- * @param numLinSens The number of linear sensitivity compartments in the model
- *
- * @param depotLin If the solved linear model has a depot compartment
- *
- * @param numCmt The number of compartments in the model (including linear and sensitivity)
- *
- * @param numSens The number of sensitivity compartments in the model
- *
- * @return The compartment number adjusted for linear solved systems
- */
-int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
-              int numSens) {
-  // With no linear compartments, the compartment number is the same
-  if (numLin == 0 && depotLin == 0) {
-    return cmt;
-  }
-  if (cmt == 0) return 0;
-  if (cmt < 0) {
-    // The same rules apply for negative compartments (called recursively)
-    return -getCmtNum(-cmt, numLin, numLinSens, depotLin, numCmt,
-                      numSens);
-  }
-  // With a oral linear compartment:
-  // 1. The depot is always the first compartment
-  // 2. The central compartment is always the second compartment
-  // 3. The non-senstivity ODE compartments are next, and shifted by 2.
-  // 4. The peripheral compartments are next, and shifted by 2+the number of ODEs
-  // 5. The ODE and linear sensitivites are the very last values
-  //
-  // But the actual ODEs/linCmt parameters are defined by:
-  // 1. The ODE compartments
-  // 2. The Senstivitiy ODE compartments
-  // 3. The linear compartments
-  // 4. The linear sensitivity compartments
-
-  // This is similar to the linear compartment, but there is no depot.
-  int numOff = 1 + depotLin;
-
-  int nODEsens = numSens - numLinSens;
-
-  int nODE = numCmt - numLin - numSens;
-
-  // REprintf("cmt: %d, numLin: %d, numLinSens: %d, depotLin: %d, numCmt: %d, numSens: %d\n", cmt, numLin, numLinSens, depotLin, numCmt, numSens);
-
-  // REprintf("\tnumOff: %d, nODEsens: %d, nODE: %d\n", numOff, nODEsens, nODE);
-
-  if (cmt <= numOff) {
-    // This pushes the 1 (and 2) compartment to true compartment in the middle
-    // REprintf("\tcmt <= numOff\n");
-    // REprintf("\treturn: %d\n", cmt+nODE+nODEsens);
-    return cmt+nODE+nODEsens;
-  }
-  if (cmt <= numOff+nODE) {
-    // This removes the offset for the ODE compartments
-    return cmt-numOff;
-  }
-  // This is the peripharal compartments
-  if (cmt <= nODE+numLin) {
-    // This is the peripharal compartments
-    // The input offset is cmt-nODE-numOff
-    // The output is nODE+nODEsens+(cmt-nODE-numOff), which reduces to
-    //return nODE+nODEsens+numOff+cmt-nODE-numOff;//numOff;
-    return nODEsens+cmt;
-  }
-  // ODE sensitivities
-  if (cmt <= nODE+numLin+nODEsens) {
-    // This is the ODE sensitivities
-    // The input offset is cmt-nODE-numLin
-    // The output is nODE+(cmt-nODE-numLin)
-    // which reduces to
-    return cmt-numLin;
-  }
-  // Linear sensitivities, these should be the same compartments
-  return cmt;
-}
-
-//' Get the real compartment number based on NONMEM-style compartment
-//' adjusting for linear solved systems.
-//'
-//' This export is mostly for testing purposes.
-//'
-//' @param cmt The compartment number provided with traditional NONMEM numbering
-//'
-//' @param mv The model variables list
-//'
-//' @return An integer vector with the real compartment numbers
-//'
-//' @noRd
-//[[Rcpp::export]]
-IntegerVector getCmtNum_(IntegerVector cmt, List mv) {
-  int numLinSens, numLin, depotLin;
-  getLinInfo(mv, numLinSens,
-             numLin, depotLin);
-  IntegerVector ret(cmt.size());
-  CharacterVector state = mv[RxMv_state];
-  CharacterVector sens = mv[RxMv_sens];
-  for (int i = cmt.size(); i--;){
-    ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
-                       state.size(), sens.size());
-  }
-  return ret;
-}
 
 /*
  * Determine if NONMEM-style evid compartment supports infusions
@@ -837,11 +831,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 #endif
   List mv = rxModelVars_(obj);
   IntegerVector flags = mv[RxMv_flags];
-  int linCmtFlg = flags[RxMvFlag_linCmtFlg];
-  // numSens*100+nLin*10 + depot
-  int numLinSens = std::floor(linCmtFlg/100);
-  int numLin = std::floor((linCmtFlg - numLinSens)/10);
-  int depotLin = std::floor((linCmtFlg - numLinSens)/10);
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  int numCmt = Rf_length(mv[RxMv_state]);
+  int numSens = Rf_length(mv[RxMv_sens]);
+  int cmt1 = getCmtNum(1, numLin, numLinSens, depotLin, numCmt,
+                       numSens);
   bool hasIcov = false;
   List iCov_;
   if (!iCov.isNull()){
@@ -1255,7 +1251,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     addTimeUnits=true;
     timeUnits=inTime.attr("units");
   }
-  int tmpCmt = 1;
+  int tmpCmt = cmt1;
   IntegerVector inId;
   CharacterVector idLvl;
   IntegerVector inIdCov;
@@ -1297,7 +1293,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (cmtCol != -1){
     inCmt = as<IntegerVector>(toCmt(inData[cmtCol], state, false,
                                     state0.size(), stateS.size(), curDvid,
-                                    inId, idLvl));//as<IntegerVector>();
+                                    inId, idLvl,
+                                    numLin, numLinSens, depotLin, numCmt,
+                                    numSens, cmt1));//as<IntegerVector>();
     cmtInfo = inCmt.attr("cmtNames");
     inCmt.attr("cmtNames") = R_NilValue;
   }
@@ -1305,7 +1303,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (dvidCol != -1){
     inDvid = as<IntegerVector>(toCmt(inData[dvidCol], state, true,
                                      state0.size(), stateS.size(),
-                                     curDvid, inId, idLvl));//as<IntegerVector>();
+                                     curDvid, inId, idLvl,
+                                     numLin, numLinSens, depotLin, numCmt,
+                                     numSens, cmt1));//as<IntegerVector>();
     inDvid.attr("cmtNames") = R_NilValue;
   }
   IntegerVector inSs;
@@ -1553,26 +1553,30 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       tmpCmt = inCmt[i];
       if (inCmt[i] == 0 || IntegerVector::is_na(inCmt[i])){
         if (evidCol == -1){
-          tmpCmt=1;
+          tmpCmt=cmt1;
         } else if (inEvid[i] == 0){
-          tmpCmt=1;
+          tmpCmt=cmt1;
         } else {
-          tmpCmt=1;
+          tmpCmt=cmt1;
         }
       }
       if (IntegerVector::is_na(inCmt[i])){
-        tmpCmt = 1;
+        tmpCmt = cmt1;
       } else if (inCmt[i] < 0){
         if (flg != 1) stop(_("steady state records cannot be on negative compartments (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
-        flg = 30;
-        tmpCmt = -tmpCmt;
+        if (cmtSupportsOff(cmt, numLin, numLinSens, depotLin, numCmt, numSens)) {
+          flg = 30;
+          tmpCmt = -tmpCmt;
+        } else {
+          stop(_("compartment cannot be turned off (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       }
       cmt = tmpCmt;
     } else if (cmtCol == -1) {
-      cmt = 1;
+      cmt = cmt1;
+    } else {
+      cmt = tmpCmt;
     }
-    // CMT flag
-    else cmt = tmpCmt;
     // see if you need to adjust for lagged
     if (ssAtDoseTime) {
       if (flg == 10 || flg == 20) {
@@ -1614,9 +1618,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         if (flg == 40){
           stop(_("when using steady state constant infusion modeling duration does not make sense (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        // if (!(needSort & needSortDur)) {
-        //   warning(_("data specified modeled duration (=-2) but no dur() in the model (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
-        // }
         rateI = 8;
         //durModeled = true;
       } else if (rate > 0){

@@ -116,23 +116,6 @@ etRep_ <- function(curEt, times, wait, ids, handleSamples, waitType, ii) {
     .Call(`_rxode2_etRep_`, curEt, times, wait, ids, handleSamples, waitType, ii)
 }
 
-#' Set Initial conditions to time zero instead of the first observed/dosed time
-#'
-#' @param ini0 When `TRUE` (default), set initial conditions to time
-#'   zero. Otherwise the initial conditions are the first observed
-#'   time.
-#'
-#' @return the boolean ini0, though this is called for its side effects
-#'
-#' @export
-rxSetIni0 <- function(ini0 = TRUE) {
-    .Call(`_rxode2_rxSetIni0`, ini0)
-}
-
-etTransEvidIsObs <- function(isObsSexp) {
-    .Call(`_rxode2_etTransEvidIsObs`, isObsSexp)
-}
-
 #' Get the Linear Compartment Information based on the model variables
 #'
 #' @param obj The model variables object
@@ -158,6 +141,23 @@ getLinInfo_ <- function(mv) {
 #' @noRd
 getCmtNum_ <- function(cmt, mv) {
     .Call(`_rxode2_getCmtNum_`, cmt, mv)
+}
+
+#' Set Initial conditions to time zero instead of the first observed/dosed time
+#'
+#' @param ini0 When `TRUE` (default), set initial conditions to time
+#'   zero. Otherwise the initial conditions are the first observed
+#'   time.
+#'
+#' @return the boolean ini0, though this is called for its side effects
+#'
+#' @export
+rxSetIni0 <- function(ini0 = TRUE) {
+    .Call(`_rxode2_rxSetIni0`, ini0)
+}
+
+etTransEvidIsObs <- function(isObsSexp) {
+    .Call(`_rxode2_etTransEvidIsObs`, isObsSexp)
 }
 
 #' See if the NONMEM compartment number supports infusion

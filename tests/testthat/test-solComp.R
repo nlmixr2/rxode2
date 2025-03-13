@@ -1762,6 +1762,10 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
   })
 
+  etTrans(et(amt=3,cmt=1) %>% et(1:10), rx)
+
+  etTrans(et(amt=3) %>% et(1:10), rx)
+
   expect_equal(getLinInfo_(rxModelVars(rx)),
                c(numLinSens = 0L, numLin = 4L, depotLin = 1L))
 
