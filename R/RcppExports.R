@@ -175,6 +175,21 @@ cmtSupportsInfusion_ <- function(cmt, mv) {
     .Call(`_rxode2_cmtSupportsInfusion_`, cmt, mv)
 }
 
+#' See if the NONMEM compartment number supports infusion
+#'
+#' This export is mostly for testing purposes.
+#'
+#' @param cmt The compartment number provided with traditional NONMEM numbering
+#'
+#' @param mv The model variables list
+#'
+#' @return An integer vector with the real compartment numbers
+#'
+#' @noRd
+cmtSupportsOff_ <- function(cmt, mv) {
+    .Call(`_rxode2_cmtSupportsOff_`, cmt, mv)
+}
+
 #' Event translation for rxode2
 #'
 #' @param inData Data frame to translate

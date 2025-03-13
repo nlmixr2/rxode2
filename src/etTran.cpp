@@ -718,41 +718,65 @@ LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv) {
 int cmtSupportsOff(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
                    int numSens) {
   if (cmt == 0) return 0;
-  // For ODEs, all compartments support turning off the compartment
+  // For ODEs, all compartments support off
   if (numLin == 0 && depotLin == 0) {
     return 1;
   }
   // Negative values give same values as positive values
   if (cmt < 0) {
     // The same rules apply for negative compartments (called recursively)
-    return cmtSupportsOff(-cmt, numLin, numLinSens, depotLin, numCmt,
-                          numSens);
+    return cmtSupportsInfusion(-cmt, numLin, numLinSens, depotLin, numCmt,
+                               numSens);
   }
   int numOff = 1 + depotLin;
-
   int nODEsens = numSens - numLinSens;
-  int nODE = numCmt - numLin - numLinSens - numSens;
-  // This is covered by the next case
-  if (cmt <= numOff) {
-    // Depot / central compartment cannot be turned off
+  int nODE = numCmt - numLin - numSens;
+
+  if (cmt <= numOff) { // off for central/depot
     return 0;
   }
   if (cmt <= numOff+nODE) {
-    // This is an ODE compartment, supports turning off
+    // Off for ODEs supported
     return 1;
   }
   // This is the peripharal compartments
   if (cmt <= nODE+numLin) {
-    // This is the peripharal compartments, does not support turning off
+    // No infusion for peripharal compartments
     return 0;
   }
   // ODE sensitivities
   if (cmt <= nODE+numLin+nODEsens) {
-    // Can turn off
     return 1;
   }
-  // Cannot turn off linear sensitivites
+  // No off in linear sensitivites
   return 0;
+}
+
+
+//' See if the NONMEM compartment number supports infusion
+//'
+//' This export is mostly for testing purposes.
+//'
+//' @param cmt The compartment number provided with traditional NONMEM numbering
+//'
+//' @param mv The model variables list
+//'
+//' @return An integer vector with the real compartment numbers
+//'
+//' @noRd
+//[[Rcpp::export]]
+LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  LogicalVector ret(cmt.size());
+  CharacterVector state = mv[RxMv_state];
+  CharacterVector sens = mv[RxMv_sens];
+  for (int i = cmt.size(); i--;){
+    ret[i] = cmtSupportsOff(cmt[i], numLin, numLinSens, depotLin,
+                            state.size(), sens.size());
+  }
+  return ret;
 }
 
 

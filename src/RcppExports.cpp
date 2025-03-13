@@ -308,6 +308,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cmtSupportsOff_
+LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv);
+RcppExport SEXP _rxode2_cmtSupportsOff_(SEXP cmtSEXP, SEXP mvSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type cmt(cmtSEXP);
+    Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
+    rcpp_result_gen = Rcpp::wrap(cmtSupportsOff_(cmt, mv));
+    return rcpp_result_gen;
+END_RCPP
+}
 // etTrans
 List etTrans(List inData, const RObject& obj, bool addCmt, bool dropUnits, bool allTimeVar, bool keepDosingOnly, Nullable<LogicalVector> combineDvid, CharacterVector keep, bool addlKeepsCov, bool addlDropSs, bool ssAtDoseTime, Nullable<List> iCov);
 RcppExport SEXP _rxode2_etTrans(SEXP inDataSEXP, SEXP objSEXP, SEXP addCmtSEXP, SEXP dropUnitsSEXP, SEXP allTimeVarSEXP, SEXP keepDosingOnlySEXP, SEXP combineDvidSEXP, SEXP keepSEXP, SEXP addlKeepsCovSEXP, SEXP addlDropSsSEXP, SEXP ssAtDoseTimeSEXP, SEXP iCovSEXP) {
