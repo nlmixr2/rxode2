@@ -133,6 +133,17 @@ etTransEvidIsObs <- function(isObsSexp) {
     .Call(`_rxode2_etTransEvidIsObs`, isObsSexp)
 }
 
+#' Get the Linear Compartment Information based on the model variables
+#'
+#' @param obj The model variables object
+#'
+#' @return A named integer vector with the linear sensitivity compartments.
+#'
+#' @noRd
+getLinInfo_ <- function(mv) {
+    .Call(`_rxode2_getLinInfo_`, mv)
+}
+
 #' Event translation for rxode2
 #'
 #' @param inData Data frame to translate

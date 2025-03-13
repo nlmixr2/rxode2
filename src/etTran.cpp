@@ -457,6 +457,49 @@ RObject etTranGetAttrKeep(SEXP in) {
 }
 
 /*
+ * Get the linear compartment information from the model variables
+ *
+ * @param mv The model variables list
+ *
+ * @param numLinSens The number of linear sensitivity compartments in
+ * the model, will be assigned
+ *
+ * @param numLin The number of linear compartments in the model
+ *
+ * @param depotLin If the solved linear model has a depot compartment
+ *
+ * @return None, but the values are assigned to the input variables
+ */
+void getLinInfo(List mv, int &numLinSens,
+                int &numLin, int &depotLin) {
+  IntegerVector flags = mv[RxMv_flags];
+  int linCmtFlg = flags[RxMvFlag_linCmtFlg];
+  // numSens*100+nLin*10 + depot
+  numLinSens = std::floor(linCmtFlg/100);
+  numLin = std::floor((linCmtFlg - numLinSens*100)/10);
+  depotLin = std::floor((linCmtFlg - numLinSens*100- numLin*10));
+}
+
+//' Get the Linear Compartment Information based on the model variables
+//'
+//' @param obj The model variables object
+//'
+//' @return A named integer vector with the linear sensitivity compartments.
+//'
+//' @noRd
+//[[Rcpp::export]]
+IntegerVector getLinInfo_(List mv) {
+  int numLinSens, numLin, depotLin;
+  getLinInfo(mv, numLinSens,
+             numLin, depotLin);
+  return IntegerVector::create(_["numLinSens"] = numLinSens,
+                               _["numLin"] = numLin,
+                               _["depotLin"] = depotLin);
+}
+
+
+
+/*
  * Get the compartment number, adjusting for linear solved systems
  *
  * This will swap cmt 1 with the depot and cmt 2 with the central when
@@ -629,7 +672,7 @@ int cmtSupportsOff(int cmt, int numLin, int numLinSens, int depotLin, int numCmt
 
   int nODEsens = numSens - numLinSens;
   int nODE = numCmt - numLin - numLinSens - numSens;
-  This is covered by the next case
+  // This is covered by the next case
   if (cmt <= numOff) {
     // Depot / central compartment cannot be turned off
     return 0;
