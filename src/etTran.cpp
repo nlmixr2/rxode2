@@ -59,7 +59,6 @@ static inline CharacterVector asCv(SEXP in, const char *what) {
   return as<CharacterVector>(in);
 }
 
-
 static inline bool rxIsNumIntLgl(RObject obj) {
   int type = obj.sexp_type();
   if (type == REALSXP || type == INTSXP || type == LGLSXP) {
@@ -131,7 +130,6 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   return id;
 }
 
-
 /*
  * Get the linear compartment information from the model variables
  *
@@ -172,8 +170,6 @@ IntegerVector getLinInfo_(List mv) {
                                _["numLin"] = numLin,
                                _["depotLin"] = depotLin);
 }
-
-
 
 /*
  * Get the compartment number, adjusting for linear solved systems
@@ -761,7 +757,6 @@ LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv) {
   return ret;
 }
 
-
 List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
 //'
@@ -1226,7 +1221,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   cens.reserve(resSize);
   std::vector<int> nObsId;
 
-
 #ifdef rxSolveT
   REprintf("  Time3: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -1596,22 +1590,33 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       else rate = inRate[i];
       if (rate == -1.0){
         // rate is modeled
-        rateI = 9;
-        // if (!(needSort & needSortRate)) {
-        //   warning(_("data specified modeled rate (=-1) but no rate() in the model (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
-        // }
-        //rateModeled = true;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 9;
+        } else  {
+          stop(_("specifying a modeled rate with a non-infusion compartment (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       } else if (rate == -2.0){
         // duration is modeled
         if (flg == 40){
           stop(_("when using steady state constant infusion modeling duration does not make sense (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        rateI = 8;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 8;
+        }  else {
+          stop(_("specifying a modeled duration with a non-infusion compartment (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
         //durModeled = true;
       } else if (rate > 0){
         // Rate is fixed
         if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4){
-          rateI = 1;
+          if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                  depotLin, numCmt, numSens)) {
+            rateI = 1;
+          } else {
+            stop(_("specifying a fixed rate with a non-infusion compartment (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          }
         } else {
           rateI = 0;
           rate = 0.0;
@@ -1626,20 +1631,35 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        rateI = 9;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 9;
+        } else {
+          stop(_("specifying a modeled rate with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       } else if (inDur[i] == -2.0){
         // duration is modeled
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        rateI = 8;
+        if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                depotLin, numCmt, numSens)) {
+          rateI = 8;
+        } else {
+          stop(_("specifying a modeled duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
       } else if (inDur[i] > 0){
         // Duration is fixed
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4){
-          rateI = 2;
+          if (cmtSupportsInfusion(cmt, numLin, numLinSens,
+                                  depotLin, numCmt, numSens)) {
+            rateI = 2;
+          } else {
+            stop(_("specifying a fixed duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          }
           rate = camt/inDur[i];
         } else if (inEvid[i] > 4){
           rateI=0;
