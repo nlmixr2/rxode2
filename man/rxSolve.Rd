@@ -118,6 +118,11 @@ rxSolve(
   safePow = TRUE,
   sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
   prodType = c("long double", "double", "logify"),
+  sensType = c("advan", "autodiff", "forward", "central"),
+  linDiff = c(tlag = 1.5e-05, f = 1.5e-05, rate = 1.5e-05, dur = 1.5e-05, tlag2 =
+    1.5e-05, f2 = 1.5e-05, rate2 = 1.5e-05, dur2 = 1.5e-05),
+  linDiffCentral = c(tlag = TRUE, f = TRUE, rate = TRUE, dur = TRUE, tlag2 = TRUE, f2 =
+    TRUE, rate2 = TRUE, dur2 = TRUE),
   resample = NULL,
   resampleID = TRUE,
   maxwhile = 1e+05,
@@ -759,6 +764,34 @@ rxode2 code blocks.
 multiplication and then converts back.
 
 \code{double} uses the standard double scale for multiplication.}
+
+\item{sensType}{Sensitivity type for \code{linCmt()} model:
+
+\code{advan} Use the direct advan solutions
+
+\code{autodiff} Use the autodiff advan solutions
+
+\code{forward} Use forward difference solutions
+
+\code{central} Use central differences}
+
+\item{linDiff}{This gives the linear difference amount for all the
+types of linear compartment model parameters where sensitivities
+are not calculated. The named components of this numeric vector are:
+\itemize{
+\item \code{"lag"} Central compartment lag
+\item \code{"f"} Central compartment bioavailability
+\item \code{"rate"} Central compartment modeled rate
+\item \code{"dur"} Central compartment modeled duration
+\item \code{"lag2"} Depot compartment lag
+\item \code{"f2"} Depot compartment bioavailability
+\item \code{"rate2"} Depot compartment modeled rate
+\item \code{"dur2"} Depot compartment modeled duration
+}}
+
+\item{linDiffCentral}{This gives the which parameters use central
+differences for the linear compartment model parameters.  The
+are the same components as \code{linDiff}}
 
 \item{resample}{A character vector of model variables to resample
 from the input dataset; This sampling is done with replacement.

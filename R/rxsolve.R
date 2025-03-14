@@ -194,6 +194,33 @@
 #' @param maxwhile represents the maximum times a while loop is
 #'   evaluated before exiting.  By default this is 100000
 #'
+#' @param sensType Sensitivity type for `linCmt()` model:
+#'
+#' `advan` Use the direct advan solutions
+#'
+#' `autodiff` Use the autodiff advan solutions
+#'
+#' `forward` Use forward difference solutions
+#'
+#' `central` Use central differences
+#'
+#' @param linDiff This gives the linear difference amount for all the
+#'   types of linear compartment model parameters where sensitivities
+#'   are not calculated. The named components of this numeric vector are:
+#'
+#' * `"lag"` Central compartment lag
+#' * `"f"` Central compartment bioavailability
+#' * `"rate"` Central compartment modeled rate
+#' * `"dur"` Central compartment modeled duration
+#' * `"lag2"` Depot compartment lag
+#' * `"f2"` Depot compartment bioavailability
+#' * `"rate2"` Depot compartment modeled rate
+#' * `"dur2"` Depot compartment modeled duration
+#'
+#' @param linDiffCentral This gives the which parameters use central
+#'   differences for the linear compartment model parameters.  The
+#'   are the same components as `linDiff`
+#'
 #' @param iCov A data frame of individual non-time varying covariates
 #'   to combine with the `events` dataset.  The `iCov` dataset has one
 #'   covariate per ID and should match the event table
@@ -727,6 +754,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     safePow = TRUE,
                     sumType = c("pairwise", "fsum", "kahan", "neumaier", "c"),
                     prodType = c("long double", "double", "logify"),
+                    sensType = c("advan", "autodiff", "forward", "central"),
+                    linDiff = c(tlag = 1.5e-5, f = 1.5e-5, rate = 1.5e-5, dur = 1.5e-5, tlag2 = 1.5e-5, f2 = 1.5e-5, rate2 = 1.5e-5, dur2 = 1.5e-5),
+                    linDiffCentral = c(tlag = TRUE, f = TRUE, rate = TRUE, dur = TRUE, tlag2 = TRUE, f2 = TRUE, rate2 = TRUE, dur2 = TRUE),
                     resample = NULL,
                     resampleID = TRUE,
                     maxwhile = 100000,
@@ -876,6 +906,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .prod <- c("long double"=1L, "double"=1L, "logify"=1L)[match.arg(prodType)]
     }
 
+    if (checkmate::testIntegerish(sensType, len=1, lower=1, upper=4, any.missing=FALSE)) {
+      .sensType <- as.integer(sensType)
+    } else {
+      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)[match.arg(sensType)]
+    }
     if (checkmate::testIntegerish(strictSS, len=1, lower=0, upper=1, any.missing=FALSE)) {
       strictSS <- as.integer(strictSS)
     } else {
@@ -1017,6 +1052,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertNumeric(thetaUpper, any.missing=FALSE, null.ok=TRUE)
     checkmate::assertLogical(idFactor, any.missing=FALSE)
     checkmate::assertLogical(warnIdSort, any.missing=FALSE)
+    checkmate::assertNumeric(linDiff, names="strict", len=8)
+    checkmate::assertLogical(linDiffCentral, names="strict", len=8, any.missing=FALSE)
     if (is.null(resample)) {
     } else if (checkmate::testLogical(resample)) {
       checkmate::assertLogical(resample, any.missing=FALSE, len=1)
@@ -1153,6 +1190,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       safeZero = safeZero,
       sumType = .sum,
       prodType = .prod,
+      sensType = .sensType,
+      linDiff = linDiff, #
+      linDiffCentral = linDiffCentral,#
       resample = resample, #
       resampleID = resampleID,#
       maxwhile = maxwhile,
@@ -2293,8 +2333,8 @@ rxControlUpdateSens <- function(rxControl, sensCmt=NULL, ncmt=NULL) {
 
 #' rxUiDeparse.rxControl(rxControl(covsInterpolation="linear", method="dop853",
 #'  naInterpolation="nocb", keepInterpolation="nocb", sigmaXform="variance",
-#'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify"),
-#' "ctl")
+#'  omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify",
+#'  sensType="central"), "ctl")
 
 #' @rdname rxUiDeparse
 #' @export
@@ -2339,6 +2379,9 @@ rxUiDeparse.rxControl <- function(object, var) {
     } else if (x == "prodType") {
       .prod <- c("long double"=1L, "double"=1L, "logify"=1L)
       paste0(x, " = ", deparse1(names(.prod)[which(object[[x]] == .prod)]))
+    } else if (x == "sensType") {
+      .sensType <- c("autodiff"=1L, "forward"=2L, "central"=3L, "advan"=4L)
+      paste0(x, " = ", deparse1(names(.sensType)[which(object[[x]] == .sensType)]))
     } else if (x == "naTimeHandle") {
       .naTimeHandle <- c("ignore"=1L, "warn"=2L, "error"=3L)
       paste0(x, " = ", deparse1(names(.naTimeHandle)[which(object[[x]] == .naTimeHandle)]))
