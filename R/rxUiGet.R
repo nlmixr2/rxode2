@@ -81,6 +81,8 @@ rxUiGet.stateDf <- function(x, ...) {
   if (rxModelVars(rx)$flags["linCmtFlg"] != 0) {
     data.frame("Compartment Number"=seq_along(.cmt),
                "Compartment Name"=names(.cmt),
+               "Rate"=cmtSupportsInfusion_(.cmt, .mv),
+               "Off"=cmtSupportsOff_(.cmt, .mv),
                "Internal #"=setNames(.cmt,NULL),
                check.names=FALSE)
   } else {
