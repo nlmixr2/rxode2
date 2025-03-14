@@ -1033,6 +1033,37 @@ testOff <- function(rx, val) {
 
 test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
 
+  rx <- function() {
+    ini({
+      popCl <- 1
+      popV <- 20
+      bsvCl ~ 0.1
+      bsvV ~ 0.1
+      popKeo <- 1.4
+      bsvKeo ~ 0.1
+      popKa <- 1
+    })
+    model({
+      cl ~ popCl * exp(bsvCl)
+      v ~ popV * exp(bsvV)
+      ka ~ popKa
+      keo ~ popKeo * exp(bsvKeo)
+      popLagCentral <- 0
+      popRateCentral <- 0
+      popDurCentral <- 0
+      bsvLagCentral <- 0
+      bsvRateCentral <- 0
+      bsvDurCentral <- 0
+      alag(central) <- popLagCentral * exp(bsvLagCentral)
+      rate(central) <- popRateCentral * exp(bsvRateCentral)
+      dur(central) <- popDurCentral * exp(bsvDurCentral)
+      cp <- linCmt()
+      d/dt(ce) = keo*(cp-ce)
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+    })
+  }
+
+
   rx <- rxode2({
     popCl <- 1
     popV <- 20

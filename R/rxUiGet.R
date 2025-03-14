@@ -75,9 +75,19 @@ attr(rxUiGet.state, "desc") <- "states associated with the model (in order)"
 #' @export
 rxUiGet.stateDf <- function(x, ...) {
   .ui <- x[[1]]
-  .state <- rxModelVars(.ui)$state
-  data.frame("Compartment Number"=seq_along(.state), "Compartment Name"=.state,
-             check.names=FALSE)
+  .mv <- rxModelVars(.ui)
+  .state <- .mv$state
+  .cmt <- .getCmtNum(.mv)
+  if (rxModelVars(rx)$flags["linCmtFlg"] != 0) {
+    data.frame("Compartment Number"=seq_along(.cmt),
+               "Compartment Name"=names(.cmt),
+               "Internal #"=setNames(.cmt,NULL),
+               check.names=FALSE)
+  } else {
+    data.frame("Compartment Number"=seq_along(.cmt),
+               "Compartment Name"=names(.cmt),
+               check.names=FALSE)
+  }
 }
 attr(rxUiGet.stateDf, "desc") <- "states and cmt number data.frame"
 
