@@ -76,26 +76,10 @@ typedef struct {
   double infSSstep;
   int mxhnil;
   double hmxi;
-  int nlin;
-  int nlin2;
-  int nlinR;
-  bool cTlag;
-  double hTlag;
-  bool cF;
-  double hF;
-  bool cRate;
-  double hRate;
-  bool cDur;
-  double hDur;
-  bool cTlag2;
-  double hTlag2;
-  bool cF2;
-  double hF2;
-  bool cRate2;
-  double hRate2;
-  bool cDur2;
-  double hDur2;
   int nLlik;
+  int numLinSens;
+  int numLin;
+  int depotLin;
 } rx_solving_options;
 
 

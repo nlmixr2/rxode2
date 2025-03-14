@@ -5,6 +5,8 @@
 #define STRICT_R_HEADERS
 #include "linCmt.h"
 
+#define getAdvan(idx) ind->solve + (op->neq)*(idx) - op->numLinSens - op->numLin;
+
 // Create linear compartment models for testing
 
 using namespace Rcpp;

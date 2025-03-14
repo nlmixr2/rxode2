@@ -3245,97 +3245,6 @@ static inline void rxSolve_simulate(const RObject &obj,
   bool sigmaIsChol= asBool(rxControl[Rxc_sigmaIsChol], "sigmaIsChol");
 
   op->isChol = (int)(sigmaIsChol);
-  SEXP tmp = rxControl[Rxc_linDiff];
-  LogicalVector linLV;
-  if (Rf_isLogical(tmp)) {
-    linLV = as<LogicalVector>(tmp);
-  }
-  tmp = rxControl[Rxc_linDiffCentral];
-  NumericVector linNV;
-  if (Rf_isReal(tmp)) {
-    linNV = as<NumericVector>(tmp);
-  }
-  //LogicalVector
-  if (linLV.containsElementNamed("tlag")) {
-    op->cTlag = as<bool>(linLV["tlag"]);
-  } else {
-    op->cTlag = true;
-  }
-  if (linNV.containsElementNamed("tlag")){
-    op->hTlag = as<double>(linNV["tlag"]);
-  } else {
-    op->hTlag = 1.5e-5;
-  }
-  if (linLV.containsElementNamed("f")) {
-    op->cF = as<bool>(linLV["f"]);
-  } else {
-    op->cF = true;
-  }
-  if (linNV.containsElementNamed("f")) {
-    op->hF = as<double>(linNV["f"]);
-  } else {
-    op->hF = 1.5e-5;
-  }
-  if (linLV.containsElementNamed("rate")) {
-    op->cRate = as<bool>(linLV["rate"]);
-  } else {
-    op->cRate = true;
-  }
-  if (linNV.containsElementNamed("rate")) {
-    op->hRate = as<double>(linNV["rate"]);
-  } else {
-    op->hRate = 1.5e-5;
-  }
-  if (linLV.containsElementNamed("dur")) {
-    op->cDur = as<bool>(linLV["dur"]);
-  } else {
-    op->cDur = false;
-  }
-  if (linNV.containsElementNamed("dur")) {
-    op->hDur = as<double>(linNV["dur"]);
-  } else {
-    op->hDur = 1.5e-5;
-  }
-  if (linLV.containsElementNamed("tlag2")) {
-    op->cTlag2 = as<bool>(linLV["tlag2"]);
-  } else {
-    op->cTlag2 = false;
-  }
-  if (linNV.containsElementNamed("tlag2")) {
-    op->hTlag2 = as<double>(linNV["tlag2"]);
-  } else {
-    op->hTlag2 = 1.5e-5;
-  }
-  if (linLV.containsElementNamed("f2")) {
-    op->cF2 = as<bool>(linLV["f2"]);
-  } else {
-    op->cF2 = false;
-  }
-  if (linNV.containsElementNamed("f2")) {
-    op->hF2 = as<double>(linNV["f2"]);
-  } else {
-    op->hF2 = 1.5e-5;
-  }
-  if (linLV.containsElementNamed("rate2")) {
-    op->cRate2 = as<bool>(linLV["rate2"]);
-  } else {
-    op->cRate2 = false;
-  }
-  if (linNV.containsElementNamed("rate2")) {
-    op->hRate2 = as<double>(linNV["rate2"]);
-  } else {
-    op->hRate2 = 1.5e-5;
-  }
-  if (linLV.containsElementNamed("dur2")) {
-    op->cDur2 = as<bool>(linLV["dur2"]);
-  } else {
-    op->cDur2 = false;
-  }
-  if (linNV.containsElementNamed("dur2")) {
-    op->hDur2 = as<double>(linNV["dur2"]);
-  } else {
-    op->hDur2 = 1.5e-5;
-  }
   unsigned int nSub = asUnsignedInt(rxControl[Rxc_nSub], "nSub");
   unsigned int nStud = asUnsignedInt(rxControl[Rxc_nStud], "nStud");
   double dfSub=asDouble(rxControl[Rxc_dfSub], "dfSub");
@@ -4251,7 +4160,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->solve = &_globals.gsolve[curSolve];
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
-          curSolve += (op->neq + op->nlin)*ind->n_all_times;
+          curSolve += (op->neq)*ind->n_all_times;
           ind->ix = &_globals.gix[curIdx];
           curEvent += eLen;
           curIdx += ind->n_all_times;
@@ -4849,25 +4758,9 @@ static inline void iniRx(rx_solve* rx) {
   op->ncoresRV = 1;
   op->mxhnil = 0;
   op->hmxi = 0.0;
-  op->nlin = 0;
-  op->nlin2 = 0;
-  op->nlinR = 0;
-  op->cTlag = false;
-  op->hTlag = 0;
-  op->cF = false;
-  op->hF = 0;
-  op->cRate = false;
-  op->hRate = 0;
-  op->cDur = false;
-  op->hDur = 0;
-  op->cTlag2 = false;
-  op->hTlag2 = 0;
-  op->cF2 = false;
-  op->hF2 = 0;
-  op->cRate2 = false;
-  op->hRate2 = 0;
-  op->cDur2 = false;
-  op->hDur2 = 0;
+  op->numLinSens = 0;
+  op->numLin = 0;
+  op->depotLin = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
@@ -5570,53 +5463,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
     int linNcmt = linCmtI[RxMvFlag_ncmt];
     int linKa = linCmtI[RxMvFlag_ka];
-    int linB = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linB];
     rx->linKa = linKa;
     rx->linNcmt = linNcmt;
-    if (linB) {
-      if (rx->sensType == 4) {
-        // This is the ADVAN senstivities
-        if (linKa) {
-          switch (linNcmt) {
-          case 1:
-            op->nlin = 8;
-            break;
-          case 2:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          case 3:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          }
-        } else {
-          switch (linNcmt) {
-          case 1:
-            op->nlin = 3;
-            break;
-          case 2:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          case 3:
-            op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;
-            break;
-          }
-        }
-        op->nlin2 = op->nlin;
-      } else {
-        op->nlin = linNcmt + linKa + (2*linNcmt+linNcmt)*(linNcmt+linKa+1) + 2*linNcmt+1;//(4+linNcmt+linKa)*linNcmt+(2+linNcmt+linKa)*linKa+1;
-        // ncmt + oral0 + (2*ncmt+oral)*(ncmt+oral0+1) + 2*ncmt
-      }
-    } else {
-      op->nlin = linNcmt+linKa;
-    }
-    op->nlinR = 0;
     int n0 = rx->nall*state.size()*rx->nsim;
     int nsave = op->neq*op->cores;
-    int nLin = op->nlin;
-    if (nLin != 0) {
-      op->nlinR = 1+linKa;
-      nLin = rx->nall*nLin*rx->nsim;// Number of linear compartments * number of solved points
-    }
     int n2  = rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
     int n3  = op->neq*rxSolveDat->nSize;
     int n3a_c = (op->neq + op->extraCmt)*op->cores;
@@ -5644,7 +5494,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     int n8 = rx->maxAllTimes*op->cores;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(n0+nLin+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
+    _globals.gsolve = (double*)calloc(n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       5*op->neq + 8*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -5655,7 +5505,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFree();
       stop(_("could not allocate enough memory for solving"));
     }
-    _globals.gLlikSave = _globals.gsolve + n0+ nLin; // [nllik_c]
+    _globals.gLlikSave = _globals.gsolve + n0; // [nllik_c]
     _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
     _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
