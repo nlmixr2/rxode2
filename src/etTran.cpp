@@ -416,7 +416,6 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state,
           out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
                              numSens);
         }
-        Rcpp::print(out);
         return as<IntegerVector>(out);
       }
     }
@@ -610,7 +609,7 @@ RObject etTranGetAttrKeep(SEXP in) {
 
 
 /*
- * Determine if NONMEM-style evid compartment supports infusions
+ * Determine if actual compartment number supports infusions
  *
  * @param cmt The compartment number provided with traditional NONMEM numbering
  *
@@ -692,7 +691,7 @@ LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv) {
 }
 
 /*
- * Determine if NONMEM-style evid compartment can be turned off (linear cannot)
+ * Determine if actual compartment can be turned off (linear cannot)
  *
  * @param cmt The compartment number provided with traditional NONMEM numbering
  *
@@ -726,23 +725,12 @@ int cmtSupportsOff(int cmt, int numLin, int numLinSens, int depotLin, int numCmt
   int nODEsens = numSens - numLinSens;
   int nODE = numCmt - numLin - numSens;
 
-  if (cmt <= numOff) { // off for central/depot
-    return 0;
-  }
-  if (cmt <= numOff+nODE) {
-    // Off for ODEs supported
+  if (cmt <= nODE + nODEsens) {
+    // ODEs and ODE sensitivities can be turned off
     return 1;
   }
-  // This is the peripharal compartments
-  if (cmt <= nODE+numLin) {
-    // No infusion for peripharal compartments
-    return 0;
-  }
-  // ODE sensitivities
-  if (cmt <= nODE+numLin+nODEsens) {
-    return 1;
-  }
-  // No off in linear sensitivites
+  // All other compartments are linear compartments at this time, and
+  // cannot be turned off
   return 0;
 }
 

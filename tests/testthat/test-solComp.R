@@ -1016,7 +1016,8 @@ testVal <- function(rx, val) {
 testInf <- function(rx, val) {
   state <- rx$state
   state <- setNames(seq_along(state), state)
-  expect_equal(setNames(cmtSupportsInfusion_(seq_along(rx$state), rxModelVars(rx)),
+  .num <- .getCmtNum(rx)
+  expect_equal(setNames(cmtSupportsInfusion_(.num, rxModelVars(rx)),
                         names(.getCmtNum(rx))),
                val)
 }
@@ -1024,8 +1025,9 @@ testInf <- function(rx, val) {
 testOff <- function(rx, val) {
   state <- rx$state
   state <- setNames(seq_along(state), state)
-  expect_equal(setNames(cmtSupportsOff_(seq_along(rx$state), rxModelVars(rx)),
-                        names(.getCmtNum(rx))),
+  .num <- .getCmtNum(rx)
+  expect_equal(setNames(cmtSupportsOff_(.num, rxModelVars(rx)),
+                        names(.num)),
                val)
 }
 
