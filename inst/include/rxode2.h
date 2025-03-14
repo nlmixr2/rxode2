@@ -28,8 +28,9 @@
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 
 #ifndef __RXODE2PTR_H__  // directly refer to abi need to be excluded
-#define getAdvan(idx) ind->solve + (op->neq + op->nlin)*(idx) + op->neq
-#define getSolve(idx) ind->solve + (op->neq + op->nlin)*(idx)
+// FIXME
+#define getAdvan(idx) ind->solve + (op->neq)*(idx) - op->numLin - op->numLinSens
+#define getSolve(idx) ind->solve + (op->neq)*(idx)
 #endif
 
 #ifdef _isrxode2_

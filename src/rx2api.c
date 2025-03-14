@@ -140,7 +140,8 @@ int hasOpBadSolve(rx_solving_options* op) {
 }
 
 int getOpNlin(rx_solving_options* op) {
-  return op->nlin;
+  // This is kept for backwards compatibility, but now always 0
+  return 0;  // used to give op->nlin, but now always 0
 }
 
 int getOpCores(rx_solving_options* op) {
@@ -194,7 +195,7 @@ int getRxNpars(rx_solve *rx) {
 ////////////////////////////////////////////////////////////////////////
 double * getOpIndSolve(rx_solving_options* op, rx_solving_options_ind* ind, int idx) {
   if (idx  < 0 || idx >= ind->n_all_times) {
-    Rf_error("[getOpIndSolve]: the individual should be between [0, %d); neq: %d nlin: %d", ind->n_all_times, op->neq, op->nlin);
+    Rf_error("[getOpIndSolve]: the individual should be between [0, %d); neq: %d", ind->n_all_times, op->neq);
   }
-  return ind->solve + (op->neq + op->nlin)*(idx);
+  return ind->solve + (op->neq)*(idx);
 }

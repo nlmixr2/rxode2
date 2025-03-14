@@ -1042,6 +1042,8 @@ test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
       popKeo <- 1.4
       bsvKeo ~ 0.1
       popKa <- 1
+      cp.sd <- 0.1
+      e0.sd <- 0.1
     })
     model({
       cl ~ popCl * exp(bsvCl)
@@ -1058,8 +1060,10 @@ test_that("rxode2 parsing of linCmt() 1 compartment with ka", {
       rate(central) <- popRateCentral * exp(bsvRateCentral)
       dur(central) <- popDurCentral * exp(bsvDurCentral)
       cp <- linCmt()
+      cp ~ add(cp.sd)
       d/dt(ce) = keo*(cp-ce)
-      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));
+      effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma))
+      effect ~add(e0.sd)
     })
   }
 

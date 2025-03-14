@@ -31,8 +31,8 @@ printing out a rxode2 object.  Currently it is used for any meta-information
 
 rxUiDeparse.rxControl(rxControl(covsInterpolation="linear", method="dop853",
 naInterpolation="nocb", keepInterpolation="nocb", sigmaXform="variance",
-omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify",
-sensType="central"), "ctl")
+omegaXform="variance", returnType="data.frame", sumType="fsum", prodType="logify"),
+"ctl")
 }
 \examples{
 
