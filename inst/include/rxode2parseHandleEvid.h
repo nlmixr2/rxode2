@@ -113,7 +113,7 @@ extern "C" {
 #define EVID0_PHANTOM 50
 #define EVID0_ONDOSE 60
 
-static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0){
+static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int *wh0) {
   *wh = evid;
   *cmt = 0;
   *wh100 = FLOOR(*wh/1e5L);
@@ -122,27 +122,6 @@ static inline void getWh(int evid, int *wh, int *cmt, int *wh100, int *whI, int 
   *wh0 = FLOOR((*wh%10000)/100);
   *cmt = *wh0 - 1 + *wh100*100;
   *wh0 = evid - *wh100*1e5 - *whI*1e4 - *wh0*100;
-  if (rx_global.linNcmt != 0) {
-    if (rx_global.linKa) {
-      switch (*cmt) {
-      case 0:
-        *cmt = op_global.neq;
-        break;
-      case 1:
-        *cmt = op_global.neq+1;
-        break;
-      case 2:
-        *cmt -= 2;
-        break;
-      }
-    } else {
-      if (*cmt == 0) {
-        *cmt = op_global.neq;
-      } else {
-        *cmt -= 1;
-      }
-    }
-  }
 }
 
 static inline double getDoseNumber(rx_solving_options_ind *ind, int i) {

@@ -247,7 +247,6 @@ typedef struct {
   bool sample;
   int *par_sample;
   double maxShift;
-  int linKa;
   int linNcmt;
   int maxwhile;
   int whileexit;

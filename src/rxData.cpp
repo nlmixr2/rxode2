@@ -4703,7 +4703,6 @@ static inline void iniRx(rx_solve* rx) {
   rx->sample = false;
   rx->par_sample = NULL;
   rx->maxShift = 0.0;
-  rx->linKa  = 0;
   rx->linNcmt = 0;
   rx->maxwhile = 100000;
   rx->whileexit= 0;
@@ -5459,8 +5458,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     else rx->nsim=1;
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
     int linNcmt = linCmtI[RxMvFlag_ncmt];
-    int linKa = linCmtI[RxMvFlag_ka];
-    rx->linKa = linKa;
     rx->linNcmt = linNcmt;
     int n0 = rx->nall*state.size()*rx->nsim;
     int nsave = op->neq*op->cores;
