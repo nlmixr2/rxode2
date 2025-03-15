@@ -4697,7 +4697,6 @@ static inline void iniRx(rx_solve* rx) {
   rx->ss2cancelAllPending = false;
   rx->sumType = 1; // pairwise
   rx->prodType = 1; // long double
-  rx->sensType = 4; // advan
   rx->hasFactors = 0;
   rx->ordId = NULL;
   rx->ypNA = NULL;
@@ -4913,7 +4912,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
-    rx->sensType = asInt(rxControl[Rxc_sensType], "sensType");
     return rxSolve_update(object, rxControl, specParams,
                           extraArgs, params, events, inits,
                           rxSolveDat);
@@ -4936,7 +4934,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
-    rx->sensType = asInt(rxControl[Rxc_sensType], "sensType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;

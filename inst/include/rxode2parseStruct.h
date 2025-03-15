@@ -237,7 +237,6 @@ typedef struct {
   int safePow;
   int sumType;
   int prodType;
-  int sensType;
   vLines factors;
   vLines factorNames;
   int factorNs[500];
