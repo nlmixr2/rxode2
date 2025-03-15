@@ -5,7 +5,8 @@
 #define STRICT_R_HEADERS
 #include "linCmt.h"
 
-#define getAdvan(idx) ind->solve + (op->neq)*(idx) - op->numLinSens - op->numLin;
+#define getAdvan(idx) ind->solve + (op->neq)*(idx) - op->numLinSens - op->numLin
+#define getLinRate ind->InfusionRate + op->neq - op->numLin - op->numLinSens
 
 // Create linear compartment models for testing
 
@@ -202,11 +203,11 @@ extern "C" double linCmtA(rx_solve *rx, int id,
       return NA_REAL;
     }
     double *aLastPtr = getAdvan(idx);
-    lc.setPtr(aLastPtr, ind->linCmtRate, ind->linCmtSave);
+    lc.setPtr(aLastPtr, getLinRate, ind->linCmtSave);
     Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
     std::copy(aLastPtr, aLastPtr + nAlast, Alast.data());
     lc.setAlast(Alast, nAlast);
-    lc.setRate(ind->linCmtRate);
+    lc.setRate(getLinRate);
     lc.setDt(_t - ind->curShift);
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     fx = lc(theta);
@@ -354,11 +355,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     return NA_REAL;
   }
   double *aLastPtr = getAdvan(idx);
-  lc.setPtr(aLastPtr, ind->linCmtRate, ind->linCmtSave);
+  lc.setPtr(aLastPtr, getLinRate, ind->linCmtSave);
   Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
   std::copy(aLastPtr, aLastPtr + nAlast, Alast.data());
   lc.setAlast(Alast, nAlast);
-  lc.setRate(ind->linCmtRate);
+  lc.setRate(getLinRate);
   lc.setDt(_t - ind->curShift);
   if (ind->linCmtLastT != _t) {
     stan::math::jacobian(lc, theta, fx, J);

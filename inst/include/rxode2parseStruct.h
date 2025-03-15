@@ -153,11 +153,8 @@ typedef struct {
   int _rxFlag;
   int err;
   int solved;
-  double *linCmtAdvan;
-  double *linCmtRate;
   double *linCmtSave;
   double linCmtLastT;
-  double linCmtF;
   int linCmt;
   int cacheME;
   int inLhs;
