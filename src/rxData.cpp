@@ -4763,6 +4763,8 @@ static inline void iniRx(rx_solve* rx) {
   op->nLlik = 0;
 }
 
+void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
+
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<CharacterVector> &specParams,
@@ -5272,6 +5274,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     CharacterVector state = rxSolveDat->mv[RxMv_state];
     CharacterVector lhs = rxSolveDat->mv[RxMv_lhs];
     op->neq = state.size();
+    int numLinSens, numLin, depotLin;
+    getLinInfo(rxSolveDat->mv, numLinSens, numLin, depotLin);
+    op->numLinSens = numLinSens;
+    op->numLin = numLin;
+    op->depotLin = depotLin;
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
