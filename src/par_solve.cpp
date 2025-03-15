@@ -699,6 +699,7 @@ static inline void solveWith1Pt(int *neq,
                                 t_update_inis u_inis,
                                 void *ctx){
   int idid, itol=0;
+  int neqOde = *neq - op->numLin - op->numLinSens;
   switch(op->stiff){
   case 3:
     if (!isSameTime(xout, xp)) {
@@ -723,27 +724,18 @@ static inline void solveWith1Pt(int *neq,
     }
     if (*istate <= 0) {
       RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
-      /* ind->rc[0] = *istate; */
       ind->rc[0] = -2019;
-      // Bad Solve => NA
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; */ // Get out of here!
-      /* j=op->maxSS; */
       break;
     } else if (ind->err){
       printErr(ind->err, ind->id);
       ind->rc[0] = -2019;
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
       *i = ind->n_all_times-1; // Get out of here!
-      /* j=op->maxSS; */
       break;
     }
     break;
   case 1:
     if (!isSameTime(xout, xp)) {
-      F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
+      F77_CALL(dlsoda)(dydt_lsoda_dum, &neqOde, yp, &xp, &xout,
                        &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                        istate, &giopt, global_rworkp,
                        &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
@@ -751,25 +743,16 @@ static inline void solveWith1Pt(int *neq,
     if (*istate <= 0) {
       RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
       ind->rc[0] = -2019;/* *istate; */
-      // Bad Solve => NA
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; // Get out of here! */
-      /* j=op->maxSS; */
       break;
     } else if (ind->err){
       printErr(ind->err, ind->id);
       ind->rc[0] = -2019;
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; // Get out of here! */
-      /* j=op->maxSS; */
       break;
     }
     break;
   case 0:
     if (!isSameTimeDop(xout, xp)) {
-      idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
+      idid = dop853(&neqOde,       /* dimension of the system <= UINT_MAX-1*/
                     dydt,       /* function computing the value of f(x,y) */
                     xp,           /* initial x-value */
                     yp,           /* initial values for y */
@@ -797,19 +780,10 @@ static inline void solveWith1Pt(int *neq,
     }
     if (idid < 0) {
       ind->rc[0] = -2019;
-      // Bad Solve => NA
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
-      /* *i = ind->n_all_times-1; // Get out of here! */
-      /* j=op->maxSS; */
       break;
     } else if (ind->err){
       printErr(ind->err, ind->id);
-      /* ind->rc[0] = -1000; */
-      /* for (j=neq[0]*(ind->n_all_times); j--;) ind->solve[j] = NA_REAL; */
-      /* op->badSolve = 1; */
       *i = ind->n_all_times-1; // Get out of here!
-      /* j=op->maxSS; */
       break;
     }
     break;
@@ -2198,11 +2172,12 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double xout;
   int *rc;
   double *yp;
+  int neqOde = *neq - op->numLin - op->numLinSens;
   inits = op->inits;
   struct lsoda_context_t * ctx = lsoda_create_ctx();
   ctx->function = (_lsoda_f)dydt_liblsoda;
   ctx->data = neq;
-  ctx->neq = neq[0];
+  ctx->neq = neqOde;
   ctx->state = 1;
   ctx->error=NULL;
   ind = &(rx->subjects[neq[1]]);
@@ -2591,6 +2566,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   double xp = getAllTimes(ind, 0);
   double xout;
+  int neqOde= neq[0] - op->numLin - op->numLinSens;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   unsigned int j;
@@ -2607,7 +2583,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
-            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+            F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
@@ -2622,14 +2598,14 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ind->idx = idx;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+            F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
-          F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+          F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
           postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
