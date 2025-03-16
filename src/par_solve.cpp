@@ -720,6 +720,8 @@ static inline void solveWith1Pt(int *neq,
     break;
   case 2:
     if (!isSameTime(xout, xp)) {
+      ind->tcur = xp;
+      ind->tout = xout;
       lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
     }
     if (*istate <= 0) {
@@ -735,6 +737,8 @@ static inline void solveWith1Pt(int *neq,
     break;
   case 1:
     if (!isSameTime(xout, xp)) {
+      ind->tcur = xp;
+      ind->tout = xout;
       F77_CALL(dlsoda)(dydt_lsoda_dum, &neqOde, yp, &xp, &xout,
                        &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                        istate, &giopt, global_rworkp,
@@ -752,6 +756,8 @@ static inline void solveWith1Pt(int *neq,
     break;
   case 0:
     if (!isSameTimeDop(xout, xp)) {
+      ind->tcur = xp;
+      ind->tout = xout;
       idid = dop853(&neqOde,       /* dimension of the system <= UINT_MAX-1*/
                     dydt,       /* function computing the value of f(x,y) */
                     xp,           /* initial x-value */
@@ -2583,6 +2589,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            ind->tcur = xp;
+            ind->tout = ind->extraDoseNewXout;
             F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
@@ -2598,6 +2606,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ind->idx = idx;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            ind->tcur = ind->extraDoseNewXout;
+            ind->tout = xout;
             F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
@@ -2605,6 +2615,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
+          ind->tcur = xp;
+          ind->tout = xout;
           F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
           postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
@@ -2765,6 +2777,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
+            ind->tcur = xp;
+            ind->tout = ind->extraDoseNewXout;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           xp,           /* initial x-value */
@@ -2803,6 +2817,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           ind->ixds = ixds;
           ind->idxExtra++;
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
+            ind->tcur = ind->extraDoseNewXout;
+            ind->tout = xout;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           ind->extraDoseNewXout,           /* initial x-value */
@@ -2833,6 +2849,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           xp = ind->extraDoseNewXout;
         }
         if (!isSameTimeDop(xout, xp)) {
+          ind->tcur = xp;
+          ind->tout = xout;
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
                         xp,           /* initial x-value */
