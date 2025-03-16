@@ -394,44 +394,6 @@ namespace stan {
         }
       }
 
-
-      // void setAlast(Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> Alast,
-      //               Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
-      //   A_[ncmt_ + oral0_ + 0] = J(0, 0);
-      //   A_[ncmt_ + oral0_ + 1] = J(0, 1);
-      //   if (ncmt_ >=2) {
-      //     A_[ncmt_ + oral0_ + 2] = J(0, 2);
-      //     A_[ncmt_ + oral0_ + 3] = J(0, 3);
-      //     if (ncmt_ == 3) {
-      //       A_[ncmt_ + oral0_ + 4] = J(0, 4);
-      //       A_[ncmt_ + oral0_ + 5] = J(0, 5);
-      //     }
-      //   }
-      //   if (oral0_) {
-      //     A_[ncmt_ + oral0_ + 2*ncmt_] = J(0, 2*ncmt_);
-      //   }
-      //   // Save A1-A4
-      //   for (int i = 0; i < ncmt_ + oral0_; i++) {
-      //     //(3*ncmt+2*oral0)+0
-      //     stan::math::var smv = Alast(i, 0);
-      //     A_[i] = smv.val();
-      //     A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*i + 0] = J(i, 0);
-      //     A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*i + 1] = J(i, 1);
-      //     if (ncmt_ >=2) {
-      //       A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*i + 2] = J(i, 2);
-      //       A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*i + 3] = J(i, 3);
-      //       if (ncmt_ == 3){
-      //         A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*i + 4] = J(i, 4);
-      //         A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*i + 5] = J(i, 5);
-      //       }
-      //     }
-      //     if (oral0_) {
-      //       //(3*ncmt+oral0)+2*ncmt
-      //       A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*i + 2*ncmt_] = J(i, 2*ncmt_);
-      //     }
-      //   }
-      // }
-
       void setRate(double *R) {
         rate_ = R;
       }
