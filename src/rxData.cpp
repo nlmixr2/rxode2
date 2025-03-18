@@ -1464,6 +1464,7 @@ struct rx_globals {
   double *gssRtol;
   double *gpars;
   double *gLinSave;
+  double *gLinDummy;
   //ints
   int *gevid;
   int *gBadDose;
@@ -1528,6 +1529,12 @@ static inline double *getLinCmtSaveThread() {
   return _globals.gLinSave + (op->numLinSens+op->numLin)*omp_get_thread_num();
 }
 
+static inline double *getLinCmtDummyThread() {
+  rx_solve* rx = getRxSolve_();
+  rx_solving_options* op = rx->op;
+  return _globals.gLinDummy + (op->neq)*omp_get_thread_num();
+}
+
 static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
@@ -1580,6 +1587,7 @@ extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->tfirstS = getTfirstSThread();
     ind->curDoseS = getCurDoseSThread();
     ind->linCmtSave = getLinCmtSaveThread();
+    ind->linCmtDummy = getLinCmtDummyThread();
 
     ind->ignoredDoses = _globals.ignoredDoses[omp_get_thread_num()];
     ind->ignoredDosesN = &(_globals.nIgnoredDoses[omp_get_thread_num()]);
@@ -5499,9 +5507,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n7 =  nIndSim * rx->nsub * rx->nsim;
     int n8 = rx->maxAllTimes*op->cores;
     int n9 = (op->numLinSens+op->numLin)*op->cores;
+    int n10 = (op->neq)*op->cores;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 +
+                                      n9 + n10 +
                                       5*op->neq + 8*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
@@ -5541,8 +5550,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gTfirstS  = _globals.gTlastS + n3a_c; // [n3a]
     _globals.gCurDoseS = _globals.gTfirstS + n3a_c; // [n3a]
     _globals.gIndSim   = _globals.gCurDoseS + n3a_c;// [n7]
-    _globals.gLinSave = _globals.gIndSim + n7; // [n9]
-    _globals.timeThread = _globals.gLinSave + n9;
+    _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
+    _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
+    _globals.timeThread = _globals.gLinDummy + n10;
     std::fill_n(rx->ypNA, op->neq, NA_REAL);
 
     std::fill_n(&_globals.gatol2[0],op->neq, atolNV[0]);

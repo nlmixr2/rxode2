@@ -468,8 +468,17 @@ t_ME ME = NULL;
 t_IndF IndF = NULL;
 
 
-static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
+static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
+  if (op->numLin > 0) {
+    if (ind->linCmtLastT != ind->tout) {
+      // call one last time to get the right values
+      // need dummy to write the ODE values into..
+      dydt(neq, ind->tout, yp, ind->linCmtDummy);
+    }
+    std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
+              yp);
+  }
   if (*idid <= 0) {
     if (err_msg != NULL) {
       int cid = -*idid-1;
@@ -478,7 +487,7 @@ static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char*
     }
     *rc = *idid;
     badSolveExit(*i);
-  } else if (ind->err){
+  } else if (ind->err) {
     if (doPrint) printErr(ind->err, ind->id);
     /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
     *rc = -2019;
@@ -494,6 +503,7 @@ static inline void postSolve(int *idid, int *rc, int *i, double *yp, const char*
       for (int j = op->neq; j--;) yp[j]= max(bottom,yp[j]);
     }
   }
+
   ind->slvr_counter[0]++;
 }
 
@@ -2071,7 +2081,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on,
                       ME, IndF);
         xoutp=xout;
-        postSolve(&idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
+        postSolve(neq, &idid, rc, &i, yp, NULL, 0, true, ind, op, rx);
       }
     }
     ind->_newind = 2;
@@ -2217,7 +2227,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
-            postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
           int idx = ind->idx;
           int ixds= ind->ixds;
@@ -2231,13 +2241,13 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
             lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
-            postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
           lsoda(ctx, yp, &xp, xout);
-          postSolve(&(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
         }
         xp = xout;
       }
@@ -2663,7 +2673,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->tout = ind->extraDoseNewXout;
             F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+            postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           int idx = ind->idx;
           int ixds = ind->ixds;
@@ -2680,7 +2690,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->tout = xout;
             F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+            postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
         }
@@ -2689,7 +2699,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ind->tout = xout;
           F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-          postSolve(&istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
+          postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
         xp = xout;
         //dadt_counter = 0;
@@ -2851,7 +2861,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
             // will fill in the states as required
             // In theory no elements to yp should be zero.
             c_dydt(neq, ind->tout, yp, yp);
-            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           int idx = ind->idx;
           int ixds = ind->ixds;
@@ -2866,7 +2876,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
             ind->tprior = ind->extraDoseNewXout;
             ind->tout = xout;
             c_dydt(neq, ind->tout, yp, yp);
-            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           xp = ind->extraDoseNewXout;
         }
@@ -2874,7 +2884,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           ind->tprior = xp;
           ind->tout = xout;
           c_dydt(neq, ind->tout, yp, yp);
-          postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
         }
         //dadt_counter = 0;
@@ -2994,7 +3004,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
-            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           int idx = ind->idx;
           int ixds = ind->ixds;
@@ -3034,7 +3044,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
-            postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           xp = ind->extraDoseNewXout;
         }
@@ -3066,7 +3076,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         NULL,           /* indexes of components for which dense output is required, >= nrdens */
                         0                       /* declared length of icon */
                         );
-          postSolve(&idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
         }
         //dadt_counter = 0;

@@ -178,7 +178,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   // Get/Set the pointers
   double *asave = ind->linCmtSave;
   double *r = getLinRate;
-  double *a = getAdvan(idx == 0 ? 0 : idx-1);
+  double *a = getAdvan(idx);
   lc.setPtr(a, r, asave);
   lc.setRate(r);
 
@@ -234,11 +234,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 
     fx = lc(theta);
 
-    if (_t == ind->tout) {
-      // save the values
-      double *acur = getAdvan(idx);
-      std::copy(asave, asave + nAlast, acur);
-    }
   } else {
     // If we are calculating the LHS values or other values, these are
     // stored in the corresponding compartments.
@@ -248,6 +243,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     double *acur = getAdvan(idx);
     asave = acur;
     fx = lc.restoreFx(acur);
+    ind->linCmtLastT = _t;
   }
   if (which < 0) {
     return lc.adjustF(fx, theta);
@@ -416,11 +412,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     lc.setDt(dt);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    if (_t == ind->tout) {
-      // save the values
-      double *acur = getAdvan(idx);
-      std::copy(asave, asave + nAlast, acur);
-    }
+    ind->linCmtLastT = _t;
   } else {
     double *acur = getAdvan(idx);
     asave = acur;

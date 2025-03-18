@@ -154,6 +154,7 @@ typedef struct {
   int err;
   int solved;
   double *linCmtSave;
+  double *linCmtDummy;
   double linCmtLastT;
   int linCmt;
   int cacheME;

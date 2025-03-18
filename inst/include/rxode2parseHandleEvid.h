@@ -299,9 +299,7 @@ static inline int syncIdx(rx_solving_options_ind *ind) {
   return 1;
 }
 
-
 extern t_F AMT;
-
 
 static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y) {
   double ret = AMT(id, cmt, dose, t, y);
@@ -641,6 +639,8 @@ static inline int handle_evid(int evid, int neq,
     case EVIDF_NORMAL:
       ind->on[cmt] = 1;
       if (ind->wh0 != EVID0_PHANTOM) {
+        // REprintf("handle_evid: EVIDF_NORMAL: %d; cmt: %d; dose: %f; xout: %f\n",
+        //          evid, cmt, getDoseIndex(ind, ind->idx), xout);
         yp[cmt] += getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       }
 		}
