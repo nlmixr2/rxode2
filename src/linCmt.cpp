@@ -348,14 +348,22 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
-  double t = _t - ind->curShift;
-  Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-  Eigen::Matrix<double, -1, -1> J;
-  Eigen::Matrix<double, -1, 1> theta;
+  // Create the solved system object
   stan::math::linCmtStan lc(ncmt, oral0, trans, true);
+
+  // Get number of items in Alast
   int nAlast = lc.getNalast();
-  int nPars =  lc.getNpars();
-  theta.resize(nPars);
+
+  // Get/Set the pointers
+  double *asave = ind->linCmtSave;
+  double *r = getLinRate;
+  double *a = getAdvan(idx == 0 ? 0 : idx-1);
+  lc.setPtr(a, r, asave);
+  lc.setRate(r);
+
+  // Setup parameter matrix
+  Eigen::Matrix<double, -1, 1> theta;
+  theta.resize(lc.getNpars());
   switch (ncmt) {
   case 1:
     if (oral0 == 1) {
@@ -381,36 +389,47 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   default:
     return NA_REAL;
   }
-  double *aLastPtr = getAdvan(idx);
-  lc.setPtr(aLastPtr, getLinRate, ind->linCmtSave);
-  Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
-  std::copy(aLastPtr, aLastPtr + nAlast, Alast.data());
-  lc.setAlast(Alast, nAlast);
-  lc.setRate(getLinRate);
-  lc.setDt(_t - ind->curShift);
-  if (ind->linCmtLastT != _t) {
+
+  Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+  Eigen::Matrix<double, -1, -1> J;
+
+  if (ind->_rxFlag == 1 && _t != ind->tprior) {
+    // Here we are doing ODE solving OR only linear solving
+    // so we calculate these values here.
+    //
+    // For these cases:
+
+    // ind->tprior gives the prior known time or current time solved to
+    //
+    // ind->tout gives the time solved
+    //
+    // _t gives the time requested to solve for (which with ODE
+    // solving may not be tout); note that if _t = ind->tprior the
+    // solution is the last solution solved or initial conditions
+    //
+
+    // Get/Set the dt; This is only applicable in the ODE/linCmt() case
+    double dt = _t - ind->tprior;
+    lc.setDt(dt);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    // Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
-    ind->linCmtLastT = _t;
+    if (_t == ind->tout) {
+      // save the values
+      double *acur = getAdvan(idx);
+      std::copy(acur, acur + nAlast, asave);
+    }
   } else {
-    fx = lc.restoreFx(aLastPtr);
-    J = lc.restoreJac(aLastPtr);
+    double *acur = getAdvan(idx);
+    asave = acur;
+    fx = lc.restoreFx(acur);
+    J = lc.restoreJac(acur);
   }
   if (which1 >= 0 && which2 >= 0) {
     // w1, w2 are > 0
     return J(which1, which2);
   } else if (which1 == -1 && which2 == -1) {
     // -1, -1 is the function value
-    double ret = fx(oral0);
-    if (trans != 10 || ncmt == 1) {
-      ret = ret / v1;
-    } else if (ncmt == 2) {
-      ret = ret / (v1 + p3);
-    } else if (ncmt == 3) {
-      ret = ret / (v1 + p3 + p5);
-    }
-    return ret;
+    return lc.adjustF(fx, theta);
   } else if (which1 >= 0 && which2 == -2) {
     // w2 < 0
     return fx(which1);
