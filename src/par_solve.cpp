@@ -2028,7 +2028,6 @@ void handleSS(int *neq,
 
 //================================================================================
 // Inductive linearization routines
-
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
                             t_update_inis u_inis, t_ME ME, t_IndF IndF) {
   clock_t t0 = clock();
@@ -2881,9 +2880,9 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         //dadt_counter = 0;
       }
     }
-    if (!op->badSolve){
+    if (!op->badSolve) {
       ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3){
+      if (getEvid(ind, ind->ix[i]) == 3) {
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
           ind->InfusionRate[j] = 0;
