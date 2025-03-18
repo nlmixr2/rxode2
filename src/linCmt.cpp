@@ -210,7 +210,9 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   default:
     return NA_REAL;
   }
+
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+
   if (ind->_rxFlag == 1 && _t != ind->tprior) {
     // Here we are doing ODE solving OR only linear solving
     // so we calculate these values here.
@@ -231,10 +233,11 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     lc.setDt(dt);
 
     fx = lc(theta);
+
     if (_t == ind->tout) {
       // save the values
       double *acur = getAdvan(idx);
-      std::copy(acur, acur + nAlast, asave);
+      std::copy(asave, asave + nAlast, acur);
     }
   } else {
     // If we are calculating the LHS values or other values, these are
@@ -416,7 +419,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     if (_t == ind->tout) {
       // save the values
       double *acur = getAdvan(idx);
-      std::copy(acur, acur + nAlast, asave);
+      std::copy(asave, asave + nAlast, acur);
     }
   } else {
     double *acur = getAdvan(idx);
