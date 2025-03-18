@@ -200,7 +200,7 @@ typedef struct {
   double *timeThread;
   int idxLow;
   int idxHi;
-  double tcur;
+  double tprior;
   double tout;
 } rx_solving_options_ind;
 

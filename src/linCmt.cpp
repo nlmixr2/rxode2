@@ -169,66 +169,93 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
-  double t = _t - ind->curShift;
-  if (ind->linCmtLastT != _t) {
-    Eigen::Matrix<double, -1, 1> theta;
+  // Create the solved system object
+  stan::math::linCmtStan lc(ncmt, oral0, trans, false);
 
-    stan::math::linCmtStan lc(ncmt, oral0, trans, false);
-    int nAlast = lc.getNalast();
-    int nPars =  lc.getNpars();
-    theta.resize(nPars);
-    switch (ncmt) {
-    case 1:
-      if (oral0 == 1) {
-        theta << p1, v1, ka;
-      } else {
-        theta << p1, v1;
-      }
-      break;
-    case 2:
-      if (oral0 == 1) {
-        theta << p1, v1, p2, p3, ka;
-      } else {
-        theta << p1, v1, p2, p3;
-      }
-      break;
-    case 3:
-      if (oral0 == 1) {
-        theta << p1, v1, p2, p3, p4, p5, ka;
-      } else {
-        theta << p1, v1, p2, p3, p4, p5;
-      }
-      break;
-    default:
-      return NA_REAL;
+  // Get number of items in Alast
+  int nAlast = lc.getNalast();
+
+  // Get/Set the pointers
+  double *asave = ind->linCmtSave;
+  double *r = getLinRate;
+  double *a = getAdvan(idx == 0 ? 0 : idx-1);
+  lc.setPtr(a, r, asave);
+  lc.setRate(r);
+
+  // Setup parameter matrix
+  Eigen::Matrix<double, -1, 1> theta;
+  theta.resize(lc.getNpars());
+  switch (ncmt) {
+  case 1:
+    if (oral0 == 1) {
+      theta << p1, v1, ka;
+    } else {
+      theta << p1, v1;
     }
-    double *aLastPtr = getAdvan(idx);
-    lc.setPtr(aLastPtr, getLinRate, ind->linCmtSave);
-    Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(nAlast);
-    std::copy(aLastPtr, aLastPtr + nAlast, Alast.data());
-    lc.setAlast(Alast, nAlast);
-    lc.setRate(getLinRate);
-    lc.setDt(_t - ind->curShift);
-    Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+    break;
+  case 2:
+    if (oral0 == 1) {
+      theta << p1, v1, p2, p3, ka;
+    } else {
+      theta << p1, v1, p2, p3;
+    }
+    break;
+  case 3:
+    if (oral0 == 1) {
+      theta << p1, v1, p2, p3, p4, p5, ka;
+    } else {
+      theta << p1, v1, p2, p3, p4, p5;
+    }
+    break;
+  default:
+    return NA_REAL;
+  }
+  Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+  if (ind->_rxFlag == 1 && _t != ind->tprior) {
+    // Here we are doing ODE solving OR only linear solving
+    // so we calculate these values here.
+    //
+    // For these cases:
+
+    // ind->tprior gives the prior known time or current time solved to
+    //
+    // ind->tout gives the time solved
+    //
+    // _t gives the time requested to solve for (which with ODE
+    // solving may not be tout); note that if _t = ind->tprior the
+    // solution is the last solution solved or initial conditions
+    //
+
+    // Get/Set the dt; This is only applicable in the ODE/linCmt() case
+    double dt = _t - ind->tprior;
+    lc.setDt(dt);
+
     fx = lc(theta);
-    ind->linCmtSave[0] = lc.adjustF(fx, theta);
-    ind->linCmtLastT = _t;
+    if (_t == ind->tout) {
+      // save the values
+      double *acur = getAdvan(idx);
+      std::copy(acur, acur + nAlast, asave);
+    }
+  } else {
+    // If we are calculating the LHS values or other values, these are
+    // stored in the corresponding compartments.
+    //
+    // This also handles the case where _t = ind->tcur, where the
+    // solution is already known
+    double *acur = getAdvan(idx);
+    asave = acur;
+    fx = lc.restoreFx(acur);
   }
   if (which < 0) {
-    double ret = ind->linCmtSave[oral0];
-    if (trans != 10 || ncmt == 1) {
-      ret = ret / v1;
-    } else if (ncmt == 2) {
-      ret = ret / (v1 + p3);
-    } else if (ncmt == 3) {
-      ret = ret / (v1 + p3 + p5);
-    }
-    return ret;
-  } else {
-    return ind->linCmtSave[which];
+    return lc.adjustF(fx, theta);
+  } else if (which >= 0 && which < nAlast) {
+    // Return the amount in the linear compartment model
+    // which can be depot, central, peripheral, second peripheral
+    return asave[which];
   }
+  // Invalid index
+  return NA_REAL;
 }
-
 /*
  *  linCmtB
  *
