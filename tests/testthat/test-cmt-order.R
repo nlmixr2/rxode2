@@ -43,9 +43,11 @@ rxTest({
       d / dt(blood) <- a * intestine - b * blood
     })
     expect_equal(tmp$stateExtra, "matt")
+
   })
 
   test_that("Compartment melding with dvid", {
+
     w <- rxode2({
       ktr <- exp(tktr + eta.ktr)
       ka <- exp(tka + eta.ka)
@@ -74,8 +76,10 @@ rxTest({
       dvid(-1, 4)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
+
     tmp <- etTrans(w2, w, addCmt = TRUE)
+
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
@@ -111,8 +115,10 @@ rxTest({
       dvid(5, 4)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
+
     tmp <- etTrans(w2, w, addCmt = TRUE)
+
     expect_equal(
       tmp$CMT[tmp$ID == 1],
       c(
@@ -131,7 +137,7 @@ rxTest({
       )
     )
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid)
     tmp <- etTrans(w2, w, addCmt = TRUE)
     expect_equal(
@@ -142,7 +148,7 @@ rxTest({
       )
     )
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid) * 10
     expect_warning(tmp <- etTrans(w2, w, addCmt = TRUE))
     expect_equal(
@@ -180,7 +186,7 @@ rxTest({
       dvid(5)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid) * 10
     expect_warning(tmp <- etTrans(w2, w, addCmt = TRUE))
     expect_equal(
@@ -218,7 +224,7 @@ rxTest({
       dvid(4, 5)
     })
 
-    w2 <- warfarin
+    w2 <- nlmixr2data::warfarin
     w2$dvid <- as.integer(w2$dvid)
     tmp <- etTrans(w2, w, addCmt = TRUE)
     expect_equal(
@@ -384,7 +390,7 @@ rxTest({
 
     # context("warfarin inner test")
 
-    data.pkpd <- warfarin
+    data.pkpd <- nlmixr2data::warfarin
     data.pkpd$dvid <- as.integer(data.pkpd$dvid)
     data.pkpd$cmt <- paste(factor(data.pkpd$dvid, c(1, 2), c("center", "effect")))
     data.pkpd$cmt[data.pkpd$amt > 0] <- "depot"

@@ -195,17 +195,23 @@ IntegerVector getLinInfo_(List mv) {
  * @return The compartment number adjusted for linear solved systems
  */
 int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
-              int numSens) {
-  // With no linear compartments, the compartment number is the same
-  if (numLin == 0 && depotLin == 0) {
-    return cmt;
-  }
+              int numSens, int sens) {
   if (cmt == NA_INTEGER) return NA_INTEGER;
   if (cmt == 0) return 0;
   if (cmt < 0) {
     // The same rules apply for negative compartments (called recursively)
     return -getCmtNum(-cmt, numLin, numLinSens, depotLin, numCmt,
-                      numSens);
+                      numSens, sens);
+  }
+  // With no linear compartments, the compartment number is the same
+  int nODE = numCmt - numLin - numSens;
+  if (numLin == 0 && depotLin == 0) {
+    if (cmt > nODE) {
+      // This is a DVID, so return it as is
+      return cmt + numSens;
+    } else {
+      return cmt;
+    }
   }
   // With a oral linear compartment:
   // 1. The depot is always the first compartment
@@ -225,7 +231,6 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
 
   int nODEsens = numSens - numLinSens;
 
-  int nODE = numCmt - numLin - numSens;
 
   // REprintf("cmt: %d, numLin: %d, numLinSens: %d, depotLin: %d, numCmt: %d, numSens: %d\n", cmt, numLin, numLinSens, depotLin, numCmt, numSens);
 
@@ -249,16 +254,21 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
     //return nODE+nODEsens+numOff+cmt-nODE-numOff;//numOff;
     return nODEsens+cmt;
   }
-  // ODE sensitivities
-  if (cmt <= nODE+numLin+nODEsens) {
-    // This is the ODE sensitivities
-    // The input offset is cmt-nODE-numLin
-    // The output is nODE+(cmt-nODE-numLin)
-    // which reduces to
-    return cmt-numLin;
+  if (sens) {
+    // ODE sensitivities
+    if (cmt <= nODE+numLin+nODEsens) {
+      // This is the ODE sensitivities
+      // The input offset is cmt-nODE-numLin
+      // The output is nODE+(cmt-nODE-numLin)
+      // which reduces to
+      return cmt-numLin;
+    }
+    // Linear sensitivities, these should be the same compartments
+    return cmt;
   }
-  // Linear sensitivities, these should be the same compartments
-  return cmt;
+  // Sensitivities are ignored, these are DVIDs instead
+  int extra = cmt - nODE - numLin;
+  return numCmt + extra;
 }
 
 //' Get the real compartment number based on NONMEM-style compartment
@@ -274,16 +284,16 @@ int getCmtNum(int cmt, int numLin, int numLinSens, int depotLin, int numCmt,
 //'
 //' @noRd
 //[[Rcpp::export]]
-IntegerVector getCmtNum_(IntegerVector cmt, List mv) {
+IntegerVector getCmtNum_(IntegerVector cmt, List mv, bool sens=true) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
   IntegerVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
-  CharacterVector sens = mv[RxMv_sens];
+  CharacterVector sensCV = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
-                       state.size(), sens.size());
+                       state.size(), sensCV.size(), sens);
   }
   return ret;
 }
@@ -410,7 +420,7 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state,
         IntegerVector out(in.size());
         for (int i = in.size(); i--;){
           out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
-                             numSens);
+                             numSens, false);
         }
         return as<IntegerVector>(out);
       }
@@ -820,7 +830,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int numCmt = Rf_length(mv[RxMv_state]);
   int numSens = Rf_length(mv[RxMv_sens]);
   int cmt1 = getCmtNum(1, numLin, numLinSens, depotLin, numCmt,
-                       numSens);
+                       numSens, false);
   bool hasIcov = false;
   List iCov_;
   if (!iCov.isNull()){
@@ -1734,9 +1744,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         bool goodCmt = false;
         int cmpCmt;
         if ((curDvid.size()) > 1) {
-          for (j=curDvid.size();j--;){
-            if (curDvid[j] > 0){
-              if (curDvid[j] == cmt || curDvid[j] == -cmt){
+          for (j=curDvid.size();j--;) {
+            if (curDvid[j] > 0) {
+              if (curDvid[j] == cmt || curDvid[j] == -cmt) {
                 goodCmt=true;
                 break;
               }
@@ -1764,12 +1774,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             cmt = inDvid[i];
           }
         }
-        if (!goodCmt){
+        if (!goodCmt) {
           IntegerVector dvidDF(curDvid.size());
           for (i = dvidDF.size(); i--;){
             dvidDF[i] = i+1;
           }
-          List dvidTrans = List::create(_["dvid"]=dvidDF, _["modeled cmt"]=curDvid);
+          List dvidTrans = List::create(_["dvid"]=dvidDF, _["modeledCmt"]=curDvid);
           Rf_setAttrib(dvidTrans, R_ClassSymbol, wrap("data.frame"));
           Rf_setAttrib(dvidTrans, R_RowNamesSymbol,
                        IntegerVector::create(NA_INTEGER, -dvidDF.size()));
@@ -1779,7 +1789,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             Rprintf("'DVID': %d\t", inDvid[i]);
           }
           Rprintf("'CMT': %d\n", cmt);
-          stop(_("'dvid'->'cmt' or 'cmt' on observation record on a undefined compartment (use 'cmt()' 'dvid()') id: %s row: %d"),
+          stop(_("'dvid'->'cmt' or 'cmt' on observation record or on a undefined compartment (use 'cmt()' 'dvid()') id: %s row: %d"),
                CHAR(idLvl[cid-1]), i+1);
         }
         id.push_back(cid);

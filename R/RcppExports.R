@@ -139,8 +139,8 @@ getLinInfo_ <- function(mv) {
 #' @return An integer vector with the real compartment numbers
 #'
 #' @noRd
-getCmtNum_ <- function(cmt, mv) {
-    .Call(`_rxode2_getCmtNum_`, cmt, mv)
+getCmtNum_ <- function(cmt, mv, sens = TRUE) {
+    .Call(`_rxode2_getCmtNum_`, cmt, mv, sens)
 }
 
 #' Set Initial conditions to time zero instead of the first observed/dosed time

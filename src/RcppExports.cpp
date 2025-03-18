@@ -263,14 +263,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // getCmtNum_
-IntegerVector getCmtNum_(IntegerVector cmt, List mv);
-RcppExport SEXP _rxode2_getCmtNum_(SEXP cmtSEXP, SEXP mvSEXP) {
+IntegerVector getCmtNum_(IntegerVector cmt, List mv, bool sens);
+RcppExport SEXP _rxode2_getCmtNum_(SEXP cmtSEXP, SEXP mvSEXP, SEXP sensSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerVector >::type cmt(cmtSEXP);
     Rcpp::traits::input_parameter< List >::type mv(mvSEXP);
-    rcpp_result_gen = Rcpp::wrap(getCmtNum_(cmt, mv));
+    Rcpp::traits::input_parameter< bool >::type sens(sensSEXP);
+    rcpp_result_gen = Rcpp::wrap(getCmtNum_(cmt, mv, sens));
     return rcpp_result_gen;
 END_RCPP
 }
