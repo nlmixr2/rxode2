@@ -397,6 +397,7 @@ void reset(void) {
   tb.isPi       = 0;
   tb.isNA       = 0;
   tb.linCmt     = 0;
+  tb.linCmtCmt  = 0;
   tb.linCmtN    = -100;
   tb.linCmtFlg  = 0;
   tb.df		= R_Calloc(MXSYM, int);

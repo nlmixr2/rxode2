@@ -61,10 +61,8 @@ SEXP generateModelVars(void) {
   SEXP slhs   = PROTECT(Rf_allocVector(STRSXP, tb.sli));pro++;
   SEXP interp = PROTECT(Rf_allocVector(INTSXP, tb.pi));pro++;
 
-
   SEXP version = PROTECT(calcVersionInfo());pro++;
   SEXP ini = PROTECT(calcIniVals()); pro++;
-
 
   SEXP model  = PROTECT(Rf_allocVector(STRSXP,2));pro++;
   SEXP modeln = PROTECT(Rf_allocVector(STRSXP,2));pro++;

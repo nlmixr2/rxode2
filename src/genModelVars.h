@@ -106,7 +106,7 @@ static inline void calcNparamsNlhsNslhs(void) {
 static inline void calcNextra(void) {
   int offCmt=0,nExtra = 0;
   char *buf=NULL, buf2[200];
-  for (int i = 0; i < tb.statei; i++){
+  for (int i = 0; i < tb.statei; i++) {
     if (offCmt == 0 && tb.idu[i] == 0){
       buf=tb.ss.line[tb.di[i]];
       offCmt = 1;
@@ -118,12 +118,20 @@ static inline void calcNextra(void) {
         snprintf(buf2, 200, "compartment '%s' needs differential equations defined", v);
         updateSyntaxCol();
         trans_syntax_error_report_fn0(buf2);
-      } else if (!strcmp("depot", buf) || !strcmp("central", buf)) {
       } else {
-        char *v = rc_dup_str(buf, 0);
-        snprintf(buf2, 200, _("compartment '%s' needs differential equations defined"), v);
-        updateSyntaxCol();
-        trans_syntax_error_report_fn0(buf2);
+        // If there is only a linear compartment model AND this is a cmt() item, then
+        // this should be an extra compartment.
+        if (tb.linCmtCmt == 1 && tb.didx[i] < 0) {
+          buf=tb.ss.line[tb.di[i]];
+          offCmt = 1;
+          nExtra++;
+        } else if (tb.linCmtCmt == 1) {
+        } else {
+          char *v = rc_dup_str(buf, 0);
+          snprintf(buf2, 200, _("compartment '%s' needs differential equations defined"), v);
+          updateSyntaxCol();
+          trans_syntax_error_report_fn0(buf2);
+        }
       }
     } else if (offCmt == 1 && tb.idu[i] == 0){
       nExtra++;
@@ -297,8 +305,9 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
   int *sensPropI = INTEGER(sensProp);
   int *normPropI = INTEGER(normProp);
   for (int i=0; i<tb.de.n; i++) {                     /* name state vars */
-    buf=tb.ss.line[tb.di[ordFp[i]-1]] ;
-    if (tb.idu[ordFp[i]-1] == 1){
+    buf=tb.ss.line[tb.di[ordFp[i]-1]];
+    /* REprintf("%s...idu[] %d\n", buf, tb.idu[ordFp[i]-1]); */
+    if (tb.idu[ordFp[i]-1] == 1) {
       if (strncmp(buf,"rx__sens_", 9) == 0){
         statePropI[k] = tb.dprop[ordFp[i]-1];
         sensPropI[j] = tb.dprop[ordFp[i]-1];

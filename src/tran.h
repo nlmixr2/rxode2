@@ -73,6 +73,7 @@ lhs symbols?
   int isPi; // # pi?
   int isNA; // # pi?
   int linCmt; // Unparsed linear compartment
+  int linCmtCmt; // Are all non linear-system compartments derived from cmt()
   int linCmtN; // Unparsed linear compartment
   int linCmtFlg;
   // Save Jacobian information

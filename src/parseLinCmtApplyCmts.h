@@ -149,6 +149,14 @@ extern void calcLinCmt(void) {
   int numSens = 0;
   int depot=0;
   if (tb.linCmt) {
+    // See if all currently defined compartments are cmt()
+    tb.linCmtCmt = 1;
+    for (int i = 0; i < tb.statei; i++) {
+      if (tb.didx[i] >= 0) {
+        tb.linCmtCmt = 0;
+        break;
+      }
+    }
     if (tb.hasKa) {
       addLinCmt(ni, "depot", &linCmtErr, 1); nLin++; depot=1;
     }
