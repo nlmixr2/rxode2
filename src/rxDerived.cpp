@@ -659,7 +659,10 @@ extern "C" SEXP derived3(int trans, SEXP inp, double dig) {
 }
 
 
-extern "C" SEXP _rxode2_calcDerived(SEXP ncmtSXP, SEXP transSXP, SEXP inp, SEXP sigdigSXP) {
+extern "C" SEXP _rxode2_calcDerived(SEXP ncmtSXP,
+                                    SEXP oralSXP,
+                                    SEXP w2SXP,
+                                    SEXP transSXP, SEXP inp, SEXP sigdigSXP) {
 BEGIN_RCPP
   int tInp = TYPEOF(inp);
   int trans=-1;

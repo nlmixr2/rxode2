@@ -261,7 +261,8 @@ const char *rxGetId(int id);
 
 double phi(double q);
 SEXP _rxode2_phi(SEXP q);
-SEXP _rxode2_calcDerived(SEXP transSXP, SEXP ncmt, SEXP inp, SEXP dig);
+SEXP _rxode2_calcDerived(SEXP transSXP, SEXP ncmt, SEXP o0, SEXP w1, SEXP w2,
+                         SEXP inp, SEXP dig);
 
 double gamma_p(double, double z);
 double gamma_q(double, double z);
@@ -723,7 +724,7 @@ void R_init_rxode2(DllInfo *info){
     {"_gammaqInv", (DL_FUNC) _gammaqInv, 2},
     {"_gammapInva", (DL_FUNC) _gammapInv, 2},
     {"_gammaqInva", (DL_FUNC) _gammaqInv, 2},
-    {"_rxode2_calcDerived", (DL_FUNC) _rxode2_calcDerived, 4},
+    {"_rxode2_calcDerived", (DL_FUNC) _rxode2_calcDerived, 6},
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
     {"_rxode2_rpp_", (DL_FUNC) _rxode2_rpp_, 7},
