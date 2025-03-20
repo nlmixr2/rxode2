@@ -80,6 +80,7 @@ typedef struct {
   int numLinSens;
   int numLin;
   int depotLin;
+  int linOffset;
 } rx_solving_options;
 
 

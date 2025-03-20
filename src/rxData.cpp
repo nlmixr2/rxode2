@@ -4773,6 +4773,7 @@ static inline void iniRx(rx_solve* rx) {
   op->numLinSens = 0;
   op->numLin = 0;
   op->depotLin = 0;
+  op->linOffset = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
@@ -5294,6 +5295,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->numLinSens = numLinSens;
     op->numLin = numLin;
     op->depotLin = depotLin;
+    op->linOffset = op->neq - numLin - numLinSens;
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
