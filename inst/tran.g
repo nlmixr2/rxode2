@@ -14,6 +14,7 @@ statement
   | rate       end_statement
   | dur        end_statement
   | derivative end_statement
+  | dfdy       end_statement
   | mtime      end_statement
   | mat0       end_statement
   | matF       end_statement
@@ -70,6 +71,9 @@ ini        : identifier_r ('=' | '<-' ) ini_const;
 
 derivative : 'd/dt' '(' identifier_r_no_output ')' ('=' | '<-' | '~') ('+' | '-' | ) logical_or_expression;
 der_rhs    : 'd/dt' '(' identifier_r_no_output ')';
+
+dfdy        : 'df' '(' identifier_r_no_output ')/dy(' (theta0_noout | theta_noout | eta_noout | identifier_r_no_output) ')' ('=' | '<-' ) logical_or_expression;
+dfdy_rhs    : 'df' '(' identifier_r_no_output ')/dy(' (theta0_noout | theta_noout | eta_noout | identifier_r_no_output) ')';
 
 fbio        : ('f' | 'F')  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
 alag        : ('alag' | 'lag')  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
@@ -147,6 +151,7 @@ primary_expression
   | theta
   | eta
   | der_rhs
+  | dfdy_rhs
   | function
   | ifelse
   | '(' logical_or_expression ')'
