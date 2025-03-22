@@ -670,7 +670,7 @@
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
 rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
-                    scale = NULL, method = c("liblsoda", "lsoda", "dop853", "indLin"),
+                    scale = NULL, method = c("liblsoda", "dop853", "indLin"),
                     sigdig=NULL,
                     atol = 1.0e-8, rtol = 1.0e-6,
                     maxsteps = 70000L, hmin = 0, hmax = NA_real_,
@@ -2218,8 +2218,6 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"liblsoda"` thread safe lsoda.  This supports parallel
 #'            thread-based solving, and ignores user Jacobian specification.
-#' * `"lsoda"` -- LSODA solver.  Does not support parallel thread-based
-#'       solving, but allows user Jacobian specification.
 #' * `"dop853"` -- DOP853 solver.  Does not support parallel thread-based
 #'         solving nor user Jacobian specification
 #' * `"indLin"` -- Solving through inductive linearization.  The rxode2 dll
@@ -2228,12 +2226,10 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' @return An integer for the method (unless the input is NULL, in which case,
 #'   see the details)
 #' @export
-odeMethodToInt <- function(method = c("liblsoda", "lsoda", "dop853", "indLin")) {
-  .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
-  if (missing(method) && grepl("SunOS", Sys.info()["sysname"])) {
-    method <- 1L
-  } else if (is.null(method)) {
-    method <- .methodIdx
+odeMethodToInt <- function(method = c("liblsoda", "dop853", "indLin")) {
+  .methodIdx <- c("dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+  if (is.null(method)) {
+    method <- 2L
   } else if (checkmate::testIntegerish(method)) {
     method <- as.integer(method)
   } else {
@@ -2314,7 +2310,7 @@ rxUiDeparse.rxControl <- function(object, var) {
       .covsInterpolation <- c("linear"=0L, "locf"=1L, "nocb"=2L, "midpoint"=3L)
       paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
     } else if (x == "method")  {
-      .methodIdx <- c("lsoda" = 1L, "dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
+      .methodIdx <- c("dop853" = 0L, "liblsoda" = 2L, "indLin" = 3L)
       paste0(x, " =", deparse1(names(.methodIdx)[which(object[[x]] == .methodIdx)]))
     } else if (x == "naInterpolation") {
       .naInterpolation <- c("locf"=1L, "nocb"=0L)
