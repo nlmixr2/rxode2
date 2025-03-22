@@ -2632,9 +2632,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   gliw = liw;
   glrw = lrw;
 
-  /* memset(rwork,0.0,lrw+1); */ // Does not work since it is a double
-  for (i = lrw+1; i--;) rwork[i]=0;
-  memset(iwork,0,liw+1); // Works because it is a integer
+  std::fill(rwork, rwork + lrw + 1, 0.0); // Works because it is a double
+  std::fill(iwork, iwork + liw + 1, 0); // Works because it is a integer
 
   neq[1] = solveid;
 
@@ -2697,7 +2696,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!isSameTime(xout, xp)) {
           ind->tprior = xp;
           ind->tout = xout;
-          F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+          F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp,
+                           &xp, &xout, &gitol,
+                           &(op->RTOL),
+                           &(op->ATOL),
+                           &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
