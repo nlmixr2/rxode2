@@ -33,7 +33,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   scale = NULL,
-  method = c("liblsoda", "dop853", "indLin"),
+  method = c("liblsoda", "lsoda", "dop853", "indLin"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -271,6 +271,8 @@ variable by 2.}
 \itemize{
 \item \code{"liblsoda"} thread safe lsoda.  This supports parallel
 thread-based solving, and ignores user Jacobian specification.
+\item \code{"lsoda"} -- LSODA solver.  Does not support parallel thread-based
+solving, but allows user Jacobian specification.
 \item \code{"dop853"} -- DOP853 solver.  Does not support parallel thread-based
 solving nor user Jacobian specification
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
