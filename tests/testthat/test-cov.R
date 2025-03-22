@@ -141,7 +141,7 @@ rxTest({
 
   skip_if_not_installed("units")
 
-  for (meth in c("liblsoda", "lsoda")) { ## Dop is very close but doesn't match precisely.
+  for (meth in c("liblsoda", "dop853")) { ## Dop is very close but doesn't match precisely.
 
     # context(sprintf("Simple test for time-varying covariates (%s)", meth))
 
