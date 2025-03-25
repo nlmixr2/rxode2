@@ -30,7 +30,7 @@ extern "C" {
 #include "par_solve.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = op->neq*(ind->n_all_times); j--;){ \
-    ind->solve[j] = NA_REAL;                                            \
+    ind->solve[j] = NA_REAL;                                           \
   }                                                                     \
   op->badSolve = 1;                                                     \
   i = ind->n_all_times-1; // Get out of here!
@@ -470,15 +470,17 @@ t_IndF IndF = NULL;
 
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
-  if (op->numLin > 0) {
-    if (ind->linCmtLastT != ind->tout) {
-      // call one last time to get the right values
-      // need dummy to write the ODE values into..
-      dydt(neq, ind->tout, yp, ind->linCmtDummy);
-    }
-    std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
-              yp);
-  }
+//   if (op->numLin > 0) {
+//     if (!isSameTime(ind->linCmtLastT, ind->tout)) {
+//       // call one last time to get the right values
+//       // need dummy to write the ODE values into..
+//       setIndPointersByThread(ind);
+//       dydt(neq, ind->tout, yp, ind->linCmtDummy);
+//     }
+// #pragma omp critical
+//     std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
+//               yp);
+//   }
   if (*idid <= 0) {
     if (err_msg != NULL) {
       int cid = -*idid-1;
@@ -710,99 +712,107 @@ static inline void solveWith1Pt(int *neq,
                                 void *ctx){
   int idid, itol=0;
   int neqOde = *neq - op->numLin - op->numLinSens;
-  switch(op->stiff){
-  case 3:
-    if (!isSameTime(xout, xp)) {
-      idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
-                    ME, IndF);
-    }
-    if (idid <= 0) {
-      /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
-      ind->rc[0] = idid;
-      // Bad Solve => NA
-      badSolveExit(*i);
-    } else if (ind->err){
-      /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
-      ind->rc[0] = idid;
-      // Bad Solve => NA
-      badSolveExit(*i);
-    }
-    break;
-  case 2:
+  if (neqOde == 0 && *neq > 0) {
     if (!isSameTime(xout, xp)) {
       ind->tprior = xp;
       ind->tout = xout;
-      lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
+      dydt(neq, ind->tout, yp, yp);
     }
-    if (*istate <= 0) {
-      RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
-      ind->rc[0] = -2019;
+  } else {
+    switch(op->stiff) {
+    case 3:
+      if (!isSameTime(xout, xp)) {
+        idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
+                      ME, IndF);
+      }
+      if (idid <= 0) {
+        /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
+        ind->rc[0] = idid;
+        // Bad Solve => NA
+        badSolveExit(*i);
+      } else if (ind->err){
+        /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
+        ind->rc[0] = idid;
+        // Bad Solve => NA
+        badSolveExit(*i);
+      }
       break;
-    } else if (ind->err){
-      printErr(ind->err, ind->id);
-      ind->rc[0] = -2019;
-      *i = ind->n_all_times-1; // Get out of here!
+    case 2:
+      if (!isSameTime(xout, xp)) {
+        ind->tprior = xp;
+        ind->tout = xout;
+        lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
+      }
+      if (*istate <= 0) {
+        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err){
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        *i = ind->n_all_times-1; // Get out of here!
+        break;
+      }
+      break;
+    case 1:
+      if (!isSameTime(xout, xp)) {
+        ind->tprior = xp;
+        ind->tout = xout;
+        F77_CALL(dlsoda)(dydt_lsoda_dum, &neqOde, yp, &xp, &xout,
+                         &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+                         istate, &giopt, global_rworkp,
+                         &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+      }
+      if (*istate <= 0) {
+        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        ind->rc[0] = -2019;/* *istate; */
+        break;
+      } else if (ind->err){
+        printErr(ind->err, ind->id);
+        ind->rc[0] = -2019;
+        break;
+      }
+      break;
+    case 0:
+      if (!isSameTimeDop(xout, xp)) {
+        ind->tprior = xp;
+        ind->tout = xout;
+        idid = dop853(&neqOde,       /* dimension of the system <= UINT_MAX-1*/
+                      dydt,         /* function computing the value of f(x,y) */
+                      xp,           /* initial x-value */
+                      yp,           /* initial values for y */
+                      xout,         /* final x-value (xend-x may be positive or negative) */
+                      &(op->RTOL),          /* relative error tolerance */
+                      &(op->ATOL),          /* absolute error tolerance */
+                      itol,         /* switch for rtoler and atoler */
+                      solout,         /* function providing the numerical solution during integration */
+                      0,         /* switch for calling solout */
+                      NULL,           /* messages stream */
+                      DBL_EPSILON,    /* rounding unit */
+                      0,              /* safety factor */
+                      0,              /* parameters for step size selection */
+                      0,
+                      0,              /* for stabilized step size control */
+                      ind->HMAX,              /* maximal step size */
+                      op->H0,            /* initial step size */
+                      op->mxstep,            /* maximal number of allowed steps */
+                      1,            /* switch for the choice of the coefficients */
+                      -1,                     /* test for stiffness */
+                      0,                      /* number of components for which dense outpout is required */
+                      NULL,           /* indexes of components for which dense output is required, >= nrdens */
+                      0                       /* declared length of icon */
+                      );
+      }
+      if (idid < 0) {
+        ind->rc[0] = -2019;
+        break;
+      } else if (ind->err){
+        printErr(ind->err, ind->id);
+        *i = ind->n_all_times-1; // Get out of here!
+        break;
+      }
       break;
     }
-    break;
-  case 1:
-    if (!isSameTime(xout, xp)) {
-      ind->tprior = xp;
-      ind->tout = xout;
-      F77_CALL(dlsoda)(dydt_lsoda_dum, &neqOde, yp, &xp, &xout,
-                       &gitol, &(op->RTOL), &(op->ATOL), &gitask,
-                       istate, &giopt, global_rworkp,
-                       &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
-    }
-    if (*istate <= 0) {
-      RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
-      ind->rc[0] = -2019;/* *istate; */
-      break;
-    } else if (ind->err){
-      printErr(ind->err, ind->id);
-      ind->rc[0] = -2019;
-      break;
-    }
-    break;
-  case 0:
-    if (!isSameTimeDop(xout, xp)) {
-      ind->tprior = xp;
-      ind->tout = xout;
-      idid = dop853(&neqOde,       /* dimension of the system <= UINT_MAX-1*/
-                    dydt,         /* function computing the value of f(x,y) */
-                    xp,           /* initial x-value */
-                    yp,           /* initial values for y */
-                    xout,         /* final x-value (xend-x may be positive or negative) */
-                    &(op->RTOL),          /* relative error tolerance */
-                    &(op->ATOL),          /* absolute error tolerance */
-                    itol,         /* switch for rtoler and atoler */
-                    solout,         /* function providing the numerical solution during integration */
-                    0,         /* switch for calling solout */
-                    NULL,           /* messages stream */
-                    DBL_EPSILON,    /* rounding unit */
-                    0,              /* safety factor */
-                    0,              /* parameters for step size selection */
-                    0,
-                    0,              /* for stabilized step size control */
-                    ind->HMAX,              /* maximal step size */
-                    op->H0,            /* initial step size */
-                    op->mxstep,            /* maximal number of allowed steps */
-                    1,            /* switch for the choice of the coefficients */
-                    -1,                     /* test for stiffness */
-                    0,                      /* number of components for which dense outpout is required */
-                    NULL,           /* indexes of components for which dense output is required, >= nrdens */
-                    0                       /* declared length of icon */
-                    );
-    }
-    if (idid < 0) {
-      ind->rc[0] = -2019;
-      break;
-    } else if (ind->err){
-      printErr(ind->err, ind->id);
-      *i = ind->n_all_times-1; // Get out of here!
-      break;
-    }
-    break;
   }
 }
 
@@ -2343,6 +2353,7 @@ extern "C" void par_linCmt(rx_solve *rx) {
     for (int solveid = thread; solveid < nsim*nsub; solveid+=cores){
       if (abort == 0){
         setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
+
         ind_linCmt0(rx, op, solveid, neq, dydt, update_inis);
 
         if (displayProgress && thread == 0) {
@@ -2825,7 +2836,9 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   int nx;
   neq[1] = solveid;
   ind = &(rx->subjects[neq[1]]);
+
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
+
   nx = ind->n_all_times;
   inits = op->inits;
   BadDose = ind->BadDose;

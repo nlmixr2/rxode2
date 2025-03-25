@@ -3,8 +3,8 @@
 #include <rxode2.h>
 #include <float.h>
 
-#define _evid getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(&_solveData->subjects[_cSub])->idx])
-#define amt (isDose(_evid) ?  getDose((&_solveData->subjects[_cSub]),(&_solveData->subjects[_cSub])->ixds) : NA_REAL)
+#define _evid getEvid(_ind, _ind->ix[_ind->idx])
+#define amt (isDose(_evid) ?  getDose(_ind,_ind->ixds) : NA_REAL)
 #define JAC_Rprintf Rprintf
 #define _idx (_solveData->subjects[_cSub]).idx
 #define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) Rprintf
@@ -60,35 +60,35 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define Rx_pow_di(a, b) Rx_pow_di_(a, b, _solveData)
 #define abs_log1p(x) (((x) + 1.0 > 0.0) ? log1p(x) : (((x) + 1.0 > 0.0) ? log1p(-x) : 0.0))
 #define abs_log(x) ((&_solveData->safeZero && fabs(x) <= sqrt(DBL_EPSILON)) ? log(sqrt(DBL_EPSILON)) : (((x) > 0.0) ? log(x) ? (((x) == 0) ? 0.0 : log(-x))))
-#define _IR (_solveData->subjects[_cSub].InfusionRate)
-#define _ON (_solveData->subjects[_cSub].on)
-#define _PP (_solveData->subjects[_cSub].par_ptr)
-#define _PL (_solveData->subjects[_cSub].lhs)
+#define _IR (_ind->InfusionRate)
+#define _ON (_ind->on)
+#define _PP (_ind->par_ptr)
+#define _PL (_ind->lhs)
 #define _SR (INTEGER(stateRmS))
-#define NEWIND ((double)_solveData->subjects[_cSub]._newind)
-#define newind ((double)_solveData->subjects[_cSub]._newind)
-#define rxFlag ((double)_solveData->subjects[_cSub]._rxFlag)
-#define rx_lambda_ _solveData->subjects[_cSub].lambda
-#define rx_yj_ _solveData->subjects[_cSub].yj
-#define rx_hi_ _solveData->subjects[_cSub].logitHi
-#define rx_low_ _solveData->subjects[_cSub].logitLow
+#define NEWIND ((double)_ind->_newind)
+#define newind ((double)_ind->_newind)
+#define rxFlag ((double)_ind->_rxFlag)
+#define rx_lambda_ _ind->lambda
+#define rx_yj_ _ind->yj
+#define rx_hi_ _ind->logitHi
+#define rx_low_ _ind->logitLow
 #define rxTBS(x, lm, yj, hi, low)  _powerD(x,  lm, (int)(yj), hi, low)
 #define rxTBSi(x, lm, yj, hi, low) _powerDi(x,  lm, (int)(yj), hi, low)
 #define rxTBSd(x, lm, yj, hi, low) _powerDD(x, lm, (int)(yj), hi, low)
 #define rxTBSd2(x, lm, yj, hi, low) _powerDDD(x, lm, (int)(yj), hi, low)
 #define normcdf(x) phi(x)
-#define _getIndSim(id, val) (_solveData->subjects[_cSub].isIni == 1 ? \
-                             (_solveData->subjects[_cSub].simIni[id] = (val)) : \
-                             _solveData->subjects[_cSub].simIni[id])
+#define _getIndSim(id, val) (_ind->isIni == 1 ? \
+                             (_ind->simIni[id] = (val)) : \
+                             _ind->simIni[id])
 #undef rbeta
 #define rbeta(ind, x, y) rxbeta(ind, x, y)
 #undef rnorm
 #define rnorm(ind,x,y) rxnorm(ind, x,y)
-#define rxnorm1(x) rxnorm(&_solveData->subjects[_cSub], x, 1.0)
-#define rnorm1(x) rxnorm(&_solveData->subjects[_cSub],x, 1.0)
-#define rxnormV1(x) rxnorm(&_solveData->subjects[_cSub], x, 1.0)
-#define rinorm1(id, x) rinorm(&_solveData->subjects[_cSub], id, x, 1.0)
-#define rinormV1(id, x) rinorm(&_solveData->subjects[_cSub], id, x, 1.0)
+#define rxnorm1(x) rxnorm(_ind, x, 1.0)
+#define rnorm1(x) rxnorm(_ind,x, 1.0)
+#define rxnormV1(x) rxnorm(_ind, x, 1.0)
+#define rinorm1(id, x) rinorm(_ind, id, x, 1.0)
+#define rinormV1(id, x) rinorm(_ind, id, x, 1.0)
 
 // FIXME: need to use same scheme here
 #define rnormV(ind, x,y) rxnormV(ind,x,y)
@@ -96,33 +96,33 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 
 #undef rcauchy
 #define rcauchy(ind, x, y) rxcauchy(ind,x,y)
-#define rxcauchy1(x) rxcauchy(&_solveData->subjects[_cSub],x, 1.0)
-#define ricauchy1(id, x) ricauchy(&_solveData->subjects[_cSub], id, x, 1.0)
+#define rxcauchy1(x) rxcauchy(_ind,x, 1.0)
+#define ricauchy1(id, x) ricauchy(_ind, id, x, 1.0)
 #undef rchisq
 #define rchisq(ind, x) rxchisq(ind, x)
 #undef rexp
 #define rexp(ind, x) rxexp(ind, x)
 #undef rgamma
 #define rgamma(ind, x,y) rxgamma(ind, x,y)
-#define rgamma1(x) rxgamma(&_solveData->subjects[_cSub], x,1.0)
-#define rxgamma1(x) rxgamma(&_solveData->subjects[_cSub], x,1.0)
-#define rigamma1(id, x) rigamma(&_solveData->subjects[_cSub], id, x,1.0)
+#define rgamma1(x) rxgamma(_ind, x,1.0)
+#define rxgamma1(x) rxgamma(_ind, x,1.0)
+#define rigamma1(id, x) rigamma(_ind, id, x,1.0)
 #undef rgeom
 #define rgeom(ind,x) rxgeom(ind,x)
 #undef rpois
 #define rpois(ind,x) rxpois(ind,x)
 #undef runif
 #define runif(ind,x,y) rxunif(ind,x,y)
-#define runif1(x) rxunif(&_solveData->subjects[_cSub],x,1.0)
-#define rxunif1(x) rxunif(&_solveData->subjects[_cSub],x,1.0)
-#define riunif1(id, x) riunif(&_solveData->subjects[_cSub],id, x,1.0)
+#define runif1(x) rxunif(_ind,x,1.0)
+#define rxunif1(x) rxunif(_ind,x,1.0)
+#define riunif1(id, x) riunif(_ind,id, x,1.0)
 #undef rweibull
 #define rweibull(ind,x,y) rxweibull(ind,x,y)
-#define rxweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
-#define riweibull1(id, x) riweibull(&_solveData->subjects[_cSub], id, x, 1.0)
-#define rweibull1(x) rxweibull(&_solveData->subjects[_cSub], x, 1.0)
-#define __llikSav (&_solveData->subjects[_cSub])->llikSave
-#define __llikSavX(i) (&_solveData->subjects[_cSub])->llikSave + (int)(i)*rxLlikSaveSize
+#define rxweibull1(x) rxweibull(_ind, x, 1.0)
+#define riweibull1(id, x) riweibull(_ind, id, x, 1.0)
+#define rweibull1(x) rxweibull(_ind, x, 1.0)
+#define __llikSav _ind->llikSave
+#define __llikSavX(i) _ind->llikSave + (int)(i)*rxLlikSaveSize
 #define llikNorm(x, mu, sd) _llikNorm(__llikSav, x, mu, sd)
 #define llikNormDmean(x, mu, sd) _llikNormDmean(__llikSav, x, mu, sd)
 #define llikNormDsd(x, mu, sd) _llikNormDsd(__llikSav, x, mu, sd)
@@ -218,31 +218,31 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define _invLogit2(x, y) expit(x, y, 1.0)
 #define _logitInv1(x) expit(x, 0.0, 1.0)
 #define _logitInv2(x, y) expit(x, y, 1.0)
-#define _podo0() (_solveData->subjects[_cSub].curDose)
-#define _podo00() (ISNA(_solveData->subjects[_cSub].curDose) ? 0 : _solveData->subjects[_cSub].curDose)
-#define _podo1(x) (_solveData->subjects[_cSub].curDoseS[x])
-#define _podo01(x) (ISNA(_solveData->subjects[_cSub].curDoseS[x]) ? 0 : _solveData->subjects[_cSub].curDoseS[x])
+#define _podo0() (_ind->curDose)
+#define _podo00() (ISNA(_ind->curDose) ? 0 : _ind->curDose)
+#define _podo1(x) (_ind->curDoseS[x])
+#define _podo01(x) (ISNA(_ind->curDoseS[x]) ? 0 : _ind->curDoseS[x])
 
-#define _dose0() (_solveData->subjects[_cSub].curDose)
-#define _dose1(x) (_solveData->subjects[_cSub].curDoseS[x])
-#define _dose00() (ISNA(_solveData->subjects[_cSub].curDose) ? 0 : _solveData->subjects[_cSub].curDose)
-#define _dose01(x) (ISNA(_solveData->subjects[_cSub].curDoseS[x]) ? 0 : _solveData->subjects[_cSub].curDoseS[x])
-#define _tad0() (t-_solveData->subjects[_cSub].tlast)
-#define _tad1(x) (t-_solveData->subjects[_cSub].tlastS[x])
-#define _tad00() (ISNA(_solveData->subjects[_cSub].tlast)? 0 : (t- _solveData->subjects[_cSub].tlast))
-#define _tad01(x) (ISNA(_solveData->subjects[_cSub].tlastS[x]) ? 0 : (t- _solveData->subjects[_cSub].tlastS[x]))
-#define _tafd0()  (t-_solveData->subjects[_cSub].tfirst)
-#define _tafd00()  (ISNA(_solveData->subjects[_cSub].tfirst) ? 0 : (t- _solveData->subjects[_cSub].tfirst))
-#define _tafd1(x) (t-_solveData->subjects[_cSub].tfirstS[x])
-#define _tafd01(x) (ISNA(_solveData->subjects[_cSub].tfirstS[x]) ? 0 : (t- _solveData->subjects[_cSub].tfirstS[x]))
-#define _tlast0() _solveData->subjects[_cSub].tlast
-#define _tlast1(x) _solveData->subjects[_cSub].tlastS[x]
-#define _tlast00() (ISNA(_solveData->subjects[_cSub].tlast) ? 0 : _solveData->subjects[_cSub].tlast)
-#define _tlast01(x) (ISNA(_solveData->subjects[_cSub].tlastS[x]) ? 0 : _solveData->subjects[_cSub].tlastS[x])
-#define _tfirst0()  _solveData->subjects[_cSub].tfirst
-#define _tfirst00()  (ISNA(_solveData->subjects[_cSub].tfirst) ? 0 : _solveData->subjects[_cSub].tfirst)
-#define _tfirst1(x) _solveData->subjects[_cSub].tfirstS[x]
-#define _tfirst01(x) (ISNA(_solveData->subjects[_cSub].tfirstS[x]) ? 0 : _solveData->subjects[_cSub].tfirstS[x])
+#define _dose0() (_ind->curDose)
+#define _dose1(x) (_ind->curDoseS[x])
+#define _dose00() (ISNA(_ind->curDose) ? 0 : _ind->curDose)
+#define _dose01(x) (ISNA(_ind->curDoseS[x]) ? 0 : _ind->curDoseS[x])
+#define _tad0() (t-_ind->tlast)
+#define _tad1(x) (t-_ind->tlastS[x])
+#define _tad00() (ISNA(_ind->tlast)? 0 : (t- _ind->tlast))
+#define _tad01(x) (ISNA(_ind->tlastS[x]) ? 0 : (t- _ind->tlastS[x]))
+#define _tafd0()  (t-_ind->tfirst)
+#define _tafd00()  (ISNA(_ind->tfirst) ? 0 : (t- _ind->tfirst))
+#define _tafd1(x) (t-_ind->tfirstS[x])
+#define _tafd01(x) (ISNA(_ind->tfirstS[x]) ? 0 : (t- _ind->tfirstS[x]))
+#define _tlast0() _ind->tlast
+#define _tlast1(x) _ind->tlastS[x]
+#define _tlast00() (ISNA(_ind->tlast) ? 0 : _ind->tlast)
+#define _tlast01(x) (ISNA(_ind->tlastS[x]) ? 0 : _ind->tlastS[x])
+#define _tfirst0()  _ind->tfirst
+#define _tfirst00()  (ISNA(_ind->tfirst) ? 0 : _ind->tfirst)
+#define _tfirst1(x) _ind->tfirstS[x]
+#define _tfirst01(x) (ISNA(_ind->tfirstS[x]) ? 0 : _ind->tfirstS[x])
 #define rxAlagLin(x) x
 #define rxAlag1Lin(x) x
 #define rxFLin(x) x

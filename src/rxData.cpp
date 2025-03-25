@@ -5004,7 +5004,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case 1:
-          // Thread safe, and reproducible
           op->cores = getRxThreads(INT_MAX, false);
           rxSolveDat->throttle = true;
           break;
@@ -5018,7 +5017,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       } else {
         switch (thread) {
         case 2:
-          // Thread safe, but possibly not reproducible
           if (op->cores > 1) {
             op->stiff = method = 4;
           }

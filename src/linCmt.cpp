@@ -5,8 +5,9 @@
 #define STRICT_R_HEADERS
 #include "linCmt.h"
 
-#define getAdvan(idx) ind->solve + op->linOffset
+#define getAdvan(idx) ind->solve + op->linOffset + op->neq*(idx)
 #define getLinRate ind->InfusionRate + op->linOffset
+#define isSameTime(xout, xp) (fabs((xout)-(xp)) <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 
 // Create linear compartment models for testing
 using namespace Rcpp;
@@ -212,7 +213,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
 
-  if (ind->_rxFlag == 1 && _t != ind->tprior) {
+  if (ind->_rxFlag == 1 && !isSameTime(_t, ind->tprior)) {
     // Here we are doing ODE solving OR only linear solving
     // so we calculate these values here.
     //
@@ -228,11 +229,15 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     //
 
     // Get/Set the dt; This is only applicable in the ODE/linCmt() case
+
     double dt = _t - ind->tprior;
     lc.setDt(dt);
 
     fx = lc(theta);
-
+    if (isSameTime(_t, ind->tout)) {
+      std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
+                getAdvan(idx));
+    }
   } else {
     // If we are calculating the LHS values or other values, these are
     // stored in the corresponding compartments.
@@ -242,7 +247,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     double *acur = getAdvan(idx);
     asave = acur;
     fx = lc.restoreFx(acur);
-    ind->linCmtLastT = _t;
   }
   if (which < 0) {
     return lc.adjustF(fx, theta);
@@ -254,6 +258,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   // Invalid index
   return NA_REAL;
 }
+
 /*
  *  linCmtB
  *
@@ -391,7 +396,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
   Eigen::Matrix<double, -1, -1> J;
 
-  if (ind->_rxFlag == 1 && _t != ind->tprior) {
+  if (ind->_rxFlag == 1 && !isSameTime(_t, ind->tprior)) {
     // Here we are doing ODE solving OR only linear solving
     // so we calculate these values here.
     //
@@ -411,7 +416,10 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     lc.setDt(dt);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    ind->linCmtLastT = _t;
+    if (isSameTime(_t, ind->tout)) {
+      std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
+                getAdvan(idx));
+    }
   } else {
     double *acur = getAdvan(idx);
     asave = acur;
