@@ -17,6 +17,7 @@ rxode2_fn0i _prodType = NULL;
 rxode2_fn0i _sumType = NULL;
 
 _update_par_ptr_p _update_par_ptr=NULL;
+_setIndPointersByThread_p _setIndPointersByThread = NULL;
 _getParCov_p _getParCov=NULL;
 linCmtA_p linCmtA;
 linCmtB_p linCmtB;
@@ -304,6 +305,7 @@ void _assignFuns0(void) {
   _ptrid=(rxode2_fn0i)R_GetCCallable("rxode2", "rxode2_current_fn_pointer_id");
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
+  _setIndPointersByThread = (_setIndPointersByThread_p) R_GetCCallable("rxode2","_setIndPointersByThread");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
   // dynamic start
   linCmtA=(linCmtA_p)R_GetCCallable("rxode2", "linCmtA");

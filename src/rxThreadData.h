@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-  void setIndPointersByThread(rx_solving_options_ind *ind);
+  void _setIndPointersByThread(rx_solving_options_ind *ind);
 
 #if defined(__cplusplus)
 }

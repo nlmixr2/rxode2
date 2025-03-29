@@ -2046,6 +2046,16 @@ void handleSS(int *neq,
   updateExtraDoseGlobals(ind);
 }
 
+static inline void
+updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
+            double &xout,
+            int &i, int &nx) {
+  if (i+1 != nx) {
+    std::copy(getSolve(i), getSolve(i+1), getSolve(i+1));
+  }
+  calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+}
+
 //================================================================================
 // Inductive linearization routines
 extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
@@ -2120,8 +2130,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (rx->istateReset) idid = 1;
         xp = xout;
       }
-      if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
     }
   }
@@ -2288,8 +2297,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (rx->istateReset) ctx->state = 1;
         xp = xout;
       }
-      if (i+1 != nx) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
@@ -2746,8 +2754,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       }
       // Copy to next solve so when assigned to
       // yp=ind->solve[neq[0]*i]; it will be the prior values
-      if (i+1 != ind->n_all_times) memcpy(getSolve(i+1), yp, neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateSolve(ind, op, neq, xout, i, ind->n_all_times);
     }
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -2851,11 +2858,11 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     ind->idx=i;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
-    if (global_debug){
+    if (global_debug) {
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
     if (getEvid(ind, ind->ix[i]) != 3) {
-      if (ind->err){
+      if (ind->err) {
         printErr(ind->err, ind->id);
         *rc = idid;
         // Bad Solve => NA
@@ -2876,7 +2883,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
             // When linCmtA or linCmtB is called at the right time, the function
             // will fill in the states as required
             // In theory no elements to yp should be zero.
-            c_dydt(neq, ind->tout, yp, yp);
+            dydt(neq, ind->tout, yp, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           int idx = ind->idx;
@@ -2891,7 +2898,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
             ind->tprior = ind->extraDoseNewXout;
             ind->tout = xout;
-            c_dydt(neq, ind->tout, yp, yp);
+            dydt(neq, ind->tout, yp, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           xp = ind->extraDoseNewXout;
@@ -2899,7 +2906,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         if (!isSameTime(xout, xp)) {
           ind->tprior = xp;
           ind->tout = xout;
-          c_dydt(neq, ind->tout, yp, yp);
+          dydt(neq, ind->tout, yp, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
         }
@@ -2921,7 +2928,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         u_inis(neq[1], yp); // Update initial conditions @ current time
         ind->ixds++;
         xp=xout;
-      } else if (handleEvid1(&i, rx, neq, yp, &xout)){
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
@@ -2930,8 +2937,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         xp = xout;
       }
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
-      if (i+1 != nx) memcpy(getSolve(i+1), getSolve(i), neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateSolve(ind, op, neq, xout, i, nx);
     }
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -3122,8 +3128,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         xp = xout;
       }
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
-      if (i+1 != nx) memcpy(getSolve(i+1), getSolve(i), neq[0]*sizeof(double));
-      calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+      updateSolve(ind, op, neq, xout, i, nx);
     }
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;

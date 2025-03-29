@@ -221,6 +221,7 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) Rf_errorcall(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
+
   if (ind->_update_par_ptr_in) return;
   int idx = idxIn;
   rx_solving_options *op = rx->op;

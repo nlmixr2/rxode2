@@ -1573,7 +1573,7 @@ static inline double *getCurDoseSThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gCurDoseS);
 }
 
-extern "C" void setIndPointersByThread(rx_solving_options_ind *ind) {
+extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   int ncmt = (op->neq + op->extraCmt);
@@ -2615,6 +2615,10 @@ void resetFkeep();
 //' @export
 // [[Rcpp::export]]
 LogicalVector rxSolveFree(){
+  if (omp_get_thread_num() != 0) {
+    // Only the main thread should be freeing the solver.
+    return LogicalVector::create(false);
+  }
   _rxode2_udfReset();
   resetFkeep();
   if (!_globals.alloc) return true;

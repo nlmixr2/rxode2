@@ -1,4 +1,3 @@
-
 #pragma once
 #define STRICT_R_HEADERS
 #ifndef __rxode2_H__
@@ -29,6 +28,7 @@
 
 #ifndef __RXODE2PTR_H__  // directly refer to abi need to be excluded
 #define getSolve(idx) ind->solve + (op->neq)*(idx)
+#define getAdvan(idx) ind->solve + op->linOffset + op->neq*(idx)
 #endif
 
 #ifdef _isrxode2_

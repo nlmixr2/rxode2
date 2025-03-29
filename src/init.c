@@ -247,6 +247,7 @@ void rxOptionsIni(void);
 /* void rxOptionsIniFocei(void); */
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+void _setIndPointersByThread(rx_solving_options_ind *ind);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
 
 int par_progress(int c, int n, int d, int cores, clock_t t0, int stop);
@@ -791,6 +792,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
+  R_RegisterCCallable("rxode2", "_setIndPointersByThread", (DL_FUNC) &_setIndPointersByThread);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
   R_RegisterCCallable("rxode2","rxGetModelLib", (DL_FUNC) &rxGetModelLib);

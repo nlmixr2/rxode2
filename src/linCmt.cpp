@@ -4,8 +4,8 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "linCmt.h"
+#include "../inst/include/rxode2.h"
 
-#define getAdvan(idx) ind->solve + op->linOffset + op->neq*(idx)
 #define getLinRate ind->InfusionRate + op->linOffset
 #define isSameTime(xout, xp) (fabs((xout)-(xp)) <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 
@@ -234,10 +234,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     lc.setDt(dt);
 
     fx = lc(theta);
-    if (isSameTime(_t, ind->tout)) {
-      std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
-                getAdvan(idx));
-    }
   } else {
     // If we are calculating the LHS values or other values, these are
     // stored in the corresponding compartments.

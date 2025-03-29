@@ -328,15 +328,22 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
     if (ind->ignoredDoses[i] == doseIdx) return 0;
   }
   if (ind->ignoredDosesN[0]+1 >= ind->ignoredDosesAllocN[0]) {
-    int *tmpI = (int*)realloc(ind->ignoredDoses, (ind->ignoredDosesN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
-    if (tmpI == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
-      return 0;
+    rx_solving_options *op = &op_global;
+#pragma omp critcial
+    {
+      int *tmpI = (int*)realloc(ind->ignoredDoses, (ind->ignoredDosesN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
+      if (tmpI == NULL) {
+        op->badSolve = 1;
+        // return 0;
+      } else {
+        ind->ignoredDoses = tmpI;
+        ind->ignoredDosesAllocN[0] = (ind->ignoredDosesN[0]+1+EVID_EXTRA_SIZE);
+        re = 1;
+      }
     }
-    ind->ignoredDoses = tmpI;
-    ind->ignoredDosesAllocN[0] = (ind->ignoredDosesN[0]+1+EVID_EXTRA_SIZE);
-    re = 1;
+    if (op->badSolve) {
+      return 0; // don't continue if we have a bad solve.
+    }
   }
   ind->ignoredDoses[ind->ignoredDosesN[0]] = doseIdx;
   ind->ignoredDosesN[0] = ind->ignoredDosesN[0]+1;
@@ -346,15 +353,22 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
 static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->pendingDosesN[0]+1 >= ind->pendingDosesAllocN[0]) {
-    int *tmpI = (int*)realloc(ind->pendingDoses, (ind->pendingDosesN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
-    if (tmpI == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
+    rx_solving_options *op = &op_global;
+#pragma omp critical
+    {
+      int *tmpI = (int*)realloc(ind->pendingDoses, (ind->pendingDosesN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
+      if (tmpI == NULL) {
+        op->badSolve = 1;
+        //return 0;
+      } else {
+        ind->pendingDoses = tmpI;
+        ind->pendingDosesAllocN[0] = (ind->pendingDosesN[0]+1+EVID_EXTRA_SIZE);
+        re = 1;
+      }
+    }
+    if (op->badSolve == 1)  {
       return 0;
     }
-    ind->pendingDoses = tmpI;
-    ind->pendingDosesAllocN[0] = (ind->pendingDosesN[0]+1+EVID_EXTRA_SIZE);
-    re = 1;
   }
   ind->pendingDoses[ind->pendingDosesN[0]] = doseIdx;
   ind->pendingDosesN[0] = ind->pendingDosesN[0]+1;
@@ -366,40 +380,49 @@ static inline int pushDosingEvent(double time, double amt, int evid,
                                    rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
-    int *tmpI = (int*)realloc(ind->extraDoseTimeIdx, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
-    if (tmpI == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
+    rx_solving_options *op = &op_global;
+#pragma omp critical
+    {
+      int *tmpI = (int*)realloc(ind->extraDoseTimeIdx, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
+      if (tmpI == NULL) {
+        op->badSolve = -1;
+        // return 0;
+      } else {
+        ind->extraDoseTimeIdx = tmpI;
+
+        tmpI = (int*)realloc(ind->extraDoseEvid, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
+        if (tmpI == NULL) {
+          op->badSolve = 1;
+          // return 1;
+        } else {
+          ind->extraDoseEvid = tmpI;
+          double * tmpD = (double*)realloc(ind->extraDoseTime, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
+          if (tmpD == NULL) {
+            op->badSolve = 1;
+            //return 1;
+          } else {
+            ind->extraDoseTime = tmpD;
+
+            tmpD = (double*)realloc(ind->extraDoseDose,  (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
+            if (tmpD == NULL) {
+              op->badSolve = 1;
+              //return 1;
+            } else {
+              ind->extraDoseDose = tmpD;
+
+              ind->extraDoseAllocN[0] = (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE);
+              re = 1;
+            }
+          }
+        }
+      }
+    }
+    if (op->badSolve == 1) {
+      return 1;
+    } else if (op->badSolve == -1) {
+      op->badSolve = 1; // set to bad solve.
       return 0;
     }
-    ind->extraDoseTimeIdx = tmpI;
-
-    tmpI = (int*)realloc(ind->extraDoseEvid, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
-    if (tmpI == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
-      return 1;
-    }
-    ind->extraDoseEvid = tmpI;
-
-    double * tmpD = (double*)realloc(ind->extraDoseTime, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
-    if (tmpD == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
-      return 1;
-    }
-    ind->extraDoseTime = tmpD;
-
-    tmpD = (double*)realloc(ind->extraDoseDose,  (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
-    if (tmpD == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
-      return 1;
-    }
-    ind->extraDoseDose = tmpD;
-
-    ind->extraDoseAllocN[0] = (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE);
-    re = 1;
   }
   ind->extraDoseTimeIdx[ind->extraDoseN[0]] = ind->extraDoseN[0];
   ind->extraDoseTime[ind->extraDoseN[0]] = time;
@@ -415,39 +438,51 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
                                         rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->extraDoseN[0]+1 >= ind->extraDoseAllocN[0]) {
-    int *tmpI = (int*)realloc(ind->extraDoseTimeIdx, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
-    if (tmpI == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
+    rx_solving_options *op = &op_global;
+#pragma omp critical
+    {
+      int *tmpI = (int*)realloc(ind->extraDoseTimeIdx, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
+      if (tmpI == NULL) {
+        op->badSolve = -1;
+        // return 0;
+      }  else {
+        ind->extraDoseTimeIdx = tmpI;
+
+        tmpI = (int*)realloc(ind->extraDoseEvid, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
+        if (tmpI == NULL) {
+          op->badSolve = 1;
+          // return 1;
+        } else {
+          ind->extraDoseEvid = tmpI;
+
+          double * tmpD = (double*)realloc(ind->extraDoseTime, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
+          if (tmpD == NULL) {
+            op->badSolve = 1;
+            //return 1;
+          } else {
+            ind->extraDoseTime = tmpD;
+
+            tmpD = (double*)realloc(ind->extraDoseDose,  (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
+            if (tmpD == NULL) {
+              op->badSolve = 1;
+              // return 1;
+            } else {
+              ind->extraDoseDose = tmpD;
+
+              ind->extraDoseAllocN[0] = (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE);
+            }
+          }
+
+        }
+
+      }
+    }
+    if (op->badSolve == 1) {
+      return 1; // don't continue if we have a bad solve.
+    } else if (op->badSolve == -1) {
+      op->badSolve = 1; // set to bad solve.
       return 0;
     }
-    ind->extraDoseTimeIdx = tmpI;
-
-    tmpI = (int*)realloc(ind->extraDoseEvid, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
-    if (tmpI == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
-      return 1;
-    }
-    ind->extraDoseEvid = tmpI;
-
-    double * tmpD = (double*)realloc(ind->extraDoseTime, (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
-    if (tmpD == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
-      return 1;
-    }
-    ind->extraDoseTime = tmpD;
-
-    tmpD = (double*)realloc(ind->extraDoseDose,  (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE)*sizeof(double));
-    if (tmpD == NULL) {
-      rx_solving_options *op = &op_global;
-      op->badSolve = 1;
-      return 1;
-    }
-    ind->extraDoseDose = tmpD;
-
-    ind->extraDoseAllocN[0] = (ind->extraDoseN[0]+1+EVID_EXTRA_SIZE);
     re = 1;
   }
   for (int i = 0; i < ind->extraDoseN[0]; ++i) {
