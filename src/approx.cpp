@@ -3,6 +3,7 @@
 #endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#include "rxomp.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include "../inst/include/rxode2.h"
@@ -25,17 +26,17 @@
 //#include "lincmtB2.h"
 //#include "lincmtB3d.h"
 
-void handleTlast(double *time, rx_solving_options_ind *ind);
+extern "C" void handleTlast(double *time, rx_solving_options_ind *ind);
 
-double rxunif(rx_solving_options_ind* ind, double low, double hi);
+extern "C" double rxunif(rx_solving_options_ind* ind, double low, double hi);
 
 // From https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
-double log1mex(double a){
+extern "C" double log1mex(double a){
   if (a < M_LN2) return log(-expm1(-a));
   return(log1p(-exp(-a)));
 }
 
-extern int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
+extern "C" int _locateTimeIndex(double obs_time,  rx_solving_options_ind *ind){
   // Uses bisection for slightly faster lookup of dose index.
   int i, j, ij;
   i = 0;
@@ -132,8 +133,8 @@ static inline double getValue(int idx, double *y, int is_locf,
 }
 #define T(i) getTime(id->ix[i], id)
 #define V(i, lh) getValue(i, y, is_locf, id, Meth, lh)
-double rx_approxP(double v, double *y, int is_locf, int n,
-                  rx_solving_options *Meth, rx_solving_options_ind *id){
+extern "C" double rx_approxP(double v, double *y, int is_locf, int n,
+                             rx_solving_options *Meth, rx_solving_options_ind *id){
   /* Approximate  y(v),  given (x,y)[i], i = 0,..,n-1 */
   int i, j, ij;
 
@@ -192,7 +193,7 @@ double rx_approxP(double v, double *y, int is_locf, int n,
 /* End approx from R */
 
 // getParCov first(parNo, idx=0) last(parNo, idx=ind->n_all_times-1)
-double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
+extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   rx_solving_options_ind *ind;
   ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
@@ -217,7 +218,7 @@ double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   return ind->par_ptr[parNo];
 }
 
-void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
+extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) Rf_errorcall(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
@@ -366,4 +367,4 @@ void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
 }
 
 /* void doSort(rx_solving_options_ind *ind); */
-void sortInd(rx_solving_options_ind *ind);
+extern "C" void sortInd(rx_solving_options_ind *ind);

@@ -3,6 +3,7 @@
 #endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
+#include "rxomp.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -20,20 +21,20 @@
 #include "../inst/include/rxode2.h"
 
 int _setSilentErr=0, _isRstudio2=0;
-extern void setSilentErr(int silent){
+extern "C" void setSilentErr(int silent){
   _setSilentErr = silent;
 }
 
-extern void setRstudioPrint(int rstudio){
+extern "C" void setRstudioPrint(int rstudio){
   _isRstudio2=rstudio;
 }
 
 
-extern int getSilentErr(void){return _setSilentErr;}
+extern "C" int getSilentErr(void){return _setSilentErr;}
 
-extern int getRstudioPrint(void){return _isRstudio2;}
+extern "C" int getRstudioPrint(void){return _isRstudio2;}
 
-extern void RSprintf(const char *format, ...) {
+extern "C" void RSprintf(const char *format, ...) {
   if (_setSilentErr == 0) {
     if(_isRstudio2){
       va_list args;
@@ -50,7 +51,7 @@ extern void RSprintf(const char *format, ...) {
 }
 
 #if defined(__INTEL_LLVM_COMPILER) || defined(__INTEL_COMPILER__)
-SEXP _rxode2_isIntel(void) {
+extern "C" SEXP _rxode2_isIntel(void) {
   SEXP ret = PROTECT(Rf_allocVector(LGLSXP, 1));
   INTEGER(ret)[0] = 1;
   UNPROTECT(1);
@@ -58,7 +59,7 @@ SEXP _rxode2_isIntel(void) {
 }
 
 #else
-SEXP _rxode2_isIntel(void) {
+extern "C" SEXP _rxode2_isIntel(void) {
   SEXP ret = PROTECT(Rf_allocVector(LGLSXP, 1));
   INTEGER(ret)[0] = 0;
   UNPROTECT(1);
@@ -67,8 +68,8 @@ SEXP _rxode2_isIntel(void) {
 #endif
 
 
-double gamma_p(double a, double z);
-SEXP _gammap(SEXP a, SEXP z) {
+extern "C" double gamma_p(double a, double z);
+extern "C" SEXP _gammap(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
   int pro=0;
@@ -122,8 +123,8 @@ SEXP _gammap(SEXP a, SEXP z) {
   return ret;
 }
 
-double gamma_q(double a, double z);
-SEXP _gammaq(SEXP a, SEXP z) {
+extern "C" double gamma_q(double a, double z);
+extern "C" SEXP _gammaq(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
   int pro=0;
@@ -177,8 +178,8 @@ SEXP _gammaq(SEXP a, SEXP z) {
   return ret;
 }
 
-double tgamma_lower(double a, double z);
-SEXP _lowergamma(SEXP a, SEXP z) {
+extern "C" double tgamma_lower(double a, double z);
+extern "C" SEXP _lowergamma(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
   int pro=0;
@@ -232,8 +233,8 @@ SEXP _lowergamma(SEXP a, SEXP z) {
   return ret;
 }
 
-double tgamma_upper(double a, double z);
-SEXP _uppergamma(SEXP a, SEXP z) {
+extern "C" double tgamma_upper(double a, double z);
+extern "C" SEXP _uppergamma(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
   int pro=0;
@@ -288,9 +289,9 @@ SEXP _uppergamma(SEXP a, SEXP z) {
   return ret;
 }
 
-double gamma_p_derivative(double a, double x);
+extern "C" double gamma_p_derivative(double a, double x);
 
-SEXP _gammapDer(SEXP a, SEXP z) {
+extern "C" SEXP _gammapDer(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
   int pro=0;
@@ -345,8 +346,8 @@ SEXP _gammapDer(SEXP a, SEXP z) {
   return ret;
 }
 
-double gamma_p_inv(double a, double x);
-SEXP _gammapInv(SEXP a, SEXP z) {
+extern "C" double gamma_p_inv(double a, double x);
+extern "C" SEXP _gammapInv(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
   int pro=0;
@@ -401,8 +402,8 @@ SEXP _gammapInv(SEXP a, SEXP z) {
   return ret;
 }
 
-double gamma_p_inva(double a, double x);
-SEXP _gammapInva(SEXP a, SEXP z) {
+extern "C" double gamma_p_inva(double a, double x);
+extern "C" SEXP _gammapInva(SEXP a, SEXP z) {
   int typea = TYPEOF(a);
   int typez = TYPEOF(z);
   int pro=0;
@@ -457,8 +458,8 @@ SEXP _gammapInva(SEXP a, SEXP z) {
   return ret;
 }
 
-double gamma_q_inv(double a, double x);
-SEXP _gammaqInv(SEXP a, SEXP z) {
+extern "C" double gamma_q_inv(double a, double x);
+extern "C" SEXP _gammaqInv(SEXP a, SEXP z) {
   // Returns a value x such that: q = gamma_q(a, x);
   // Requires: a > 0 and 1 >= p,q >= 0.
   int typea = TYPEOF(a);
@@ -518,9 +519,8 @@ SEXP _gammaqInv(SEXP a, SEXP z) {
   return ret;
 }
 
-
-double gamma_q_inva(double a, double x);
-SEXP _gammaqInva(SEXP a, SEXP z) {
+extern "C" double gamma_q_inva(double a, double x);
+extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
   // Returns a value x such that: q = gamma_q(a, x);
   // Requires: a > 0 and 1 >= p,q >= 0.
   int typea = TYPEOF(a);
@@ -580,100 +580,100 @@ SEXP _gammaqInva(SEXP a, SEXP z) {
   return ret;
 }
 
-double logit(double x, double low, double high) {
+extern "C" double logit(double x, double low, double high) {
   return _powerD(x, 1.0, 4, low, high);
 }
 
-double expit(double alpha, double low, double high) {
+extern "C" double expit(double alpha, double low, double high) {
   return _powerDi(alpha, 1.0, 4, low, high);
 }
 
-double probit(double x, double low, double high) {
+extern "C" double probit(double x, double low, double high) {
   return _powerD(x, 1.0, 6, low, high);
 }
 
-double probitInv(double alpha, double low, double high) {
+extern "C" double probitInv(double alpha, double low, double high) {
   return _powerDi(alpha, 1.0, 6, low, high);
 }
 
-double ReLU(double x) {
+extern "C" double ReLU(double x) {
   return (x > 0.0) ? x : 0.0;
 }
 
-double dReLU(double x) {
+extern "C" double dReLU(double x) {
   return (x > 0.0) ? 1.0 : 0.0;
 }
 
 //
-double GELU(double x) {
+extern "C" double GELU(double x) {
   return 0.5 * x * (1.0 + erf(x * M_SQRT1_2));
 }
 
-double dGELU(double x) {
+extern "C" double dGELU(double x) {
   return 0.5 * (1.0 + erf(x * M_SQRT1_2)) + x * M_1_SQRT_2PI * exp(-0.5 * x * x);
 }
 
-double d2GELU(double x) {
+extern "C" double d2GELU(double x) {
   return (2.0- x*x) * exp(-0.5* x * x)*M_1_SQRT_2PI;
 }
 
-double d3GELU(double x) {
+extern "C" double d3GELU(double x) {
   double x2 = x*x;
   return -8.0*x*exp(-x2*0.5)*0.5*M_1_SQRT_2PI + 4.0*x2*x*exp(-x2*0.5)*0.25*M_1_SQRT_2PI;
 }
 
-double d4GELU(double x) {
+extern "C" double d4GELU(double x) {
   return exp(-0.5*x*x)*M_1_SQRT_2PI*(7.0*x*x - 4.0 - x*x*x*x);
 }
 
-double ELU(double x, double alpha) {
+extern "C" double ELU(double x, double alpha) {
   return (x > 0.0) ? x : (exp(x) - 1.0) * alpha;
 }
 
 // derivative of ELU with respect to x
-double dELU(double x, double alpha) {
+extern "C" double dELU(double x, double alpha) {
   return (x > 0.0) ? 1.0 : exp(x)*alpha;
 }
 
 // derivative of dELU with respect to x
-double d2ELU(double x, double alpha) {
+extern "C" double d2ELU(double x, double alpha) {
   return (x > 0.0) ? 0.0 : exp(x)*alpha;
 }
 
 // derivative of dELU with respect to alpha
-double d2aELU(double x, double alpha) {
+extern "C" double d2aELU(double x, double alpha) {
   return (x > 0.0) ? 0.0 : exp(x);
 }
 
 // derivative of ELU with respect to alpha
-double dELUa(double x, double alpha) {
+extern "C" double dELUa(double x, double alpha) {
   return (x > 0.0) ? 0.0 : (exp(x) - 1.0);
 }
 // derivative of dELAa with respect to x
-double d2ELUa(double x, double alpha) {
+extern "C" double d2ELUa(double x, double alpha) {
   return (x > 0.0) ? 0.0 : exp(x);
 }
 
-double softplus(double x) {
+extern "C" double softplus(double x) {
   return log(1.0 + exp(x));
 }
 
-double dsoftplus(double x) {
+extern "C" double dsoftplus(double x) {
   return 1.0 / (1.0 + exp(-x));
 }
 
-double d2softplus(double x) {
+extern "C" double d2softplus(double x) {
   double ex = exp(x);
   return ex / ((1.0 + ex) * (1.0 + ex));
 }
 
-double d3softplus(double x) {
+extern "C" double d3softplus(double x) {
   double ex = exp(-x);
   double ex1 = (1.0 + ex);
   return 2.0*exp(-2.0*x)/(ex1*ex1*ex1) - 1.0*ex/(ex1*ex1);
 }
 
-double d4softplus(double x) {
+extern "C" double d4softplus(double x) {
   double ex = exp(-x);
   double ex1 = (1.0 + ex);
   return 6.0*exp(-3.0*x)/(ex1*ex1*ex1*ex1) -
@@ -681,7 +681,7 @@ double d4softplus(double x) {
     ex/(ex1*ex1);
 }
 
-double SELU(double x) {
+extern "C" double SELU(double x) {
 #define alpha 1.6732632423543772848170429916717
 #define scale 1.0507009873554804934193349852946
   return (x > 0.0) ? scale * x : scale * alpha * (exp(x) - 1.0);
@@ -689,7 +689,7 @@ double SELU(double x) {
 #undef scale
 }
 
-double dSELU(double x) {
+extern "C" double dSELU(double x) {
 #define alpha 1.6732632423543772848170429916717
 #define scale 1.0507009873554804934193349852946
   return (x > 0.0) ? scale : scale * alpha * exp(x);
@@ -697,41 +697,41 @@ double dSELU(double x) {
 #undef scale
 }
 
-double lReLU(double x) {
+extern "C" double lReLU(double x) {
   return (x >= 0.0) ? x : 0.01 * x;
 }
 
-double dlReLU(double x) {
+extern "C" double dlReLU(double x) {
   return (x > 0.0) ? 1.0 : 0.01;
 }
 
-double PReLU(double x, double alpha) {
+extern "C" double PReLU(double x, double alpha) {
   return (x > 0.0) ? x : alpha * x;
 }
 
-double dPReLU(double x, double alpha) {
+extern "C" double dPReLU(double x, double alpha) {
   return (x > 0.0) ? 1.0 : alpha;
 }
 
-double dPReLUa(double x, double alpha) {
+extern "C" double dPReLUa(double x, double alpha) {
   return (x > 0.0) ? 0.0 : x;
 }
 
-double dPReLUa1(double x, double alpha) {
+extern "C" double dPReLUa1(double x, double alpha) {
   return (x > 0.0) ? 0.0 : 1.0;
 }
 
-double Swish(double x) {
+extern "C" double Swish(double x) {
   return x / (1.0 + exp(-x));
 }
 
-double dSwish(double x) {
+extern "C" double dSwish(double x) {
   double ex = exp(-x);
   double den = (1.0 + ex);
   return x*ex/(den*den) + 1.0/den;
 }
 
-SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS) {
+extern "C" SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS) {
   int type = INTEGER(typeS)[0];
   int typex = TYPEOF(xS);
   int typea = TYPEOF(aS);
@@ -780,7 +780,7 @@ SEXP _rxode2_activationF2(SEXP xS, SEXP aS, SEXP typeS) {
   return(ret);
 }
 
-SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
+extern "C" SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
   int type = INTEGER(typeS)[0];
   int typex = TYPEOF(xS);
   int lenx = Rf_length(xS);
@@ -852,7 +852,7 @@ SEXP _rxode2_activationF(SEXP xS, SEXP typeS) {
 }
 
 
-SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEXP yjS, SEXP inverseS) {
+extern "C" SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEXP yjS, SEXP inverseS) {
   int typex = TYPEOF(xS);
   int typelow = TYPEOF(lowS);
   int typehigh = TYPEOF(highS);
@@ -936,7 +936,7 @@ SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEXP yjS, SEXP
   return ret;
 }
 
-SEXP _vecDF(SEXP cv, SEXP n_) {
+extern "C" SEXP _vecDF(SEXP cv, SEXP n_) {
   int n=0;
   int typ = TYPEOF(n_);
   if (typ == REALSXP) {
@@ -970,7 +970,7 @@ SEXP _vecDF(SEXP cv, SEXP n_) {
   return ret;
 }
 
-SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
+extern "C" SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
   int n = INTEGER(n_)[0];
   if (n <= 0) Rf_errorcall(R_NilValue, _("'n' must be greater than 0"));
 
@@ -1037,11 +1037,11 @@ SEXP _cbindOme(SEXP et_, SEXP mat_, SEXP n_) {
   return ret;
 }
 
-double phi(double q) {
+extern "C" double phi(double q) {
   return pnorm(q, 0.0, 1.0, 1, 0);
 }
 
-SEXP _rxode2_phi(SEXP q) {
+extern "C" SEXP _rxode2_phi(SEXP q) {
   int type = TYPEOF(q);
   SEXP ret;
   int pro = 0;
@@ -1069,7 +1069,8 @@ SEXP _rxode2_phi(SEXP q) {
 }
 
 #include "../inst/include/rxode2parseHandleEvid.h"
-SEXP _rxode2_getWh(SEXP in) {
+
+extern "C" SEXP _rxode2_getWh(SEXP in) {
   int wh, cmt, wh100, whI, wh0;
   getWh(INTEGER(in)[0], &wh, &cmt, &wh100, &whI, &wh0);
   SEXP ret = PROTECT(Rf_allocVector(INTSXP, 5));
@@ -1090,8 +1091,8 @@ SEXP _rxode2_getWh(SEXP in) {
   return ret;
 }
 
-SEXP _rxode2_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
-                            SEXP durS, SEXP iiS, SEXP evidS, SEXP ssS) {
+extern "C" SEXP _rxode2_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
+                                       SEXP durS, SEXP iiS, SEXP evidS, SEXP ssS) {
   int *cmt= INTEGER(cmtS);
   double *amt = REAL(amtS);
   double *dur = REAL(durS);

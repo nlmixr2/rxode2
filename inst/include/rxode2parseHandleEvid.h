@@ -36,6 +36,8 @@ extern "C" {
 #define FLOOR(x) floor(x)
 #endif
 
+  void _setIndPointersByThread(rx_solving_options_ind *ind);
+
 #ifndef _isrxode2parse_
 
   int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
@@ -329,7 +331,7 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
   }
   if (ind->ignoredDosesN[0]+1 >= ind->ignoredDosesAllocN[0]) {
     rx_solving_options *op = &op_global;
-#pragma omp critcial
+#pragma omp critical
     {
       int *tmpI = (int*)realloc(ind->ignoredDoses, (ind->ignoredDosesN[0]+1+EVID_EXTRA_SIZE)*sizeof(int));
       if (tmpI == NULL) {
@@ -686,8 +688,11 @@ static inline int handle_evid(int evid, int neq,
   return 0;
 }
 
+extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind);
+
 static inline int handleEvid1(int *i, rx_solve *rx, int *neq, double *yp, double *xout) {
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
+  _setIndPointersByThread(ind);
   rx_solving_options *op = rx->op;
   ind->idx = *i;
   if (!isObs(getEvid(ind, ind->ix[ind->idx]))) {
