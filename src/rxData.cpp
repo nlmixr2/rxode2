@@ -1514,6 +1514,8 @@ struct rx_globals {
   int     *extraDoseN       = NULL;
   int     *extraDoseAllocN  = NULL;
 
+  int extraDoseCores = 0;
+
   // time per thread
   double *timeThread = NULL;
 
@@ -1522,6 +1524,8 @@ struct rx_globals {
 
 
 rx_globals _globals;
+
+#include "extraDosing.h"
 
 static inline double *getLinCmtSaveThread() {
   rx_solve* rx = getRxSolve_();
@@ -2653,84 +2657,8 @@ LogicalVector rxSolveFree(){
   }
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
 
-  if (_globals.pendingDoses != NULL) {
-    int i=0;
-    while (_globals.pendingDoses[i] != NULL) {
-      free(_globals.pendingDoses[i]);
-      _globals.pendingDoses[i] = NULL;
-      i++;
-    }
-    free(_globals.pendingDoses);
-    _globals.pendingDoses = NULL;
-  }
+  freeExtraDosing();
 
-  if (_globals.ignoredDoses != NULL) {
-    int i=0;
-    while (_globals.ignoredDoses[i] != NULL){
-      free(_globals.ignoredDoses[i]);
-      _globals.ignoredDoses[i] = NULL;
-      i++;
-    }
-    free(_globals.ignoredDoses);
-    _globals.ignoredDoses=NULL;
-  }
-
-  if (_globals.extraDoseTimeIdx != NULL) {
-    int i=0;
-    while (_globals.extraDoseTimeIdx[i] != NULL){
-      free(_globals.extraDoseTimeIdx[i]);
-      _globals.extraDoseTimeIdx[i] = NULL;
-      i++;
-    }
-    free(_globals.extraDoseTimeIdx);
-    _globals.extraDoseTimeIdx=NULL;
-  }
-
-  if (_globals.extraDoseTime != NULL) {
-    int i=0;
-    while (_globals.extraDoseTime[i] != NULL){
-      free(_globals.extraDoseTime[i]);
-      _globals.extraDoseTime[i] = NULL;
-      i++;
-    }
-    free(_globals.extraDoseTime);
-    _globals.extraDoseTime=NULL;
-  }
-
-  if (_globals.extraDoseEvid != NULL) {
-    int i=0;
-    while (_globals.extraDoseEvid[i] != NULL){
-      free(_globals.extraDoseEvid[i]);
-      _globals.extraDoseEvid[i] = NULL;
-      i++;
-    }
-    free(_globals.extraDoseEvid);
-    _globals.extraDoseEvid=NULL;
-  }
-
-  if (_globals.extraDoseDose != NULL) {
-    int i=0;
-    while (_globals.extraDoseDose[i] != NULL){
-      free(_globals.extraDoseDose[i]);
-      _globals.extraDoseDose[i] = NULL;
-      i++;
-    }
-    free(_globals.extraDoseDose);
-    _globals.extraDoseDose=NULL;
-  }
-  if (_globals.extraDoseN != NULL) free(_globals.extraDoseN);
-  _globals.extraDoseN = NULL;
-  if (_globals.extraDoseAllocN != NULL) free(_globals.extraDoseAllocN);
-  _globals.extraDoseAllocN = NULL;
-
-  if (_globals.nPendingDoses != NULL) free(_globals.nPendingDoses);
-  _globals.nPendingDoses=NULL;
-  if (_globals.nAllocPendingDoses != NULL) free(_globals.nAllocPendingDoses);
-  _globals.nAllocPendingDoses=NULL;
-  if (_globals.nIgnoredDoses != NULL) free(_globals.nIgnoredDoses);
-  _globals.nIgnoredDoses=NULL;
-  if (_globals.nAllocIgnoredDoses != NULL) free(_globals.nAllocIgnoredDoses);
-  _globals.nAllocIgnoredDoses=NULL;
   if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
   _globals.gall_timesS = NULL;
   rxOptionsFree(); // f77 losda free
@@ -5044,216 +4972,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores=1;
     }
     seedEng((int)(op->cores));
-    if (_globals.pendingDoses != NULL) {
-      int i=0;
-      while (_globals.pendingDoses[i] != NULL){
-        free(_globals.pendingDoses[i]);
-        _globals.pendingDoses[i++] = NULL;
-      }
-      free(_globals.pendingDoses);
-      _globals.pendingDoses=NULL;
-    }
-    if (_globals.nIgnoredDoses != NULL) {
-      if (_globals.ignoredDoses != NULL) {
-        int i=0;
-        while (_globals.ignoredDoses[i] != NULL){
-          free(_globals.ignoredDoses[i]);
-          _globals.ignoredDoses[i++] = NULL;
-        }
-        free(_globals.ignoredDoses);
-        _globals.ignoredDoses=NULL;
-      }
-    }
-    if (_globals.extraDoseTimeIdx != NULL) {
-      int i=0;
-      while (_globals.extraDoseTimeIdx[i] != NULL){
-        free(_globals.extraDoseTimeIdx[i]);
-        _globals.extraDoseTimeIdx[i++] = NULL;
-      }
-      free(_globals.extraDoseTimeIdx);
-      _globals.extraDoseTimeIdx=NULL;
-    }
 
-    if (_globals.extraDoseTime != NULL) {
-      int i=0;
-      while (_globals.extraDoseTime[i] != NULL){
-        free(_globals.extraDoseTime[i]);
-        _globals.extraDoseTime[i++] = NULL;
-      }
-      free(_globals.extraDoseTime);
-      _globals.extraDoseTime=NULL;
-    }
-
-    if (_globals.extraDoseEvid != NULL) {
-      int i=0;
-      while (_globals.extraDoseEvid[i] != NULL){
-        free(_globals.extraDoseEvid[i]);
-        _globals.extraDoseEvid[i++] = NULL;
-      }
-      free(_globals.extraDoseEvid);
-      _globals.extraDoseEvid=NULL;
-    }
-
-    if (_globals.extraDoseDose != NULL) {
-      int i=0;
-      while (_globals.extraDoseDose[i] != NULL){
-        free(_globals.extraDoseDose[i]);
-        _globals.extraDoseDose[i++] = NULL;
-      }
-      free(_globals.extraDoseDose);
-      _globals.extraDoseDose=NULL;
-    }
-    if (_globals.extraDoseN != NULL) free(_globals.extraDoseN);
-    _globals.extraDoseN = NULL;
-    int *tmpI = (int*)malloc((op->cores)* sizeof(int));
-    if (tmpI == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.extraDoseN = tmpI;
-
-    if (_globals.extraDoseAllocN != NULL) free(_globals.extraDoseAllocN);
-    _globals.extraDoseAllocN = NULL;
-    tmpI = (int*)malloc((op->cores)* sizeof(int));
-    if (tmpI == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.extraDoseAllocN = tmpI;
-
-    if (_globals.nPendingDoses != NULL) free(_globals.nPendingDoses);
-    tmpI = (int*)malloc((op->cores)* sizeof(int));
-    if (tmpI == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.nPendingDoses = tmpI;
-
-    if (_globals.nAllocPendingDoses != NULL) free(_globals.nAllocPendingDoses);
-    tmpI = (int*)malloc((op->cores)* sizeof(int));
-    if (tmpI == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.nAllocPendingDoses = tmpI;
-
-    if (_globals.nIgnoredDoses != NULL) free(_globals.nIgnoredDoses);
-    tmpI = (int*)malloc((op->cores)* sizeof(int));
-    if (tmpI == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.nIgnoredDoses = tmpI;
-
-
-    if (_globals.nAllocIgnoredDoses != NULL) free(_globals.nAllocIgnoredDoses);
-    tmpI = (int*)malloc((op->cores)* sizeof(int));
-    if (tmpI == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.nAllocIgnoredDoses = tmpI;
-
-
-    int **tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
-    if (tmpII == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.pendingDoses = tmpII;
-
-    tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
-    if (tmpII == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.ignoredDoses = tmpII;
-
-    tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
-    if (tmpII == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.extraDoseTimeIdx = tmpII;
-
-    tmpII = (int**)malloc((op->cores+1)* sizeof(int*));
-    if (tmpII == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.extraDoseEvid = tmpII;
-
-    double **tmpDD = (double**)malloc((op->cores+1)* sizeof(double*));
-    if (tmpDD == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.extraDoseTime = tmpDD;
-
-    tmpDD = (double**)malloc((op->cores+1)* sizeof(double*));
-    if (tmpDD == NULL) {
-      rxSolveFree();
-      stop(_("ran out of memory"));
-    }
-    _globals.extraDoseDose = tmpDD;
-
-    double *tmpD;
-    for (int i = 0; i < op->cores; i++) {
-      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
-      if (tmpI == NULL) {
-        rxSolveFree();
-        stop(_("ran out of memory"));
-      }
-      _globals.pendingDoses[i] = tmpI;
-
-      _globals.nPendingDoses[i] = 0;
-      _globals.nAllocPendingDoses[i] = EVID_EXTRA_SIZE;
-
-      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
-      if (tmpI == NULL) {
-        rxSolveFree();
-        stop(_("ran out of memory"));
-      }
-      _globals.ignoredDoses[i] =  tmpI;
-
-      _globals.nIgnoredDoses[i] = 0;
-      _globals.nAllocIgnoredDoses[i] = EVID_EXTRA_SIZE;
-      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
-      if (tmpI == NULL) {
-        rxSolveFree();
-        stop(_("ran out of memory"));
-      }
-      _globals.extraDoseTimeIdx[i] = tmpI;
-      tmpI = (int*)malloc(EVID_EXTRA_SIZE* sizeof(int));
-      if (tmpI == NULL) {
-        rxSolveFree();
-        stop(_("ran out of memory"));
-      }
-      _globals.extraDoseEvid[i] = tmpI;
-
-      tmpD = (double*)malloc(EVID_EXTRA_SIZE* sizeof(double));
-      if (tmpD == NULL) {
-        rxSolveFree();
-        stop(_("ran out of memory"));
-      }
-      _globals.extraDoseTime[i] = tmpD;
-
-      tmpD = (double*)malloc(EVID_EXTRA_SIZE* sizeof(double));
-      if (tmpD == NULL) {
-        rxSolveFree();
-        stop(_("ran out of memory"));
-      }
-      _globals.extraDoseDose[i] = tmpD;
-      _globals.extraDoseAllocN[i] = EVID_EXTRA_SIZE;
-      _globals.extraDoseN[i] = 0;
-    }
-    _globals.pendingDoses[op->cores]     = NULL;
-    _globals.ignoredDoses[op->cores]     = NULL;
-    _globals.extraDoseTimeIdx[op->cores] = NULL;
-    _globals.extraDoseEvid[op->cores]    = NULL;
-    _globals.extraDoseTime[op->cores]    = NULL;
-    _globals.extraDoseDose[op->cores]    = NULL;
-
+    allocExtraDosing(op->cores);
 
     // Now set up events and parameters
     RObject par0 = params;
