@@ -1,5 +1,7 @@
 # rxode2 (development version)
 
+- Add more information errors about NAs during solving.
+
 - Fix `rxDerived()` for mixed vector and non-vector input.
 
 # rxode2 3.0.4

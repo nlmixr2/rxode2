@@ -652,7 +652,7 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
       }
       time[i] = getTime__(ind->ix[i], ind, 1);
     }
-    if (op->naTime == 1){
+    if (op->naTime != 0) {
       doSort=0;
       break;
     }

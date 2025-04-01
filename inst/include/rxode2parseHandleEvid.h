@@ -29,6 +29,13 @@
 #define rxErrModeledFss2n3    4194304
 #define rxErrRate02           8388608
 
+#define rxErrNaTimeLag   1
+#define rxErrNaTimeRate  2
+#define rxErrNaTimeDur   3
+// during infusion amt
+#define rxErrNaTimeAmtI  4
+#define rxErrNaTimeAmt   5
+
 #if defined(__cplusplus)
 #define FLOOR(x) std::floor(x)
 extern "C" {
@@ -308,7 +315,7 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt, double
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;
     op->badSolve=1;
-    op->naTime = 1;
+    op->naTime = 5 + 10*cmt;
   }
   return ret;
 }

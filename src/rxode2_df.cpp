@@ -215,7 +215,33 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   if (op->badSolve){
     if (op->naTime){
       rxSolveFreeC();
-      Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
+      int cmt = op->naTime/10;
+      int errNo = op->naTime - 10*cmt;
+      CharacterVector stateNames = rxStateNames(op->modNamePtr);
+      if (errNo == rxErrNaTimeLag) {
+        Rf_errorcall(R_NilValue,
+                     _("'alag(%s)' and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeRate) {
+        Rf_errorcall(R_NilValue,
+                     _("'rate(%s)' and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeDur) {
+        Rf_errorcall(R_NilValue,
+                     _("'dur(%s)' and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeAmtI) {
+        Rf_errorcall(R_NilValue,
+                     _("'amt(%s)' calculation during infusion and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else if (errNo == rxErrNaTimeAmt) {
+        Rf_errorcall(R_NilValue,
+                     _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
+                     CHAR(STRING_ELT(stateNames, cmt)));
+      } else {
+        Rf_errorcall(R_NilValue, _("NA time error"));
+      }
+      // Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     if (nidCols == 0){
       for (int solveid = 0; solveid < rx->nsub * rx->nsim; solveid++){
