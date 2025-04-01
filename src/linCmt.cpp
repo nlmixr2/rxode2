@@ -412,16 +412,13 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     lc.setDt(dt);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    if (isSameTime(_t, ind->tout)) {
-      std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
-                getAdvan(idx));
-    }
   } else {
     double *acur = getAdvan(idx);
     asave = acur;
     fx = lc.restoreFx(acur);
     J = lc.restoreJac(acur);
   }
+  ind->linCmtLastT = ind->tout;
   if (which1 >= 0 && which2 >= 0) {
     // w1, w2 are > 0
     return J(which1, which2);

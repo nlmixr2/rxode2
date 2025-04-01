@@ -470,22 +470,25 @@ t_IndF IndF = NULL;
 
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
-//   if (op->numLin > 0) {
-//     if (!isSameTime(ind->linCmtLastT, ind->tout)) {
-//       // call one last time to get the right values
-//       // need dummy to write the ODE values into..
-//       setIndPointersByThread(ind);
-//       dydt(neq, ind->tout, yp, ind->linCmtDummy);
-//     }
-// #pragma omp critical
-//     std::copy(ind->linCmtSave, ind->linCmtSave + op->numLinSens + op->numLin,
-//               yp);
-//   }
+  if (op->numLin > 0) {
+    if (!isSameTime(ind->linCmtLastT, ind->tout)) {
+      // call one last time to get the right values
+      // need dummy to write the ODE values into..
+      dydt(neq, ind->tout, yp, ind->linCmtDummy);
+    }
+    std::copy(ind->linCmtSave,
+              ind->linCmtSave + op->numLinSens + op->numLin,
+              yp + op->linOffset);
+  }
   if (*idid <= 0) {
     if (err_msg != NULL) {
       int cid = -*idid-1;
-      if (cid > 0 && cid < nerr) RSprintf("IDID=%d, %s\n", *idid, err_msg[-*idid-1]);
-      else RSprintf("IDID=%d, unhandled exception\n", *idid);
+      if (cid > 0 && cid < nerr){
+        RSprintf("IDID=%d, %s\n", *idid, err_msg[-*idid-1]);
+      }
+      else {
+        RSprintf("IDID=%d, unhandled exception\n", *idid);
+      }
     }
     *rc = *idid;
     badSolveExit(*i);
@@ -2631,7 +2634,9 @@ extern "C" void rxOptionsFree(){
   global_scalei = 0;
 }
 
+extern "C" void freeExtraDosingC();
 extern "C" void rxFreeLast(){
+  freeExtraDosingC();
   R_Free(inds_global);
   inds_global=NULL;
 }

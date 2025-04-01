@@ -2609,6 +2609,15 @@ void updateSolveEnvPost(Environment e){
   getEtRxsolve(e);
 }
 
+extern "C" void freeExtraDosingC() {
+  freeExtraDosing();
+}
+
+
+extern "C" void allocExtraDosingC() {
+  allocExtraDosing(omp_get_max_threads());
+}
+
 void resetFkeep();
 //' Free the C solving/parsing information.
 //'
@@ -2657,7 +2666,7 @@ LogicalVector rxSolveFree(){
   }
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
 
-  freeExtraDosing();
+  //freeExtraDosing();
 
   if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
   _globals.gall_timesS = NULL;
@@ -4972,8 +4981,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores=1;
     }
     seedEng((int)(op->cores));
-
-    allocExtraDosing(op->cores);
 
     // Now set up events and parameters
     RObject par0 = params;

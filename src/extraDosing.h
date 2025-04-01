@@ -5,64 +5,66 @@ static inline void freeExtraDosing() {
   int i = 0;
 
   if (_globals.pendingDoses != NULL) {
-    i=0;
-    while (_globals.pendingDoses[i] != NULL){
-      free(_globals.pendingDoses[i]);
-      _globals.pendingDoses[i++] = NULL;
+    for (i = 0; i < _globals.extraDoseCores; i++) {
+      if (_globals.pendingDoses[i] != NULL) {
+        free(_globals.pendingDoses[i]);
+        _globals.pendingDoses[i] = NULL;
+      }
     }
     free(_globals.pendingDoses);
     _globals.pendingDoses=NULL;
   }
 
-  if (_globals.nIgnoredDoses != NULL) {
-    if (_globals.ignoredDoses != NULL) {
-      i=0;
-      while (_globals.ignoredDoses[i] != NULL){
+  if (_globals.ignoredDoses != NULL) {
+    for (i = 0; i < _globals.extraDoseCores; i++) {
+      if (_globals.ignoredDoses[i] != NULL){
         free(_globals.ignoredDoses[i]);
-        _globals.ignoredDoses[i++] = NULL;
+        _globals.ignoredDoses[i] = NULL;
       }
-      free(_globals.ignoredDoses);
-      _globals.ignoredDoses=NULL;
     }
+    free(_globals.ignoredDoses);
+    _globals.ignoredDoses=NULL;
   }
 
   if (_globals.extraDoseTimeIdx != NULL) {
-    i=0;
-    while (_globals.extraDoseTimeIdx[i] != NULL){
-      free(_globals.extraDoseTimeIdx[i]);
-      _globals.extraDoseTimeIdx[i++] = NULL;
+    for (i = 0; i < _globals.extraDoseCores; i++) {
+      if (_globals.extraDoseTimeIdx[i] != NULL){
+        free(_globals.extraDoseTimeIdx[i]);
+        _globals.extraDoseTimeIdx[i] = NULL;
+      }
     }
     free(_globals.extraDoseTimeIdx);
     _globals.extraDoseTimeIdx=NULL;
   }
 
   if (_globals.extraDoseTime != NULL) {
-    i=0;
-    while (_globals.extraDoseTime[i] != NULL){
-      free(_globals.extraDoseTime[i]);
-      _globals.extraDoseTime[i++] = NULL;
+    for (i = 0; i < _globals.extraDoseCores; i++) {
+      if (_globals.extraDoseTime[i] != NULL) {
+        free(_globals.extraDoseTime[i]);
+        _globals.extraDoseTime[i] = NULL;
+      }
     }
-    free(_globals.extraDoseTime);
     _globals.extraDoseTime=NULL;
   }
 
   if (_globals.extraDoseEvid != NULL) {
-    i=0;
-    while (_globals.extraDoseEvid[i] != NULL){
-      free(_globals.extraDoseEvid[i]);
-      _globals.extraDoseEvid[i++] = NULL;
+    for (i = 0; i < _globals.extraDoseCores; i++) {
+      if (_globals.extraDoseEvid[i] != NULL) {
+        free(_globals.extraDoseEvid[i]);
+        _globals.extraDoseEvid[i] = NULL;
+      }
     }
     free(_globals.extraDoseEvid);
     _globals.extraDoseEvid=NULL;
   }
 
   if (_globals.extraDoseDose != NULL) {
-    i=0;
-    while (_globals.extraDoseDose[i] != NULL){
-      free(_globals.extraDoseDose[i]);
-      _globals.extraDoseDose[i++] = NULL;
+    for (i = 0; i < _globals.extraDoseCores; i++) {
+      if (_globals.extraDoseDose[i] != NULL) {
+        free(_globals.extraDoseDose[i]);
+        _globals.extraDoseDose[i] = NULL;
+      }
     }
-    free(_globals.extraDoseDose);
     _globals.extraDoseDose=NULL;
   }
 
@@ -84,14 +86,14 @@ static inline void freeExtraDosing() {
   if (_globals.nAllocPendingDoses != NULL) {
     free(_globals.nAllocPendingDoses);
   }
-
   _globals.nAllocPendingDoses = NULL;
 
   if (_globals.nIgnoredDoses != NULL) {
     free(_globals.nIgnoredDoses);
   }
-
   _globals.nIgnoredDoses = NULL;
+
+  _globals.extraDoseCores = 0;
 
 }
 

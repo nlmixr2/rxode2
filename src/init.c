@@ -364,6 +364,8 @@ SEXP _rxode2_linCmtModelDouble(SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP, SEXP, SEXP, SEXP,
                                SEXP, SEXP, SEXP, SEXP);
 
+void allocExtraDosingC(void);
+
 SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
   // Create an external pointer for _lotriLstToMat
@@ -572,6 +574,7 @@ SEXP _rxode2_cmtSupportsInfusion_(SEXP, SEXP);
 SEXP _rxode2_cmtSupportsOff_(SEXP, SEXP);
 
 void R_init_rxode2(DllInfo *info){
+  allocExtraDosingC();
   R_CallMethodDef callMethods[]  = {
     {"_rxode2_cmtSupportsOff_", (DL_FUNC) &_rxode2_cmtSupportsOff_, 2},
     {"_rxode2_cmtSupportsInfusion_", (DL_FUNC) &_rxode2_cmtSupportsInfusion_, 2},
