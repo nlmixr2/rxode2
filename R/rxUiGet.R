@@ -78,7 +78,7 @@ rxUiGet.stateDf <- function(x, ...) {
   .mv <- rxModelVars(.ui)
   .state <- .mv$state
   .cmt <- .getCmtNum(.mv)
-  if (rxModelVars(rx)$flags["linCmtFlg"] != 0) {
+  if (.mv$flags["linCmtFlg"] != 0) {
     data.frame("Compartment Number"=seq_along(.cmt),
                "Compartment Name"=names(.cmt),
                "Rate"=cmtSupportsInfusion_(.cmt, .mv),
