@@ -781,7 +781,7 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTimeDop(xout, xp)) {
         ind->tprior = xp;
         ind->tout = xout;
-        idid = dop853(&neqOde,       /* dimension of the system <= UINT_MAX-1*/
+        idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                       dydt,         /* function computing the value of f(x,y) */
                       xp,           /* initial x-value */
                       yp,           /* initial values for y */
@@ -2695,7 +2695,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             ind->tprior = xp;
             ind->tout = ind->extraDoseNewXout;
-            F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
@@ -2712,7 +2712,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
             ind->tprior = ind->extraDoseNewXout;
             ind->tout = xout;
-            F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
+            F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
@@ -2721,7 +2721,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!isSameTime(xout, xp)) {
           ind->tprior = xp;
           ind->tout = xout;
-          F77_CALL(dlsoda)(dydt_lsoda, &neqOde, yp,
+          F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &gitol,
                            &(op->RTOL),
                            &(op->ATOL),
