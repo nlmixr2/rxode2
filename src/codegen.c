@@ -323,8 +323,6 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         }
       }
 
-      sAppendN(&sbOut, "  _setIndPointersByThread(_ind);\n", 33);
-
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
       if (show_ode == ode_ini){
         sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);

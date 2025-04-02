@@ -244,6 +244,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     asave = acur;
     fx = lc.restoreFx(acur);
   }
+  ind->linCmtLastT = ind->tout;
   if (which < 0) {
     return lc.adjustF(fx, theta);
   } else if (which >= 0 && which < nAlast) {

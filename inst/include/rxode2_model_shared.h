@@ -319,7 +319,6 @@ typedef double (*linCmtB_p) (rx_solve *rx, int id,
                              double ka);
 
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
-typedef void (*_setIndPointersByThread_p)(rx_solving_options_ind *ind);
 
 typedef double (*_getParCov_p)(unsigned int id, rx_solve *rx, int parNo, int idx);
 

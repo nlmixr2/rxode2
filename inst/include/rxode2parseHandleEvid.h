@@ -43,8 +43,6 @@ extern "C" {
 #define FLOOR(x) floor(x)
 #endif
 
-  void _setIndPointersByThread(rx_solving_options_ind *ind);
-
 #ifndef _isrxode2parse_
 
   int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
@@ -310,8 +308,10 @@ static inline int syncIdx(rx_solving_options_ind *ind) {
 
 extern t_F AMT;
 
-static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt, double dose, double t, double *y) {
+static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
+                            double dose, double t, double *y) {
   double ret = AMT(id, cmt, dose, t, y);
+
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;
     op->badSolve=1;
@@ -526,10 +526,11 @@ static inline int handle_evid(int evid, int neq,
     ind->ixds++;
     ind->solved = ind->idx;
     return 0;
-  }//  else if (!ind->doSS) {
-  //   REprintf("handle evid %d dose at time %f is value %f (ind->ixds: %d; ind->idx: %d)\n",
-  //            evid, xout, getDoseIndex(ind, ind->idx), ind->ixds, ind->idx);
-  // }
+  } // else if (!ind->doSS) {
+// #pragma omp critical
+//     REprintf("handle evid %d dose at time %f is value %f (ind->ixds: %d; ind->idx: %d; id: %d)\n",
+//              evid, xout, getDoseIndex(ind, ind->idx), ind->ixds, ind->idx);
+//   }
   int cmt, foundBad, j;
   double tmp;
   getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
@@ -695,11 +696,8 @@ static inline int handle_evid(int evid, int neq,
   return 0;
 }
 
-extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind);
-
 static inline int handleEvid1(int *i, rx_solve *rx, int *neq, double *yp, double *xout) {
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
-  _setIndPointersByThread(ind);
   rx_solving_options *op = rx->op;
   ind->idx = *i;
   if (!isObs(getEvid(ind, ind->ix[ind->idx]))) {

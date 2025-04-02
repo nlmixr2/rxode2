@@ -473,7 +473,8 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
   if (op->numLin > 0) {
     if (!isSameTime(ind->linCmtLastT, ind->tout)) {
       // call one last time to get the right values
-      // need dummy to write the ODE values into..
+      // need dummy to write the ODE values into...
+      // Rf_error("bad, %f, %f\n", ind->linCmtLastT, ind->tout);
       dydt(neq, ind->tout, yp, ind->linCmtDummy);
     }
     std::copy(ind->linCmtSave,
@@ -2363,7 +2364,7 @@ extern "C" void par_linCmt(rx_solve *rx) {
   for (int thread=0; thread < cores; thread++) {
     for (int solveid = thread; solveid < nsim*nsub; solveid+=cores){
       if (abort == 0){
-        setSeedEng1(seed0 + rx->ordId[solveid] - 1 );
+        setSeedEng1(seed0 + rx->ordId[solveid] - 1);
 
         ind_linCmt0(rx, op, solveid, neq, dydt, update_inis);
 
@@ -2829,7 +2830,7 @@ extern "C" void par_lsoda(rx_solve *rx){
   }
 }
 
-extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
+extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                             t_dydt c_dydt, t_update_inis u_inis) {
   clock_t t0 = clock();
   int i;
@@ -2846,7 +2847,9 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   int idid=1;
   const char **err_msg = NULL;
   int nx;
-  neq[1] = solveid;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = rx->ordId[solveid]-1;
   ind = &(rx->subjects[neq[1]]);
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
