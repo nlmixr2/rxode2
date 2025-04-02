@@ -20,7 +20,7 @@ static inline void addLinCmt(nodeInfo ni, const char *cmt, int *linCmtErr, int d
     if (tb.dprop[tb.id] == 0)  {
       // defined d/dt(depot) AND properties
       sAppend(&sbt, "'%s', ", cmt);
-      if ((*linCmtErr & 1) != 0) {
+      if ((*linCmtErr & 1) == 0) {
         *linCmtErr += 1;
       }
     } else {
@@ -144,6 +144,8 @@ extern void calcLinCmt(void) {
   nodeInfo ni;
   niReset(&ni);
   // we can use sbt.o since all the code has already been output
+  sbt.o = 0;
+  sbt.s[0] = 0;
   int linCmtErr = 0;
   int nLin = 0;
   int numSens = 0;
@@ -256,6 +258,7 @@ extern void calcLinCmt(void) {
         sAppendN(&sbt, "%s", sbt2.s);
         sbt2.o = 0;
       }
+      err_trans(sbt.s);
     }
     tb.linCmtFlg = numSens*100+nLin*10 + depot;
   }

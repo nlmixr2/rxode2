@@ -5325,14 +5325,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 #endif // rxSolveT
     rxSolve_normalizeParms(object, rxControl, specParams, extraArgs,
                            pars, ev1, inits, rxSolveDat);
-    if (op->neq != 0) {
-      if (op->neq == op->numLinSens + op->numLin) {
-        sortIds(rx, 1);
-      }
-    } else if (op->stiff == 2 || op->stiff == 4) { // liblsoda
-       // Order by the number of times per subject
-      sortIds(rx, 1);
-    }
+    sortIds(rx, 1);
+
     if (setupOnly){
       setupOnlyObj = obj;
       return as<SEXP>(LogicalVector::create(true));
