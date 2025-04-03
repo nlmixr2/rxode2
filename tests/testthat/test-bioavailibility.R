@@ -31,7 +31,7 @@ rxTest({
     d/dt(blood) <- a * intestine - b * blood
   })
 
-  ms <- c("liblsoda", "dop853")
+  ms <- c("liblsoda", "lsoda", "dop853")
   for (m in ms) {
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
