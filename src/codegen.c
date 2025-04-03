@@ -339,7 +339,8 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       if (show_ode != ode_mtime && show_ode != ode_indLinVec){
         for (i=0; i<tb.de.n; i++) {                   /* name state vars */
           buf = tb.ss.line[tb.di[i]];
-          if (show_ode == ode_lag ||
+          if (tb.idu[i] == 0) {
+          } else if (show_ode == ode_lag ||
               show_ode == ode_dur ||
               show_ode == ode_rate) {
             sAppendN(&sbOut, "  ", 2);
