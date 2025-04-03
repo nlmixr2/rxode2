@@ -4,7 +4,7 @@ rxTest({
     Cl <- 1
     fc <- 1
     C2 <- center / V
-    d / dt(center) ~ -Cl * C2
+    d/dt(center) ~ -Cl * C2
     f(center) <- fc
   })
 

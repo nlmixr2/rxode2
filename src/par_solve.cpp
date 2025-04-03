@@ -502,11 +502,15 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
   } else {
     if (R_FINITE(rx->stateTrimU)){
       double top=fabs(rx->stateTrimU);
-      for (int j = op->neq; j--;) yp[j]= min(top,yp[j]);
+      for (int j = op->neq; j--;) {
+        yp[j]= min(top,yp[j]);
+      }
     }
     if (R_FINITE(rx->stateTrimL)){
       double bottom=rx->stateTrimL;
-      for (int j = op->neq; j--;) yp[j]= max(bottom,yp[j]);
+      for (int j = op->neq; j--;) {
+        yp[j]= max(bottom,yp[j]);
+      }
     }
   }
 
@@ -715,8 +719,8 @@ static inline void solveWith1Pt(int *neq,
                                 t_update_inis u_inis,
                                 void *ctx){
   int idid, itol=0;
-  int neqOde = *neq - op->numLin - op->numLinSens;
-  if (neqOde == 0 && *neq > 0) {
+  int neqOde = op->neq - op->numLin - op->numLinSens;
+  if (neqOde == 0 && op->neq > 0) {
     if (!isSameTime(xout, xp)) {
       ind->tprior = xp;
       ind->tout = xout;
@@ -762,10 +766,12 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         ind->tprior = xp;
         ind->tout = xout;
-        F77_CALL(dlsoda)(dydt_lsoda_dum, &neqOde, yp, &xp, &xout,
+        neq[0] = op->neq - op->numLin - op->numLinSens;
+        F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
                          &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                          istate, &giopt, global_rworkp,
                          &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+        neq[0] = op->neq;
       }
       if (*istate <= 0) {
         RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
@@ -781,6 +787,8 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTimeDop(xout, xp)) {
         ind->tprior = xp;
         ind->tout = xout;
+        // change to real ODE num
+        neq[0] = op->neq - op->numLin - op->numLinSens;
         idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                       dydt,         /* function computing the value of f(x,y) */
                       xp,           /* initial x-value */
@@ -806,6 +814,8 @@ static inline void solveWith1Pt(int *neq,
                       NULL,           /* indexes of components for which dense output is required, >= nrdens */
                       0                       /* declared length of icon */
                       );
+        // switch to overall states
+        neq[0] = op->neq;
       }
       if (idid < 0) {
         ind->rc[0] = -2019;
@@ -2695,8 +2705,10 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             ind->tprior = xp;
             ind->tout = ind->extraDoseNewXout;
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+            neq[0] = op->neq;
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           int idx = ind->idx;
@@ -2712,8 +2724,10 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
             ind->tprior = ind->extraDoseNewXout;
             ind->tout = xout;
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+            neq[0] = op->neq;
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
@@ -2721,12 +2735,14 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!isSameTime(xout, xp)) {
           ind->tprior = xp;
           ind->tout = xout;
+          neq[0] = op->neq - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &gitol,
                            &(op->RTOL),
                            &(op->ATOL),
                            &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+          neq[0] = op->neq;
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
         xp = xout;
@@ -3009,6 +3025,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
             ind->tprior = xp;
             ind->tout = ind->extraDoseNewXout;
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           xp,           /* initial x-value */
@@ -3034,6 +3051,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
+            neq[0] = op->neq;
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           int idx = ind->idx;
@@ -3049,6 +3067,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
             ind->tprior = ind->extraDoseNewXout;
             ind->tout = xout;
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
                           ind->extraDoseNewXout,           /* initial x-value */
@@ -3074,6 +3093,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           NULL,           /* indexes of components for which dense output is required, >= nrdens */
                           0                       /* declared length of icon */
                           );
+            neq[0] = op->neq;
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           xp = ind->extraDoseNewXout;
@@ -3081,6 +3101,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (!isSameTimeDop(xout, xp)) {
           ind->tprior = xp;
           ind->tout = xout;
+          neq[0] = op->neq - op->numLin - op->numLinSens;
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
                         xp,           /* initial x-value */
@@ -3106,6 +3127,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         NULL,           /* indexes of components for which dense output is required, >= nrdens */
                         0                       /* declared length of icon */
                         );
+          neq[0] = op->neq;
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
         }
