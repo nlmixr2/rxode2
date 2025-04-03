@@ -289,6 +289,7 @@ extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
+              // Set inLhs to 0 to make sure uniform is going to be used
               int inLhs = ind->inLhs;
               ind->inLhs = 0;
               ind->cov_sample[k] = round(rxunif(ind, 0, (double)(rx->nsub*rx->nsim)))+1;
@@ -326,6 +327,7 @@ extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
+              // Set inLhs to 0 to make sure uniform is going to be used
               int inLhs = ind->inLhs;
               ind->inLhs = 0;
               ind->cov_sample[k] = round(rxunif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
