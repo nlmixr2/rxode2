@@ -3959,8 +3959,9 @@ static inline void rxSolve_resample(const RObject &obj,
               if (val == 0){
                 val = (int)(unif_rand()*ncol)+1;
                 idSel[is] = val;
-                // Fill in the selected ID for the time-varying covariate(s)
-                // This is filled in reverse order because ind->cov_sample is filled in reverse order
+                // Fill in the selected ID for the time-varying
+                // covariate(s) This is filled in reverse order
+                // because ind->cov_sample is filled in reverse order
                 std::fill_n(&_globals.gSampleCov[0]+(size-is-1)*op->ncov, op->ncov, val);
               }
               val--;

@@ -289,7 +289,10 @@ extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = round(rxunif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
+              int inLhs = ind->inLhs;
+              ind->inLhs = 0;
+              ind->cov_sample[k] = round(rxunif(ind, 0, (double)(rx->nsub*rx->nsim)))+1;
+              ind->inLhs = inLhs;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
@@ -323,7 +326,10 @@ extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             if (ind->cov_sample[k] == 0) {
-              ind->cov_sample[k] = (int)(rxunif(ind, (double)1, (double)(rx->nsub*rx->nsim+1)));
+              int inLhs = ind->inLhs;
+              ind->inLhs = 0;
+              ind->cov_sample[k] = round(rxunif(ind, 0.0, (double)(rx->nsub*rx->nsim)))+1;
+              ind->inLhs = inLhs;
             }
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             idxSample = -1;
