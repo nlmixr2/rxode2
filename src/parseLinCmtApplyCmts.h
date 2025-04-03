@@ -258,7 +258,7 @@ extern void calcLinCmt(void) {
         sAppendN(&sbt, "%s", sbt2.s);
         sbt2.o = 0;
       }
-      err_trans(sbt.s);
+      trans_syntax_error_report_fn(sbt.s);
     }
     tb.linCmtFlg = numSens*100+nLin*10 + depot;
   }
