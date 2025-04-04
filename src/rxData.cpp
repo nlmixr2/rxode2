@@ -3909,7 +3909,7 @@ static inline void rxSolve_resample(const RObject &obj,
       rxSolveFree();
       stop(_("'resample' must be NULL or a character vector"));
     }
-    if (doSample){
+    if (doSample) {
       bool resampleID = asBool(rxControl[Rxc_resampleID], "resampleID");
       rx->sample = true;
       if (rx->par_sample != NULL) free(rx->par_sample);
@@ -3936,7 +3936,10 @@ static inline void rxSolve_resample(const RObject &obj,
       int nrow = rx->npars;
       int ncol = rx->nsub;
       int size = rx->nsub*rx->nsim;
-      NumericMatrix iniPars(nrow, ncol,&_globals.gpars[0]);
+      NumericMatrix iniPars(nrow, ncol, &_globals.gpars[0]);
+      // iniPars.attr("dimnames") = List::create(pars, R_NilValue);
+      // REprintf("iniPars\n");
+      // Rcpp::print(iniPars);
       NumericMatrix ret(nrow, size);
       IntegerVector idSel(size);
       std::fill(idSel.begin(),idSel.end(),0);
@@ -3944,7 +3947,7 @@ static inline void rxSolve_resample(const RObject &obj,
       // add sample indicators
       if (_globals.gSampleCov != NULL) free(_globals.gSampleCov);
       _globals.gSampleCov = (int*)calloc(op->ncov*rx->nsub*rx->nsim, sizeof(int));
-      for (int ir = nrow; ir--;){
+      for (int ir = nrow; ir--;) {
         // For sampling  (with replacement)
         if (rx->par_sample[ir]) {
           cur = CHAR(pars[ir]);
@@ -3956,7 +3959,7 @@ static inline void rxSolve_resample(const RObject &obj,
             // Probably doesn't make much difference, though.
             if (resampleID) {
               val = idSel[is];
-              if (val == 0){
+              if (val == 0) {
                 val = (int)(unif_rand()*ncol)+1;
                 idSel[is] = val;
                 // Fill in the selected ID for the time-varying
@@ -3968,13 +3971,13 @@ static inline void rxSolve_resample(const RObject &obj,
             } else {
               val = (int)(unif_rand()*ncol);
             }
-            for (int ip = parList.size(); ip--;){
+            for (int ip = parList.size(); ip--;) {
               if (!strcmp(CHAR(parNames[ip]), cur)) {
                 SEXP curIn = parList[ip];
                 SEXP curOut = parListF[ip];
                 if (TYPEOF(curIn) == INTSXP) {
                   INTEGER(curOut)[ic] = INTEGER(curIn)[val];
-                } else if (TYPEOF(curIn) == REALSXP){
+                } else if (TYPEOF(curIn) == REALSXP) {
                   REAL(curOut)[ic] = REAL(curIn)[val];
                 }
                 break;
@@ -3984,7 +3987,7 @@ static inline void rxSolve_resample(const RObject &obj,
           }
         } else {
           // This is for copying
-          for (int is = size; is--;){
+          for (int is = size; is--;) {
             ret(ir, is) = iniPars(ir, is % ncol);
           }
         }
@@ -3992,8 +3995,17 @@ static inline void rxSolve_resample(const RObject &obj,
       if (updatePar){
         rxSolveDat->par1 = as<RObject>(parListF);
       }
+      // REprintf("ret\n");
+      // ret.attr("dimnames") = List::create(pars, R_NilValue);
+      // Rcpp::print(ret);
+
+      // REprintf("parList\n");
+      // Rcpp::print(parList);
+      // REprintf("parListF\n");
+      // Rcpp::print(parListF);
+
       // Put sampled dataset in gpars
-      std::copy(ret.begin(),ret.end(),&_globals.gpars[0]);
+      std::copy(ret.begin(), ret.end(), &_globals.gpars[0]);
     }
   }
 }
