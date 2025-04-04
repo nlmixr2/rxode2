@@ -631,9 +631,16 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
     int *stateOrdInt = INTEGER(stateOrd);
     sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
-    for (int i = 0; i < nOrd; i++){
+    for (int i = 0; i < nOrd; i++) {
       sAppend(&sbOut, "#define __DDT%d__ %d // %s\n", stateOrdInt[i]-1, i,
               CHAR(STRING_ELT(stateOrdNames, i)));
+      if (!strcmp("depot", CHAR(STRING_ELT(stateOrdNames, i)))) {
+        sAppend(&sbOut, "#define _DEPOT_ %d // %s\n", i,
+                CHAR(STRING_ELT(stateOrdNames, i)));
+      } else if (!strcmp("central", CHAR(STRING_ELT(stateOrdNames, i)))) {
+        sAppend(&sbOut, "#define _CENTRAL_ %d // %s\n", i,
+                CHAR(STRING_ELT(stateOrdNames, i)));
+      }
     }
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
