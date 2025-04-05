@@ -15,6 +15,7 @@
 #include "../inst/include/rxode2parseGetTime.h"
 #define SORT gfx::timsort
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
+
 // dop853 is same time
 
 extern "C" uint32_t getRxSeed1(int ncores);
@@ -468,6 +469,22 @@ t_ME ME = NULL;
 t_IndF IndF = NULL;
 
 
+static inline void copyLinCmt(int *neq,
+                              rx_solving_options_ind *ind, rx_solving_options *op,
+                              double *yp) {
+  if (op->numLin > 0) {
+    // Here we are doing ODE solving OR only linear solving
+    // save the values here
+    if (!isSameTimeOp(ind->tout, ind->linCmtLastT)) {
+      dydt(neq, ind->tout, yp, yp);
+    }
+    std::copy(ind->linCmtSave,
+              ind->linCmtSave + op->numLin + op->numLinSens,
+              yp + op->linOffset);
+  }
+}
+
+
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
@@ -739,6 +756,7 @@ static inline void solveWith1Pt(int *neq,
         ind->tprior = xp;
         ind->tout = xout;
         lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
+        copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
         RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
@@ -761,6 +779,7 @@ static inline void solveWith1Pt(int *neq,
                          istate, &giopt, global_rworkp,
                          &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
         neq[0] = op->neq;
+        copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
         RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
@@ -805,6 +824,7 @@ static inline void solveWith1Pt(int *neq,
                       );
         // switch to overall states
         neq[0] = op->neq;
+        copyLinCmt(neq, ind, op, yp);
       }
       if (idid < 0) {
         ind->rc[0] = -2019;
@@ -2184,6 +2204,8 @@ extern "C" void par_indLin(rx_solve *rx){
 }
 
 
+
+
 // ================================================================================
 // liblsoda
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
@@ -2248,7 +2270,10 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            ind->tprior = xp;
+            ind->tout   = ind->extraDoseNewXout;
             lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
+            copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
           int idx = ind->idx;
@@ -2262,13 +2287,19 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           ind->ixds = ixds;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            ind->tprior = ind->extraDoseNewXout;
+            ind->tout   = xout;
             lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
+            copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
+          ind->tprior = xp;
+          ind->tout   = xout;
           lsoda(ctx, yp, &xp, xout);
+          copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
         }
         xp = xout;
@@ -2698,6 +2729,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           int idx = ind->idx;
@@ -2717,6 +2749,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
@@ -2732,6 +2765,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
                            &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
           neq[0] = op->neq;
+          copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
         xp = xout;
@@ -3041,6 +3075,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0                       /* declared length of icon */
                           );
             neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           int idx = ind->idx;
@@ -3083,6 +3118,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                           0                       /* declared length of icon */
                           );
             neq[0] = op->neq;
+            copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           xp = ind->extraDoseNewXout;
@@ -3117,6 +3153,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         0                       /* declared length of icon */
                         );
           neq[0] = op->neq;
+          copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
         }
