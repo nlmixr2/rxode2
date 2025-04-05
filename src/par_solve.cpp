@@ -470,17 +470,6 @@ t_IndF IndF = NULL;
 
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
-  if (op->numLin > 0) {
-    if (!isSameTime(ind->linCmtLastT, ind->tout)) {
-      // call one last time to get the right values
-      // need dummy to write the ODE values into...
-      // Rf_error("bad, %f, %f\n", ind->linCmtLastT, ind->tout);
-      dydt(neq, ind->tout, yp, ind->linCmtDummy);
-    }
-    std::copy(ind->linCmtSave,
-              ind->linCmtSave + op->numLinSens + op->numLin,
-              yp + op->linOffset);
-  }
   if (*idid <= 0) {
     if (err_msg != NULL) {
       int cid = -*idid-1;

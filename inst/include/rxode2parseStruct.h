@@ -204,6 +204,13 @@ typedef struct {
   int idxHi;
   double tprior;
   double tout;
+  // This *DDtStateVar pointer is for the dydt solution
+  // This is made so that `linCmtA` and `linCmtB` can
+  // insert the solution when needed.
+  double *DDtStateVars;
+  // This is the state values for the current solve. These can also be
+  // updated by the `linCmtA` and `linCmtB` functions.
+  double *zzStateVar;
 } rx_solving_options_ind;
 
 typedef struct {

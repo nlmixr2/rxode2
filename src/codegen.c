@@ -189,7 +189,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppend(&sbOut, "SEXP %smodel_vars(void);\n", prefix);
       sAppendN(&sbOut,"\n", 1);
       sAppendN(&sbOut, "\n// prj-specific differential eqns\nvoid ", 40);
-                                                 sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=1;\n", prefix);
+                                                 sAppend(&sbOut, "%sdydt(int *_neq, double __t, double *__zzStateVar__, double *__DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=1;\n  _ind->DDtStateVars=__DDtStateVar__;\n  _ind->zzStateVar=__zzStateVar__;\n", prefix);
     } else if (show_ode == ode_jac){
       sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _ind->_rxFlag=2;\n", prefix);
     } else if (show_ode == ode_ini){

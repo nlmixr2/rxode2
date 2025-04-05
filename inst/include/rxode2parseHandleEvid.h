@@ -527,10 +527,9 @@ static inline int handle_evid(int evid, int neq,
     ind->solved = ind->idx;
     return 0;
   } // else if (!ind->doSS) {
-// #pragma omp critical
-//     REprintf("handle evid %d dose at time %f is value %f (ind->ixds: %d; ind->idx: %d; id: %d)\n",
-//              evid, xout, getDoseIndex(ind, ind->idx), ind->ixds, ind->idx);
-//   }
+  //   REprintf("handle evid %d dose at time %f is value %f (ind->ixds: %d; ind->idx: %d; id: %d)\n",
+  //            evid, xout, getDoseIndex(ind, ind->idx), ind->ixds, ind->idx);
+  // }
   int cmt, foundBad, j;
   double tmp;
   getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
