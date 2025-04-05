@@ -755,10 +755,12 @@ static inline void solveWith1Pt(int *neq,
       if (!isSameTime(xout, xp)) {
         ind->tprior = xp;
         ind->tout = xout;
+        neq[0] = op->neq - op->numLin - op->numLinSens;
         F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
                          &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                          istate, &giopt, global_rworkp,
                          &glrw, global_iworkp, &gliw, jdum_lsoda, &global_jt);
+        neq[0] = op->neq;
       }
       if (*istate <= 0) {
         RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
@@ -775,6 +777,7 @@ static inline void solveWith1Pt(int *neq,
         ind->tprior = xp;
         ind->tout = xout;
         // change to real ODE num
+        neq[0] = op->neq - op->numLin - op->numLinSens;
         idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                       dydt,         /* function computing the value of f(x,y) */
                       xp,           /* initial x-value */
@@ -801,6 +804,7 @@ static inline void solveWith1Pt(int *neq,
                       0                       /* declared length of icon */
                       );
         // switch to overall states
+        neq[0] = op->neq;
       }
       if (idid < 0) {
         ind->rc[0] = -2019;
@@ -2115,7 +2119,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         }
         cancelInfusionsThatHaveStarted(ind, neq[1], xout);
         cancelPendingDoses(ind, neq[1]);
-        memcpy(yp, inits, neq[0]*sizeof(double));
+        memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
         if (rx->istateReset) idid = 1;
         xp=xout;
@@ -2208,11 +2212,12 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double xout;
   int *rc;
   double *yp;
+  int neqOde = *neq - op->numLin - op->numLinSens;
   inits = op->inits;
   struct lsoda_context_t * ctx = lsoda_create_ctx();
   ctx->function = (_lsoda_f)dydt_liblsoda;
   ctx->data = neq;
-  ctx->neq = *neq
+  ctx->neq = neqOde;
   ctx->state = 1;
   ctx->error=NULL;
   ind = &(rx->subjects[neq[1]]);
@@ -2670,6 +2675,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   double xp = getAllTimes(ind, 0);
   double xout;
+  int neqOde= neq[0] - op->numLin - op->numLinSens;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   unsigned int j;
@@ -2688,10 +2694,10 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
             ind->tprior = xp;
             ind->tout = ind->extraDoseNewXout;
-            // neq[0] = op->neq - op->numLin - op->numLinSens;
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            // neq[0] = op->neq;
+            neq[0] = op->neq;
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           int idx = ind->idx;
@@ -2707,10 +2713,10 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
             ind->tprior = ind->extraDoseNewXout;
             ind->tout = xout;
-            // neq[0] = op->neq - op->numLin - op->numLinSens;
+            neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-            // neq[0] = op->neq;
+            neq[0] = op->neq;
             postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
           }
           xp =  ind->extraDoseNewXout;
@@ -2718,12 +2724,14 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!isSameTime(xout, xp)) {
           ind->tprior = xp;
           ind->tout = xout;
+          neq[0] = op->neq - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &gitol,
                            &(op->RTOL),
                            &(op->ATOL),
                            &gitask,
                            &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
+          neq[0] = op->neq;
           postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
         }
         xp = xout;
