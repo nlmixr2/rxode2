@@ -484,7 +484,6 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
-
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
@@ -654,6 +653,7 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->ix[i] = i;
     ind->idx = i;
+    ind->linCmtAlast = NULL;
     if (!isObs(getEvid(ind, i))) {
       time[i] = getTime__(ind->ix[i], ind, 1);
       ind->ixds++;
@@ -2113,6 +2113,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   unsigned int j;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linCmtAlast = NULL;
     xout = getTime_(ind->ix[i], ind);
     yp = getSolve(i);
     if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2130,6 +2131,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
+      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -2258,6 +2260,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   lsoda_prepare(ctx, &opt);
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linCmtAlast = NULL;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3) {
@@ -2308,6 +2311,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
+      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3) {
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -2712,6 +2716,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   unsigned int j;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
+    ind->linCmtAlast = NULL;
     yp   = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2775,6 +2780,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
+      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -2903,6 +2909,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   unsigned int j;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linCmtAlast = NULL;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug) {
@@ -2962,6 +2969,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     if (!op->badSolve) {
       ind->idx = i;
+      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3) {
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -3031,6 +3039,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   unsigned int j;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linCmtAlast = NULL;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug){
@@ -3162,6 +3171,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     if (!op->badSolve){
       ind->idx = i;
+      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {

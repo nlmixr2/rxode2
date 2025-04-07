@@ -178,7 +178,12 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   // Get/Set the pointers
   double *asave = ind->linCmtSave;
   double *r = getLinRate;
-  double *a = getAdvan(idx);
+  double *a;
+  if (ind->linCmtAlast == NULL) {
+    a = getAdvan(idx == 0 ? 0 : idx-1);
+  } else {
+    a = ind->linCmtAlast;
+  }
   lc.setPtr(a, r, asave);
   lc.setRate(r);
 
@@ -364,7 +369,12 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Get/Set the pointers
   double *asave = ind->linCmtSave;
   double *r = getLinRate;
-  double *a = getAdvan(idx == 0 ? 0 : idx-1);
+  double *a;
+  if (ind->linCmtAlast == NULL) {
+    a = getAdvan(idx == 0 ? 0 : idx-1);
+  } else {
+    a = ind->linCmtAlast;
+  }
   lc.setPtr(a, r, asave);
   lc.setRate(r);
 

@@ -433,7 +433,6 @@ Function loadNamespace("loadNamespace", R_BaseNamespace);
 
 Function requireNamespace("requireNamespace", R_BaseNamespace);
 
-
 Environment cliNS = loadNamespace("cli");
 Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
 
