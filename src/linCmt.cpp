@@ -443,6 +443,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     std::copy(ind->linCmtSave,
               ind->linCmtSave + op->numLinSens + op->numLin,
               ind->DDtStateVars);
+    ind->linCmtAlast = ind->DDtStateVars;
   }
   if (which1 >= 0 && which2 >= 0) {
     // w1, w2 are > 0

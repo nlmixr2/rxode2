@@ -191,6 +191,7 @@ extern "C" int isProgSupported();
 int par_progress_0=0;
 int par_progress_1=0;
 double par_progress__=1.0;
+
 extern "C" SEXP _rxParProgress(SEXP num){
   par_progress__=REAL(num)[0];
   return R_NilValue;
@@ -625,6 +626,7 @@ extern "C" void F77_NAME(dlsoda)(
 extern "C" rx_solve *getRxSolve2_(){
   return &rx_global;
 }
+
 extern "C" rx_solve *getRxSolve_(){
   rx_solve *rx = &rx_global;
   rx->subjects = inds_global;
@@ -1642,6 +1644,7 @@ void handleSS(int *neq,
       curLagExtra = curLagExtra - overIi*curIi;
     }
     // First Reset
+    ind->linCmtAlast = NULL;
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       // ind->on[j] = 1; // nonmem doesn't reset on according to doc
@@ -1656,8 +1659,9 @@ void handleSS(int *neq,
     // Reset LHS to NA
     ind->inLhs = 0;
     for (j = op->nlhs; j--;) ind->lhs[j] = NA_REAL;
-    memcpy(yp, op->inits, neq[0]*sizeof(double));
+    ind->linCmtAlast = NULL;
     u_inis(neq[1], yp); // Update initial conditions @ current time
+    ind->linCmtAlast = yp;
     if (rx->istateReset) *istate = 1;
     int k;
     double xp2, xout2;
@@ -2143,6 +2147,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
+        ind->linCmtAlast = yp;
         if (rx->istateReset) idid = 1;
         xp=xout;
         ind->ixds++;
@@ -2323,6 +2328,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
+        ind->linCmtAlast = yp;
         if (rx->istateReset) ctx->state = 1;
         xp=xout;
         ind->ixds++;
@@ -2791,6 +2797,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
+        ind->linCmtAlast = yp;
         if (rx->istateReset) istate = 1;
         ind->ixds++;
         xp = xout;
@@ -2981,6 +2988,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
+        ind->linCmtAlast = yp;
         ind->ixds++;
         xp=xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
@@ -3182,7 +3190,9 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         cancelInfusionsThatHaveStarted(ind, neq[1], xout);
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
+        ind->linCmtAlast = NULL;
         u_inis(neq[1], yp); // Update initial conditions @ current time
+        ind->linCmtAlast = yp;
         ind->ixds++;
         xp=xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){

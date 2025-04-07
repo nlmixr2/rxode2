@@ -153,7 +153,8 @@ static inline void setDoseNumber(rx_solving_options_ind *ind, int i, int j, doub
 }
 
 static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
-																											 rx_solve *rx, rx_solving_options *op,
+																											 rx_solve *rx,
+                                                       rx_solving_options *op,
 																											 rx_solving_options_ind *ind) {
 	int curEvid = getEvid(ind, ind->idose[idx]);
 	double curAmt = getDoseNumber(ind, idx);
@@ -570,7 +571,8 @@ static inline int handle_evid(int evid, int neq,
       ind->on[cmt] = 0;
       return 1;
     }
-    if (!ind->doSS && (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20) && cmt < op->neq) {
+    if (!ind->doSS && (ind->wh0 == EVID0_SS2 || ind->wh0 == EVID0_SS20) &&
+        cmt < op->neq) {
       // Save for adding at the end; Only for ODE systems
       memcpy(ind->solveSave, yp, op->neq*sizeof(double));
     }
@@ -583,15 +585,6 @@ static inline int handle_evid(int evid, int neq,
         ind->on[cmt] = 1;
         ind->cacheME = 0;
         InfusionRate[cmt] -= getDoseIndexPlus1(ind, ind->idx);
-        // if (ind->wh0 != EVID0_SS2 &&
-        //     ind->wh0 != EVID0_SS) {
-        //   int infEixds = ind->ixds;
-        //   if (infEixds > 0) {
-        //     pushPendingDose(infEixds+1, ind);
-        //   } else {
-        //     pushPendingDose(infEixds-1, ind);
-        //   }
-        // }
         if (ind->wh0 == EVID0_SS2 &&
             getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
             getDoseIndex(ind, ind->idx)) {
@@ -627,12 +620,6 @@ static inline int handle_evid(int evid, int neq,
       if (tmp > 0) {
         ind->curDose = tmp;
         ind->curDoseS[cmt] = ind->curDose;
-        // if (ind->wh0 != EVID0_SS2 &&
-        //     ind->wh0 != EVID0_SS) {
-        //   int infEixds;
-        //   handleInfusionGetEndOfInfusionIndex(ind->ixds, &infEixds, &rx_global, op, ind);
-        //   pushPendingDose(infEixds, ind);
-        // }
       }
       tmp = getAmt(ind, id, cmt, tmp, xout, yp);
       InfusionRate[cmt] += tmp;
