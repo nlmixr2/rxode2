@@ -435,47 +435,82 @@ namespace stan {
         return ret0;
       }
 
+      double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+        int sw = ncmt_*300 + trans_;
+        switch (sw) {
+        case 311:
+          return 1.0/(1.0/theta(1, 0) + theta(3, 0) + theta(5, 0));
+          break;
+        case 211:
+          return 1.0/(1.0/theta(1, 0) + theta(3, 0));
+          break;
+          // Note 111 is the as simply using volume (included below)
+
+        case 310:
+          return 1.0/(theta(1, 0) + theta(3, 0) + theta(5, 0));
+          break;
+        case 210:
+          return  1.0/(theta(1, 0) + theta(3, 0));
+          break;
+        case 110:
+          return 1.0/(theta(1, 0));
+          break;
+
+        case 101:
+        case 102:
+        case 111:
+        case 201:
+        case 202:
+        case 203:
+        case 204:
+        case 205:
+        case 301:
+        case 302:
+        default:
+          return theta(1, 0);
+        }
+        return NA_REAL;
+      }
+
       Eigen::Matrix<double, -1, -1> getJacCp(const Eigen::Matrix<double, -1, -1> J0,
                                              const Eigen::VectorXd ret0,
                                              const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> J = J0.row(oral0_);
         Eigen::Matrix<double, Eigen::Dynamic, 1> Jf = J;
+
+        double v = getVc(theta);
+
         for (int i = 0; i < getNpars(); i++) {
-          bool adjExtra = false;
-          // Set denominator and if the derivative contains volume
-          if (trans_ != 10 || ncmt_ == 1) {
-            Jf(i, 0) = theta(1, 0);
-            adjExtra = (i == 1);
-          } else if (ncmt_ == 2) {
-            Jf(i, 0) = theta(1, 0) + theta(3, 0);
-            adjExtra = (i == 1 || i == 3);
-          } else if (ncmt_ == 3) {
-            Jf(i, 0) = theta(1, 0) + theta(3, 0) + theta(5, 0);
-            adjExtra = (i == 1 || i == 3 || i == 5);
-          }
-          // Adjust the gradients
-          if (adjExtra) {
-            Jf(i, 0) = -ret0(oral0_, 0)/(Jf(i, 0)*Jf(i, 0)) + J(i, 0) / Jf(i, 0);
+          if (((ncmt_ == 1 && i == 1) ||
+               (ncmt_ == 2 && (i == 1 || i ==3)) ||
+               (ncmt_ == 3 && (i == 1 || i ==3 || i == 5)))) {
+            if (trans_ == 11 && ncmt_ >= 2 && i == 1) {
+              // > D(S("f(v1)/(1/v1+v2+v3)"), "v1")
+              //   (Add) Derivative(f(v1), v1)/(v2 + v3 + v1^(-1)) + f(v1)/(v1^2*(v2 + v3 + v1^(-1))^2)
+              // Noting that (v2 + v3 + v1^(-1)) = v
+              //   (Add) Derivative(f(v1), v1)/v + f(v1)/(v1^2*v^2)
+
+              // > D(S("f(v1)/(1/v1+v2)"), "v1")
+              //   (Add)Derivative(f(v1), v1)/(v2 + v1^(-1)) + f(v1)/(v1^2*(v2 + v1^(-1))^2)
+              // Noting that (v2 + v1^(-1)) = v
+              //   (Add) Derivative(f(v1), v1)/v + f(v1)/(v1^2*v^2)
+              Jf(i, 0) = J(i, 0) / v +
+                ret0(oral0_, 0)/(theta(1, 0)*theta(1, 0)*v*v);
+            } else {
+              Jf(i, 0) = -ret0(oral0_, 0)/(v*v) +
+                J(i, 0) / v;
+            }
           } else {
-            Jf(i, 0) = J(i, 0)  / Jf(i, 0);
+            Jf(i, 0) = J(i, 0)  / v;
           }
         }
         return Jf;
       }
 
+
       double adjustF(const Eigen::VectorXd ret0,
                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
-        double ret = NA_REAL;
-        if (trans_ != 10 || ncmt_ == 1) {
-          ret = ret0(oral0_, 0) / theta(1, 0);
-        } else if (ncmt_ == 2) {
-          ret = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0));
-        } else if (ncmt_ == 3) {
-          ret = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0) + theta(5, 0));
-        } else {
-          ret = ret0(oral0_, 0);
-        }
-        return ret;
+        return ret0(oral0_, 0) / getVc(theta);
       }
 
     };
