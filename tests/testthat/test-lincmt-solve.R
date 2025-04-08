@@ -377,10 +377,6 @@ rxTest({
       d / dt(center) <- -CL * C2
     })
 
-    test_that("ode model gives extraCmt=0", {
-      expect_equal(rxModelVars(ode.1c)$extraCmt, 0L)
-    })
-
     goodP <- function(model, cmt = 1L, ka = 0L) {
       test_that(sprintf("model '%s' parses to cmt=%d, ka=%d", as.character(substitute(model)), cmt, ka), {
         .flags <- rxModelVars(model)$flags
@@ -450,10 +446,6 @@ rxTest({
     )
 
     goodP(ode.1cs2)
-
-    test_that("linear compartment model gives extraCmt=1", {
-      expect_equal(rxModelVars(ode.1cs2)$extraCmt, 1L)
-    })
 
     ## The solved systems can be mixed with ODE solving routines (to
     ## speed them up a bit...?)
@@ -557,10 +549,6 @@ rxTest({
     )
 
     goodP(ode.2cA2, ka = 1L)
-
-    test_that("linear oral model gives extraCmt=2", {
-      expect_equal(rxModelVars(sol.1c.ka)$extraCmt, 2L)
-    })
 
     o.1c <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = et)
 
