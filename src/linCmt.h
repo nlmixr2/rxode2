@@ -443,7 +443,11 @@ namespace stan {
         for (int i = 0; i < getNpars(); i++) {
           bool adjExtra = false;
           // Set denominator and if the derivative contains volume
-          if (trans_ != 10 || ncmt_ == 1) {
+
+          // First set the gradent to the deminator
+          if (trans == 10) {
+            Jf(i, 0) = 1/theta(1, 0);
+          } else if (trans_ != 10 || ncmt_ == 1) {
             Jf(i, 0) = theta(1, 0);
             adjExtra = (i == 1);
           } else if (ncmt_ == 2) {
@@ -453,6 +457,11 @@ namespace stan {
             Jf(i, 0) = theta(1, 0) + theta(3, 0) + theta(5, 0);
             adjExtra = (i == 1 || i == 3 || i == 5);
           }
+          // Now construct the gradient for the concentration by
+          // taking the actual gradient (ret) and using the
+          // denominator Jf(i, 0) to get the gradient of the
+          // system
+
           // Adjust the gradients
           if (adjExtra) {
             Jf(i, 0) = -ret0(oral0_, 0)/(Jf(i, 0)*Jf(i, 0)) + J(i, 0) / Jf(i, 0);
@@ -466,7 +475,9 @@ namespace stan {
       double adjustF(const Eigen::VectorXd ret0,
                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         double ret = NA_REAL;
-        if (trans_ != 10 || ncmt_ == 1) {
+        if (trans_ == 10) {
+          ret = ret0(oral0_, 0) * theta(1, 0);
+        } else if (trans_ != 10 || ncmt_ == 1) {
           ret = ret0(oral0_, 0) / theta(1, 0);
         } else if (ncmt_ == 2) {
           ret = ret0(oral0_, 0) / (theta(1, 0) + theta(3, 0));
