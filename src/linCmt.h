@@ -436,7 +436,7 @@ namespace stan {
       }
 
       double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
-        int sw = ncmt_*300 + trans_;
+        int sw = ncmt_*100 + trans_;
         switch (sw) {
         case 311:
           return 1.0/(1.0/theta(1, 0) + theta(3, 0) + theta(5, 0));
@@ -450,7 +450,7 @@ namespace stan {
           return 1.0/(theta(1, 0) + theta(3, 0) + theta(5, 0));
           break;
         case 210:
-          return  1.0/(theta(1, 0) + theta(3, 0));
+          return 1.0/(theta(1, 0) + theta(3, 0));
           break;
         case 110:
           return 1.0/(theta(1, 0));
@@ -466,8 +466,11 @@ namespace stan {
         case 205:
         case 301:
         case 302:
-        default:
           return theta(1, 0);
+          break;
+        default:
+          REprintf("Unknown linCmt; sw: %d cmt: %d trans: %d\n", sw, ncmt_, trans_);
+          return NA_REAL;
         }
         return NA_REAL;
       }
