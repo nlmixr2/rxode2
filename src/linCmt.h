@@ -156,7 +156,7 @@ namespace stan {
         Xo =(yp(oral0_, 0)*sol2.C1) * E +
           (yp(oral0_ + 1, 0)*sol2.C2) * E;
 
-        if (oral0_ == 1 && yp(0, 0) > 0.0) {
+        if (oral0_ == 1 && yp(0, 0) >= 0.0) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
@@ -207,7 +207,7 @@ namespace stan {
           (yp(oral0_ + 1, 0)*sol3.C2) * E +
           (yp(oral0_ + 2, 0)*sol3.C3) * E ;
 
-        if (oral0_ == 1 && yp(0, 0) > 0.0) {
+        if (oral0_ == 1 && yp(0, 0) >= 0.0) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;

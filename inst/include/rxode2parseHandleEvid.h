@@ -639,12 +639,6 @@ static inline int handle_evid(int evid, int neq,
       if (tmp > 0) {
         ind->curDose = tmp;
         ind->curDoseS[cmt] = ind->curDose;
-        // if (ind->wh0 != EVID0_SS2 &&
-        //     ind->wh0 != EVID0_SS) {
-        //   int infEixds;
-        //   handleInfusionGetEndOfInfusionIndex(ind->ixds, &infEixds, &rx_global, op, ind);
-        //   pushPendingDose(infEixds, ind);
-        // }
       }
       // if (!ind->doSS) {
       //   REprintf("infusion dose at %f is %f ind->ixds: %d\n", xout, tmp, ind->ixds);

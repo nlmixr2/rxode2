@@ -185,7 +185,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     a = ind->linCmtAlast;
   }
   lc.setPtr(a, r, asave);
-  lc.setRate(r);
 
   // Setup parameter matrix
   Eigen::Matrix<double, -1, 1> theta;
@@ -376,7 +375,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     a = ind->linCmtAlast;
   }
   lc.setPtr(a, r, asave);
-  lc.setRate(r);
 
   // Setup parameter matrix
   Eigen::Matrix<double, -1, 1> theta;
