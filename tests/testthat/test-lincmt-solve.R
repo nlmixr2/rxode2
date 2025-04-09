@@ -118,8 +118,7 @@ rxTest({
       d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
       d / dt(peri) <- Q * C2 - Q * C3
     },
-    linCmtSens = sens
-    )
+    linCmtSens = sens)
 
     sol.2c <- rxode2(
     {
