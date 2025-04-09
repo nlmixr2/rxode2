@@ -98,7 +98,7 @@ RObject linCmtModelDouble(double dt,
 }
 
 /*
- *  linCmtB
+ *  linCmtA
  *
  *  This function is called from rxode2 to compute the linear function
  *  values as well as the compartment amounts.
@@ -424,15 +424,22 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     //
 
     // Get/Set the dt; This is only applicable in the ODE/linCmt() case
+
     double dt = _t - ind->tprior;
     lc.setDt(dt);
+
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
   } else {
+    // If we are calculating the LHS values or other values, these are
+    // stored in the corresponding compartments.
+    //
+    // This also handles the case where _t = ind->tcur, where the
+    // solution is already known
     double *acur = getAdvan(idx);
     asave = acur;
-    fx = lc.restoreFx(acur);
     J = lc.restoreJac(acur);
+    fx = lc.restoreFx(acur);
   }
   ind->linCmtLastT = ind->tout;
   if (op->linOffset == 0 && ind->_rxFlag == 1) {
