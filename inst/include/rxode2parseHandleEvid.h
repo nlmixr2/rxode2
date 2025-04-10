@@ -175,7 +175,7 @@ static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 					lastKnownOff = k;
 					if (j == idx) {
 						*infEixds = k;
-						// dur = getTime_(ind->idose[infEixds], ind);// -
+						// dur = getTime_(ind->idose[infEixds], ind);
 						// dur -= getTime_(ind->idose[ind->ixds+2], ind);
 						// dur2 = getIiNumber(ind, ind->ixds) - dur;
 					}
@@ -528,8 +528,10 @@ static inline int handle_evid(int evid, int neq,
     ind->solved = ind->idx;
     return 0;
   } // else if (!ind->doSS) {
-  //   REprintf("handle evid %d dose at time %f is value %f (ind->ixds: %d; ind->idx: %d; id: %d)\n",
-  //            evid, xout, getDoseIndex(ind, ind->idx), ind->ixds, ind->idx);
+  //   rx_solving_options *op = &op_global;
+  //   REprintf("handle evid[%d] %d dose at time %f is value %f (ind->ixds: %d; ind->idx: %d; id: %d)\n",
+  //            op->numLin, evid, xout,
+  //            getDoseIndex(ind, ind->idx), ind->ixds, ind->idx, ind->id);
   // }
   int cmt, foundBad, j;
   double tmp;

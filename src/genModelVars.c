@@ -137,8 +137,10 @@ SEXP generateModelVars(void) {
 
   SEXP alagVarSexp = PROTECT(Rf_allocVector(INTSXP, tb.alagn));pro++;
   int *alagVar = INTEGER(alagVarSexp);
+  int *ordFI = INTEGER(ordF);
+
   for (int i = 0; i < tb.alagn; ++i) {
-    alagVar[i] = tb.alag[i];
+    alagVar[i] = ordFI[tb.alag[i]-1];
   }
   SET_STRING_ELT(names, 19, mkChar("alag"));
   SET_VECTOR_ELT(lst,   19, alagVarSexp);

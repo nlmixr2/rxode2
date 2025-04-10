@@ -1345,6 +1345,7 @@ void handleSS(int *neq,
   int maxSS = op->maxSS;
   int minSS = op->minSS;
   int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
+  REprintf("isSsLag: %d [%d]\n", isSsLag, ind->wh0);
   bool skipDosingEvent = false, isRateDose = false;
   bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
     ind->whI == EVIDF_MODEL_RATE_ON;
@@ -2973,6 +2974,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         //dadt_counter = 0;
       }
     }
+    ind->_newind = 2;
     if (!op->badSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {

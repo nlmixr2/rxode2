@@ -4,6 +4,9 @@
 
 - Fix `rxDerived()` for mixed vector and non-vector input.
 
+- Fix model variables for `alag(cmt)` when they are defined before
+  `d/dt()` or `linCmt()`
+
 # rxode2 3.0.4
 
 - Add stable hashes for rxUi objects (#838, #689)
