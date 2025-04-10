@@ -249,13 +249,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     fx = lc.restoreFx(acur);
   }
   ind->linCmtLastT = ind->tout;
-  if (op->linOffset == 0 && ind->_rxFlag == 1) {
-    // Here we are doing ODE solving OR only linear solving
-    // save the values here
-    std::copy(ind->linCmtSave,
-              ind->linCmtSave + op->numLin,
-              ind->DDtStateVars);
-  }
   if (which < 0) {
     return lc.adjustF(fx, theta);
   } else if (which >= 0 && which < nAlast) {
@@ -442,14 +435,14 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     fx = lc.restoreFx(acur);
   }
   ind->linCmtLastT = ind->tout;
-  if (op->linOffset == 0 && ind->_rxFlag == 1) {
-    // Here we are doing ODE solving OR only linear solving
-    // save the values here
-    std::copy(ind->linCmtSave,
-              ind->linCmtSave + op->numLinSens + op->numLin,
-              ind->DDtStateVars);
-    ind->linCmtAlast = ind->DDtStateVars;
-  }
+  // if (op->linOffset == 0 && ind->_rxFlag == 1) {
+  //   // Here we are doing ODE solving OR only linear solving
+  //   // save the values here
+  //   std::copy(ind->linCmtSave,
+  //             ind->linCmtSave + op->numLinSens + op->numLin,
+  //             ind->DDtStateVars);
+  //   ind->linCmtAlast = ind->DDtStateVars;
+  // }
   if (which1 >= 0 && which2 >= 0) {
     // w1, w2 are > 0
     return J(which1, which2);

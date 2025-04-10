@@ -485,6 +485,19 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
+static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind, double &xp, double &xout, double *yp) {
+
+  // First set the last values of time and compartment values
+  if (op->numLin > 0) {
+    ind->linCmtAlast = yp + op->linOffset;
+  }
+
+  ind->tprior = xp;
+
+  // Set the time to the time to solve to.
+  ind->tout = xout;
+}
+
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
@@ -623,6 +636,27 @@ extern "C" void F77_NAME(dlsoda)(
                                  void (*)(int *, double *, double *, int *, int *, double *, int *),
                                  int *);
 
+static inline void linSolve(int *neq, rx_solving_options_ind *ind,
+                            double *yp, double *xp, double xout) {
+  // there is no ODEs when using linSolve
+  rx_solve *rx = &rx_global;
+  rx_solving_options *op = &op_global;
+
+  // The assumption here is that the linear solver does not depend on
+  // state values.
+  //
+  // This means that the clearances do not depend on
+  // depot values.  To ensure this, the values while solving are set to NA
+  //
+  dydt(neq, xout, rx->ypNA, ind->linCmtDummy);
+
+  std::copy(ind->linCmtSave,
+            ind->linCmtSave + op->numLin + op->numLinSens,
+            yp + op->linOffset);
+  // The values **could** depend on state, though it would require a
+  // recursive solve and currently isn't implemented
+}
+
 extern "C" rx_solve *getRxSolve2_(){
   return &rx_global;
 }
@@ -655,7 +689,6 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->ix[i] = i;
     ind->idx = i;
-    ind->linCmtAlast = NULL;
     if (!isObs(getEvid(ind, i))) {
       time[i] = getTime__(ind->ix[i], ind, 1);
       ind->ixds++;
@@ -730,14 +763,14 @@ static inline void solveWith1Pt(int *neq,
   int neqOde = op->neq - op->numLin - op->numLinSens;
   if (neqOde == 0 && op->neq > 0) {
     if (!isSameTime(xout, xp)) {
-      ind->tprior = xp;
-      ind->tout = xout;
-      dydt(neq, ind->tout, yp, yp);
+      preSolve(op, ind, xp, xout, yp);
+      linSolve(neq, ind, yp, &xp, xout);
     }
   } else {
     switch(op->stiff) {
     case 3:
       if (!isSameTime(xout, xp)) {
+        preSolve(op, ind, xp, xout, yp);
         idid = indLin(ind->id, op, xp, yp, xout, ind->InfusionRate, ind->on,
                       ME, IndF);
       }
@@ -755,8 +788,7 @@ static inline void solveWith1Pt(int *neq,
       break;
     case 2:
       if (!isSameTime(xout, xp)) {
-        ind->tprior = xp;
-        ind->tout = xout;
+        preSolve(op, ind, xp, xout, yp);
         lsoda((lsoda_context_t*)ctx, yp, &xp, xout);
         copyLinCmt(neq, ind, op, yp);
       }
@@ -773,8 +805,7 @@ static inline void solveWith1Pt(int *neq,
       break;
     case 1:
       if (!isSameTime(xout, xp)) {
-        ind->tprior = xp;
-        ind->tout = xout;
+        preSolve(op, ind, xp, xout, yp);
         neq[0] = op->neq - op->numLin - op->numLinSens;
         F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, &xp, &xout,
                          &gitol, &(op->RTOL), &(op->ATOL), &gitask,
@@ -795,8 +826,7 @@ static inline void solveWith1Pt(int *neq,
       break;
     case 0:
       if (!isSameTimeDop(xout, xp)) {
-        ind->tprior = xp;
-        ind->tout = xout;
+        preSolve(op, ind, xp, xout, yp);
         // change to real ODE num
         neq[0] = op->neq - op->numLin - op->numLinSens;
         idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
@@ -1644,7 +1674,6 @@ void handleSS(int *neq,
       curLagExtra = curLagExtra - overIi*curIi;
     }
     // First Reset
-    ind->linCmtAlast = NULL;
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       // ind->on[j] = 1; // nonmem doesn't reset on according to doc
@@ -1659,9 +1688,7 @@ void handleSS(int *neq,
     // Reset LHS to NA
     ind->inLhs = 0;
     for (j = op->nlhs; j--;) ind->lhs[j] = NA_REAL;
-    ind->linCmtAlast = NULL;
     u_inis(neq[1], yp); // Update initial conditions @ current time
-    ind->linCmtAlast = yp;
     if (rx->istateReset) *istate = 1;
     int k;
     double xp2, xout2;
@@ -2117,7 +2144,6 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   unsigned int j;
   for(i=0; i<nx; i++) {
     ind->idx=i;
-    ind->linCmtAlast = NULL;
     xout = getTime_(ind->ix[i], ind);
     yp = getSolve(i);
     if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2126,6 +2152,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         // Bad Solve => NA
         badSolveExit(i);
       } else {
+        preSolve(op, ind, xoutp, xout, yp);
         idid = indLin(solveid, op, xoutp, yp, xout, ind->InfusionRate, ind->on,
                       ME, IndF);
         xoutp=xout;
@@ -2135,7 +2162,6 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -2147,7 +2173,6 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->linCmtAlast = yp;
         if (rx->istateReset) idid = 1;
         xp=xout;
         ind->ixds++;
@@ -2265,7 +2290,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   lsoda_prepare(ctx, &opt);
   for(i=0; i<nx; i++) {
     ind->idx=i;
-    ind->linCmtAlast = NULL;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3) {
@@ -2278,9 +2302,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
-            ind->tprior = xp;
-            ind->tout   = ind->extraDoseNewXout;
-            lsoda(ctx,yp, &xp, ind->extraDoseNewXout);
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
           }
@@ -2295,8 +2318,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           ind->ixds = ixds;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            ind->tprior = ind->extraDoseNewXout;
-            ind->tout   = xout;
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -2304,8 +2326,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
-          ind->tprior = xp;
-          ind->tout   = xout;
+          preSolve(op, ind, xp, xout, yp);
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -2316,7 +2337,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3) {
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -2328,7 +2348,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->linCmtAlast = yp;
         if (rx->istateReset) ctx->state = 1;
         xp=xout;
         ind->ixds++;
@@ -2722,7 +2741,6 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   unsigned int j;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
-    ind->linCmtAlast = NULL;
     yp   = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2734,8 +2752,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
-            ind->tprior = xp;
-            ind->tout = ind->extraDoseNewXout;
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
@@ -2754,8 +2771,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ind->idx = idx;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            ind->tprior = ind->extraDoseNewXout;
-            ind->tout = xout;
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             neq[0] = op->neq - op->numLin - op->numLinSens;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &gitol, &(op->RTOL), &(op->ATOL), &gitask,
                              &istate, &giopt, rwork, &lrw, iwork, &liw, jdum, &jt);
@@ -2766,8 +2782,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           xp =  ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
-          ind->tprior = xp;
-          ind->tout = xout;
+          preSolve(op, ind, xp, xout, yp);
           neq[0] = op->neq - op->numLin - op->numLinSens;
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &gitol,
@@ -2786,7 +2801,6 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -2797,7 +2811,6 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->linCmtAlast = yp;
         if (rx->istateReset) istate = 1;
         ind->ixds++;
         xp = xout;
@@ -2916,7 +2929,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   unsigned int j;
   for(i=0; i<nx; i++) {
     ind->idx=i;
-    ind->linCmtAlast = NULL;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug) {
@@ -2932,19 +2944,8 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTime(ind->extraDoseNewXout, xp)) {
-            ind->tprior = xp;
-            ind->tout = ind->extraDoseNewXout;
-            // c_dydt has form fcn(neq, time, double y, double f)
-            // neq is the number of equations, but a pointer to allow more options
-            // to be passed in the ode calculation function
-            // y = initial value of the ODE states
-            // f = output vector of the ODE states
-            // Since the generated function reads y and f (and will not with no ODEs defined)
-            // these will be set to the states in the linear compartment solution.
-            // When linCmtA or linCmtB is called at the right time, the function
-            // will fill in the states as required
-            // In theory no elements to yp should be zero.
-            dydt(neq, ind->tout, yp, yp);
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           int idx = ind->idx;
@@ -2957,17 +2958,15 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           ind->ixds = ixds;
           ind->idxExtra++;
           if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            ind->tprior = ind->extraDoseNewXout;
-            ind->tout = xout;
-            dydt(neq, ind->tout, yp, yp);
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           }
           xp = ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
-          ind->tprior = xp;
-          ind->tout = xout;
-          dydt(neq, ind->tout, yp, yp);
+          preSolve(op, ind, xp, xout, yp);
+          linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           xp = xout;
         }
@@ -2976,7 +2975,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     if (!op->badSolve) {
       ind->idx = i;
-      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3) {
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -2988,7 +2986,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->linCmtAlast = yp;
         ind->ixds++;
         xp=xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
@@ -3047,7 +3044,6 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   unsigned int j;
   for(i=0; i<nx; i++) {
     ind->idx=i;
-    ind->linCmtAlast = NULL;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug){
@@ -3063,8 +3059,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
-            ind->tprior = xp;
-            ind->tout = ind->extraDoseNewXout;
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = op->neq - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
@@ -3106,8 +3101,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           ind->ixds = ixds;
           ind->idxExtra++;
           if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
-            ind->tprior = ind->extraDoseNewXout;
-            ind->tout = xout;
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             neq[0] = op->neq - op->numLin - op->numLinSens;
             idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                           c_dydt,       /* function computing the value of f(x,y) */
@@ -3141,8 +3135,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           xp = ind->extraDoseNewXout;
         }
         if (!isSameTimeDop(xout, xp)) {
-          ind->tprior = xp;
-          ind->tout = xout;
+          preSolve(op, ind, xp, xout, yp);
           neq[0] = op->neq - op->numLin - op->numLinSens;
           idid = dop853(neq,       /* dimension of the system <= UINT_MAX-1*/
                         c_dydt,       /* function computing the value of f(x,y) */
@@ -3179,7 +3172,6 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     if (!op->badSolve){
       ind->idx = i;
-      ind->linCmtAlast = NULL;
       if (getEvid(ind, ind->ix[i]) == 3){
         ind->curShift -= rx->maxShift;
         for (j = neq[0]; j--;) {
@@ -3190,9 +3182,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         cancelInfusionsThatHaveStarted(ind, neq[1], xout);
         cancelPendingDoses(ind, neq[1]);
         memcpy(yp, op->inits, neq[0]*sizeof(double));
-        ind->linCmtAlast = NULL;
         u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->linCmtAlast = yp;
         ind->ixds++;
         xp=xout;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
