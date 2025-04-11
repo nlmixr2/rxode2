@@ -2967,13 +2967,12 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-          xp = xout;
         }
-        //dadt_counter = 0;
+        xp = xout;
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve) {
+    if (!op->badSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         ind->curShift -= rx->maxShift;
@@ -2984,10 +2983,10 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         }
         cancelInfusionsThatHaveStarted(ind, neq[1], xout);
         cancelPendingDoses(ind, neq[1]);
-        memcpy(yp, op->inits, neq[0]*sizeof(double));
+        memcpy(yp,inits, neq[0]*sizeof(double));
         u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->ixds++;
         xp=xout;
+        ind->ixds++;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
@@ -2996,8 +2995,9 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         }
         xp = xout;
       }
-      /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
       updateSolve(ind, op, neq, xout, i, nx);
+      ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
