@@ -14,7 +14,7 @@
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
 #define SORT gfx::timsort
-#define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
+#define isSameTimeOp(xout, xp) (op->numLin > 0 && op->linOffset == 0 ? isSameTimeLin(xout, xp) : (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp)))
 
 // dop853 is same time
 
@@ -64,7 +64,6 @@ extern "C" SEXP _rxHasOpenMp(){
   INTEGER(ret)[0] = 1;
 #else
   INTEGER(ret)[0] = 0;
-
 #endif
   UNPROTECT(1);
   return ret;
