@@ -484,17 +484,14 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
-static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind, double &xp, double &xout, double *yp) {
-
+static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
+                            double &xp, double &xout, double *yp) {
   // First set the last values of time and compartment values
   if (op->numLin > 0) {
     ind->linCmtAlast = yp + op->linOffset;
+    ind->tprior = xp; // Set the time to the time to solve to.
+    ind->tout   = xout;
   }
-
-  ind->tprior = xp;
-
-  // Set the time to the time to solve to.
-  ind->tout = xout;
 }
 
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
@@ -648,12 +645,12 @@ static inline void linSolve(int *neq, rx_solving_options_ind *ind,
   // depot values.  To ensure this, the values while solving are set to NA
   //
   dydt(neq, xout, rx->ypNA, ind->linCmtDummy);
-
   std::copy(ind->linCmtSave,
             ind->linCmtSave + op->numLin + op->numLinSens,
             yp + op->linOffset);
   // The values **could** depend on state, though it would require a
-  // recursive solve and currently isn't implemented
+  // recursive solve and currently isn't implemented.  It also would
+  // no longer be a linear compartment model :)
 }
 
 extern "C" rx_solve *getRxSolve2_(){
@@ -2960,8 +2957,8 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
           }
-          xp = ind->extraDoseNewXout;
         }
         if (!isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);

@@ -185,7 +185,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     a = ind->linCmtAlast;
   }
   lc.setPtr(a, r, asave);
-
   // Setup parameter matrix
   Eigen::Matrix<double, -1, 1> theta;
   theta.resize(lc.getNpars());
@@ -216,8 +215,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   }
 
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-
-  if (ind->_rxFlag == 1) {
+  if (ind->_rxFlag != 11) {
     // Here we are doing ODE solving OR only linear solving
     // so we calculate these values here.
     //
@@ -401,7 +399,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
   Eigen::Matrix<double, -1, -1> J;
 
-  if (ind->_rxFlag == 1) {
+  if (ind->_rxFlag != 11) {
     // Here we are doing ODE solving OR only linear solving
     // so we calculate these values here.
     //
@@ -417,8 +415,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     //
 
     // Get/Set the dt; This is only applicable in the ODE/linCmt() case
-
     double dt = _t - ind->tprior;
+
     lc.setDt(dt);
 
     stan::math::jacobian(lc, theta, fx, J);

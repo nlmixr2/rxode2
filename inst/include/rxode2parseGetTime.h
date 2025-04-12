@@ -226,7 +226,7 @@ static inline int handleInfusionStartRm(int *startIdx, int *endIdx,
                                         rx_solving_options_ind *ind) {
   if (ind->wh0 == EVID0_INFRM) {
     // This is a possible removal event.  Look at the next duration
-    int curEvid = getEvid(ind, ind->idose[*endIdx+1]);
+    // int curEvid = getEvid(ind, ind->idose[*endIdx+1]);
     *startIdx = *endIdx+1;
     for (*endIdx = *startIdx; *endIdx < ind->ndoses; ++(*endIdx)) {
       if (getEvid(ind, ind->idose[*startIdx]) == getEvid(ind, ind->idose[*endIdx])) break;
