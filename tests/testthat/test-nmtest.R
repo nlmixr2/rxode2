@@ -39,6 +39,31 @@ rxTest({
     cp <- linCmt()*1000
   }, linCmtSens = "linCmtB")
 
+
+  elf <- rxode2({
+    cl <- 1.1
+    v <- 20
+    ka <- 1.5
+    f(central) <- bioav
+    if (mode == 1) rate(central) <- rat2
+    if (mode == 2) dur(central) <- dur2
+    cp <- linCmt()*1000
+    ke0 <- log(2)/(50)
+    d/dt(Ce) <- (Cp-Ce)*ke0
+  })
+
+  elbf <- rxode2({
+    cl <- 1.1
+    v <- 20
+    ka <- 1.5
+    f(central) <- bioav
+    if (mode == 1) rate(central) <- rat2
+    if (mode == 2) dur(central) <- dur2
+    cp <- linCmt()*1000
+    ke0 <- log(2)/(50)
+    d/dt(Ce) <- (Cp-Ce)*ke0
+  }, linCmtSens = "linCmtB")
+
   fl <- rxode2({
     cl <- 1.1
     v <- 20
@@ -74,16 +99,43 @@ rxTest({
     cp <- linCmt()*1000
   }, linCmtSens = "linCmtB")
 
+  elfl <- rxode2({
+    cl <- 1.1
+    v <- 20
+    ka <- 1.5
+    lag(central) <- lagt
+    f(central) <- bioav
+    if (mode == 1) rate(central) <- rat2
+    if (mode == 2) dur(central) <- dur2
+    cp <- linCmt()*1000
+    ke0 <- log(2)/(50)
+    d/dt(Ce) <- (Cp-Ce)*ke0
+  })
+
+  elbfl <- rxode2({
+    cl <- 1.1
+    v <- 20
+    ka <- 1.5
+    lag(central) <- lagt
+    f(central) <- bioav
+    if (mode == 1) rate(central) <- rat2
+    if (mode == 2) dur(central) <- dur2
+    cp <- linCmt()*1000
+    ke0 <- log(2)/(50)
+    d/dt(Ce) <- (Cp-Ce)*ke0
+  }, linCmtSens = "linCmtB")
+
+
   library(ggplot2)
 
   solveEqual <- function(id, plot = p, meth="A",
                          modifyData = c("none", "dur", "rate"),
                          addlKeepsCov = TRUE, addlDropSs=TRUE,
                          ss2cancelAllPending=FALSE) {
-    if (meth == "A") {
+    if (meth == "A" || meth == "Ao") {
       lin <- "A"
       meth <- "liblsoda"
-    } else if (meth == "B") {
+    } else if (meth == "B" || meth == "Bo") {
       lin <- "B"
       meth <- "liblsoda"
     } else {
@@ -151,6 +203,14 @@ rxTest({
         s1 <- rxSolve(lbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
                       ss2cancelAllPending=ss2cancelAllPending)
+      } else if (lin == "Ao") {
+        s1 <- rxSolve(elfl, d, method=meth, addlKeepsCov = addlKeepsCov,
+                      addlDropSs=addlDropSs,
+                      ss2cancelAllPending=ss2cancelAllPending)
+      } else if (lin == "Bo") {
+        s1 <- rxSolve(elbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
+                      addlDropSs=addlDropSs,
+                      ss2cancelAllPending=ss2cancelAllPending)
       } else {
         s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
@@ -170,6 +230,14 @@ rxTest({
                         ss2cancelAllPending=ss2cancelAllPending)
         } else if (lin == "B") {
           s2 <- rxSolve(lbf, d, method=meth, addlKeepsCov = addlKeepsCov,
+                        addlDropSs=addlDropSs,
+                        ss2cancelAllPending=ss2cancelAllPending)
+        } else if (lin == "Ao") {
+          s2 <- rxSolve(elf, d, method=meth, addlKeepsCov = addlKeepsCov,
+                        addlDropSs=addlDropSs,
+                        ss2cancelAllPending=ss2cancelAllPending)
+        } else if (lin == "Bo") {
+          s2 <- rxSolve(elbf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
                         ss2cancelAllPending=ss2cancelAllPending)
         } else {
@@ -225,6 +293,14 @@ rxTest({
           s1 <- rxSolve(lfl, d, method=meth,
                         addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs)
+        } else if (lin == "Ao") {
+          s1 <- rxSolve(elfl, d, method=meth,
+                        addlKeepsCov = addlKeepsCov,
+                        addlDropSs=addlDropSs)
+        } else if (lin == "Bo") {
+          s1 <- rxSolve(elfl, d, method=meth,
+                        addlKeepsCov = addlKeepsCov,
+                        addlDropSs=addlDropSs)
         } else {
           s1 <- rxSolve(fl, d, method=meth,
                         addlKeepsCov = addlKeepsCov,
@@ -247,7 +323,7 @@ rxTest({
   p <- FALSE
 
   lapply(id, function(i) {
-    meths <- c("liblsoda", "lsoda", "dop853", "A", "B")
+    meths <- c("liblsoda", "lsoda", "dop853", "A", "B", "Ao", "Bo")
     modDat <- c("none", "rate", "dur")
     for (meth in meths) {
       for (modifyData in modDat) {
