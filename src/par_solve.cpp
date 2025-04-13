@@ -911,7 +911,8 @@ static inline int handleExtraDose(int *neq,
       ind->idx = -1-trueIdx;
       time = getAllTimes(ind, ind->idx);
     }
-    if ((isSameTimeOp(time, xp) || time > xp) && (isSameTimeOp(time, xout) || time <= xout)) {
+    if ((isSameTimeOp(time, xp) || time > xp) &&
+        (isSameTimeOp(time, xout) || time <= xout)) {
       bool ignore = true;
       while (ignore && time <= xout) {
         ignore=false;
@@ -2943,6 +2944,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
           }
           int idx = ind->idx;
           int ixds = ind->ixds;
@@ -2964,8 +2966,8 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xout;
         }
-        xp = xout;
       }
     }
     ind->_newind = 2;
@@ -3086,6 +3088,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             neq[0] = op->neq;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
           }
           int idx = ind->idx;
           int ixds = ind->ixds;
@@ -3128,8 +3131,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             neq[0] = op->neq;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
           }
-          xp = ind->extraDoseNewXout;
         }
         if (!isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
