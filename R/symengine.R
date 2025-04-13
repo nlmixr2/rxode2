@@ -665,8 +665,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxToSEDualVarFunction <- c("tlast", "tlast0", "tad", "tad0", "tafd", "tafd0",
                             "dose", "podo", "dose0", "podo0")
 
+
 #' Change rxode2 syntax to symengine syntax for symbols and numbers
-#'
 #'
 #' @param x expression
 #' @param envir Current evaluating environment
@@ -1448,15 +1448,6 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .SEeq <- c(.rxSEeq, rxode2::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
-    ## if (.promoteLinB && .curName == "linCmtA") {
-    ##   .ret0 <- c(
-    ##     list("linCmtB"),
-    ##     .ret0[2:6],
-    ##     list("0"),
-    ##     .ret0[-c(1, 2:6)]
-    ##   )
-    ##   .nargs <- .nargs + 1
-    ## }
     if (!is.na(.nargs)) {
       if (.nargs == length(.ret0) - 1) {
         .ret <- paste0(.ret0[[1]], "(")
