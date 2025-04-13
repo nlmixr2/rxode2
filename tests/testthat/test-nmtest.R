@@ -1,4 +1,5 @@
 rxTest({
+
   ## devtools::load_all()
 
   d <- nlmixr2data::nmtest
@@ -75,7 +76,7 @@ rxTest({
 
   library(ggplot2)
 
-  solveEqual <- function(id, plot = p, meth="liblsoda",
+  solveEqual <- function(id, plot = p, meth="A",
                          modifyData = c("none", "dur", "rate"),
                          addlKeepsCov = TRUE, addlDropSs=TRUE,
                          ss2cancelAllPending=FALSE) {
@@ -168,9 +169,9 @@ rxTest({
                         addlDropSs=addlDropSs,
                         ss2cancelAllPending=ss2cancelAllPending)
         } else if (lin == "B") {
-            s2 <- rxSolve(lbf, d, method=meth, addlKeepsCov = addlKeepsCov,
-                          addlDropSs=addlDropSs,
-                          ss2cancelAllPending=ss2cancelAllPending)
+          s2 <- rxSolve(lbf, d, method=meth, addlKeepsCov = addlKeepsCov,
+                        addlDropSs=addlDropSs,
+                        ss2cancelAllPending=ss2cancelAllPending)
         } else {
           s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
@@ -239,6 +240,9 @@ rxTest({
   p <- TRUE
 
   id <- unique(d$id)
+
+  # id = 12
+
 
   p <- FALSE
 

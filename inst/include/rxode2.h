@@ -37,7 +37,6 @@
 #define isSameTime(xout, xp) (fabs((xout)-(xp))  <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 // use ~dop853 definition of same time
 #define isSameTimeDop(xout, xp) (0.1 * fabs((xout)-(xp)) <= fabs(xout) * 2.3E-16)
-#define isSameTimeLin(xout, xp) (fabs((xout) - (xp)) <= 1E-9)
 
 #else
 
