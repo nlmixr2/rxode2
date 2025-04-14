@@ -676,7 +676,7 @@ rxTest({
                 "aa=rx__sens_depot_BY_ka")
 
   # Testing function for translation
-  f <- function(w, num=NULL) {
+  f <- function(w, num=NULL, s=s) {
     w <- get(w, envir=s)
     v <- rxFromSE(w)
     l <- str2lang(v)
@@ -700,63 +700,63 @@ rxTest({
                  testVars), collapse="\n")
     s <- rxS(s)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d", 1)) # peripheral1
-    expect_true(f("ee", 2)) # peripheral2
-    expect_true(f("f"))
-    expect_true(f("g"))
-    expect_true(f("h"))
-    expect_true(f("i"))
-    expect_true(f("j"))
-    expect_true(f("k"))
-    expect_true(f("l"))
-    expect_true(f("m"))
-    expect_true(f("n"))
-    expect_true(f("o"))
-    expect_true(f("p"))
-    expect_true(f("q"))
-    expect_true(f("r"))
-    expect_true(f("s"))
-    expect_true(f("tt"))
-    expect_true(f("u"))
-    expect_true(f("v"))
-    expect_true(f("w"))
-    expect_true(f("x"))
-    expect_true(f("y"))
-    expect_true(f("z"))
-    expect_true(f("aa"))
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", 3, s=s)) # peripheral2
+    expect_true(f("f", s=s))
+    expect_true(f("g", s=s))
+    expect_true(f("h", s=s))
+    expect_true(f("i", s=s))
+    expect_true(f("j", s=s))
+    expect_true(f("k", s=s))
+    expect_true(f("l", s=s))
+    expect_true(f("m", s=s))
+    expect_true(f("n", s=s))
+    expect_true(f("o", s=s))
+    expect_true(f("p", s=s))
+    expect_true(f("q", s=s))
+    expect_true(f("r", s=s))
+    expect_true(f("s", s=s))
+    expect_true(f("tt", s=s))
+    expect_true(f("u", s=s))
+    expect_true(f("v", s=s))
+    expect_true(f("w", s=s))
+    expect_true(f("x", s=s))
+    expect_true(f("y", s=s))
+    expect_true(f("z", s=s))
+    expect_true(f("aa", s=s))
 
     s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,1,-1,1,cl,v,q,v2,q2,v3,ka)",
                  testVars), collapse="\n")
     s <- rxS(s, promoteLinSens = TRUE)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d", 1)) # peripheral1
-    expect_true(f("ee", 2)) # peripheral2
-    expect_true(f("f", 4))
-    expect_true(f("g", 5))
-    expect_true(f("h", 6))
-    expect_true(f("i", 7))
-    expect_true(f("j", 8))
-    expect_true(f("k", 9))
-    expect_true(f("l", 10))
-    expect_true(f("m", 11))
-    expect_true(f("n", 12))
-    expect_true(f("o", 13))
-    expect_true(f("p", 14))
-    expect_true(f("q", 15))
-    expect_true(f("r", 16))
-    expect_true(f("s", 17))
-    expect_true(f("tt", 18))
-    expect_true(f("u", 19))
-    expect_true(f("v", 20))
-    expect_true(f("w", 21))
-    expect_true(f("x", 22))
-    expect_true(f("y", 23))
-    expect_true(f("z", 24))
-    expect_true(f("aa", 25))
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", 3, s=s)) # peripheral2
+    expect_true(f("f", 4, s=s))
+    expect_true(f("g", 5, s=s))
+    expect_true(f("h", 6, s=s))
+    expect_true(f("i", 7, s=s))
+    expect_true(f("j", 8, s=s))
+    expect_true(f("k", 9, s=s))
+    expect_true(f("l", 10, s=s))
+    expect_true(f("m", 11, s=s))
+    expect_true(f("n", 12, s=s))
+    expect_true(f("o", 13, s=s))
+    expect_true(f("p", 14, s=s))
+    expect_true(f("q", 15, s=s))
+    expect_true(f("r", 16, s=s))
+    expect_true(f("s", 17, s=s))
+    expect_true(f("tt", 18, s=s))
+    expect_true(f("u", 19, s=s))
+    expect_true(f("v", 20, s=s))
+    expect_true(f("w", 21, s=s))
+    expect_true(f("x", 22, s=s))
+    expect_true(f("y", 23, s=s))
+    expect_true(f("z", 24, s=s))
+    expect_true(f("aa", 25, s=s))
   })
 
   test_that("3 compartment states translated in symengine", {
@@ -765,63 +765,63 @@ rxTest({
                  testVars), collapse="\n")
     s <- rxS(s)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d", 1)) # peripheral1
-    expect_true(f("ee", 2)) # peripheral2
-    expect_true(f("f"))
-    expect_true(f("g"))
-    expect_true(f("h"))
-    expect_true(f("i"))
-    expect_true(f("j"))
-    expect_true(f("k"))
-    expect_true(f("l"))
-    expect_true(f("m"))
-    expect_true(f("n"))
-    expect_true(f("o"))
-    expect_true(f("p"))
-    expect_true(f("q"))
-    expect_true(f("r"))
-    expect_true(f("s"))
-    expect_true(f("tt"))
-    expect_true(f("u"))
-    expect_true(f("v"))
-    expect_true(f("w"))
-    expect_true(f("x"))
-    expect_true(f("y"))
-    expect_true(f("z"))
-    expect_true(f("aa"))
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", 2, s=s)) # peripheral2
+    expect_true(f("f", s=s))
+    expect_true(f("g", s=s))
+    expect_true(f("h", s=s))
+    expect_true(f("i", s=s))
+    expect_true(f("j", s=s))
+    expect_true(f("k", s=s))
+    expect_true(f("l", s=s))
+    expect_true(f("m", s=s))
+    expect_true(f("n", s=s))
+    expect_true(f("o", s=s))
+    expect_true(f("p", s=s))
+    expect_true(f("q", s=s))
+    expect_true(f("r", s=s))
+    expect_true(f("s", s=s))
+    expect_true(f("tt", s=s))
+    expect_true(f("u", s=s))
+    expect_true(f("v", s=s))
+    expect_true(f("w", s=s))
+    expect_true(f("x", s=s))
+    expect_true(f("y", s=s))
+    expect_true(f("z", s=s))
+    expect_true(f("aa", s=s))
 
     s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,0,-1,1,cl,v,q,v2,q2,v3,0)",
                  testVars), collapse="\n")
     s <- rxS(s, promoteLinSens = TRUE)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d", 1)) # peripheral1
-    expect_true(f("ee", 2)) # peripheral2
-    expect_true(f("f", 3)) # rx__sens_central_BY_p1
-    expect_true(f("g", 4)) # rx__sens_central_BY_v1
-    expect_true(f("h", 5)) # rx__sens_central_BY_p2
-    expect_true(f("i", 6)) # rx__sens_central_BY_p3
-    expect_true(f("j", 7)) # rx__sens_central_BY_p4
-    expect_true(f("k", 8)) # rx__sens_central_BY_p5
-    expect_true(f("l"))    # rx__sens_central_BY_ka
-    expect_true(f("m", 9)) # rx__sens_peripheral1_BY_p1
-    expect_true(f("n", 10))# rx__sens_peripheral1_BY_v1
-    expect_true(f("o", 11))# rx__sens_peripheral1_BY_p2
-    expect_true(f("p", 12))# rx__sens_peripheral1_BY_p3
-    expect_true(f("q", 13))# rx__sens_peripheral1_BY_p4
-    expect_true(f("r", 14))# rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))    # rx__sens_peripheral1_BY_ka
-    expect_true(f("tt", 15))#rx__sens_peripheral2_BY_p1
-    expect_true(f("u", 16))# rx__sens_peripheral2_BY_v1
-    expect_true(f("v", 17))# rx__sens_peripheral2_BY_p2
-    expect_true(f("w", 18))# rx__sens_peripheral2_BY_p3
-    expect_true(f("x", 19))# rx__sens_peripheral2_BY_p4
-    expect_true(f("y", 20))# rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))# rx__sens_peripheral2_BY_ka
-    expect_true(f("aa"))#rx__sens_depot_BY_ka
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", 2, s=s)) # peripheral2
+    expect_true(f("f", 3, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 4, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", 5, s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", 6, s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", 7, s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", 8, s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s))    # rx__sens_central_BY_ka
+    expect_true(f("m", 9, s=s)) # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", 10, s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", 11, s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", 12, s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", 13, s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", 14, s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", 15, s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", 16, s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", 17, s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", 18, s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", 19, s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", 20, s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
 
   })
 
@@ -831,62 +831,62 @@ rxTest({
                  testVars), collapse="\n")
     s <- rxS(s)
 
-    expect_true(f("b", 0)) # depot
-    expect_true(f("c", 1)) # central
-    expect_true(f("d", 2)) # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f")) # rx__sens_central_BY_p1
-    expect_true(f("g")) # rx__sens_central_BY_v1
-    expect_true(f("h")) # rx__sens_central_BY_p2
-    expect_true(f("i")) # rx__sens_central_BY_p3
-    expect_true(f("j")) # rx__sens_central_BY_p4
-    expect_true(f("k")) # rx__sens_central_BY_p5
-    expect_true(f("l")) # rx__sens_central_BY_ka
-    expect_true(f("m"))# rx__sens_peripheral1_BY_p1
-    expect_true(f("n"))# rx__sens_peripheral1_BY_v1
-    expect_true(f("o"))# rx__sens_peripheral1_BY_p2
-    expect_true(f("p"))# rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))# rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))# rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))# rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))#rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))# rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))# rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))# rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))# rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))# rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))# rx__sens_peripheral2_BY_ka
-    expect_true(f("aa"))#rx__sens_depot_BY_ka
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
 
     s <- paste(c("linc=linCmtA(rx__PTR__,t,2,2,1,-1,1,cl,v,q,v2,0,0,ka)",
                  testVars), collapse="\n")
     s <- rxS(s, promoteLinSens = TRUE)
-    expect_true(f("b", 0)) # depot
-    expect_true(f("c", 1)) # central
-    expect_true(f("d", 2)) # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f", 3)) # rx__sens_central_BY_p1
-    expect_true(f("g", 4)) # rx__sens_central_BY_v1
-    expect_true(f("h", 5)) # rx__sens_central_BY_p2
-    expect_true(f("i", 6)) # rx__sens_central_BY_p3
-    expect_true(f("j"))    # rx__sens_central_BY_p4
-    expect_true(f("k"))    # rx__sens_central_BY_p5
-    expect_true(f("l", 7)) # rx__sens_central_BY_ka
-    expect_true(f("m", 8)) # rx__sens_peripheral1_BY_p1
-    expect_true(f("n", 9)) # rx__sens_peripheral1_BY_v1
-    expect_true(f("o", 10))# rx__sens_peripheral1_BY_p2
-    expect_true(f("p", 11))# rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))    # rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))    # rx__sens_peripheral1_BY_p5
-    expect_true(f("s", 12))# rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))   # rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))    # rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))    # rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))    # rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))    # rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))    # rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))    # rx__sens_peripheral2_BY_ka
-    expect_true(f("aa", 13))#rx__sens_depot_BY_ka
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", 2, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 3, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 4, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", 5, s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", 6, s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", 7, s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", 8, s=s)) # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", 9, s=s)) # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", 10, s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", 11, s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", 12, s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", 13, s=s))#rx__sens_depot_BY_ka
   })
 
   test_that("2 compartment states translated in symengine", {
@@ -895,63 +895,63 @@ rxTest({
                  testVars), collapse="\n")
     s <- rxS(s)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d", 1)) # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f")) # rx__sens_central_BY_p1
-    expect_true(f("g")) # rx__sens_central_BY_v1
-    expect_true(f("h")) # rx__sens_central_BY_p2
-    expect_true(f("i")) # rx__sens_central_BY_p3
-    expect_true(f("j")) # rx__sens_central_BY_p4
-    expect_true(f("k")) # rx__sens_central_BY_p5
-    expect_true(f("l")) # rx__sens_central_BY_ka
-    expect_true(f("m"))# rx__sens_peripheral1_BY_p1
-    expect_true(f("n"))# rx__sens_peripheral1_BY_v1
-    expect_true(f("o"))# rx__sens_peripheral1_BY_p2
-    expect_true(f("p"))# rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))# rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))# rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))# rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))#rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))# rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))# rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))# rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))# rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))# rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))# rx__sens_peripheral2_BY_ka
-    expect_true(f("aa"))#rx__sens_depot_BY_ka
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
 
     s <- paste(c("linc=linCmtA(rx__PTR__,t,2,2,0,-1,1,cl,v,q,v2,0,0,ka)",
                  testVars), collapse="\n")
     s <- rxS(s, promoteLinSens = TRUE)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d", 1)) # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f", 2)) # rx__sens_central_BY_p1
-    expect_true(f("g", 3)) # rx__sens_central_BY_v1
-    expect_true(f("h", 4)) # rx__sens_central_BY_p2
-    expect_true(f("i", 5)) # rx__sens_central_BY_p3
-    expect_true(f("j"))    # rx__sens_central_BY_p4
-    expect_true(f("k"))    # rx__sens_central_BY_p5
-    expect_true(f("l"))    # rx__sens_central_BY_ka
-    expect_true(f("m", 6)) # rx__sens_peripheral1_BY_p1
-    expect_true(f("n", 7)) # rx__sens_peripheral1_BY_v1
-    expect_true(f("o", 8)) # rx__sens_peripheral1_BY_p2
-    expect_true(f("p", 9))# rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))    # rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))    # rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))    # rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))   # rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))    # rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))    # rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))    # rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))    # rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))    # rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))    # rx__sens_peripheral2_BY_ka
-    expect_true(f("aa", 10))#rx__sens_depot_BY_ka
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", 1, s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 2, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 3, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", 4, s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", 5, s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", s=s))    # rx__sens_central_BY_ka
+    expect_true(f("m", 6, s=s)) # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", 7, s=s)) # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", 8, s=s)) # rx__sens_peripheral1_BY_p2
+    expect_true(f("p", 9, s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", 10, s=s))#rx__sens_depot_BY_ka
 
   })
 
@@ -960,63 +960,63 @@ rxTest({
                  testVars), collapse="\n")
     s <- rxS(s)
 
-    expect_true(f("b", 0)) # depot
-    expect_true(f("c", 1)) # central
-    expect_true(f("d"))  # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f")) # rx__sens_central_BY_p1
-    expect_true(f("g")) # rx__sens_central_BY_v1
-    expect_true(f("h")) # rx__sens_central_BY_p2
-    expect_true(f("i")) # rx__sens_central_BY_p3
-    expect_true(f("j")) # rx__sens_central_BY_p4
-    expect_true(f("k")) # rx__sens_central_BY_p5
-    expect_true(f("l")) # rx__sens_central_BY_ka
-    expect_true(f("m"))# rx__sens_peripheral1_BY_p1
-    expect_true(f("n"))# rx__sens_peripheral1_BY_v1
-    expect_true(f("o"))# rx__sens_peripheral1_BY_p2
-    expect_true(f("p"))# rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))# rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))# rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))# rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))#rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))# rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))# rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))# rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))# rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))# rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))# rx__sens_peripheral2_BY_ka
-    expect_true(f("aa"))#rx__sens_depot_BY_ka
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", s=s))  # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
 
     s <- paste(c("linc=linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0,0,0,0,ka)",
                  testVars), collapse="\n")
     s <- rxS(s, promoteLinSens = TRUE)
 
-    expect_true(f("b", 0)) # depot
-    expect_true(f("c", 1)) # central
-    expect_true(f("d")) # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f", 2)) # rx__sens_central_BY_p1
-    expect_true(f("g", 3)) # rx__sens_central_BY_v1
-    expect_true(f("h"))    # rx__sens_central_BY_p2
-    expect_true(f("i"))    # rx__sens_central_BY_p3
-    expect_true(f("j"))    # rx__sens_central_BY_p4
-    expect_true(f("k"))    # rx__sens_central_BY_p5
-    expect_true(f("l", 4)) # rx__sens_central_BY_ka
-    expect_true(f("m"))    # rx__sens_peripheral1_BY_p1
-    expect_true(f("n"))    # rx__sens_peripheral1_BY_v1
-    expect_true(f("o"))    # rx__sens_peripheral1_BY_p2
-    expect_true(f("p"))    # rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))    # rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))    # rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))    # rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))   # rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))    # rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))    # rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))    # rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))    # rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))    # rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))    # rx__sens_peripheral2_BY_ka
-    expect_true(f("aa", 5))#rx__sens_depot_BY_ka
+    expect_true(f("b", 0, s=s)) # depot
+    expect_true(f("c", 1, s=s)) # central
+    expect_true(f("d", s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 2, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 3, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s))    # rx__sens_central_BY_p2
+    expect_true(f("i", s=s))    # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", 4, s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))    # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))    # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))    # rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))    # rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", 5, s=s))#rx__sens_depot_BY_ka
   })
 
   test_that("1 compartment states translated in symengine", {
@@ -1025,63 +1025,63 @@ rxTest({
                  testVars), collapse="\n")
     s <- rxS(s)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d"))  # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f")) # rx__sens_central_BY_p1
-    expect_true(f("g")) # rx__sens_central_BY_v1
-    expect_true(f("h")) # rx__sens_central_BY_p2
-    expect_true(f("i")) # rx__sens_central_BY_p3
-    expect_true(f("j")) # rx__sens_central_BY_p4
-    expect_true(f("k")) # rx__sens_central_BY_p5
-    expect_true(f("l")) # rx__sens_central_BY_ka
-    expect_true(f("m"))# rx__sens_peripheral1_BY_p1
-    expect_true(f("n"))# rx__sens_peripheral1_BY_v1
-    expect_true(f("o"))# rx__sens_peripheral1_BY_p2
-    expect_true(f("p"))# rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))# rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))# rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))# rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))#rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))# rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))# rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))# rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))# rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))# rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))# rx__sens_peripheral2_BY_ka
-    expect_true(f("aa"))#rx__sens_depot_BY_ka
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", s=s))  # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s)) # rx__sens_central_BY_p2
+    expect_true(f("i", s=s)) # rx__sens_central_BY_p3
+    expect_true(f("j", s=s)) # rx__sens_central_BY_p4
+    expect_true(f("k", s=s)) # rx__sens_central_BY_p5
+    expect_true(f("l", s=s)) # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))# rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))# rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))# rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))# rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))# rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))# rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))# rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))#rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))# rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))# rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))# rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))# rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))# rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))# rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))#rx__sens_depot_BY_ka
 
     s <- paste(c("linc=linCmtA(rx__PTR__,t,2,1,0,-1,1,cl,v,0,0,0,0,0)",
                  testVars), collapse="\n")
     s <- rxS(s, promoteLinSens = TRUE)
 
-    expect_true(f("b")) # depot
-    expect_true(f("c", 0)) # central
-    expect_true(f("d")) # peripheral1
-    expect_true(f("ee")) # peripheral2
-    expect_true(f("f", 1)) # rx__sens_central_BY_p1
-    expect_true(f("g", 2)) # rx__sens_central_BY_v1
-    expect_true(f("h"))    # rx__sens_central_BY_p2
-    expect_true(f("i"))    # rx__sens_central_BY_p3
-    expect_true(f("j"))    # rx__sens_central_BY_p4
-    expect_true(f("k"))    # rx__sens_central_BY_p5
-    expect_true(f("l"))    # rx__sens_central_BY_ka
-    expect_true(f("m"))    # rx__sens_peripheral1_BY_p1
-    expect_true(f("n"))    # rx__sens_peripheral1_BY_v1
-    expect_true(f("o"))    # rx__sens_peripheral1_BY_p2
-    expect_true(f("p"))    # rx__sens_peripheral1_BY_p3
-    expect_true(f("q"))    # rx__sens_peripheral1_BY_p4
-    expect_true(f("r"))    # rx__sens_peripheral1_BY_p5
-    expect_true(f("s"))    # rx__sens_peripheral1_BY_ka
-    expect_true(f("tt"))   # rx__sens_peripheral2_BY_p1
-    expect_true(f("u"))    # rx__sens_peripheral2_BY_v1
-    expect_true(f("v"))    # rx__sens_peripheral2_BY_p2
-    expect_true(f("w"))    # rx__sens_peripheral2_BY_p3
-    expect_true(f("x"))    # rx__sens_peripheral2_BY_p4
-    expect_true(f("y"))    # rx__sens_peripheral2_BY_p5
-    expect_true(f("z"))    # rx__sens_peripheral2_BY_ka
-    expect_true(f("aa"))   #rx__sens_depot_BY_ka
+    expect_true(f("b", s=s)) # depot
+    expect_true(f("c", 0, s=s)) # central
+    expect_true(f("d", s=s)) # peripheral1
+    expect_true(f("ee", s=s)) # peripheral2
+    expect_true(f("f", 1, s=s)) # rx__sens_central_BY_p1
+    expect_true(f("g", 2, s=s)) # rx__sens_central_BY_v1
+    expect_true(f("h", s=s))    # rx__sens_central_BY_p2
+    expect_true(f("i", s=s))    # rx__sens_central_BY_p3
+    expect_true(f("j", s=s))    # rx__sens_central_BY_p4
+    expect_true(f("k", s=s))    # rx__sens_central_BY_p5
+    expect_true(f("l", s=s))    # rx__sens_central_BY_ka
+    expect_true(f("m", s=s))    # rx__sens_peripheral1_BY_p1
+    expect_true(f("n", s=s))    # rx__sens_peripheral1_BY_v1
+    expect_true(f("o", s=s))    # rx__sens_peripheral1_BY_p2
+    expect_true(f("p", s=s))    # rx__sens_peripheral1_BY_p3
+    expect_true(f("q", s=s))    # rx__sens_peripheral1_BY_p4
+    expect_true(f("r", s=s))    # rx__sens_peripheral1_BY_p5
+    expect_true(f("s", s=s))    # rx__sens_peripheral1_BY_ka
+    expect_true(f("tt", s=s))   # rx__sens_peripheral2_BY_p1
+    expect_true(f("u", s=s))    # rx__sens_peripheral2_BY_v1
+    expect_true(f("v", s=s))    # rx__sens_peripheral2_BY_p2
+    expect_true(f("w", s=s))    # rx__sens_peripheral2_BY_p3
+    expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
+    expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
+    expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
+    expect_true(f("aa", s=s))   #rx__sens_depot_BY_ka
 
   })
 
