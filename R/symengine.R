@@ -564,7 +564,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   .udfEnvSet(parent)
   .rxToSE.envir$parent <- parent
   .rxToSElinCmt$linCmt <- NULL # no linCmt() found
-  if (exists("t", .rxToSElinCmt)) rm("t", envir=.rxToSElinCmt)
+  if (exists("t", envir=.rxToSElinCmt, inherits=FALSE)) rm("t", envir=.rxToSElinCmt)
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
   assignInMyNamespace(".rxLastAssignedDdt", "")
@@ -1548,7 +1548,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(.rxToSEMax(c(.ret, .xrest), min=min))
 }
 
-.rxToSElinCmt <- new.env()
+.rxToSElinCmt <- new.env(parent=emptyenv())
 .rxToSElinCmt$linCmt <- NULL
 
 
@@ -1607,7 +1607,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       .rxToSElinCmt$ka <- expr[[16]]
     }
   } else {
-    if (.rxToSElinCmt$linCmt != ret0[[1]]) {
+    if (.rxToSElinCmt$linCmt != expr[[1]]) {
       stop("linCmtA and linCmtB cannot be used in the same model", call. = FALSE)
     }
     if (.rxToSElinCmt$linCmt == "linCmtA") {
@@ -2010,6 +2010,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
           .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
         }
         if (inherits(.udf, "try-error")) {
+          print(.udf)
           stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
                call. = FALSE
                )
