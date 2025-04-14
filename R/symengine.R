@@ -132,6 +132,8 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "gammaqInva" = 2,
   "lowergamma" = 2,
   "uppergamma" = 2,
+  "linCmtA"=14,
+  "linCmtB"=15,
   "max" = NA,
   "min" = NA,
   "logit" = NA,
@@ -2877,7 +2879,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   .rxD <- rxode2parseD()
   for (.f in c(
     ls(.symengineFs()),
-    ls(.rxD),
+    ls(.rxD), "linCmtA", "linCmtB",
     "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
     "rxGt", "rxAnd", "rxOr", "rxNot", "rxTBS", "rxTBSd", "rxTBSd2", "lag", "lead",
     "rxTBSi"
@@ -3792,7 +3794,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
     "linCmt", names(.rxOnly), ls(.symengineFs())
   )
   if (extra) {
-    .ret <- c(.ret, c(
+    .ret <- c(.ret, c("linCmtA","linCmtB",
       "rxEq", "rxNeq", "rxGeq", "rxLeq", "rxLt",
       "rxGt", "rxAnd", "rxOr", "rxNot", "dabs", "dabs2", "abs0",
       "dabs1", "abs1"
