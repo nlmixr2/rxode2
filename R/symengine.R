@@ -530,7 +530,6 @@ rxD <- function(name, derivatives) {
   return(invisible())
 }
 
-
 .rxToSE.envir <- new.env(parent=emptyenv())
 .rxToSE.envir$envir <- NULL
 
@@ -667,6 +666,224 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 .rxToSEDualVarFunction <- c("tlast", "tlast0", "tad", "tad0", "tafd", "tafd0",
                             "dose", "podo", "dose0", "podo0")
 
+#' Change rxode2 linCmt states to `linCmtA/B` syntax
+#'
+#' @param x character expression
+#' @param envir Current evaluating environment
+#' @param progress Progress information
+#' @param isEnvir Tell if this is an environment parse
+#' @return Changed expression (as character), or NULL if not
+#' @author Matthew L. Fidler
+.rxToSEtoLinCmt <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
+  if (is.null(.rxToSElinCmt$linCmt)) {
+    return(NULL)
+  }
+  .linCmtB <- .rxToSElinCmt$linCmt == "linCmtB"
+  .oral0 <- as.numeric(paste(.rxToSElinCmt$oral0)) == 1
+  .ncmt <- as.numeric(paste(.rxToSElinCmt$ncmt))
+  .which1 <- NA_integer_
+  if (.oral0) {
+    if (.ncmt == 1) {
+      if (x == "depot") {
+        .which1 <- 0L
+      } else if (x == "central") {
+        .which1 <- 1L
+      }
+      # The sensitivity equations
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 2L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_ka") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_depot_BY_ka") {
+          .which1 <- 5L
+        }
+      }
+    } else if (.ncmt == 2) {
+      if (x == "depot") {
+        .which1 <- 0L
+      } else if (x == "central") {
+        .which1 <- 1L
+      } else if (x == "peripheral1") {
+        .which1 <- 2L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_central_BY_ka") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 9L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 10L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 11L
+        } else if (x == "rx__sens_peripheral1_BY_ka") {
+          .which1 <- 12L
+        } else if (x == "rx__sens_depot_BY_ka") {
+          .which1 <- 13L
+        }
+      }
+    } else {
+      if (x == "depot") {
+        .which1 <- 0L
+      } else if (x == "central") {
+        .which1 <- 1L
+      } else if (x == "peripheral1") {
+        .which1 <- 2L
+      } else if (x == "peripheral2") {
+        .which1 <- 3L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_central_BY_p4") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_central_BY_p5") {
+          .which1 <- 9L
+        } else if (x == "rx__sens_central_BY_ka") {
+          .which1 <- 10L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 11L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 12L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 13L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 14L
+        } else if (x == "rx__sens_peripheral1_BY_p4") {
+          .which1 <- 15L
+        } else if (x == "rx__sens_peripheral1_BY_p5") {
+          .which1 <- 16L
+        } else if (x == "rx__sens_peripheral1_BY_ka") {
+          .which1 <- 17L
+        } else if (x == "rx__sens_peripheral2_BY_p1") {
+          .which1<- 18L
+        } else if (x == "rx__sens_peripheral2_BY_v1") {
+          .which1 <- 19L
+        } else if (x == "rx__sens_peripheral2_BY_p2") {
+          .which1 <- 20L
+        } else if (x == "rx__sens_peripheral2_BY_p3") {
+          .which1 <- 21L
+        } else if (x == "rx__sens_peripheral2_BY_p4") {
+          .which1 <- 22L
+        } else if (x == "rx__sens_peripheral2_BY_p5") {
+          .which1 <- 23L
+        } else if (x == "rx__sens_peripheral2_BY_ka") {
+          .which1 <- 24L
+        } else if (x == "rx__sens_depot_BY_ka") {
+          .which1 <- 25L
+        }
+      }
+    }
+  } else {
+    if (.ncmt == 1) {
+      if (x == "central") {
+        .which1 <- 0L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 1L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 2L
+        }
+      }
+    } else if (.ncmt == 2) {
+      if (x == "central") {
+        .which1 <- 0L
+      } else if (x == "peripheral1") {
+        .which1 <- 1L
+      }
+      if (.linCmtB){
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 2L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 9L
+        }
+      }
+    } else {
+      if (x == "central") {
+        .which1 <- 0L
+      } else if (x == "peripheral1") {
+        .which1 <- 1L
+      } else if (x == "peripheral2") {
+        .which1 <- 2L
+      }
+      if (.linCmtB) {
+        if (x == "rx__sens_central_BY_p1") {
+          .which1 <- 3L
+        } else if (x == "rx__sens_central_BY_v1") {
+          .which1 <- 4L
+        } else if (x == "rx__sens_central_BY_p2") {
+          .which1 <- 5L
+        } else if (x == "rx__sens_central_BY_p3") {
+          .which1 <- 6L
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
+          .which1 <- 7L
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
+          .which1 <- 8L
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
+          .which1 <- 9L
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
+          .which1 <- 10L
+        } else if (x == "rx__sens_peripheral2_BY_p1") {
+          .which1 <- 11L
+        } else if (x == "rx__sens_peripheral2_BY_v1") {
+          .which1 <- 12L
+        } else if (x == "rx__sens_peripheral2_BY_p2") {
+          .which1 <- 13L
+        } else if (x == "rx__sens_peripheral2_BY_p3") {
+          .which1 <- 14L
+        }
+      }
+    }
+  }
+  if (is.na(.which1)) {
+    return(NULL)
+  }
+  if (!.linCmtB) {
+    # linCmtA(rx__PTR__, t, linCmt, ncmt, oral0, which, trans,
+    #         p1, v1, p2, p3, p4, p5, ka)
+    .rxToSElinCmt$which <- .which1
+    return(with(.rxToSElinCmt,
+                sprintf("linCmtA(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        t, linCmtN, ncmt, oral0, which, trans, p1, v1, p2, p3, p4, p5, ka)))
+  } else {
+    .rxToSElinCmt$which1 <- .which1
+    .rxToSElinCmt$which2 <- -2L
+    return(with(.rxToSElinCmt,
+                sprintf("linCmtB(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        t, linCmtN, ncmt, oral0, which1, which2, trans, p1, v1, p2, p3, p4, p5, ka)))
+  }
+}
 
 #' Change rxode2 syntax to symengine syntax for symbols and numbers
 #'
@@ -674,7 +891,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 #' @param envir Current evaluating environment
 #' @param progress Progress information
 #' @param isEnvir Tell if this is an environment parse
-#' @return Changed environment
+#' @return Changed expression (as character)
 #' @author Matthew L. Fidler
 #' @noRd
 .rxToSENameOrAtomic <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
@@ -704,6 +921,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       }
       return(.ret)
     } else {
+      .lin <- .rxToSEtoLinCmt(.ret, envir=envir, progress=progress, isEnv=isEnv)
+      if (!is.null(.lin)) {
+        return(.lin)
+      }
       .ret0 <- .rxSEcnt[.ret]
       if (is.na(.ret0)) {
         if (isEnv && is.name(x)) {
@@ -735,8 +956,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     rxProgressStop()
   } else {
     .ret <- paste(lapply(.x2, .rxToSE, envir = envir),
-                  collapse = "\n"
-                  )
+                  collapse = "\n")
   }
   ## Assign and evaluate deferred items.
   if (isEnv) {
@@ -758,11 +978,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       assign(.var, .expr, envir = envir)
       .rx <- paste0(
         rxFromSE(.var), "=",
-        rxFromSE(.expr)
-      )
+        rxFromSE(.expr))
       assign("..sens0", c(envir$..sens0, .rx),
-             envir = envir
-             )
+             envir = envir)
     }
     for (.var in names(envir$..jac0..)) {
       .expr <- envir$..jac0..[[.var]]
@@ -770,11 +988,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       assign(.var, .expr, envir = envir)
       .rx <- paste0(
         rxFromSE(.var), "=",
-        rxFromSE(.expr)
-      )
+        rxFromSE(.expr))
       assign("..jac0", c(envir$..jac0, .rx),
-             envir = envir
-             )
+             envir = envir)
     }
   }
   return(.ret)
@@ -1342,10 +1558,12 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 #' defined by the linear compartment to `linCmtA` or `linCmtB` to the
 #' function.
 #'
-#'
 #' @param expr language based expression to save information for.
+#'
 #' @return nothing, called for side effects
+#'
 #' @noRd
+#'
 #' @author Matthew L. Fidler
 .rxSEsaveLinCmt <- function(expr) {
   if (is.null(.rxToSElinCmt$linCmt)) stop(".rxToSElinCmt$linCmt is NULL")
