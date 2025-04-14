@@ -2042,7 +2042,6 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
           .udf <- try(get(.fun, envir = rxode2::.udfEnvSet(NULL), mode="function"), silent =TRUE)
         }
         if (inherits(.udf, "try-error")) {
-          print(.udf)
           stop(sprintf(gettext("function '%s' or its derivatives are not supported in rxode2"), .fun),
                call. = FALSE
                )
