@@ -812,7 +812,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
       } else if (x == "peripheral1") {
         .which1 <- 1L
       }
-      if (.linCmtB){
+      if (.linCmtB) {
         if (x == "rx__sens_central_BY_p1") {
           .which1 <- 2L
         } else if (x == "rx__sens_central_BY_v1") {
@@ -831,7 +831,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
           .which1 <- 9L
         }
       }
-    } else {
+    } else if (.ncmt == 3) {
       if (x == "central") {
         .which1 <- 0L
       } else if (x == "peripheral1") {
@@ -848,22 +848,34 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
           .which1 <- 5L
         } else if (x == "rx__sens_central_BY_p3") {
           .which1 <- 6L
-        } else if (x == "rx__sens_peripheral1_BY_p1") {
+        } else if (x == "rx__sens_central_BY_p4") {
           .which1 <- 7L
-        } else if (x == "rx__sens_peripheral1_BY_v1") {
+        } else if (x == "rx__sens_central_BY_p5") {
           .which1 <- 8L
-        } else if (x == "rx__sens_peripheral1_BY_p2") {
+        } else if (x == "rx__sens_peripheral1_BY_p1") {
           .which1 <- 9L
-        } else if (x == "rx__sens_peripheral1_BY_p3") {
+        } else if (x == "rx__sens_peripheral1_BY_v1") {
           .which1 <- 10L
-        } else if (x == "rx__sens_peripheral2_BY_p1") {
+        } else if (x == "rx__sens_peripheral1_BY_p2") {
           .which1 <- 11L
-        } else if (x == "rx__sens_peripheral2_BY_v1") {
+        } else if (x == "rx__sens_peripheral1_BY_p3") {
           .which1 <- 12L
-        } else if (x == "rx__sens_peripheral2_BY_p2") {
+        } else if (x == "rx__sens_peripheral1_BY_p4") {
           .which1 <- 13L
-        } else if (x == "rx__sens_peripheral2_BY_p3") {
+        } else if (x == "rx__sens_peripheral1_BY_p5") {
           .which1 <- 14L
+        } else if (x == "rx__sens_peripheral2_BY_p1") {
+          .which1 <- 15L
+        } else if (x == "rx__sens_peripheral2_BY_v1") {
+          .which1 <- 16L
+        } else if (x == "rx__sens_peripheral2_BY_p2") {
+          .which1 <- 17L
+        } else if (x == "rx__sens_peripheral2_BY_p3") {
+          .which1 <- 18L
+        } else if (x == "rx__sens_peripheral2_BY_p4") {
+          .which1 <- 19L
+        } else if (x == "rx__sens_peripheral2_BY_p5") {
+          .which1 <- 20L
         }
       }
     }
