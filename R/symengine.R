@@ -564,6 +564,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
                    promoteLinSens = TRUE, parent = parent.frame()) {
   .udfEnvSet(parent)
   .rxToSE.envir$parent <- parent
+  .rxToSElinCmt$linCmt <- NULL # no linCmt() found
+  if (exists("t", .rxToSElinCmt)) rm("t", envir=.rxToSElinCmt)
   assignInMyNamespace(".promoteLinB", promoteLinSens)
   assignInMyNamespace(".rxIsLhs", FALSE)
   assignInMyNamespace(".rxLastAssignedDdt", "")
@@ -1330,7 +1332,171 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
   return(.rxToSEMax(c(.ret, .xrest), min=min))
 }
 
+.rxToSElinCmt <- new.env()
+.rxToSElinCmt$linCmt <- NULL
 
+
+#' This saves the linCmt information to the .rxToSElinCmt environment
+#'
+#' This is useful when trying to convert the depot and other states
+#' defined by the linear compartment to `linCmtA` or `linCmtB` to the
+#' function.
+#'
+#'
+#' @param expr language based expression to save information for.
+#' @return nothing, called for side effects
+#' @noRd
+#' @author Matthew L. Fidler
+.rxSEsaveLinCmt <- function(expr) {
+  if (is.null(.rxToSElinCmt$linCmt)) stop(".rxToSElinCmt$linCmt is NULL")
+  if (!exists("t", envir=.rxToSElinCmt)) {
+    if (.rxToSElinCmt$linCmt == "linCmtA") {
+      # [[1]] == linCmtA
+      # [[2]] == rx__PTR__
+      .rxToSElinCmt$t <- expr[[3]]
+      .rxToSElinCmt$linCmtN <- expr[[4]]
+      .rxToSElinCmt$ncmt <- expr[[5]]
+      .rxToSElinCmt$oral0 <- expr[[6]]
+      # [[7]] = which
+      .rxToSElinCmt$trans <- expr[[8]]
+      .rxToSElinCmt$p1 <- expr[[9]]
+      .rxToSElinCmt$v1 <- expr[[10]]
+      .rxToSElinCmt$p2 <- expr[[11]]
+      .rxToSElinCmt$p3 <- expr[[12]]
+      .rxToSElinCmt$p4 <- expr[[13]]
+      .rxToSElinCmt$p5 <- expr[[14]]
+      .rxToSElinCmt$ka <- expr[[15]]
+      # linCmtA(rx__PTR__, t, linCmt, ncmt, oral0, which, trans,
+      #         p1, v1, p2, p3, p4, p5, ka)
+    } else {
+      # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans,
+      #         p1, v1, p2, p3, p4, p5, ka)
+      # [[1]] == linCmtB
+      # [[2]] == rx__PTR__
+      .rxToSElinCmt$t <- expr[[3]]
+      .rxToSElinCmt$linCmtN <- expr[[4]]
+      .rxToSElinCmt$ncmt <- expr[[5]]
+      .rxToSElinCmt$oral0 <- expr[[6]]
+      # [[7]] = which1
+      # [[8]] = which2
+      .rxToSElinCmt$trans <- expr[[9]]
+      .rxToSElinCmt$p1 <- expr[[10]]
+      .rxToSElinCmt$v1 <- expr[[11]]
+      .rxToSElinCmt$p2 <- expr[[12]]
+      .rxToSElinCmt$p3 <- expr[[13]]
+      .rxToSElinCmt$p4 <- expr[[14]]
+      .rxToSElinCmt$p5 <- expr[[15]]
+      .rxToSElinCmt$ka <- expr[[16]]
+    }
+  } else {
+    if (.rxToSElinCmt$linCmt != ret0[[1]]) {
+      stop("linCmtA and linCmtB cannot be used in the same model", call. = FALSE)
+    }
+    if (.rxToSElinCmt$linCmt == "linCmtA") {
+      # [[1]] == linCmtA
+      # [[2]] == rx__PTR__
+      err <- NULL
+      if (!identical(.rxToSElinCmt$t, expr[[3]])) {
+        err <- c(err, "t")
+      }
+      if (!identical(.rxToSElinCmt$linCmtN, expr[[4]])) {
+        err <- c(err, "linCmtN")
+      }
+      if (!identical(.rxToSElinCmt$ncmt, expr[[5]])) {
+        err <- c(err, "ncmt")
+      }
+      if (!identical(.rxToSElinCmt$oral0, expr[[6]])) {
+        err <- c(err, "oral0")
+      }
+      if (!identical(.rxToSElinCmt$trans, expr[[8]])) {
+        err <- c(err, "trans")
+      }
+      if (!identical(.rxToSElinCmt$p1, expr[[9]])) {
+        err <- c(err, "p1")
+      }
+      if (!identical(.rxToSElinCmt$v1, expr[[10]])) {
+        err <- c(err, "v1")
+      }
+      if (!identical(.rxToSElinCmt$p2, expr[[11]])) {
+        err <- c(err, "p2")
+      }
+      if (!identical(.rxToSElinCmt$p3, expr[[12]])) {
+        err <- c(err, "p3")
+      }
+      if (!identical(.rxToSElinCmt$p4, expr[[13]])) {
+        err <- c(err, "p4")
+      }
+      if (!identical(.rxToSElinCmt$p5, expr[[14]])) {
+        err <- c(err, "p5")
+      }
+      if (!identical(.rxToSElinCmt$ka, expr[[15]])) {
+        err <- c(err, "ka")
+      }
+      if (!is.null(err)) {
+        stop(paste0("linCmtA needs exactly the same arguments: ",
+                    paste(err, collapse = ", ")),
+             call. = FALSE)
+      }
+    } else {
+      # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans,
+      #         p1, v1, p2, p3, p4, p5, ka)
+      # [[1]] == linCmtB
+      # [[2]] == rx__PTR__
+      err <- NULL
+      if (!identical(.rxToSElinCmt$t, expr[[3]])) {
+        err <- c(err, "t")
+      }
+      if (!identical(.rxToSElinCmt$linCmtN, expr[[4]])) {
+        err <- c(err, "linCmtN")
+      }
+      if (!identical(.rxToSElinCmt$ncmt, expr[[5]])) {
+        err <- c(err, "ncmt")
+      }
+      if (!identical(.rxToSElinCmt$oral0, expr[[6]])) {
+        err <- c(err, "oral0")
+      }
+      if (!identical(.rxToSElinCmt$trans, expr[[9]])) {
+        err <- c(err, "trans")
+      }
+      if (!identical(.rxToSElinCmt$p1, expr[[10]])) {
+        err <- c(err, "p1")
+      }
+      if (!identical(.rxToSElinCmt$v1, expr[[11]])) {
+        err <- c(err, "v1")
+      }
+      if (!identical(.rxToSElinCmt$p2, expr[[12]])) {
+        err <- c(err, "p2")
+      }
+      if (!identical(.rxToSElinCmt$p3, expr[[13]])) {
+        err <- c(err, "p3")
+      }
+      if (!identical(.rxToSElinCmt$p4, expr[[14]])) {
+        err <- c(err, "p4")
+      }
+      if (!identical(.rxToSElinCmt$p5, expr[[15]])) {
+        err <- c(err, "p5")
+      }
+      if (!identical(.rxToSElinCmt$ka, expr[[16]])) {
+        err <- c(err, "ka")
+      }
+      if (!is.null(err)) {
+        stop(paste0("linCmtB needs exactly the same arguments: ",
+                    paste(err, collapse = ", ")),
+             call. = FALSE)
+      }
+    }
+  }
+}
+
+#' This is used converting the rxode2 functions to a symengine call
+#'
+#' @param x language object that is a call
+#' @param envir environment that has information
+#' @param progress boolean telling if the progress bar should be shown
+#' @param isEnv boolean to indicate if the environment is a rxode2 environment
+#' @return string representing the translation
+#' @noRd
+#' @author Matthew L. Fidler
 .rxToSECall <- function(x, envir = NULL, progress = FALSE, isEnv=TRUE) {
   if (identical(x[[1]], quote(`(`))) {
     return(paste0("(", .rxToSE(x[[2]], envir = envir), ")"))
@@ -1448,6 +1614,41 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     .SEeq <- c(.rxSEeq, rxode2::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
     .nargs <- .SEeq[.curName]
+    if (.curName == "linCmtA") {
+      # Save the information about the model so that
+      # depot and the rest can be converted to the right equivalent
+      # linear compartment model
+      if (.promoteLinB) {
+        # linCmtA(rx__PTR__, t, linCmt, ncmt, oral0, which, trans,
+        #         p1, v1, p2, p3, p4, p5, ka)
+        # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans,
+        #         p1, v1, p2, p3, p4, p5, ka)
+        .rxToSElinCmt$linCmt <- "linCmtB"
+        .which <- as.numeric(.ret0[[6]])
+        if (.which == -1) {
+          # Linear compartment solution
+          .ret0 <- c(
+            list("linCmtB"),
+            .ret0[2:6],
+            list("-1", "-1"),
+            .ret0[-c(1, 2:6)]
+          )
+        } else {
+          # Compartment value, convert to the corresponding compartment
+          # value
+          .ret0 <- c(
+            list("linCmtB"),
+            .ret0[2:6],
+            list(paste0(.which), "-2"),
+            .ret0[-c(1, 2:6)]
+          )
+        }
+        .nargs <- .nargs + 1
+      } else {
+        .rxToSElinCmt$linCmt <- "linCmtA"
+      }
+      .rxSEsaveLinCmt(.ret0)
+    }
     if (!is.na(.nargs)) {
       if (.nargs == length(.ret0) - 1) {
         .ret <- paste0(.ret0[[1]], "(")
