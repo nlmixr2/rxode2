@@ -875,15 +875,31 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
     # linCmtA(rx__PTR__, t, linCmt, ncmt, oral0, which, trans,
     #         p1, v1, p2, p3, p4, p5, ka)
     .rxToSElinCmt$which <- .which1
-    return(with(.rxToSElinCmt,
-                sprintf("linCmtA(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                        t, linCmtN, ncmt, oral0, which, trans, p1, v1, p2, p3, p4, p5, ka)))
+    return(sprintf("linCmtA(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                   .rxToSElinCmt$t, .rxToSElinCmt$linCmtN, .rxToSElinCmt$ncmt,
+                   .rxToSElinCmt$oral0, .rxToSElinCmt$which,
+                   .rxToSElinCmt$trans, .rxToSElinCmt$p1,
+                   .rxToSElinCmt$v1, .rxToSElinCmt$p2, .rxToSElinCmt$p3,
+                   .rxToSElinCmt$p4, .rxToSElinCmt$p5,
+                   .rxToSElinCmt$ka))
   } else {
     .rxToSElinCmt$which1 <- .which1
     .rxToSElinCmt$which2 <- -2L
-    return(with(.rxToSElinCmt,
-                sprintf("linCmtB(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                        t, linCmtN, ncmt, oral0, which1, which2, trans, p1, v1, p2, p3, p4, p5, ka)))
+    return(sprintf("linCmtB(rx__PTR__, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                   .rxToSElinCmt$t,
+                   .rxToSElinCmt$linCmtN,
+                   .rxToSElinCmt$ncmt,
+                   .rxToSElinCmt$oral0,
+                   .rxToSElinCmt$which1,
+                   .rxToSElinCmt$which2,
+                   .rxToSElinCmt$trans,
+                   .rxToSElinCmt$p1,
+                   .rxToSElinCmt$v1,
+                   .rxToSElinCmt$p2,
+                   .rxToSElinCmt$p3,
+                   .rxToSElinCmt$p4,
+                   .rxToSElinCmt$p5,
+                   .rxToSElinCmt$ka))
   }
 }
 
@@ -1844,14 +1860,14 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         # linCmtB(rx__PTR__, t, linCmt, ncmt, oral0, which1, which2, trans,
         #         p1, v1, p2, p3, p4, p5, ka)
         .rxToSElinCmt$linCmt <- "linCmtB"
-        .which <- as.numeric(.ret0[[6]])
+        .which <- eval(str2lang(.ret0[[7]]))
         if (.which == -1) {
           # Linear compartment solution
           .ret0 <- c(
             list("linCmtB"),
             .ret0[2:6],
             list("-1", "-1"),
-            .ret0[-c(1, 2:6)]
+            .ret0[-c(1, 2:7)]
           )
         } else {
           # Compartment value, convert to the corresponding compartment
@@ -1860,7 +1876,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
             list("linCmtB"),
             .ret0[2:6],
             list(paste0(.which), "-2"),
-            .ret0[-c(1, 2:6)]
+            .ret0[-c(1, 2:7)]
           )
         }
         .nargs <- .nargs + 1

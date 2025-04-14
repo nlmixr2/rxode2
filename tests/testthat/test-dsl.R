@@ -633,4 +633,134 @@ rxTest({
     expect_error(rxS(test), NA)
 
   })
+
+  test_that("Promote linear solution linCmtA to linear solution linCmtB -- linCmt() sol", {
+    expect_equal(str2lang(rxToSE("linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,q,v2,q2,v3,ka)",
+                    promoteLinSens = TRUE)),
+                 str2lang("linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, q, v2, q2, v3, ka)"))
+  })
+
+  test_that("Promote linear solution linCmtA to linear solution linCmtB -- amts", {
+    for (i in 0:7) {
+      str <- paste0("linCmtA(rx__PTR__,t,2,1,1,",i,",1,cl,v,q,v2,q2,v3,ka)")
+      expect_equal(str2lang(rxToSE(str, promoteLinSens = TRUE)),
+                   str2lang(paste0("linCmtB(rx__PTR__, t, 2, 1, 1, ", i, ", -2, 1, cl, v, q, v2, q2, v3, ka)")))
+    }
+  })
+
+  testVars <- c("b=depot",
+                "c=central",
+                "d=peripheral1",
+                "ee=peripheral2",
+                "f=rx__sens_central_BY_p1",
+                "g=rx__sens_central_BY_v1",
+                "h=rx__sens_central_BY_p2",
+                "i=rx__sens_central_BY_p3",
+                "j=rx__sens_central_BY_p4",
+                "k=rx__sens_central_BY_p5",
+                "l=rx__sens_central_BY_ka",
+                "m=rx__sens_peripheral1_BY_p1",
+                "n=rx__sens_peripheral1_BY_v1",
+                "o=rx__sens_peripheral1_BY_p2",
+                "p=rx__sens_peripheral1_BY_p3",
+                "q=rx__sens_peripheral1_BY_p4",
+                "r=rx__sens_peripheral1_BY_p5",
+                "s=rx__sens_peripheral1_BY_ka",
+                "tt=rx__sens_peripheral2_BY_p1",
+                "u=rx__sens_peripheral2_BY_v1",
+                "v=rx__sens_peripheral2_BY_p2",
+                "w=rx__sens_peripheral2_BY_p3",
+                "x=rx__sens_peripheral2_BY_p4",
+                "y=rx__sens_peripheral2_BY_p5",
+                "z=rx__sens_peripheral2_BY_ka",
+                "aa=rx__sens_depot_BY_ka")
+
+  # Testing function for translation
+  f <- function(w, num=NULL) {
+    w <- get(w, envir=s)
+    v <- rxFromSE(w)
+    l <- str2lang(v)
+    if (is.symbol(l)) {
+      if (is.null(num)) {
+        return(TRUE)
+      } else {
+        return(FALSE)
+      }
+    }
+    if (is.call(l) && (identical(l[[1]], quote(`linCmtA`)) ||
+                         identical(l[[1]], quote(`linCmtB`)))) {
+      return(l[[7]] == num)
+    }
+    FALSE
+  }
+
+
+  test_that("3 compartment oral compartments translated in symengine", {
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,1,-1,1,cl,v,q,v2,q2,v3,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s)
+
+    expect_true(f("b", 0)) # depot
+    expect_true(f("c", 1)) # central
+    expect_true(f("d", 2)) # peripheral1
+    expect_true(f("ee", 3)) # peripheral2
+    expect_true(f("f"))
+    expect_true(f("g"))
+    expect_true(f("h"))
+    expect_true(f("i"))
+    expect_true(f("j"))
+    expect_true(f("k"))
+    expect_true(f("l"))
+    expect_true(f("m"))
+    expect_true(f("n"))
+    expect_true(f("o"))
+    expect_true(f("p"))
+    expect_true(f("q"))
+    expect_true(f("r"))
+    expect_true(f("s"))
+    expect_true(f("tt"))
+    expect_true(f("u"))
+    expect_true(f("v"))
+    expect_true(f("w"))
+    expect_true(f("x"))
+    expect_true(f("y"))
+    expect_true(f("z"))
+    expect_true(f("aa"))
+
+    s <- paste(c("linc=linCmtA(rx__PTR__,t,2,3,1,-1,1,cl,v,q,v2,q2,v3,ka)",
+                 testVars), collapse="\n")
+    s <- rxS(s, promoteLinSens = TRUE)
+
+    expect_true(f("b", 0)) # depot
+    expect_true(f("c", 1)) # central
+    expect_true(f("d", 2)) # peripheral1
+    expect_true(f("ee", 3)) # peripheral2
+    expect_true(f("f", 4))
+    expect_true(f("g", 5))
+    expect_true(f("h", 6))
+    expect_true(f("i", 7))
+    expect_true(f("j", 8))
+    expect_true(f("k", 9))
+    expect_true(f("l", 10))
+    expect_true(f("m", 11))
+    expect_true(f("n", 12))
+    expect_true(f("o", 13))
+    expect_true(f("p", 14))
+    expect_true(f("q", 15))
+    expect_true(f("r", 16))
+    expect_true(f("s", 17))
+    expect_true(f("tt", 18))
+    expect_true(f("u", 19))
+    expect_true(f("v", 20))
+    expect_true(f("w", 21))
+    expect_true(f("x", 22))
+    expect_true(f("y", 23))
+    expect_true(f("z", 24))
+    expect_true(f("aa", 25))
+
+  })
+
+
+
 })
