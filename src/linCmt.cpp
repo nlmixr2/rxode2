@@ -276,8 +276,10 @@ extern "C" double linCmtA(rx_solve *rx, int id,
  *
  *  @param oral0 A indicator of 0 or 1 saying if this was an oral dose
  *
- *  @param which1 The first index of the Jacobian (0 indexed)
- *  @param which2 The second index of the Jacobian (0 indexed)
+ *  @param which1 The first index of the Jacobian (0 indexed; compartment number)
+
+ *  @param which2 The second index of the Jacobian (0 indexed; parameter number)
+
  *
  *  When which1 and which2 are both -1, the solved linear compartment
  *  model value returned

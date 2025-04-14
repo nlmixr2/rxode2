@@ -769,16 +769,16 @@
     .args5 <- .args[5] # oral0
     .args6 <- .args[6]
     .args7 <- .args[7]
-    .w <- paste(.(.which))
+    .w <- .(paste(.which))
     if (.args6 == "-1" && .args7 == "-1") {
       ## This is the derivative of the linear compartment solution
       # Return the gradent with respect to the parameter
-      .args6 <- "-2"
-      .args7 <- .w
+      .args[6] <- "-2"
+      .args[7] <- .w
     } else if (.args7 == "-2") {
       ## This is the amount in each of the saved compartments
       ## and which1 represents the amount in the compartment (zero indexed)
-      .args7 <- .w
+      .args[7] <- .w
     } else {
       stop("bad 'linCmtB' derivative", call. = FALSE)
     }
@@ -809,6 +809,9 @@
   function(...) { # which2
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
+  function(...) { # trans
+    stop("bad 'linCmtB' derivative", call. = FALSE)
+  },
   .linCmtBgen(9), # p1
   .linCmtBgen(10), # v1
   .linCmtBgen(11), # p2
@@ -819,7 +822,7 @@
     .args <- unlist(list(...))
     .ncmt <- .args[4] # ncmt
     .args5 <- .args[5] # oral0
-    if (args5 != "1") return("0")
+    if (.args5 != "1") return("0")
     .args6 <- .args[6]
     .args7 <- .args[7]
     .which <- "2"
@@ -831,13 +834,12 @@
     if (.args6 == "-1" && .args7 == "-1") {
       ## This is the derivative of the linear compartment solution
       # Return the gradent with respect to the parameter
-      .args6 <- "-2"
-
-      .args7 <- .which
+      .args[6] <- "-2"
+      .args[7] <- .which
     } else if (.args7 == "-2") {
       ## This is the amount in each of the saved compartments
       ## and which1 represents the amount in the compartment (zero indexed)
-      .args7 <- .which
+      .args[7] <- .which
     } else {
       stop("bad 'linCmtB' derivative", call. = FALSE)
     }

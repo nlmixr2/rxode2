@@ -1085,5 +1085,62 @@ rxTest({
 
   })
 
+  f <- function(txt, var, w1, w2) {
+    .txt <- paste0("Derivative(", txt, ",", var, ")")
+    .txt <- str2lang(rxFromSE(.txt))
+    expect_equal(eval(.txt[[7]]), w1)
+    expect_equal(eval(.txt[[8]]), w2)
+  }
+
+  test_that("test linCmtB 3 compartment oral derivatives", {
+
+    # linCmt()
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "cl", -2, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v",  -2, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q",  -2, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v2", -2, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "q2", -2, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "v3", -2, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,-1,-1,1,cl,v,q,v2,q2,v3,ka)", "ka", -2, 6)
+
+    # state values
+
+    # depot:
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 0, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  0, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  0, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 0, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 0, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 0, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,0,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 0, 6)
+
+    # central:
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 1, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  1, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  1, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 1, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 1, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 1, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,1,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 1, 6)
+
+    # peripharal1
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 2, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  2, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  2, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 2, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 2, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 2, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,2,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 2, 6)
+
+    # peripharal2
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "cl", 3, 0)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v",  3, 1)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q",  3, 2)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v2", 3, 3)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "q2", 3, 4)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "v3", 3, 5)
+    f("linCmtB(rx__PTR__,t,2,3,1,3,-2,1,cl,v,q,v2,q2,v3,ka)", "ka", 3, 6)
+
+  })
 
 })
