@@ -766,10 +766,17 @@
   .fun <- function(...) {}
   body(.fun) <- bquote({
     .args <- unlist(list(...))
+    .ncmt <- .args[4] # ncmt
     .args5 <- .args[5] # oral0
-    .args6 <- .args[6]
-    .args7 <- .args[7]
+    .oral0 <- as.numeric(.args5)
+    .args6 <- .args[6] # which1
+    .args7 <- .args[7] # which2
     .w <- .(paste(.which))
+    .wn <- .(.which)
+    .nc <- as.numeric(.ncmt)
+    if (.wn + 1 > .nc * 2) {
+      return("0")
+    }
     if (.args6 == "-1" && .args7 == "-1") {
       ## This is the derivative of the linear compartment solution
       # Return the gradent with respect to the parameter
@@ -778,6 +785,9 @@
     } else if (.args7 == "-2") {
       ## This is the amount in each of the saved compartments
       ## and which1 represents the amount in the compartment (zero indexed)
+      if (as.numeric(.args6) >= .oral0 + .nc) {
+        return("0")
+      }
       .args[7] <- .w
     } else {
       stop("bad 'linCmtB' derivative", call. = FALSE)
@@ -812,16 +822,18 @@
   function(...) { # trans
     stop("bad 'linCmtB' derivative", call. = FALSE)
   },
-  .linCmtBgen(9), # p1
+  .linCmtBgen(9),  # p1
   .linCmtBgen(10), # v1
   .linCmtBgen(11), # p2
   .linCmtBgen(12), # p3
   .linCmtBgen(13), # p4
   .linCmtBgen(14), # p5
-  function(...) { # ka
+  function(...) {  # ka
     .args <- unlist(list(...))
     .ncmt <- .args[4] # ncmt
+    .nc <- as.numeric(.ncmt)
     .args5 <- .args[5] # oral0
+    .oral0 <- as.numeric(.args5)
     if (.args5 != "1") return("0")
     .args6 <- .args[6]
     .args7 <- .args[7]
@@ -839,6 +851,9 @@
     } else if (.args7 == "-2") {
       ## This is the amount in each of the saved compartments
       ## and which1 represents the amount in the compartment (zero indexed)
+      if (as.numeric(.args6) >= .oral0 + .nc) {
+        return("0")
+      }
       .args[7] <- .which
     } else {
       stop("bad 'linCmtB' derivative", call. = FALSE)
