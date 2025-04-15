@@ -676,6 +676,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
 #' @param isEnvir Tell if this is an environment parse
 #' @return Changed expression (as character), or NULL if not
 #' @author Matthew L. Fidler
+#' @noRd
 .rxToSEtoLinCmt <- function(x, envir=NULL, progress=FALSE, isEnv=TRUE) {
   if (is.null(.rxToSElinCmt$linCmt)) {
     return(NULL)

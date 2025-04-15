@@ -1474,16 +1474,4 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
   .r <- rex::rex(start, end)
   .d <- data.table::data.table(a=1)
 }
-#' Is the linear systems with gradients built-in
-#'
-#' @return logical (TRUE) if the solved systems with gradients are
-#'   built-in. (FALSE) if the solves systems with gradients are absent
-#' @export
-#' @author Matthew L. Fidler
-#' @keywords internal
-#' @examples
-#' .linCmtSensB()
-.linCmtSensB <- function() {
-  as.logical(.Call(`_rxode2parse_linCmtB`))
-}
 ## nocov end
