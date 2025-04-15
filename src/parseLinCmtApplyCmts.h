@@ -255,7 +255,7 @@ extern void calcLinCmt(void) {
         sbt2.s[sbt2.o] = 0;
         sAppendN(&sbt2, " are properties not supported in linCmt() models, you can try ODEs instead\n",
                  75);
-        sAppendN(&sbt, "%s", sbt2.s);
+        sAppend(&sbt, "%s", sbt2.s);
         sbt2.o = 0;
       }
       trans_syntax_error_report_fn(sbt.s);

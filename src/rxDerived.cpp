@@ -17,7 +17,7 @@
 
 extern "C" void _rxode2parse_unprotect(void);
 
-static inline int parTransPtr(int *transp,
+static inline void parTransPtr(int *transp,
                               double *p1, double *v1,
                               double *p2, double *p3,
                               double *p4, double *p5,
