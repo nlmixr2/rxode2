@@ -1548,10 +1548,6 @@ static inline double *getAlagThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gAlag);
 }
 
-extern "C" double *getFThread() {
-  return getAlagFamilyPointerFromThreadId(_globals.gF);
-}
-
 static inline double *getRateThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gRate);
 }
@@ -1584,7 +1580,6 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->alag = getAlagThread();
     ind->cRate = getRateThread();
     ind->cDur = getDurThread();
-    ind->cF = getFThread();
     ind->InfusionRate = getInfusionRateThread();
     ind->tlastS = getTlastSThread();
     ind->tfirstS = getTfirstSThread();
@@ -1620,7 +1615,6 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->alag = NULL;
     ind->cRate =NULL;
     ind->cDur = NULL;
-    ind->cF   =  NULL;
     ind->InfusionRate = NULL;
     ind->tlastS = NULL;
     ind->tfirstS = NULL;
@@ -4734,6 +4728,11 @@ static inline void iniRx(rx_solve* rx) {
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 
+List rxReassignPtrMv;
+void rxReassignPtr() {
+  rxAssignPtr(rxReassignPtrMv);
+}
+
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<CharacterVector> &specParams,
@@ -4927,6 +4926,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->hasCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasCmt] == 1;
     // Assign Pointers
     rxAssignPtr(rxSolveDat->mv);
+    rxReassignPtrMv = rxSolveDat->mv;
     rx->nKeepF = 0;
     rx->stateTrimU = stateTrimU;
     rx->stateTrimL = stateTrimL;
@@ -5254,7 +5254,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +
-                                      5*op->neq + 8*n3a_c + nllik_c,
+                                      5*op->neq + 7*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5271,8 +5271,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gmtime      = _globals.gSolveLast2 + nsave; // [n2]
     _globals.gInfusionRate = _globals.gmtime + n2; //[n3a_c]
     _globals.gAlag  = _globals.gInfusionRate + n3a_c; // [n3a_c]
-    _globals.gF  = _globals.gAlag + n3a_c; // [n3a_c]
-    _globals.gRate  = _globals.gF + n3a_c; // [n3a_c]
+    _globals.gRate  = _globals.gAlag + n3a_c; // [n3a_c]
     _globals.gDur  = _globals.gRate + n3a_c; // [n3a_c]
     _globals.ginits = _globals.gDur + n3a_c; // [n4]
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);

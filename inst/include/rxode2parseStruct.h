@@ -148,6 +148,8 @@ typedef struct {
   int whI;
   int wh0;
   int doSS;
+  int sortInd;
+  int solvedIdx;
   int allCovWarn;
   int wrongSSDur;
   int _newind;
@@ -163,8 +165,6 @@ typedef struct {
   int inLhs;
   // Cache alag
   double *alag;
-  // Cache F
-  double *cF;
   // Cache rate;
   double *cRate;
   // Cache duration
@@ -199,6 +199,8 @@ typedef struct {
   int idxExtra; // extra idx
   int extraSorted; // extra sorted?
   //double *extraDoseIi; // ii doses unsupported
+  int handleInfusionItemIdx;
+  double handleInfusionItemVal;
   bool lastIsSs2;
   double *timeThread;
   int idxLow;

@@ -214,9 +214,16 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     return NA_REAL;
   }
 
+  double curT;
+  if (ind->doSS) {
+    curT = ind->tout;
+  } else {
+    curT = _t;
+  }
+
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
   if (ind->_rxFlag != 11) {
-    if (!ind->doSS && isSameTime(_t, ind->linCmtLastT)) {
+    if (!ind->doSS && isSameTime(ind->tout, ind->linCmtLastT)) {
       // If we are calculating the LHS values or other values, these are
       // stored in the corresponding compartments.
       //
@@ -241,7 +248,8 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 
       // Get/Set the dt; This is only applicable in the ODE/linCmt() case
 
-      double dt = _t - ind->tprior;
+      double dt = curT - ind->tprior;
+
       lc.setDt(dt);
 
       fx = lc(theta);
@@ -413,8 +421,12 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
   Eigen::Matrix<double, -1, -1> J;
 
+  double curT = _t;
+  if (ind->doSS) {
+    curT = ind->tout;
+  }
   if (ind->_rxFlag != 11) {
-    if (!ind->doSS && isSameTime(_t, ind->linCmtLastT)) {
+    if (!ind->doSS && isSameTime(ind->tout, ind->linCmtLastT)) {
       // If we are calculating the LHS values or other values, these are
       // stored in the corresponding compartments.
       //
@@ -439,13 +451,13 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       //
 
       // Get/Set the dt; This is only applicable in the ODE/linCmt() case
-      double dt = _t - ind->tprior;
+      double dt = curT - ind->tprior;
 
       lc.setDt(dt);
 
       stan::math::jacobian(lc, theta, fx, J);
       lc.saveJac(J);
-      if (!ind->doSS) {
+      if (!ind->doSS && ind->_rxFlag == 1) {
         ind->linCmtLastT = ind->tout;
       }
     }

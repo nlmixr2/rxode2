@@ -309,10 +309,10 @@ static inline int syncIdx(rx_solving_options_ind *ind) {
 
 extern t_F AMT;
 
+
 static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
                             double dose, double t, double *y) {
   double ret = AMT(id, cmt, dose, t, y);
-
   if (ISNA(ret)){
     rx_solving_options *op = &op_global;
     op->badSolve=1;
@@ -643,7 +643,8 @@ static inline int handle_evid(int evid, int neq,
         ind->curDoseS[cmt] = ind->curDose;
       }
       // if (!ind->doSS) {
-      //   REprintf("infusion dose at %f is %f ind->ixds: %d\n", xout, tmp, ind->ixds);
+      //   REprintf("infusion dose[cmt:%d] at %f is %f ind->ixds: %d\n",
+      //            cmt, xout, tmp, ind->ixds);
       // }
       InfusionRate[cmt] += tmp;
       ind->cacheME=0;
