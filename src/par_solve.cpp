@@ -2383,6 +2383,7 @@ extern "C" void ind_liblsoda(rx_solve *rx, int solveid,
   ind_liblsoda0(rx, op, opt, solveid, dydt, u_inis);
 }
 
+
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 
 extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -2996,7 +2997,14 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
-
+extern "C" void ind_linCmt(rx_solve *rx, int solveid,
+                           t_dydt dydt, t_update_inis u_inis){
+  rx_solving_options *op = &op_global;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = solveid;
+  ind_linCmt0(rx, op, solveid, neq, dydt, u_inis);
+}
 
 extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                          t_dydt c_dydt,
@@ -3263,19 +3271,25 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   assignFuns();
   rx_solving_options *op = &op_global;
   if (op->neq !=  0){
-    switch (op->stiff){
-    case 3:
-      ind_indLin(rx, cid, u_inis, ME, IndF);
-      break;
-    case 2:
-      ind_liblsoda(rx, cid, dydt_lls, u_inis);
-      break;
-    case 1:
-      ind_lsoda(rx,cid, dydt_lsoda, u_inis, jdum, jt);
-      break;
-    case 0:
-      ind_dop(rx, cid, c_dydt, u_inis);
-      break;
+    if (op->neq == op->numLinSens + op->numLin) {
+      // This only is linear compartment solving
+      ind_linCmt(rx, cid, c_dydt, u_inis);
+      return;
+    } else {
+      switch (op->stiff){
+      case 3:
+        ind_indLin(rx, cid, u_inis, ME, IndF);
+        break;
+      case 2:
+        ind_liblsoda(rx, cid, dydt_lls, u_inis);
+        break;
+      case 1:
+        ind_lsoda(rx,cid, dydt_lsoda, u_inis, jdum, jt);
+        break;
+      case 0:
+        ind_dop(rx, cid, c_dydt, u_inis);
+        break;
+      }
     }
   }
   iniSubject(cid, 1, &(rx->subjects[cid]), op, rx, u_inis);
