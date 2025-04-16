@@ -50,23 +50,23 @@ rxExpandGrid <- function(x, y, type = 0L) {
         .pars <- .pars[regexpr(rex::rex(start, "ETA[", any_numbers, "]"), .pars) != -1]
       }
       .jac <- rxExpandGrid(
-        rxState(model),
-        c(rxState(model), .pars),
+        rxStateOde(model),
+        c(rxStateOde(model), .pars),
         1L
       )
     } else {
       .pars <- NULL
       .jac <- rxExpandGrid(
-        rxState(model),
-        rxState(model),
+        rxStateOde(model),
+        rxStateOde(model),
         1L
       )
     }
   } else if (rxIs(vars, "character")) {
     .pars <- vars
     .jac <- rxExpandGrid(
-      rxState(model),
-      c(rxState(model), vars),
+      rxStateOde(model),
+      c(rxStateOde(model), vars),
       1L
     )
   }
@@ -99,7 +99,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @export
 #' @keywords internal
 .rxSens <- function(model, vars, vars2) {
-  .state <- rxState(model)
+  .state <- rxStateOde(model)
   if (length(.state) > 0L) {
     if (missing(vars)) vars <- get("..vars", envir = model)
     if (!missing(vars2)) {
