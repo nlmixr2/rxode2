@@ -12,7 +12,7 @@
  * These are called just before model variables are calculated.
  *
  */
-static inline void addLinCmt(nodeInfo ni, const char *cmt, int *linCmtErr, int depotCentral) {
+static inline void addLinCmt(nodeInfo ni, char *cmt, int *linCmtErr, int depotCentral) {
   if (new_de(cmt, fromDDT)) {
     add_de(ni, "linCmt()", cmt, 0, fromDDT);
     tb.idu[tb.id]=1;
