@@ -48,13 +48,6 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Install gettext
-        run: |
-          if [[ "$(uname)" == "Darwin" ]]; then
-            brew install gettext
-           brew link gettext --force
-          fi
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           cache-version: 9
