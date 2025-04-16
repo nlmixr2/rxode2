@@ -18,13 +18,7 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 #include <Rmath.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2parse", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 // change the name of the iniDparser pointer
 #define iniDparserPtr _rxode2_iniDparserPtr

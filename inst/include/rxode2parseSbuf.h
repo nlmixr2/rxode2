@@ -17,13 +17,7 @@ extern "C" {
 #include <unistd.h>
 #include <errno.h>
 #ifdef _isrxode2parse_
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 #endif
 #include "rxode2parse.h"
 

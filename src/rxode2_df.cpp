@@ -43,13 +43,7 @@ void resetSolveLinB();
 using namespace Rcpp;
 using namespace arma;
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 #include "rxData.h"
 

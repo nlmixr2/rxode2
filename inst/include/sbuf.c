@@ -6,16 +6,10 @@
 #else
 #ifdef _isrxode2_
 #include "../inst/include/rxode2.h"
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 #else
 #include <rxode2parseSbuf.h>
-#endif 
+#endif
 #endif
 
 // Taken from dparser and changed to use Calloc

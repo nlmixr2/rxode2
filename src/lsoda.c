@@ -3,13 +3,7 @@
 #endif
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 #include <R.h>
 #include <Rinternals.h>

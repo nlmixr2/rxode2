@@ -14,13 +14,7 @@
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
 
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2parse", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 
 using namespace Rcpp;
 #define rxIsNumIntLgl rx2parseIsNumIntLgl

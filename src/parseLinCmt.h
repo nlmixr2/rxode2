@@ -12,13 +12,7 @@
 #include <Rmath.h>
 #include <unistd.h>
 #include <errno.h>
-#ifdef ENABLE_NLS
-#include <libintl.h>
-#define _(String) dgettext ("rxode2parse", String)
-/* replace pkg as appropriate */
-#else
 #define _(String) (String)
-#endif
 #include "../inst/include/rxode2parse.h"
 #include "tran.h"
 #include "../inst/include/rxode2parseSbuf.h"
