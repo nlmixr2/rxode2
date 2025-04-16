@@ -4728,11 +4728,6 @@ static inline void iniRx(rx_solve* rx) {
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
 
-List rxReassignPtrMv;
-void rxReassignPtr() {
-  rxAssignPtr(rxReassignPtrMv);
-}
-
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<CharacterVector> &specParams,
@@ -4926,7 +4921,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->hasCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasCmt] == 1;
     // Assign Pointers
     rxAssignPtr(rxSolveDat->mv);
-    rxReassignPtrMv = rxSolveDat->mv;
     rx->nKeepF = 0;
     rx->stateTrimU = stateTrimU;
     rx->stateTrimL = stateTrimL;

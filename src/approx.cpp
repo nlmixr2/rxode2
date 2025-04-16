@@ -346,18 +346,10 @@ extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx
               isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = y[0];
             ind->cacheME=0;
-            // if (isSameTime(t, 13.0)) {
-            //   REprintf("assign par_ptr[%d](y0) = %f\t\n", op->par_cov[k]-1,
-            //            par_ptr[op->par_cov[k]-1]);
-            // }
           } else if (idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, getTime(ind->ix[idxSample], indSample))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
-            // if (isSameTime(t, 13.0)) {
-            //   REprintf("assign par_ptr[%d](eq): = %f\t pp[4]: %f\n", op->par_cov[k]-1,
-            //            par_ptr[op->par_cov[k]-1], par_ptr[4]);
-            // }
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,
                                        indSample, op, 0),
                               getValue(idxSample-1, y, is_locf,
@@ -372,10 +364,6 @@ extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx
                                         indSample, op, 1);/* cov_ptr[ind->n_all_times*k+ind->n_all_times-1]; */
             par_ptr[op->par_cov[k]-1] = rx_approxP(t, y, is_locf,
                                                    indSample->n_all_times, op, indSample);
-            // if (isSameTime(t, 13.0)) {
-            //   REprintf("assign par_ptr[%d](approx) = %f\n", op->par_cov[k]-1,
-            //            par_ptr[op->par_cov[k]-1]);
-            // }
             // Don't need to reset ME because solver doesn't use the
             // times in-between.
           }

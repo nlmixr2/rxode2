@@ -300,9 +300,6 @@ static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *end
 }
 
 static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
-  if (ind->handleInfusionItemIdx == idx) {
-    return ind->handleInfusionItemVal;
-  }
   if (ind->wh0 == EVID0_RATEADJ) {
     return getAllTimes(ind, idx);
   }
@@ -320,9 +317,6 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     }
     int infBidx;
     handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &idx, rx, op, ind);
-    if (ind->handleInfusionItemIdx == idx) {
-      return ind->handleInfusionItemVal;
-    }
     if (infBidx == -1) return 0.0;
     rx_solve *rx = &rx_global;
     int oIdx = ind->idx;
@@ -346,9 +340,7 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     getWh(getEvid(ind, ind->idose[infBidx]), &wh, &cmt, &wh100, &whI, &(ind->wh0));
     double tB = getLag(ind, ind->id, ind->cmt, getAllTimes(ind, ind->idose[infBidx]));
     ind->wh0 = wh0;
-    ind->handleInfusionItemIdx=idx;
-    ind->handleInfusionItemVal = tB + dur;
-    return ind->handleInfusionItemVal;
+    return tB + dur;
   } else {
     /* Rf_errorcall(R_NilValue, "Corrupted events."); */
     if (!(ind->err & 131072)){
