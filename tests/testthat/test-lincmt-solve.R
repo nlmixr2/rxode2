@@ -1,5 +1,53 @@
 rxTest({
 
+  test_that("table step for linCmtB", {
+
+    pars <- test_path("lincmt-solve-focei-sol.qs")
+    skip_if_not(file.exists(pars))
+    pars <- qs::qread(pars)
+
+    rx <- rxode2({
+      param(THETA[1], THETA[2], THETA[3], THETA[4], ETA[1], ETA[2],
+            ETA[3])
+      rx_yj_ ~ 2
+      rx_lambda_ ~ 1
+      rx_hi_ ~ 1
+      rx_low_ ~ 0
+      rx_expr_0 ~ ETA[2] + THETA[2]
+      rx_expr_1 ~ ETA[3] + THETA[3]
+      rx_expr_2 ~ ETA[1] + THETA[1]
+      rx_expr_3 ~ exp(rx_expr_0)
+      rx_expr_4 ~ exp(rx_expr_1)
+      rx_expr_5 ~ exp(rx_expr_2)
+      rx_pred_ = linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, rx_expr_3,
+                         rx_expr_4, 0, 0, 0, 0, rx_expr_5)
+      rx__sens_rx_pred__BY_ETA_1___ = rx_expr_5 *
+        linCmtB(rx__PTR__,
+                t, 2, 1, 1, -2, 2, 1, rx_expr_3, rx_expr_4, 0, 0, 0,
+                0, rx_expr_5)
+      rx__sens_rx_pred__BY_ETA_2___ = rx_expr_3 *
+        linCmtB(rx__PTR__,
+                t, 2, 1, 1, -2, 0, 1, rx_expr_3, rx_expr_4, 0, 0, 0,
+                0, rx_expr_5)
+      rx__sens_rx_pred__BY_ETA_3___ = rx_expr_4 *
+        linCmtB(rx__PTR__,
+                t, 2, 1, 1, -2, 1, 1, rx_expr_3, rx_expr_4, 0, 0, 0,
+                0, rx_expr_5)
+      rx_r_ = Rx_pow_di(THETA[4], 2)
+      rx__sens_rx_r__BY_ETA_1___ = 0
+      rx__sens_rx_r__BY_ETA_2___ = 0
+      rx__sens_rx_r__BY_ETA_3___ = 0
+      cmt(rxLinCmt)
+      dvid(3)
+    })
+
+
+    expect_error(rxSolve(rx, pars,
+                         nlmixr2data::theo_sd),
+                 NA)
+
+  })
+
   test_that("mixed ode/linCmt() zero observation issue(s)", {
 
     rxWithSeed(1, {
