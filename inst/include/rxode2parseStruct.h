@@ -161,8 +161,6 @@ typedef struct {
   int linCmt;
   int cacheME;
   int inLhs;
-  // Cache duration
-  double *cDur;
   double solveTime;
   double curShift;
   double *simIni;

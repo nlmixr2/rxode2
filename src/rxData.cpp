@@ -1434,8 +1434,6 @@ struct rx_globals {
   double *gTlastS;
   double *gTfirstS;
   double *gCurDoseS;
-  double *gF;
-  double *gDur;
   double *gall_times;
   double *gall_timesS;
   int *gix;
@@ -1536,10 +1534,6 @@ static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
   return ptr + (op->neq + op->extraCmt)*omp_get_thread_num();
 }
 
-static inline double *getDurThread() {
-  return getAlagFamilyPointerFromThreadId(_globals.gDur);
-}
-
 static inline double *getInfusionRateThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gInfusionRate);
 }
@@ -1561,7 +1555,6 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solving_options* op = rx->op;
   int ncmt = (op->neq + op->extraCmt);
   if (ncmt) {
-    ind->cDur = getDurThread();
     ind->InfusionRate = getInfusionRateThread();
     ind->tlastS = getTlastSThread();
     ind->tfirstS = getTfirstSThread();
@@ -1594,7 +1587,6 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
     ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
   } else {
-    ind->cDur = NULL;
     ind->InfusionRate = NULL;
     ind->tlastS = NULL;
     ind->tfirstS = NULL;
@@ -5228,7 +5220,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +
-                                      5*op->neq + 5*n3a_c + nllik_c,
+                                      5*op->neq + 4*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5244,8 +5236,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
     _globals.gmtime      = _globals.gSolveLast2 + nsave; // [n2]
     _globals.gInfusionRate = _globals.gmtime + n2; //[n3a_c]
-    _globals.gDur  =  _globals.gInfusionRate + n3a_c; // [n3a_c]
-    _globals.ginits = _globals.gDur + n3a_c; // [n4]
+    _globals.ginits = _globals.gInfusionRate + n3a_c; // [n4]
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
     op->inits = &_globals.ginits[0];
     _globals.glhs = _globals.ginits + n4; // [n5_c]
