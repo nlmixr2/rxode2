@@ -222,8 +222,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
       //
       // This also handles the case where _t = ind->tcur, where the
       // solution is already known
-      double *acur = ind->linCmtSave;
-      fx = lc.restoreFx(acur);
+      fx = lc.restoreFx(ind->linCmtSave);
     } else {
       // Here we are doing ODE solving OR only linear solving
       // so we calculate these values here.
@@ -258,9 +257,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     //
     // This also handles the case where _t = ind->tcur, where the
     // solution is already known
-    double *acur = getAdvan(idx);
-    asave = acur;
-    fx = lc.restoreFx(acur);
+    fx = lc.restoreFx(getAdvan(idx));
   }
   if (which < 0) {
     return lc.adjustF(fx, theta);

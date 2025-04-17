@@ -1434,7 +1434,6 @@ struct rx_globals {
   double *gTlastS;
   double *gTfirstS;
   double *gCurDoseS;
-  double *gAlag;
   double *gF;
   double *gRate;
   double *gDur;
@@ -1538,10 +1537,6 @@ static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
   return ptr + (op->neq + op->extraCmt)*omp_get_thread_num();
 }
 
-static inline double *getAlagThread() {
-  return getAlagFamilyPointerFromThreadId(_globals.gAlag);
-}
-
 static inline double *getRateThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gRate);
 }
@@ -1571,7 +1566,6 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solving_options* op = rx->op;
   int ncmt = (op->neq + op->extraCmt);
   if (ncmt) {
-    ind->alag = getAlagThread();
     ind->cRate = getRateThread();
     ind->cDur = getDurThread();
     ind->InfusionRate = getInfusionRateThread();
@@ -1606,7 +1600,6 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
     ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
   } else {
-    ind->alag = NULL;
     ind->cRate =NULL;
     ind->cDur = NULL;
     ind->InfusionRate = NULL;
@@ -5258,8 +5251,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
     _globals.gmtime      = _globals.gSolveLast2 + nsave; // [n2]
     _globals.gInfusionRate = _globals.gmtime + n2; //[n3a_c]
-    _globals.gAlag  = _globals.gInfusionRate + n3a_c; // [n3a_c]
-    _globals.gRate  = _globals.gAlag + n3a_c; // [n3a_c]
+    _globals.gRate  =  _globals.gInfusionRate + n3a_c; // [n3a_c]
     _globals.gDur  = _globals.gRate + n3a_c; // [n3a_c]
     _globals.ginits = _globals.gDur + n3a_c; // [n4]
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);

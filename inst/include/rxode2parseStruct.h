@@ -161,8 +161,6 @@ typedef struct {
   int linCmt;
   int cacheME;
   int inLhs;
-  // Cache alag
-  double *alag;
   // Cache rate;
   double *cRate;
   // Cache duration

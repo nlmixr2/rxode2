@@ -233,7 +233,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                      _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
                      CHAR(STRING_ELT(stateNames, cmt)));
       } else {
-        Rf_errorcall(R_NilValue, _("NA time error"));
+        Rf_errorcall(R_NilValue, _("NA time error %d"), errNo);
       }
       // Rf_errorcall(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }

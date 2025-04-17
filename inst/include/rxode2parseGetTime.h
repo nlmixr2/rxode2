@@ -376,6 +376,7 @@ static inline double getTime__(int idx, rx_solving_options_ind *ind, int update)
   rx_solve *rx = &rx_global;
   int evid = getEvid(ind, idx);
   if (evid == 9) return 0.0;
+  if (evid == 3) return getAllTimes(ind, idx);
   if (evid >= 10 && evid <= 99) return ind->mtime[evid-10];
   if (isObs(evid)) return getAllTimes(ind, idx);
   getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
