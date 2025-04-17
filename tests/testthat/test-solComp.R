@@ -1952,4 +1952,14 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
   expect_equal(rx$stateExtra, character(0))
 
   expect_true(grepl("linCmtB[(]", rxModelVars(rx)$model["normModel"]))
+
+})
+
+test_that("depot is captured", {
+  expect_equal(rxModelVars("rx_pred_=linCmtA(rx__PTR__, t, 2, 1, 1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
+               c("depot", "central"))
+
+  expect_equal(rxModelVars("rx_pred_=linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
+               c("depot", "central", "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                 "rx__sens_central_BY_ka", "rx__sens_depot_BY_ka"))
 })

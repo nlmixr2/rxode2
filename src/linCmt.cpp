@@ -180,7 +180,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   double *r = getLinRate;
   double *a;
   if (ind->linCmtAlast == NULL) {
-    a = getAdvan(idx == 0 ? 0 : idx-1);
+    a = getAdvan(ind->solvedIdx);
   } else {
     a = ind->linCmtAlast;
   }
@@ -213,16 +213,27 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   default:
     return NA_REAL;
   }
-
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-  if (ind->_rxFlag != 11) {
-    if (!ind->doSS && isSameTime(_t, ind->linCmtLastT)) {
+  // Here we restore the last solved value
+  if (!ind->doSS && ind->solvedIdx >= idx) {
+    double *acur = getAdvan(idx);
+    if (which < 0) {
+      fx = lc.restoreFx(acur);
+      return lc.adjustF(fx, theta);
+    } else {
+      return acur[which];
+    }
+  }
+  // Currently this may not have been calculated, calculate now
+  if (which < 0) {
+    if (ind->_rxFlag == 11) {
       // If we are calculating the LHS values or other values, these are
       // stored in the corresponding compartments.
       //
       // This also handles the case where _t = ind->tcur, where the
       // solution is already known
-      fx = lc.restoreFx(ind->linCmtSave);
+      // ind->linCmtSave = getAdvan(idx);
+      fx = lc.restoreFx(getAdvan(idx));
     } else {
       // Here we are doing ODE solving OR only linear solving
       // so we calculate these values here.
@@ -240,31 +251,27 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 
       // Get/Set the dt; This is only applicable in the ODE/linCmt() case
 
-      double dt = _t - ind->tprior;
-      if (dt < 0) {
+      double dt;
+      if (ind->doSS) {
         dt = ind->tout - ind->tprior;
+      } else {
+        dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
 
       fx = lc(theta);
-      if (!ind->doSS) {
-        ind->linCmtLastT = ind->tout;
-      }
     }
-  } else {
-    // If we are calculating the LHS values or other values, these are
-    // stored in the corresponding compartments.
-    //
-    // This also handles the case where _t = ind->tcur, where the
-    // solution is already known
-    fx = lc.restoreFx(getAdvan(idx));
-  }
-  if (which < 0) {
     return lc.adjustF(fx, theta);
   } else if (which >= 0 && which < nAlast) {
     // Return the amount in the linear compartment model
     // which can be depot, central, peripheral, second peripheral
-    return asave[which];
+    // This assumes that the function value is the first
+    if (ind->_rxFlag != 11) {
+      return ind->linCmtSave[which];
+    } else {
+      double *acur = getAdvan(idx);
+      return acur[which];
+    }
   }
   // Invalid index
   return NA_REAL;
@@ -361,6 +368,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                           double p4, double p5,
                           // Oral parameters
                           double ka) {
+
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
@@ -374,8 +382,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   double *asave = ind->linCmtSave;
   double *r = getLinRate;
   double *a;
+
   if (ind->linCmtAlast == NULL) {
-    a = getAdvan(idx == 0 ? 0 : idx-1);
+    a = getAdvan(ind->solvedIdx);
   } else {
     a = ind->linCmtAlast;
   }
@@ -413,65 +422,63 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
   Eigen::Matrix<double, -1, -1> J;
 
-  if (ind->_rxFlag != 11) {
-    if (!ind->doSS && isSameTime(_t, ind->linCmtLastT)) {
+  // Here we restore the last solved value
+  if (!ind->doSS && ind->solvedIdx >= idx) {
+    double *acur = getAdvan(idx);
+    J  = lc.restoreJac(acur);
+    fx = lc.restoreFx(acur);
+  } else {
+    // Currently this may not have been calculated, calculate now
+    if (which1 == -1 && which2 == -1) {
+      // Calculate everything while solving using linCmt()
+      if (ind->_rxFlag == 11) {
+        // If we are calculating the LHS values or other values, these are
+        // stored in the corresponding compartments.
+        //
+        // This also handles the case where _t = ind->tcur, where the
+        // solution is already known
+        // ind->linCmtSave = getAdvan(idx);
+        double *acur = getAdvan(idx);
+        J  = lc.restoreJac(acur);
+        fx = lc.restoreFx(acur);
+      } else {
+        // Here we are doing ODE solving OR only linear solving
+        // so we calculate these values here.
+        //
+        // For these cases:
+
+        // ind->tprior gives the prior known time or current time solved to
+        //
+        // ind->tout gives the time solved
+        //
+        // _t gives the time requested to solve for (which with ODE
+        // solving may not be tout); note that if _t = ind->tprior the
+        // solution is the last solution solved or initial conditions
+        //
+
+        // Get/Set the dt; This is only applicable in the ODE/linCmt() case
+        double dt;
+        if (ind->doSS) {
+          dt = ind->tout - ind->tprior;
+        } else {
+          dt =  _t - ind->tprior;
+        }
+        lc.setDt(dt);
+
+        stan::math::jacobian(lc, theta, fx, J);
+        lc.saveJac(J);
+      }
+    } else {
       // If we are calculating the LHS values or other values, these are
       // stored in the corresponding compartments.
       //
       // This also handles the case where _t = ind->tcur, where the
       // solution is already known
-      double *acur = ind->linCmtSave;
+      double *acur = getAdvan(idx);
       J  = lc.restoreJac(acur);
       fx = lc.restoreFx(acur);
-    } else {
-      // Here we are doing ODE solving OR only linear solving
-      // so we calculate these values here.
-      //
-      // For these cases:
-
-      // ind->tprior gives the prior known time or current time solved to
-      //
-      // ind->tout gives the time solved
-      //
-      // _t gives the time requested to solve for (which with ODE
-      // solving may not be tout); note that if _t = ind->tprior the
-      // solution is the last solution solved or initial conditions
-      //
-
-      // Get/Set the dt; This is only applicable in the ODE/linCmt() case
-      double dt = _t - ind->tprior;
-      if (dt < 0) {
-        dt = ind->tout - ind->tprior;
-      }
-
-      lc.setDt(dt);
-
-      stan::math::jacobian(lc, theta, fx, J);
-      lc.saveJac(J);
-      if (!ind->doSS && ind->_rxFlag == 1) {
-        ind->linCmtLastT = ind->tout;
-      }
     }
-  } else {
-    // If we are calculating the LHS values or other values, these are
-    // stored in the corresponding compartments.
-    //
-    // This also handles the case where _t = ind->tcur, where the
-    // solution is already known
-    double *acur = getAdvan(idx);
-    asave = acur;
-    J = lc.restoreJac(acur);
-    fx = lc.restoreFx(acur);
   }
-
-  // if (op->linOffset == 0 && ind->_rxFlag == 1) {
-  //   // Here we are doing ODE solving OR only linear solving
-  //   // save the values here
-  //   std::copy(ind->linCmtSave,
-  //             ind->linCmtSave + op->numLinSens + op->numLin,
-  //             ind->DDtStateVars);
-  //   ind->linCmtAlast = ind->DDtStateVars;
-  // }
   if (which1 >= 0 && which2 >= 0) {
     // w1, w2 are > 0
     return J(which1, which2);

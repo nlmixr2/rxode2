@@ -11,9 +11,15 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
     char *v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
     tb.linCmtN = toInt(v2+1);
     /* REprintf("linCmtN: %d\n", tb.linCmtN); */
+
     xpn2 = d_get_child(xpn1, 2);
     v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
     tb.ncmt = toInt(v2+1);
+
+    xpn2 = d_get_child(xpn1, 3);
+    v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
+    tb.hasKa = toInt(v2+1);
+
     if (tf->isLinB) tf->isLinB=1;
     tb.linB = tf->isLinB;
     aType(TLIN);

@@ -2134,6 +2134,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   double xp = x[0];
   xoutp=xp;
   unsigned int j;
+  ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
     xout = getTime_(ind->ix[i], ind);
@@ -2180,6 +2181,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
     }
+    ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
@@ -2280,6 +2282,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double xp = x[0];
   unsigned int j;
   lsoda_prepare(ctx, &opt);
+  ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
     yp = getSolve(i);
@@ -2356,6 +2359,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
+    ind->solvedIdx = i;
   }
   // Reset LHS to NA
   lsoda_free(ctx);
@@ -2732,6 +2736,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   unsigned int j;
+  ind->solvedIdx = 0;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
     yp   = getSolve(i);
@@ -2820,6 +2825,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       // yp=ind->solve[neq[0]*i]; it will be the prior values
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
     }
+    ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
@@ -2920,6 +2926,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   rc= ind->rc;
   double xp = x[0];
   unsigned int j;
+  ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
     yp = getSolve(i);
@@ -2994,6 +3001,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
+    ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
@@ -3044,6 +3052,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   rc= ind->rc;
   double xp = x[0];
   unsigned int j;
+  ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
     yp = getSolve(i);
@@ -3199,6 +3208,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
       updateSolve(ind, op, neq, xout, i, nx);
     }
+    ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }

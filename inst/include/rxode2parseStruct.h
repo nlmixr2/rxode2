@@ -135,6 +135,7 @@ typedef struct {
   int idReal;
   int sim;
   int idx;
+  int solvedIdx;
   double ylow;
   double yhigh;
   double logitHi;
