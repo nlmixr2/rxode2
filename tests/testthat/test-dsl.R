@@ -1377,4 +1377,35 @@ rxTest({
   })
 
 
+  for (prop in c("dur", "rate", "lag", "alag", "f", "F", "0")) {
+    for (cmt in c("depot", "central", "peripheral1", "peripheral2")) {
+      val <- ifelse(prop=="0",
+                    sprintf("%s(0)",cmt),
+                    sprintf("%s(%s)", prop, cmt))
+      test <- c("cl=exp(tvcl)",
+                "v=exp(tvv)",
+                "mat=exp(tvmat)",
+                "D1=mat*(1-expit(tvfrd1,0,1))",
+                "ka=1/(mat*expit(tvfrd1,0,1))",
+                "cp=linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka)",
+                sprintf("%s=D1", val),
+                "rx_pred_=cp")
+
+      m <- paste(test, collapse = "\n")
+      shouldError <- cmt %in% c("peripheral1", "peripheral2") &&
+        prop %in% c("dur", "rate")
+
+      if (shouldError) {
+        test_that(sprintf("rxS errors in %s parameter in linCmtA()", val), {
+          expect_error(rxS(m))
+        })
+      } else {
+        test_that(sprintf("rxS processes %s parameter in linCmtA()", val), {
+          expect_error(rxS(m), NA)
+        })
+      }
+    }
+  }
+
+
 })
