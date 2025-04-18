@@ -43,7 +43,6 @@ SEXP generateModelVars(void) {
   SEXP normState  = PROTECT(Rf_allocVector(STRSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
   SEXP normProp   = PROTECT(Rf_allocVector(INTSXP,tb.statei-tb.sensi-tb.nExtra));pro++;
 
-
   SEXP ordS = PROTECT(Rf_allocVector(INTSXP, tb.de.n));pro++;
   SEXP ordF = PROTECT(sortStateVectors(ordS)); pro++;
   if (Rf_isNull(ordF)) {

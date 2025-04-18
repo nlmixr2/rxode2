@@ -214,6 +214,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     return NA_REAL;
   }
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+  fx.resize(ncmt + oral0);
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
@@ -420,7 +421,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   }
 
   Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-  Eigen::Matrix<double, -1, -1> J;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
+  fx.resize(ncmt + oral0);
+  J.resize(ncmt + oral0, lc.getNpars());
 
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
@@ -464,7 +467,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
           dt =  _t - ind->tprior;
         }
         lc.setDt(dt);
-
         stan::math::jacobian(lc, theta, fx, J);
         lc.saveJac(J);
       }

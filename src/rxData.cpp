@@ -46,6 +46,8 @@ extern "C" void seedEng(int ncores);
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "rxThreadData.h"
+
+#include "threadSafeConstants.h"
 //#include "seed.h"
 
 extern "C" void RSprintf(const char *format, ...);
@@ -4915,38 +4917,47 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
       if (op->cores == 0) {
         switch (thread) {
-        case 2:
+        case threadSafeRepNumThread:
           // Thread safe, but possibly not reproducible
           if (op->cores > 1) {
             op->stiff = method = 4;
           }
           rxSolveDat->throttle = false;
           break;
-        case 1:
+        case threadSafe:
           op->cores = getRxThreads(INT_MAX, false);
           rxSolveDat->throttle = true;
           break;
-        case 0:
+        case notThreadSafe:
           // Not thread safe.
           warning(_("not thread safe method, using 1 core"));
+          op->cores = 1;
+          rxSolveDat->throttle = false;
+          break;
+        case notThreadSaveNoWarn:
           op->cores = 1;
           rxSolveDat->throttle = false;
           break;
         }
       } else {
         switch (thread) {
-        case 2:
+        case threadSafeRepNumThread:
           if (op->cores > 1) {
             op->stiff = method = 4;
           }
           break;
-        case 1:
+        case threadSafe:
           // Thread safe, and reproducible
           rxSolveDat->throttle = true;
           break;
-        case 0:
+        case notThreadSafe:
           // Not thread safe.
           warning(_("not thread safe method, using 1 core"));
+          op->cores = 1;
+          rxSolveDat->throttle = false;
+          break;
+        case notThreadSaveNoWarn:
+          // Not thread safe (no warning)
           op->cores = 1;
           rxSolveDat->throttle = false;
           break;

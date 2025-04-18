@@ -17,6 +17,8 @@
 #include "../inst/include/rxode2parseSbuf.h"
 #include "tran.h"
 
+#include "threadSafeConstants.h"
+
 int rxstrcmpi(const char * str1, const char * str2);
 static inline int nodeTime(char *value) {
   if (!rxstrcmpi("time",value)){
@@ -162,6 +164,11 @@ static inline int nodeFunLinCmtB(char *value) {
     aAppendN("linCmtB", 7);
     sAppendN(&sbt,"linCmtB", 7);
     tb.linCmt=2;
+
+    // right now linCmtB isn't thread safe,
+    // the Jacobian can cause a null free in stan math currently.
+
+    tb.thread = notThreadSaveNoWarn;
     return 1;
   }
   return 0;
