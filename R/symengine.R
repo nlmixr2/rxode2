@@ -2939,7 +2939,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   }
   # "tlast"
   .pars <- c(
-    rxParams(x), rxStateOde(x),
+    rxParams(x), rxState(x),
     "t", "time",  "rx1c", "rx__PTR__"
   )
   ## default lambda/yj values
