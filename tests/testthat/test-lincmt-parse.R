@@ -366,3 +366,45 @@ rxTest({
   apply(tran4, 1, .fun)
 
 })
+
+
+test_that("depot is captured", {
+  expect_equal(rxModelVars("rx_pred_=linCmtA(rx__PTR__, t, 2, 1, 1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
+               c("depot", "central"))
+
+  expect_equal(rxModelVars("rx_pred_=linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, exp(tcl), exp(tv), 0, 0, 0, 0, exp(tka))")$state,
+               c("depot", "central", "rx__sens_central_BY_p1", "rx__sens_central_BY_v1",
+                 "rx__sens_central_BY_ka", "rx__sens_depot_BY_ka"))
+})
+
+test_that("linCmt() should not error for nlmixr2 models with endpoints", {
+
+  run1 <- function() {
+    ini({
+      tvcl <- log(7)
+      tvv <- log(100)
+      tvmat <- log(2)
+      tvfrd1 <- logit(0.5)
+      eta.cl + eta.v + eta.mat ~ c(0.2,
+                                   0.001, 0.2,
+                                   0.001, 0.001, 0.2)
+      add.err <- 0.2
+    })
+    model({
+      cl <- exp(eta.cl + tvcl)
+      v <- exp(eta.v + tvv)
+      mat <- exp(eta.mat + tvmat)
+      D1 <- mat * (1 - expit(tvfrd1))
+      ka <- 1 / (mat * expit(tvfrd1))
+      cp <- linCmt()
+      dur(depot) <- D1
+      cp ~ add(add.err)
+    })
+  }
+
+  run1 <- run1()
+
+  expect_error(run1$simulationModel, NA)
+
+
+})
