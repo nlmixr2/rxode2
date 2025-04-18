@@ -107,36 +107,36 @@ static inline void calcNextra(void) {
       nExtra++;
     } else if (offCmt == 1 && tb.idu[i] == 1) {
       // There is an compartment that doesn't have a derivative
-      buf=tb.ss.line[tb.di[i]];
       if (tb.linCmt == 0){
         char *v = rc_dup_str(buf, 0);
         snprintf(buf2, 200, "compartment '%s' needs differential equations defined", v);
         updateSyntaxCol();
         trans_syntax_error_report_fn0(buf2);
       } else {
-        if (strcmp(buf, "depot") == 0 ||
-            strcmp(buf, "central") == 0 ||
-            strcmp(buf, "peripheral1") == 0 ||
-            strcmp(buf, "peripheral2") == 0 ||
-            strcmp(buf, "rx__sens_central_BY_p1") == 0 ||
-            strcmp(buf, "rx__sens_central_BY_v1") == 0 ||
-            strcmp(buf, "rx__sens_central_BY_p2") == 0 ||
-            strcmp(buf, "rx__sens_central_BY_p3") == 0 ||
-            strcmp(buf, "rx__sens_central_BY_p4") == 0 ||
-            strcmp(buf, "rx__sens_central_BY_ka") == 0 ||
-            strcmp(buf, "rx__sens_peripheral1_BY_p1") == 0 ||
-            strcmp(buf, "rx__sens_peripheral1_BY_v1") == 0 ||
-            strcmp(buf, "rx__sens_peripheral1_BY_p2") == 0 ||
-            strcmp(buf, "rx__sens_peripheral1_BY_p3") == 0 ||
-            strcmp(buf, "rx__sens_peripheral1_BY_p4") == 0 ||
-            strcmp(buf, "rx__sens_peripheral1_BY_ka") == 0 ||
-            strcmp(buf, "rx__sens_peripheral2_BY_p1") == 0 ||
-            strcmp(buf, "rx__sens_peripheral2_BY_v1") == 0 ||
-            strcmp(buf, "rx__sens_peripheral2_BY_p2") == 0 ||
-            strcmp(buf, "rx__sens_peripheral2_BY_p3") == 0 ||
-            strcmp(buf, "rx__sens_peripheral2_BY_p4") == 0 ||
-            strcmp(buf, "rx__sens_peripheral2_BY_ka") == 0 ||
-            strcmp(buf, "rx__sens_depot_BY_ka") == 0) {
+        char *b2=tb.ss.line[tb.di[i]];
+        if (strcmp(b2, "depot") == 0 ||
+            strcmp(b2, "central") == 0 ||
+            strcmp(b2, "peripheral1") == 0 ||
+            strcmp(b2, "peripheral2") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p1") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_v1") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p2") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p3") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_p4") == 0 ||
+            strcmp(b2, "rx__sens_central_BY_ka") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_v1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p2") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p3") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_p4") == 0 ||
+            strcmp(b2, "rx__sens_peripheral1_BY_ka") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_v1") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p2") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p3") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_p4") == 0 ||
+            strcmp(b2, "rx__sens_peripheral2_BY_ka") == 0 ||
+            strcmp(b2, "rx__sens_depot_BY_ka") == 0) {
           continue;
         }
         // If there is only a linear compartment model AND this is a cmt() item, then
