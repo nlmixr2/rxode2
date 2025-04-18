@@ -1860,7 +1860,14 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
         as.character(x[[1]])
       )
     }
-    .ret0 <- c(list(as.character(x[[1]])), lapply(x[-1], .rxToSE, envir = envir))
+    .fun0 <- as.character(x[[1]])
+    if (.fun0 %in% c("dur", "rate", "lag", "alag", "f", "F")) {
+      .ret0 <- c(list(as.character(x[[1]])),
+                 lapply(x[-1], as.character, envir = envir))
+    } else {
+      .ret0 <- c(list(as.character(x[[1]])),
+                 lapply(x[-1], .rxToSE, envir = envir))
+    }
     if (isEnv) envir$..curCall <- .lastCall
     .SEeq <- c(.rxSEeq, rxode2::.rxSEeqUsr())
     .curName <- paste(.ret0[[1]])
@@ -2932,7 +2939,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir=parent.frame())
   }
   # "tlast"
   .pars <- c(
-    rxParams(x), rxState(x),
+    rxParams(x), rxStateOde(x),
     "t", "time",  "rx1c", "rx__PTR__"
   )
   ## default lambda/yj values
