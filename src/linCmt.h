@@ -268,6 +268,7 @@ namespace stan {
       //////////////////////////////////////////////////////////////////
       // Solved Two compartment steady state solutions
       //////////////////////////////////////////////////////////////////
+
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1>
       linCmtStan2ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -333,6 +334,116 @@ namespace stan {
 #undef v
 #undef k
       }
+
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan2ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                       T ka) const {
+
+#define v     g(0, 0)
+#define k     g(0, 1)
+#define k20   g(0, 1)
+
+#define k12   g(1, 0)
+#define k23   g(1, 0)
+
+#define k21   g(1, 1)
+#define k32   g(1, 1)
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
+        if (oral0_  == 1) {
+          T rDepot = rate_[0];
+          T rCentral = rate_[1];
+          ret.resize(3, 1);
+          if (rate_[0] > 0) {
+            T s = (k23)+(k32)+(k20);
+            T beta  = 0.5*(s - sqrt(s*s - 4*(k32)*(k20)));
+            T alpha = (k32)*(k20)/beta;
+
+            T eA = exp(-alpha*((tau_)-(tinf_)))/(1.0-exp(-alpha*(tau_)));
+            T eB = exp(-beta* ((tau_)-(tinf_)))/(1.0-exp(-beta*(tau_)));
+
+            T eiA = exp(-alpha*(tinf_));
+            T eiB = exp(-beta *(tinf_));
+
+            T alpha2 = alpha*alpha;
+            T alpha3 = alpha2*alpha;
+
+            T beta2 = beta*beta;
+            T beta3 = beta2*beta;
+
+            T ka2 = (ka)*(ka);
+
+            T eKa = exp(-(ka)*(tau_)-(tinf_))/(1.0-exp(-(ka)*(tau_)));
+            T eiKa = exp(-(ka)*(tinf_));
+
+            ret(0, 0) = eKa*((rDepot)/(ka) - eiKa*(rDepot)/(ka));
+            ret(1, 0) = (eA*(-alpha*((rDepot)*(k32)/(beta*alpha) + eiKa*(rDepot)*(-(k32) + (ka))/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(-alpha + (k32))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(-beta + (k32))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rDepot)*(k23)/(beta*alpha) - eiKa*(rDepot)*(k23)/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(k23)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(k23)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rDepot)*(k32)/(beta*alpha) + eiKa*(rDepot)*(-(k32) + (ka))/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(-alpha + (k32))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(-beta + (k32))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))) - eB*(-beta*((rDepot)*(k32)/(beta*alpha) + eiKa*(rDepot)*(-(k32) + (ka))/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(-alpha + (k32))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(-beta + (k32))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rDepot)*(k23)/(beta*alpha) - eiKa*(rDepot)*(k23)/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(k23)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(k23)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rDepot)*(k32)/(beta*alpha) + eiKa*(rDepot)*(-(k32) + (ka))/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(-alpha + (k32))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(-beta + (k32))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))))/(-alpha + beta) + (ka)*(eA*(-alpha + (k32))/((-alpha + beta)*(-alpha + (ka))) + eB*(-beta + (k32))/((-beta + (ka))*(alpha - beta)) + eKa*((k32) - (ka))/((beta - (ka))*(alpha - (ka))))*((rDepot)/(ka) - eiKa*(rDepot)/(ka));
+            ret(2,0) = (eA*(-alpha*((rDepot)*(k23)/(beta*alpha) - eiKa*(rDepot)*(k23)/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(k23)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(k23)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k23)*((rDepot)*(k32)/(beta*alpha) + eiKa*(rDepot)*(-(k32) + (ka))/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(-alpha + (k32))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(-beta + (k32))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + ((k20) + (k23))*((rDepot)*(k23)/(beta*alpha) - eiKa*(rDepot)*(k23)/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(k23)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(k23)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))) - eB*(-beta*((rDepot)*(k23)/(beta*alpha) - eiKa*(rDepot)*(k23)/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(k23)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(k23)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k23)*((rDepot)*(k32)/(beta*alpha) + eiKa*(rDepot)*(-(k32) + (ka))/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(-alpha + (k32))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(-beta + (k32))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + ((k20) + (k23))*((rDepot)*(k23)/(beta*alpha) - eiKa*(rDepot)*(k23)/(beta*alpha + (ka)*(-alpha - beta) + ka2) - eiA*(rDepot)*(ka)*(k23)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rDepot)*(ka)*(k23)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))))/(-alpha + beta) + (ka)*(k23)*(eA/((-alpha + beta)*(-alpha + (ka))) + eB/((-beta + (ka))*(alpha - beta)) + eKa/((beta - (ka))*(alpha - (ka))))*((rDepot)/(ka) - eiKa*(rDepot)/(ka));
+            return ret;
+          } else if (rate_[1] > 0) {
+            T E2 = (k20)+(k23);
+            T E3 = (k32);
+            T s = (k23)+(k32)+(k20);
+            T beta  = 0.5*(s - sqrt(s*s - 4*(k32)*(k20)));
+            T alpha = (k32)*(k20)/beta;
+
+            T eA = exp(-alpha*((tau_)-(tinf_)))/(1.0-exp(-alpha*(tau_)));
+            T eB = exp(-beta*((tau_)-(tinf_)))/(1.0-exp(-beta*(tau_)));
+
+            T eiA = exp(-alpha*(tinf_));
+            T eiB = exp(-beta*(tinf_));
+
+            T alpha2 = alpha*alpha;
+            T alpha3 = alpha2*alpha;
+
+            T beta2 = beta*beta;
+            T beta3 = beta2*beta;
+            ret(0, 0) = 0.0;
+            ret(1, 0) = (eA*(E3*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - alpha*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))) - eB*(E3*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - beta*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))))/(-alpha + beta);
+            ret(2, 0)=(eA*(E2*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - alpha*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k23)*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))) - eB*(E2*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - beta*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k23)*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))))/(-alpha + beta);
+            return ret;
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            ret(2, 0) = NA_REAL;
+            return ret;
+          }
+        } else {
+          ret.resize(2, 1);
+
+          T rCentral = rate_[0];
+
+          T E2 = (k20)+(k23);
+          T E3 = (k32);
+          T s = (k23)+(k32)+(k20);
+          T beta  = 0.5*(s - sqrt(s*s - 4*(k32)*(k20)));
+          T alpha = (k32)*(k20)/beta;
+
+          T eA = exp(-alpha*((tau_)-(tinf_)))/(1.0-exp(-alpha*(tau_)));
+          T eB = exp(-beta*((tau_)-(tinf_)))/(1.0-exp(-beta*(tau_)));
+
+          T eiA = exp(-alpha*(tinf_));
+          T eiB = exp(-beta*(tinf_));
+
+          T alpha2 = alpha*alpha;
+          T alpha3 = alpha2*alpha;
+
+          T beta2 = beta*beta;
+          T beta3 = beta2*beta;
+
+          ret(0, 0) = (eA*(E3*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - alpha*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))) - eB*(E3*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - beta*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k32)*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))))/(-alpha + beta);
+          ret(1, 0)=(eA*(E2*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - alpha*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k23)*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))) - eB*(E2*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) - beta*((rCentral)*(k23)/(beta*alpha) - eiA*(rCentral)*(-(k23)*alpha + (ka)*(k23))/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k23)*beta + (ka)*(k23))/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3)) + (k23)*((rCentral)*(k32)/(beta*alpha) - eiA*(rCentral)*(-(k32)*alpha + (ka)*(-alpha + (k32)) + alpha2)/(-beta*alpha2 + (ka)*(beta*alpha - alpha2) + alpha3) + eiB*(rCentral)*(-(k32)*beta + (ka)*(-beta + (k32)) + beta2)/(beta2*alpha + (ka)*(-beta*alpha + beta2) - beta3))))/(-alpha + beta);
+          return ret;
+        }
+#undef k21
+#undef k32
+#undef k12
+#undef k23
+#undef v
+#undef k
+        return ret;
+      }
+
 
       //////////////////////////////////////////////////////////////////
       // Solved Two compartment wnl solutions
