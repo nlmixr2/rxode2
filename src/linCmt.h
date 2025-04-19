@@ -108,8 +108,6 @@ namespace stan {
       // Solved One compartment steady state solutions
       //////////////////////////////////////////////////////////////////
 
-
-      // Steady state infusions
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1>
       linCmtStan1ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -233,6 +231,9 @@ namespace stan {
         return ret;
       }
 
+      //////////////////////////////////////////////////////////////////
+      // Solved One compartment wnl solutions
+      //////////////////////////////////////////////////////////////////
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                                                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
@@ -264,7 +265,78 @@ namespace stan {
 #undef k10
         return ret;
       }
+      //////////////////////////////////////////////////////////////////
+      // Solved Two compartment steady state solutions
+      //////////////////////////////////////////////////////////////////
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan2ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                        T ka) const {
+#define v     g(0, 0)
+#define k     g(0, 1)
+#define k20   g(0, 1)
 
+#define k12   g(1, 0)
+#define k23   g(1, 0)
+
+#define k21   g(1, 1)
+#define k32   g(1, 1)
+
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
+        if (oral0_  == 1) {
+          T rDepot = rate_[0];
+          T rCentral = rate_[1];
+          ret.resize(3, 1);
+          if (rate_[0] > 0) {
+            T s = (k23)+(k32)+(k20);
+            T beta  = 0.5*(s - sqrt(s*s - 4*(k32)*(k20)));
+            T alpha = (k32)*(k20)/beta;
+            ret(0, 0) = rDepot/(ka);
+            ret(1, 0) = (rDepot)*(k32)/(beta*alpha);
+            ret(2, 0)=(rDepot)*(k23)/(beta*alpha);
+            return ret;
+          } else if (rate_[1] > 0) {
+            T s = (k23)+(k32)+(k20);
+            T beta  = 0.5*(s - sqrt(s*s - 4*(k32)*(k20)));
+            T alpha = (k32)*(k20)/beta;
+            ret(0, 0) = 0;
+            ret(1, 0) = (rCentral)*(k32)/(beta*alpha);
+            ret(2, 0) = (rCentral)*(k23)/(beta*alpha);
+            return ret;
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            ret(3, 0) = NA_REAL;
+            return ret;
+          }
+        } else {
+          ret.resize(2, 1);
+          T rCentral = rate_[0];
+          if (rate_[0] > 0) {
+            T s = (k23)+(k32)+(k20);
+            T beta  = 0.5*(s - sqrt(s*s - 4*(k32)*(k20)));
+            T alpha = (k32)*(k20)/beta;
+            ret(0, 0) = (rCentral)*(k32)/(beta*alpha);
+            ret(1, 0) = (rCentral)*(k23)/(beta*alpha);
+            return ret;
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            return ret;
+          }
+          return ret;
+        }
+#undef k21
+#undef k32
+#undef k12
+#undef k23
+#undef v
+#undef k
+      }
+
+      //////////////////////////////////////////////////////////////////
+      // Solved Two compartment wnl solutions
+      //////////////////////////////////////////////////////////////////
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                                                       Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
