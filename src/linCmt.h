@@ -69,6 +69,10 @@ namespace stan {
       double *Asave_; // This comes from the ode system
       double dt_;
       bool grad_;
+      double tinf_ = 0.0;
+      double tau_ = 0.0;
+      double bolusAmt_ = 0.0;
+      int bolusCmt_ = 0;
       linCmtStan(const int ncmt,
                  const int oral0,
                  const int trans,
@@ -98,6 +102,135 @@ namespace stan {
 
       int getNrate() {
         return 1 + oral0_;
+      }
+
+      //////////////////////////////////////////////////////////////////
+      // Solved One compartment steady state solutions
+      //////////////////////////////////////////////////////////////////
+
+
+      // Steady state infusions
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan1ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                       T ka) const {
+#define v     g(0, 0)
+#define k     g(0, 1)
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
+        if (oral0_  == 1) {
+          T rDepot = rate_[0];
+          T rCentral = rate_[1];
+          ret.resize(2, 1);
+          if (rate_[0] > 0) {
+            ret(0, 0) = rDepot/ka;
+            ret(1, 0) = rDepot/k;
+            return ret;
+          } else if (rate_[1] > 0) {
+            ret(0, 0) = 0;
+            ret(1, 0) = rCentral/k;
+            return ret;
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            return ret;
+          }
+        } else {
+          ret.resize(1, 1);
+          T rCentral = rate_[0];
+          if (rate_[0] > 0) {
+            ret(0, 0) = rCentral/ka;
+          } else {
+            ret(0, 0) = NA_REAL;
+          }
+          return ret;
+        }
+#undef v
+#undef k
+      }
+
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan1ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                       T ka) const {
+#define v     g(0, 0)
+#define k     g(0, 1)
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
+        if (oral0_  == 1) {
+          T rDepot = rate_[0];
+          T rCentral = rate_[1];
+          ret.resize(2, 1);
+          if (rate_[0] > 0) {
+            T eKa     = exp(-(ka)*((tau_)-(tinf_)))/(1.0-exp(-(tau_)*(ka)));
+            T eiKa    = exp(-(ka)*(tinf_));
+            T eiK     = exp(-(k)*(tinf_));
+            T eK      = exp(-(k)*((tau_)-(tinf_)))/(1.0-exp(-(tau_)*(k)));
+            ret(0, 0) = eKa*((rDepot)/(ka) - eiKa*(rDepot)/(ka));
+            ret(1, 0) = eK*((rDepot)/(k) + eiKa*(rDepot)/(-(k) + (ka)) - eiK*(rDepot)*(ka)/((ka)*(k) - (k)*(k))) + (ka)*(eK - eKa)*((rDepot)/(ka) - eiKa*(rDepot)/(ka))/(-(k) + (ka));
+            return ret;
+          } else if (rate_[1] > 0) {
+            T eiK = exp(-(k)*(tinf_));
+            T eK = exp(-(k)*(tau_-tinf_))/(1.0-exp(-(k)*tau_));
+            ret(0, 0) = 0.0;
+            ret(1, 0) = (rCentral)*(1-eiK)*eK/(k);
+            return ret;
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            return ret;
+          }
+        } else {
+          ret.resize(1, 1);
+          T rCentral = rate_[0];
+          T eiK = exp(-(k)*(tinf_));
+          T eK = exp(-(k)*(tau_-tinf_))/(1.0-exp(-(k)*tau_));
+          ret(0, 0) = (rCentral)*(1-eiK)*eK/(k);
+          return ret;
+        }
+#undef v
+#undef k
+        return ret;
+      }
+
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan1ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                         T ka) const {
+#define v     g(0, 0)
+#define k     g(0, 1)
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
+        if (oral0_  == 1) {
+          ret.resize(2, 1);
+          if (bolusCmt_ == 0) {
+            T eKa = 1.0/(1.0-exp(-(tau_)*(ka)));
+            T eK =  1.0/(1.0-exp(-(tau_)*(k)));
+            ret(0, 0) = eKa*(bolusAmt_);
+            ret(1, 0) = (ka)*(bolusAmt_)*(eK - eKa)/(-(k) + (ka));
+            return ret;
+          } else if (bolusCmt_ == 1) {
+            T eK =  1.0/(1.0-exp(-(tau_)*(k)));
+            ret(0, 0)=0.0;
+            ret(1, 0)=eK*(bolusAmt_);
+            return ret;
+          } else {
+            ret(0, 0)=NA_REAL;
+            ret(1, 0)=NA_REAL;
+            return ret;
+          }
+        } else {
+          ret.resize(1, 1);
+          if (bolusCmt_ == 0) {
+            T eK =  1.0/(1.0-exp(-(tau_)*(k)));
+            ret(0, 0)=eK*(bolusAmt_);
+            return ret;
+          } else {
+            ret(0, 0)=NA_REAL;
+            return ret;
+          }
+
+        }
+#undef v
+#undef k
+        return ret;
       }
 
       template <typename T>
