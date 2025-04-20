@@ -19,9 +19,10 @@ RObject linCmtModelDouble(double dt,
                           double ka,
                           NumericVector alastNV, NumericVector rateNV,
                           const int ncmt, const int oral0, const int trans,
-                          bool deriv) {
+                          bool deriv,
+                          int type) {
 
-  stan::math::linCmtStan lc(ncmt, oral0, trans, deriv);
+  stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type);
   Eigen::Matrix<double, -1, 1> theta;
   Eigen::Matrix<double, -1, 1> alast0 = as<Eigen::Matrix<double, -1, 1> >(alastNV);
   Eigen::Matrix<double, -1, 1> rate = as<Eigen::Matrix<double, -1, 1> >(rateNV);
@@ -170,7 +171,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   // Create the solved system object
-  stan::math::linCmtStan lc(ncmt, oral0, trans, false);
+  stan::math::linCmtStan lc(ncmt, oral0, trans, false, 0);
 
   // Get number of items in Alast
   int nAlast = lc.getNalast();
@@ -374,7 +375,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   // Create the solved system object
-  stan::math::linCmtStan lc(ncmt, oral0, trans, true);
+  stan::math::linCmtStan lc(ncmt, oral0, trans, true, 0);
 
   // Get number of items in Alast
   int nAlast = lc.getNalast();

@@ -7,6 +7,11 @@
 // Global linear compartment model parameters:
 // p1, v, p2, p3, p3, p4, ka
 
+#define linCmtNormal 0
+#define linCmtSsInf8 1
+#define linCmtSsInf 2
+#define linCmtSsBolus 3
+
 namespace stan {
   namespace math {
 
@@ -73,14 +78,17 @@ namespace stan {
       double tau_ = 0.0;
       double bolusAmt_ = 0.0;
       int bolusCmt_ = 0;
+      int type_ = 0;
       linCmtStan(const int ncmt,
                  const int oral0,
                  const int trans,
-                 const bool grad) :
+                 const bool grad,
+                 const int type) :
         ncmt_(ncmt),
         oral0_(oral0),
         trans_(trans),
-        grad_(grad)
+        grad_(grad),
+        type_(type)
       { }
 
       int getNpars() {
@@ -1367,15 +1375,54 @@ namespace stan {
         if (oral0_) {
           ka = theta[ncmt_*2];
         }
-        Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
-        yp = getAlast(theta);
         Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
-        if (ncmt_ == 1) {
-          ret0 = linCmtStan1<T>(g, yp, ka);
-        } else if (ncmt_ == 2) {
-          ret0 = linCmtStan2<T>(g, yp, ka);
-        } else if (ncmt_ == 3) {
-          ret0 = linCmtStan3<T>(g, yp, ka);
+        switch(type_) {
+        case linCmtNormal:
+          {
+            Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
+            yp = getAlast(theta);
+            if (ncmt_ == 1) {
+              ret0 = linCmtStan1<T>(g, yp, ka);
+            } else if (ncmt_ == 2) {
+              ret0 = linCmtStan2<T>(g, yp, ka);
+            } else if (ncmt_ == 3) {
+              ret0 = linCmtStan3<T>(g, yp, ka);
+            }
+          }
+          break;
+        case linCmtSsInf8:
+          {
+            Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
+            if (ncmt_ == 1) {
+              ret0 = linCmtStan1ssInf8(g, ka);
+            } else if (ncmt_ == 2) {
+              ret0 = linCmtStan2ssInf8(g, ka);
+            } else if (ncmt_ == 3) {
+              ret0 = linCmtStan2ssInf8(g, ka);
+            }
+          }
+        case linCmtSsInf:
+          {
+            Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
+            if (ncmt_ == 1) {
+              ret0 = linCmtStan1ssInf(g, ka);
+            } else if (ncmt_ == 2) {
+              ret0 = linCmtStan2ssInf(g, ka);
+            } else if (ncmt_ == 3) {
+              ret0 = linCmtStan2ssInf(g, ka);
+            }
+          }
+        case linCmtSsBolus:
+          {
+            Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
+            if (ncmt_ == 1) {
+              ret0 = linCmtStan1ssBolus(g, ka);
+            } else if (ncmt_ == 2) {
+              ret0 = linCmtStan2ssBolus(g, ka);
+            } else if (ncmt_ == 3) {
+              ret0 = linCmtStan2ssBolus(g, ka);
+            }
+          }
         }
         saveAlast<T>(ret0);
         return ret0;
