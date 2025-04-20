@@ -224,7 +224,6 @@ namespace stan {
             ret(0, 0)=NA_REAL;
             return ret;
           }
-
         }
 #undef v
 #undef k
@@ -339,7 +338,6 @@ namespace stan {
       Eigen::Matrix<T, Eigen::Dynamic, 1>
       linCmtStan2ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                        T ka) const {
-
 #define v     g(0, 0)
 #define k     g(0, 1)
 #define k20   g(0, 1)
@@ -444,6 +442,95 @@ namespace stan {
         return ret;
       }
 
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan2ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                         T ka) const {
+
+#define v     g(0, 0)
+#define k     g(0, 1)
+#define k20   g(0, 1)
+
+#define k12   g(1, 0)
+#define k23   g(1, 0)
+
+#define k21   g(1, 1)
+#define k32   g(1, 1)
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
+        if (oral0_  == 1) {
+          ret.resize(3, 1);
+          if (bolusCmt_ == 0) {
+
+            T E2 = (k20)+(k23);
+            T E3 = (k32);
+            T e2e3 = E2+E3;
+            T s = sqrt(e2e3*e2e3-4*(E2*E3-(k23)*(k32)));
+
+            T lambda1 = 0.5*(e2e3+s);
+            T lambda2 = 0.5*(e2e3-s);
+            T eKa=1.0/(1.0-exp(-(tau_)*(ka)));
+            T eL1=1.0/(1.0-exp(-(tau_)*lambda1));
+            T eL2=1.0/(1.0-exp(-(tau_)*lambda2));
+
+            ret(0, 0) = eKa*(bolusAmt_);
+            ret(1, 0) = (ka)*(bolusAmt_)*(eL1*(E3 - lambda1)/((-lambda1 + lambda2)*((ka) - lambda1)) + eL2*(E3 - lambda2)/((lambda1 - lambda2)*((ka) - lambda2)) + eKa*(E3 - (ka))/((-(ka) + lambda2)*(-(ka) + lambda1)));
+            ret(2, 0) = (ka)*(bolusAmt_)*(k23)*(eL1/((-lambda1 + lambda2)*((ka) - lambda1)) + eL2/((lambda1 - lambda2)*((ka) - lambda2)) + eKa/((-(ka) + lambda2)*(-(ka) + lambda1)));
+            return ret;
+          } else if (bolusCmt_ == 1) {
+
+            T E2 = (k20)+(k23);
+            T E3 = (k32);
+            T e2e3 = E2+E3;
+            T s = sqrt(e2e3*e2e3-4*(E2*E3-(k23)*(k32)));
+
+            T lambda1 = 0.5*(e2e3+s);
+            T lambda2 = 0.5*(e2e3-s);
+            T eL1=1.0/(1.0-exp(-(tau_)*lambda1));
+            T eL2=1.0/(1.0-exp(-(tau_)*lambda2));
+
+            ret(0, 0) = 0.0;
+            ret(1, 0) = (eL1*((bolusAmt_)*E3 - (bolusAmt_)*lambda1) - eL2*((bolusAmt_)*E3 - (bolusAmt_)*lambda2))/(-lambda1 + lambda2);
+            ret(2, 0) = (eL1*(bolusAmt_)*(k23) - eL2*(bolusAmt_)*(k23))/(-lambda1 + lambda2);
+
+            return ret;
+          } else {
+            ret(0, 0)=NA_REAL;
+            ret(1, 0)=NA_REAL;
+            ret(2, 0)=NA_REAL;
+            return ret;
+          }
+        } else {
+          ret.resize(2, 1);
+          if (bolusCmt_ == 0) {
+
+            T E2 = (k20)+(k23);
+            T E3 = (k32);
+            T e2e3 = E2+E3;
+            T s = sqrt(e2e3*e2e3-4*(E2*E3-(k23)*(k32)));
+
+            T lambda1 = 0.5*(e2e3+s);
+            T lambda2 = 0.5*(e2e3-s);
+            T eL1=1.0/(1.0-exp(-(tau_)*lambda1));
+            T eL2=1.0/(1.0-exp(-(tau_)*lambda2));
+
+            ret(0, 0) = (eL1*((bolusAmt_)*E3 - (bolusAmt_)*lambda1) - eL2*((bolusAmt_)*E3 - (bolusAmt_)*lambda2))/(-lambda1 + lambda2);
+            ret(1, 0) = (eL1*(bolusAmt_)*(k23) - eL2*(bolusAmt_)*(k23))/(-lambda1 + lambda2);
+
+            return ret;
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            return ret;
+          }
+        }
+#undef k21
+#undef k32
+#undef k12
+#undef k23
+#undef v
+#undef k
+        return ret;
+      }
 
       //////////////////////////////////////////////////////////////////
       // Solved Two compartment wnl solutions
@@ -496,6 +583,195 @@ namespace stan {
 #undef k10
         return ret;
       }
+
+      //////////////////////////////////////////////////////////////////
+      // Solved Three compartment steady state solutions
+      //////////////////////////////////////////////////////////////////
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan3ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                        T ka) const {
+#define v     g(0, 0)
+        //#define k     g(0, 1)
+#define k20   g(0, 1)
+
+#define k12   g(1, 0)
+#define k23   g(1, 0)
+
+#define k21   g(1, 1)
+#define k32   g(1, 1)
+
+#define k13   g(2, 0)
+#define k24   g(2, 0)
+
+#define k31   g(2, 1)
+#define k42   g(2, 1)
+        Eigen::Matrix<T, Eigen::Dynamic, 1> ret;
+        if (oral0_  == 1) {
+          T rDepot = rate_[0];
+          T rCentral = rate_[1];
+          ret.resize(4, 1);
+          if (rate_[0] > 0) {
+            T E2 =  (k20)+ (k23) + (k24);
+            T E3 = (k32);
+            T E4 = (k42);
+            T j  = (k23) + (k20) + (k32) + (k42) + (k24);
+            T k  = (k23)*(k42)+(k20)*(k32)+(k20)*(k42)+(k32)*(k42)+(k24)*(k32);
+            T l  = (k20)*(k32)*(k42);
+
+            T m = 0.3333333333333333*(3.0*k - j*j);
+            T n = 0.03703703703703703*(2.0*j*j*j - 9.0*j*k + 27.0*l);
+            T Q = 0.25*n*n + 0.03703703703703703*m*m*m;
+
+            T alpha = sqrt(-Q);
+            T beta = -0.5*n;
+            T rho=sqrt(beta*beta+alpha*alpha);
+            T theta = atan2(alpha,beta);
+            T ct3 = cos(0.3333333333333333*theta);
+            T rho3 = pow(rho,0.3333333333333333);
+            T st3 = 1.732050807568877193177*sin(0.3333333333333333*theta);
+            T j3 = 0.3333333333333333*j;
+            T lam1 = j3  + rho3*(ct3 + st3);
+            T lam2 = j3 + rho3*(ct3 - st3);
+            T lam3 = j3 -(2.0*rho3*ct3);
+
+            T eKa = exp(-(ka)*((tau_)-(tinf_)))/(1.0-exp(-(ka)*(tau_)));
+            T eiKa = exp(-(ka)*(tinf_));
+
+            T eL1 = exp(-lam1*((tau_)-(tinf_)))/(1.0-exp(-lam1*(tau_)));
+            T eiL1 = exp(-lam1*(tinf_));
+
+            T eL2 = exp(-lam2*((tau_)-(tinf_)))/(1.0-exp(-lam2*(tau_)));
+            T eiL2 = exp(-lam2*(tinf_));
+
+            T eL3 = exp(-lam3*((tau_)-(tinf_)))/(1.0-exp(-lam3*(tau_)));
+            T eiL3 = exp(-lam3*(tinf_));
+
+            T ka2 = (ka)*(ka);
+            T ka3 = ka2*(ka);
+
+            T lam12 = lam1*lam1;
+            T lam13 = lam12*lam1;
+            T lam14 = lam13*lam1;
+
+            T lam22 = lam2*lam2;
+            T lam23 = lam22*lam2;
+            T lam24 = lam23*lam2;
+
+            T lam32 = lam3*lam3;
+            T lam33 = lam32*lam3;
+            T lam34 = lam33*lam3;
+
+            ret(0, 0) = eKa*((rDepot)/(ka) - eiKa*(rDepot)/(ka));
+            ret(1, 0) = (eL1*(E4 - lam1)*(E3 - lam1)/((-lam1 + lam3)*(-lam1 + lam2)) + eL2*(E4 - lam2)*(E3 - lam2)/((-lam2 + lam3)*(lam1 - lam2)) + eL3*(E3 - lam3)*(E4 - lam3)/((lam2 - lam3)*(lam1 - lam3)))*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) + (ka)*(eL1*(E4 - lam1)*(E3 - lam1)/((-lam1 + lam3)*(-lam1 + lam2)*((ka) - lam1)) + eL2*(E4 - lam2)*(E3 - lam2)/((-lam2 + lam3)*(lam1 - lam2)*((ka) - lam2)) + eL3*(E3 - lam3)*(E4 - lam3)/((lam2 - lam3)*(lam1 - lam3)*((ka) - lam3)) + eKa*(E3 - (ka))*(E4 - (ka))/((-(ka) + lam1)*(-(ka) + lam2)*(-(ka) + lam3)))*((rDepot)/(ka) - eiKa*(rDepot)/(ka)) + eL1*(-lam1*((k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3)) + (k42)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3))) + E3*(k42)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) + E4*(k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3)))/((lam1 - lam3)*(lam1 - lam2)) + eL3*(lam3*((k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3)) + (k42)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3))) - (E3*(k42)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) + E4*(k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3))))/((-lam2 + lam3)*(lam1 - lam3)) + eL2*(lam2*((k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3)) + (k42)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3))) - (E3*(k42)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) + E4*(k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3))))/((lam2 - lam3)*(lam1 - lam2));
+            ret(2, 0)=(eL1*(E4 - lam1)*(E2 - lam1)/((-lam1 + lam3)*(-lam1 + lam2)) + eL2*(E4 - lam2)*(E2 - lam2)/((-lam2 + lam3)*(lam1 - lam2)) + eL3*(E2 - lam3)*(E4 - lam3)/((lam2 - lam3)*(lam1 - lam3)))*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3)) + (ka)*(k23)*(eL1*(E4 - lam1)/((-lam1 + lam3)*(-lam1 + lam2)*((ka) - lam1)) + eL2*(E4 - lam2)/((-lam2 + lam3)*(lam1 - lam2)*((ka) - lam2)) + eL3*(E4 - lam3)/((lam2 - lam3)*(lam1 - lam3)*((ka) - lam3)) + eKa*(E4 - (ka))/((-(ka) + lam1)*(-(ka) + lam2)*(-(ka) + lam3)))*((rDepot)/(ka) - eiKa*(rDepot)/(ka)) + eL1*(E4*(k23)*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (k23)*lam1*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) + (k42)*(k23)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) - (k42)*(k24)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3)))/((lam1 - lam3)*(lam1 - lam2)) + eL3*((k23)*lam3*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (E4*(k23)*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) + (k42)*(k23)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) - (k42)*(k24)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3))))/((-lam2 + lam3)*(lam1 - lam3)) + eL2*((k23)*lam2*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (E4*(k23)*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) + (k42)*(k23)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) - (k42)*(k24)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3))))/((lam2 - lam3)*(lam1 - lam2));
+            ret(3, 0)=(eL1*(E3 - lam1)*(E2 - lam1)/((-lam1 + lam3)*(-lam1 + lam2)) + eL2*(E2 - lam2)*(E3 - lam2)/((-lam2 + lam3)*(lam1 - lam2)) + eL3*(E2 - lam3)*(E3 - lam3)/((lam2 - lam3)*(lam1 - lam3)))*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) + (ka)*(k24)*(eL1*(E3 - lam1)/((-lam1 + lam3)*(-lam1 + lam2)*((ka) - lam1)) + eL2*(E3 - lam2)/((-lam2 + lam3)*(lam1 - lam2)*((ka) - lam2)) + eL3*(E3 - lam3)/((lam2 - lam3)*(lam1 - lam3)*((ka) - lam3)) + eKa*(E3 - (ka))/((-(ka) + lam1)*(-(ka) + lam2)*(-(ka) + lam3)))*((rDepot)/(ka) - eiKa*(rDepot)/(ka)) + eL1*(E3*(k24)*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (k23)*(k32)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) + (k24)*(k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3)) - (k24)*lam1*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)))/((lam1 - lam3)*(lam1 - lam2)) + eL3*((k24)*lam3*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (E3*(k24)*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (k23)*(k32)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) + (k24)*(k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3))))/((-lam2 + lam3)*(lam1 - lam3)) + eL2*((k24)*lam2*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (E3*(k24)*(-eiKa*(rDepot)*((k42)*(k32) + (-(k32) - (k42))*(ka) + ka2)/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) - eiL1*(rDepot)*(-(ka)*lam12 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) + eiL2*(rDepot)*(-(ka)*lam22 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) - eiL3*(rDepot)*(-(ka)*lam32 - (ka)*(k42)*(k32) + ((k32) + (k42))*(ka)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k32)/(lam2*lam1*lam3)) - (k23)*(k32)*(eiKa*(rDepot)*(-(k24)*(k32) + (ka)*(k24))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam1)/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam2)/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*((ka)*(k24)*(k32) - (ka)*(k24)*lam3)/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k24)*(k32)/(lam2*lam1*lam3)) + (k24)*(k32)*(eiKa*(rDepot)*(-(k42)*(k23) + (ka)*(k23))/(ka2*lam1 + lam2*(-(ka)*lam1 + ka2) + lam3*(-(ka)*lam1 + lam2*(-(ka) + lam1) + ka2) - ka3) + eiL1*(rDepot)*(-(ka)*(k23)*lam1 + (ka)*(k42)*(k23))/(-(ka)*lam13 + lam2*((ka)*lam12 - lam13) + lam3*((ka)*lam12 + lam2*(-(ka)*lam1 + lam12) - lam13) + lam14) - eiL2*(rDepot)*(-(ka)*(k23)*lam2 + (ka)*(k42)*(k23))/(lam23*((ka) + lam1) + lam3*(lam22*(-(ka) - lam1) + (ka)*lam2*lam1 + lam23) - (ka)*lam22*lam1 - lam24) + eiL3*(rDepot)*(-(ka)*(k23)*lam3 + (ka)*(k42)*(k23))/(lam32*((ka)*lam1 + lam2*((ka) + lam1)) + (-(ka) - lam1 - lam2)*lam33 - (ka)*lam2*lam1*lam3 + lam34) + (rDepot)*(k42)*(k23)/(lam2*lam1*lam3))))/((lam2 - lam3)*(lam1 - lam2));
+            return ret;
+          } else if (rate_[1] > 0) {
+
+            T j = (k23)+(k20)+(k32)+(k42)+(k24);
+            T k = (k23)*(k42)+(k20)*(k32)+(k20)*(k42)+(k32)*(k42)+(k24)*(k32);
+            T l = (k20)*(k32)*(k42);
+
+            T m = 0.3333333333333333*(3.0*k - j*j);
+            T n = 0.03703703703703703*(2.0*j*j*j - 9.0*j*k + 27.0*l);
+            T Q = 0.25*n*n + 0.03703703703703703*m*m*m;
+
+            T alpha = sqrt(-Q);
+            T beta = -0.5*n;
+            T rho=sqrt(beta*beta+alpha*alpha);
+            T theta = atan2(alpha,beta);
+            T ct3 = cos(0.3333333333333333*theta);
+            T rho3 = pow(rho,0.3333333333333333);
+            T st3 = 1.732050807568877193177*sin(0.3333333333333333*theta);
+            T j3 = 0.3333333333333333*j;
+            T lam1 = j3  + rho3*(ct3 + st3);
+            T lam2 = j3 + rho3*(ct3 - st3);
+            T lam3 = j3 -(2.0*rho3*ct3);
+            T l123 = 1.0/(lam1*lam2*lam3);
+
+            ret(0, 0)=0;
+            ret(1, 0)=(rCentral)*(k42)*(k32)*l123;
+            ret(2, 0)=(rCentral)*(k42)*(k23)*l123;
+            ret(3, 0)=(rCentral)*(k24)*(k32)*l123;
+
+            return ret;
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            ret(3, 0) = NA_REAL;
+            ret(4, 0) = NA_REAL;
+            return ret;
+          }
+        } else {
+          ret.resize(3, 1);
+          T rCentral = rate_[0];
+          if (rate_[0] > 0) {
+            T j = (k23)+(k20)+(k32)+(k42)+(k24);
+            T k = (k23)*(k42)+(k20)*(k32)+(k20)*(k42)+(k32)*(k42)+(k24)*(k32);
+            T l = (k20)*(k32)*(k42);
+
+            T m = 0.3333333333333333*(3.0*k - j*j);
+            T n = 0.03703703703703703*(2.0*j*j*j - 9.0*j*k + 27.0*l);
+            T Q = 0.25*n*n + 0.03703703703703703*m*m*m;
+
+            T alpha = sqrt(-Q);
+            T beta = -0.5*n;
+            T rho=sqrt(beta*beta+alpha*alpha);
+            T theta = atan2(alpha,beta);
+            T ct3 = cos(0.3333333333333333*theta);
+            T rho3 = pow(rho,0.3333333333333333);
+            T st3 = 1.732050807568877193177*sin(0.3333333333333333*theta);
+            T j3 = 0.3333333333333333*j;
+            T lam1 = j3  + rho3*(ct3 + st3);
+            T lam2 = j3 + rho3*(ct3 - st3);
+            T lam3 = j3 -(2.0*rho3*ct3);
+            T l123 = 1.0/(lam1*lam2*lam3);
+
+            ret(0, 0)=(rCentral)*(k42)*(k32)*l123;
+            ret(1, 0)=(rCentral)*(k42)*(k23)*l123;
+            ret(2, 0)=(rCentral)*(k24)*(k32)*l123;
+
+            return ret;
+
+          } else {
+            ret(0, 0) = NA_REAL;
+            ret(1, 0) = NA_REAL;
+            ret(2, 0) = NA_REAL;
+
+            return ret;
+          }
+          return ret;
+        }
+
+#undef k13
+#undef k24
+#undef k31
+#undef k42
+#undef k21
+#undef k32
+#undef k12
+#undef k23
+#undef v
+        //#undef k
+      }
+
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan3ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                       T ka) const {
+
+      }
+
+      template <typename T>
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      linCmtStan3ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
+                         T ka) const {
+      }
+
+      //////////////////////////////////////////////////////////////////
+      // Solved Three compartment wnl solutions
+      //////////////////////////////////////////////////////////////////
 
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
