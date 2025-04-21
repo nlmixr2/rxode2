@@ -144,7 +144,7 @@ namespace stan {
           ret.resize(1, 1);
           T rCentral = rate_[0];
           if (rate_[0] > 0) {
-            ret(0, 0) = rCentral/ka;
+            ret(0, 0) = rCentral/k;
           } else {
             ret(0, 0) = NA_REAL;
           }
