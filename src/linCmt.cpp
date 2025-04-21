@@ -20,9 +20,16 @@ RObject linCmtModelDouble(double dt,
                           NumericVector alastNV, NumericVector rateNV,
                           const int ncmt, const int oral0, const int trans,
                           bool deriv,
-                          int type) {
+                          int type,
+                          double tau, double tinf, double amt,
+                          int bolusCmt) {
 
   stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type);
+  if (type == linCmtSsInf) {
+    lc.setSsInf(tinf, tau);
+  } else if (type == linCmtSsBolus) {
+    lc.setSsBolus(amt, tau, bolusCmt);
+  }
   Eigen::Matrix<double, -1, 1> theta;
   Eigen::Matrix<double, -1, 1> alast0 = as<Eigen::Matrix<double, -1, 1> >(alastNV);
   Eigen::Matrix<double, -1, 1> rate = as<Eigen::Matrix<double, -1, 1> >(rateNV);
