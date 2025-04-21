@@ -189,7 +189,7 @@ namespace stan {
           T rCentral = rate_[0];
           T eiK = exp(-(k)*(tinf_));
           T eK = exp(-(k)*(tau_-tinf_))/(1.0-exp(-(k)*tau_));
-          ret(0, 0) = (rCentral)*(1-eiK)*eK/(k);
+          ret(0, 0) = (rCentral)*(1.0-eiK)*eK/(k);
           return ret;
         }
 #undef v
@@ -1368,6 +1368,10 @@ namespace stan {
       }
 
       template <typename T>
+      void printDouble(Eigen::Matrix<T, Eigen::Dynamic, 1> ret0) const {
+      }
+
+      template <typename T>
       void saveAlast(Eigen::Matrix<T, Eigen::Dynamic, 1> ret0) const {
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           T smv = ret0(i, 0);
@@ -1387,53 +1391,39 @@ namespace stan {
           ka = theta[ncmt_*2];
         }
         Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
-        switch(type_) {
-        case linCmtNormal:
-          {
-            Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
-            yp = getAlast(theta);
-            if (ncmt_ == 1) {
-              ret0 = linCmtStan1<T>(g, yp, ka);
-            } else if (ncmt_ == 2) {
-              ret0 = linCmtStan2<T>(g, yp, ka);
-            } else if (ncmt_ == 3) {
-              ret0 = linCmtStan3<T>(g, yp, ka);
-            }
+        Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
+        if (type_ == linCmtNormal) {
+          yp = getAlast(theta);
+          if (ncmt_ == 1) {
+            ret0 = linCmtStan1<T>(g, yp, ka);
+          } else if (ncmt_ == 2) {
+            ret0 = linCmtStan2<T>(g, yp, ka);
+          } else if (ncmt_ == 3) {
+            ret0 = linCmtStan3<T>(g, yp, ka);
           }
-          break;
-        case linCmtSsInf8:
-          {
-            Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
-            if (ncmt_ == 1) {
-              ret0 = linCmtStan1ssInf8(g, ka);
-            } else if (ncmt_ == 2) {
-              ret0 = linCmtStan2ssInf8(g, ka);
-            } else if (ncmt_ == 3) {
-              //ret0 = linCmtStan3ssInf8(g, ka);
-              ret0 = linCmtStan2ssInf8(g, ka);
-            }
+        } else if (type_ == linCmtSsInf8)  {
+          if (ncmt_ == 1) {
+            ret0 = linCmtStan1ssInf8(g, ka);
+          } else if (ncmt_ == 2) {
+            ret0 = linCmtStan2ssInf8(g, ka);
+          } else if (ncmt_ == 3) {
+            ret0 = linCmtStan3ssInf8(g, ka);
           }
-        case linCmtSsInf:
-          {
-            Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
-            if (ncmt_ == 1) {
-              ret0 = linCmtStan1ssInf(g, ka);
-            } else if (ncmt_ == 2) {
-              ret0 = linCmtStan2ssInf(g, ka);
-            } else if (ncmt_ == 3) {
-              ret0 = linCmtStan3ssInf(g, ka);
-            }
+        } else if (type_ == linCmtSsInf) {
+          if (ncmt_ == 1) {
+            ret0 = linCmtStan1ssInf(g, ka);
+          } else if (ncmt_ == 2) {
+            ret0 = linCmtStan2ssInf(g, ka);
+          } else if (ncmt_ == 3) {
+            ret0 = linCmtStan3ssInf(g, ka);
           }
-        case linCmtSsBolus:
-          {
-            Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
-            if (ncmt_ == 1) {
-              ret0 = linCmtStan1ssBolus(g, ka);
-            } else if (ncmt_ == 2) {
-              ret0 = linCmtStan2ssBolus(g, ka);
-            } else if (ncmt_ == 3) {
-              ret0 = linCmtStan3ssBolus(g, ka);
-            }
+        } else if (type_ == linCmtSsBolus) {
+          if (ncmt_ == 1) {
+            ret0 = linCmtStan1ssBolus(g, ka);
+          } else if (ncmt_ == 2) {
+            ret0 = linCmtStan2ssBolus(g, ka);
+          } else if (ncmt_ == 3) {
+            ret0 = linCmtStan3ssBolus(g, ka);
           }
         }
         saveAlast<T>(ret0);
@@ -1525,12 +1515,17 @@ namespace stan {
     // Double initialization need to be outside of the linCmtStan struct
     template <>
     void linCmtStan::saveAlast<double>(Eigen::Matrix<double, Eigen::Dynamic, 1> ret0) const {
-      Rcpp::print(Rcpp::wrap(ret0));
       for (int i = 0; i < ncmt_ + oral0_; i++) {
         Asave_[i] = ret0(i, 0);
       }
     }
 
+    template <>
+    void linCmtStan::printDouble<double>(Eigen::Matrix<double, Eigen::Dynamic, 1> ret0) const {
+      Rcpp::print(Rcpp::wrap(ret0));
+    }
+
+    // Double initialization need to be outside of the linCmtStan struct
     template <>
     Eigen::Matrix<double, Eigen::Dynamic, 1> linCmtStan::getAlast(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) const {
       Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
