@@ -1372,6 +1372,10 @@ namespace stan {
       }
 
       template <typename T>
+      void printDouble(T ret0) const {
+      }
+
+      template <typename T>
       void saveAlast(Eigen::Matrix<T, Eigen::Dynamic, 1> ret0) const {
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           T smv = ret0(i, 0);
@@ -1522,6 +1526,12 @@ namespace stan {
 
     template <>
     void linCmtStan::printDouble<double>(Eigen::Matrix<double, Eigen::Dynamic, 1> ret0) const {
+      Rcpp::print(Rcpp::wrap(ret0));
+    }
+
+
+    template <>
+    void linCmtStan::printDouble<double>(double ret0) const {
       Rcpp::print(Rcpp::wrap(ret0));
     }
 

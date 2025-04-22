@@ -1958,7 +1958,7 @@ test_that("rxode2 parsing of linCmt() 3 compartment with ka", {
 
 if (requireNamespace("pmxTools", quietly = TRUE)) {
 
-  test_that("rxode2 solving of 1 compartment steady state", {
+  test_that("rxode2 solving of 1 compartment steady state bolus", {
 
     f <- function(CL=6, V=25, DOSE=600, tau=24, deriv=FALSE) {
       p1 <- CL
@@ -1997,6 +1997,9 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     expect_equal(dim(v$J), 1:2)
     expect_length(v$Jg, 2)
     expect_length(v$Alast, 3)
+  })
+
+  test_that("rxode2 solving of 1 compartment steady state infusion", {
 
     f <- function(CL=2, V=25, DOSE=600, tinf=1, tau=24, deriv=FALSE) {
       p1 <- CL
@@ -2036,7 +2039,9 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     expect_equal(dim(v$J), 1:2)
     expect_length(v$Jg, 2)
     expect_length(v$Alast, 3)
+  })
 
+  test_that("rxode2 solving of 1 compartment steady state 1st order dosing", {
     f <- function(CL=2, V=25, DOSE=600, ka=0.25, tau=24, deriv=FALSE) {
       p1 <- CL
       v1 <- V
@@ -2077,6 +2082,250 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     expect_equal(dim(v$J), 2:3)
     expect_length(v$Jg, 3)
     expect_length(v$Alast, 6)
+  })
+
+  test_that("rxode2 solving of 1 compartment steady state for constant infusion", {
+    ## Now test the solutions not covered by pmxTools by cross testing
+    ## against rxode2 lsoda
+    rx <- rxode2({
+      CL <- 6
+      V <- 25
+      kel <- CL/V
+      d/dt(central) = -kel*central
+      cp <- central/V
+    })
+
+    e <- et(amt=0, rate=600, ss=1) %>%
+      et(time=seq(1:25))
+
+    f <- function(CL=6, V=25, DOSE=600, deriv=FALSE) {
+      p1 <- CL
+      v1 <- V
+      p2 <- 0
+      p3 <- 0
+      p4 <- 0
+      p5 <- 0
+      ka <- 0
+      if (deriv) {
+        alastNV <- c(0, 0, 0)
+      } else {
+        alastNV <- 0
+      }
+      rateNV <- 600
+      oral0 <- 0
+      trans <- 1L
+      ncmt <- 1
+      type <- 1L # ss infinite infusion
+      amt <- 0
+      tinf <- 0
+      dt <- 0
+      cmt <- 0L
+      tau <- 0
+      .Call(`_rxode2_linCmtModelDouble`, 0.1,
+            p1, v1, p2, p3, p4, p5, ka,
+            alastNV, rateNV, ncmt, oral0, trans,
+            deriv, type, tau, tinf, amt, cmt)
+    }
+
+    expect_equal(f()$val,
+                 rxSolve(rx, e, addDosing =TRUE)$cp[1])
+
+    v <- f(deriv=TRUE)
+
+    expect_equal(v$val,
+                 rxSolve(rx, e, addDosing =TRUE)$cp[1])
+
+    expect_equal(dim(v$J), 1:2)
+    expect_length(v$Jg, 2)
+    expect_length(v$Alast, 3)
+  })
+
+  test_that("rxode2 solving of 1 compartment steady state for constant depot infusion", {
+
+    rx <- rxode2({
+      CL <- 6
+      V <- 25
+      ka <- 0.25
+      kel <- CL/V
+      d/dt(depot) = -ka*depot
+      d/dt(central) = -kel*central + ka*depot
+      cp <- central/V
+    })
+
+    e <- et(amt=0, rate=600, ss=1) %>%
+      et(time=seq(1:25))
+
+    f <- function(CL=6, V=25, DOSE=600, ka=0.25, rate=c(600, 0), deriv=FALSE) {
+      p1 <- CL
+      v1 <- V
+      p2 <- 0
+      p3 <- 0
+      p4 <- 0
+      p5 <- 0
+      ka <- ka
+      if (deriv) {
+        alastNV <- c(0, 0, 0, 0, 0, 0)
+      } else {
+        alastNV <- c(0, 0)
+      }
+      rateNV <- rate
+      oral0 <- 1L
+      trans <- 1L
+      ncmt <- 1
+      type <- 1L # ss infinite infusion
+      amt <- 0
+      tinf <- 0
+      dt <- 0
+      cmt <- 0L
+      tau <- 0
+      .Call(`_rxode2_linCmtModelDouble`, 0.1,
+            p1, v1, p2, p3, p4, p5, ka,
+            alastNV, rateNV, ncmt, oral0, trans,
+            deriv, type, tau, tinf, amt, cmt)
+    }
+
+    s <- rxSolve(rx, e, addDosing =TRUE)
+
+    expect_equal(f()$val,
+                 s$cp[1])
+
+    expect_equal(f()$Alast,
+                 c(s$depot[1], s$central[1]))
+
+    v <- f(deriv=TRUE)
+
+    expect_equal(v$val,
+                 s$cp[1])
+
+    expect_equal(v$Alast[1:2],
+                 c(s$depot[1], s$central[1]))
+
+    expect_equal(dim(v$J), 2:3)
+
+    expect_length(v$Jg, 3)
+    expect_length(v$Alast, 6)
+
+    # Now infusion in the 2 compartment models to central
+
+    e <- et(amt=0, rate=600, ss=1, cmt=2) %>%
+      et(time=seq(1:25))
+
+    s <- rxSolve(rx, e, addDosing =TRUE)
+
+    expect_equal(f(rate=c(0, 600))$val,
+                 s$cp[1])
+
+    expect_equal(f(rate=c(0, 600))$Alast,
+                 c(s$depot[1], s$central[1]))
+
+    v <- f(rate=c(0, 600), deriv=TRUE)
+
+    expect_equal(v$val,
+                 s$cp[1])
+
+    expect_equal(v$Alast[1:2],
+                 c(s$depot[1], s$central[1]))
+
+    expect_equal(dim(v$J), 2:3)
+
+    expect_length(v$Jg, 3)
+    expect_length(v$Alast, 6)
+
+  })
+
+  test_that("rxode2 solving of 1 compartment steady state for constant depot infusion", {
+
+    f <- function(CL=2, V=25, DOSE=600, tinf=1, tau=6, deriv=FALSE, cmt=0L,
+                  ka=0.25) {
+      p1 <- CL
+      v1 <- V
+      p2 <- 0
+      p3 <- 0
+      p4 <- 0
+      p5 <- 0
+      ka <- ka
+      if (deriv) {
+        alastNV <- c(0, 0, 0, 0, 0, 0)
+      } else {
+        alastNV <- c(0, 0)
+      }
+      if (cmt == 0L) {
+        rateNV <- c(DOSE/tinf, 0)
+      } else {
+        rateNV <- c(0, DOSE/tinf)
+      }
+      oral0 <- 1L
+      trans <- 1L
+      ncmt <- 1
+      type <- 2L # ss infusion
+      amt <- DOSE
+      dt <- 0
+      .Call(`_rxode2_linCmtModelDouble`, 0.1,
+            p1, v1, p2, p3, p4, p5, ka,
+            alastNV, rateNV, ncmt, oral0, trans,
+            deriv, type, tau, tinf, amt, cmt)
+    }
+
+    rx <- rxode2({
+      CL <- 2
+      V <- 25
+      ka <- 0.25
+      kel <- CL/V
+      d/dt(depot) = -ka*depot
+      d/dt(central) = -kel*central + ka*depot
+      cp <- central/V
+    })
+
+    e <- et(amt=600, rate=600, ss=1, ii=6, cmt=depot) %>%
+      et(time=seq(1:25))
+
+    s <- rxSolve(rx, e, addDosing =TRUE)
+
+    expect_equal(f()$val,
+                 s$cp[1], tolerance=1e-3)
+
+    expect_equal(f()$Alast,
+                 c(s$depot[1], s$central[1]),
+                 tolerance=1e-3)
+
+    v <- f(deriv=TRUE)
+
+    expect_equal(v$val,
+                 s$cp[1], tolerance=1e-3)
+
+    expect_equal(v$Alast[1:2],
+                 c(s$depot[1], s$central[1]),
+                 tolerance = 1e-3)
+
+    expect_equal(dim(v$J), 2:3)
+
+    expect_length(v$Jg, 3)
+    expect_length(v$Alast, 6)
+
+    e <- et(amt=600, rate=600, ss=1, ii=6, cmt=central) %>%
+      et(time=seq(1:25))
+
+    s <- rxSolve(rx, e, addDosing =TRUE)
+
+    expect_equal(f(cmt=1L)$val,
+                 s$cp[1], tolerance = 1e-3)
+
+        expect_equal(f(cmt=1L)$Alast,
+                     c(s$depot[1], s$central[1]),
+                     tolerance = 1e-3)
+
+        v <- f(cmt=1L, deriv=TRUE)
+
+        expect_equal(v$val,
+                     s$cp[1], tolerance = 1e-3)
+
+        expect_equal(v$Alast[1:2],
+                     c(s$depot[1], s$central[1]), tolerance = 1e-3)
+
+        expect_equal(dim(v$J), 2:3)
+
+        expect_length(v$Jg, 3)
+        expect_length(v$Alast, 6)
 
   })
 
