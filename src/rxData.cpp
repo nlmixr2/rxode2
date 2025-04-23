@@ -3441,7 +3441,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
     IntegerVector strLhs = as<IntegerVector>(rxSolveDat->mv[RxMv_lhsStr]);
     if (_globals.gevid != NULL) free(_globals.gevid);
-    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+si.size() + strLhs.size(), sizeof(int));
+    _globals.gevid = (int*)calloc(3*evid.size()+dfN*2+ strLhs.size(), sizeof(int));
     if (_globals.gevid == NULL){
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
@@ -3451,9 +3451,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     _globals.gcens = _globals.gidose + evid.size();
     _globals.gpar_cov = _globals.gidose + evid.size();//[dfN];
     _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
-    _globals.gsi = _globals.gpar_covInterp + dfN;//[si.size()];
-    std::copy(si.begin(),si.end(), &_globals.gsi[0]);
-    _globals.glhs_str = _globals.gsi + si.size(); // [strLhs.siae()]
+    _globals.glhs_str = _globals.gpar_covInterp + dfN; // [strLhs.size()]
     std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
     int ntot = 1;
 
@@ -4157,7 +4155,6 @@ List rxSolve_df(const RObject &obj,
       doDose = 0;
     }
   }
-  rx->stateIgnore = _globals.gsi;
   int doTBS = (rx->matrix == 3);
   if (doTBS) rx->matrix=2;
   if (rx->matrix == 4 || rx->matrix == 5) rx->matrix=2;
@@ -4619,7 +4616,6 @@ static inline void iniRx(rx_solve* rx) {
   rx->nMtime = 0;
   rx->stateTrimU = R_PosInf;
   rx->stateTrimL = R_NegInf;
-  rx->stateIgnore = NULL;
   rx->nCov0 = 0;
   rx->cov0 = NULL;
   rx->nKeepF = 0;
@@ -6332,6 +6328,10 @@ extern "C" SEXP rxModelVarsC(char *ptr) {
 extern "C" SEXP rxStateNames(char *ptr) {
   // Rcout << "State: ";
   return rxGetFromChar(ptr, "state");
+}
+
+extern "C" SEXP rxStateIgnore(char *ptr) {
+  return rxGetFromChar(ptr, "state.ignore");
 }
 
 extern "C" SEXP rxLhsNames(char *ptr) {

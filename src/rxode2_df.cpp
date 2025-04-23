@@ -133,7 +133,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
   int nall = rx->nall - rx->nevid9;
   int errNcol = rxGetErrsNcol();
   int errNrow = rxGetErrsNrow();
-  if (op->nsvar != errNcol){
+  if (op->nsvar != errNcol) {
     rxSolveFreeC();
     Rf_errorcall(R_NilValue, _("The simulated residual errors do not match the model specification (%d=%d)"),op->nsvar, errNcol);
   }
@@ -170,7 +170,7 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
     dullSS=1, dullIi=1;
   int csub = 0, evid = 0;
   int nsub = rx->nsub;
-  int *rmState = rx->stateIgnore;
+  IntegerVector rmState = rxStateIgnore(op->modNamePtr);
   int nPrnState =0;
   int i, j;
   int neq[2];

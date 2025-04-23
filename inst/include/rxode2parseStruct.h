@@ -231,7 +231,6 @@ typedef struct {
   int nMtime;
   double stateTrimU;
   double stateTrimL;
-  int *stateIgnore;
   int nCov0;
   int *cov0;
   int nKeepF;
