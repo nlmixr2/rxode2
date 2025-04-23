@@ -1028,8 +1028,14 @@ extern "C" void handleSSbolus(int *neq,
     ind->linSSvar = ydum[cmt];
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    yp[cmt] -= ind->linSSvar; // take out dose since it will be given again
     ind->linSS = 0; // reset to normal solve
+
+    // now advance system by the bolus time to get the right derivatives
+    // and use the trough concentrations (as expected in this function)
+    *xp2 = *xout2;
+    *xout2 = *xp2 + *curIi;
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     return;
   }
   for (int j = 0; j < op->maxSS; j++) {

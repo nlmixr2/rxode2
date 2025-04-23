@@ -132,15 +132,36 @@ rxTest({
                          modifyData = c("none", "dur", "rate"),
                          addlKeepsCov = TRUE, addlDropSs=TRUE,
                          ss2cancelAllPending=FALSE) {
-    if (meth == "A" || meth == "Ao") {
+    if (meth == "Bs" || meth == "As") {
+      ssSolved <- FALSE
+    } else {
+      ssSolved <- TRUE
+    }
+    if (meth == "A" || meth == "Ao" || meth == "As") {
       lin <- "A"
       meth <- "liblsoda"
-    } else if (meth == "B" || meth == "Bo") {
+    } else if (meth == "B" || meth == "Bo" || meth == "Bs") {
+      lin <- "B"
+      meth <- "liblsoda"
+    } else  if (meth == "Ad") {
+      lin <- "A"
+      meth <- "dop853"
+    } else  if (meth == "Bd") {
+      lin <- "B"
+      meth <- "dop853"
+    } else  if (meth == "Al") {
+      lin <- "A"
+      meth <- "lsoda"
+    } else  if (meth == "Bl") {
+      lin <- "B"
+      meth <- "lsoda"
+    } else if (meth == "B" || meth == "Bo" || meth == "Bs") {
       lin <- "B"
       meth <- "liblsoda"
     } else {
       lin <- "ode"
     }
+
     noLag <-  all(d[d$id == id & d$evid != 0,]$lagt == 0)
     hasRate <- any(d[d$id == id & d$evid != 0,]$rate != 0)
     hasModeledRate <- any(d[d$id == id & d$evid != 0,]$mode == 1)
@@ -198,23 +219,28 @@ rxTest({
       if (lin == "A") {
         s1 <- rxSolve(lfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending)
+                      ss2cancelAllPending=ss2cancelAllPending,
+                      ssSolved=ssSolved)
       } else if (lin == "B") {
         s1 <- rxSolve(lbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending)
+                      ss2cancelAllPending=ss2cancelAllPending,
+                      ssSolved=ssSolved)
       } else if (lin == "Ao") {
         s1 <- rxSolve(elfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending)
+                      ss2cancelAllPending=ss2cancelAllPending,
+                      ssSolved=ssSolved)
       } else if (lin == "Bo") {
         s1 <- rxSolve(elbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending)
+                      ss2cancelAllPending=ss2cancelAllPending,
+                      ssSolved=ssSolved)
       } else {
         s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov,
                       addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending)
+                      ss2cancelAllPending=ss2cancelAllPending,
+                      ssSolved=ssSolved)
       }
       if (!noLag) {
         print(plot(s1, cp) +
@@ -227,23 +253,28 @@ rxTest({
         if (lin == "A") {
           s2 <- rxSolve(lf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending)
+                        ss2cancelAllPending=ss2cancelAllPending,
+                        ssSolved=ssSolved)
         } else if (lin == "B") {
           s2 <- rxSolve(lbf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending)
+                        ss2cancelAllPending=ss2cancelAllPending,
+                        ssSolved=ssSolved)
         } else if (lin == "Ao") {
           s2 <- rxSolve(elf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending)
+                        ss2cancelAllPending=ss2cancelAllPending,
+                        ssSolved=ssSolved)
         } else if (lin == "Bo") {
           s2 <- rxSolve(elbf, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending)
+                        ss2cancelAllPending=ss2cancelAllPending,
+                        ssSolved=ssSolved)
         } else {
           s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov,
                         addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending)
+                        ss2cancelAllPending=ss2cancelAllPending,
+                        ssSolved=ssSolved)
         }
         return(plot(s1, cp) +
                  geom_point(data=d, aes(x=time, y=cp), col="red") +
@@ -323,7 +354,8 @@ rxTest({
   p <- FALSE
 
   lapply(id, function(i) {
-    meths <- c("liblsoda", "lsoda", "dop853", "A", "B", "Ao", "Bo")
+    meths <- c("liblsoda", "lsoda", "dop853", "A", "B", "Ao", "Bo", "As", "Bs",
+               "Ad", "Bd", "Al", "Bl")
     modDat <- c("none", "rate", "dur")
     for (meth in meths) {
       for (modifyData in modDat) {
