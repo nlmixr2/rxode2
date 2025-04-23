@@ -29,6 +29,13 @@ static inline void addLinCmt(nodeInfo ni, char *cmt, int *linCmtErr, int depotCe
   }
   int prop = tb.dprop[tb.id];
 
+  if ((prop & prop0) != 0) {
+    sAppend(&sbt2, "'%s(0)', ", cmt);
+    if ((linCmtErr[0] & 4) == 0) {
+      linCmtErr[0] += 4;
+    }
+  }
+
   // central and depot can have any properties
   if (depotCentral == 1) return;
 
@@ -250,7 +257,8 @@ extern void calcLinCmt(void) {
         sAppendN(&sbt, " are required for linCmt() but defined in ODE too, rename ODEs\n",
                  63);
       }
-      if ((linCmtErr & 2) != 0) {
+      if ((linCmtErr & 2) != 0 ||
+          (linCmtErr & 4) != 0) {
         sbt2.o -= 2;
         sbt2.s[sbt2.o] = 0;
         sAppendN(&sbt2, " are not supported in linCmt() models, you can try ODEs instead\n",
