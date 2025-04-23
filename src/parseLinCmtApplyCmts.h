@@ -20,8 +20,8 @@ static inline void addLinCmt(nodeInfo ni, char *cmt, int *linCmtErr, int depotCe
     if (tb.dprop[tb.id] == 0)  {
       // defined d/dt(depot) AND properties
       sAppend(&sbt, "'%s', ", cmt);
-      if ((*linCmtErr & 1) == 0) {
-        *linCmtErr += 1;
+      if ((linCmtErr[0] & 1) == 0) {
+        linCmtErr[0] += 1;
       }
     } else {
       tb.idu[tb.id]=1;
@@ -35,14 +35,14 @@ static inline void addLinCmt(nodeInfo ni, char *cmt, int *linCmtErr, int depotCe
   // Peripheral can have initial conditions and doses.  Rates are not allowed.
   if ((prop & propRate) != 0) {
     sAppend(&sbt2, "'rate(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propDur) != 0) {
     sAppend(&sbt2, "'dur(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if (depotCentral == 2) return;
@@ -54,86 +54,86 @@ static inline void addLinCmt(nodeInfo ni, char *cmt, int *linCmtErr, int depotCe
   /* } */
   if ((prop & propF) != 0) {
     sAppend(&sbt2, "'f(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propAlag) != 0) {
     sAppend(&sbt2, "'alag(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTad) != 0) {
     sAppend(&sbt2, "'tad(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTad0) != 0) {
     sAppend(&sbt2, "'tad0(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTafd) != 0) {
     sAppend(&sbt2, "'tafd(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTafd0) != 0) {
     sAppend(&sbt2, "'tafd0(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTlast) != 0) {
     sAppend(&sbt2, "'tlast(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTlast0) != 0) {
     sAppend(&sbt2, "'tlast0(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTfirst) != 0) {
     sAppend(&sbt2, "'tfirst(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propTfirst0) != 0) {
     sAppend(&sbt2, "'tfirst0(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propPodo) != 0) {
     sAppend(&sbt2, "'podo(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propDose) != 0) {
     sAppend(&sbt2, "'dose(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propPodo0) != 0) {
     sAppend(&sbt2, "'podo0(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
   if ((prop & propDose0) != 0) {
     sAppend(&sbt2, "'dose0(%s)', ", cmt);
-    if ((*linCmtErr & 2) != 0) {
-      *linCmtErr += 2;
+    if ((linCmtErr[0] & 2) == 0) {
+      linCmtErr[0] += 2;
     }
   }
 }
@@ -253,7 +253,7 @@ extern void calcLinCmt(void) {
       if ((linCmtErr & 2) != 0) {
         sbt2.o -= 2;
         sbt2.s[sbt2.o] = 0;
-        sAppendN(&sbt2, " are properties not supported in linCmt() models, you can try ODEs instead\n",
+        sAppendN(&sbt2, " are not supported in linCmt() models, you can try ODEs instead\n",
                  75);
         sAppend(&sbt, "%s", sbt2.s);
         sbt2.o = 0;

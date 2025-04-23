@@ -1384,10 +1384,14 @@ rxTest({
                     sprintf("%s(%s)", prop, cmt))
       test <- c("cl=exp(tvcl)",
                 "v=exp(tvv)",
+                "q=exp(tvq)",
+                "v2=exp(tvv2)",
+                "q2=exp(tvq2)",
+                "v3=exp(tvv3)",
                 "mat=exp(tvmat)",
                 "D1=mat*(1-expit(tvfrd1,0,1))",
                 "ka=1/(mat*expit(tvfrd1,0,1))",
-                "cp=linCmtA(rx__PTR__,t,2,1,1,-1,1,cl,v,0.0,0.0,0.0,0.0,ka)",
+                "cp=linCmtA(rx__PTR__,t,2,3,1,-1,1,cl,v,q,v2,q2,v3,ka)",
                 sprintf("%s=D1", val),
                 "rx_pred_=cp")
 
