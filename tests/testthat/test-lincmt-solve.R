@@ -2094,3 +2094,52 @@ rxTest({
     type <- 1
   }
 })
+
+
+# test mixed ODE and solved models
+
+test_that("mixed ode and solved models", {
+
+  ode <- rxode2({
+    lka <- 0.45
+    lcl <- 1
+    lvc  <- 3.45
+    ka <- exp(lka)
+    cl <- exp(lcl)
+    vc  <- exp(lvc)
+    kel <- cl / vc
+    d/dt(depot) <- -ka*depot
+    d/dt(central) <- ka*depot-kel*central
+    Cc <- central / vc
+    d/dt(accum) <- Cc
+  })
+
+  lin <- rxode2({
+    lka <- 0.45
+    lcl <- 1
+    lvc  <- 3.45
+    ka <- exp(lka)
+    cl <- exp(lcl)
+    vc  <- exp(lvc)
+    Cc <- linCmt(vc, cl, ka)
+    d/dt(accum) <- Cc
+  })
+
+  d <-
+    rbind(
+      data.frame(AMT = 500, EVID = 1, CMT = "depot", TIME = 0),
+      data.frame(AMT = 0, EVID = 0, CMT = "central", TIME = 0:5)
+    )
+
+  d$ID <- 1
+
+  dOde <- rxSolve(ode, d)
+
+  dLin <- rxSolve(lin, d)
+
+  expect_equal(dOde$Cc, dLin$Cc, tolerance = 1e-4)
+
+  expect_equal(dOde$accum, dLin$accum, tolerance = 1e-4)
+
+
+})
