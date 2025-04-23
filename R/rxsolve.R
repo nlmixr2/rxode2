@@ -625,6 +625,11 @@
 #'  - `error` this will stop this solve if this is not a parallel
 #'     solved ODE (otherwise stopping can crash R)
 #'
+#' @param ssSolved When `TRUE` this will return the solved steady
+#'   state solutions for the linear compartment model.  When `FALSE`
+#'   this will solve to steady state using the linear solutions
+#'   instead.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -742,6 +747,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     addlDropSs=TRUE,
                     ssAtDoseTime=TRUE,
                     ss2cancelAllPending=FALSE,
+                    ssSolved=TRUE,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -1037,6 +1043,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertLogical(addlDropSs, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(ssAtDoseTime, any.missing=FALSE, null.ok=FALSE, len=1)
     checkmate::assertLogical(ss2cancelAllPending, any.missing=FALSE, null.ok=FALSE, len=1)
+    checkmate::assertLogical(ssSolved, any.missing=FALSE, null.ok=FALSE, len=1)
     useStdPow <- as.integer(useStdPow)
     maxwhile <- as.integer(maxwhile)
     .zeros <- .xtra$.zeros
@@ -1173,6 +1180,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       keepInterpolation=keepInterpolation,
       safeLog=safeLog,
       safePow=safePow,
+      ssSolved=ssSolved,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

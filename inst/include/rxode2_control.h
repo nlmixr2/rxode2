@@ -97,5 +97,6 @@
 #define Rxc_keepInterpolation 92
 #define Rxc_safeLog 93
 #define Rxc_safePow 94
-#define Rxc__zeros 95
+#define Rxc_ssSolved 95
+#define Rxc__zeros 96
 #endif // __rxode2_control_H__

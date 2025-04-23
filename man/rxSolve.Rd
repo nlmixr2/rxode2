@@ -89,7 +89,7 @@ rxSolve(
   seed = NULL,
   nsim = NULL,
   minSS = 10L,
-  maxSS = 1000000L,
+  maxSS = 10000L,
   infSSstep = 12,
   strictSS = TRUE,
   istateReset = TRUE,
@@ -133,6 +133,7 @@ rxSolve(
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
   ss2cancelAllPending = FALSE,
+  ssSolved = TRUE,
   envir = parent.frame()
 )
 
@@ -286,7 +287,7 @@ is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
 sensitivity equations the default is \verb{0.5*10\\^(-sigdig-1.5)}
 (sensitivity changes only applicable for liblsoda).  This also
 controls the \code{atol}/\code{rtol} of the steady state solutions. The
-\code{ssAtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
+\code{ssAtol}/\code{ssRtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
 \verb{0.5*10\\^(-sigdig+0.625)}.  By default
 this is unspecified (\code{NULL}) and uses the standard \code{atol}/\code{rtol}.}
 
@@ -730,7 +731,7 @@ were not present.}
 a vector based on each state.}
 
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
-vector based on each state. By default 0, no rtol for ss}
+vector based on each state.}
 
 \item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
@@ -787,8 +788,7 @@ liblsoda.  This allows a less accurate solve for gradients (if desired)}
 calculating if steady state has been achieved for sensitivity compartments.}
 
 \item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
-calculating if steady state has been achieved for sensitivity
-compartments. By default, zero no rtol.}
+calculating if steady state has been achieved for sensitivity compartments.}
 
 \item{simVariability}{determines if the variability is simulated.
 When \code{NA} (default) this is determined by the solver.}
@@ -828,6 +828,11 @@ steady concentration at the actual time of dose, otherwise when
 cancels all pending doses like \code{SS=1}.  When \code{FALSE} the pending
 doses not canceled with \code{SS=2} (the infusions started before
 \code{SS=2} occurred are canceled, though).}
+
+\item{ssSolved}{When \code{TRUE} this will return the solved steady
+state solutions for the linear compartment model.  When \code{FALSE}
+this will solve to steady state using the linear solutions
+instead.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
