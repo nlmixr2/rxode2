@@ -1297,7 +1297,12 @@ extern "C" void handleSSinf8(int *neq,
       }
       *canBreak=0;
     } else {
-      for (int k = neq[0]; k--;){
+      for (int k = 0; k < neq[0]; k++){
+        // if (k == 0) REprintf("\n");
+        // REprintf("j: %d rtol[k:%d]: %f  Atol: %f xout: %f:  y: %f diff: %f\n", j, k,
+        //          op->ssRtol[k], op->ssAtol[k], *xout2,
+        //          yp[k],
+        //          fabs(yp[k]-ind->solveLast[k]));
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
           *canBreak=0;
         }

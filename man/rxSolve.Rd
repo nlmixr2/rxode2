@@ -89,7 +89,7 @@ rxSolve(
   seed = NULL,
   nsim = NULL,
   minSS = 10L,
-  maxSS = 1000L,
+  maxSS = 1000000L,
   infSSstep = 12,
   strictSS = TRUE,
   istateReset = TRUE,
@@ -286,7 +286,7 @@ is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
 sensitivity equations the default is \verb{0.5*10\\^(-sigdig-1.5)}
 (sensitivity changes only applicable for liblsoda).  This also
 controls the \code{atol}/\code{rtol} of the steady state solutions. The
-\code{ssAtol}/\code{ssRtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
+\code{ssAtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
 \verb{0.5*10\\^(-sigdig+0.625)}.  By default
 this is unspecified (\code{NULL}) and uses the standard \code{atol}/\code{rtol}.}
 
@@ -730,7 +730,7 @@ were not present.}
 a vector based on each state.}
 
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
-vector based on each state.}
+vector based on each state. By default 0, no rtol for ss}
 
 \item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
@@ -787,7 +787,8 @@ liblsoda.  This allows a less accurate solve for gradients (if desired)}
 calculating if steady state has been achieved for sensitivity compartments.}
 
 \item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
-calculating if steady state has been achieved for sensitivity compartments.}
+calculating if steady state has been achieved for sensitivity
+compartments. By default, zero no rtol.}
 
 \item{simVariability}{determines if the variability is simulated.
 When \code{NA} (default) this is determined by the solver.}
