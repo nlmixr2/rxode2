@@ -628,7 +628,8 @@
 #' @param ssSolved When `TRUE` this will return the solved steady
 #'   state solutions for the linear compartment model.  When `FALSE`
 #'   this will solve to steady state using the linear solutions
-#'   instead.
+#'   instead.  This is only used when the method only has `linCmt()`
+#'   and does not mix ODEs with the solution.  The default is `TRUE`.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
