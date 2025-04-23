@@ -1269,6 +1269,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   }
+  int nDup = 0;
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak =1;
@@ -1350,7 +1351,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
         ind->solveLast2[k] = yp[k];
       }
       if (canBreak){
-        break;
+        nDup++;
+        if (nDup >= 7) {
+          break;
+        }
       }
     }
     *xp2 = *xout2;
