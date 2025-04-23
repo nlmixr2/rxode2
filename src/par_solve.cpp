@@ -951,6 +951,36 @@ static inline int handleExtraDose(int *neq,
   return 0;
 }
 
+//' This function is used to check if the steady state can be handled
+//' by the pre-solved linear solutions
+//'
+//' @param op The rx solving options
+//'
+//' @param ind The rx solving individual options
+//'
+//' @param idx The index of the current dose
+//'
+//' @return 1 if the steady state can be handled, 0 otherwise
+//'
+//' Currently this requires:
+//'
+//' - Only linCmt() is defined (no mixed ODE/solved)
+//' - The dose is to the depot or central compartment
+static inline int canHandleSSLinear(rx_solving_options *op, rx_solving_options_ind *ind, int idx) {
+
+  if (op->ssSolved == 1 && op->neq == op->numLinSens + op->numLin) {
+    int evid = getEvid(ind, idx);
+    int wh, cmt, wh100, whI, wh0;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    if (op->depotLin) {
+      return (cmt == 0 || cmt == 1);
+    } else {
+      return (cmt == 0);
+    }
+  }
+  return 0;
+}
+
 extern "C" void handleSSbolus(int *neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -968,6 +998,40 @@ extern "C" void handleSSbolus(int *neq,
                               double *xp2,
                               double *curIi,
                               int *canBreak) {
+  if (canHandleSSLinear(op, ind, ind->ix[*i])) {
+
+    // only a linear solved, use calculated steady state instead of
+    // solved steady state.
+    //
+    // First set the steady state options for linCmtA or linCmtB
+    ind->linSS = 3;
+    ind->linSStau = *curIi;
+
+    // use handle evid to figure out what dose is applied
+
+    double ydum[2];
+    ydum[0] = ydum[1] = 0;
+
+    // here dose can be to the depot or central compartment
+    ind->idx=*i;
+    *xout2 = *xp2 + *curIi;
+    int evid = getEvid(ind, ind->ix[*i]);
+    int wh, cmt, wh100, whI, wh0;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    ind->linSSbolusCmt = cmt;
+    // Use "real" xout for handle_evid functions.
+    handle_evid(getEvid(ind, ind->ix[*i]), neq[0],
+                BadDose, InfusionRate, dose, ydum,
+                *xout, neq[1], ind);
+    ind->ixds--; // This dose stays in place
+
+    ind->linSSvar = ydum[cmt];
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    yp[cmt] -= ind->linSSvar; // take out dose since it will be given again
+    ind->linSS = 0; // reset to normal solve
+    return;
+  }
   for (int j = 0; j < op->maxSS; j++) {
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
@@ -1036,6 +1100,39 @@ extern "C" void solveSSinf(int *neq,
                            double *dur,
                            double *dur2,
                            int *canBreak) {
+  if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
+    // only a linear solved, use calculated steady state instead of
+    // solved steady state.
+    //
+    // First set the steady state options for linCmtA or linCmtB
+    ind->linSS = 2;
+    ind->linSSvar = *dur; // tinf or dur
+    ind->linSStau = *curIi;
+
+    // Next, turn on the infusion in the appropriate compartment
+    *canBreak=1;
+    *xout2 = *xp2+*dur;
+    ind->idx=*bi;
+    ind->ixds = *infBixds;
+    handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
+                BadDose, InfusionRate, dose, yp,
+                *xout, neq[1], ind);
+    // yp is last solve or y0
+    *istate=1;
+    // yp is last solve or y0
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    *xp2 = *xout2;
+    // Turn off Infusion; no need to solve anything afterward
+    *xout2 = *xp2 + *dur2;
+    ind->ixds = *infEixds;
+    ind->idx=*ei;
+    handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
+                BadDose, InfusionRate, dose, yp,
+                *xout+*dur, neq[1], ind);
+    ind->linSS = 0; // switch back to normal solve
+    return;
+  }
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak=1;
@@ -1273,6 +1370,31 @@ extern "C" void handleSSinf8(int *neq,
                              double *xout2,
                              double *xp2,
                              int *canBreak) {
+  if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
+    // only a linear solved, use calculated steady state instead of
+    // solved steady state.
+    //
+    // First set the steady state options for linCmtA or linCmtB
+    ind->linSS = 1; // infinite infusin
+
+    // Next, turn on the infusion in the appropriate compartment
+    ind->ixds= *infBixds;
+    ind->idx= *bi;
+    // REprintf("Assign ind->ixds to %d (idx: %d) #0\n", ind->ixds, ind->idx);
+    // Rate is fixed, so modifying bio-availability doesn't change duration.
+    ind->InfusionRate[ind->cmt] = *rateOn;
+    ind->on[ind->cmt] = 1;
+
+    // next solve
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+
+    // turn off infusion
+    ind->InfusionRate[ind->cmt] = 0.0;
+
+    ind->linSS = 0; // switch back to normal solve
+    return;
+  }
   ind->ixds= *infBixds;
   ind->idx= *bi;
   // REprintf("Assign ind->ixds to %d (idx: %d) #0\n", ind->ixds, ind->idx);
@@ -1282,7 +1404,7 @@ extern "C" void handleSSinf8(int *neq,
   *xp2 = 0.0;
   double infStep = op->infSSstep, a1=1.0, t1=*xp2+1.0;
   // Based on http://www.rxkinetics.com/theo.html -- Chiou method
-  for (int j = 0; j < op->maxSS; j++){
+  for (int j = 0; j < op->maxSS; j++) {
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,

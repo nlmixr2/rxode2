@@ -181,7 +181,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   stan::math::linCmtStan lc(ncmt, oral0, trans, false, ind->linSS);
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);
-  } else if (type == linCmtSsBolus) {
+  } else if (ind->linSS == linCmtSsBolus) {
     lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
   }
 
@@ -391,7 +391,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   stan::math::linCmtStan lc(ncmt, oral0, trans, true, ind->linSS);
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);
-  } else if (type == linCmtSsBolus) {
+  } else if (ind->linSS == linCmtSsBolus) {
     lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
   }
 
