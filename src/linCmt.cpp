@@ -178,7 +178,13 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   // Create the solved system object
-  stan::math::linCmtStan lc(ncmt, oral0, trans, false, 0);
+  stan::math::linCmtStan lc(ncmt, oral0, trans, false, ind->linSS);
+  if (ind->linSS == linCmtSsInf) {
+    lc.setSsInf(ind->linSSvar, ind->linSStau);
+  } else if (type == linCmtSsBolus) {
+    lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
+  }
+
 
   // Get number of items in Alast
   int nAlast = lc.getNalast();
@@ -382,7 +388,12 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   // Create the solved system object
-  stan::math::linCmtStan lc(ncmt, oral0, trans, true, 0);
+  stan::math::linCmtStan lc(ncmt, oral0, trans, true, ind->linSS);
+  if (ind->linSS == linCmtSsInf) {
+    lc.setSsInf(ind->linSSvar, ind->linSStau);
+  } else if (type == linCmtSsBolus) {
+    lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
+  }
 
   // Get number of items in Alast
   int nAlast = lc.getNalast();

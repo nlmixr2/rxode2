@@ -4908,7 +4908,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->safeLog = asInt(rxControl[Rxc_safeLog], "safeLog");
     rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
+    op->ssSolved = asInt(rxCotnrol[Rxc_ssSolved], "ssSolved");
     op->stiff = method;
+
     rxSolveDat->throttle = false;
     if (method != 2){
       op->cores = 1;//getRxThreads(1, false);

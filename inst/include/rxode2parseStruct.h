@@ -81,6 +81,7 @@ typedef struct {
   int numLin;
   int depotLin;
   int linOffset;
+  int ssSolved;
 } rx_solving_options;
 
 
@@ -203,6 +204,11 @@ typedef struct {
   // insert the solution when needed.
   // This is the state values for the current solve. These can also be
   // updated by the `linCmtA` and `linCmtB` functions.
+  int linSS;
+  int linSScmt;
+  int linSSbolusCmt;
+  double linSStau;
+  double linSSvar;
 } rx_solving_options_ind;
 
 typedef struct {
