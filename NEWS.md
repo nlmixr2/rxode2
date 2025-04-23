@@ -7,6 +7,9 @@
 - Fix model variables for `alag(cmt)` when they are defined before
   `d/dt()` or `linCmt()`
 
+- Just in time use of `state.ignore` in the model variables, fixes
+  negative length error observed in #857.
+
 # rxode2 3.0.4
 
 - Add stable hashes for rxUi objects (#838, #689)
