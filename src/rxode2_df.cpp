@@ -727,7 +727,14 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
           }
           // time
           dfp = REAL(VECTOR_ELT(df, jj++));
-          dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+          if (evid == 3) {
+            dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
+            if (fabs(dfp[ii]) < sqrt(DBL_EPSILON)) {
+              dfp[ii] = 0.0;
+            }
+          } else {
+            dfp[ii] = getTime_(ind->ix[i], ind) + ind->curShift;
+          }
           // LHS
           if (nlhs){
             for (j = 0; j < nlhs; j++){
