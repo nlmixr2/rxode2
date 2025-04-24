@@ -314,7 +314,7 @@ rxTest({
                        tolerance = 0.1)
         })
       }
-      test_that(paste0("nmtest id:", id, " alag; method: ", meth, "; modifyData:", modifyData,"; addlDropSs: ", addlDropSs, "; lin=", lin),
+      test_that(paste0("nmtest id:", id, " alag; method: ", meth, "; modifyData:", modifyData,"; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
       {
         if (lin == "A") {
           s1 <- rxSolve(lfl, d, method=meth,
