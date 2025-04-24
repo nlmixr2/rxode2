@@ -294,7 +294,7 @@ rxTest({
         sub <- 96
       }
       if (noLag) {
-        test_that(paste0("nmtest id:", id, " no alag; method: ", meth, "; modifyData:", modifyData, "; addlDropSs: ", addlDropSs, "; lin=", lin),
+        test_that(paste0("nmtest id:", id, " no alag; method: ", meth, "; modifyData:", modifyData, "; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
         {
           if (lin == "A") {
             s1 <- rxSolve(lf, d, method=meth,

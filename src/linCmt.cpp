@@ -185,7 +185,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
   }
 
-
   // Get number of items in Alast
   int nAlast = lc.getNalast();
 

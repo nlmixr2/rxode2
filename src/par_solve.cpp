@@ -488,6 +488,7 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
     ind->linCmtAlast = yp + op->linOffset;
     ind->tprior = xp; // Set the time to the time to solve to.
     ind->tout   = xout;
+
   }
 }
 
@@ -1033,13 +1034,15 @@ extern "C" void handleSSbolus(int *neq,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     ind->linSS = 0; // reset to normal solve
 
-    // now advance system by the bolus time to get the right derivatives
-    // and use the trough concentrations (as expected in this function)
-    *xp2 = *xout2;
-    *xout2 = *xp2 + *curIi;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    return;
+    if (yp[cmt] > 0) {
+      // now advance system by the bolus time to get the right derivatives
+      // and use the trough concentrations (as expected in this function)
+      *xp2 = *xout2;
+      *xout2 = *xp2 + *curIi;
+      solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+      return;
+    }
   }
   for (int j = 0; j < op->maxSS; j++) {
     ind->idx=*i;
@@ -1140,7 +1143,10 @@ extern "C" void solveSSinf(int *neq,
                 BadDose, InfusionRate, dose, yp,
                 *xout+*dur, neq[1], ind);
     ind->linSS = 0; // switch back to normal solve
-    return;
+    if (yp[ind->cmt] > 0) {
+      // solved successfully, return
+      return;
+    }
   }
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
@@ -1397,6 +1403,7 @@ extern "C" void handleSSinf8(int *neq,
     // Rate is fixed, so modifying bio-availability doesn't change duration.
     ind->InfusionRate[ind->cmt] = *rateOn;
     ind->on[ind->cmt] = 1;
+    *xp2 = 0.0;
 
     // next solve
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
@@ -1404,9 +1411,15 @@ extern "C" void handleSSinf8(int *neq,
 
     // turn off infusion
     ind->InfusionRate[ind->cmt] = 0.0;
+    *xp2=*xout;
+    *istate=1;
 
     ind->linSS = 0; // switch back to normal solve
-    return;
+    if (yp[ind->cmt] > 0.0) {
+      // successful solve; for some reason the mac doesn't update here
+      // :(
+      return;
+    }
   }
   ind->ixds= *infBixds;
   ind->idx= *bi;
@@ -2277,6 +2290,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linSS=0;
     xout = getTime_(ind->ix[i], ind);
     yp = getSolve(i);
     if(getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -2425,6 +2439,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linSS=0;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3) {
@@ -2879,6 +2894,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   ind->solvedIdx = 0;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
+    ind->linSS=0;
     yp   = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
@@ -3069,6 +3085,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linSS=0;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug) {
@@ -3195,6 +3212,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
+    ind->linSS=0;
     yp = getSolve(i);
     xout = getTime_(ind->ix[i], ind);
     if (global_debug){
