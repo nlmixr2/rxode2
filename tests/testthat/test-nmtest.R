@@ -377,3 +377,42 @@ rxTest({
   ## modeled equivalents of 425, 525
 
 })
+
+test_that("evid4", {
+
+  evid4 <- function() {
+    ini({
+      # Where initial conditions/variables are specified
+      lka  <- log(2.097)   #log ka (1/h)
+      lcl  <- log(2.568724)#log Cl (L/h)
+      lv   <- log(69.1925) #log V (L)
+      allocl <- fix(0.75)  #WT on Cl
+      allov  <- fix(1.00)  #WT on V
+    })
+    model({
+      # Where the model is specified
+      cl <- exp(lcl + allocl*(log(WT/70)))
+      v  <- exp(lv + allov*(log(WT/70)))
+      ka <- exp(lka)
+      lin <- linCmt()
+    })
+  }
+
+  df <- "un]\"BAAA@QRtHACAAAAAAAAAPAAA+:g6Ji,J_8DAE+d1RAK*mJsyNK+:DGqit,>jj(>ph{/KV80[Qh\"~\"=)h>UD~mN@pb$YTVW?CGwjB)v2W`/^kDbH[6nC\"Jpl,moPVY6kUoIDtWA!(@CPA8zJM3b6!,sU\"7<>1!q\"Nq~6eF8[#l2^efwtU]|DzBa)*L%(&X{c%v.`R`V%uy3&$Wq8e+#y)sv]^`f81+\"$M?1WILGf;rpV}@ITW>k,XKH{s[|/Jx7tl[g)ndEQBAH[&U_X=7$J|Z&rpb+Q|k>c%X[TSCxq9jwQO+d2E!C*t=JAoc$,RCiewrSb21kuUx?jgT%i6ffZptmaT3W+t{eq6nfb=U$Au+B%F>CEQK!\"I0ScDfzy<0023?.Gh~t:$e+&`8wLvv7[`d*Mye!{n=Nn:$F7?e)2uXw?u&uS?ALs6.rFs.IJ*B`2vx_m6J^Y$;SgEH},R*H9WB)#&=;*(gE)YJV%/kM81i&Vr9EB8yIoAvlRtWt*hUU0?ADHG}Ep+|6D,c$n^x5I{1Rbf6JdpE3,RM$@U=NFB%SR,F~d#Ku4juP*):i5R:Imx/I:Wh+yV9chv^a_EgRy.wRy?cx^mVgzeNest.yUFNaD"
+
+  df <- df %>%
+    qs::base91_decode() %>%
+    qs::qdeserialize()
+
+  f1 <- rxSolve(evid4, df[1:5,], addDosing=TRUE, returnType="data.frame")
+
+  f2 <- rxSolve(evid4, df, addDosing=TRUE, returnType="data.frame")
+
+  expect_equal(f1$lin, f2$lin[seq_along(f1$lin)])
+
+})
+
+
+v  <- exp(lv + allov*(log(WT/70)))
+log(v) <- lv + allov*(log(WT/70))
+log(27.677) - log(28.0/70)
