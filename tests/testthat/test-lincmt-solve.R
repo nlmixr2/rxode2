@@ -2133,13 +2133,14 @@ test_that("mixed ode and solved models", {
 
   d$ID <- 1
 
-  dOde <- rxSolve(ode, d)
+  for (meth in c("liblsoda", "lsoda", "dop853")) {
+    dOde <- rxSolve(ode, d, meth=meth)
 
-  dLin <- rxSolve(lin, d)
+    dLin <- rxSolve(lin, d, meth=meth)
 
-  expect_equal(dOde$Cc, dLin$Cc, tolerance = 1e-4)
+    expect_equal(dOde$Cc, dLin$Cc, tolerance = 1e-4)
 
-  expect_equal(dOde$accum, dLin$accum, tolerance = 1e-4)
+    expect_equal(dOde$accum, dLin$accum, tolerance = 1e-4)
 
-
+  }
 })
