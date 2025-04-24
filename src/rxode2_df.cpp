@@ -481,7 +481,9 @@ extern "C" SEXP rxode2_df(int doDose0, int doTBS) {
                 getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
                 dfi = INTEGER(VECTOR_ELT(df, jj++));
                 double curAmt = getDoseNumber(ind, di);
-                if (whI == EVIDF_MODEL_RATE_OFF){
+                if (evid == 3) {
+                  dfi[ii] = 3;
+                } else if (whI == EVIDF_MODEL_RATE_OFF){
                   dullRate=0;
                   dfi[ii] = -1;
                 } else if (whI == EVIDF_MODEL_DUR_OFF){
