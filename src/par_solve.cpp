@@ -486,9 +486,8 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
   // First set the last values of time and compartment values
   if (op->numLin > 0) {
     ind->linCmtAlast = yp + op->linOffset;
-    ind->tprior = xp; // Set the time to the time to solve to.
-    ind->tout   = xout;
-
+    ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
+    ind->tout   = xout + ind->curShift;
   }
 }
 
@@ -691,7 +690,6 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
         ind->curShift -= rx->maxShift;
       }
       time[i] = getTime__(ind->ix[i], ind, 1);
-
     }
     if (op->naTime != 0) {
       doSort=0;
@@ -2286,7 +2284,6 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   rc= ind->rc;
   double xp = x[0];
   xoutp=xp;
-  unsigned int j;
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
@@ -2309,20 +2306,8 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3){
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-          ind->cacheME=0;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp,inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        if (rx->istateReset) idid = 1;
-        xp=xout;
-        ind->ixds++;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &idid, u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &idid, op, ind, u_inis, NULL);
@@ -2434,7 +2419,6 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   x = ind->all_times;
   rc= ind->rc;
   double xp = x[0];
-  unsigned int j;
   lsoda_prepare(ctx, &opt);
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
@@ -2488,19 +2472,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     if (!op->badSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-          ind->cacheME=0;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp,inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        if (rx->istateReset) ctx->state = 1;
-        xp=xout;
-        ind->ixds++;
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(ctx->state), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &(ctx->state), op, ind, u_inis, ctx);
@@ -2890,7 +2862,6 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   int neqOde= neq[0] - op->numLin - op->numLinSens;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
-  unsigned int j;
   ind->solvedIdx = 0;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
@@ -2955,19 +2926,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
     ind->_newind = 2;
     if (!op->badSolve){
       ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3){
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp, op->inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        if (rx->istateReset) istate = 1;
-        ind->ixds++;
-        xp = xout;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(istate), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
@@ -3134,18 +3094,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     if (!op->badSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-          ind->cacheME=0;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp,inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        xp=xout;
-        ind->ixds++;
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
@@ -3342,19 +3291,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     if (!op->badSolve) {
       ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3){
-        ind->curShift -= rx->maxShift;
-        for (j = neq[0]; j--;) {
-          ind->InfusionRate[j] = 0;
-          ind->on[j] = 1;
-          ind->cacheME=0;
-        }
-        cancelInfusionsThatHaveStarted(ind, neq[1], xout);
-        cancelPendingDoses(ind, neq[1]);
-        memcpy(yp, op->inits, neq[0]*sizeof(double));
-        u_inis(neq[1], yp); // Update initial conditions @ current time
-        ind->ixds++;
-        xp=xout;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
         handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);

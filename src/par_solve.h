@@ -78,7 +78,27 @@ extern "C" {
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
-
+  static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
+                                 int *neq, double *xp, double *xout,  double *yp,
+                                 int *idid,
+                                 t_update_inis u_inis) {
+    ind->curShift -= rx->maxShift;
+    for (unsigned int j = neq[0]; j--;) {
+      ind->InfusionRate[j] = 0;
+      ind->on[j] = 1;
+      ind->cacheME=0;
+    }
+    cancelInfusionsThatHaveStarted(ind, neq[1], *xout);
+    cancelPendingDoses(ind, neq[1]);
+    memcpy(yp, op->inits, neq[0]*sizeof(double));
+    u_inis(neq[1], yp); // Update initial conditions @ current time
+    if (rx->istateReset) *idid = 1;
+    *xout -= rx->maxShift;
+    *xp = *xout;
+    ind->linCmtAlast = NULL;
+    ind->linCmtLastT = NA_REAL;
+    ind->ixds++;
+  }
 #if defined(__cplusplus)
 }
 #endif
