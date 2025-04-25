@@ -1040,6 +1040,11 @@ extern "C" void handleSSbolus(int *neq,
       return;
     }
   }
+  ind->idx=*i;
+  *xout2 = *xp2 + *curIi;
+  // yp is last solve or y0
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   for (int j = 0; j < op->maxSS; j++) {
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
