@@ -26,6 +26,7 @@ extern "C" {
     ind->linSStau=0.0;
     ind->linSSbolusCmt=0;
     ind->linCmtAlast = NULL;
+    ind->ssTime = NA_REAL;
     _setIndPointersByThread(ind);
 		for (int i=rxLlikSaveSize*op->nLlik; i--;) {
 			ind->llikSave[i] = 0.0;

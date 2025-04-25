@@ -208,6 +208,7 @@ typedef struct {
   int linSSbolusCmt;
   double linSStau;
   double linSSvar;
+  double ssTime;
 } rx_solving_options_ind;
 
 typedef struct {

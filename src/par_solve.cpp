@@ -998,6 +998,7 @@ extern "C" void handleSSbolus(int *neq,
                               double *xp2,
                               double *curIi,
                               int *canBreak) {
+  ind->ssTime = *xp2;
   if (canHandleSSLinear(op, ind, ind->ix[*i])) {
 
     // only a linear solved, use calculated steady state instead of
@@ -1037,6 +1038,7 @@ extern "C" void handleSSbolus(int *neq,
       *xout2 = *xp2 + *curIi;
       solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                    *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+      ind->ssTime = NA_REAL;
       return;
     }
   }
@@ -1090,6 +1092,7 @@ extern "C" void handleSSbolus(int *neq,
     *istate=1;
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void solveSSinf(int *neq,
@@ -1115,6 +1118,7 @@ extern "C" void solveSSinf(int *neq,
                            double *dur,
                            double *dur2,
                            int *canBreak) {
+  ind->ssTime = *xp2;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
     // only a linear solved, use calculated steady state instead of
     // solved steady state.
@@ -1148,6 +1152,7 @@ extern "C" void solveSSinf(int *neq,
     ind->linSS = 0; // switch back to normal solve
     if (yp[ind->cmt] > 0) {
       // solved successfully, return
+      ind->ssTime = NA_REAL;
       return;
     }
   }
@@ -1237,6 +1242,7 @@ extern "C" void solveSSinf(int *neq,
     }
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void solveSSinfLargeDur(int *neq,
@@ -1264,6 +1270,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
                                    double *offTime,
                                    double *addTime,
                                    int *canBreak) {
+  ind->ssTime = *xp2;
   *numDoseInf = (int)(*dur / *curIi);
   *offTime = *dur - (*numDoseInf)*(*curIi);
   *addTime = *curIi - *offTime;
@@ -1371,6 +1378,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void handleSSinf8(int *neq,
@@ -1392,6 +1400,7 @@ extern "C" void handleSSinf8(int *neq,
                              double *xout2,
                              double *xp2,
                              int *canBreak) {
+  ind->ssTime = *xp2;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
     // only a linear solved, use calculated steady state instead of
     // solved steady state.
@@ -1421,6 +1430,7 @@ extern "C" void handleSSinf8(int *neq,
     if (yp[ind->cmt] > 0.0) {
       // successful solve; for some reason the mac doesn't update here
       // :(
+      ind->ssTime = NA_REAL;
       return;
     }
   }
@@ -1471,6 +1481,7 @@ extern "C" void handleSSinf8(int *neq,
     *xp2=*xout;
     *istate=1;
   }
+  ind->ssTime = NA_REAL;
 }
 
 

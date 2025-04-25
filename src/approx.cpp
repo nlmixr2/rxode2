@@ -212,11 +212,16 @@ extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0)
   return ind->par_ptr[parNo];
 }
 
-extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idxIn) {
+extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) Rf_errorcall(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
-
+  double t = 0.0;
+  if (!ISNA(ind->ssTime)) {
+    t = ind->ssTime;
+  } else {
+    t = tt;
+  }
   if (ind->_update_par_ptr_in) return;
   int idx = idxIn;
   rx_solving_options *op = rx->op;
