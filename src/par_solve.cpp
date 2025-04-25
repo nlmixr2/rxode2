@@ -1118,7 +1118,6 @@ extern "C" void solveSSinf(int *neq,
                            double *dur,
                            double *dur2,
                            int *canBreak) {
-  ind->ssTime = *xp2;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
     // only a linear solved, use calculated steady state instead of
     // solved steady state.
@@ -1152,7 +1151,6 @@ extern "C" void solveSSinf(int *neq,
     ind->linSS = 0; // switch back to normal solve
     if (yp[ind->cmt] > 0) {
       // solved successfully, return
-      ind->ssTime = NA_REAL;
       return;
     }
   }
@@ -1242,7 +1240,6 @@ extern "C" void solveSSinf(int *neq,
     }
     *xp2 = *xout2;
   }
-  ind->ssTime = NA_REAL;
 }
 
 extern "C" void solveSSinfLargeDur(int *neq,
@@ -1270,7 +1267,6 @@ extern "C" void solveSSinfLargeDur(int *neq,
                                    double *offTime,
                                    double *addTime,
                                    int *canBreak) {
-  ind->ssTime = *xp2;
   *numDoseInf = (int)(*dur / *curIi);
   *offTime = *dur - (*numDoseInf)*(*curIi);
   *addTime = *curIi - *offTime;
@@ -1378,7 +1374,6 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     *xp2 = *xout2;
   }
-  ind->ssTime = NA_REAL;
 }
 
 extern "C" void handleSSinf8(int *neq,
@@ -1400,7 +1395,6 @@ extern "C" void handleSSinf8(int *neq,
                              double *xout2,
                              double *xp2,
                              int *canBreak) {
-  ind->ssTime = *xp2;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
     // only a linear solved, use calculated steady state instead of
     // solved steady state.
@@ -1430,7 +1424,6 @@ extern "C" void handleSSinf8(int *neq,
     if (yp[ind->cmt] > 0.0) {
       // successful solve; for some reason the mac doesn't update here
       // :(
-      ind->ssTime = NA_REAL;
       return;
     }
   }
@@ -1481,7 +1474,6 @@ extern "C" void handleSSinf8(int *neq,
     *xp2=*xout;
     *istate=1;
   }
-  ind->ssTime = NA_REAL;
 }
 
 
