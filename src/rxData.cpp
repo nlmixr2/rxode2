@@ -3652,6 +3652,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         _globals.gidose[j] = i-lasti;
         ind->ndoses++;
         ndoses++; nall++; j++;
+        if (_globals.gevid[i] == 3) {
+          tlast = NA_REAL;
+        }
       } else {
         nobs++; nobst++; nall++;
         if (_globals.gevid[i] == 2) {
@@ -3660,7 +3663,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         }
         if (_globals.gevid[i] == 0) nobs2t++;
         if (_globals.gevid[i] == 9) nevid9++;
-        if (!ISNA(tlast)){
+        if (!ISNA(tlast)) {
           tmp = time0[i]-tlast;
           if (tmp < 0){
             rxSolveFree();
