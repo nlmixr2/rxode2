@@ -3407,7 +3407,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
                                         const RObject &inits,
                                         rxSolve_t* rxSolveDat){
   Nullable<NumericVector> hmax = asNNv(rxControl[Rxc_hmax], "hmax");
-  bool doMean=true;
+  bool doMean=false;
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   rx_solving_options_ind* ind;
