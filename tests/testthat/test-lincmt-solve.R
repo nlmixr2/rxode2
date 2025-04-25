@@ -2095,6 +2095,78 @@ rxTest({
   }
 })
 
+test_that("zero clearance solve #261", {
+
+  rx <- rxode2({
+    param(tlag, tka, tv, tcl, cl_crcl, cl_hep, cl_cyp2d6, cl_cyp3a_inh,
+          cl_cyp3a_ind, cl_sexf, cl_japanese, prop_err, add_err,
+          iiv_v, iiv_cl, iiv_ka, crcl, hepatic_impair, cyp2d6,
+          cyp3a_inh, cyp3a_ind, sex, japanese)
+    rxerr.rxLinCmt = 1
+    tlag = 0.447
+    tka = 0.0935
+    tv = 144
+    tcl = 93.8
+    cl_crcl = 0.303
+    cl_hep = 0.422
+    cl_cyp2d6 = 0.626
+    cl_cyp3a_inh = 0.504
+    cl_cyp3a_ind = 3.9
+    cl_sexf = 0.903
+    cl_japanese = 1.12
+    prop_err = 0.0951
+    add_err = 0.00123
+    iiv_v = 0
+    iiv_cl = 0
+    iiv_ka = 0
+    cl_crcl_i = (crcl/80)^cl_crcl
+    cl_hep_i = cl_hep * hepatic_impair + (1 - hepatic_impair)
+    cl_cyp2d6_i = cl_cyp2d6 * cyp2d6 + (1 - cyp2d6)
+    cl_cyp3a_inh_i = cl_cyp3a_inh * cyp3a_inh + (1 - cyp3a_inh)
+    cl_cyp3a_ind_i = cl_cyp3a_ind * cyp3a_ind + (1 - cyp3a_ind)
+    cl_sexf_i = cl_sexf * (sex == "Female") + (sex == "Male")
+    cl_japanese_i = cl_japanese * japanese + (1 - japanese)
+    cl = tcl * exp(iiv_cl) * cl_crcl_i * cl_hep_i * cl_cyp2d6_i *
+      cl_cyp3a_inh_i * cl_cyp3a_ind_i * cl_sexf_i * cl_japanese_i
+    v = tv * exp(iiv_v)
+    ka = tka * exp(iiv_ka)
+    alag(depot) = tlag
+    rx_yj_ ~ 2
+    rx_lambda_ ~ 1
+    rx_low_ ~ 0
+    rx_hi_ ~ 1
+    rx_pred_f_ ~ linCmt()
+    rx_pred_ ~ rx_pred_f_
+    rx_r_ ~ (add_err)^2 + (rx_pred_f_)^2 * (prop_err)^2
+    ipredSim = rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_,
+                      rx_hi_)
+    sim = rxTBSi(rx_pred_ + sqrt(rx_r_) * rxerr.rxLinCmt, rx_lambda_,
+                 rx_yj_, rx_low_, rx_hi_)
+    cmt(rxLinCmt)
+    dvid(3)
+  })
+
+  d_sim <-
+    et(amt=4) %>%
+    et(time=0:24) %>%
+    as.data.frame() %>%
+    dplyr::mutate(
+      japanese=0,
+      sex=0,
+      cyp3a_ind=0,
+      cyp3a_inh=0,
+      cyp2d6=0,
+      hepatic_impair=0,
+      crcl=80
+    )
+
+  f <- rxSolve(rx, d_sim)
+
+  expect_false(any(is.na(f$sim) | is.nan(f$sim)))
+  expect_false(any(is.na(f$ipredSim) | is.nan(f$ipredSim)))
+
+})
+
 
 # test mixed ODE and solved models
 
