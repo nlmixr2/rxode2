@@ -1040,11 +1040,13 @@ extern "C" void handleSSbolus(int *neq,
       return;
     }
   }
+  // advance to trough
   ind->idx=*i;
   *xout2 = *xp2 + *curIi;
   // yp is last solve or y0
   solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  *xp2 = *xout2;
   for (int j = 0; j < op->maxSS; j++) {
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
@@ -2862,7 +2864,6 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   double xp = getAllTimes(ind, 0);
   double xout;
-  int neqOde= neq[0] - op->numLin - op->numLinSens;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   ind->solvedIdx = 0;
@@ -3044,7 +3045,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   x = ind->all_times;
   rc= ind->rc;
   double xp = x[0];
-  unsigned int j;
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
@@ -3160,7 +3160,6 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   x = ind->all_times;
   rc= ind->rc;
   double xp = x[0];
-  unsigned int j;
   ind->solvedIdx = 0;
   for(i=0; i<nx; i++) {
     ind->idx=i;
