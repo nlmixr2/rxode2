@@ -252,15 +252,17 @@ namespace stan {
         T pDepot = 0.0;
         T rDepot = 0.0;
         T R      = rate_[oral0_];
+        double rd = rate_[oral0_];
         if (oral0_  == 1) {
           Ea = exp(-ka*dt_);
           pDepot = yp(0, 0);
           rDepot = rate_[0];
           R = rDepot + R;
+          rd += rate_[0];
         }
         Eigen::Matrix<T, Eigen::Dynamic, 1> ret = yp;
 
-        if (abs(rate_[oral0_]) <= DBL_EPSILON) {
+        if (abs(rd) <= DBL_EPSILON) {
           ret(oral0_, 0) = yp(oral0_, 0)*E;
         } else {
           ret(oral0_, 0) = yp(oral0_, 0)*E + R*(1.0-E)/(k10);
