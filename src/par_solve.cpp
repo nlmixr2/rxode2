@@ -1281,6 +1281,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
   *addTime = *curIi - *offTime;
   ind->ixds = *infBixds;
   ind->idx = *bi;
+  double timeStart = *xp2;
+  ind->ssTime = timeStart;
   for (int j = 0; j < *numDoseInf; j++) {
     ind->ixds = *infBixds;
     ind->idx = *bi;
@@ -1294,6 +1296,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   }
   int nDup = 0;
+  double time2 = *xp2;
+  double time3 = *xp2 + *addTime;
   for (int j = 0; j < op->maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak =1;
@@ -1306,6 +1310,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
+    ind->ssTime = time2;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
@@ -1345,6 +1350,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
+    ind->ssTime = time3;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
@@ -1383,6 +1389,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void handleSSinf8(int *neq,
