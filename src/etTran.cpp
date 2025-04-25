@@ -1614,7 +1614,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         //durModeled = true;
       } else if (rate > 0){
         // Rate is fixed
-        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4){
+        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                   depotLin, numCmt, numSens)) {
             rateI = 1;
@@ -1708,6 +1708,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else {
         cevid=0;
       }
+    }
+    if (cevid == 4 && nobs ==0 && ndose == 0){
+      // No reset here
+      cevid = 1;
+    }
+    if (cevid == 3 && nobs == 0 && ndose == 0) {
+      continue;
     }
     switch(cevid) {
     case 0:
@@ -1927,7 +1934,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (amtCol == -1) {
         stop(_("'amt' column missing with dosing event (EVID=%d, id: %s row: %d)"), cevid, CHAR(idLvl[cid-1]), i+1);
       }
-
       id.push_back(cid);
       evid.push_back(3);
       cmtF.push_back(cmt);
