@@ -259,7 +259,13 @@ namespace stan {
           R = rDepot + R;
         }
         Eigen::Matrix<T, Eigen::Dynamic, 1> ret = yp;
-        ret(oral0_, 0) = yp(oral0_, 0)*E + R*(1.0-E)/(k10);
+
+        if (abs(rate_[oral0_]) <= DBL_EPSILON) {
+          ret(oral0_, 0) = yp(oral0_, 0)*E;
+        } else {
+          ret(oral0_, 0) = yp(oral0_, 0)*E + R*(1.0-E)/(k10);
+        }
+
         bool isSme = (abs(ka-k10)  <= DBL_EPSILON*max2(abs(ka), abs(k10)));
         if (isSme) {
           ret(oral0_, 0) += (pDepot*k10 - rDepot)*dt_*E;
