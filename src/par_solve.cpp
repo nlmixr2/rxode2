@@ -1118,6 +1118,9 @@ extern "C" void solveSSinf(int *neq,
                            double *dur,
                            double *dur2,
                            int *canBreak) {
+
+  double ssStart = *xp2;
+  double ssStop = *xp2 + *dur;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
     // only a linear solved, use calculated steady state instead of
     // solved steady state.
@@ -1126,6 +1129,7 @@ extern "C" void solveSSinf(int *neq,
     ind->linSS = 2;
     ind->linSSvar = *dur; // tinf or dur
     ind->linSStau = *curIi;
+    ind->ssTime = ssStart;
 
     // Next, turn on the infusion in the appropriate compartment
     *canBreak=1;
@@ -1151,6 +1155,7 @@ extern "C" void solveSSinf(int *neq,
     ind->linSS = 0; // switch back to normal solve
     if (yp[ind->cmt] > 0) {
       // solved successfully, return
+      ind->ssTime = NA_REAL;
       return;
     }
   }
@@ -1160,6 +1165,8 @@ extern "C" void solveSSinf(int *neq,
     *xout2 = *xp2+*dur;
     ind->idx=*bi;
     ind->ixds = *infBixds;
+    ind->ssTime = ssStart;
+
     handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
@@ -1205,6 +1212,7 @@ extern "C" void solveSSinf(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
+    ind->ssTime = ssStop;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j <= op->minSS -1){
@@ -1240,6 +1248,7 @@ extern "C" void solveSSinf(int *neq,
     }
     *xp2 = *xout2;
   }
+  ind->ssTime = NA_REAL;
 }
 
 extern "C" void solveSSinfLargeDur(int *neq,
