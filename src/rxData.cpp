@@ -3432,6 +3432,10 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         doMean = true;
       } else {
         hmax0 = hmax00[0];
+        if (fabs(hmax0) < sqrt(DBL_EPSILON)) {
+          doMean = true;
+          hmax0 = 0.0;
+        }
       }
     }
     DataFrame dataf = as<DataFrame>(ev1);
