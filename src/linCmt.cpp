@@ -152,14 +152,7 @@ RObject linCmtModelDouble(double dt,
  * This function can bebe called multiple times in the same function.
  *
  * The first time linCmtA is called time _t and a specific id
- * called the function and gradients are calculated. The time
- * is then stored in linCmtLastT.
- *
- * For this reason, the initialization of an ID sets linCmtLastT to
- * NA_REAL
- *
- * If the time is the same as linCmtLastT, then the function value
- * and the amounts are restored from the last call (or calculated simply)
+ * called the function and gradients are calculated.
  *
  * @author Matthew Fidler
  *
@@ -360,14 +353,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
  * system when running focei.
  *
  * The first time linCmtB is called time _t and a specific id
- * called the function and gradients are calculated. The time
- * is then stored in linCmtLastT.
- *
- * For this reason, the initialization of an ID sets linCmtLastT to
- * NA_REAL
- *
- * If the time is the same as linCmtLastT, then the function value
- * and the jacobian are restored from the last call (or calculated simply)
+ * called the function and gradients are calculated.
  *
  * @author Matthew Fidler
  *

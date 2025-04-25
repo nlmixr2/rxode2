@@ -26,7 +26,6 @@ extern "C" {
     ind->linSStau=0.0;
     ind->linSSbolusCmt=0;
     ind->linCmtAlast = NULL;
-    ind->linCmtLastT = NA_REAL;
     _setIndPointersByThread(ind);
 		for (int i=rxLlikSaveSize*op->nLlik; i--;) {
 			ind->llikSave[i] = 0.0;
@@ -95,8 +94,7 @@ extern "C" {
     if (rx->istateReset) *idid = 1;
     *xout -= rx->maxShift;
     *xp = *xout;
-    ind->linCmtAlast = NULL;
-    ind->linCmtLastT = NA_REAL;
+    ind->linCmtAlast = yp ;
     ind->ixds++;
   }
 #if defined(__cplusplus)

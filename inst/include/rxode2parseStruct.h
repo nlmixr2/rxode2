@@ -159,7 +159,6 @@ typedef struct {
   double *linCmtSave;
   double *linCmtAlast;
   double *linCmtDummy;
-  double linCmtLastT;
   int linCmt;
   int cacheME;
   int inLhs;

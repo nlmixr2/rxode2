@@ -469,12 +469,10 @@ static inline void copyLinCmt(int *neq,
   if (op->numLin > 0) {
     // Here we are doing ODE solving OR only linear solving
     // save the values here
-    if (!isSameTimeOp(ind->tout, ind->linCmtLastT)) {
-      std::copy(yp,
-                yp + op->neq,
-                ind->linCmtDummy);
-      dydt(neq, ind->tout, ind->linCmtDummy, ind->linCmtDummy);
-    }
+    std::copy(yp,
+              yp + op->neq,
+              ind->linCmtDummy);
+    dydt(neq, ind->tout, ind->linCmtDummy, ind->linCmtDummy);
     std::copy(ind->linCmtSave,
               ind->linCmtSave + op->numLin + op->numLinSens,
               yp + op->linOffset);
