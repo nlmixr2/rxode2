@@ -76,7 +76,10 @@ if (knitr::is_latex_output()) {
 
 
 Once the `linCmt()` sleuthing is complete, the `1`, `2` or `3`
-compartment model solution is used as the value of `linCmt()`.
+compartment model solution is used as the value of `linCmt()`.  After the linear
+`linCmt()` models the following variables/state values will become available
+(depenting on the type of compartment model): `depot`, `central`, `peripheral1` and
+`peripheral2`
 
 The compartments where you can dose in a linear solved system are
 `depot` and `central` when there is an linear absorption constant in
@@ -86,6 +89,10 @@ numbered `depot=1` and `central=2`.
 When the absorption constant `ka` is missing, you may only dose to the
 `central` compartment.  Without any additional ODEs the compartment
 number is `central=1`.
+
+The peripheral compartments may be dosed to as well, though their numbers depend 
+on if they are mixed with the ODEs.  The `central` and `depot` compartment can
+have infusions, and all of the departments can have non-infusion doses.
 
 These compartments take the same sort of events that a ODE model can
 take, and are discussed in the [rxode2 events
