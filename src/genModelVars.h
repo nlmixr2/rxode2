@@ -33,18 +33,18 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[11]= tb.nLlik;
 
   SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 12));
-  SET_STRING_ELT(sLinCmtN, 0, mkChar("ncmt"));
-  SET_STRING_ELT(sLinCmtN, 1, mkChar("ka"));
-  SET_STRING_ELT(sLinCmtN, 2, mkChar("linB"));
-  SET_STRING_ELT(sLinCmtN, 3, mkChar("maxeta"));
-  SET_STRING_ELT(sLinCmtN, 4, mkChar("maxtheta"));
-  SET_STRING_ELT(sLinCmtN, 5, mkChar("hasCmt"));
-  SET_STRING_ELT(sLinCmtN, 6, mkChar("linCmt"));
-  SET_STRING_ELT(sLinCmtN, 7, mkChar("linCmtFlg"));
-  SET_STRING_ELT(sLinCmtN, 8, mkChar("nIndSim"));
-  SET_STRING_ELT(sLinCmtN, 9, mkChar("simflg"));
-  SET_STRING_ELT(sLinCmtN, 10, mkChar("thread"));
-  SET_STRING_ELT(sLinCmtN, 11, mkChar("nLlik"));
+  SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
+  SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
+  SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
+  SET_STRING_ELT(sLinCmtN, 3, Rf_mkChar("maxeta"));
+  SET_STRING_ELT(sLinCmtN, 4, Rf_mkChar("maxtheta"));
+  SET_STRING_ELT(sLinCmtN, 5, Rf_mkChar("hasCmt"));
+  SET_STRING_ELT(sLinCmtN, 6, Rf_mkChar("linCmt"));
+  SET_STRING_ELT(sLinCmtN, 7, Rf_mkChar("linCmtFlg"));
+  SET_STRING_ELT(sLinCmtN, 8, Rf_mkChar("nIndSim"));
+  SET_STRING_ELT(sLinCmtN, 9, Rf_mkChar("simflg"));
+  SET_STRING_ELT(sLinCmtN, 10, Rf_mkChar("thread"));
+  SET_STRING_ELT(sLinCmtN, 11, Rf_mkChar("nLlik"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   UNPROTECT(2);
   return(sLinCmt);
@@ -54,13 +54,13 @@ static inline SEXP calcVersionInfo(void) {
   SEXP version  = PROTECT(Rf_allocVector(STRSXP, 3));
   SEXP versionn = PROTECT(Rf_allocVector(STRSXP, 3));
 
-  SET_STRING_ELT(versionn,0,mkChar("version"));
-  SET_STRING_ELT(versionn,1,mkChar("repo"));
-  SET_STRING_ELT(versionn,2,mkChar("md5"));
+  SET_STRING_ELT(versionn,0,Rf_mkChar("version"));
+  SET_STRING_ELT(versionn,1,Rf_mkChar("repo"));
+  SET_STRING_ELT(versionn,2,Rf_mkChar("md5"));
 
-  SET_STRING_ELT(version,0,mkChar(__VER_ver__));
-  SET_STRING_ELT(version,1,mkChar(__VER_repo__));
-  SET_STRING_ELT(version,2,mkChar(__VER_md5__));
+  SET_STRING_ELT(version,0,Rf_mkChar(__VER_ver__));
+  SET_STRING_ELT(version,1,Rf_mkChar(__VER_repo__));
+  SET_STRING_ELT(version,2,Rf_mkChar(__VER_md5__));
   Rf_setAttrib(version,   R_NamesSymbol, versionn);
   UNPROTECT(2);
   return version;
@@ -188,12 +188,12 @@ static inline SEXP calcIniVals(void) {
         tb.isPi=0;
         break;
       }
-      SET_STRING_ELT(inin,ini_i,mkChar(buf));
+      SET_STRING_ELT(inin,ini_i,Rf_mkChar(buf));
       REAL(ini)[ini_i++] = tb.iniv[i];
     }
   }
   if (tb.isPi){
-    SET_STRING_ELT(inin,ini_i,mkChar("pi"));
+    SET_STRING_ELT(inin,ini_i,Rf_mkChar("pi"));
     REAL(ini)[ini_i++] = M_PI;
   } else if (redo){
     inin  = PROTECT(Rf_allocVector(STRSXP, tb.ini_i));pro++;
@@ -208,7 +208,7 @@ static inline SEXP calcIniVals(void) {
           tb.isPi=0;
           break;
         }
-        SET_STRING_ELT(inin,ini_i,mkChar(buf));
+        SET_STRING_ELT(inin,ini_i,Rf_mkChar(buf));
         REAL(ini)[ini_i++] = tb.iniv[i];
       }
     }
@@ -331,18 +331,18 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
       if (strncmp(buf,"rx__sens_", 9) == 0){
         statePropI[k] = tb.dprop[ordFp[i]-1];
         sensPropI[j] = tb.dprop[ordFp[i]-1];
-        SET_STRING_ELT(sens,j++,mkChar(buf));
-        SET_STRING_ELT(state,k++,mkChar(buf));
+        SET_STRING_ELT(sens,j++,Rf_mkChar(buf));
+        SET_STRING_ELT(state,k++,Rf_mkChar(buf));
         stateRm[k-1]=tb.idi[ordFp[i]-1];
       } else {
         statePropI[k] = tb.dprop[ordFp[i]-1];
         normPropI[m] = tb.dprop[ordFp[i]-1];
-        SET_STRING_ELT(normState,m++,mkChar(buf));
-        SET_STRING_ELT(state,k++,mkChar(buf));
+        SET_STRING_ELT(normState,m++,Rf_mkChar(buf));
+        SET_STRING_ELT(state,k++,Rf_mkChar(buf));
         stateRm[k-1]=tb.idi[ordFp[i]-1];
       }
     } else {
-      SET_STRING_ELT(extraState, p++, mkChar(buf));
+      SET_STRING_ELT(extraState, p++, Rf_mkChar(buf));
     }
   }
 }
@@ -374,7 +374,7 @@ static inline void populateDfdy(SEXP dfdy) {
       sPrint(&_bufw,"%s",dy);
     }
     sPrint(&_bufw2,"df(%s)/dy(%s)",df,_bufw.s);
-    SET_STRING_ELT(dfdy,i,mkChar(_bufw2.s));
+    SET_STRING_ELT(dfdy,i,Rf_mkChar(_bufw2.s));
   }
 }
 
@@ -400,14 +400,14 @@ static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *
                                         int *li, int *pi, SEXP lhsStr) {
   if (islhs == isLHS || islhs == isLHSstr ||
       islhs == isLhsStateExtra || islhs == isLHSparam) {
-    SET_STRING_ELT(lhs, li[0], mkChar(buf));
+    SET_STRING_ELT(lhs, li[0], Rf_mkChar(buf));
     INTEGER(lhsStr)[li[0]] = islhs == isLHSstr;
     li[0] = li[0]+1;
     if (islhs == isLHSparam) {
       if (!strcmp("CMT", buf)) {
         tb.hasCmt = 1;
       }
-      SET_STRING_ELT(params, pi[0], mkChar(buf));
+      SET_STRING_ELT(params, pi[0], Rf_mkChar(buf));
       pi[0] = pi[0]+1;
     }
     return 1;
@@ -461,7 +461,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
   for (int i=0; i<NV; i++) {
     int islhs = tb.lh[i];
     if (islhs == isSuppressedLHS || islhs == isSuppressedLHSstr){
-      SET_STRING_ELT(slhs, sli++, mkChar(tb.ss.line[i]));
+      SET_STRING_ELT(slhs, sli++, Rf_mkChar(tb.ss.line[i]));
     }
     buf=tb.ss.line[i];
 
@@ -471,7 +471,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
     if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi, lhsStr)) {
       paramSubThetaEtaToBufw(buf);
       interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
-      SET_STRING_ELT(params, pi++, mkChar(_bufw.s));
+      SET_STRING_ELT(params, pi++, Rf_mkChar(_bufw.s));
     }
   }
 }

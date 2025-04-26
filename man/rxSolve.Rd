@@ -832,7 +832,8 @@ doses not canceled with \code{SS=2} (the infusions started before
 \item{ssSolved}{When \code{TRUE} this will return the solved steady
 state solutions for the linear compartment model.  When \code{FALSE}
 this will solve to steady state using the linear solutions
-instead.}
+instead.  This is only used when the method only has \code{linCmt()}
+and does not mix ODEs with the solution.  The default is \code{TRUE}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

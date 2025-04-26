@@ -8,9 +8,9 @@
 static const char base36[37] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 SEXP _rxode2_itostr(SEXP x, SEXP base) {
-  const R_len_t n = length(x);
+  const R_len_t n = Rf_length(x);
   const R_len_t b = INTEGER(base)[0];
-  SEXP res = PROTECT(allocVector(STRSXP, n));
+  SEXP res = PROTECT(Rf_allocVector(STRSXP, n));
 
   const R_len_t buflen = ceil(log(exp2(64) / log(b)));
   char buffer[buflen + 1];
@@ -23,7 +23,7 @@ SEXP _rxode2_itostr(SEXP x, SEXP base) {
       buffer[--offset] = base36[xi % b];
     } while (xi /= b);
 
-    SET_STRING_ELT(res, i, mkChar(&buffer[offset]));
+    SET_STRING_ELT(res, i, Rf_mkChar(&buffer[offset]));
   }
 
   UNPROTECT(1);
@@ -33,9 +33,9 @@ SEXP _rxode2_itostr(SEXP x, SEXP base) {
 static const char base26[27] = "abcdefghijklmnopqrstuvwxyz";
 
 SEXP _rxode2_itoletter(SEXP x, SEXP base) {
-  const R_len_t n = length(x);
+  const R_len_t n = Rf_length(x);
   const R_len_t b = INTEGER(base)[0];
-  SEXP res = PROTECT(allocVector(STRSXP, n));
+  SEXP res = PROTECT(Rf_allocVector(STRSXP, n));
 
   const R_len_t buflen = ceil(log(exp2(64) / log(b)));
   char buffer[buflen + 1];
@@ -48,7 +48,7 @@ SEXP _rxode2_itoletter(SEXP x, SEXP base) {
       buffer[--offset] = base26[xi % b];
     } while (xi /= b);
 
-    SET_STRING_ELT(res, i, mkChar(&buffer[offset]));
+    SET_STRING_ELT(res, i, Rf_mkChar(&buffer[offset]));
   }
 
   UNPROTECT(1);
