@@ -1,4 +1,4 @@
-# rxode2 (development version)
+# rxode2 4.0.0
 
 - Add more information errors about NAs during solving.
 
@@ -9,6 +9,16 @@
 
 - Just in time use of `state.ignore` in the model variables, fixes
   negative length error observed in #857.
+
+- Fix steady state bug with time-varying covariates.  Now the
+  covariates are inferred at the time of the steady state (instead of
+  searching through the subject based on the projected time).
+
+- Rework the linear solved systems to use the wnl solutions, and
+  threaded linear systems solve (for non-gradient solutions). This new
+  method closes a variety of linear compartment model bugs (#261,
+  #272, #441, #504, #564, #717, #728, #827, and #855)
+
 
 # rxode2 3.0.4
 
