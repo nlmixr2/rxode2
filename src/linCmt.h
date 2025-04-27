@@ -247,35 +247,24 @@ namespace stan {
                                                       T ka) const {
 #define k10   g(0, 1)
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-        T E      = exp(-k10 * dt_);
-        T Ea     = E;
-        T pDepot = 0.0;
-        T rDepot = 0.0;
-        T R      = rate_[oral0_];
-        double rd = rate_[oral0_];
-        if (oral0_  == 1) {
-          Ea = exp(-ka*dt_);
-          pDepot = yp(0, 0);
-          rDepot = rate_[0];
-          R = rDepot + R;
-          rd += rate_[0];
-        }
         Eigen::Matrix<T, Eigen::Dynamic, 1> ret = yp;
-
-        if (abs(rd) <= DBL_EPSILON) {
-          ret(oral0_, 0) = yp(oral0_, 0)*E;
-        } else {
-          ret(oral0_, 0) = yp(oral0_, 0)*E + R*(1.0-E)/(k10);
-        }
-
-        bool isSme = (abs(ka-k10)  <= DBL_EPSILON*max2(abs(ka), abs(k10)));
-        if (isSme) {
-          ret(oral0_, 0) += (pDepot*k10 - rDepot)*dt_*E;
-        } else {
-          ret(oral0_, 0) += (pDepot*ka - rDepot)*(E - Ea)/(ka - k10);
-        }
+        // Constants that would be in common and could be calculated once:
+        T E            = exp(-k10 * dt_);
+        ret(oral0_, 0) = yp(oral0_, 0)*E;
+        T R            = rate_[0];
         if (oral0_ == 1) {
-          ret(0, 0) = rDepot*(1.0 - Ea)/ka + pDepot*Ea;
+          R += rate_[1];
+          T Ea =  exp(-ka*dt_);
+          ret(0, 0) = rate_[0]*(1.0 - Ea)/ka + yp(0, 0)*Ea;
+          T ka10 = ka - k10;
+          if (abs(ka10) <= sqrt(DBL_EPSILON)) {
+            ret(1, 0) += (yp(0, 0)*k10 - rate_[0])*dt_*E;
+          } else {
+            ret(1, 0) += (yp(0, 0)*ka  - rate_[0])*(E - Ea)/ka10;
+          }
+        }
+        if (abs(R) > sqrt(DBL_EPSILON)) {
+          ret(oral0_, 0) += R*(1.0-E)/(k10);
         }
 #undef k10
         return ret;
