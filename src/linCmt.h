@@ -68,12 +68,12 @@ namespace stan {
     //
 
     struct linCmtStan {
-      const int ncmt_, oral0_, trans_;
+      int ncmt_, oral0_, trans_;
       double *rate_; // This comes from the ode system
       double *A_;    // This comes from the ode system
       double *Asave_; // This comes from the ode system
       double dt_;
-      bool grad_;
+      const bool grad_;
       double tinf_ = 0.0;
       double tau_ = 0.0;
       double bolusAmt_ = 0.0;
@@ -90,6 +90,24 @@ namespace stan {
         grad_(grad),
         type_(type)
       { }
+
+      // set the steady-state help
+      void setSsType(const int type) {
+        type_ = type;
+      }
+
+      void setModelType(const int ncmt, const int oral0, const int trans, const int type) {
+        // The cached variables need to expire
+        ncmt_ = ncmt;
+        oral0_ = oral0;
+        trans_ = trans;
+        type_  = type;
+      }
+
+      //
+      bool isSame(const int ncmt, const int oral0, const int trans) {
+        return (ncmt == ncmt_ && oral0 == oral0_ && trans_ == trans);
+      }
 
       int getNpars() {
         if (oral0_) {
