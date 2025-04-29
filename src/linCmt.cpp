@@ -382,7 +382,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define fx __linCmtBfx
 #define J  __linCmtBJ
 #define Jg __linCmtBJg
-
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
