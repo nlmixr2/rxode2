@@ -116,7 +116,7 @@
                         <h4 data-toc-skip class="author">Matthew
 Fidler</h4>
             
-            <h4 data-toc-skip class="date">2025-04-22</h4>
+            <h4 data-toc-skip class="date">2025-04-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-speed.Rmd" class="external-link"><code>vignettes/rxode2-speed.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-speed.Rmd</code></div>
@@ -221,8 +221,8 @@ endpoints are specified, the simulation code for each endpoint is also
 output. You can see the differences below:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod1</span><span class="op">$</span><span class="va">simulationModel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_38b47791632c07cbdc699b01f597b213</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpWlpdAw/rxode2/rx_38b47791632c07cbdc699b01f597b213__.rxd/rx_38b47791632c07cbdc699b01f597b213_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_551e4683f8af8a6a07294bec333817ce</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmpNWIsC8/rxode2/rx_551e4683f8af8a6a07294bec333817ce__.rxd/rx_551e4683f8af8a6a07294bec333817ce_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -240,8 +240,8 @@ output. You can see the differences below:</p>
 <span><span class="co">#&gt; })</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod1</span><span class="op">$</span><span class="va">simulationIniModel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_da7189846042e5cd10f32c7c8ff6b8b9</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpWlpdAw/rxode2/rx_da7189846042e5cd10f32c7c8ff6b8b9__.rxd/rx_da7189846042e5cd10f32c7c8ff6b8b9_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_3d1280ab1e341adc73b0cad2918e16e5</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmpNWIsC8/rxode2/rx_3d1280ab1e341adc73b0cad2918e16e5__.rxd/rx_3d1280ab1e341adc73b0cad2918e16e5_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -267,8 +267,8 @@ output. You can see the differences below:</p>
 <span><span class="co">#&gt; })</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod2f</span><span class="op">$</span><span class="va">simulationModel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_9a3b2db4ad7672fa57b6580cd8e06742</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpWlpdAw/rxode2/rx_9a3b2db4ad7672fa57b6580cd8e06742__.rxd/rx_9a3b2db4ad7672fa57b6580cd8e06742_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_0d8e306558b1c4322909484238fc46c6</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmpNWIsC8/rxode2/rx_0d8e306558b1c4322909484238fc46c6__.rxd/rx_0d8e306558b1c4322909484238fc46c6_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -324,8 +324,8 @@ output. You can see the differences below:</p>
 <span><span class="co">#&gt; })</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mod2f</span><span class="op">$</span><span class="va">simulationIniModel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_06065d966ac1479b051dc7c4538358ed</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpWlpdAw/rxode2/rx_06065d966ac1479b051dc7c4538358ed__.rxd/rx_06065d966ac1479b051dc7c4538358ed_.so</span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>3.0.4.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_f5befd0af165d659df31295f92e02960</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmpNWIsC8/rxode2/rx_f5befd0af165d659df31295f92e02960__.rxd/rx_f5befd0af165d659df31295f92e02960_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -511,10 +511,10 @@ you can see the options in <code><a href="../reference/rxSolve.html">rxControl()
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;               expr       min        lq      mean    median        uq       max</span></span>
-<span><span class="co">#&gt;           runFor() 372.04573 385.66961 403.55245 391.65858 401.38123 557.65387</span></span>
-<span><span class="co">#&gt;        runSapply() 376.11049 388.81793 404.16618 395.05320 404.26045 533.83961</span></span>
-<span><span class="co">#&gt;  runSingleThread()  29.56116  30.41563  31.81421  31.44549  32.07188  42.46785</span></span>
-<span><span class="co">#&gt;       run2Thread()  18.93172  19.68081  21.08073  20.37766  20.63840  31.16332</span></span>
+<span><span class="co">#&gt;           runFor() 399.35540 408.42170 424.71330 414.09498 421.95590 557.71445</span></span>
+<span><span class="co">#&gt;        runSapply() 402.29153 409.91572 426.39080 418.27269 433.30017 544.62904</span></span>
+<span><span class="co">#&gt;  runSingleThread()  32.80980  33.29542  35.61296  33.55509  34.05185 162.60148</span></span>
+<span><span class="co">#&gt;       run2Thread()  20.97519  21.31491  22.38692  21.68007  22.07290  32.39314</span></span>
 <span><span class="co">#&gt;  neval</span></span>
 <span><span class="co">#&gt;    100</span></span>
 <span><span class="co">#&gt;    100</span></span>
@@ -541,10 +541,10 @@ code:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
 <span><span class="co">#&gt;          expr      min       lq     mean   median       uq      max neval</span></span>
-<span><span class="co">#&gt;  runThread(1) 29.59875 30.62759 31.45730 31.54537 31.86575 35.54908   100</span></span>
-<span><span class="co">#&gt;  runThread(2) 19.16810 19.89102 22.62967 20.56001 23.50307 35.18464   100</span></span>
-<span><span class="co">#&gt;  runThread(3) 20.38596 21.57908 22.94375 21.93973 24.58896 29.46639   100</span></span>
-<span><span class="co">#&gt;  runThread(4) 20.35245 21.19017 24.00140 21.87105 24.06762 37.24923   100</span></span></code></pre></div>
+<span><span class="co">#&gt;  runThread(1) 32.78271 33.25107 33.78113 33.45114 33.75531 41.06273   100</span></span>
+<span><span class="co">#&gt;  runThread(2) 21.15517 21.63505 24.32138 21.94560 26.99239 35.98635   100</span></span>
+<span><span class="co">#&gt;  runThread(3) 22.62685 23.13115 25.34342 23.85678 26.97567 36.30930   100</span></span>
+<span><span class="co">#&gt;  runThread(4) 22.37194 22.87279 24.79437 23.21489 23.77144 38.06393   100</span></span></code></pre></div>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
@@ -632,9 +632,9 @@ an example:</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;             expr      min      lq     mean   median       uq      max neval</span></span>
-<span><span class="co">#&gt;  standardCompile 318.4483 331.424 386.4605 350.3997 462.8099 487.2471   100</span></span>
-<span><span class="co">#&gt;      fastCompile 318.7934 333.042 388.9830 353.3550 462.4542 514.0810   100</span></span>
+<span><span class="co">#&gt;             expr      min       lq     mean   median       uq      max neval</span></span>
+<span><span class="co">#&gt;  standardCompile 342.6749 358.5654 433.1047 483.4388 495.0705 559.8474   100</span></span>
+<span><span class="co">#&gt;      fastCompile 345.9512 359.8376 431.2040 422.2830 492.7056 557.7365   100</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rxode2-speed_files/figure-html/unnamed-chunk-13-1.png" width="700"></p>
@@ -728,7 +728,7 @@ reduced to run faster automatic building of the pkgdown website.</p>
 <span><span class="va">Stoplapply</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Stoplapply</span> <span class="op">-</span> <span class="va">Startlapply</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 13.12792 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 15.70308 secs</span></span></code></pre></div>
 <p>By applying some of the new parallel solving concepts you can simply
 run the same simulation both with less code and faster:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
@@ -769,7 +769,7 @@ run the same simulation both with less code and faster:</p>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">rx</span>, <span class="va">ev</span>, omega<span class="op">=</span><span class="va">omega</span>, returnType<span class="op">=</span><span class="st">"data.table"</span><span class="op">)</span></span>
 <span><span class="va">endParallel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">endParallel</span> <span class="op">-</span> <span class="va">startParallel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Time difference of 0.1123288 secs</span></span></code></pre></div>
+<span><span class="co">#&gt; Time difference of 0.12305 secs</span></span></code></pre></div>
 <p>You can see a striking time difference between the two methods; A few
 things to keep in mind:</p>
 <ul>
@@ -838,25 +838,25 @@ simulation vignette</a>.</p>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] sass_0.4.10         generics_0.1.3      lattice_0.22-6     </span></span>
 <span><span class="co">#&gt;  [4] digest_0.6.37       magrittr_2.0.3      evaluate_1.0.3     </span></span>
-<span><span class="co">#&gt;  [7] grid_4.5.0          fastmap_1.2.0       lotri_1.0.0.9000   </span></span>
-<span><span class="co">#&gt; [10] jsonlite_2.0.0      rxode2ll_2.0.13     backports_1.5.0    </span></span>
-<span><span class="co">#&gt; [13] scales_1.3.0        lazyeval_0.2.2      textshaping_1.0.0  </span></span>
-<span><span class="co">#&gt; [16] jquerylib_0.1.4     RApiSerialize_0.1.4 cli_3.6.4          </span></span>
-<span><span class="co">#&gt; [19] symengine_0.2.10    rlang_1.1.6         crayon_1.5.3       </span></span>
-<span><span class="co">#&gt; [22] units_0.8-7         munsell_0.5.1       withr_3.0.2        </span></span>
+<span><span class="co">#&gt;  [7] grid_4.5.0          RColorBrewer_1.1-3  fastmap_1.2.0      </span></span>
+<span><span class="co">#&gt; [10] lotri_1.0.0.9000    jsonlite_2.0.0      rxode2ll_2.0.13    </span></span>
+<span><span class="co">#&gt; [13] backports_1.5.0     scales_1.4.0        lazyeval_0.2.2     </span></span>
+<span><span class="co">#&gt; [16] textshaping_1.0.0   jquerylib_0.1.4     RApiSerialize_0.1.4</span></span>
+<span><span class="co">#&gt; [19] cli_3.6.5           rlang_1.1.6         symengine_0.2.10   </span></span>
+<span><span class="co">#&gt; [22] crayon_1.5.3        units_0.8-7         withr_3.0.2        </span></span>
 <span><span class="co">#&gt; [25] cachem_1.1.0        yaml_2.3.10         tools_4.5.0        </span></span>
 <span><span class="co">#&gt; [28] qs_0.27.3           memoise_2.0.1       checkmate_2.3.2    </span></span>
-<span><span class="co">#&gt; [31] dplyr_1.1.4         colorspace_2.1-1    vctrs_0.6.5        </span></span>
-<span><span class="co">#&gt; [34] R6_2.6.1            lifecycle_1.0.4     fs_1.6.6           </span></span>
-<span><span class="co">#&gt; [37] stringfish_0.16.0   htmlwidgets_1.6.4   ragg_1.4.0         </span></span>
-<span><span class="co">#&gt; [40] PreciseSums_0.7     pkgconfig_2.0.3     desc_1.4.3         </span></span>
-<span><span class="co">#&gt; [43] rex_1.2.1           pkgdown_2.1.1       RcppParallel_5.1.10</span></span>
-<span><span class="co">#&gt; [46] pillar_1.10.2       bslib_0.9.0         gtable_0.3.6       </span></span>
-<span><span class="co">#&gt; [49] glue_1.8.0          Rcpp_1.0.14         systemfonts_1.2.2  </span></span>
-<span><span class="co">#&gt; [52] xfun_0.52           tibble_3.2.1        tidyselect_1.2.1   </span></span>
-<span><span class="co">#&gt; [55] sys_3.4.3           knitr_1.50          farver_2.1.2       </span></span>
-<span><span class="co">#&gt; [58] dparser_1.3.1-13    htmltools_0.5.8.1   nlme_3.1-168       </span></span>
-<span><span class="co">#&gt; [61] labeling_0.4.3      rmarkdown_2.29      compiler_4.5.0</span></span></code></pre></div>
+<span><span class="co">#&gt; [31] dplyr_1.1.4         vctrs_0.6.5         R6_2.6.1           </span></span>
+<span><span class="co">#&gt; [34] lifecycle_1.0.4     fs_1.6.6            stringfish_0.16.0  </span></span>
+<span><span class="co">#&gt; [37] htmlwidgets_1.6.4   ragg_1.4.0          PreciseSums_0.7    </span></span>
+<span><span class="co">#&gt; [40] pkgconfig_2.0.3     desc_1.4.3          pkgdown_2.1.1      </span></span>
+<span><span class="co">#&gt; [43] RcppParallel_5.1.10 rex_1.2.1           pillar_1.10.2      </span></span>
+<span><span class="co">#&gt; [46] bslib_0.9.0         gtable_0.3.6        glue_1.8.0         </span></span>
+<span><span class="co">#&gt; [49] Rcpp_1.0.14         systemfonts_1.2.2   xfun_0.52          </span></span>
+<span><span class="co">#&gt; [52] tibble_3.2.1        tidyselect_1.2.1    sys_3.4.3          </span></span>
+<span><span class="co">#&gt; [55] knitr_1.50          farver_2.1.2        dparser_1.3.1-13   </span></span>
+<span><span class="co">#&gt; [58] htmltools_0.5.8.1   nlme_3.1-168        labeling_0.4.3     </span></span>
+<span><span class="co">#&gt; [61] rmarkdown_2.29      compiler_4.5.0</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
