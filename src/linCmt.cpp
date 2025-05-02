@@ -12,6 +12,17 @@
 // Create linear compartment models for testing
 using namespace Rcpp;
 
+// Global linear compartment B model object
+// Since this cannot be threaded, this is not a vector
+// object.  This is created once to reduce memory allocation
+// and deallocation time.
+stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0);
+Eigen::Matrix<double, -1, 1> __linCmtBtheta;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
+
+
 // [[Rcpp::export]]
 RObject linCmtModelDouble(double dt,
                           double p1, double v1, double p2,
@@ -284,17 +295,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   return NA_REAL;
 }
 
-// Global linear compartment B model object
-// Since this cannot be threaded, this is not a vector
-// object.  This is created once to reduce memory allocation
-// and deallocation time.
-stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0);
-Eigen::Matrix<double, -1, 1> __linCmtBtheta;
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
-Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
-
-
 /*
  *  linCmtB
  *
@@ -379,9 +379,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                           double p4, double p5,
                           // Oral parameters
                           double ka) {
-#define fx __linCmtBfx
-#define J  __linCmtBJ
-#define Jg __linCmtBJg
+#define fx    __linCmtBfx
+#define J     __linCmtBJ
+#define Jg    __linCmtBJg
+#define lc    __linCmtB
+#define theta __linCmtBtheta
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
@@ -396,8 +398,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     // This also handles the case where _t = ind->tcur, where the
     // solution is already known
     // double *acur = getAdvan(idx);
-    // J  = __linCmtB.restoreJac(acur);
-    // fx = __linCmtB.restoreFx(acur);
+    // J  = lc.restoreJac(acur);
+    // fx = lc.restoreFx(acur);
     if (which1 >= 0 && which2 >= 0) {
       // w1, w2 are > 0
       return J(which1, which2);
@@ -407,47 +409,47 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     } else if (which1 == -2 && which2 >= 0) {
       return Jg(which2);
     }
-  } else if (!__linCmtB.isSame(ncmt, oral0, trans)) {
-    __linCmtB.setModelType(ncmt, oral0, trans, ind->linSS);
+  } else if (!lc.isSame(ncmt, oral0, trans)) {
+    lc.setModelType(ncmt, oral0, trans, ind->linSS);
     // only resize when needed
-    __linCmtBtheta.resize(__linCmtB.getNpars());
+    theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
-    J.resize(ncmt + oral0, __linCmtB.getNpars());
-    Jg.resize(__linCmtB.getNpars());
+    J.resize(ncmt + oral0, lc.getNpars());
+    Jg.resize(lc.getNpars());
   } else {
-    __linCmtB.setSsType(ind->linSS);
+    lc.setSsType(ind->linSS);
   }
   switch (ncmt) {
   case 1:
     if (oral0 == 1) {
-      __linCmtBtheta << p1, v1, ka;
+      theta << p1, v1, ka;
     } else {
-      __linCmtBtheta << p1, v1;
+      theta << p1, v1;
     }
     break;
   case 2:
     if (oral0 == 1) {
-      __linCmtBtheta << p1, v1, p2, p3, ka;
+      theta << p1, v1, p2, p3, ka;
     } else {
-      __linCmtBtheta << p1, v1, p2, p3;
+      theta << p1, v1, p2, p3;
     }
     break;
   case 3:
     if (oral0 == 1) {
-      __linCmtBtheta << p1, v1, p2, p3, p4, p5, ka;
+      theta << p1, v1, p2, p3, p4, p5, ka;
     } else {
-      __linCmtBtheta << p1, v1, p2, p3, p4, p5;
+      theta << p1, v1, p2, p3, p4, p5;
     }
     break;
   }
   if (ind->linSS == linCmtSsInf) {
-    __linCmtB.setSsInf(ind->linSSvar, ind->linSStau);
+    lc.setSsInf(ind->linSSvar, ind->linSStau);
   } else if (ind->linSS == linCmtSsBolus) {
-    __linCmtB.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
+    lc.setSsBolus(ind->linSSvar, ind->linSStau, ind->linSSbolusCmt);
   }
 
   // Get number of items in Alast
-  int nAlast = __linCmtB.getNalast();
+  int nAlast = lc.getNalast();
 
   // Get/Set the pointers
   double *asave = ind->linCmtSave;
@@ -459,7 +461,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   } else {
     a = ind->linCmtAlast;
   }
-  __linCmtB.setPtr(a, r, asave);
+  lc.setPtr(a, r, asave);
 
   // Setup parameter matrix
 
@@ -467,8 +469,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
-    J  = __linCmtB.restoreJac(acur);
-    fx = __linCmtB.restoreFx(acur);
+    J  = lc.restoreJac(acur);
+    fx = lc.restoreFx(acur);
   } else {
     // Calculate everything while solving using linCmt()
     if (ind->_rxFlag == 11) {
@@ -479,8 +481,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // solution is already known
       // ind->linCmtSave = getAdvan(idx);
       double *acur = getAdvan(idx);
-      J  = __linCmtB.restoreJac(acur);
-      fx = __linCmtB.restoreFx(acur);
+      J  = lc.restoreJac(acur);
+      fx = lc.restoreFx(acur);
     } else {
       // Here we are doing ODE solving OR only linear solving
       // so we calculate these values here.
@@ -503,14 +505,16 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       } else {
         dt =  _t - ind->tprior;
       }
-      __linCmtB.setDt(dt);
-      stan::math::jacobian(__linCmtB, __linCmtBtheta, fx, J);
-      __linCmtB.saveJac(J);
+      lc.setDt(dt);
+      stan::math::jacobian(lc, theta, fx, J);
+      lc.saveJac(J);
     }
   }
-  Jg = __linCmtB.getJacCp(J, fx, __linCmtBtheta);
-  return __linCmtB.adjustF(fx, __linCmtBtheta);
+  Jg = lc.getJacCp(J, fx, theta);
+  return lc.adjustF(fx, theta);
 #undef fx
 #undef J
 #undef Jg
+#undef lc
+#undef theta
 }
