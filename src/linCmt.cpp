@@ -12,6 +12,16 @@
 // Create linear compartment models for testing
 using namespace Rcpp;
 
+// Global linear compartment A model object
+// Since this cannot be threaded, this is not a vector
+// object.  This is created once to reduce memory allocation
+// and deallocation time.
+stan::math::linCmtStan __linCmtA(0, 0, 0, false, 0);
+Eigen::Matrix<double, -1, 1> __linCmtAtheta;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAfx;
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtAJ;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAJg;
+
 // Global linear compartment B model object
 // Since this cannot be threaded, this is not a vector
 // object.  This is created once to reduce memory allocation
@@ -178,11 +188,25 @@ extern "C" double linCmtA(rx_solve *rx, int id,
                           double p4, double p5,
                           // Oral parameters
                           double ka) {
+#define fx    __linCmtAfx
+#define J     __linCmtAJ
+#define Jg    __linCmtAJg
+#define lc    __linCmtA
+#define theta __linCmtAtheta
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
   // Create the solved system object
-  stan::math::linCmtStan lc(ncmt, oral0, trans, false, ind->linSS);
+  if (!lc.isSame(ncmt, oral0, trans)) {
+    lc.setModelType(ncmt, oral0, trans, ind->linSS);
+    // only resize when needed
+    theta.resize(lc.getNpars());
+    fx.resize(ncmt + oral0);
+    // J.resize(ncmt + oral0, lc.getNpars());
+    // Jg.resize(lc.getNpars());
+  } else {
+    lc.setSsType(ind->linSS);
+  }
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);
   } else if (ind->linSS == linCmtSsBolus) {
@@ -203,8 +227,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   }
   lc.setPtr(a, r, asave);
   // Setup parameter matrix
-  Eigen::Matrix<double, -1, 1> theta;
-  theta.resize(lc.getNpars());
   switch (ncmt) {
   case 1:
     if (oral0 == 1) {
@@ -230,8 +252,6 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   default:
     return NA_REAL;
   }
-  Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-  fx.resize(ncmt + oral0);
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
@@ -293,6 +313,11 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   }
   // Invalid index
   return NA_REAL;
+#undef fx
+#undef J
+#undef Jg
+#undef lc
+#undef theta
 }
 
 /*
