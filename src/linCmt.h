@@ -1167,18 +1167,20 @@ namespace stan {
         bolusCmt_ = bolusCmt;
       }
 
-      Eigen::Matrix<double,Eigen::Dynamic, 1> restoreFx(double *A) const {
+      void
+      restoreFx(double *A, Eigen::Matrix<double, Eigen::Dynamic, 1>& Alast) const {
         // Save A1-A4
-        Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
+        // Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           Alast(i, 0) = A[i];
         }
-        return Alast;
       }
 
       void restoreJac(double *A,
                       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& J) {
         // Save A1-A4
+        // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_(ncmt_ + oral0_,
+        //                                                         2*ncmt_ + oral0_);
         J_ = J;
         for (int i = oral0_; i < ncmt_ + oral0_; i++) {
           J_(i, 0) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 0];
@@ -1206,7 +1208,6 @@ namespace stan {
 
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
-
         Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
         // AlastA.setZero();
 
@@ -1290,7 +1291,7 @@ namespace stan {
         }
       }
 
-      void saveJac(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& J) {
+      void saveJac(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J) {
         // Save A1-A4
         for (int i = oral0_; i < ncmt_ + oral0_; i++) {
           Asave_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 0] = J_(i, 0);
@@ -1429,11 +1430,12 @@ namespace stan {
         return NA_REAL;
       }
 
-      Eigen::Matrix<double, -1, -1> getJacCp(const Eigen::Matrix<double, -1, -1> J0,
-                                             const Eigen::VectorXd ret0,
-                                             const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
-        Eigen::Matrix<double, Eigen::Dynamic, 1> J = J0.row(oral0_);
-        Eigen::Matrix<double, Eigen::Dynamic, 1> Jf = J;
+      void
+      getJacCp(const Eigen::VectorXd& ret0,
+               const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
+               Eigen::Matrix<double, Eigen::Dynamic, 1>& Jf) {
+
+        Jf = J_.row(oral0_);
 
         double v = getVc(theta);
 
@@ -1461,11 +1463,10 @@ namespace stan {
             Jf(i, 0) = J_(i, 0)  / v;
           }
         }
-        return Jf;
       }
 
 
-      double adjustF(const Eigen::VectorXd ret0,
+      double adjustF(const Eigen::VectorXd& ret0,
                      const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         return ret0(oral0_, 0) / getVc(theta);
       }
