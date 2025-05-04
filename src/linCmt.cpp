@@ -30,6 +30,7 @@ stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0);
 Eigen::Matrix<double, -1, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBAlastA;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
 
 
@@ -98,6 +99,8 @@ RObject linCmtModelDouble(double dt,
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     Eigen::Matrix<double, -1, -1> J(ncmt + oral0, 2*ncmt + oral0);
     lc.restoreJac(a, J);
+    Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt + oral0);
+    lc.restoreAlastA(AlastA, p1, v1, p2, p3, p4, p5, ka);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
     Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
@@ -405,11 +408,12 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                           double p4, double p5,
                           // Oral parameters
                           double ka) {
-#define fx    __linCmtBfx
-#define J     __linCmtBJ
-#define Jg    __linCmtBJg
-#define lc    __linCmtB
-#define theta __linCmtBtheta
+#define fx     __linCmtBfx
+#define J      __linCmtBJ
+#define Jg     __linCmtBJg
+#define lc     __linCmtB
+#define theta  __linCmtBtheta
+#define AlastA __linCmtBAlastA
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
@@ -441,6 +445,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
     J.resize(ncmt + oral0, lc.getNpars());
+    AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
   } else {
     lc.setSsType(ind->linSS);
@@ -533,6 +538,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       }
       lc.setDt(dt);
       lc.restoreJac(a, J);
+      lc.restoreAlastA(AlastA, p1, v1, p2, p3, p4, p5, ka);
       stan::math::jacobian(lc, theta, fx, J);
       lc.saveJac(J);
     }
@@ -544,4 +550,5 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #undef Jg
 #undef lc
 #undef theta
+#undef AlastA
 }
