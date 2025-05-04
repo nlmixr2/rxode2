@@ -96,7 +96,8 @@ RObject linCmtModelDouble(double dt,
   List retList;
   if (deriv) {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
-    Eigen::Matrix<double, -1, -1> J;
+    Eigen::Matrix<double, -1, -1> J(ncmt + oral0, 2*ncmt + oral0);
+    lc.restoreJac(a, J);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
     Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
@@ -494,7 +495,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
-    J  = lc.restoreJac(acur);
+    lc.restoreJac(acur, J);
     fx = lc.restoreFx(acur);
   } else {
     // Calculate everything while solving using linCmt()
@@ -506,7 +507,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // solution is already known
       // ind->linCmtSave = getAdvan(idx);
       double *acur = getAdvan(idx);
-      J  = lc.restoreJac(acur);
+      lc.restoreJac(acur, J);
       fx = lc.restoreFx(acur);
     } else {
       // Here we are doing ODE solving OR only linear solving
@@ -531,6 +532,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
+      lc.restoreJac(a, J);
       stan::math::jacobian(lc, theta, fx, J);
       lc.saveJac(J);
     }

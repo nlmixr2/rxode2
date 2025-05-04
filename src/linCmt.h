@@ -79,6 +79,9 @@ namespace stan {
       double bolusAmt_ = 0.0;
       int bolusCmt_ = 0;
       int type_ = 0;
+
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
+
       linCmtStan(const int ncmt,
                  const int oral0,
                  const int trans,
@@ -1174,40 +1177,44 @@ namespace stan {
         return Alast;
       }
 
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> restoreJac(double *A) const {
+
+      void
+      restoreJac(double *A,
+                 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& J) {
+        J_ = J;
         // Save A1-A4
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,
-                                                                2*ncmt_ + oral0_);
+        // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,
+        //                                                         2*ncmt_ + oral0_);
         for (int i = oral0_; i < ncmt_ + oral0_; i++) {
-          J(i, 0) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 0];
-          J(i, 1) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 1];
+          J_(i, 0) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 0];
+          J_(i, 1) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 1];
           if (ncmt_ >=2) {
-            J(i, 2) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 2];
-            J(i, 3) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 3];
+            J_(i, 2) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 2];
+            J_(i, 3) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 3];
             if (ncmt_ == 3){
-              J(i, 4) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 4];
-              J(i, 5) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 5];
+              J_(i, 4) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 4];
+              J_(i, 5) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 5];
             }
           }
           if (oral0_) {
-            J(i, 2*ncmt_) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 2*ncmt_];
+            J_(i, 2*ncmt_) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*(i-oral0_) + 2*ncmt_];
           }
         }
         // save Ka; for oral only ka affects values
         if (oral0_) {
           for (int i = 0; i < 2*ncmt_; ++i) {
-            J(0, i) = 0;
+            J_(0, i) = 0;
           }
-          J(0, 2*ncmt_) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*ncmt_];
+          J_(0, 2*ncmt_) = A[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*ncmt_];
         }
-        return J;
       }
 
       template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,
-                                                                ncmt_*2 + oral0_);
-        J = restoreJac(&A_[0]);
+      Eigen::Matrix<T, Eigen::Dynamic, 1>
+      getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
+        // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,
+        //                                                         ncmt_*2 + oral0_);
+        // J = restoreJac(&A_[0]);
 
         Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt_ + oral0_, 1);
         // AlastA.setZero();
@@ -1249,38 +1256,38 @@ namespace stan {
           // Alast Adjusted
           AlastA(i, 0) = A_[i];
 
-          AlastA(i, 0) -= J(i, 0)*p1_;
+          AlastA(i, 0) -= J_(i, 0)*p1_;
 
-          AlastA(i, 0) -= J(i, 1)*v1_;
+          AlastA(i, 0) -= J_(i, 1)*v1_;
 
           if (ncmt_ >=2){
             // Adjust alast
-            AlastA(i, 0) -= J(i, 2)*p2_;
-            AlastA(i, 0) -= J(i, 3)*p3_;
+            AlastA(i, 0) -= J_(i, 2)*p2_;
+            AlastA(i, 0) -= J_(i, 3)*p3_;
             if (ncmt_ >= 3){
               // Adjust Alast
-              AlastA(i, 0) -= J(i, 4) * p4_;
-              AlastA(i, 0) -= J(i, 5) * p5_;
+              AlastA(i, 0) -= J_(i, 4) * p4_;
+              AlastA(i, 0) -= J_(i, 5) * p5_;
             }
           }
           if (oral0_) {
-            AlastA(i, 0) -= J(i, 2*ncmt_)*ka_;
+            AlastA(i, 0) -= J_(i, 2*ncmt_)*ka_;
           }
         }
         for (int i = oral0_ + ncmt_; i--;){
           Alast(i, 0) = AlastA(i, 0) +
-            theta(0, 0)*J(i, 0) +
-            theta(1, 0)*J(i, 1);
+            theta(0, 0)*J_(i, 0) +
+            theta(1, 0)*J_(i, 1);
           if (ncmt_ >= 2) {
-            Alast(i, 0) += theta(2, 0)*J(i, 2) +
-              theta(3, 0)*J(i, 3);
+            Alast(i, 0) += theta(2, 0)*J_(i, 2) +
+              theta(3, 0)*J_(i, 3);
             if (ncmt_ == 3) {
-              Alast(i, 0) += theta(4, 0)*J(i, 4) +
-                theta(5, 0)*J(i, 5);
+              Alast(i, 0) += theta(4, 0)*J_(i, 4) +
+                theta(5, 0)*J_(i, 5);
             }
           }
           if (oral0_) {
-            Alast(i, 0) += theta(2*ncmt_, 0)*J(i, 2*ncmt_);
+            Alast(i, 0) += theta(2*ncmt_, 0)*J_(i, 2*ncmt_);
           }
         }
         return Alast;
