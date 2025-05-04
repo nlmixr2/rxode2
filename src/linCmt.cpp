@@ -16,27 +16,21 @@ using namespace Rcpp;
 // Since this cannot be threaded, this is not a vector
 // object.  This is created once to reduce memory allocation
 // and deallocation time.
-Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtAJ;
-
 stan::math::linCmtStan __linCmtA(0, 0, 0, false, 0);
 Eigen::Matrix<double, -1, 1> __linCmtAtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAfx;
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtAJ;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAJg;
 
 // Global linear compartment B model object
 // Since this cannot be threaded, this is not a vector
 // object.  This is created once to reduce memory allocation
 // and deallocation time.
-
-Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
-
 stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0);
 Eigen::Matrix<double, -1, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
-
-// double fns
-Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtDJ;
 
 
 // [[Rcpp::export]]
@@ -50,7 +44,7 @@ RObject linCmtModelDouble(double dt,
                           int type,
                           double tau, double tinf, double amt,
                           int bolusCmt) {
-#define J __linCmtDJ
+
   stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type);
   if (type == linCmtSsInf) {
     lc.setSsInf(tinf, tau);
@@ -101,8 +95,8 @@ RObject linCmtModelDouble(double dt,
   lc.setDt(dt);
   List retList;
   if (deriv) {
-    J.resize(ncmt + oral0, 2*ncmt + oral0);
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+    Eigen::Matrix<double, -1, -1> J;
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
     Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
@@ -130,7 +124,6 @@ RObject linCmtModelDouble(double dt,
   delete[] r;
   delete[] asave;
   return retList;
-#undef J
 }
 
 /*
@@ -501,7 +494,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
-    lc.restoreJac(acur, J);
+    J  = lc.restoreJac(acur);
     fx = lc.restoreFx(acur);
   } else {
     // Calculate everything while solving using linCmt()
@@ -513,7 +506,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // solution is already known
       // ind->linCmtSave = getAdvan(idx);
       double *acur = getAdvan(idx);
-      lc.restoreJac(acur, J);
+      J  = lc.restoreJac(acur);
       fx = lc.restoreFx(acur);
     } else {
       // Here we are doing ODE solving OR only linear solving
@@ -538,7 +531,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      lc.restoreJac(a, J);
       stan::math::jacobian(lc, theta, fx, J);
       lc.saveJac(J);
     }
