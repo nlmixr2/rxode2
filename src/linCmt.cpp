@@ -105,8 +105,7 @@ RObject linCmtModelDouble(double dt,
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    Eigen::Matrix<double, -1, 1> Jg;
-    lc.getJacCp(fx, theta, Jg);
+    Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
     double val = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
     for (int i = 0; i < nAlast; i++) {
@@ -264,7 +263,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
     if (which < 0) {
-      lc.restoreFx(acur, fx);
+      fx = lc.restoreFx(acur);
       return lc.adjustF(fx, theta);
     } else {
       return acur[which];
@@ -279,7 +278,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
       // This also handles the case where _t = ind->tcur, where the
       // solution is already known
       // ind->linCmtSave = getAdvan(idx);
-      lc.restoreFx(getAdvan(idx), fx);
+      fx = lc.restoreFx(getAdvan(idx));
     } else {
       // Here we are doing ODE solving OR only linear solving
       // so we calculate these values here.
@@ -503,7 +502,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
     lc.restoreJac(acur, J);
-    lc.restoreFx(acur, fx);
+    fx = lc.restoreFx(acur);
   } else {
     // Calculate everything while solving using linCmt()
     if (ind->_rxFlag == 11) {
@@ -515,7 +514,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // ind->linCmtSave = getAdvan(idx);
       double *acur = getAdvan(idx);
       lc.restoreJac(acur, J);
-      lc.restoreFx(acur, fx);
+      fx = lc.restoreFx(acur);
     } else {
       // Here we are doing ODE solving OR only linear solving
       // so we calculate these values here.
@@ -544,7 +543,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       lc.saveJac(J);
     }
   }
-  lc.getJacCp(fx, theta, Jg);
+  Jg = lc.getJacCp(J, fx, theta);
   return lc.adjustF(fx, theta);
 #undef fx
 #undef J
