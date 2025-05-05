@@ -1245,12 +1245,20 @@ namespace stan {
         }
       }
 
-      template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1>
-      getAlast(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
+      // Double initialization need to be outside of the linCmtStan struct
+      Eigen::Matrix<double, Eigen::Dynamic, 1>
+      getAlast(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) const {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
+        for (int i = oral0_ + ncmt_; i--;){
+          Alast(i, 0) = A_[i];
+        }
+        return Alast;
+      }
 
-        Eigen::Matrix<T, Eigen::Dynamic, 1> Alast = AlastA_; // Initialize with AlastA_ directly
+      Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>
+      getAlast(const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& theta) const {
 
+        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> Alast = AlastA_; // Initialize with AlastA_ directly
 
         for (int i = oral0_ + ncmt_; i--;){
           Alast(i, 0) += theta(0, 0)*J_(i, 0) +
@@ -1477,17 +1485,6 @@ namespace stan {
     void linCmtStan::printDouble<double>(double ret0) const {
       Rcpp::print(Rcpp::wrap(ret0));
     }
-
-    // Double initialization need to be outside of the linCmtStan struct
-    template <>
-    Eigen::Matrix<double, Eigen::Dynamic, 1> linCmtStan::getAlast(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) const {
-      Eigen::Matrix<double, Eigen::Dynamic, 1> Alast(ncmt_ + oral0_, 1);
-      for (int i = oral0_ + ncmt_; i--;){
-        Alast(i, 0) = A_[i];
-      }
-      return Alast;
-    }
-
 
   } // namespace math
 } // namespace stan
