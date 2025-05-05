@@ -263,26 +263,32 @@ namespace stan {
 #define k10   g(0, 1)
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
         // Constants that would be in common and could be calculated once:
-        T E            = exp(-k10 * dt_);
+        const T E            = exp(-k10 * dt_);
+
         ret(oral0_, 0) = yp(oral0_, 0)*E;
         T R            = rate_[0];
+
+        // Handle oral absorption case
         if (oral0_ == 1) {
+          const T Ea =  exp(-ka*dt_);
+          const T ka10 = ka - k10;
+
           R += rate_[1];
-          T Ea =  exp(-ka*dt_);
-          ret(0, 0) = rate_[0]*(1.0 - Ea)/ka + yp(0, 0)*Ea;
-          T ka10 = ka - k10;
+          ret(0, 0) = rate_[0] * (1.0 - Ea) / ka + yp(0, 0) * Ea;
+
           if (abs(ka10) <= sqrt(DBL_EPSILON)) {
-            ret(1, 0) += (yp(0, 0)*k10 - rate_[0])*dt_*E;
+            ret(1, 0) += (yp(0, 0) * k10 - rate_[0]) * dt_ * E;
           } else {
-            ret(1, 0) += (yp(0, 0)*ka  - rate_[0])*(E - Ea)/ka10;
+            ret(1, 0) += (yp(0, 0) * ka  - rate_[0]) * (E - Ea) / ka10;
           }
         }
+        // Handle the case with infusion
         if (abs(R) > sqrt(DBL_EPSILON)) {
-          ret(oral0_, 0) += R*(1.0-E)/(k10);
+          ret(oral0_, 0) += R * (1.0 - E) / k10;
         }
 #undef k10
-        return;
       }
+
       //////////////////////////////////////////////////////////////////
       // Solved Two compartment steady state solutions
       //////////////////////////////////////////////////////////////////
@@ -1419,11 +1425,12 @@ namespace stan {
         return NA_REAL;
       }
 
-      Eigen::Matrix<double, -1, -1> getJacCp(const Eigen::Matrix<double, -1, -1> J0,
-                                             const Eigen::VectorXd ret0,
-                                             const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+      Eigen::Matrix<double, -1, -1> getJacCp(const Eigen::Matrix<double, -1, -1>& J0,
+                                             const Eigen::VectorXd& ret0,
+                                             const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
+                                             Eigen::Matrix<double, Eigen::Dynamic, 1>& Jf) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> J = J0.row(oral0_);
-        Eigen::Matrix<double, Eigen::Dynamic, 1> Jf = J;
+        Jf = J;
 
         double v = getVc(theta);
 

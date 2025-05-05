@@ -103,7 +103,8 @@ RObject linCmtModelDouble(double dt,
     lc.restoreAlastA(AlastA, p1, v1, p2, p3, p4, p5, ka);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    Eigen::Matrix<double, -1, 1> Jg = lc.getJacCp(J, fx, theta);
+    Eigen::Matrix<double, -1, 1> Jg(ncmt+oral0);
+    lc.getJacCp(J, fx, theta, Jg);
     double val = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
     for (int i = 0; i < nAlast; i++) {
@@ -543,7 +544,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       lc.saveJac(J);
     }
   }
-  Jg = lc.getJacCp(J, fx, theta);
+  lc.getJacCp(J, fx, theta, Jg);
   return lc.adjustF(fx, theta);
 #undef fx
 #undef J
