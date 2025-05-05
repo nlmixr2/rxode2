@@ -95,6 +95,14 @@ namespace stan {
         type_(type)
       { }
 
+      linCmtStan() :
+        ncmt_(0),
+        oral0_(0),
+        trans_(0),
+        grad_(false),
+        type_(0)
+      { }
+
       // set the steady-state help
       void setSsType(const int type) {
         type_ = type;
@@ -1335,25 +1343,24 @@ namespace stan {
 
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
-      template <typename T>
-      Eigen::Matrix<T, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
-        Eigen::Matrix<T, Eigen::Dynamic, 2> g =
+      Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& theta) const {
+        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
-        T ka = 0.0;
+        stan::math::var ka = 0.0;
         if (oral0_) {
           ka = theta[ncmt_*2];
         }
-        Eigen::Matrix<T, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
-        Eigen::Matrix<T, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
+        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
+        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
         if (type_ == linCmtNormal) {
           yp = getAlast(theta);
           if (ncmt_ == 1) {
-            linCmtStan1<T>(g, yp, ka, ret0);
+            linCmtStan1<stan::math::var>(g, yp, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2<T>(g, yp, ka, ret0);
+            linCmtStan2<stan::math::var>(g, yp, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3<T>(g, yp, ka, ret0);
+            linCmtStan3<stan::math::var>(g, yp, ka, ret0);
           }
         } else if (type_ == linCmtSsInf8)  {
           if (ncmt_ == 1) {
@@ -1380,7 +1387,57 @@ namespace stan {
             linCmtStan3ssBolus(g, ka, ret0);
           }
         }
-        saveAlast<T>(ret0);
+        saveAlast<stan::math::var>(ret0);
+        return ret0;
+      }
+
+      Eigen::Matrix<double, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) const {
+        Eigen::Matrix<double, Eigen::Dynamic, 2> g =
+          stan::math::macros2micros(theta, ncmt_, trans_);
+
+        double ka = 0.0;
+        if (oral0_) {
+          ka = theta[ncmt_*2];
+        }
+        Eigen::Matrix<double, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
+        if (type_ == linCmtNormal) {
+          yp = getAlast(theta);
+          if (ncmt_ == 1) {
+            linCmtStan1<double>(g, yp, ka, ret0);
+          } else if (ncmt_ == 2) {
+            linCmtStan2<double>(g, yp, ka, ret0);
+          } else if (ncmt_ == 3) {
+            linCmtStan3<double>(g, yp, ka, ret0);
+          }
+        } else if (type_ == linCmtSsInf8)  {
+          if (ncmt_ == 1) {
+            linCmtStan1ssInf8(g, ka, ret0);
+          } else if (ncmt_ == 2) {
+            linCmtStan2ssInf8(g, ka, ret0);
+          } else if (ncmt_ == 3) {
+            linCmtStan3ssInf8(g, ka, ret0);
+          }
+        } else if (type_ == linCmtSsInf) {
+          if (ncmt_ == 1) {
+            linCmtStan1ssInf(g, ka, ret0);
+          } else if (ncmt_ == 2) {
+            linCmtStan2ssInf(g, ka, ret0);
+          } else if (ncmt_ == 3) {
+            linCmtStan3ssInf(g, ka, ret0);
+          }
+        } else if (type_ == linCmtSsBolus) {
+          if (ncmt_ == 1) {
+            linCmtStan1ssBolus(g, ka, ret0);
+          } else if (ncmt_ == 2) {
+            linCmtStan2ssBolus(g, ka, ret0);
+          } else if (ncmt_ == 3) {
+            linCmtStan3ssBolus(g, ka, ret0);
+          }
+        }
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = ret0(i, 0);
+        }
         return ret0;
       }
 

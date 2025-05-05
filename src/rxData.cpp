@@ -42,6 +42,7 @@ using namespace Rcpp;
 using namespace arma;
 
 extern "C" void seedEng(int ncores);
+extern "C" void ensureLinCmtA(int nCores);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
@@ -4975,6 +4976,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores=1;
     }
     seedEng((int)(op->cores));
+    ensureLinCmtA((int)op->cores);
 
     // Now set up events and parameters
     RObject par0 = params;

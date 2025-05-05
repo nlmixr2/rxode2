@@ -12,15 +12,26 @@
 // Create linear compartment models for testing
 using namespace Rcpp;
 
-// Global linear compartment A model object
-// Since this cannot be threaded, this is not a vector
-// object.  This is created once to reduce memory allocation
-// and deallocation time.
-stan::math::linCmtStan __linCmtA(0, 0, 0, false, 0);
-Eigen::Matrix<double, -1, 1> __linCmtAtheta;
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAfx;
-Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtAJ;
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAJg;
+// Global linear compartment A model object Since this CAN be
+// threaded, this needs to be a std::vector.  This is created once to
+// reduce memory allocation and deallocation time.
+typedef struct {
+  stan::math::linCmtStan lc;
+  Eigen::Matrix<double, -1, 1> theta;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> Jg;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> yp;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> ret0;
+} linA_t;
+
+std::vector<linA_t> __linCmtA;
+
+extern "C" void ensureLinCmtA(int nCores) {
+  if (__linCmtA.size() < nCores) {
+    __linCmtA.resize(nCores);
+  }
+}
 
 // Global linear compartment B model object
 // Since this cannot be threaded, this is not a vector
@@ -193,13 +204,15 @@ extern "C" double linCmtA(rx_solve *rx, int id,
                           double p4, double p5,
                           // Oral parameters
                           double ka) {
-#define fx    __linCmtAfx
-#define J     __linCmtAJ
-#define Jg    __linCmtAJg
-#define lc    __linCmtA
-#define theta __linCmtAtheta
+#define fx    lca.fx
+#define J     lca.J
+#define Jg    lca.Jg
+#define lc    lca.lc
+#define theta lca.theta
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
+  // get the linear solved system object.
+  linA_t lca = __linCmtA[omp_get_thread_num()];
   int idx = ind->idx;
   // Create the solved system object
   if (!lc.isSame(ncmt, oral0, trans)) {
