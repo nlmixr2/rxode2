@@ -405,7 +405,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                           // Oral parameters
                           double ka) {
 #define fx     __linCmtBfx
-
+#define J      __linCmtBJ
 #define lc     __linCmtB
 #define theta  __linCmtBtheta
 #define AlastA __linCmtBAlastA
