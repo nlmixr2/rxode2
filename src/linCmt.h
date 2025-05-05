@@ -1251,19 +1251,9 @@ namespace stan {
 
         Eigen::Matrix<T, Eigen::Dynamic, 1> Alast = AlastA_; // Initialize with AlastA_ directly
 
-        // Precompute contributions from theta and J_
-        Alast.noalias() += theta(0, 0) * J_.col(0) + theta(1, 0) * J_.col(1);
-        if (ncmt_ >= 2) {
-          Alast.noalias() += theta(2, 0) * J_.col(2) + theta(3, 0) * J_.col(3);
-          if (ncmt_ == 3) {
-            Alast.noalias() += theta(4, 0) * J_.col(4) + theta(5, 0) * J_.col(5);
-          }
-        }
-        // Alast.setZero();
 
         for (int i = oral0_ + ncmt_; i--;){
-          Alast(i, 0) = AlastA_(i, 0) +
-            theta(0, 0)*J_(i, 0) +
+          Alast(i, 0) += theta(0, 0)*J_(i, 0) +
             theta(1, 0)*J_(i, 1);
           if (ncmt_ >= 2) {
             Alast(i, 0) += theta(2, 0)*J_(i, 2) +
