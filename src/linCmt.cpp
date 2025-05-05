@@ -19,6 +19,8 @@ using namespace Rcpp;
 stan::math::linCmtStan __linCmtA(0, 0, 0, false, 0);
 Eigen::Matrix<double, -1, 1> __linCmtAtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAfx;
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtAJ;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtAJg;
 
 // Global linear compartment B model object
 // Since this cannot be threaded, this is not a vector
@@ -29,7 +31,7 @@ Eigen::Matrix<double, -1, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBAlastA;
-double __linCmtBv = 0.0;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
 
 
 // [[Rcpp::export]]
@@ -101,7 +103,7 @@ RObject linCmtModelDouble(double dt,
     lc.restoreAlastA(AlastA, p1, v1, p2, p3, p4, p5, ka);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
-    Eigen::Matrix<double, -1, 1> Jg(lc.getNpars());
+    Eigen::Matrix<double, -1, 1> Jg(ncmt+oral0);
     lc.getJacCp(J, fx, theta, Jg);
     double val = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
@@ -193,6 +195,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
                           double ka) {
 #define fx    __linCmtAfx
 #define J     __linCmtAJ
+#define Jg    __linCmtAJg
 #define lc    __linCmtA
 #define theta __linCmtAtheta
   rx_solving_options_ind *ind = &(rx->subjects[id]);
@@ -204,6 +207,8 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     // only resize when needed
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
+    // J.resize(ncmt + oral0, lc.getNpars());
+    // Jg.resize(lc.getNpars());
   } else {
     lc.setSsType(ind->linSS);
   }
@@ -405,7 +410,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                           // Oral parameters
                           double ka) {
 #define fx     __linCmtBfx
-
+#define J      __linCmtBJ
+#define Jg     __linCmtBJg
 #define lc     __linCmtB
 #define theta  __linCmtBtheta
 #define AlastA __linCmtBAlastA
@@ -432,21 +438,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // w2 < 0
       return fx(which1);
     } else if (which1 == -2 && which2 >= 0) {
-      double cJ = J(oral0, which2);
-      if ((ncmt == 1 && which2 == 1) ||
-          (ncmt == 2 && (which2 == 1 || which2 ==3)) ||
-          (ncmt == 3 && (which2 == 1 || which2 ==3 || which2 == 5))) {
-        if (trans == 11 && ncmt >= 2 && which2 == 1) {
-          return cJ / __linCmtBv +
-            fx(oral0)/(theta(1, 0)*theta(1, 0)*__linCmtBv*__linCmtBv);
-        } else {
-          return -fx(oral0)/(__linCmtBv*__linCmtBv) +
-            cJ / __linCmtBv;
-        }
-      } else {
-        return cJ / __linCmtBv;
-      }
-      // return Jg(which2);
+      return Jg(which2);
     }
   } else if (!lc.isSame(ncmt, oral0, trans)) {
     lc.setModelType(ncmt, oral0, trans, ind->linSS);
@@ -455,6 +447,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     fx.resize(ncmt + oral0);
     J.resize(ncmt + oral0, lc.getNpars());
     AlastA.resize(ncmt + oral0);
+    Jg.resize(lc.getNpars());
   } else {
     lc.setSsType(ind->linSS);
   }
@@ -551,7 +544,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       lc.saveJac(J);
     }
   }
-  __linCmtBv = lc.getVc(theta);
+  lc.getJacCp(J, fx, theta, Jg);
   return lc.adjustF(fx, theta);
 #undef fx
 #undef J
