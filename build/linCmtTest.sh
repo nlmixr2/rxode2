@@ -8,4 +8,5 @@ export R_DOC_DIR=/usr/share/R/doc
 
 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libprofiler.so CPUPROFILE=sample.profile /usr/lib/R/bin/exec/R -f linCmtTest.R
 
-google-pprof --text /usr/bin/R ./sample.profile
+#google-pprof --text /usr/bin/R ./sample.profile
+google-pprof --web /usr/bin/R ./sample.profile
