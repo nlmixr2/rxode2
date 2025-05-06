@@ -22,6 +22,7 @@ typedef struct {
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
   Eigen::Matrix<double, Eigen::Dynamic, 1> Jg;
   Eigen::Matrix<double, Eigen::Dynamic, 1> yp;
+  Eigen::Matrix<double, Eigen::Dynamic, 2> gg;
 } linA_t;
 
 std::vector<linA_t> __linCmtA;
@@ -42,7 +43,6 @@ Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBAlastA;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
-
 
 // [[Rcpp::export]]
 RObject linCmtModelDouble(double dt,
@@ -127,7 +127,8 @@ RObject linCmtModelDouble(double dt,
   } else {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     Eigen::Matrix<double, Eigen::Dynamic, 1> yp(oral0+ncmt, 1);
-    lc.linAcalcAlast(yp, theta);
+    Eigen::Matrix<double, Eigen::Dynamic, 2> g(ncmt, 2);
+    lc.linAcalcAlast(yp, g, theta);
     fx = lc(theta);
     double val = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
@@ -223,6 +224,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
     yp.resize(ncmt + oral0, 1);
+    lca.gg.resize(ncmt, 2);
   } else {
     lc.setSsType(ind->linSS);
   }
@@ -316,7 +318,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
       }
       lc.setDt(dt);
 
-      lc.linAcalcAlast(yp, theta);
+      lc.linAcalcAlast(yp, lca.gg, theta);
 
       fx = lc(theta);
     }

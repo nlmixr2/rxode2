@@ -83,6 +83,7 @@ namespace stan {
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> yp_;
+      Eigen::Matrix<double, Eigen::Dynamic, 2> g_;
 
       linCmtStan(const int ncmt,
                  const int oral0,
@@ -1342,10 +1343,13 @@ namespace stan {
         }
       }
 
-      void linAcalcAlast(Eigen::Matrix<double, Eigen::Dynamic, 1>& yp,
+      void linAcalcAlast(Eigen::Matrix<double, Eigen::Dynamic, 1> yp,
+                         Eigen::Matrix<double, Eigen::Dynamic, 2> g,
                          const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         yp_ = yp;
+        g_ = g;
         yp_ = getAlast(theta);
+        g_ = stan::math::macros2micros(theta, ncmt_, trans_);
       }
 
       // For stan Jacobian to work the class needs to take 1 argument
@@ -1398,9 +1402,7 @@ namespace stan {
         return ret0;
       }
 
-      Eigen::Matrix<double, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) const {
-        Eigen::Matrix<double, Eigen::Dynamic, 2> g =
-          stan::math::macros2micros(theta, ncmt_, trans_);
+      Eigen::Matrix<double, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
 
         double ka = 0.0;
         if (oral0_) {
@@ -1409,35 +1411,35 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
         if (type_ == linCmtNormal) {
           if (ncmt_ == 1) {
-            linCmtStan1<double>(g, yp_, ka, ret0);
+            linCmtStan1<double>(g_, yp_, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2<double>(g, yp_, ka, ret0);
+            linCmtStan2<double>(g_, yp_, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3<double>(g, yp_, ka, ret0);
+            linCmtStan3<double>(g_, yp_, ka, ret0);
           }
         } else if (type_ == linCmtSsInf8)  {
           if (ncmt_ == 1) {
-            linCmtStan1ssInf8(g, ka, ret0);
+            linCmtStan1ssInf8(g_, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2ssInf8(g, ka, ret0);
+            linCmtStan2ssInf8(g_, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3ssInf8(g, ka, ret0);
+            linCmtStan3ssInf8(g_, ka, ret0);
           }
         } else if (type_ == linCmtSsInf) {
           if (ncmt_ == 1) {
-            linCmtStan1ssInf(g, ka, ret0);
+            linCmtStan1ssInf(g_, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2ssInf(g, ka, ret0);
+            linCmtStan2ssInf(g_, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3ssInf(g, ka, ret0);
+            linCmtStan3ssInf(g_, ka, ret0);
           }
         } else if (type_ == linCmtSsBolus) {
           if (ncmt_ == 1) {
-            linCmtStan1ssBolus(g, ka, ret0);
+            linCmtStan1ssBolus(g_, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2ssBolus(g, ka, ret0);
+            linCmtStan2ssBolus(g_, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3ssBolus(g, ka, ret0);
+            linCmtStan3ssBolus(g_, ka, ret0);
           }
         }
         for (int i = 0; i < ncmt_ + oral0_; i++) {
