@@ -5,34 +5,36 @@
 ## devtools::load_all("~/src/nlmixr2est")
 library(nlmixr2)
 
-f <- function() {
-  ini({ # Where initial conditions/variables are specified
-    # '<-' or '=' defines population parameters
-    # Simple numeric expressions are supported
-    lCl <- 1.6      #log Cl (L/hr)
-    lVc <- 4.5      #log V (L)
-    # Bounds may be specified by c(lower, est, upper), like NONMEM:
-    # Residuals errors are assumed to be population parameters
-    prop.err <- c(0, 0.3, 1)
-    # Between subject variability estimates are specified by '~'
-    # Semicolons are optional
-    eta.Vc ~ 0.1   #IIV V
-    eta.Cl ~ 0.1   #IIV Cl
-  })
-  model({ # Where the model is specified
-    # The model uses the ini-defined variable names
-    Vc <- exp(lVc + eta.Vc)
-    Cl <- exp(lCl + eta.Cl)
-    cp <- linCmt()
-    cp ~ prop(prop.err)
-  })
-}
+## f <- function() {
+##   ini({ # Where initial conditions/variables are specified
+##     # '<-' or '=' defines population parameters
+##     # Simple numeric expressions are supported
+##     lCl <- 1.6      #log Cl (L/hr)
+##     lVc <- 4.5      #log V (L)
+##     # Bounds may be specified by c(lower, est, upper), like NONMEM:
+##     # Residuals errors are assumed to be population parameters
+##     prop.err <- c(0, 0.3, 1)
+##     # Between subject variability estimates are specified by '~'
+##     # Semicolons are optional
+##     eta.Vc ~ 0.1   #IIV V
+##     eta.Cl ~ 0.1   #IIV Cl
+##   })
+##   model({ # Where the model is specified
+##     # The model uses the ini-defined variable names
+##     Vc <- exp(lVc + eta.Vc)
+##     Cl <- exp(lCl + eta.Cl)
+##     cp <- linCmt()
+##     cp ~ prop(prop.err)
+##   })
+## }
 
-datr <- nlmixr2data::Bolus_1CPT
-dat <- datr[datr$SD == 1, ]
-dat <- dat[, names(dat) != "SS"]
+## datr <- nlmixr2data::Bolus_1CPT
+## dat <- datr[datr$SD == 1, ]
+## dat <- dat[, names(dat) != "SS"]
 
-fit <- nlmixr2(f, dat, est="focei")
+## ## fit <- nlmixr2(f, dat, est="focei")
+
+## fitS <- nlmixr2(f, dat, est="saem")
 
 
 ## f2 <- function() {
@@ -61,9 +63,82 @@ fit <- nlmixr2(f, dat, est="focei")
 
 ## fit2 <- nlmixr2(f2, dat, est="focei")
 
+## fit2S <- nlmixr2(f2, dat, est="saem")
+
 
 ## print(c("linear"=sum(fit$time), "ode"=sum(fit2$time)))
+## print(c("linear"=sum(fitS$time), "ode"=sum(fit2S$time)))
 
+f <- function(){
+  ini({ # Where initial conditions/variables are specified
+    # '<-' or '=' defines population parameters
+    # Simple numeric expressions are supported
+    lCl <- 1.8      #log Cl (L/hr)
+    lVc <- 4.7      #log V (L)
+    lKA <- 0.2      #log V (L)
+    # Bounds may be specified by c(lower, est, upper), like NONMEM:
+    # Residuals errors are assumed to be population parameters
+    prop.err <- c(0, 0.3, 1)
+    # Between subject variability estimates are specified by '~'
+    # Semicolons are optional
+    eta.Cl ~ 0.15
+    eta.Vc ~ 0.15
+    eta.KA ~ 0.15
+  })
+  model({ # Where the model is specified
+    # The model uses the ini-defined variable names
+    Cl <- exp(lCl + eta.Cl)
+    Vc <- exp(lVc + eta.Vc)
+    KA <- exp(lKA + eta.KA)
+    cp <- linCmt()
+    cp ~ prop(prop.err)
+  })
+}
+
+f2 <- function() {
+  ini({ # Where initial conditions/variables are specified
+    # '<-' or '=' defines population parameters
+    # Simple numeric expressions are supported
+    lCl <- 1.8      #log Cl (L/hr)
+    lVc <- 4.7      #log V (L)
+    lKA <- 0.2      #log V (L)
+    # Bounds may be specified by c(lower, est, upper), like NONMEM:
+    # Residuals errors are assumed to be population parameters
+    prop.err <- c(0, 0.3, 1)
+    # Between subject variability estimates are specified by '~'
+    # Semicolons are optional
+    eta.Cl ~ 0.15
+    eta.Vc ~ 0.15
+    eta.KA ~ 0.15
+  })
+  model({ # Where the model is specified
+    # The model uses the ini-defined variable names
+    Cl <- exp(lCl + eta.Cl)
+    Vc <- exp(lVc + eta.Vc)
+    KA <- exp(lKA + eta.KA)
+    # RxODE-style differential equations are supported
+    d/dt(depot)    = -KA*depot;
+    d/dt(centr)  =  KA*depot-(Cl/Vc)*centr;
+    ## Concentration is calculated
+    cp = centr / Vc;
+    # And is assumed to follow proportional error estimated by prop.err
+    cp ~ prop(prop.err)
+  })
+}
+
+datr <- nlmixr2data::Oral_1CPT
+dat <- datr[datr$SD == 1, ]
+dat <- dat[, names(dat) != "SS"]
+
+fit <- nlmixr2(f, dat, est="focei")
+
+## fitS <- nlmixr2(f, dat, est="saem")
+
+## fit2 <- nlmixr2(f2, dat, est="focei")
+
+## fit2S <- nlmixr2(f2, dat, est="saem")
+
+## print(c("linear"=sum(fitS$time), "ode"=sum(fit2S$time)))
 
 ## theta <- setNames(fit$theta,paste0("THETA[", seq_along(fit$theta), "]"))
 
