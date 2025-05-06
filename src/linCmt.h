@@ -110,13 +110,23 @@ namespace stan {
         type_ = type;
       }
 
+      void resizeModel() {
+        J_.resize(ncmt_ + oral0_, getNpars());
+        AlastA_.resize(ncmt_ + oral0_);
+      }
+
       void setModelType(const int ncmt, const int oral0, const int trans, const int type) {
         // The cached variables need to expire
         ncmt_ = ncmt;
         oral0_ = oral0;
         trans_ = trans;
         type_  = type;
+        if (grad_) {
+          resizeModel();
+        }
       }
+
+
 
       //
       bool isSame(const int ncmt, const int oral0, const int trans) {
@@ -1196,9 +1206,7 @@ namespace stan {
 
 
       void
-      restoreJac(double *A,
-                 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& J) {
-        J_ = J;
+      restoreJac(double *A) {
         // Save A1-A4
         // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J(ncmt_ + oral0_,
         //                                                         2*ncmt_ + oral0_);
@@ -1226,13 +1234,14 @@ namespace stan {
         }
       }
 
-      void restoreAlastA(Eigen::Matrix<double, Eigen::Dynamic, 1>& AlastA,
-                         double& p1, double& v1,
+      double J(int i, int j) {
+        return J_(i, j);
+      }
+
+      void restoreAlastA(double& p1, double& v1,
                          double& p2, double& p3,
                          double& p4, double& p5,
                          double &ka)  {
-        AlastA_ = AlastA;
-
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           // Alast Adjusted
           AlastA_(i, 0) = A_[i];

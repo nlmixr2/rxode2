@@ -41,7 +41,6 @@ stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0);
 Eigen::Matrix<double, -1, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBAlastA;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
 
 // [[Rcpp::export]]
@@ -108,9 +107,9 @@ RObject linCmtModelDouble(double dt,
   if (deriv) {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     Eigen::Matrix<double, -1, -1> J(ncmt + oral0, 2*ncmt + oral0);
-    lc.restoreJac(a, J);
-    Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA(ncmt + oral0);
-    lc.restoreAlastA(AlastA, p1, v1, p2, p3, p4, p5, ka);
+    lc.resizeModel();
+    lc.restoreJac(a);
+    lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
     Eigen::Matrix<double, -1, 1> Jg(ncmt+oral0);
@@ -428,7 +427,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                           // Oral parameters
                           double ka) {
 #define fx     __linCmtBfx
-#define J      __linCmtBJ
 #define Jg     __linCmtBJg
 #define lc     __linCmtB
 #define theta  __linCmtBtheta
@@ -451,7 +449,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     // fx = lc.restoreFx(acur);
     if (which1 >= 0 && which2 >= 0) {
       // w1, w2 are > 0
-      return J(which1, which2);
+      return lc.J(which1, which2);
     } else if (which1 >= 0 && which2 == -2) {
       // w2 < 0
       return fx(which1);
@@ -463,8 +461,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     // only resize when needed
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
-    J.resize(ncmt + oral0, lc.getNpars());
-    AlastA.resize(ncmt + oral0);
+    __linCmtBJ.resize(ncmt + oral0, lc.getNpars());
+    // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
   } else {
     lc.setSsType(ind->linSS);
@@ -519,7 +517,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
-    lc.restoreJac(acur, J);
+    lc.restoreJac(acur);
     fx = lc.restoreFx(acur);
   } else {
     // Calculate everything while solving using linCmt()
@@ -531,7 +529,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // solution is already known
       // ind->linCmtSave = getAdvan(idx);
       double *acur = getAdvan(idx);
-      lc.restoreJac(acur, J);
+      lc.restoreJac(acur);
       fx = lc.restoreFx(acur);
     } else {
       // Here we are doing ODE solving OR only linear solving
@@ -556,13 +554,13 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      lc.restoreJac(a, J);
-      lc.restoreAlastA(AlastA, p1, v1, p2, p3, p4, p5, ka);
-      stan::math::jacobian(lc, theta, fx, J);
-      lc.saveJac(J);
+      lc.restoreJac(a);
+      lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
+      stan::math::jacobian(lc, theta, fx, __linCmtBJ);
+      lc.saveJac(__linCmtBJ);
     }
   }
-  lc.getJacCp(J, fx, theta, Jg);
+  lc.getJacCp(__linCmtBJ, fx, theta, Jg);
   return lc.adjustF(fx, theta);
 #undef fx
 #undef J
