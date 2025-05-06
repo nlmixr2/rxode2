@@ -22,7 +22,6 @@ typedef struct {
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
   Eigen::Matrix<double, Eigen::Dynamic, 1> Jg;
   Eigen::Matrix<double, Eigen::Dynamic, 1> yp;
-  Eigen::Matrix<double, Eigen::Dynamic, 1> ret0;
 } linA_t;
 
 std::vector<linA_t> __linCmtA;
@@ -127,6 +126,8 @@ RObject linCmtModelDouble(double dt,
                            _["Alast"] = Alast);
   } else {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
+    Eigen::Matrix<double, Eigen::Dynamic, 1> yp(oral0+ncmt, 1);
+    lc.linAcalcAlast(yp, theta);
     fx = lc(theta);
     double val = lc.adjustF(fx, theta);
     NumericVector Alast(nAlast);
@@ -209,6 +210,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 #define Jg    lca.Jg
 #define lc    lca.lc
 #define theta lca.theta
+#define yp    lca.yp
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   // get the linear solved system object.
@@ -220,8 +222,7 @@ extern "C" double linCmtA(rx_solve *rx, int id,
     // only resize when needed
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
-    // J.resize(ncmt + oral0, lc.getNpars());
-    // Jg.resize(lc.getNpars());
+    yp.resize(ncmt + oral0, 1);
   } else {
     lc.setSsType(ind->linSS);
   }
@@ -314,6 +315,8 @@ extern "C" double linCmtA(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
+
+      lc.linAcalcAlast(yp, theta);
 
       fx = lc(theta);
     }

@@ -82,6 +82,7 @@ namespace stan {
 
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
+      Eigen::Matrix<double, Eigen::Dynamic, 1> yp_;
 
       linCmtStan(const int ncmt,
                  const int oral0,
@@ -1341,6 +1342,12 @@ namespace stan {
         }
       }
 
+      void linAcalcAlast(Eigen::Matrix<double, Eigen::Dynamic, 1>& yp,
+                         const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+        yp_ = yp;
+        yp_ = getAlast(theta);
+      }
+
       // For stan Jacobian to work the class needs to take 1 argument
       // (the parameters)
       Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& theta) const {
@@ -1400,15 +1407,13 @@ namespace stan {
           ka = theta[ncmt_*2];
         }
         Eigen::Matrix<double, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
-        Eigen::Matrix<double, Eigen::Dynamic, 1> yp(ncmt_ + oral0_, 1);
         if (type_ == linCmtNormal) {
-          yp = getAlast(theta);
           if (ncmt_ == 1) {
-            linCmtStan1<double>(g, yp, ka, ret0);
+            linCmtStan1<double>(g, yp_, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2<double>(g, yp, ka, ret0);
+            linCmtStan2<double>(g, yp_, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3<double>(g, yp, ka, ret0);
+            linCmtStan3<double>(g, yp_, ka, ret0);
           }
         } else if (type_ == linCmtSsInf8)  {
           if (ncmt_ == 1) {
