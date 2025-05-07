@@ -28,15 +28,6 @@ library(nlmixr2)
 ##   })
 ## }
 
-## datr <- nlmixr2data::Bolus_1CPT
-## dat <- datr[datr$SD == 1, ]
-## dat <- dat[, names(dat) != "SS"]
-
-## ## fit <- nlmixr2(f, dat, est="focei")
-
-## fitS <- nlmixr2(f, dat, est="saem")
-
-
 ## f2 <- function() {
 ##   ini({ # Where initial conditions/variables are specified
 ##     # '<-' or '=' defines population parameters
@@ -61,35 +52,123 @@ library(nlmixr2)
 ##   })
 ## }
 
+
+## datr <- nlmixr2data::Bolus_1CPT
+## dat <- datr[datr$SD == 1, ]
+## dat <- dat[, names(dat) != "SS"]
+
+## fit <- nlmixr2(f, dat, est="focei")
+
+## fitS <- nlmixr2(f, dat, est="saem")
+
+
+
 ## fit2 <- nlmixr2(f2, dat, est="focei")
 
 ## fit2S <- nlmixr2(f2, dat, est="saem")
 
-
 ## print(c("linear"=sum(fit$time), "ode"=sum(fit2$time)))
+
 ## print(c("linear"=sum(fitS$time), "ode"=sum(fit2S$time)))
 
-f <- function(){
+## f <- function(){
+##   ini({ # Where initial conditions/variables are specified
+##     # '<-' or '=' defines population parameters
+##     # Simple numeric expressions are supported
+##     lCl <- 1.8      #log Cl (L/hr)
+##     lVc <- 4.7      #log V (L)
+##     lKA <- 0.2      #log V (L)
+##     # Bounds may be specified by c(lower, est, upper), like NONMEM:
+##     # Residuals errors are assumed to be population parameters
+##     prop.err <- c(0, 0.3, 1)
+##     # Between subject variability estimates are specified by '~'
+##     # Semicolons are optional
+##     eta.Cl ~ 0.15
+##     eta.Vc ~ 0.15
+##     eta.KA ~ 0.15
+##   })
+##   model({ # Where the model is specified
+##     # The model uses the ini-defined variable names
+##     Cl <- exp(lCl + eta.Cl)
+##     Vc <- exp(lVc + eta.Vc)
+##     KA <- exp(lKA + eta.KA)
+##     cp <- linCmt()
+##     cp ~ prop(prop.err)
+##   })
+## }
+
+## f2 <- function() {
+##   ini({ # Where initial conditions/variables are specified
+##     # '<-' or '=' defines population parameters
+##     # Simple numeric expressions are supported
+##     lCl <- 1.8      #log Cl (L/hr)
+##     lVc <- 4.7      #log V (L)
+##     lKA <- 0.2      #log V (L)
+##     # Bounds may be specified by c(lower, est, upper), like NONMEM:
+##     # Residuals errors are assumed to be population parameters
+##     prop.err <- c(0, 0.3, 1)
+##     # Between subject variability estimates are specified by '~'
+##     # Semicolons are optional
+##     eta.Cl ~ 0.15
+##     eta.Vc ~ 0.15
+##     eta.KA ~ 0.15
+##   })
+##   model({ # Where the model is specified
+##     # The model uses the ini-defined variable names
+##     Cl <- exp(lCl + eta.Cl)
+##     Vc <- exp(lVc + eta.Vc)
+##     KA <- exp(lKA + eta.KA)
+##     # RxODE-style differential equations are supported
+##     d/dt(depot)    = -KA*depot;
+##     d/dt(centr)  =  KA*depot-(Cl/Vc)*centr;
+##     ## Concentration is calculated
+##     cp = centr / Vc;
+##     # And is assumed to follow proportional error estimated by prop.err
+##     cp ~ prop(prop.err)
+##   })
+## }
+
+## datr <- nlmixr2data::Oral_1CPT
+## dat <- datr[datr$SD == 1, ]
+## dat <- dat[, names(dat) != "SS"]
+
+## fit <- nlmixr2(f, dat, est="focei")
+## fitS <- nlmixr2(f, dat, est="saem")
+
+## fit2 <- nlmixr2(f2, dat, est="focei")
+## fit2S <- nlmixr2(f2, dat, est="saem")
+
+## print(c("linear"=sum(fitS$time), "ode"=sum(fit2S$time)))
+
+## print(c("linear"=sum(fit$time), "ode"=sum(fit2$time)))
+
+
+f <- function() {
   ini({ # Where initial conditions/variables are specified
     # '<-' or '=' defines population parameters
     # Simple numeric expressions are supported
-    lCl <- 1.8      #log Cl (L/hr)
-    lVc <- 4.7      #log V (L)
-    lKA <- 0.2      #log V (L)
+    lCl <- 1.6      #log Cl (L/hr)
+    lVc <- 4.5      #log Vc (L)
+    lQ  <- 1.6      #log Q (L/hr)
+    lVp <- 4        #log Vp (L)
+
     # Bounds may be specified by c(lower, est, upper), like NONMEM:
     # Residuals errors are assumed to be population parameters
     prop.err <- c(0, 0.3, 1)
     # Between subject variability estimates are specified by '~'
     # Semicolons are optional
-    eta.Cl ~ 0.15
     eta.Vc ~ 0.15
-    eta.KA ~ 0.15
+    eta.Cl ~ 0.15
+    eta.Vp ~ 0.15
+    eta.Q  ~ 0.15
   })
   model({ # Where the model is specified
     # The model uses the ini-defined variable names
-    Cl <- exp(lCl + eta.Cl)
     Vc <- exp(lVc + eta.Vc)
-    KA <- exp(lKA + eta.KA)
+    Cl <- exp(lCl + eta.Cl)
+    Vp <- exp(lVp + eta.Vp)
+    Q <- exp(lQ + eta.Q)
+    # And is assumed to follow proportional error estimated by prop.err
     cp <- linCmt()
     cp ~ prop(prop.err)
   })
@@ -99,26 +178,33 @@ f2 <- function() {
   ini({ # Where initial conditions/variables are specified
     # '<-' or '=' defines population parameters
     # Simple numeric expressions are supported
-    lCl <- 1.8      #log Cl (L/hr)
-    lVc <- 4.7      #log V (L)
-    lKA <- 0.2      #log V (L)
+    lCl <- 1.6      #log Cl (L/hr)
+    lVc <- 4.5      #log Vc (L)
+    lQ  <- 1.6      #log Q (L/hr)
+    lVp <- 4        #log Vp (L)
+
     # Bounds may be specified by c(lower, est, upper), like NONMEM:
     # Residuals errors are assumed to be population parameters
     prop.err <- c(0, 0.3, 1)
     # Between subject variability estimates are specified by '~'
     # Semicolons are optional
-    eta.Cl ~ 0.15
     eta.Vc ~ 0.15
-    eta.KA ~ 0.15
+    eta.Cl ~ 0.15
+    eta.Vp ~ 0.15
+    eta.Q  ~ 0.15
   })
   model({ # Where the model is specified
     # The model uses the ini-defined variable names
-    Cl <- exp(lCl + eta.Cl)
     Vc <- exp(lVc + eta.Vc)
-    KA <- exp(lKA + eta.KA)
+    Cl <- exp(lCl + eta.Cl)
+    Vp <- exp(lVp + eta.Vp)
+    Q <- exp(lQ + eta.Q)
     # RxODE-style differential equations are supported
-    d/dt(depot)    = -KA*depot;
-    d/dt(centr)  =  KA*depot-(Cl/Vc)*centr;
+    K10<- Cl/Vc
+    K12<- Q/Vc
+    K21<- Q/Vp
+    d/dt(centr)  = K21*periph-K12*centr-K10*centr;
+    d/dt(periph) =-K21*periph+K12*centr;
     ## Concentration is calculated
     cp = centr / Vc;
     # And is assumed to follow proportional error estimated by prop.err
@@ -126,7 +212,7 @@ f2 <- function() {
   })
 }
 
-datr <- nlmixr2data::Oral_1CPT
+datr <- nlmixr2data::Bolus_2CPT
 dat <- datr[datr$SD == 1, ]
 dat <- dat[, names(dat) != "SS"]
 
@@ -138,7 +224,11 @@ fit <- nlmixr2(f, dat, est="focei")
 
 ## fit2S <- nlmixr2(f2, dat, est="saem")
 
+
+## print(c("linear"=sum(fit$time), "ode"=sum(fit2$time)))
+
 ## print(c("linear"=sum(fitS$time), "ode"=sum(fit2S$time)))
+
 
 ## theta <- setNames(fit$theta,paste0("THETA[", seq_along(fit$theta), "]"))
 
