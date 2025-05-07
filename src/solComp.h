@@ -61,8 +61,6 @@ namespace stan {
       T invD0 = 1.0/(L1 - L0);
       T invD1 = -invD0;
 
-      out.C2(0, 0) = out.C2(0, 1) = k21;
-
       T tmpSum = k10 + k12;
 
       // C1
