@@ -109,7 +109,6 @@ RObject linCmtModelDouble(double dt,
     Eigen::Matrix<double, -1, -1> J(ncmt + oral0, 2*ncmt + oral0);
     lc.resizeModel();
     lc.restoreJac(a);
-    lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
     Eigen::Matrix<double, -1, 1> Jg(ncmt+oral0);
