@@ -449,7 +449,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     // fx = lc.restoreFx(acur);
     if (which1 >= 0 && which2 >= 0) {
       // w1, w2 are > 0
-      return lc.J(which1, which2);
+      return __linCmtBJ(which1, which2);
     } else if (which1 >= 0 && which2 == -2) {
       // w2 < 0
       return fx(which1);
@@ -517,7 +517,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   // Here we restore the last solved value
   if (!ind->doSS && ind->solvedIdx >= idx) {
     double *acur = getAdvan(idx);
-    lc.restoreJac(acur);
+    __linCmtBJ = lc.restoreJac(acur);
     fx = lc.restoreFx(acur);
   } else {
     // Calculate everything while solving using linCmt()
@@ -529,7 +529,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       // solution is already known
       // ind->linCmtSave = getAdvan(idx);
       double *acur = getAdvan(idx);
-      lc.restoreJac(acur);
+      __linCmtBJ = lc.restoreJac(acur);
       fx = lc.restoreFx(acur);
     } else {
       // Here we are doing ODE solving OR only linear solving
@@ -554,8 +554,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      lc.restoreJac(a);
-      lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
+      // __linCmtBJ = lc.restoreJac(a);
+      // lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
       stan::math::jacobian(lc, theta, fx, __linCmtBJ);
       lc.saveJac(__linCmtBJ);
     }
