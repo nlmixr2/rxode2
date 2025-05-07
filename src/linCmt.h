@@ -580,46 +580,43 @@ namespace stan {
                   Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
                   T ka,
                   Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
-#define k12   g(1, 0)
-#define k21   g(1, 1)
-#define k10   g(0, 1)
+        // Extract calculated micro-constants from the matrix
+        T k12 = g(1, 0);
+        T k21 = g(1, 1);
+        T k10 = g(0, 1);
 
         stan::math::solComp2struct<T> sol2 =
           stan::math::computeSolComp2(k10, k12, k21);
 
-        T rDepot = 0.0;
-        T R      = rate_[oral0_];
+        Eigen::Matrix<T, 2, 1> E = (-sol2.L * dt_).array().exp();
+        Eigen::Matrix<T, 2, 1> Xo = (yp(oral0_, 0) * sol2.C1)*E +
+          (yp(oral0_ + 1, 0) * sol2.C2)*E;
 
-        Eigen::Matrix<T, 2, 1> Xo;
+        double rDepot = 0.0;
+        double R      = rate_[oral0_];
+
         Eigen::Matrix<T, 2, 1> Rm;
-        Eigen::Matrix<T, 2, 1> E = exp(-sol2.L * dt_);
-        Eigen::Matrix<T, 2, 1> Ea = E;
 
-        Xo =(yp(oral0_, 0)*sol2.C1) * E +
-          (yp(oral0_ + 1, 0)*sol2.C2) * E;
-
-        if (oral0_ == 1 && yp(0, 0) >= 0.0) {
+        if (oral0_ == 1) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
           Eigen::Matrix<T, 2, 1> expa = Eigen::Matrix<T, 2, 1>::Constant(2, 1, exp(-ka*dt_));
-          Eigen::Matrix<T, 2, 1> ka2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka);
-          Ea =  (E - expa).array()/(ka2 - sol2.L).array();
+          Eigen::Matrix<T, 2, 1> Ea = (E - expa).array() / (Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka) - sol2.L).array();
+          // Eigen::Matrix<T, 2, 1> ka2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka);
+          // Ea =  (E - expa).array()/(ka2 - sol2.L).array();
           T cf = ka*yp(0, 0) - rDepot;
           Xo += (cf*sol2.C1)*Ea;
           ret(0, 0) = rDepot*(1.0-expa(0, 0))/ka + yp(0, 0)*expa(0, 0);
         }
+        // Handle infusions
         if (R > 0.0) {
           // Xo = Xo + ((cR*Co[, , 1]) %*% ((1 - E)/L)) # Infusion
-          Eigen::Matrix<T, 2, 1> o2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, 1.0);
-          Rm = (o2 - E).array()/sol2.L.array();
+          Eigen::Matrix<T, 2, 1> Rm = (Eigen::Matrix<T, 2, 1>::Constant(2, 1, 1.0) - E).array()/sol2.L.array();
           Xo += (R*sol2.C1)*Rm;
         }
         ret(oral0_, 0)     = Xo(0, 0);
         ret(oral0_ + 1, 0) = Xo(1, 0);
-#undef k12
-#undef k21
-#undef k10
         return;
       }
 
