@@ -580,44 +580,67 @@ namespace stan {
                   Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
                   T ka,
                   Eigen::Matrix<T, Eigen::Dynamic, 1>& ret) const {
-        // Extract calculated micro-constants from the matrix
-        T k12 = g(1, 0);
-        T k21 = g(1, 1);
-        T k10 = g(0, 1);
+        T k12  = g(1, 0);
+        T k21  = g(1, 1);
+        T k10  = g(0, 1);
 
-        stan::math::solComp2struct<T> sol2 =
-          stan::math::computeSolComp2(k10, k12, k21);
+        T sum  = k10 + k12 + k21;
+        T disc = sqrt(sum*sum - 4*k10*k21);
 
-        Eigen::Matrix<T, 2, 1> E = (-sol2.L * dt_).array().exp();
-        Eigen::Matrix<T, 2, 1> Xo = (yp(oral0_, 0) * sol2.C1)*E +
-          (yp(oral0_ + 1, 0) * sol2.C2)*E;
+        T L0 = 0.5*(sum + disc);
+        T L1 = 0.5*(sum - disc);
+
+        T invD0 = 1.0/(L1 - L0);
+        T invD1 = -invD0;
+
+        T tmpSum = k10 + k12;
+
+        // C1
+        T c1_0_0 = (k21 - L0)*invD0;
+        T c1_1_0 = k12*invD0;
+        T c1_0_1 = (k21 - L1)*invD1;
+        T c1_1_1 = k12*invD1;
+
+        // C2
+        T c2_0_0 = k21*invD0;
+        T c2_1_0 = (tmpSum - L0)*invD0;
+        T c2_0_1 = k21*invD1;
+        T c2_1_1 = (tmpSum - L1)*invD1;
+
+        // E
+        T E0 = exp(-L0*dt_);
+        T E1 = exp(-L1*dt_);
+
+        T Xo0 = (E0*c1_0_0 + E1*c1_0_1)*yp(oral0_, 0) +
+          (E0*c2_0_0 + E1*c2_0_1)*yp(oral0_ + 1, 0);
+
+        T Xo1 = (E0*c1_1_0 + E1*c1_1_1)*yp(oral0_, 0) +
+          (E0*c2_1_0 + E1*c2_1_1)*yp(oral0_ + 1, 0);
 
         double rDepot = 0.0;
         double R      = rate_[oral0_];
-
-        Eigen::Matrix<T, 2, 1> Rm;
-
         if (oral0_ == 1) {
-          // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
-          Eigen::Matrix<T, 2, 1> expa = Eigen::Matrix<T, 2, 1>::Constant(2, 1, exp(-ka*dt_));
-          Eigen::Matrix<T, 2, 1> Ea = (E - expa).array() / (Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka) - sol2.L).array();
-          // Eigen::Matrix<T, 2, 1> ka2 = Eigen::Matrix<T, 2, 1>::Constant(2, 1, ka);
-          // Ea =  (E - expa).array()/(ka2 - sol2.L).array();
+          T expa = exp(-ka*dt_);
+          T Ea0 = (E0 - expa)/(ka - L0);
+          T Ea1 = (E1 - expa)/(ka - L1);
           T cf = ka*yp(0, 0) - rDepot;
-          Xo += (cf*sol2.C1)*Ea;
-          ret(0, 0) = rDepot*(1.0-expa(0, 0))/ka + yp(0, 0)*expa(0, 0);
+          Xo0 += (Ea0*c1_0_0 + Ea1*c1_0_1)*cf;
+          Xo1 += (Ea0*c1_1_0 + Ea1*c1_1_1)*cf;
+          ret(0, 0) = yp(0, 0)*expa;
+          if (rDepot > 0) {
+            ret(0, 0) += rDepot*(1.0-expa)/ka;
+          }
         }
-        // Handle infusions
         if (R > 0.0) {
-          // Xo = Xo + ((cR*Co[, , 1]) %*% ((1 - E)/L)) # Infusion
-          Eigen::Matrix<T, 2, 1> Rm = (Eigen::Matrix<T, 2, 1>::Constant(2, 1, 1.0) - E).array()/sol2.L.array();
-          Xo += (R*sol2.C1)*Rm;
+          T Rm0 = (1.0 - E0)/L0;
+          T Rm1 = (1.0 - E1)/L1;
+          Xo0  += (Rm0*c1_0_0 + Rm1*c1_0_1)*R;
+          Xo1  += (Rm0*c1_1_0 + Rm1*c1_1_1)*R;
         }
-        ret(oral0_, 0)     = Xo(0, 0);
-        ret(oral0_ + 1, 0) = Xo(1, 0);
-        return;
+        ret(oral0_, 0)     = Xo0;
+        ret(oral0_ + 1, 0) = Xo1;
       }
 
       //////////////////////////////////////////////////////////////////
