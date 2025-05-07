@@ -50,39 +50,36 @@ namespace stan {
       solComp2struct<T> out;
       T sum = k10 + k12 + k21;
       T disc = sqrt(sum*sum - 4*k10*k21);
-      Eigen::Matrix<T, 2, 1> div;
-      out.L(0, 0) = 0.5*(sum + disc);
-      out.L(1, 0) = 0.5*(sum - disc);
+      T L0 = 0.5*(sum + disc);
+      T L1 = 0.5*(sum - disc);
 
-      div(0, 0) = out.L(1, 0) - out.L(0, 0);
-      div(1, 0) = out.L(0, 0) - out.L(1, 0);
-      T tmp = div(0, 0)*div(1, 0);
-      if (tmp == 0) {
+      if (abs(L1 - L0) <= DBL_EPSILON) {
         out.success = false;
         return out;
       }
-      out.C1(0, 0) = k21 - out.L(0, 0);
-      out.C1(0, 1) = k21 - out.L(1, 0);
+
+      T invD0 = 1.0/(L1 - L0);
+      T invD1 = -invD0;
 
       out.C2(0, 0) = out.C2(0, 1) = k21;
-      out.C1(1, 0) = out.C1(1, 1) = k12;
 
-      tmp = k10 + k12;
+      T tmpSum = k10 + k12;
 
-      out.C2(1, 0) = tmp - out.L(0, 0);
-      out.C2(1, 1) = tmp - out.L(1, 0);
+      // C1
+      out.C1(0, 0) = (k21 - L0)*invD0;
+      out.C1(1, 0) = k12*invD0;
+      out.C1(0, 1) = (k21 - L1)*invD1;
+      out.C1(1, 1) = k12*invD1;
 
-      out.C1(0, 0) = out.C1(0, 0)/div(0, 0);
-      out.C1(1, 0) = out.C1(1, 0)/div(0, 0);
+      // C2
+      out.C2(0, 0) = k21*invD0;
+      out.C2(1, 0) = (tmpSum - L0)*invD0;
+      out.C2(0, 1) = k21*invD1;
+      out.C2(1, 1) = (tmpSum - L1)*invD1;
 
-      out.C2(0, 0) = out.C2(0, 0)/div(0, 0);
-      out.C2(1, 0) = out.C2(1, 0)/div(0, 0);
-
-      out.C1(0, 1) = out.C1(0, 1)/div(1, 0);
-      out.C1(1, 1) = out.C1(1, 1)/div(1, 0);
-
-      out.C2(0, 1) = out.C2(0, 1)/div(1, 0);
-      out.C2(1, 1) = out.C2(1, 1)/div(1, 0);
+      // L
+      out.L(0, 0) = L0;
+      out.L(1, 0) = L1;
       out.success = true;
       return out;
     }
