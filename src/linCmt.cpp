@@ -107,6 +107,9 @@ RObject linCmtModelDouble(double dt,
   if (deriv) {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     Eigen::Matrix<double, -1, -1> J(ncmt + oral0, 2*ncmt + oral0);
+    lc.resizeModel();
+    lc.restoreJac(a);
+    lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
     Eigen::Matrix<double, -1, 1> Jg(ncmt+oral0);
@@ -427,6 +430,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define Jg     __linCmtBJg
 #define lc     __linCmtB
 #define theta  __linCmtBtheta
+#define AlastA __linCmtBAlastA
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
@@ -445,7 +449,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     // fx = lc.restoreFx(acur);
     if (which1 >= 0 && which2 >= 0) {
       // w1, w2 are > 0
-      return __linCmtBJ(which1, which2);
+      return lc.J(which1, which2);
     } else if (which1 >= 0 && which2 == -2) {
       // w2 < 0
       return fx(which1);
@@ -458,6 +462,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
     __linCmtBJ.resize(ncmt + oral0, lc.getNpars());
+    // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
   } else {
     lc.setSsType(ind->linSS);
@@ -549,6 +554,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
+      lc.restoreJac(a);
+      lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
       stan::math::jacobian(lc, theta, fx, __linCmtBJ);
       lc.saveJac(__linCmtBJ);
     }
