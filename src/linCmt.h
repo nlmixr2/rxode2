@@ -3,6 +3,7 @@
 
 #include "macros2micros.h"
 #include "solComp.h"
+#include "linCmtDiffConstant.h"
 
 // Global linear compartment model parameters:
 // p1, v, p2, p3, p3, p4, ka
@@ -79,6 +80,7 @@ namespace stan {
       double bolusAmt_ = 0.0;
       int bolusCmt_ = 0;
       int type_ = 0;
+      int numDiff_ = 0;
 
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
@@ -89,12 +91,14 @@ namespace stan {
                  const int oral0,
                  const int trans,
                  const bool grad,
-                 const int type) :
+                 const int type,
+                 const int numDiff) :
         ncmt_(ncmt),
         oral0_(oral0),
         trans_(trans),
         grad_(grad),
-        type_(type)
+        type_(type),
+        numDiff_(numDiff)
       { }
 
       linCmtStan() :
@@ -102,7 +106,8 @@ namespace stan {
         oral0_(0),
         trans_(0),
         grad_(false),
-        type_(0)
+        type_(0),
+        numDiff_(0)
       { }
 
       // set the steady-state help
@@ -115,22 +120,42 @@ namespace stan {
         AlastA_.resize(ncmt_ + oral0_);
       }
 
-      void setModelType(const int ncmt, const int oral0, const int trans, const int type) {
+      void setModelType(const int ncmt, const int oral0, const int trans, const int type,
+                        const int numDiff) {
         // The cached variables need to expire
         ncmt_ = ncmt;
         oral0_ = oral0;
         trans_ = trans;
         type_  = type;
+        numDiff_ = numDiff;
         if (grad_) {
           resizeModel();
         }
       }
 
-
+      int numSens() {
+        if (numDiff_ == 0) {
+          return 2*ncmt_ + 1;
+        }
+        int ka = diffKa & numDiff_;
+        int p1 = diffP1 & numDiff_;
+        int v1 = diffV1 & numDiff_;
+        int p2 = diffP2 & numDiff_;
+        int p3 = diffP3 & numDiff_;
+        int p4 = diffP4 & numDiff_;
+        int p5 = diffP5 & numDiff_;
+        switch (ncmt_) {
+        case 1: return ka+p1+v1;
+        case 2: return ka+p1+v1+p2+p3;
+        case 3: return ka+p1+v1+p2+p3+p4+p5;
+        }
+      }
 
       //
-      bool isSame(const int ncmt, const int oral0, const int trans) {
-        return (ncmt == ncmt_ && oral0 == oral0_ && trans_ == trans);
+      bool isSame(const int ncmt, const int oral0, const int trans,
+                  const int numDiff) {
+        return (ncmt == ncmt_ && oral0 == oral0_ && trans_ == trans &&
+                numDiff_ == numDiff);
       }
 
       int getNpars() {

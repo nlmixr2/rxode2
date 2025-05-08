@@ -37,7 +37,7 @@ extern "C" void ensureLinCmtA(int nCores) {
 // Since this cannot be threaded, this is not a vector
 // object.  This is created once to reduce memory allocation
 // and deallocation time.
-stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0);
+stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0, 0);
 Eigen::Matrix<double, -1, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
@@ -56,7 +56,7 @@ RObject linCmtModelDouble(double dt,
                           int bolusCmt,
                           int ndiff) {
 
-  stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type);
+  stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type, ndiff);
   if (type == linCmtSsInf) {
     lc.setSsInf(tinf, tau);
   } else if (type == linCmtSsBolus) {
@@ -217,8 +217,8 @@ extern "C" double linCmtA(rx_solve *rx, int id,
   linA_t lca = __linCmtA[omp_get_thread_num()];
   int idx = ind->idx;
   // Create the solved system object
-  if (!lc.isSame(ncmt, oral0, trans)) {
-    lc.setModelType(ncmt, oral0, trans, ind->linSS);
+  if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
+    lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
     // only resize when needed
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
@@ -456,8 +456,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     } else if (which1 == -2 && which2 >= 0) {
       return Jg(which2);
     }
-  } else if (!lc.isSame(ncmt, oral0, trans)) {
-    lc.setModelType(ncmt, oral0, trans, ind->linSS);
+  } else if (!lc.isSame(ncmt, oral0, trans, rx->ndiff)) {
+    lc.setModelType(ncmt, oral0, trans, ind->linSS, rx->ndiff);
     // only resize when needed
     theta.resize(lc.getNpars());
     fx.resize(ncmt + oral0);
@@ -543,8 +543,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      // __linCmtBJ = lc.restoreJac(a);
-      // lc.restoreAlastA(p1, v1, p2, p3, p4, p5, ka);
       stan::math::jacobian(lc, theta, fx, __linCmtBJ);
       lc.saveJac(__linCmtBJ);
     }
