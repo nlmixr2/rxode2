@@ -474,6 +474,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   case 2:  theta << p1, v1, p2, p3; break;
   case 12: theta << p1, v1, p2, p3, ka; break;
   case 3:  theta << p1, v1, p2, p3, p4, p5; break;
+    //              1   2   4   8   16  32
   case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
   }
 

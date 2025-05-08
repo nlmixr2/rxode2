@@ -830,8 +830,6 @@ rxToSE <- function(x, envir = NULL, progress = FALSE,
           .which1 <- 8L
         } else if (x == "rx__sens_peripheral1_BY_p3") {
           .which1 <- 9L
-        } else if (x == "rx__sens_depot_BY_ka") {
-          .which1 <- 10L
         }
       }
     } else if (.ncmt == 3) {

@@ -19,7 +19,7 @@
 #include "../inst/include/rxode2parseVer.h"
 
 static inline SEXP calcSLinCmt(void) {
-  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,12));
+  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,13));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -31,8 +31,9 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[9] = tb.simflg;
   INTEGER(sLinCmt)[10]= tb.thread;
   INTEGER(sLinCmt)[11]= tb.nLlik;
+  INTEGER(sLinCmt)[12] = tb.ndiff;
 
-  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 12));
+  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 13));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -45,6 +46,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 9, Rf_mkChar("simflg"));
   SET_STRING_ELT(sLinCmtN, 10, Rf_mkChar("thread"));
   SET_STRING_ELT(sLinCmtN, 11, Rf_mkChar("nLlik"));
+  SET_STRING_ELT(sLinCmtN, 12, Rf_mkChar("ndiff"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   UNPROTECT(2);
   return(sLinCmt);

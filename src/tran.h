@@ -95,6 +95,7 @@ lhs symbols?
   int matnf;
   int ncmt;
   int linB;
+  int ndiff; // flag of the linCmtB derivatives requested
   // curPropN
   int curPropN;
   int depotN;

@@ -14,9 +14,9 @@ rxRename(.data, ..., envir = parent.frame())
 
 .rxRename(.data, ..., envir = parent.frame())
 
-\method{rename}{rxUi}(.data, ...)
+rename.rxUi(.data, ...)
 
-\method{rename}{`function`}(.data, ...)
+rename.function(.data, ...)
 
 \method{rxRename}{rxUi}(.data, ...)
 
