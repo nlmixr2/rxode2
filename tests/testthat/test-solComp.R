@@ -2837,7 +2837,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
 
   test_that("rxode2 solving of 3 compartment steady state 1st order dosing", {
 
-    f <- function(CL=7.5, V1=20, V2=30, V3=200, Q2=0.5, Q3=0.05, ka=1, DOSE=100, tau=24, deriv=FALSE) {
+    f <- function(CL=7.5, V1=20, V2=30, V3=200, Q2=0.5, Q3=0.05, ka=1, DOSE=100, tau=24, deriv=FALSE, ndiff=127) {
       p1 <- CL
       v1 <- V1
       p2 <- Q2
@@ -2862,7 +2862,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt, 127)
+            deriv, type, tau, tinf, amt, cmt, ndiff)
     }
 
     expect_equal(f()$val,
