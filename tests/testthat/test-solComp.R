@@ -45,7 +45,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 1
     deriv <- FALSE
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)$val
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)$val
     c(s=pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=dt, dose=DOSE), l=l)
   }
 
@@ -73,7 +73,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 1
     deriv <- FALSE
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)$val
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)$val
     c(s=pmxTools::calc_sd_1cmt_linear_oral_1(CL=CL, V=V, ka=KA, t=dt, dose=DOSE),
       l=l)
   }
@@ -109,7 +109,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     oral0 <- 0
     trans <- 1
     ncmt <- 1
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
     l <- l$val
     c(s=pmxTools::calc_sd_1cmt_linear_infusion(CL=CL, V=V, t=t, dose=DOSE, tinf=tinf),
       l=l)
@@ -138,7 +138,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 2
     deriv <- FALSE
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)$val
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)$val
     c(s=pmxTools::calc_sd_2cmt_linear_bolus(CL=CL, V=V, V2=V2, Q=Q,
                                             t=dt, dose=DOSE), l=l)
   }
@@ -169,13 +169,13 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     deriv <- FALSE
     if (dt <= tinf) {
     } else {
-      l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+      l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
       dt <- dt - tinf
       extra <- tinf
       rateNV <- 0
       alastNV <- l$Alast
     }
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)$val
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)$val
     c(s=pmxTools::calc_sd_2cmt_linear_infusion(CL=CL, V=V, V2=V2, Q=Q,
                                                t=dt+extra, dose=DOSE, tinf=tinf),
       l=l)
@@ -207,7 +207,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 3
     deriv <- FALSE
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)$val
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)$val
     c(s=pmxTools::calc_sd_3cmt_linear_bolus(CL=CL, V=V, V2=V2, Q=Q,
                                             V3=V3, Q3=Q2,
                                             t=dt, dose=DOSE), l=l)
@@ -240,7 +240,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 3
     deriv <- FALSE
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)$val
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)$val
     c(s=pmxTools::calc_sd_3cmt_linear_oral_1(CL=CL, V=V, V2=V2, Q=Q,
                                              V3=V3, Q3=Q2,
                                              ka=ka,
@@ -275,13 +275,13 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     deriv <- FALSE
     if (dt <= tinf) {
     } else {
-      l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+      l <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
       dt <- dt - tinf
       extra <- tinf
       rateNV <- 0
       alastNV <- l$Alast
     }
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)$val
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)$val
     c(s=pmxTools::calc_sd_3cmt_linear_infusion(CL=CL, V=V, V2=V2, Q=Q, V3=V3, Q3=Q2,
                                                t=dt+extra, dose=DOSE, tinf=tinf),
       l=l)
@@ -315,7 +315,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 1
     deriv <- TRUE
-    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
     l
     #c(s=pmxTools::calc_sd_1cmt_linear_bolus(CL=CL, V=V, t=dt, dose=DOSE), l=l$val)
   }
@@ -368,7 +368,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     l <- .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1,
                p2, p3,
                p4, p5,
-               ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+               ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
     l
   }
 
@@ -425,14 +425,14 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       dt <- t
     } else {
       #Infusion completes during the time
-      v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+      v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
       if (t == tinf) return(v)
       # Infusion is now complete
       alastNV <- v$Alast
       rateNV <- 0
       dt <- t - tinf
     }
-    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
   }
 
   f <-  function(dt, CL=25, V=20, DOSE=100, tinf=1) {
@@ -525,7 +525,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 2
     deriv <- TRUE
-    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
   }
 
   f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, DOSE=100) {
@@ -580,7 +580,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 2
     deriv <- TRUE
-    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
   }
 
   f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, ka=2, DOSE=100) {
@@ -644,14 +644,14 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       dt <- t
     } else {
       #Infusion completes during the time
-      v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+      v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
       if (t == tinf) return(v)
       # Infusion is now complete
       alastNV <- v$Alast
       rateNV <- 0
       dt <- t - tinf
     }
-    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
   }
 
   f <-  function(dt, CL=25, V=20, V2 = 297, Q = 10, DOSE=100, tinf=1) {
@@ -763,7 +763,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 3
     deriv <- TRUE
-    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
   }
 
   f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, DOSE=100) {
@@ -824,7 +824,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
     trans <- 1
     ncmt <- 3
     deriv <- TRUE
-    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
   }
 
   f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400,
@@ -893,14 +893,14 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       dt <- t
     } else {
       #Infusion completes during the time
-      v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+      v <- .Call(`_rxode2_linCmtModelDouble`, tinf, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
       if (t == tinf) return(v)
       # Infusion is now complete
       alastNV <- v$Alast
       rateNV <- 0
       dt <- t - tinf
     }
-    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0)
+    .Call(`_rxode2_linCmtModelDouble`, dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, 0L, 0, 0, 0, 0, 127)
   }
 
   f <-  function(dt, V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400,
@@ -1984,7 +1984,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       cmt <- 0L
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
-            alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt)
+            alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(pmxTools::calc_ss_1cmt_linear_bolus(t=0, CL=6, V=25, dose=600, tau=24),
@@ -2025,7 +2025,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(pmxTools::calc_ss_1cmt_linear_infusion(tad=0, CL=2, V=25, dose=600, tinf=1, tau=24),
@@ -2068,7 +2068,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(f()$val,
@@ -2125,7 +2125,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(f()$val,
@@ -2182,7 +2182,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2264,7 +2264,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     rx <- rxode2({
@@ -2360,7 +2360,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       cmt <- 0L
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
-            alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt)
+            alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(pmxTools::calc_ss_2cmt_linear_bolus(0, CL = 7.5, V1 = 20, V2 = 30, Q = 0.5,
@@ -2408,7 +2408,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(pmxTools::calc_ss_2cmt_linear_infusion(tad = 0, CL = 7.5, V1 = 20, V2 = 30, Q = 0.5,
@@ -2454,7 +2454,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(f()$val,
@@ -2518,7 +2518,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(f()$val,
@@ -2584,7 +2584,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     s <- rxSolve(rx, e, addDosing =TRUE)
@@ -2670,7 +2670,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     rx <- rxode2({
@@ -2772,7 +2772,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       cmt <- 0L
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
-            alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt)
+            alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(pmxTools::calc_ss_3cmt_linear_bolus(0, CL=3.5, V1=20, V2 = 500, V3=200, Q2=0.5, Q3 = 0.05, dose=100, tau=24),
@@ -2816,7 +2816,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(pmxTools::calc_ss_2cmt_linear_infusion(tad = 0, CL = 7.5, V1 = 20, V2 = 30, Q = 0.5,
@@ -2862,7 +2862,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(f()$val,
@@ -2942,7 +2942,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     expect_equal(f()$val,
@@ -3017,7 +3017,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     s <- rxSolve(rx, e, addDosing =TRUE)
@@ -3103,7 +3103,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt)
+            deriv, type, tau, tinf, amt, cmt, 127)
     }
 
     rx <- rxode2({

@@ -53,7 +53,8 @@ RObject linCmtModelDouble(double dt,
                           bool deriv,
                           int type,
                           double tau, double tinf, double amt,
-                          int bolusCmt) {
+                          int bolusCmt,
+                          int ndiff) {
 
   stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type);
   if (type == linCmtSsInf) {
