@@ -110,12 +110,20 @@ namespace stan {
         type_ = type;
       }
 
+      void resizeModel() {
+        J_.resize(ncmt_ + oral0_, getNpars());
+        AlastA_.resize(ncmt_ + oral0_);
+      }
+
       void setModelType(const int ncmt, const int oral0, const int trans, const int type) {
         // The cached variables need to expire
         ncmt_ = ncmt;
         oral0_ = oral0;
         trans_ = trans;
         type_  = type;
+        if (grad_) {
+          resizeModel();
+        }
       }
 
 

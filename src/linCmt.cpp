@@ -107,6 +107,7 @@ RObject linCmtModelDouble(double dt,
   if (deriv) {
     Eigen::Matrix<double, Eigen::Dynamic, 1> fx;
     Eigen::Matrix<double, -1, -1> J(ncmt + oral0, 2*ncmt + oral0);
+    lc.resizeModel();
     lc.restoreJac(a);
     stan::math::jacobian(lc, theta, fx, J);
     lc.saveJac(J);
