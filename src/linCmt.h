@@ -611,11 +611,15 @@ namespace stan {
         T E0 = exp(-L0*dt_);
         T E1 = exp(-L1*dt_);
 
-        T Xo0 = (E0*c1_0_0 + E1*c1_0_1)*yp(oral0_, 0) +
-          (E0*c2_0_0 + E1*c2_0_1)*yp(oral0_ + 1, 0);
+        // Priors
+        T yp0 = yp(oral0_, 0);
+        T yp1 = yp(oral0_ + 1, 0);
 
-        T Xo1 = (E0*c1_1_0 + E1*c1_1_1)*yp(oral0_, 0) +
-          (E0*c2_1_0 + E1*c2_1_1)*yp(oral0_ + 1, 0);
+        T Xo0 = (E0*c1_0_0 + E1*c1_0_1)*yp0 +
+          (E0*c2_0_0 + E1*c2_0_1)*yp1;
+
+        T Xo1 = (E0*c1_1_0 + E1*c1_1_1)*yp0 +
+          (E0*c2_1_0 + E1*c2_1_1)*yp1;
 
         double rDepot = 0.0;
         double R      = rate_[oral0_];
@@ -623,12 +627,15 @@ namespace stan {
           rDepot = rate_[0];
           R += rDepot;
           T expa = exp(-ka*dt_);
-          T Ea0 = (E0 - expa)/(ka - L0);
-          T Ea1 = (E1 - expa)/(ka - L1);
-          T cf = ka*yp(0, 0) - rDepot;
+          T invKaL0 = 1.0 / (ka - L0);
+          T invKaL1 = 1.0 / (ka - L1);
+          T Ea0 = (E0 - expa)*invKaL0;
+          T Ea1 = (E1 - expa)*invKaL1;
+          T ypd = yp(0, 0);
+          T cf = ka*ypd - rDepot;
           Xo0 += (Ea0*c1_0_0 + Ea1*c1_0_1)*cf;
           Xo1 += (Ea0*c1_1_0 + Ea1*c1_1_1)*cf;
-          ret(0, 0) = yp(0, 0)*expa;
+          ret(0, 0) = ypd*expa;
           if (rDepot > 0) {
             ret(0, 0) += rDepot*(1.0-expa)/ka;
           }
