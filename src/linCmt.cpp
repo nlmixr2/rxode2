@@ -466,29 +466,17 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   } else {
     lc.setSsType(ind->linSS);
   }
-  switch (ncmt) {
-  case 1:
-    if (oral0 == 1) {
-      theta << p1, v1, ka;
-    } else {
-      theta << p1, v1;
-    }
-    break;
-  case 2:
-    if (oral0 == 1) {
-      theta << p1, v1, p2, p3, ka;
-    } else {
-      theta << p1, v1, p2, p3;
-    }
-    break;
-  case 3:
-    if (oral0 == 1) {
-      theta << p1, v1, p2, p3, p4, p5, ka;
-    } else {
-      theta << p1, v1, p2, p3, p4, p5;
-    }
-    break;
+
+  int sw = ncmt + 10*oral0;
+  switch (sw) {
+  case 1:  theta << p1, v1; break;
+  case 11: theta << p1, v1, ka; break;
+  case 2:  theta << p1, v1, p2, p3; break;
+  case 12: theta << p1, v1, p2, p3, ka; break;
+  case 3:  theta << p1, v1, p2, p3, p4, p5; break;
+  case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
   }
+
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);
   } else if (ind->linSS == linCmtSsBolus) {
