@@ -260,6 +260,7 @@ typedef struct {
   int useStdPow;
   bool ss2cancelAllPending;
   int npars;
+  int ndiff;
 } rx_solve;
 
 
