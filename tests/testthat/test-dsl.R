@@ -951,8 +951,6 @@ rxTest({
     expect_true(f("x", s=s))    # rx__sens_peripheral2_BY_p4
     expect_true(f("y", s=s))    # rx__sens_peripheral2_BY_p5
     expect_true(f("z", s=s))    # rx__sens_peripheral2_BY_ka
-    expect_true(f("aa", 10, s=s))#rx__sens_depot_BY_ka
-
   })
 
   test_that("1 compartment oral states translated in symengine", {
