@@ -1,9 +1,12 @@
 #ifndef __LINCMT_H__
 #define __LINCMT_H__
 
+
 #include "macros2micros.h"
 #include "solComp.h"
 #include "linCmtDiffConstant.h"
+
+#include "shi21e.h"
 
 // Global linear compartment model parameters:
 // p1, v, p2, p3, p3, p4, ka
@@ -121,7 +124,19 @@ namespace stan {
         grad_(grad),
         type_(type),
         numDiff_(numDiff)
-      { }
+      {
+        h_ka_ = 0.0;
+
+        h_p1_ = 0.0;
+        h_v1_ = 0.0;
+
+        h_p2_ = 0.0;
+        h_p3_ = 0.0;
+
+        h_p4_ = 0.0;
+        h_p5_ = 0.0;
+
+      }
 
       //' The initialization of this class without arguments
       //'
@@ -132,7 +147,18 @@ namespace stan {
         grad_(false),
         type_(0),
         numDiff_(0)
-      { }
+      {
+        h_ka_ = 0.0;
+
+        h_p1_ = 0.0;
+        h_v1_ = 0.0;
+
+        h_p2_ = 0.0;
+        h_p3_ = 0.0;
+
+        h_p4_ = 0.0;
+        h_p5_ = 0.0;
+      }
 
       // set the steady-state help
 
@@ -171,6 +197,18 @@ namespace stan {
         trans_ = trans;
         type_  = type;
         numDiff_ = numDiff;
+
+        h_ka_ = 0.0;
+
+        h_p1_ = 0.0;
+        h_v1_ = 0.0;
+
+        h_p2_ = 0.0;
+        h_p3_ = 0.0;
+
+        h_p4_ = 0.0;
+        h_p5_ = 0.0;
+
         if (grad_) {
           resizeModel();
         }
@@ -2026,7 +2064,8 @@ namespace stan {
         return ret0;
       }
 
-      Eigen::Matrix<double, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+      Eigen::Matrix<double, Eigen::Dynamic, 1>
+      f(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
 
         double ka = 0.0;
         if (oral0_) {
@@ -2071,6 +2110,17 @@ namespace stan {
         }
         return ret0;
       }
+
+      Eigen::Matrix<double, Eigen::Dynamic, 1>
+      operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+        return f(theta);
+      }
+
+      // Eigen::Matrix<double, Eigen::Dynamic, 1>
+      // f1(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn, int id) {
+      //   Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
+      //   return f(theta);
+      // }
 
       double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         int sw = ncmt_*100 + trans_;
