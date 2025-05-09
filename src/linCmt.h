@@ -82,6 +82,17 @@ namespace stan {
       int type_ = 0;
       int numDiff_ = 0;
 
+      double h_ka_ = 0.0;
+
+      double h_p1_ = 0.0;
+      double h_v1_ = 0.0;
+
+      double h_p2_ = 0.0;
+      double h_p3_ = 0.0;
+
+      double h_p4_ = 0.0;
+      double h_p5_ = 0.0;
+
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> yp_;
@@ -89,6 +100,20 @@ namespace stan {
 
       Eigen::Matrix<double, Eigen::Dynamic, 1> trueTheta_;
 
+      //' The initialization of this class
+      //'
+      //' @param ncmt The number of compartments
+      //'
+      //' @param oral0 A indicator of 0 or 1 saying if this was an oral dose
+      //'
+      //' @param trans the transformation id
+      //'
+      //' @param grad A boolean saying if this is a gradient calculation
+      //'
+      //' @param type The type of steady-state calculation
+      //'
+      //' @param numDiff The number Jacobian differences calculated
+      //'
       linCmtStan(const int ncmt,
                  const int oral0,
                  const int trans,
@@ -103,6 +128,8 @@ namespace stan {
         numDiff_(numDiff)
       { }
 
+      //' The initialization of this class without arguments
+      //'
       linCmtStan() :
         ncmt_(0),
         oral0_(0),
@@ -113,15 +140,34 @@ namespace stan {
       { }
 
       // set the steady-state help
+
+      //' Set the current Steady-state type
+      //'
+      //' @param type The type of steady-state calculation
+      //'
       void setSsType(const int type) {
         type_ = type;
       }
 
+      //' Resize the model
+      //'
       void resizeModel() {
         J_.resize(ncmt_ + oral0_, getNpars());
         AlastA_.resize(ncmt_ + oral0_);
       }
 
+      //' Set the model type
+      //'
+      //' @param ncmt The number of compartments
+      //'
+      //' @param oral0 A indicator of 0 or 1 saying if this was an oral dose
+      //'
+      //' @param trans the translation type for the model
+      //'
+      //' @param type The type of steady-state calculation
+      //'
+      //' @param numDiff The number of differenes calculated for Jacobians
+      //'
       void setModelType(const int ncmt, const int oral0, const int trans, const int type,
                         const int numDiff) {
         // The cached variables need to expire
@@ -135,6 +181,10 @@ namespace stan {
         }
       }
 
+      //' Get the number of sensitivity parameters
+      //'
+      //' @return The number of sensitivity parameters
+      //'
       int numSens() {
         if (numDiff_ == 0) {
           return 2*ncmt_ + 1;
@@ -158,6 +208,16 @@ namespace stan {
         return 0;
       }
 
+      //' Get the sensitivity theta parameters
+      //'
+      //' This is used for the Jacobian using stan math; this allows the
+      //' full theta to be the calculation, but have a narrowed number of parameters
+      //' for a Jacobian calculation.
+      //'
+      //' @param theta -- full theta matrix
+      //'
+      //' @param sensTheta -- The sensitivity theta matrix
+      //'
       void sensTheta(const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
                      Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta) {
         trueTheta_ = theta;
@@ -247,6 +307,11 @@ namespace stan {
         }
       }
 
+      //' This function changes the sensitivity theta to the full theta
+      //' @param theta The sensitivity theta
+      //'
+      //' @return The full theta
+      //'
       template <typename T>
       Eigen::Matrix<T, Eigen::Dynamic, 1>
       trueTheta(const Eigen::Matrix<T, Eigen::Dynamic, 1>& theta) const {
@@ -384,6 +449,12 @@ namespace stan {
         return fullTheta;
       }
 
+      //' This updates the full Jacobian matrix from the smaller Jacobian
+      //'
+      //' @param J The full Jacobian matrix
+      //'
+      //' @param Js The smaller Jacobian matrix only focusing on needed sensitivity
+      //'
       void updateJfromJs(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& J,
                          const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
         int nd = numDiff_;
@@ -491,14 +562,25 @@ namespace stan {
         }
       }
 
-
-      //
+      //' Is this linear compartment model the same as the current one?
+      //'
+      //' @param ncmt number of compartments
+      //'
+      //' @param oral0 0 or 1 for oral dose
+      //'
+      //' @param trans the translation indictor
+      //'
+      //'
+      //' @param numDiff the number of differential equations that we
+      //         are calculating gradients for.
+      //'
       bool isSame(const int ncmt, const int oral0, const int trans,
                   const int numDiff) {
         return (ncmt == ncmt_ && oral0 == oral0_ && trans_ == trans &&
                 numDiff_ == numDiff);
       }
 
+      //' Get the number of parameters
       int getNpars() {
         if (oral0_) {
           return 2*ncmt_ + 1;
@@ -507,6 +589,7 @@ namespace stan {
         }
       }
 
+      //' Get the number of compartments
       int getNalast() {
         if (grad_) {
           return ncmt_ + oral0_ + ncmt_*getNpars() + oral0_;
@@ -516,6 +599,7 @@ namespace stan {
         return 0;
       }
 
+      //' Get the number of rate compartments
       int getNrate() {
         return 1 + oral0_;
       }
@@ -524,6 +608,15 @@ namespace stan {
       // Solved One compartment steady state solutions
       //////////////////////////////////////////////////////////////////
 
+      //' This function calculates the steady state for a one compartment
+      //' infinite infusion
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void
       linCmtStan1ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -559,6 +652,21 @@ namespace stan {
 #undef k
       }
 
+      //' This function calculates the steady state for a one compartment
+      //' infusion
+      //'
+      //' This uses the the tau_ and tinf_ to calculate the steady state
+      //'
+      //' These parameters are set in the linCmtStan class
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void
       linCmtStan1ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -600,6 +708,19 @@ namespace stan {
         return;
       }
 
+      //' This function calculates the steady state for a one compartment
+      //' bolus compartment
+      //'
+      //' This uses the the tau_ and bolusAmt_ to calculate the steady state
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void
       linCmtStan1ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -641,6 +762,21 @@ namespace stan {
       //////////////////////////////////////////////////////////////////
       // Solved One compartment wnl solutions
       //////////////////////////////////////////////////////////////////
+
+      //' This calculates the one compartment wnl solution
+      //'
+      //' The dt_ represents the time step
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param yp The prior state
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void linCmtStan1(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
                        Eigen::Matrix<T, Eigen::Dynamic, 1> yp,
@@ -679,6 +815,17 @@ namespace stan {
       // Solved Two compartment steady state solutions
       //////////////////////////////////////////////////////////////////
 
+      //' This calculates the two compartment steady state solution for
+      //' infinite infusion
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void
       linCmtStan2ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -743,6 +890,16 @@ namespace stan {
 #undef k
       }
 
+      //' This calculates the two compartment steady state solution for
+      //' infusion with tinf_ and tau_
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
       template <typename T>
       void
       linCmtStan2ssInf(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -849,6 +1006,17 @@ namespace stan {
         return;
       }
 
+      //' This calculates the two compartment steady state solution for
+      //' bolus with tinf_ and bolusAmt_ to the bolusCmt_
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void
       linCmtStan2ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -940,6 +1108,20 @@ namespace stan {
       //////////////////////////////////////////////////////////////////
       // Solved Two compartment wnl solutions
       //////////////////////////////////////////////////////////////////
+
+      //' This calculates the two compartment wnl solution for
+      //' the two compartment model
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param yp The prior amount matrix
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void
       linCmtStan2(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -992,6 +1174,18 @@ namespace stan {
       //////////////////////////////////////////////////////////////////
       // Solved Three compartment steady state solutions
       //////////////////////////////////////////////////////////////////
+
+      //' This calculates the three compartment steady state solution for
+      //' the three compartment model infinite infusion
+      //'
+      //' @param g The micro-constants matrix
+      //'
+      //' @param ka The absorption rate
+      //'
+      //' @param ret The returned matrix
+      //'
+      //' @return nothing, updates ret instead
+      //'
       template <typename T>
       void
       linCmtStan3ssInf8(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -1328,7 +1522,17 @@ namespace stan {
 #undef v
       }
 
-
+      //' Three compartment steady state bolus
+      //' tau_ and bolusAmt_ are used
+      //'
+      //' @param g macro constants matrix
+      //'
+      //' @param ka absorption rate constant
+      //'
+      //' @param ret returned matrix
+      //'
+      //' @return nothing, called for side effects
+      //'
       template <typename T>
       void
       linCmtStan3ssBolus(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -1490,6 +1694,15 @@ namespace stan {
       // Solved Three compartment wnl solutions
       //////////////////////////////////////////////////////////////////
 
+      //' Calculate the 3 compartment model
+      //'
+      //' @param g micro-constants matrix
+      //'
+      //' @param yp the amount in the last compartment
+      //'
+      //' @param ret the output matrix
+      //'
+      //' @return nothing, called for side effects
       template <typename T>
       void
       linCmtStan3(Eigen::Matrix<T, Eigen::Dynamic, 2> g,
@@ -1544,6 +1757,16 @@ namespace stan {
 #undef k10
       }
 
+      //' This sets the pointer for the linear compartment model
+      //'
+      //' @param A is the last amount known
+      //'
+      //' @param R is the rate
+      //'
+      //' @param Asave is the double array that will save the amounts
+      //'
+      //' @return set the pointers
+      //'
       void setPtr(double *A, double *R, double *Asave) {
         A_ = A;
         rate_ = R;
