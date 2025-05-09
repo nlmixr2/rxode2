@@ -8,11 +8,6 @@
 // Global linear compartment model parameters:
 // p1, v, p2, p3, p3, p4, ka
 
-#define linCmtNormal 0
-#define linCmtSsInf8 1
-#define linCmtSsInf 2
-#define linCmtSsBolus 3
-
 namespace stan {
   namespace math {
 

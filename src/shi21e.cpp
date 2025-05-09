@@ -2,12 +2,7 @@
 // HAO-JUN MICHAEL SHI, YUCHEN XIE, MELODY QIMING XUAN AND JORGE NOCEDAL
 //
 // https://arxiv.org/pdf/2110.06380.pdf
-
-// Harmonic mean correction see:
-// https://github.com/cran/lmomco/blob/8558903cdcdf6ce0640822a8f6ee7caf07ebd451/R/harmonic.mean.R
-// https://rdrr.io/cran/lmomco/man/harmonic.mean.html
-#include "shi21e.h"
-
+//
 double shiRF(double &h, shi21efn_type f, double ef, Eigen::VectorXd &t, int &id, int &idx,
              Eigen::VectorXd &f0, Eigen::VectorXd &f1, double &l, double &u,
              bool &finiteF1, bool &finiteF4) {
