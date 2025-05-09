@@ -39,6 +39,7 @@ extern "C" void ensureLinCmtA(int nCores) {
 stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0, 0);
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaSens;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBsensH;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJs;
@@ -85,6 +86,8 @@ RObject linCmtModelDouble(double dt,
 
   int numSens = lc.numSens();
   Eigen::Matrix<double, Eigen::Dynamic, 1> thetaSens(numSens);
+  Eigen::Matrix<double, Eigen::Dynamic, 1> h(numSens);
+  h.setZero();
 
   lc.sensTheta(theta, thetaSens);
 
@@ -409,6 +412,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define lc        __linCmtB
 #define theta     __linCmtBtheta
 #define thetaSens __linCmtBthetaSens
+#define thetaH    __linCmtBsensH
 #define AlastA    __linCmtBAlastA
 #define J         __linCmtBJ
 #define Js        __linCmtBJs
@@ -450,6 +454,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     int numSens = lc.numSens();
     Js.resize(ncmt+oral0, numSens);//(ncmt + oral0, 2*ncmt + oral0);
     thetaSens.resize(numSens);
+    thetaH.resize(numSens);
 
     // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
@@ -467,7 +472,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
   }
 
-  lc.sensTheta(theta, thetaSens);
+  lc.sensTheta(theta, thetaSens, thetaH);
 
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);
