@@ -80,6 +80,16 @@ namespace stan {
       int type_ = 0;
       int numDiff_ = 0;
 
+      double h_ka_ = 0.0;
+
+      double h_p1_ = 0.0;
+      double h_v1_ = 0.0;
+
+      double h_p2_ = 0.0;
+      double h_p3_ = 0.0;
+
+      double h_p4_ = 0.0;
+      double h_p5_ = 0.0;
 
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
@@ -87,8 +97,6 @@ namespace stan {
       Eigen::Matrix<double, Eigen::Dynamic, 2> g_;
 
       Eigen::Matrix<double, Eigen::Dynamic, 1> trueTheta_;
-
-      Eigen::Matrix<double, Eigen::Dynamic, 1> h_;
 
       //' The initialization of this class
       //'
@@ -117,7 +125,17 @@ namespace stan {
         type_(type),
         numDiff_(numDiff)
       {
-        h_.setZero();
+        h_ka_ = 0.0;
+
+        h_p1_ = 0.0;
+        h_v1_ = 0.0;
+
+        h_p2_ = 0.0;
+        h_p3_ = 0.0;
+
+        h_p4_ = 0.0;
+        h_p5_ = 0.0;
+
       }
 
       //' The initialization of this class without arguments
@@ -130,7 +148,16 @@ namespace stan {
         type_(0),
         numDiff_(0)
       {
-        h_.setZero();
+        h_ka_ = 0.0;
+
+        h_p1_ = 0.0;
+        h_v1_ = 0.0;
+
+        h_p2_ = 0.0;
+        h_p3_ = 0.0;
+
+        h_p4_ = 0.0;
+        h_p5_ = 0.0;
       }
 
       // set the steady-state help
@@ -171,7 +198,16 @@ namespace stan {
         type_  = type;
         numDiff_ = numDiff;
 
-        h_.setZero();
+        h_ka_ = 0.0;
+
+        h_p1_ = 0.0;
+        h_v1_ = 0.0;
+
+        h_p2_ = 0.0;
+        h_p3_ = 0.0;
+
+        h_p4_ = 0.0;
+        h_p5_ = 0.0;
 
         if (grad_) {
           resizeModel();
@@ -216,10 +252,8 @@ namespace stan {
       //' @param sensTheta -- The sensitivity theta matrix
       //'
       void sensTheta(const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
-                     const Eigen::Matrix<double, Eigen::Dynamic, 1> thetaH,
-                     Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta) const {
+                     Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta) {
         trueTheta_ = theta;
-        h_ = thetaH;
         int nd = numDiff_;
         if (nd == 0) nd = 127; // all terms
         int i = 0, j=0;
