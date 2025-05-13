@@ -98,5 +98,7 @@
 #define Rxc_safeLog 93
 #define Rxc_safePow 94
 #define Rxc_ssSolved 95
-#define Rxc__zeros 96
+#define Rxc_linCmtSensType 96
+#define Rxc_linCmtSensH 97
+#define Rxc__zeros 98
 #endif // __rxode2_control_H__

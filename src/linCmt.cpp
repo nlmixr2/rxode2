@@ -39,6 +39,7 @@ extern "C" void ensureLinCmtA(int nCores) {
 stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0, 0);
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaSens;
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaH;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtByp;
@@ -450,6 +451,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define Js        __linCmtBJs
 #define yp        __linCmtByp
 #define g         __linCmtBg
+#define hh        __linCmtBthetaH
 
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
@@ -489,6 +491,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     int numSens = lc.numSens();
     Js.resize(ncmt+oral0, numSens);//(ncmt + oral0, 2*ncmt + oral0);
     thetaSens.resize(numSens);
+    hh.resize(numSens);
 
     // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());

@@ -134,6 +134,8 @@ rxSolve(
   ssAtDoseTime = TRUE,
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
+  linCmtSensType = c("forward", "AD", "central", "forwardH", "centralH"),
+  linCmtSensH = 1e-04,
   envir = parent.frame()
 )
 
@@ -834,6 +836,21 @@ state solutions for the linear compartment model.  When \code{FALSE}
 this will solve to steady state using the linear solutions
 instead.  This is only used when the method only has \code{linCmt()}
 and does not mix ODEs with the solution.  The default is \code{TRUE}.}
+
+\item{linCmtSensType}{The type of linear compartment
+sensitivity/gradients to use.  The current options are:
+\itemize{
+\item \code{AD} -- automatic differentiation (using stan math)
+\item \code{forward} -- forward sensitivity where the step size is
+determined by shi 2021 optimization (only once per problem)
+\item \code{central} -- central sensitivity where the step size is
+determined by shi 2021 optimization (only once per problem)
+\item \code{fowardH} -- forward sensitivity where the step size is fixed
+\item \code{centralH} -- central sensitivity where the step size is fixed
+}}
+
+\item{linCmtSensH}{The step size for the forward and central
+differences when using the option \code{centralH} or \code{forwardH}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

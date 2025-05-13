@@ -97,7 +97,9 @@
 #define Rxc_safeLog 93
 #define Rxc_safePow 94
 #define Rxc_ssSolved 95
-#define Rxc__zeros 96
+#define Rxc_linCmtSensType 96
+#define Rxc_linCmtSensH 97
+#define Rxc__zeros 98
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

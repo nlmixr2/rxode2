@@ -631,6 +631,24 @@
 #'   instead.  This is only used when the method only has `linCmt()`
 #'   and does not mix ODEs with the solution.  The default is `TRUE`.
 #'
+#' @param linCmtSensType The type of linear compartment
+#'   sensitivity/gradients to use.  The current options are:
+#'
+#'  - `AD` -- automatic differentiation (using stan math)
+#'
+#'  - `forward` -- forward sensitivity where the step size is
+#'  determined by shi 2021 optimization (only once per problem)
+#'
+#'  - `central` -- central sensitivity where the step size is
+#'  determined by shi 2021 optimization (only once per problem)
+#'
+#' - `fowardH` -- forward sensitivity where the step size is fixed
+#'
+#' - `centralH` -- central sensitivity where the step size is fixed
+#'
+#' @param linCmtSensH The step size for the forward and central
+#'   differences when using the option `centralH` or `forwardH`.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -749,6 +767,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtDoseTime=TRUE,
                     ss2cancelAllPending=FALSE,
                     ssSolved=TRUE,
+                    linCmtSensType=c("forward", "AD", "central", "forwardH", "centralH"),
+                    linCmtSensH=0.0001,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -877,6 +897,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .sum <- c("pairwise"=1L, "fsum"=2L, "kahan"=3L , "neumaier"=4L, "c"=5L)[match.arg(sumType)]
     }
+    if (checkmate::testIntegerish(linCmtSensType)) {
+      .linCmtSensType <- as.integer(linCmtSensType)
+    } else {
+      .linCmtSensType <- c("AD"=3L, "forward"=1L, "central"=2L, "forwardH"=10L, "centralH"=20L)[match.arg(linCmtSensType)]
+    }
+
     if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .prod <- as.integer(prodType)
     } else {
@@ -1182,6 +1208,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       safeLog=safeLog,
       safePow=safePow,
       ssSolved=ssSolved,
+      linCmtSensType=.linCmtSensType,
+      linCmtSensH=linCmtSensH,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
