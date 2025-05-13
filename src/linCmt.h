@@ -77,17 +77,6 @@ namespace stan {
       int type_ = 0;
       int numDiff_ = 0;
 
-      double h_ka_ = 0.0;
-
-      double h_p1_ = 0.0;
-      double h_v1_ = 0.0;
-
-      double h_p2_ = 0.0;
-      double h_p3_ = 0.0;
-
-      double h_p4_ = 0.0;
-      double h_p5_ = 0.0;
-
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> yp_;
@@ -1977,7 +1966,6 @@ namespace stan {
       // (the parameters)
       Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>
       operator()(const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& thetaIn) const {
-
         Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
         Eigen::Matrix<stan::math::var, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
@@ -2085,8 +2073,14 @@ namespace stan {
       //
       Eigen::Matrix<double, Eigen::Dynamic, 1> fdoubles(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
+        Eigen::Matrix<double, Eigen::Dynamic, 2> g = g_;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> yp = yp_;
         g_ = stan::math::macros2micros(theta, ncmt_, trans_);
-        return fdouble(theta);
+        yp_ = getAlast(theta);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> ret = fdouble(theta);
+        yp_ = yp;
+        g_ = g;
+        return ret;
       }
 
       // This function calculates a geometric mean to optimize the step size
@@ -2105,96 +2099,20 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> cur;
         Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
         double vc = getVc(theta);
-
-        int nt12 = 4;
-        double t12 = M_LN2/g_(0, 1);
-        double saveDt = dt_;
-
-        double ret = 0.0;
-        yp_.setZero();
-
-        double r0 = rate_[0], r1 = (oral0_ == 0 ? rate_[1] : 0.0);
-        double sum = 0.0;
-        int nzero = 0;
-        int n = 0;
-        yp_[0] = 100;
-        dt_ = 0.0;
-        for (int i = 0; i < nt12; i++) {
-          dt_ += t12;
-          cur = fdoubles(thetaIn);
-          if (cur(oral0_, 0) > 0) {
-            sum += log(cur(oral0_, 0)/vc);
+        cur =  fdoubles(thetaIn);
+        double gm=0.0;
+        int n=0;
+        for (int i = 0; i < oral0_ + ncmt_; ++i) {
+          if (cur(i, 0) > 0) {
+            gm += log(cur(i, 0));
             n++;
-          }
-          for (int j = 0; j < cur.size(); j++) {
-            if (cur(j, 0) > 0) {
-              sum += log(cur(j, 0));
+            if (i == oral0_) {
+              gm += log(cur(oral0_, 0)/vc);
               n++;
             }
           }
         }
-
-        rate_[0] = 100;
-        yp_[0] = 0;
-        for (int i = 0; i < nt12; i++) {
-          dt_ += t12;
-          cur = fdoubles(thetaIn);
-          if (cur(oral0_, 0) > 0) {
-            sum += log(cur(oral0_, 0)/vc);
-            n++;
-          }
-          for (int j = 0; j < cur.size(); j++) {
-            if (cur(j, 0) > 0) {
-              sum += log(cur(j, 0));
-              n++;
-            }
-          }
-        }
-
-        if (oral0_) {
-          dt_ = 0.0;
-          yp_[0] = 0;
-          yp_[1] = 100;
-          rate_[0] = 0;
-          for (int i = 0; i < nt12; i++) {
-            dt_ += t12;
-            cur = fdoubles(thetaIn);
-            if (cur(oral0_, 0) > 0) {
-              sum += log(cur(oral0_, 0)/vc);
-              n++;
-            }
-            for (int j = 0; j < cur.size(); j++) {
-              if (cur(j, 0) > 0) {
-                sum += log(cur(j, 0));
-                n++;
-              }
-            }
-          }
-
-          rate_[1] = 100;
-          yp_[1] = 0;
-
-          for (int i = 0; i < nt12; i++) {
-            dt_ += t12;
-            cur = fdoubles(thetaIn);
-            if (cur(oral0_, 0) > 0) {
-              sum += log(cur(oral0_, 0)/vc);
-              n++;
-            }
-            for (int j = 0; j < cur.size(); j++) {
-              if (cur(j, 0) > 0) {
-                sum += log(cur(j, 0));
-                n++;
-              }
-            }
-          }
-          rate_[1] = r1;
-        }
-        rate_[0] = r0;
-        yp_ = getAlast(theta);
-        dt_ = saveDt;
-        g_ = stan::math::macros2micros(theta, ncmt_, trans_);
-        return exp((double)(sum)/((double)n));
+        return exp(gm/n);
       }
 
       double shiRF(double &h,
@@ -2312,13 +2230,13 @@ namespace stan {
                        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> fup;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
-        fx = fdoubles(thetaIn); // This also restores g_
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
           thetaCur(i, 0) += h(i, 0);
           fup = fdoubles(thetaCur);
           Js.col(i) = (fup - fx).array()/(h(i, 0));
         }
+        fx = fdoubles(thetaIn); // This also restores g_
       }
 
 
