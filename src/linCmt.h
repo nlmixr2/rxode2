@@ -2026,7 +2026,8 @@ namespace stan {
         return ret0;
       }
 
-      Eigen::Matrix<double, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+      Eigen::Matrix<double, Eigen::Dynamic, 1>
+      fdouble(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
 
         double ka = 0.0;
         if (oral0_) {
@@ -2070,6 +2071,79 @@ namespace stan {
           Asave_[i] = ret0(i, 0);
         }
         return ret0;
+      }
+
+      Eigen::Matrix<double, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+        return fdouble(theta);
+      }
+
+      // This function calculates a geometric mean to optimize the step size
+      //
+      // This takes the compartment values at 4 time points (spaced by the half
+      // life) and takes the geometric mean of all the values.  This is taken with
+      // a bolus dose to the central (and possibly depot compartment).  It also has
+      // an infusion to the central and depot compartment.
+      //
+      // @param thetaIn the input parameters
+      //
+      // @return the geometric mean of the compartments at key time-points
+      //
+      double fdoubleh(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
+        Eigen::Matrix<double, Eigen::Dynamic, 2> g =
+          stan::math::macros2micros(theta, ncmt_, trans_);
+
+        int nt12 = 4;
+        double t12 = M_LN2/g(0, 1);
+        double saveDt = dt_;
+
+        double ret = 0.0;
+        yp_.setZero();
+
+        double r0 = rate_[0], r1 = (oral0_ == 0 ? rate_[1] : 0.0);
+
+        yp_[0] = 100;
+        dt_ = 0.0;
+        int n=0;
+        for (int i = 0; i < nt12; i++) {
+          dt_ += t12;
+          ret += fdouble(theta).array().log().sum();
+          n += ncmt_ + oral0_;
+        }
+
+        rate_[0] = 100;
+        yp_[0] = 0;
+        for (int i = 0; i < nt12; i++) {
+          dt_ += t12;
+          ret += fdouble(theta).array().log().sum();
+          n += ncmt_ + oral0_;
+        }
+
+        if (oral0_) {
+          dt_ = 0.0;
+          yp_[0] = 0;
+          yp_[1] = 100;
+          rate_[0] = 0;
+          for (int i = 0; i < nt12; i++) {
+            dt_ += t12;
+            ret += fdouble(theta).array().log().sum();
+            n += ncmt_ + oral0_;
+          }
+
+          rate_[1] = 100;
+          yp_[1] = 0;
+
+          for (int i = 0; i < nt12; i++) {
+            dt_ += t12;
+            ret += fdouble(theta).array().log().sum();
+            n += ncmt_ + oral0_;
+          }
+
+          rate_[1] = r1;
+        }
+        rate_[0] = r0;
+        yp_ = getAlast(theta);
+        return(exp(ret/n));
       }
 
       double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {

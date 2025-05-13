@@ -40,6 +40,10 @@ stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0, 0);
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaSens;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
+
+Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtByp;
+Eigen::Matrix<double, Eigen::Dynamic, 2> __linCmtBg;
+
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJ;
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> __linCmtBJs;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBJg;
@@ -102,6 +106,16 @@ RObject linCmtModelDouble(double dt,
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J =
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Constant(ncmt + oral0, 2*ncmt+ oral0, NA_REAL);
     lc.resizeModel();
+
+    // Getting the sensitivity with numerical differencs
+    Eigen::Matrix<double, Eigen::Dynamic, 1> yp(ncmt+oral0, 1);
+    Eigen::Matrix<double, Eigen::Dynamic, 2> g(ncmt, 2);
+    lc.linAcalcAlast(yp, g,theta);
+
+    double d = lc.fdoubleh(thetaSens);
+    REprintf("d: %f\n", d);
+
+    // ad differences
     stan::math::jacobian(lc, thetaSens, fx, Js);
     lc.updateJfromJs(J, Js);
     lc.saveJac(J);
@@ -412,6 +426,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define AlastA    __linCmtBAlastA
 #define J         __linCmtBJ
 #define Js        __linCmtBJs
+#define yp        __linCmtByp
+#define g         __linCmtBg
+
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
@@ -453,6 +470,10 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
     // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
+
+    yp.resize(ncmt + oral0);
+    g.resize(ncmt, 2);
+
   } else {
     lc.setSsType(ind->linSS);
   }
