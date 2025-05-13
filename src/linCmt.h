@@ -2077,6 +2077,18 @@ namespace stan {
         return fdouble(theta);
       }
 
+      // Senstivity function value
+      //
+      // @param thetaIn the input parameters
+      //
+      // @return the compartment values
+      //
+      Eigen::Matrix<double, Eigen::Dynamic, 1> fdoubles(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
+        g_ = stan::math::macros2micros(theta, ncmt_, trans_);
+        return fdouble(theta);
+      }
+
       void fharmonicstart(Eigen::Matrix<double, Eigen::Dynamic, 1> all,
                             double &sum,
                             int &nzero,
@@ -2113,17 +2125,15 @@ namespace stan {
       // @return the geometric mean of the compartments at key time-points
       //
       double fdoubleh(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
-        Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
-        Eigen::Matrix<double, Eigen::Dynamic, 2> g =
-          stan::math::macros2micros(theta, ncmt_, trans_);
 
-        Eigen::Matrix<double, Eigen::Dynamic, 1> cur = fdouble(theta);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> cur = fdoubles(thetaIn);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
         double vc = getVc(theta);
 
         return cur(oral0_, 0)/vc;
 
         int nt12 = 4;
-        double t12 = M_LN2/g(0, 1);
+        double t12 = M_LN2/g_(0, 1);
         double saveDt = dt_;
 
         double ret = 0.0;
@@ -2137,14 +2147,14 @@ namespace stan {
         dt_ = 0.0;
         for (int i = 0; i < nt12; i++) {
           dt_ += t12;
-          fharmonicstart(fdouble(theta), sum, nzero, n);
+          fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
         }
 
         rate_[0] = 100;
         yp_[0] = 0;
         for (int i = 0; i < nt12; i++) {
           dt_ += t12;
-          fharmonicstart(fdouble(theta), sum, nzero, n);
+          fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
         }
 
         if (oral0_) {
@@ -2154,7 +2164,7 @@ namespace stan {
           rate_[0] = 0;
           for (int i = 0; i < nt12; i++) {
             dt_ += t12;
-            fharmonicstart(fdouble(theta), sum, nzero, n);
+            fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
           }
 
           rate_[1] = 100;
@@ -2162,7 +2172,7 @@ namespace stan {
 
           for (int i = 0; i < nt12; i++) {
             dt_ += t12;
-            fharmonicstart(fdouble(theta), sum, nzero, n);
+            fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
           }
 
           rate_[1] = r1;
@@ -2170,6 +2180,7 @@ namespace stan {
         rate_[0] = r0;
         yp_ = getAlast(theta);
         dt_ = saveDt;
+        g_ = stan::math::macros2micros(theta, ncmt_, trans_);
 
         double correction = (double)(n-nzero)/((double)n);
         if (correction <= 0) correction=1;
@@ -2187,10 +2198,6 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> tp1 = thetaIn;
         tp4[idx] += 4*h;
         tp1[idx] += h;
-        // REprintf("tp1 %f\n", h);
-        // Rcpp::print(Rcpp::wrap(tp1));
-        // REprintf("tp4 %f\n", h);
-        // Rcpp::print(Rcpp::wrap(tp4));
         f1 = fdoubleh(tp1);
         finiteF1 = std::isfinite(f1);
         if (!finiteF1) {
@@ -2202,7 +2209,7 @@ namespace stan {
         if (!finiteF4) {
           return -1.0;
         }
-        REprintf("f0 = %f f1 = %f f4 = %f\n", f0, f1, f4);
+        // REprintf("f0 = %f f1 = %f f4 = %f\n", f0, f1, f4);
         return abs(f4-4*f1+3*f0)/(8.0*ef);
       }
 
@@ -2272,8 +2279,43 @@ namespace stan {
         return h;
       }
 
+      void fCentralJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                       Eigen::Matrix<double, Eigen::Dynamic, 1>& h,
+                       Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
+                       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fup;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fdown;
+        Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
+        for (int i = 0; i < thetaIn.size(); i++) {
+          thetaCur = thetaIn;
+          thetaCur(i, 0) += h(i, 0);
+          fup = fdoubles(thetaCur);
+          thetaCur(i, 0) -= 2*h(i, 0);
+          fdown = fdoubles(thetaCur);
+          Js.col(i) = (fup - fdown).array()/(2*h(i, 0));
+        }
+        fx = fdoubles(thetaIn); // This also restores g_
+      }
+
+      void fForwardJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                       Eigen::Matrix<double, Eigen::Dynamic, 1>& h,
+                       Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
+                       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fup;
+        Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
+        fx = fdoubles(thetaIn); // This also restores g_
+        for (int i = 0; i < thetaIn.size(); i++) {
+          thetaCur = thetaIn;
+          thetaCur(i, 0) += h(i, 0);
+          fup = fdoubles(thetaCur);
+          Js.col(i) = (fup - fx).array()/(h(i, 0));
+        }
+      }
+
+
       Eigen::Matrix<double, Eigen::Dynamic, 1>
       shi21ForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1> &thetaIn) {
+        Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         Eigen::Matrix<double, Eigen::Dynamic, 1> hh(thetaIn.size());
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
@@ -2287,6 +2329,7 @@ namespace stan {
                                6.0,
                                shi21maxFD);
         }
+        g_ = gin;
         return hh;
       }
 

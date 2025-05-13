@@ -112,13 +112,22 @@ RObject linCmtModelDouble(double dt,
     Eigen::Matrix<double, Eigen::Dynamic, 2> g(ncmt, 2);
     lc.linAcalcAlast(yp, g,theta);
 
-    double d = lc.fdoubleh(thetaSens);
+    // double d = lc.fdoubleh(thetaSens);
 
     Eigen::Matrix<double, Eigen::Dynamic, 1> h = lc.shi21ForwardH(thetaSens);
 
-    REprintf("h:\n");
-    Rcpp::print(Rcpp::wrap(h));
+    lc.fCentralJac(thetaSens, h, fx, Js);
+    REprintf("Central:\n");
+    Rcpp::print(Rcpp::wrap(fx));
+    Rcpp::print(Rcpp::wrap(Js));
 
+    lc.fForwardJac(thetaSens, h, fx, Js);
+    REprintf("Forward:\n");
+    Rcpp::print(Rcpp::wrap(fx));
+    Rcpp::print(Rcpp::wrap(Js));
+
+
+    REprintf("AD:\n");
     // ad differences
     stan::math::jacobian(lc, thetaSens, fx, Js);
     Rcpp::print(Rcpp::wrap(Js));
