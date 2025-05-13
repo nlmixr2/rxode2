@@ -5,6 +5,7 @@
 #include <Rcpp.h>
 #include <RcppEigen.h>
 
+
 typedef Eigen::VectorXd (*shi21efn_type)(Eigen::VectorXd &t, int id);
 
 double shi21eForward(shi21efn_type f, Eigen::VectorXd &t, double &h,

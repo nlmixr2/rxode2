@@ -3,9 +3,6 @@
 //
 // https://arxiv.org/pdf/2110.06380.pdf
 //
-
-#include "shi21e.h"
-
 double shiRF(double &h, shi21efn_type f, double ef, Eigen::VectorXd &t, int &id, int &idx,
              Eigen::VectorXd &f0, Eigen::VectorXd &f1, double &l, double &u,
              bool &finiteF1, bool &finiteF4) {
