@@ -2077,6 +2077,30 @@ namespace stan {
         return fdouble(theta);
       }
 
+      void fharmonicstart(Eigen::Matrix<double, Eigen::Dynamic, 1> all,
+                            double &sum,
+                            int &nzero,
+                            int &n) {
+        // Return harmonic mean
+        Eigen::Matrix<double, Eigen::Dynamic, 1> all0 = all;
+        all = all.array().inverse();
+        // double sum = 0.0;
+        // int nzero = 0;
+        // int n = 0;
+        for (unsigned int j = all.size(); j--;) {
+          if  (all0[j] == 0) {
+            nzero++;
+          } else {
+            sum += all[j];
+            n++;
+          }
+        }
+        // double correction = (double)(n-nzero)/((double)n);
+        // if (correction <= 0) correction=1;
+        // double hm = (double)(n)/sum * correction;
+        // return hm;
+      }
+
       // This function calculates a geometric mean to optimize the step size
       //
       // This takes the compartment values at 4 time points (spaced by the half
@@ -2093,6 +2117,11 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 2> g =
           stan::math::macros2micros(theta, ncmt_, trans_);
 
+        Eigen::Matrix<double, Eigen::Dynamic, 1> cur = fdouble(theta);
+        double vc = getVc(theta);
+
+        return cur(oral0_, 0)/vc;
+
         int nt12 = 4;
         double t12 = M_LN2/g(0, 1);
         double saveDt = dt_;
@@ -2101,22 +2130,21 @@ namespace stan {
         yp_.setZero();
 
         double r0 = rate_[0], r1 = (oral0_ == 0 ? rate_[1] : 0.0);
-
+        double sum = 0.0;
+        int nzero = 0;
+        int n = 0;
         yp_[0] = 100;
         dt_ = 0.0;
-        int n=0;
         for (int i = 0; i < nt12; i++) {
           dt_ += t12;
-          ret += fdouble(theta).array().log().sum();
-          n += ncmt_ + oral0_;
+          fharmonicstart(fdouble(theta), sum, nzero, n);
         }
 
         rate_[0] = 100;
         yp_[0] = 0;
         for (int i = 0; i < nt12; i++) {
           dt_ += t12;
-          ret += fdouble(theta).array().log().sum();
-          n += ncmt_ + oral0_;
+          fharmonicstart(fdouble(theta), sum, nzero, n);
         }
 
         if (oral0_) {
@@ -2126,8 +2154,7 @@ namespace stan {
           rate_[0] = 0;
           for (int i = 0; i < nt12; i++) {
             dt_ += t12;
-            ret += fdouble(theta).array().log().sum();
-            n += ncmt_ + oral0_;
+            fharmonicstart(fdouble(theta), sum, nzero, n);
           }
 
           rate_[1] = 100;
@@ -2135,15 +2162,132 @@ namespace stan {
 
           for (int i = 0; i < nt12; i++) {
             dt_ += t12;
-            ret += fdouble(theta).array().log().sum();
-            n += ncmt_ + oral0_;
+            fharmonicstart(fdouble(theta), sum, nzero, n);
           }
 
           rate_[1] = r1;
         }
         rate_[0] = r0;
         yp_ = getAlast(theta);
-        return(exp(ret/n));
+        dt_ = saveDt;
+
+        double correction = (double)(n-nzero)/((double)n);
+        if (correction <= 0) correction=1;
+        double hm = (double)(n)/sum * correction;
+        return hm;
+      }
+
+      double shiRF(double &h,
+                   double ef,
+                   Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                   int &idx,
+                   double &f0, double &f1, double &l, double &u,
+                   bool &finiteF1, bool &finiteF4) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> tp4 = thetaIn;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> tp1 = thetaIn;
+        tp4[idx] += 4*h;
+        tp1[idx] += h;
+        // REprintf("tp1 %f\n", h);
+        // Rcpp::print(Rcpp::wrap(tp1));
+        // REprintf("tp4 %f\n", h);
+        // Rcpp::print(Rcpp::wrap(tp4));
+        f1 = fdoubleh(tp1);
+        finiteF1 = std::isfinite(f1);
+        if (!finiteF1) {
+          finiteF4 = true;
+          return -1.0;
+        }
+        double f4 = fdoubleh(tp4);
+        finiteF4 = std::isfinite(f4);
+        if (!finiteF4) {
+          return -1.0;
+        }
+        REprintf("f0 = %f f1 = %f f4 = %f\n", f0, f1, f4);
+        return abs(f4-4*f1+3*f0)/(8.0*ef);
+      }
+
+      double shi21Forward(Eigen::Matrix<double, Eigen::Dynamic, 1> &t,
+                          double &h,
+                          double &f0,
+                          // arma::vec &gr,
+                          int idx,
+                          double ef,
+                          double rl,
+                          double ru,
+                          int maxiter) {
+        // Algorithm 2.1 in paper
+        // q=2, alpha=4, r=3
+        // s = 0, 1
+        // w = -1, 1
+        if (h == 0) {
+          // 2/sqrt(3) = 1.154700538379251684162
+          h = 1.154700538379251684162 * sqrt(ef);
+        } else {
+          h = fabs(h);
+        }
+        double l = 0, u = R_PosInf, rcur = NA_REAL;
+        double f1;
+        double lasth = h;
+        int iter=0;
+        bool finiteF1 = true, finiteF4 = true, calcGrad = false;
+        while(true) {
+          iter++;
+          if (iter > maxiter) {
+            h = lasth;
+            break;
+          }
+          rcur = shiRF(h, ef, t, idx, f0, f1, l, u,
+                       finiteF1, finiteF4);
+          if (rcur == -1) {
+            if (!finiteF1) {
+              // hnew = t + 2.5*hold
+              h = 0.5*h;
+              continue;
+            }
+            h = 3.5*h;
+            if (!calcGrad) {
+              lasth = h;
+              // gr = (f1-f0)/h;
+            }
+            continue;
+          } else {
+            lasth = h;
+            // gr = (f1-f0)/h;
+          }
+          if (rcur < rl) {
+            l = h;
+          } else if (rcur > ru) {
+            u = h;
+          } else {
+            break;
+          }
+          if (!R_finite(u)) {
+            h = 4.0*h;
+          } else if (l == 0) {
+            h = h/4.0;
+          } else {
+            h = (l + u)/2.0;
+          }
+        }
+        return h;
+      }
+
+      Eigen::Matrix<double, Eigen::Dynamic, 1>
+      shi21ForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1> &thetaIn) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> hh(thetaIn.size());
+        double h = 0.0;
+        double f0 = fdoubleh(thetaIn);
+        double shiErr = 6.055454e-06;
+        int shi21maxFD = 30;
+        for (int i = 0; i <thetaIn.size(); i++) {
+          h = 0.0;
+          hh(i) = shi21Forward(thetaIn, h, f0, i,
+                               shiErr,
+                               1.5,
+                               6.0,
+                               shi21maxFD);
+        }
+        return hh;
       }
 
       double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
