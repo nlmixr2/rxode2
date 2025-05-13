@@ -2862,7 +2862,7 @@ if (requireNamespace("pmxTools", quietly = TRUE)) {
       .Call(`_rxode2_linCmtModelDouble`, 0.1,
             p1, v1, p2, p3, p4, p5, ka,
             alastNV, rateNV, ncmt, oral0, trans,
-            deriv, type, tau, tinf, amt, cmt, ndiff)
+            deriv, type, tau, tinf, amt, cmt, ndiff, 3L, 0.001)
     }
 
     expect_equal(f()$val,
