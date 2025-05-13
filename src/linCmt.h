@@ -2089,30 +2089,6 @@ namespace stan {
         return fdouble(theta);
       }
 
-      void fharmonicstart(Eigen::Matrix<double, Eigen::Dynamic, 1> all,
-                            double &sum,
-                            int &nzero,
-                            int &n) {
-        // Return harmonic mean
-        Eigen::Matrix<double, Eigen::Dynamic, 1> all0 = all;
-        all = all.array().inverse();
-        // double sum = 0.0;
-        // int nzero = 0;
-        // int n = 0;
-        for (unsigned int j = all.size(); j--;) {
-          if  (all0[j] == 0) {
-            nzero++;
-          } else {
-            sum += all[j];
-            n++;
-          }
-        }
-        // double correction = (double)(n-nzero)/((double)n);
-        // if (correction <= 0) correction=1;
-        // double hm = (double)(n)/sum * correction;
-        // return hm;
-      }
-
       // This function calculates a geometric mean to optimize the step size
       //
       // This takes the compartment values at 4 time points (spaced by the half
@@ -2126,11 +2102,9 @@ namespace stan {
       //
       double fdoubleh(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
 
-        Eigen::Matrix<double, Eigen::Dynamic, 1> cur = fdoubles(thetaIn);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> cur;
         Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
         double vc = getVc(theta);
-
-        return cur(oral0_, 0)/vc;
 
         int nt12 = 4;
         double t12 = M_LN2/g_(0, 1);
@@ -2147,14 +2121,34 @@ namespace stan {
         dt_ = 0.0;
         for (int i = 0; i < nt12; i++) {
           dt_ += t12;
-          fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
+          cur = fdoubles(thetaIn);
+          if (cur(oral0_, 0) > 0) {
+            sum += log(cur(oral0_, 0)/vc);
+            n++;
+          }
+          for (int j = 0; j < cur.size(); j++) {
+            if (cur(j, 0) > 0) {
+              sum += log(cur(j, 0));
+              n++;
+            }
+          }
         }
 
         rate_[0] = 100;
         yp_[0] = 0;
         for (int i = 0; i < nt12; i++) {
           dt_ += t12;
-          fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
+          cur = fdoubles(thetaIn);
+          if (cur(oral0_, 0) > 0) {
+            sum += log(cur(oral0_, 0)/vc);
+            n++;
+          }
+          for (int j = 0; j < cur.size(); j++) {
+            if (cur(j, 0) > 0) {
+              sum += log(cur(j, 0));
+              n++;
+            }
+          }
         }
 
         if (oral0_) {
@@ -2164,7 +2158,17 @@ namespace stan {
           rate_[0] = 0;
           for (int i = 0; i < nt12; i++) {
             dt_ += t12;
-            fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
+            cur = fdoubles(thetaIn);
+            if (cur(oral0_, 0) > 0) {
+              sum += log(cur(oral0_, 0)/vc);
+              n++;
+            }
+            for (int j = 0; j < cur.size(); j++) {
+              if (cur(j, 0) > 0) {
+                sum += log(cur(j, 0));
+                n++;
+              }
+            }
           }
 
           rate_[1] = 100;
@@ -2172,20 +2176,25 @@ namespace stan {
 
           for (int i = 0; i < nt12; i++) {
             dt_ += t12;
-            fharmonicstart(fdoubles(thetaIn), sum, nzero, n);
+            cur = fdoubles(thetaIn);
+            if (cur(oral0_, 0) > 0) {
+              sum += log(cur(oral0_, 0)/vc);
+              n++;
+            }
+            for (int j = 0; j < cur.size(); j++) {
+              if (cur(j, 0) > 0) {
+                sum += log(cur(j, 0));
+                n++;
+              }
+            }
           }
-
           rate_[1] = r1;
         }
         rate_[0] = r0;
         yp_ = getAlast(theta);
         dt_ = saveDt;
         g_ = stan::math::macros2micros(theta, ncmt_, trans_);
-
-        double correction = (double)(n-nzero)/((double)n);
-        if (correction <= 0) correction=1;
-        double hm = (double)(n)/sum * correction;
-        return hm;
+        return exp((double)(sum)/((double)n));
       }
 
       double shiRF(double &h,
@@ -2313,10 +2322,10 @@ namespace stan {
       }
 
 
-      Eigen::Matrix<double, Eigen::Dynamic, 1>
-      shi21ForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1> &thetaIn) {
+      void shi21ForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                    Eigen::Matrix<double, Eigen::Dynamic, 1>& hh) {
+        if (hh[0] != 0) return; // keep calculated hh
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
-        Eigen::Matrix<double, Eigen::Dynamic, 1> hh(thetaIn.size());
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
         double shiErr = 6.055454e-06;
@@ -2330,7 +2339,6 @@ namespace stan {
                                shi21maxFD);
         }
         g_ = gin;
-        return hh;
       }
 
       double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
