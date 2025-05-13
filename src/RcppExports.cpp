@@ -591,8 +591,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // linCmtModelDouble
-RObject linCmtModelDouble(double dt, double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector alastNV, NumericVector rateNV, const int ncmt, const int oral0, const int trans, bool deriv, int type, double tau, double tinf, double amt, int bolusCmt, int ndiff);
-RcppExport SEXP _rxode2_linCmtModelDouble(SEXP dtSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP alastNVSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP derivSEXP, SEXP typeSEXP, SEXP tauSEXP, SEXP tinfSEXP, SEXP amtSEXP, SEXP bolusCmtSEXP, SEXP ndiffSEXP) {
+RObject linCmtModelDouble(double dt, double p1, double v1, double p2, double p3, double p4, double p5, double ka, NumericVector alastNV, NumericVector rateNV, const int ncmt, const int oral0, const int trans, bool deriv, int type, double tau, double tinf, double amt, int bolusCmt, int ndiff, int sensType, double sensH);
+RcppExport SEXP _rxode2_linCmtModelDouble(SEXP dtSEXP, SEXP p1SEXP, SEXP v1SEXP, SEXP p2SEXP, SEXP p3SEXP, SEXP p4SEXP, SEXP p5SEXP, SEXP kaSEXP, SEXP alastNVSEXP, SEXP rateNVSEXP, SEXP ncmtSEXP, SEXP oral0SEXP, SEXP transSEXP, SEXP derivSEXP, SEXP typeSEXP, SEXP tauSEXP, SEXP tinfSEXP, SEXP amtSEXP, SEXP bolusCmtSEXP, SEXP ndiffSEXP, SEXP sensTypeSEXP, SEXP sensHSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -616,7 +616,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type amt(amtSEXP);
     Rcpp::traits::input_parameter< int >::type bolusCmt(bolusCmtSEXP);
     Rcpp::traits::input_parameter< int >::type ndiff(ndiffSEXP);
-    rcpp_result_gen = Rcpp::wrap(linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff));
+    Rcpp::traits::input_parameter< int >::type sensType(sensTypeSEXP);
+    Rcpp::traits::input_parameter< double >::type sensH(sensHSEXP);
+    rcpp_result_gen = Rcpp::wrap(linCmtModelDouble(dt, p1, v1, p2, p3, p4, p5, ka, alastNV, rateNV, ncmt, oral0, trans, deriv, type, tau, tinf, amt, bolusCmt, ndiff, sensType, sensH));
     return rcpp_result_gen;
 END_RCPP
 }

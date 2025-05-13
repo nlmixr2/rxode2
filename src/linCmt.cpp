@@ -59,7 +59,9 @@ RObject linCmtModelDouble(double dt,
                           int type,
                           double tau, double tinf, double amt,
                           int bolusCmt,
-                          int ndiff) {
+                          int ndiff,
+                          int sensType=3,
+                          double sensH=0.001) {
 
   stan::math::linCmtStan lc(ncmt, oral0, trans, deriv, type, ndiff);
   if (type == linCmtSsInf) {
@@ -116,25 +118,27 @@ RObject linCmtModelDouble(double dt,
 
     Eigen::Matrix<double, Eigen::Dynamic, 1> h(thetaSens.size());
     h.setZero();
-
-    lc.shi21CentralH(thetaSens, h);
-    lc.fCentralJac(thetaSens, h, fx, Js);
-    REprintf("Central:\n");
-    Rcpp::print(Rcpp::wrap(h));
-    Rcpp::print(Rcpp::wrap(fx));
-    Rcpp::print(Rcpp::wrap(Js));
-
-    lc.fForwardJac(thetaSens, h, fx, Js);
-    REprintf("Forward:\n");
-    Rcpp::print(Rcpp::wrap(h));
-    Rcpp::print(Rcpp::wrap(fx));
-    Rcpp::print(Rcpp::wrap(Js));
-
-
-    REprintf("AD:\n");
-    // ad differences
-    stan::math::jacobian(lc, thetaSens, fx, Js);
-    Rcpp::print(Rcpp::wrap(Js));
+    switch (sensType) {
+    case 1: // forward
+      lc.shi21ForwardH(thetaSens, h);
+      lc.fForwardJac(thetaSens, h, fx, Js);
+      break;
+    case 2:  // central
+      lc.shi21CentralH(thetaSens, h);
+      lc.fCentralJac(thetaSens, h, fx, Js);
+      break;
+    case 3:
+      stan::math::jacobian(lc, thetaSens, fx, Js);
+      break;
+    case 10:
+      h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
+      lc.fForwardJac(thetaSens, h, fx, Js);
+      break;
+    case 20:
+      h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
+      lc.fCentralJac(thetaSens, h, fx, Js);
+      break;
+    }
     lc.updateJfromJs(J, Js);
     lc.saveJac(J);
     Eigen::Matrix<double, -1, 1> Jg(ncmt+oral0);
