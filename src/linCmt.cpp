@@ -115,15 +115,18 @@ RObject linCmtModelDouble(double dt,
     // double d = lc.fdoubleh(thetaSens);
 
     Eigen::Matrix<double, Eigen::Dynamic, 1> h(thetaSens.size());
+    h.setZero();
 
-    lc.shi21ForwardH(thetaSens, h);
+    lc.shi21CentralH(thetaSens, h);
     lc.fCentralJac(thetaSens, h, fx, Js);
     REprintf("Central:\n");
+    Rcpp::print(Rcpp::wrap(h));
     Rcpp::print(Rcpp::wrap(fx));
     Rcpp::print(Rcpp::wrap(Js));
 
     lc.fForwardJac(thetaSens, h, fx, Js);
     REprintf("Forward:\n");
+    Rcpp::print(Rcpp::wrap(h));
     Rcpp::print(Rcpp::wrap(fx));
     Rcpp::print(Rcpp::wrap(Js));
 

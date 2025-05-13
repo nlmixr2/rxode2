@@ -2341,6 +2341,150 @@ namespace stan {
         g_ = gin;
       }
 
+      double shiRC(double &h, double ef,
+                   Eigen::Matrix<double, Eigen::Dynamic, 1> &t,
+                   int &idx,
+                   double &fp1, double &fm1,
+                   double &l, double &u,
+                   bool &finiteFp1, bool &finiteFp3,
+                   bool &finiteFm1, bool &finiteFm3) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> tp3 = t;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> tp1 = t;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> tm3 = t;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> tm1 = t;
+        tp3(idx)  += 3*h;
+        tp1(idx)  += h;
+        tm3(idx)  -= 3*h;
+        tm1(idx)  -= h;
+        fp1 = fdoubleh(tp1);
+        finiteFp1 = std::isfinite(fp1);
+        if (!finiteFp1) {
+          finiteFm1 = true;
+          finiteFp3 = true;
+          finiteFm3 = true;
+          return -1.0;
+        }
+        fm1 = fdoubleh(tm1);
+        finiteFm1 = std::isfinite(fp1);
+        if (!finiteFm1) {
+          finiteFp3 = true;
+          finiteFm3 = true;
+          return -1.0;
+        }
+        double fp3 = fdoubleh(tp3);
+        finiteFp3 = std::isfinite(fp3);
+        if (!finiteFp3) {
+          finiteFp3 = true;
+          return -1.0;
+        }
+        double fm3 = fdoubleh(tm3);
+        finiteFm3 = std::isfinite(fp3);
+        if (!finiteFm3) {
+          return -1.0;
+        }
+        return abs(fp3-3*fp1+3*fm1-fm3)/(8.0*ef);
+      }
+
+      double shi21Central(Eigen::Matrix<double, Eigen::Dynamic, 1> &t,
+                          double &h,
+                          double &f0, int idx,
+                          double ef, double rl, double ru, double nu,
+                          int maxiter) {
+        // Algorithm 3.1
+        // weights = -0.5, 0.5
+        // s = -1, 1
+        // Equation 3.3
+        //
+        if (h == 0.0) {
+          h = pow(3.0*ef, 0.3333333333333333333333);
+        } else {
+          h = fabs(h);
+        }
+        double l = 0, u = R_PosInf, rcur = NA_REAL;
+        double hlast = h;
+
+        double fp1;
+        double fm1;
+
+        int iter=0;
+        bool finiteFp1 = true, finiteFp3 = true,
+          finiteFm1=true, finiteFm3=true, calcGrad=false;
+        while(true) {
+          iter++;
+          if (iter > maxiter) {
+            h=hlast;
+            break;
+          }
+          rcur = shiRC(h, ef, t, idx, fp1, fm1, l, u,
+                       finiteFp1, finiteFp3, finiteFm1, finiteFm3);
+          // Need f1 from shiRF to compute forward difference
+          if (rcur == -1.0) {
+            if (!finiteFp1) {
+              // hnew*3 = hold*0.5
+              h = h*0.5/3.0;
+              continue;
+            } else if (!finiteFm1) {
+              if (!calcGrad) {
+                // forward difference
+                calcGrad = true;
+                // gr = (fp1-f0)/h;
+              }
+              h = h*0.5/3.0;
+              continue;
+            }
+            // hnew*3 = hold*2
+            h = h*2.0/3.0;
+            if (!calcGrad) {
+              // central difference
+              calcGrad = true;
+              // gr = (fp1-fm1)/(2*h);
+              hlast = h;
+            }
+            continue;
+          } else {
+            calcGrad = true;
+            // gr = (fp1-fm1)/(2*h);
+            hlast = h;
+          }
+          if (rcur < rl) {
+            l = h;
+          } else if (rcur > ru) {
+            u = h;
+          } else {
+            break;
+          }
+          if (!R_finite(u)) {
+            h = nu*h;
+          } else if (l == 0) {
+            h = h/nu;
+          } else {
+            h = (l + u)/2.0;
+          }
+        }
+        return h;
+      }
+
+      void shi21CentralH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                         Eigen::Matrix<double, Eigen::Dynamic, 1>& hh) {
+        if (hh[0] != 0) return; // keep calculated hh
+        Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
+        double h = 0.0;
+        double f0 = fdoubleh(thetaIn);
+        double shiErr = 6.055454e-06;
+        int shi21maxFD = 30;
+        for (int i = 0; i < thetaIn.size(); i++) {
+          h = 0.0;
+          hh(i) = shi21Central(thetaIn, h, f0, i,
+                               shiErr,
+                               1.5,
+                               4.5,
+                               3.0,
+                               shi21maxFD);
+        }
+        g_ = gin;
+      }
+
+
       double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         int sw = ncmt_*100 + trans_;
         switch (sw) {
