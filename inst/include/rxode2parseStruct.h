@@ -261,6 +261,8 @@ typedef struct {
   bool ss2cancelAllPending;
   int npars;
   int ndiff;
+  int sensType;
+  double sensH;
 } rx_solve;
 
 

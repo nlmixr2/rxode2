@@ -4874,6 +4874,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->nIndSim = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nIndSim];
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
+    rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");
+    rx->sensH   = asDouble(rxControl[Rxc_linCmtSensType], "linCmtSensH");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

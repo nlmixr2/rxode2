@@ -456,6 +456,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
+  bool resized = false;
   // Create the solved system object
   if (which1 != -1 || which2 != -1) {
     // If we are calculating the LHS values or other values, these are
@@ -492,6 +493,8 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     Js.resize(ncmt+oral0, numSens);//(ncmt + oral0, 2*ncmt + oral0);
     thetaSens.resize(numSens);
     hh.resize(numSens);
+
+
 
     // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
@@ -579,7 +582,33 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      stan::math::jacobian(lc, thetaSens, fx, Js);
+      if (resized) {
+        switch (rx->sensType) {
+        case 10:
+        case 20:
+          hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
+          break;
+        case 1:
+          lc.shi21ForwardH(thetaSens, hh);
+          break;
+        case 2:
+          lc.shi21CentralH(thetaSens, hh);
+          break;
+        }
+      }
+      switch (rx->sensType) {
+      case 10:
+      case 1: // forward
+        lc.fForwardJac(thetaSens, hh, fx, Js);
+        break;
+      case 20:
+      case 2:  // central
+        lc.fCentralJac(thetaSens, hh, fx, Js);
+        break;
+      case 3:
+        stan::math::jacobian(lc, thetaSens, fx, Js);
+        break;
+      }
       lc.updateJfromJs(J, Js);
       lc.saveJac(J);
     }
