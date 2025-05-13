@@ -2224,6 +2224,24 @@ namespace stan {
         fx = fdoubles(thetaIn); // This also restores g_
       }
 
+      void fCentralF3Jac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                         Eigen::Matrix<double, Eigen::Dynamic, 1>& h,
+                         Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
+                         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fh;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> f2h;
+        Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
+        fx = fdoubles(thetaIn);
+        for (int i = 0; i < thetaIn.size(); i++) {
+          thetaCur = thetaIn;
+          thetaCur(i, 0) += h(i, 0);
+          fh = fdoubles(thetaCur);
+          thetaCur(i, 0) += h(i, 0);
+          f2h = fdoubles(thetaCur);
+          Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*h(i, 0));
+        }
+      }
+
       void fForwardJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                        Eigen::Matrix<double, Eigen::Dynamic, 1>& h,
                        Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,

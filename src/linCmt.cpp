@@ -609,9 +609,23 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fCentralJac(thetaSens, hh, fx, Js);
         break;
 
+      case 40: // 3-point forward difference
+        lc.linAcalcAlast(yp, g, theta);
+        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(),
+                                                                rx->sensH);
+        lc.fCentralF3Jac(thetaSens, hh, fx, Js);
+        break;
+
+      case 4:
+        lc.linAcalcAlast(yp, g, theta);
+        lc.shi21CentralH(thetaSens, hh);
+        lc.fCentralF3Jac(thetaSens,hh, fx, Js);
+        break;
+
       case 3:
         stan::math::jacobian(lc, thetaSens, fx, Js);
         break;
+
       }
       lc.updateJfromJs(J, Js);
       lc.saveJac(J);
