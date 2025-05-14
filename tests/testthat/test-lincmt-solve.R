@@ -89,16 +89,33 @@ rxTest({
 rxTest({
 
   tol <- 5e-5 ## Current difference for all equations
-  types <- 1:2
+  types <- 1:6
 
   for (type in types) {
 
     .txt <- switch(type,
-                   "linear",
-                   "sensitivity")
+                   "linear", #1
+                   "sensitivity AD", #2
+                   "sensitivity forward", #3
+                   "sensitivity central", #4
+                   "sensitivity forward3", #5
+                   "sensitivity endpoint5") #6
+
     sens <- switch(type,
-                   "linCmtA",
-                   "linCmtB")
+                   "linCmtA", # 1
+                   "linCmtB", # 2
+                   "linCmtB", # 3
+                   "linCmtB", # 4
+                   "linCmtB", # 5
+                   "linCmtB") # 6
+
+    linCmtSensType <- switch(type,
+                             "AD", #1
+                             "AD", #2
+                             "forward", #3
+                             "central", #4
+                             "forward3", #5
+                             "endpoint5") #6
 
     etSsB <- et() %>%
       et(amt = 3) %>%
@@ -118,12 +135,12 @@ rxTest({
       C2 <- center / V
       d / dt(center) <- -CL * C2
     },
-    linCmtSens = sens)
+    linCmtSens = sens, linCmtSensType = linCmtSensType)
 
     sol.1c <- rxode2({
       C2 <- linCmt(CL, V)
     },
-    linCmtSens = sens)
+    linCmtSens = sens, linCmtSensType = linCmtSensType)
 
     # context(sprintf("Test steady state solutions 1 cmt (%s)", .txt))
 
@@ -166,13 +183,13 @@ rxTest({
       d / dt(centr) <- -CL * C2 - Q * C2 + Q * C3
       d / dt(peri) <- Q * C2 - Q * C3
     },
-    linCmtSens = sens)
+    linCmtSens = sens, linCmtSensType = linCmtSensType)
 
     sol.2c <- rxode2(
     {
       C2 <- linCmt(V, CL, V2, Q1)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     o2 <- ode.2c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10), events = etSsB)
@@ -204,14 +221,14 @@ rxTest({
       d / dt(peri) <- Q * C2 - Q * C3
       d / dt(peri2) <- Q2 * C2 - Q2 * C4
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     sol.3c <- rxode2(
     {
       C2 <- linCmt(V, CL, V2, Q, Q2, V3)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     o3 <- ode.3c %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400), events = etSsB)
@@ -240,31 +257,32 @@ rxTest({
       d / dt(depot) <- -KA * depot
       d / dt(center) <- KA * depot - CL * C2
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     sol.1c.ka <- rxode2(
     {
       C2 <- linCmt(V, CL, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB)
     s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB)
-    test_that("one compartment bolus steady state to depot compartment", {
+    test_that(sprintf("one compartment bolus steady state to depot compartment (%s)",
+                      .txt), {
       expect_equal(o1$C2, s1$C2, tolerance = tol)
     })
 
     o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI)
     s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI)
-    test_that("one compartment infusion steady state to depot compartment, tau", {
+    test_that(sprintf("one compartment infusion steady state to depot compartment, tau (%s)", .txt), {
       expect_equal(o1$C2, s1$C2, tolerance = tol)
     })
 
     o1 <- ode.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR)
     s1 <- sol.1c.ka %>% solve(params = c(V = 20, CL = 25, KA = 2), events = etSsR)
-    test_that("one compartment infusion steady state to depot compartment", {
+    test_that(sprintf("one compartment infusion steady state to depot compartment (%s)", .txt), {
       expect_equal(o1$C2, s1$C2, tolerance = tol)
     })
 
@@ -310,32 +328,32 @@ rxTest({
       d / dt(centr) <- KA * depot - CL * C2 - Q * C2 + Q * C3
       d / dt(peri) <- Q * C2 - Q * C3
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     sol.2c.ka <- rxode2(
     {
       C2 <- linCmt(V, CL, V2, Q, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB)
     s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsB)
-    test_that("two compartment bolus steady state to depot compartment", {
+    test_that(sprintf("two compartment bolus steady state to depot compartment (%s)", .txt), {
       expect_equal(o2$C2, s2$C2, tolerance = tol)
     })
 
     o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI)
     s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsI)
-    test_that("two compartment infusion steady state to depot compartment, tau", {
+    test_that(sprintf("two compartment infusion steady state to depot compartment, tau (%s)", .txt), {
       expect_equal(o2$C2, s2$C2, tolerance = tol)
     })
 
 
     o2 <- ode.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR)
     s2 <- sol.2c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR)
-    test_that("two compartment infusion steady state to depot compartment, tau", {
+    test_that(sprintf("two compartment infusion steady state to depot compartment, tau (%s)", .txt), {
       expect_equal(o2$C2, s2$C2, tolerance = tol)
     })
 
@@ -373,18 +391,19 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
     s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
-    test_that("three compartment bolus steady state to depot compartment", {
+    test_that(sprintf("three compartment bolus steady state to depot compartment (%s)",
+                      .txt), {
       expect_equal(o3$C2, s3$C2, tolerance = tol)
     })
 
     o3 <- ode.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
     s3 <- sol.3c.ka %>% solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
-    test_that("three compartment infusion steady state to depot compartment, tau", {
+    test_that(sprintf("three compartment infusion steady state to depot compartment, tau (%s)", .txt), {
       expect_equal(o3$C2, s3$C2, tolerance = tol)
     })
 
@@ -440,7 +459,7 @@ rxTest({
       CL <- theta[2]
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.1cs)
@@ -454,7 +473,7 @@ rxTest({
       K <- CLx / V
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.2cK)
@@ -466,7 +485,7 @@ rxTest({
       alpha <- CLx / V
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.2cA1)
@@ -478,7 +497,7 @@ rxTest({
       alpha <- CLx * A
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.2cA2)
@@ -489,7 +508,7 @@ rxTest({
     {
       C2 <- linCmt(CL, V)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.1cs2)
@@ -553,7 +572,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.1c.ka, ka = 1L)
@@ -566,7 +585,7 @@ rxTest({
       K <- CLx / V
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.2cK, ka = 1L)
@@ -579,7 +598,7 @@ rxTest({
       alpha <- CLx / V
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.2cA1, ka = 1L)
@@ -592,7 +611,7 @@ rxTest({
       alpha <- CLx * A
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.2cA2, ka = 1L)
@@ -632,7 +651,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q1)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c, cmt = 2L)
@@ -648,7 +667,7 @@ rxTest({
       K21 <- Qx / V2x
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cK, cmt = 2L)
@@ -673,7 +692,7 @@ rxTest({
       B <- (beta - K21x) / (beta - alpha) / Vx
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cA1, cmt = 2L)
@@ -695,7 +714,7 @@ rxTest({
       alpha <- K21 * Kx / beta
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cA2, cmt = 2L)
@@ -720,7 +739,7 @@ rxTest({
       aob <- Ax / Bx
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cA3, cmt = 2L)
@@ -757,7 +776,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c.ka, cmt = 2, ka = 1)
@@ -774,7 +793,7 @@ rxTest({
       K21 <- Qx / V2x
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cK, cmt = 2, ka = 1)
@@ -800,7 +819,7 @@ rxTest({
       B <- (beta - K21x) / (beta - alpha) / Vx
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cA1, cmt = 2, ka = 1)
@@ -823,7 +842,7 @@ rxTest({
       alpha <- K21 * Kx / beta
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cA2, cmt = 2, ka = 1)
@@ -849,7 +868,7 @@ rxTest({
       aob <- Ax / Bx
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cA3, cmt = 2, ka = 1)
@@ -864,7 +883,7 @@ rxTest({
       Vss <- V + V2x
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cSS, cmt = 2, ka = 1)
@@ -878,7 +897,7 @@ rxTest({
       Ka <- theta[5]
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2cT, cmt = 2, ka = 1)
@@ -925,7 +944,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, Q2, V3)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c, 3)
@@ -945,7 +964,7 @@ rxTest({
       k31 <- Q2x / V3x
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3cK, 3)
@@ -980,7 +999,7 @@ rxTest({
       C <- (K21x - gamma) * (K31x - gamma) / (gamma - alpha) / (gamma - beta) / Vx
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3cA1, 3)
@@ -995,7 +1014,7 @@ rxTest({
       Vp2 <- theta[6]
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3cVp, 3)
@@ -1010,7 +1029,7 @@ rxTest({
       Vt2 <- theta[6]
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3cVt, 3)
@@ -1062,7 +1081,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c.ka, 3, 1)
@@ -1083,7 +1102,7 @@ rxTest({
       k31 <- Q2x / V3x
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3cK, 3, 1)
@@ -1119,7 +1138,7 @@ rxTest({
       C <- (K21x - gamma) * (K31x - gamma) / (gamma - alpha) / (gamma - beta) / Vx
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3cA1, 3, 1)
@@ -1174,7 +1193,7 @@ rxTest({
       CL <- theta[2]
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.1cs, 1)
@@ -1185,7 +1204,7 @@ rxTest({
     {
       C2 <- linCmt(CL, V)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.1cs2, 1)
@@ -1230,7 +1249,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c, 2)
@@ -1268,7 +1287,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, Q2, V3)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c, 3)
@@ -1311,7 +1330,7 @@ rxTest({
       CL <- theta[2]
       C2 <- linCmt()
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.1cs, 1)
@@ -1322,7 +1341,7 @@ rxTest({
     {
       C2 <- linCmt(CL, V)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.1cs2, 1)
@@ -1354,7 +1373,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c, 2)
@@ -1383,7 +1402,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, Q2, V3)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c, 3)
@@ -1415,7 +1434,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.1c.ka, 1, 1)
@@ -1441,7 +1460,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c.ka, 2, 1)
@@ -1471,7 +1490,7 @@ rxTest({
     {
       C2 <- linCmt(V, CL, V2, Q, Q2, V3, KA)
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c.ka, 3, 1)
@@ -1507,7 +1526,7 @@ rxTest({
       f(depot) <- fDepot
       f(central) <- fCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.1c.ka, 1, 1)
@@ -1538,7 +1557,7 @@ rxTest({
       ## FIXME:
       ## f(central) should throw an error
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     sol.2c.ka <- rxode2(
@@ -1547,7 +1566,7 @@ rxTest({
       f(depot) <- fDepot
       f(central) <- fCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c.ka, 2, 1)
@@ -1582,7 +1601,7 @@ rxTest({
       f(depot) <- fDepot
       f(central) <- fCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c.ka, 3, 1)
@@ -1621,7 +1640,7 @@ rxTest({
       alag(depot) <- lagDepot
       alag(center) <- lagCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     sol.1c.ka <- rxode2(
@@ -1630,7 +1649,7 @@ rxTest({
       alag(depot) <- lagDepot
       alag(central) <- lagCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.1c.ka, 1, 1)
@@ -1663,7 +1682,7 @@ rxTest({
       alag(depot) <- lagDepot
       alag(central) <- lagCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c.ka, 2, 1)
@@ -1694,7 +1713,7 @@ rxTest({
       alag(depot) <- lagDepot
       alag(centr) <- lagCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     sol.3c.ka <- rxode2(
@@ -1703,7 +1722,7 @@ rxTest({
       alag(depot) <- lagDepot
       alag(central) <- lagCenter
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c.ka, 3, 1)
@@ -1737,7 +1756,7 @@ rxTest({
       C2 <- linCmt(CL, V)
       rate(central) <- rt
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.1c, 1)
@@ -1764,7 +1783,7 @@ rxTest({
       d / dt(peri) <- Q * C2 - Q * C3
       rate(centr) <- rt
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     sol.2c <- rxode2(
@@ -1772,7 +1791,7 @@ rxTest({
       C2 <- linCmt(V, CL, V2, Q)
       rate(central) <- rt
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c, 2)
@@ -1802,7 +1821,7 @@ rxTest({
       C2 <- linCmt(V, CL, V2, Q, Q2, V3)
       rate(central) <- rt
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c, 3)
@@ -1830,7 +1849,7 @@ rxTest({
       C2 <- linCmt(CL, V)
       dur(central) <- dr
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.1c, 1)
@@ -1862,7 +1881,7 @@ rxTest({
       C2 <- linCmt(V, CL, V2, Q)
       dur(central) <- dr
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.2c, 2)
@@ -1892,7 +1911,7 @@ rxTest({
       C2 <- linCmt(V, CL, V2, Q, Q2, V3)
       dur(central) <- dr
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(sol.3c, 3)
@@ -1937,7 +1956,7 @@ rxTest({
       mtime(t1) <- mt1
       mtime(t2) <- mt2
     },
-    linCmtSens = sens
+    linCmtSens = sens, linCmtSensType = linCmtSensType
     )
 
     goodP(ode.1cs2, 1)
@@ -1963,14 +1982,14 @@ rxTest({
         C2 <- center / V
         d / dt(center) <- -CL * C2
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       sol.1c <- rxode2(
       {
         C2 <- linCmt(CL, V)
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       et <- eventTable() %>%
@@ -2064,7 +2083,7 @@ rxTest({
         Conc <- linCmt()
         alag(depot) <- 1
       },
-      linCmtSens = sens
+      linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
       m258o <- rxode2({
