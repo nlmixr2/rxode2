@@ -2242,6 +2242,33 @@ namespace stan {
         }
       }
 
+      void fEndpoint5Jac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                         Eigen::Matrix<double, Eigen::Dynamic, 1>& h,
+                         Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
+                         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fh;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> f2h;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> f3h;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> f4h;
+        Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
+        fx = fdoubles(thetaIn);
+        for (int i = 0; i < thetaIn.size(); i++) {
+          thetaCur = thetaIn;
+          thetaCur(i, 0) += h(i, 0);
+          fh = fdoubles(thetaCur);
+          thetaCur(i, 0) += h(i, 0);
+          f2h = fdoubles(thetaCur);
+          thetaCur(i, 0) += h(i, 0);
+          f3h = fdoubles(thetaCur);
+          thetaCur(i, 0) += h(i, 0);
+          f4h = fdoubles(thetaCur);
+          Js.col(i) = (-25.0*fx + 48.0*fh -
+                       36.0*f2h + 16.0*f3h -
+                       3*f4h).array()/(12.0*h(i, 0));
+        }
+      }
+
+
       void fForwardJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                        Eigen::Matrix<double, Eigen::Dynamic, 1>& h,
                        Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,

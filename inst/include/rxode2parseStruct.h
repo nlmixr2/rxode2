@@ -263,6 +263,7 @@ typedef struct {
   int ndiff;
   int sensType;
   double sensH;
+  int linCores;
 } rx_solve;
 
 

@@ -167,8 +167,9 @@ static inline int nodeFunLinCmtB(char *value) {
 
     // right now linCmtB isn't thread safe,
     // the Jacobian can cause a null free in stan math currently.
-
-    tb.thread = notThreadSaveNoWarn;
+    if (tb.thread == threadSafe) {
+      tb.thread = notThreadLinCmtB;
+    }
     return 1;
   }
   return 0;

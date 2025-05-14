@@ -4,6 +4,6 @@
 #define threadSafe 1
 #define threadSafeRepNumThread 2
 #define notThreadSafe 0
-#define notThreadSaveNoWarn -1
+#define notThreadLinCmtB -1
 
 #endif

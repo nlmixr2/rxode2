@@ -453,7 +453,13 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define yp        __linCmtByp
 #define g         __linCmtBg
 #define hh        __linCmtBthetaH
-
+  if (rx->sensType == 100) {
+    if (ncmt == 1) {
+      rx->sensType = 4;
+    } else {
+      rx->sensType = 5;
+    }
+  }
   rx_solving_options_ind *ind = &(rx->subjects[id]);
   rx_solving_options *op = rx->op;
   int idx = ind->idx;
@@ -585,11 +591,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       }
       lc.setDt(dt);
       switch (rx->sensType) {
-      case 10:
-        lc.linAcalcAlast(yp, g, theta);
-        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
-        lc.fForwardJac(thetaSens, hh, fx, Js);
-        break;
 
       case 1: // forward
         lc.linAcalcAlast(yp, g, theta);
@@ -597,15 +598,37 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fForwardJac(thetaSens, hh, fx, Js);
         break;
 
-      case 20:
-        lc.linAcalcAlast(yp, g, theta);
-        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
-        lc.fCentralJac(thetaSens, hh, fx, Js);
-        break;
-
       case 2:  // central
         lc.linAcalcAlast(yp, g, theta);
         lc.shi21CentralH(thetaSens, hh);
+        lc.fCentralJac(thetaSens, hh, fx, Js);
+        break;
+
+      case 3:
+        stan::math::jacobian(lc, thetaSens, fx, Js);
+        break;
+
+      case 4:
+        lc.linAcalcAlast(yp, g, theta);
+        lc.shi21CentralH(thetaSens, hh);
+        lc.fCentralF3Jac(thetaSens,hh, fx, Js);
+        break;
+
+      case 5:
+        lc.linAcalcAlast(yp, g, theta);
+        lc.shi21CentralH(thetaSens, hh);
+        lc.fEndpoint5Jac(thetaSens, hh, fx, Js);
+        break;
+
+      case 10:
+        lc.linAcalcAlast(yp, g, theta);
+        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
+        lc.fForwardJac(thetaSens, hh, fx, Js);
+        break;
+
+      case 20:
+        lc.linAcalcAlast(yp, g, theta);
+        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
         lc.fCentralJac(thetaSens, hh, fx, Js);
         break;
 
@@ -616,14 +639,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fCentralF3Jac(thetaSens, hh, fx, Js);
         break;
 
-      case 4:
+      case 50: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21CentralH(thetaSens, hh);
-        lc.fCentralF3Jac(thetaSens,hh, fx, Js);
-        break;
-
-      case 3:
-        stan::math::jacobian(lc, thetaSens, fx, Js);
+        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(),
+                                                                rx->sensH);
+        lc.fEndpoint5Jac(thetaSens, hh, fx, Js);
         break;
 
       }

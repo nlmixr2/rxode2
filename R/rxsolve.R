@@ -634,6 +634,8 @@
 #' @param linCmtSensType The type of linear compartment
 #'   sensitivity/gradients to use.  The current options are:
 #'
+#' - `auto` -- automatically determine the best method to use.
+#'
 #'  - `AD` -- automatic differentiation (using stan math)
 #'
 #'  - `forward` -- forward sensitivity where the step size is
@@ -646,11 +648,17 @@
 #'   determined by shi 2021 optimization for central differences (only
 #'   once per problem)
 #'
+#' - `endpoint5` -- five point endpoint difference where step size is
+#'   determined by the shi 2021 optimization for central differences
+#'   (only once per problem)
+#'
 #' - `fowardH` -- forward sensitivity where the step size is fixed
 #'
 #' - `centralH` -- central sensitivity where the step size is fixed
 #'
 #' - `forwardH3` -- three point central difference where step size is fixed
+#'
+#' - `endpointH5` -- five point endpoint difference where step size is fixed
 #'
 #' @param linCmtSensH The step size for the forward and central
 #'   differences when using the option `centralH` or `forwardH`.
@@ -773,8 +781,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     ssAtDoseTime=TRUE,
                     ss2cancelAllPending=FALSE,
                     ssSolved=TRUE,
-                    linCmtSensType=c("forward3", "AD", "central", "forward",
-                                     "forwardH", "centralH", "forward3H"),
+                    linCmtSensType=c("auto", "endpoint5",
+                                     "forward3", "AD", "central", "forward",
+                                     "forwardH", "centralH", "forward3H",
+                                     "endpointH5"),
                     linCmtSensH=0.0001,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
@@ -908,8 +918,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       .linCmtSensType <- as.integer(linCmtSensType)
     } else {
       .linCmtSensType <- c("AD"=3L, "forward"=1L, "central"=2L,
-                           "forward3"=4L, "forward3H"=40L,
-                           "forwardH"=10L, "centralH"=20L)[match.arg(linCmtSensType)]
+                           "forward3"=4L, "endpoint5"=5L,
+                           "forward3H"=40L, "endpoint5H"=50L,
+                           "forwardH"=10L, "centralH"=20L,
+                           "auto"=100L)[match.arg(linCmtSensType)]
     }
 
     if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {

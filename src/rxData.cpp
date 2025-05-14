@@ -4920,9 +4920,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     rxSolveDat->throttle = false;
     if (method != 2){
-      op->cores = 1;//getRxThreads(1, false);
+      rx->linCores = op->cores = 1;//getRxThreads(1, false);
     } else {
-      op->cores = asInt(rxControl[Rxc_cores], "cores");
+      rx->linCores = op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
       if (op->cores == 0) {
         switch (thread) {
@@ -4934,16 +4934,17 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case threadSafe:
-          op->cores = getRxThreads(INT_MAX, false);
+          rx->linCores = op->cores = getRxThreads(INT_MAX, false);
           rxSolveDat->throttle = true;
           break;
         case notThreadSafe:
           // Not thread safe.
           warning(_("not thread safe method, using 1 core"));
-          op->cores = 1;
+          rx->linCores = op->cores = 1;
           rxSolveDat->throttle = false;
           break;
-        case notThreadSaveNoWarn:
+        case notThreadLinCmtB:
+          rx->linCores = getRxThreads(INT_MAX, false);
           op->cores = 1;
           rxSolveDat->throttle = false;
           break;
@@ -4962,21 +4963,23 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         case notThreadSafe:
           // Not thread safe.
           warning(_("not thread safe method, using 1 core"));
-          op->cores = 1;
+          rx->linCores = op->cores = 1;
           rxSolveDat->throttle = false;
           break;
-        case notThreadSaveNoWarn:
-          // Not thread safe (no warning)
+        case notThreadLinCmtB:
+          rx->linCores = getRxThreads(INT_MAX, false);
           op->cores = 1;
           rxSolveDat->throttle = false;
           break;
         }
       }
     }
-    if (op->cores == 0) op->cores = 1;
+    if (op->cores == 0) {
+      rx->linCores = op->cores = 1;
+    }
     if (op->cores != 1 && op->naTimeInput == rxode2naTimeInputError) {
       warning(_("since throwing warning with NA time, change to single threaded"));
-      op->cores=1;
+      rx->linCores = op->cores = 1;
     }
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);
