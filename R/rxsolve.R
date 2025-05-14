@@ -635,7 +635,7 @@
 #'   sensitivity/gradients to use.  The current options are:
 #'
 #' - `auto` -- for one compartment models this will use the `AD`
-#'   method, for 2 and 3 compartment model this will use `endpoint5`.
+#'   method, for 2 and 3 compartment model this will use `forward3`.
 #'
 #' - `AD` -- automatic differentiation (using stan math)
 #'

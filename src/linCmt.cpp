@@ -455,9 +455,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define hh        __linCmtBthetaH
   if (rx->sensType == 100) {
     if (ncmt == 1) {
-      rx->sensType = 4;
+      rx->sensType = 3;
     } else {
-      rx->sensType = 5;
+      rx->sensType = 4;
     }
   }
   rx_solving_options_ind *ind = &(rx->subjects[id]);
@@ -604,13 +604,13 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fCentralJac(thetaSens, hh, fx, Js);
         break;
 
-      case 4:
+      case 4:  // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
         lc.shi21CentralH(thetaSens, hh);
         lc.fCentralF3Jac(thetaSens,hh, fx, Js);
         break;
 
-      case 5:
+      case 5: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
         lc.shi21CentralH(thetaSens, hh);
         lc.fEndpoint5Jac(thetaSens, hh, fx, Js);
@@ -646,13 +646,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
       default:
         stan::math::jacobian(lc, thetaSens, fx, Js);
         break;
-
-
-
-
-
-
-
       }
       lc.updateJfromJs(J, Js);
       lc.saveJac(J);
