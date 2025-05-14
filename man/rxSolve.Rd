@@ -134,7 +134,8 @@ rxSolve(
   ssAtDoseTime = TRUE,
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
-  linCmtSensType = c("forward", "AD", "central", "forwardH", "centralH"),
+  linCmtSensType = c("auto", "endpoint5", "forward3", "AD", "central", "forward",
+    "forwardH", "centralH", "forward3H", "endpointH5"),
   linCmtSensH = 1e-04,
   envir = parent.frame()
 )
@@ -840,13 +841,23 @@ and does not mix ODEs with the solution.  The default is \code{TRUE}.}
 \item{linCmtSensType}{The type of linear compartment
 sensitivity/gradients to use.  The current options are:
 \itemize{
+\item \code{auto} -- for one compartment models this will use the \code{AD}
+method, for 2 and 3 compartment model this will use \code{endpoint5}.
 \item \code{AD} -- automatic differentiation (using stan math)
 \item \code{forward} -- forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
 \item \code{central} -- central sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
+\item \code{forward3} -- three point central difference where step size is
+determined by shi 2021 optimization for central differences (only
+once per problem)
+\item \code{endpoint5} -- five point endpoint difference where step size is
+determined by the shi 2021 optimization for central differences
+(only once per problem)
 \item \code{fowardH} -- forward sensitivity where the step size is fixed
 \item \code{centralH} -- central sensitivity where the step size is fixed
+\item \code{forwardH3} -- three point central difference where step size is fixed
+\item \code{endpointH5} -- five point endpoint difference where step size is fixed
 }}
 
 \item{linCmtSensH}{The step size for the forward and central

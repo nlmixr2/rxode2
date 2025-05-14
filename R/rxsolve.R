@@ -634,15 +634,16 @@
 #' @param linCmtSensType The type of linear compartment
 #'   sensitivity/gradients to use.  The current options are:
 #'
-#' - `auto` -- automatically determine the best method to use.
+#' - `auto` -- for one compartment models this will use the `AD`
+#'   method, for 2 and 3 compartment model this will use `endpoint5`.
 #'
-#'  - `AD` -- automatic differentiation (using stan math)
+#' - `AD` -- automatic differentiation (using stan math)
 #'
-#'  - `forward` -- forward sensitivity where the step size is
-#'  determined by shi 2021 optimization (only once per problem)
+#' - `forward` -- forward sensitivity where the step size is
+#'    determined by shi 2021 optimization (only once per problem)
 #'
-#'  - `central` -- central sensitivity where the step size is
-#'  determined by shi 2021 optimization (only once per problem)
+#' - `central` -- central sensitivity where the step size is
+#'    determined by shi 2021 optimization (only once per problem)
 #'
 #' - `forward3` -- three point central difference where step size is
 #'   determined by shi 2021 optimization for central differences (only
