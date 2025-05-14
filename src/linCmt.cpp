@@ -604,10 +604,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fCentralJac(thetaSens, hh, fx, Js);
         break;
 
-      case 3:
-        stan::math::jacobian(lc, thetaSens, fx, Js);
-        break;
-
       case 4:
         lc.linAcalcAlast(yp, g, theta);
         lc.shi21CentralH(thetaSens, hh);
@@ -645,6 +641,17 @@ extern "C" double linCmtB(rx_solve *rx, int id,
                                                                 rx->sensH);
         lc.fEndpoint5Jac(thetaSens, hh, fx, Js);
         break;
+
+      case 3:
+      default:
+        stan::math::jacobian(lc, thetaSens, fx, Js);
+        break;
+
+
+
+
+
+
 
       }
       lc.updateJfromJs(J, Js);

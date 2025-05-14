@@ -2015,7 +2015,9 @@ namespace stan {
       }
 
       Eigen::Matrix<double, Eigen::Dynamic, 1>
-      fdouble(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
+      fdouble(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
+              Eigen::Matrix<double, Eigen::Dynamic, 2> g,
+              Eigen::Matrix<double, Eigen::Dynamic, 1> yp) {
 
         double ka = 0.0;
         if (oral0_) {
@@ -2024,45 +2026,46 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
         if (type_ == linCmtNormal) {
           if (ncmt_ == 1) {
-            linCmtStan1<double>(g_, yp_, ka, ret0);
+            linCmtStan1<double>(g, yp, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2<double>(g_, yp_, ka, ret0);
+            linCmtStan2<double>(g, yp, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3<double>(g_, yp_, ka, ret0);
+            linCmtStan3<double>(g, yp, ka, ret0);
           }
         } else if (type_ == linCmtSsInf8)  {
           if (ncmt_ == 1) {
-            linCmtStan1ssInf8(g_, ka, ret0);
+            linCmtStan1ssInf8(g, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2ssInf8(g_, ka, ret0);
+            linCmtStan2ssInf8(g, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3ssInf8(g_, ka, ret0);
+            linCmtStan3ssInf8(g, ka, ret0);
           }
         } else if (type_ == linCmtSsInf) {
           if (ncmt_ == 1) {
-            linCmtStan1ssInf(g_, ka, ret0);
+            linCmtStan1ssInf(g, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2ssInf(g_, ka, ret0);
+            linCmtStan2ssInf(g, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3ssInf(g_, ka, ret0);
+            linCmtStan3ssInf(g, ka, ret0);
           }
         } else if (type_ == linCmtSsBolus) {
           if (ncmt_ == 1) {
-            linCmtStan1ssBolus(g_, ka, ret0);
+            linCmtStan1ssBolus(g, ka, ret0);
           } else if (ncmt_ == 2) {
-            linCmtStan2ssBolus(g_, ka, ret0);
+            linCmtStan2ssBolus(g, ka, ret0);
           } else if (ncmt_ == 3) {
-            linCmtStan3ssBolus(g_, ka, ret0);
+            linCmtStan3ssBolus(g, ka, ret0);
           }
-        }
-        for (int i = 0; i < ncmt_ + oral0_; i++) {
-          Asave_[i] = ret0(i, 0);
         }
         return ret0;
       }
 
       Eigen::Matrix<double, Eigen::Dynamic, 1> operator()(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
-        return fdouble(theta);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> ret0 = fdouble(theta, g_, yp_);
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = ret0(i, 0);
+        }
+        return ret0;
       }
 
       // Senstivity function value
@@ -2073,14 +2076,9 @@ namespace stan {
       //
       Eigen::Matrix<double, Eigen::Dynamic, 1> fdoubles(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
-        Eigen::Matrix<double, Eigen::Dynamic, 2> g = g_;
-        Eigen::Matrix<double, Eigen::Dynamic, 1> yp = yp_;
-        g_ = stan::math::macros2micros(theta, ncmt_, trans_);
-        yp_ = getAlast(theta);
-        Eigen::Matrix<double, Eigen::Dynamic, 1> ret = fdouble(theta);
-        yp_ = yp;
-        g_ = g;
-        return ret;
+        Eigen::Matrix<double, Eigen::Dynamic, 2> g = stan::math::macros2micros(theta, ncmt_, trans_);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> yp = getAlast(theta);
+        return fdouble(theta, g, yp);
       }
 
       // This function calculates a geometric mean to optimize the step size
@@ -2221,7 +2219,10 @@ namespace stan {
           fdown = fdoubles(thetaCur);
           Js.col(i) = (fup - fdown).array()/(2*h(i, 0));
         }
-        fx = fdoubles(thetaIn); // This also restores g_
+        fx = fdoubles(thetaIn);
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = fx(i, 0);
+        }
       }
 
       void fCentralF3Jac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
@@ -2232,6 +2233,9 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> f2h;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
         fx = fdoubles(thetaIn);
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = fx(i, 0);
+        }
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
           thetaCur(i, 0) += h(i, 0);
@@ -2252,6 +2256,9 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> f4h;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
         fx = fdoubles(thetaIn);
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = fx(i, 0);
+        }
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
           thetaCur(i, 0) += h(i, 0);
@@ -2282,6 +2289,9 @@ namespace stan {
           Js.col(i) = (fup - fx).array()/(h(i, 0));
         }
         fx = fdoubles(thetaIn); // This also restores g_
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = fx(i, 0);
+        }
       }
 
 
