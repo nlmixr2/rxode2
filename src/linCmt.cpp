@@ -606,13 +606,13 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
       case 4:  // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21CentralH(thetaSens, hh);
-        lc.fCentralF3Jac(thetaSens,hh, fx, Js);
+        lc.shi21fF3H(thetaSens, hh);
+        lc.fF3Jac(thetaSens,hh, fx, Js);
         break;
 
       case 5: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21CentralH(thetaSens, hh);
+        lc.shi21fEndpoint5H(thetaSens, hh);
         lc.fEndpoint5Jac(thetaSens, hh, fx, Js);
         break;
 
@@ -632,7 +632,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.linAcalcAlast(yp, g, theta);
         hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(),
                                                                 rx->sensH);
-        lc.fCentralF3Jac(thetaSens, hh, fx, Js);
+        lc.fF3Jac(thetaSens, hh, fx, Js);
         break;
 
       case 50: // 5-point endpoint difference
