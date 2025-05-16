@@ -93,7 +93,7 @@ RObject linCmtModelDouble(double dt,
   int numSens = lc.numSens();
   Eigen::Matrix<double, Eigen::Dynamic, 1> thetaSens(numSens);
 
-  lc.sensTheta(theta, thetaSens);
+  lc.sensTheta(theta, thetaSens, sensType == 3);
 
   double *a = new double[nAlast];
   double *asave = new double[nAlast];
@@ -502,14 +502,11 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     hh.resize(numSens);
     hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), 0.0);
 
-
-
     // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
 
     yp.resize(ncmt + oral0);
     g.resize(ncmt, 2);
-
   } else {
     lc.setSsType(ind->linSS);
   }
@@ -524,7 +521,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
   }
 
-  lc.sensTheta(theta, thetaSens);
+  lc.sensTheta(theta, thetaSens, rx->sensType == 3);
 
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);

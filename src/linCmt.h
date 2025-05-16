@@ -5,6 +5,10 @@
 #include "solComp.h"
 #include "linCmtDiffConstant.h"
 
+#define min2( a , b )  ( (a) < (b) ? (a) : (b) )
+#define max2( a , b )  ( (a) > (b) ? (a) : (b) )
+
+
 // Global linear compartment model parameters:
 // p1, v, p2, p3, p3, p4, ka
 
@@ -77,12 +81,19 @@ namespace stan {
       int type_ = 0;
       int numDiff_ = 0;
 
+      bool isAD_ = false;
+      bool scaleSetup_ = false;
+
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> AlastA_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> yp_;
       Eigen::Matrix<double, Eigen::Dynamic, 2> g_;
 
       Eigen::Matrix<double, Eigen::Dynamic, 1> trueTheta_;
+      Eigen::Matrix<double, Eigen::Dynamic, 1> scaleC_;
+      Eigen::Matrix<double, Eigen::Dynamic, 1> initPar_;
+
+      double c1_, c2_;
 
       //' The initialization of this class
       //'
@@ -192,6 +203,40 @@ namespace stan {
         return 0;
       }
 
+
+      void sensThetaElt(int d,
+                        const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                        Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
+                        int &nd, int& i, int& j,
+                        double &mn, double &mx) {
+        if ((nd & d) != 0) {
+          // mn = min2(scale->initPar[k],mn);
+          // mx = max2(scale->initPar[k],mx);
+          if (isAD_) {
+            sensTheta(i, 0) = theta(j, 0);
+          } else {
+            if (scaleSetup_) {
+              sensTheta(i, 0) =
+                (theta(j, 0) - initPar_(i, 0))/scaleC_(i, 0) +
+                (initPar_(i, 0) - c1_)/c2_;
+            } else {
+              initPar_(i, 0) = theta(j, 0);
+              if (d == diffV1) {
+                scaleC_(i, 0) = 1.0 / theta(j, 0);
+              } else if (d == diffP3) {
+                scaleC_(i, 0) = 1.0 / (theta(j, 0)*theta(j, 0));
+              } else {
+                scaleC_(i, 0) = 1.0;
+              }
+              mn = min2(theta(j, 0), mn);
+              mx = max2(theta(j, 0), mx);
+            }
+          }
+          i++;
+        }
+        j++;
+      }
+
       //' Get the sensitivity theta parameters
       //'
       //' This is used for the Jacobian using stan math; this allows the
@@ -203,92 +248,95 @@ namespace stan {
       //' @param sensTheta -- The sensitivity theta matrix
       //'
       void sensTheta(const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
-                     Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta) {
+                     Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
+                     bool isAD) {
         trueTheta_ = theta;
+        isAD_ = isAD;
         int nd = numDiff_;
         if (nd == 0) nd = 127; // all terms
         int i = 0, j=0;
 
+        if (!isAD && !scaleSetup_) {
+          // Setup the sizes for scales
+          initPar_.resize(sensTheta.size());
+          scaleC_.resize(sensTheta.size());
+        }
+
+        double mx=R_NegInf, mn = R_PosInf;
+
         switch (ncmt_) {
         case 1: {
-          if ((nd & diffP1) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-            i++;
-          }
-          j++;
-          if ((nd & diffV1) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-            i++;
-          }
-          j++;
-          if (oral0_ && (nd & diffKa) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-          }
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
         }
-          return;
+          break;
         case 2: {
-          if ((nd & diffP1) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-            i++;
-          }
-          j++;
-          if ((nd & diffV1) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-            i++;
-          }
-          j++;
-          if ((nd & diffP2) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-            i++;
-          }
-          j++;
-          if ((nd & diffP3) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-            i++;
-          }
-          j++;
-          if (oral0_ && (nd & diffKa) != 0) {
-            sensTheta(i, 0) = theta(j, 0);
-          }
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
         }
-          return;
+          break;
         case 3: {
-            if ((nd & diffP1) != 0) {
-                sensTheta(i, 0) = theta(j, 0);
-                i++;
-            }
-            j++;
-            if ((nd & diffV1) != 0) {
-                sensTheta(i, 0) = theta(j, 0);
-                i++;
-            }
-            j++;
-            if ((nd & diffP2) != 0) {
-                sensTheta(i, 0) = theta(j, 0);
-                i++;
-            }
-            j++;
-            if ((nd & diffP3) != 0) {
-              sensTheta(i, 0) = theta(j, 0);
-              i++;
-            }
-            j++;
-            if ((nd & diffP4) != 0) {
-              sensTheta(i, 0) = theta(j, 0);
-              i++;
-            }
-            j++;
-            if ((nd & diffP5) != 0) {
-              sensTheta(i, 0) = theta(j, 0);
-              i++;
-            }
-            j++;
-            if (oral0_ && (nd & diffKa) != 0) {
-              sensTheta(i, 0) = theta(j, 0);
-            }
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP4, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP5, theta, sensTheta, nd, i, j, mn, mx);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
           }
-          return;
+          break;
         }
+        if (!isAD_ && !scaleSetup_) {
+          if (fabs(mx-mn) < DBL_EPSILON) {
+            c1_ = 0.0;
+            c2_ = 1.0;
+          } else {
+            c1_ = (mx+mn)/2.0;
+            c2_ = (mx-mn)/2.0;
+          }
+          for (int i = 0; i < initPar_.size(); i++) {
+            sensTheta(i, 0) = (initPar_(i, 0) - c1_)/c2_;
+          }
+          scaleSetup_ = true;
+        }
+      }
+
+      void trueThetaElt(int d,
+                        const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                        Eigen::Matrix<double, Eigen::Dynamic, 1>& fullTheta,
+                        int &nd, int& i, int& j) const {
+
+        if ((nd & d) != 0) {
+          if (!scaleSetup_) {
+            fullTheta(j, 0) = theta(i, 0);
+          } else {
+            fullTheta(j, 0) =
+              (theta(i, 0) - (initPar_(i, 0) - c1_)/c2_)*scaleC_(i, 0) +
+              initPar_(i, 0);
+          }
+          i++;
+        } else {
+          fullTheta(j, 0) = trueTheta_(j, 0);
+        }
+        j++;
+      }
+
+      void trueThetaElt(int d,
+                        const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> theta,
+                        Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& fullTheta,
+                        int &nd, int& i, int& j) const {
+
+        if ((nd & d) != 0) {
+          fullTheta(j, 0) = theta(i, 0);
+          i++;
+        } else {
+          fullTheta(j, 0) = trueTheta_(j, 0);
+        }
+        j++;
       }
 
       //' This function changes the sensitivity theta to the full theta
@@ -306,127 +354,28 @@ namespace stan {
 
         switch (ncmt_) {
         case 1: {
-          if ((nd & diffP1) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffV1) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if (oral0_ && (nd & diffKa) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-          }
+          trueThetaElt(diffP1, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffV1, theta, fullTheta, nd, i, j);
+          if (oral0_) trueThetaElt(diffKa, theta, fullTheta, nd, i, j);
           return fullTheta;
         }
-
         case 2: {
-          if ((nd & diffP1) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffV1) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffP2) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffP3) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if (oral0_ && (nd & diffKa) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
+          trueThetaElt(diffP1, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffV1, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffP2, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffP3, theta, fullTheta, nd, i, j);
+          if (oral0_) trueThetaElt(diffKa, theta, fullTheta, nd, i, j);
           return fullTheta;
         }
 
         case 3: {
-          if ((nd & diffP1) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffV1) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffP2) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffP3) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffP4) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if ((nd & diffP5) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
-
-          if (oral0_ && (nd & diffKa) != 0) {
-            fullTheta(j, 0) = theta(i, 0);
-            i++;
-          } else {
-            fullTheta(j, 0) = trueTheta_(j, 0);
-          }
-          j++;
+          trueThetaElt(diffP1, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffV1, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffP2, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffP3, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffP4, theta, fullTheta, nd, i, j);
+          trueThetaElt(diffP5, theta, fullTheta, nd, i, j);
+          if (oral0_) trueThetaElt(diffKa, theta, fullTheta, nd, i, j);
           return fullTheta;
         }
         }
@@ -2217,7 +2166,7 @@ namespace stan {
           fup = fdoubles(thetaCur);
           thetaCur(i, 0) -= 2*h(i, 0);
           fdown = fdoubles(thetaCur);
-          Js.col(i) = (fup - fdown).array()/(2*h(i, 0));
+          Js.col(i) = (fup - fdown).array()/(2*h(i, 0))*scaleC_(i);
         }
         fx = fdoubles(thetaIn);
         for (int i = 0; i < ncmt_ + oral0_; i++) {
@@ -2242,7 +2191,7 @@ namespace stan {
           fh = fdoubles(thetaCur);
           thetaCur(i, 0) += h(i, 0);
           f2h = fdoubles(thetaCur);
-          Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*h(i, 0));
+          Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*h(i, 0))*scaleC_(i, 0);
         }
       }
 
@@ -2271,7 +2220,7 @@ namespace stan {
           f4h = fdoubles(thetaCur);
           Js.col(i) = (-25.0*fx + 48.0*fh -
                        36.0*f2h + 16.0*f3h -
-                       3*f4h).array()/(12.0*h(i, 0));
+                       3*f4h).array()/(12.0*h(i, 0))*scaleC_(i, 0);
         }
       }
 
@@ -2286,7 +2235,7 @@ namespace stan {
           thetaCur = thetaIn;
           thetaCur(i, 0) += h(i, 0);
           fup = fdoubles(thetaCur);
-          Js.col(i) = (fup - fx).array()/(h(i, 0));
+          Js.col(i) = (fup - fx).array()/(h(i, 0))*scaleC_(i, 0);
         }
         fx = fdoubles(thetaIn); // This also restores g_
         for (int i = 0; i < ncmt_ + oral0_; i++) {
@@ -2301,8 +2250,8 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
-        double shiErr = 6.055454e-06;
-        int shi21maxFD = 30;
+        double shiErr = 7e-7;//6.055454e-06;
+        int shi21maxFD = 20;
         for (int i = 0; i <thetaIn.size(); i++) {
           h = 0.0;
           hh(i) = shi21Forward(thetaIn, h, f0, i,
@@ -2472,7 +2421,6 @@ namespace stan {
           hh(i) /= 4.0;
         }
       }
-
 
       double getVc(const Eigen::Matrix<double, Eigen::Dynamic, 1>& theta) {
         int sw = ncmt_*100 + trans_;
