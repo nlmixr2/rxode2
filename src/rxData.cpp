@@ -4906,6 +4906,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->stateTrimU = stateTrimU;
     rx->stateTrimL = stateTrimL;
     rx->matrix = matrix;
+    rx->linB = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linB];
     rx->needSort = as<int>(rxSolveDat->mv[RxMv_needSort]);
     rx->nMtime = as<int>(rxSolveDat->mv[RxMv_nMtime]);
     rx->add_cov = (int)(addCov);
@@ -5241,8 +5242,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n8 = rx->maxAllTimes*op->cores;
     int n9 = (op->numLinSens+op->numLin)*op->cores;
     int n10 = (op->neq)*op->cores;
+    int nlin = (rx->linB)*7;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
+    _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +
                                       5*op->neq + 4*n3a_c + nllik_c,
                                       sizeof(double));// [n0]
@@ -5254,7 +5256,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFree();
       stop(_("could not allocate enough memory for solving"));
     }
-    _globals.gLlikSave = _globals.gsolve + n0; // [nllik_c]
+    REprintf("nlin: %d\n", nlin);
+    rx->linH = _globals.gsolve + n0; // [nlin]
+    _globals.gLlikSave = rx->linH + nlin; // [nllik_c]
     _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
     _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]

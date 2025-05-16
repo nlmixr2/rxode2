@@ -264,6 +264,8 @@ typedef struct {
   int sensType;
   double sensH;
   int linCores;
+  int linB;
+  double *linH;
 } rx_solve;
 
 

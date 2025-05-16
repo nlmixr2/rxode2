@@ -39,7 +39,6 @@ extern "C" void ensureLinCmtA(int nCores) {
 stan::math::linCmtStan __linCmtB(0, 0, 0, true, 0, 0);
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBtheta;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaSens;
-Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBthetaH;
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtBfx;
 
 Eigen::Matrix<double, Eigen::Dynamic, 1> __linCmtByp;
@@ -452,7 +451,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 #define Js        __linCmtBJs
 #define yp        __linCmtByp
 #define g         __linCmtBg
-#define hh        __linCmtBthetaH
   if (rx->sensType == 100) {
     if (ncmt == 1) {
       rx->sensType = 3;
@@ -499,8 +497,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     int numSens = lc.numSens();
     Js.resize(ncmt+oral0, numSens);//(ncmt + oral0, 2*ncmt + oral0);
     thetaSens.resize(numSens);
-    hh.resize(numSens);
-    hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), 0.0);
 
     // AlastA.resize(ncmt + oral0);
     Jg.resize(lc.getNpars());
@@ -509,6 +505,9 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     g.resize(ncmt, 2);
   } else {
     lc.setSsType(ind->linSS);
+  }
+  if (rx->linH[0] == 0) {
+    lc.resetFlags();
   }
 
   int sw = ncmt + 10*oral0;
@@ -591,52 +590,50 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
       case 1: // forward
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21ForwardH(thetaSens, hh.data());
-        lc.fForwardJac(thetaSens, hh.data(), fx, Js);
+        lc.shi21ForwardH(thetaSens, rx->linH);
+        lc.fForwardJac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 2:  // central
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21CentralH(thetaSens, hh.data());
-        lc.fCentralJac(thetaSens, hh.data(), fx, Js);
+        lc.shi21CentralH(thetaSens, rx->linH);
+        lc.fCentralJac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 4:  // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fF3H(thetaSens, hh.data());
-        lc.fF3Jac(thetaSens, hh.data(), fx, Js);
+        lc.shi21fF3H(thetaSens, rx->linH);
+        lc.fF3Jac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 5: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fEndpoint5H(thetaSens, hh.data());
-        lc.fEndpoint5Jac(thetaSens, hh.data(), fx, Js);
+        lc.shi21fEndpoint5H(thetaSens, rx->linH);
+        lc.fEndpoint5Jac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 10:
         lc.linAcalcAlast(yp, g, theta);
-        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
-        lc.fForwardJac(thetaSens, hh.data(), fx, Js);
+        std::fill_n(rx->linH, thetaSens.size(), rx->sensH);
+        lc.fForwardJac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 20:
         lc.linAcalcAlast(yp, g, theta);
-        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
-        lc.fCentralJac(thetaSens, hh.data(), fx, Js);
+        std::fill_n(rx->linH, thetaSens.size(), rx->sensH);
+        lc.fCentralJac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 40: // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
-        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(),
-                                                                rx->sensH);
-        lc.fF3Jac(thetaSens, hh.data(), fx, Js);
+        std::fill_n(rx->linH, thetaSens.size(), rx->sensH);
+        lc.fF3Jac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 50: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
-        hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(),
-                                                                rx->sensH);
-        lc.fEndpoint5Jac(thetaSens, hh.data(), fx, Js);
+        std::fill_n(rx->linH, thetaSens.size(), rx->sensH);
+        lc.fEndpoint5Jac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 3:

@@ -15,7 +15,7 @@ BEGIN_RCPP
   double k12 = REAL(k12S)[0];
   double k21 = REAL(k21S)[0];
 
-  stan::math::solComp2struct<double> ret = stan::math::computeSolComp2(k10, k12, k21);
+  stan::math::solComp2struct<double> ret = stan::math::computeSolComp2(k10, k12, k21, 0.0);
   Rcpp::List retL(3);
   retL[0] = Rcpp::wrap(ret.L);
   retL[1] = Rcpp::wrap(ret.C1);

@@ -134,6 +134,14 @@ namespace stan {
         numDiff_(0)
       { }
 
+      // This resents the flags so that scales are not shared from
+      // problem to problem.
+      void resetFlags() {
+        isAD_ = false;
+        scaleSetup_ = false;
+      }
+
+
       // set the steady-state help
 
       //' Set the current Steady-state type
@@ -1066,7 +1074,7 @@ namespace stan {
 #define k10   g(0, 1)
 
         stan::math::solComp2struct<T> sol2 =
-          stan::math::computeSolComp2(k10, k12, k21);
+          stan::math::computeSolComp2(k10, k12, k21, ka);
 
         T rDepot = 0.0;
         T R      = rate_[oral0_];
@@ -1079,7 +1087,7 @@ namespace stan {
         Xo =(yp(oral0_, 0)*sol2.C1) * E +
           (yp(oral0_ + 1, 0)*sol2.C2) * E;
 
-        if (oral0_ == 1 && yp(0, 0) >= 0.0) {
+        if (oral0_ == 1) {
           // Xo = Xo + Ka*pX[1]*(Co[, , 1] %*% ((E - Ea)/(Ka - L)))
           rDepot = rate_[0];
           R += rDepot;
@@ -1088,7 +1096,10 @@ namespace stan {
           Ea =  (E - expa).array()/(ka2 - sol2.L).array();
           T cf = ka*yp(0, 0) - rDepot;
           Xo += (cf*sol2.C1)*Ea;
-          ret(0, 0) = rDepot*(1.0-expa(0, 0))/ka + yp(0, 0)*expa(0, 0);
+          ret(0, 0) = yp(0, 0)*expa(0, 0);
+          if (rate_[0] > 0) {
+            ret(0, 0) += rDepot*(1.0-expa(0, 0))/ka;
+          }
         }
         if (R > 0.0) {
           // Xo = Xo + ((cR*Co[, , 1]) %*% ((1 - E)/L)) # Infusion
