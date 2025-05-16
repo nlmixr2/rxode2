@@ -121,23 +121,23 @@ RObject linCmtModelDouble(double dt,
     h.setZero();
     switch (sensType) {
     case 1: // forward
-      lc.shi21ForwardH(thetaSens, h);
-      lc.fForwardJac(thetaSens, h, fx, Js);
+      lc.shi21ForwardH(thetaSens, h.data());
+      lc.fForwardJac(thetaSens, h.data(), fx, Js);
       break;
     case 2:  // central
-      lc.shi21CentralH(thetaSens, h);
-      lc.fCentralJac(thetaSens, h, fx, Js);
+      lc.shi21CentralH(thetaSens, h.data());
+      lc.fCentralJac(thetaSens, h.data(), fx, Js);
       break;
     case 3:
       stan::math::jacobian(lc, thetaSens, fx, Js);
       break;
     case 10:
       h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
-      lc.fForwardJac(thetaSens, h, fx, Js);
+      lc.fForwardJac(thetaSens, h.data(), fx, Js);
       break;
     case 20:
       h = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), sensH);
-      lc.fCentralJac(thetaSens, h, fx, Js);
+      lc.fCentralJac(thetaSens, h.data(), fx, Js);
       break;
     }
     lc.updateJfromJs(J, Js);
@@ -591,52 +591,52 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
       case 1: // forward
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21ForwardH(thetaSens, hh);
-        lc.fForwardJac(thetaSens, hh, fx, Js);
+        lc.shi21ForwardH(thetaSens, hh.data());
+        lc.fForwardJac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 2:  // central
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21CentralH(thetaSens, hh);
-        lc.fCentralJac(thetaSens, hh, fx, Js);
+        lc.shi21CentralH(thetaSens, hh.data());
+        lc.fCentralJac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 4:  // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fF3H(thetaSens, hh);
-        lc.fF3Jac(thetaSens,hh, fx, Js);
+        lc.shi21fF3H(thetaSens, hh.data());
+        lc.fF3Jac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 5: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fEndpoint5H(thetaSens, hh);
-        lc.fEndpoint5Jac(thetaSens, hh, fx, Js);
+        lc.shi21fEndpoint5H(thetaSens, hh.data());
+        lc.fEndpoint5Jac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 10:
         lc.linAcalcAlast(yp, g, theta);
         hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
-        lc.fForwardJac(thetaSens, hh, fx, Js);
+        lc.fForwardJac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 20:
         lc.linAcalcAlast(yp, g, theta);
         hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(), rx->sensH);
-        lc.fCentralJac(thetaSens, hh, fx, Js);
+        lc.fCentralJac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 40: // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
         hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(),
                                                                 rx->sensH);
-        lc.fF3Jac(thetaSens, hh, fx, Js);
+        lc.fF3Jac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 50: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
         hh = Eigen::Matrix<double, Eigen::Dynamic, 1>::Constant(thetaSens.size(),
                                                                 rx->sensH);
-        lc.fEndpoint5Jac(thetaSens, hh, fx, Js);
+        lc.fEndpoint5Jac(thetaSens, hh.data(), fx, Js);
         break;
 
       case 3:
