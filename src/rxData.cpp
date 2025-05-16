@@ -5256,7 +5256,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFree();
       stop(_("could not allocate enough memory for solving"));
     }
-    REprintf("nlin: %d\n", nlin);
     rx->linH = _globals.gsolve + n0; // [nlin]
     _globals.gLlikSave = rx->linH + nlin; // [nllik_c]
     _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
