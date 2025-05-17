@@ -134,8 +134,7 @@ namespace stan {
         numDiff_(0)
       { }
 
-      // This resents the flags so that scales are not shared from
-      // problem to problem.
+      // This resents the flags so that scales ar
       void resetFlags() {
         isAD_ = false;
         scaleSetup_ = false;
@@ -212,10 +211,40 @@ namespace stan {
       }
 
 
+      //' This sets up the sensitivity theta
+      //'
+      //' This assumes that sensTheta will be updated as well as `i` and
+      //' `j` or `mn` or `mx`
+      //'
+      //' @param d The integer that helps if this is a sensitivity parameter
+      //'      that we will estimate the gradient of... (binary & determines if it is)
+      //'
+      //' @param theta The full, un-scaled parameter for the linear compartment model.
+      //'
+      //' @param sensTheta The sensitivity theta parameter that will be updated.  This
+      //'      will be scaled.
+      //'
+      //' @param nd the current sensitivity number that determines which parameters
+      //'    the gradient is provedid
+      //'
+      //' @param i The current index of the sensitivity parameter being updated
+      //'
+      //' @param j The current index of the theta parameter being queried for
+      //'        sensitivity parameter.
+      //'
+      //' @param mn The minimum value of the sensitivity parameter.
+      //'
+      //' @param mx The maximum value of the sensitivity parameter.
+      //'
+      //'  This also updates `initPar_` and `scaleC_` for scaling.
+      //'
+      //'  If the scaling is already setup, (scaleSetup_ == true) then
+      //'  the scaled sensitivity is calculated.
+      //'
       void sensThetaElt(int d,
                         const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
                         Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
-                        int &nd, int& i, int& j,
+                        int nd, int& i, int& j,
                         double &mn, double &mx) {
         if ((nd & d) != 0) {
           // mn = min2(scale->initPar[k],mn);
@@ -254,6 +283,9 @@ namespace stan {
       //' @param theta -- full theta matrix
       //'
       //' @param sensTheta -- The sensitivity theta matrix
+      //'
+      //' @param isAD -- A boolean saying if this is an Automatic Differentiation (AD)
+      //'         calculation
       //'
       void sensTheta(const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
                      Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
@@ -298,6 +330,7 @@ namespace stan {
           }
           break;
         }
+        // This finishes the scaling setup
         if (!isAD_ && !scaleSetup_) {
           if (fabs(mx-mn) < DBL_EPSILON) {
             c1_ = 0.0;
@@ -313,11 +346,26 @@ namespace stan {
         }
       }
 
+      //' This function changes the sensitivity theta (possibly scaled) to the full theta
+      //'
+      //' @param d The integer that helps if this is a sensitivity parameter
+      //'      that we will estimate the gradient of... (binary & determines if it is)
+      //'
+      //' @param theta The sensitivity theta
+      //'
+      //' @param fullTheta The full theta that will be updated.
+      //'
+      //' @param nd the current sensitivity number that determines which parameters
+      //'    the gradient is calculated
+      //'
+      //' @param i The current index of the sensitivity parameter being updated
+      //'
+      //' @param j The current index of the full theta parameter being updated
+      //'
       void trueThetaElt(int d,
                         const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
                         Eigen::Matrix<double, Eigen::Dynamic, 1>& fullTheta,
-                        int &nd, int& i, int& j) const {
-
+                        int nd, int& i, int& j) const {
         if ((nd & d) != 0) {
           if (!scaleSetup_) {
             fullTheta(j, 0) = theta(i, 0);
@@ -333,6 +381,11 @@ namespace stan {
         j++;
       }
 
+      //' This function changes the sensitivity theta to the full theta
+      //'
+      //' This is the same function as above, but applied to the stan::math::var
+      //' instead of double
+      //'
       void trueThetaElt(int d,
                         const Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1> theta,
                         Eigen::Matrix<stan::math::var, Eigen::Dynamic, 1>& fullTheta,
@@ -2056,6 +2109,98 @@ namespace stan {
 
         Eigen::Matrix<double, Eigen::Dynamic, 1> cur;
         Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
+
+        // double vc = getVc(theta);
+
+        // int nt12 = 4;
+        // double t12 = M_LN2/g_(0, 1);
+        // double saveDt = dt_;
+
+        // double ret = 0.0;
+        // yp_.setZero();
+
+        // double r0 = rate_[0], r1 = (oral0_ == 0 ? rate_[1] : 0.0);
+        // double sum = 0.0;
+        // int nzero = 0;
+        // int n = 0;
+        // yp_[0] = 120000;
+        // dt_ = 0.0;
+        // for (int i = 0; i < nt12; i++) {
+        //   dt_ += t12;
+        //   cur = fdoubles(thetaIn);
+        //   if (cur(oral0_, 0) > 0) {
+        //     sum += log(cur(oral0_, 0)/vc);
+        //     n++;
+        //   }
+        //   for (int j = 0; j < cur.size(); j++) {
+        //     if (cur(j, 0) > 0) {
+        //       sum += log(cur(j, 0));
+        //       n++;
+        //     }
+        //   }
+        // }
+
+        // rate_[0] = 100;
+        // yp_[0] = 0;
+        // for (int i = 0; i < nt12; i++) {
+        //   dt_ += t12;
+        //   cur = fdoubles(thetaIn);
+        //   if (cur(oral0_, 0) > 0) {
+        //     sum += log(cur(oral0_, 0)/vc);
+        //     n++;
+        //   }
+        //   for (int j = 0; j < cur.size(); j++) {
+        //     if (cur(j, 0) > 0) {
+        //       sum += log(cur(j, 0));
+        //       n++;
+        //     }
+        //   }
+        // }
+
+        // if (oral0_) {
+        //   dt_ = 0.0;
+        //   yp_[0] = 0;
+        //   yp_[1] = 120000;
+        //   rate_[0] = 0;
+        //   for (int i = 0; i < nt12; i++) {
+        //     dt_ += t12;
+        //     cur = fdoubles(thetaIn);
+        //     if (cur(oral0_, 0) > 0) {
+        //       sum += log(cur(oral0_, 0)/vc);
+        //       n++;
+        //     }
+        //     for (int j = 0; j < cur.size(); j++) {
+        //       if (cur(j, 0) > 0) {
+        //         sum += log(cur(j, 0));
+        //         n++;
+        //       }
+        //     }
+        //   }
+
+        //   rate_[1] = 100;
+        //   yp_[1] = 0;
+
+        //   for (int i = 0; i < nt12; i++) {
+        //     dt_ += t12;
+        //     cur = fdoubles(thetaIn);
+        //     if (cur(oral0_, 0) > 0) {
+        //       sum += log(cur(oral0_, 0)/vc);
+        //       n++;
+        //     }
+        //     for (int j = 0; j < cur.size(); j++) {
+        //       if (cur(j, 0) > 0) {
+        //         sum += log(cur(j, 0));
+        //         n++;
+        //       }
+        //     }
+        //   }
+        //   rate_[1] = r1;
+        // }
+        // rate_[0] = r0;
+        // yp_ = getAlast(theta);
+        // dt_ = saveDt;
+        // g_ = stan::math::macros2micros(theta, ncmt_, trans_);
+        // return exp((double)(sum)/((double)n));
         double vc = getVc(theta);
         cur =  fdoubles(thetaIn);
         double gm=0.0;
@@ -2070,8 +2215,54 @@ namespace stan {
             }
           }
         }
+
         return exp(gm/n);
       }
+
+
+      // Gill 1983 Chat
+      static inline double Chat(double phi, double h, double epsA){
+        if (phi == 0) return 2*epsA/(h*h);
+        return 2*epsA/(h*fabs(phi));
+      }
+
+      static inline double ChatP(double phi, double h, double epsA){
+        if (phi == 0) return 4*epsA/(h*h*h);
+        return 4*epsA/(h*h*fabs(phi));
+      }
+
+      static inline double Phi(double fp, double f, double fn, double h){
+        return (fp-2*f+fn)/(h*h);
+      }
+      static inline double phiC(double fp, double fn, double h){
+        return (fp-fn)/(2*h);
+      }
+      static inline double phiF(double f, double fp, double h){
+        return (fp-f)/h;
+      }
+      static inline double phiB(double f, double fn, double h){
+        return (f-fn)/h;
+      }
+
+      // *hf is the forward difference final estimate
+      // *hphif is central difference final estimate (when switching from forward to central differences)
+      // *df is the derivative estimate
+      // *df2 is the 2nd derivative estimate, useful for pre-conditioning.
+      // *ef is the err of the final estimate.
+      // *theta is the theta vector
+      // cpar is the parameter we are considering
+      // epsR is the relative error for the problem
+      // K is the maximum number of iterations before giving up on searching for the best interval.
+      // Returns 1 -- Success
+      //         2 -- Large error; Derivative estimate error 50% or more of the derivative
+      //         3 -- Function constant or nearly constant for this parameter
+      //         4 -- Function odd or nearly linear, df = K, df2 ~ 0
+      //         5 -- df2 increases rapidly as h decreases
+      // int gill83(double *hf, double *hphif, double *df, double *df2, double *ef,
+      //            double *theta, int cpar, double epsR, int K, double gillStep,
+      //            double fTol, int cid, gill83fn_type gill83fn, int foceiGill,
+      //            double gillF) {
+      // }
 
       double shiRF(double &h,
                    double ef,
