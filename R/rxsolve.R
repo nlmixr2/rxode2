@@ -785,7 +785,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtSensType=c("auto", "endpoint5",
                                      "forward3", "AD", "central", "forward",
                                      "forwardH", "centralH", "forward3H",
-                                     "endpointH5"),
+                                     "endpointH5", "forwardG"),
                     linCmtSensH=0.0001,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
@@ -920,6 +920,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     } else {
       .linCmtSensType <- c("AD"=3L, "forward"=1L, "central"=2L,
                            "forward3"=4L, "endpoint5"=5L,
+                           "forwardG"=6L,
                            "forward3H"=40L, "endpoint5H"=50L,
                            "forwardH"=10L, "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]

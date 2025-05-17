@@ -612,6 +612,12 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         lc.fEndpoint5Jac(thetaSens, rx->linH, fx, Js);
         break;
 
+      case 6: // forward difference with gill H est
+        lc.linAcalcAlast(yp, g, theta);
+        lc.gillForwardH(thetaSens, rx->linH);
+        lc.fForwardJac(thetaSens, rx->linH, fx, Js);
+        break;
+
       case 10:
         lc.linAcalcAlast(yp, g, theta);
         std::fill_n(rx->linH, thetaSens.size(), rx->sensH);

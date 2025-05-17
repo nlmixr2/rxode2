@@ -2272,7 +2272,7 @@ namespace stan {
       //'         4 -- Function odd or nearly linear, df = K, df2 ~ 0
       //'         5 -- df2 increases rapidly as h decreases
       int gill83(double *hf, double *hphif, double *df, double *df2, double *ef,
-                 Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                 Eigen::Matrix<double, Eigen::Dynamic, 1>& theta,
                  int cpar, double epsR, int K, double gillStep,
                  double fTol, double gillF) {
         double f , x, hbar, h0, fp, fn=NA_REAL,
@@ -2476,6 +2476,32 @@ namespace stan {
         // warning("The surface around the initial estimate is highly irregular in at least one parameter.  Consider a different starting point.");
         return 5;
       }
+
+      void gillForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                         double *hh) {
+        if (hh[0] != 0) return; // keep calculated hh
+        Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
+        double h = 0.0;
+        double f0 = fdoubleh(thetaIn);
+        double hf=0, hphif=0, df=0, df2=0, ef=0;
+        int ret=0;
+        double epsR = 1.490116e-08; //sqrt(.Machine$double.eps)
+        int K = 10;
+        double gillStep = 4;
+        double gillFtol = 0.0;
+        for (int i = 0; i <thetaIn.size(); i++) {
+          h = 0.0;
+          gill83(&hf, &hphif, &df, &df2, &ef,
+                 thetaIn, i, epsR, K, gillStep,
+                 gillFtol, f0);
+          // ret = gill83(&hf, &hphif, &df, &df2, &ef,
+          //              thetaIn, epsR, K, gillStep,
+          //              gillFtol, f0);
+          hh[i] = hf;
+        }
+        g_ = gin;
+      }
+
 
       double shiRF(double &h,
                    double ef,
