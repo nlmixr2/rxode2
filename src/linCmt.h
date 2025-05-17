@@ -2244,25 +2244,238 @@ namespace stan {
         return (f-fn)/h;
       }
 
-      // *hf is the forward difference final estimate
-      // *hphif is central difference final estimate (when switching from forward to central differences)
-      // *df is the derivative estimate
-      // *df2 is the 2nd derivative estimate, useful for pre-conditioning.
-      // *ef is the err of the final estimate.
-      // *theta is the theta vector
-      // cpar is the parameter we are considering
-      // epsR is the relative error for the problem
-      // K is the maximum number of iterations before giving up on searching for the best interval.
-      // Returns 1 -- Success
-      //         2 -- Large error; Derivative estimate error 50% or more of the derivative
-      //         3 -- Function constant or nearly constant for this parameter
-      //         4 -- Function odd or nearly linear, df = K, df2 ~ 0
-      //         5 -- df2 increases rapidly as h decreases
-      // int gill83(double *hf, double *hphif, double *df, double *df2, double *ef,
-      //            double *theta, int cpar, double epsR, int K, double gillStep,
-      //            double fTol, int cid, gill83fn_type gill83fn, int foceiGill,
-      //            double gillF) {
-      // }
+      //' @param *hf is the forward difference final estimate
+      //' @param *hphif is central difference final estimate (when switching from forward to central differences)
+      //' @param *df is the derivative estimate
+      //' @param *df2 is the 2nd derivative estimate, useful for pre-conditioning.
+      //' @param *ef is the err of the final estimate.
+      //' @param thetaSens is the sensitivity vector
+      //' @param cpar (integer) is the parameter we are considering
+      //'
+      //' @param epsR (err) is the relative error for the problem
+      //'
+      //' @param K is the maximum number of iterations before giving up on searching for the best interval.
+
+      //' @param fTol gradient error tolerance that
+      //'     is acceptable before issuing a warning/error about the gradient estimates.
+      //'
+      //' @param gillStep When looking for the optimal forward difference
+      //'     step size, this is This is the step size to increase the
+      //'     initial estimate by.  So each iteration the new step size =
+      //'     (prior step size)*gillStep
+      //'
+      //' @param gillF This is the f value at the current estimate
+      //'
+      //' Returns 1 -- Success
+      //'         2 -- Large error; Derivative estimate error 50% or more of the derivative
+      //'         3 -- Function constant or nearly constant for this parameter
+      //'         4 -- Function odd or nearly linear, df = K, df2 ~ 0
+      //'         5 -- df2 increases rapidly as h decreases
+      int gill83(double *hf, double *hphif, double *df, double *df2, double *ef,
+                 Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
+                 int cpar, double epsR, int K, double gillStep,
+                 double fTol, double gillF) {
+        double f , x, hbar, h0, fp, fn=NA_REAL,
+          phif, phib, phic, phicc = 0, phi, Chf, Chb,
+          Ch, hs, hphi, hk, tmp, ehat, lasth,
+          lastht=NA_REAL, lastfpt=NA_REAL, phict=NA_REAL;
+        f = gillF;
+        int k = 0;
+        // Relative error should be given by the tolerances, I believe.
+        double epsA=std::fabs(f)*epsR;
+        x = theta(cpar, 0);
+        // FD1: // Initialization
+        hbar = 2*(1+std::fabs(x))*sqrt(epsA/(1+std::fabs(f)));
+        h0 = gillStep*hbar;
+        lasth=h0;
+        theta(cpar, 0) = x + h0;
+        fp = fdoubleh(theta);
+        theta(cpar, 0) = x - h0;
+        fn = fdoubleh(theta);
+        phif = phiF(f, fp, h0);
+        phib = phiB(f, fn, h0);
+        phic = phiC(fp, fn, h0);
+        phi = Phi(fp, f, fn, h0);
+
+        Chf = Chat(phif, h0, epsA);
+        Chb = Chat(phib, h0, epsA);
+        Ch  = ChatP(phi, h0, epsA);
+        hs  = -1;
+        hphi=hbar; // Not defined in Gill, but used for central difference switch if there are problems
+        // FD2:  // Decide if to accept the interval
+        hk = h0;
+        if (max2(Chf, Chb) <= 0.1){
+          hs=h0;
+        }
+        if (0.001 <= Ch && Ch <= 0.1){
+          phicc=phic;
+          hphi=h0;
+          if (fTol != 0 && fabs(phif) < fTol){
+            lastfpt = fp;
+            phict=phic;
+            lastht  = lasth;
+          }
+          goto FD5;
+        }
+        if (fTol != 0 && fabs(phif) < fTol){
+          lastfpt = fp;
+          lastht  = lasth;
+          phict=phic;
+        }
+        if (Ch < 0.001){
+          goto FD4;
+        }
+      FD3: // Increase h
+        k++;
+        hk=hk*gillStep;
+        lasth=hk;
+        // Compute the associated finite difference estimates and their
+        // relative condition errors.
+        theta(cpar, 0) = x + hk;
+        fp = fdoubleh(theta);
+        theta(cpar, 0) = x-hk;
+        fn = fdoubleh(theta);
+        phif = phiF(f, fp, hk);
+        phib = phiB(f, fn, hk);
+        phic = phiC(fp, fn, hk);
+        phi = Phi(fp, f, fn, hk);
+        Chf = Chat(phif, hk, epsA);
+        Chb = Chat(phib, hk, epsA);
+        Ch = ChatP(phi, hk, epsA);
+        if (hs < 0 && max2(Chf, Chb) <= 0.1){
+          hs = hk;
+        }
+        if (Ch <= 0.1){
+          phicc=phic;
+          hphi = hk;
+          if (fTol != 0 && fabs(phif) < fTol){
+            lastfpt = fp;
+            lastht  = lasth;
+            phict=phic;
+          }
+          goto FD5;
+        }
+        if (fTol != 0 && fabs(phif) < fTol){
+          lastfpt = fp;
+          lastht  = lasth;
+          phict=phic;
+        }
+        if (k == K) goto FD6;
+        goto FD3;
+      FD4: // Decrease h
+        k++;
+        hk=hk/gillStep;
+        lasth=hk;
+        // Compute the associated finite difference estimates and their
+        // relative condition errors.
+        theta(cpar, 0) = x + hk;
+        fp = fdoubleh(theta);
+        theta(cpar, 0) = x-hk;
+        fn = fdoubleh(theta);
+        phif = phiF(f, fp, hk);
+        phib = phiB(f, fn, hk);
+        tmp=phic;
+        phic = phiC(fp, fn, hk);
+        phi = Phi(fp, f, fn, hk);
+        Chf = Chat(phif, hk, epsA);
+        Chb = Chat(phib, hk, epsA);
+        Ch = ChatP(phi, hk, epsA);
+        if (Ch > .1){
+          phicc=tmp;
+          hphi=hk*gillStep; // hphi = h_k-1
+          if (fTol != 0 && fabs(phif) < fTol){
+            lastfpt = fp;
+            lastht  = lasth;
+            phict=phic;
+          }
+          goto FD5;
+        }
+        if (max2(Chf, Chb) <= 0.1){
+          hs = hk;
+        }
+        if (0.001 <= Ch && Ch <= 1){
+          hphi = hk;
+          if (fTol != 0 && fabs(phif) < fTol){
+            lastfpt = fp;
+            lastht  = lasth;
+            phict=phic;
+          }
+          goto FD5;
+        }
+        if (fTol != 0 && fabs(phif) < fTol){
+          lastfpt = fp;
+          lastht  = lasth;
+          phict=phic;
+        }
+        if (k == K) goto FD6;
+        goto FD4;
+      FD5: // Compute the estimate of the optimal interval
+        *df2 = phi;
+        *hf = 2*sqrt(epsA/fabs(phi));
+        theta(cpar, 0) = x + *hf;
+        fp = fdoubleh(theta);
+        // Restore theta
+        theta(cpar, 0) = x;
+        *df = phiF(f, fp, *hf);
+        *ef = (*hf)*fabs(phi)/2+2*epsA/(*hf);
+        *hphif=hphi;
+        ehat = fabs(*df-phicc);
+        if (max2(*ef, ehat) <= 0.5*(*df)){
+          return 1;
+        } else {
+          // warning("The finite difference derivative err more than 50%% of the slope; Consider a different starting point.");
+          if (!ISNA(lastht)){
+            // Could be used;  Stick with the last below Ftol
+            // *hf = lasth;
+            // fp = lastfp;
+            // *df = phiF(f, fp, *hf);
+            // *df2=0;
+            // // *df = 0.0; // Doesn't move.
+            // *hphif=2*(*hf);
+            // } else {
+            *hf = lastht;
+            fp = lastfpt;
+            *df = phiF(f, fp, *hf);
+            *df2=phic;
+            // *df = 0.0; // Doesn't move.
+            *hphif=phict;
+          }
+          return 2;
+        }
+        //
+      FD6: // Check unsatisfactory cases
+        if (hs < 0){
+          // F nearly constant.
+          // Use sqrt(h0) as a last ditch effort.
+          *hf = pow(DBL_EPSILON, 0.25);//hbar;
+          // *df=phic;
+          theta(cpar, 0) = x + *hf;
+          fp = fdoubleh(theta);
+          *df = phiF(f, fp, *hf);
+          *df2=0;
+          // *df = 0.0; // Doesn't move.
+          *hphif= sqrt(h0);
+          // warning("The surface around the initial estimate is nearly constant in one parameter grad=0.  Consider a different starting point.");
+          return 3;
+        }
+        if (Ch > 0.1){ // Odd or nearly linear.
+          *hf = h0;
+          *df = phic;
+          *df2 = 0;
+          *ef = 2*epsA/(*hf);
+          *hphif=hphi;
+          // warning("The surface odd or nearly linear for one parameter; Check your function.");
+          return 4;
+        }
+        // f'' is increasing rapidly as h decreases
+        *hf = h0;
+        *df = phic;
+        *df2 = phi;
+        *hphif=hphi;
+        *ef = (*hf)*fabs(phi)/2+2*epsA/(*hf);
+        // warning("The surface around the initial estimate is highly irregular in at least one parameter.  Consider a different starting point.");
+        return 5;
+      }
 
       double shiRF(double &h,
                    double ef,
