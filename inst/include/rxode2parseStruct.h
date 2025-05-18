@@ -263,14 +263,16 @@ typedef struct {
   int ndiff;
   int sensType;
   double sensH;
-  int linCores;
+  double* linH;
   int linB;
-  double *linH;
 
   double linCmtGillFtol;
   int linCmtGillK;
   double linCmtGillStep;
   double linCmtGillRtol;
+
+  double linCmtShiErr;
+  int linCmtShiMax;
 
 } rx_solve;
 

@@ -2685,13 +2685,12 @@ namespace stan {
 
 
       void shi21ForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
-                         double *hh) {
+                         double *hh,
+                         double shiErr, int shi21maxFD) {
         if (hh[0] != 0) return; // keep calculated hh
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
-        double shiErr = 7e-7;//6.055454e-06;
-        int shi21maxFD = 20;
         for (int i = 0; i <thetaIn.size(); i++) {
           h = 0.0;
           hh[i] = shi21Forward(thetaIn, h, f0, i,
@@ -2827,13 +2826,11 @@ namespace stan {
       }
 
       void shi21CentralH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
-                         double *hh) {
+                         double *hh, double shiErr, int shi21maxFD) {
         if (hh[0] != 0) return; // keep calculated hh
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
-        double shiErr = 6.055454e-06;
-        int shi21maxFD = 30;
         for (int i = 0; i < thetaIn.size(); i++) {
           h = 0.0;
           hh[i] = shi21Central(thetaIn, h, f0, i,
@@ -2847,16 +2844,18 @@ namespace stan {
       }
 
       void shi21fF3H(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
-                     double *hh) {
-        shi21ForwardH(thetaIn, hh);
+                     double *hh,  double shiErr, int shi21maxFD) {
+        if (hh[0] != 0) return; // keep calculated hh
+        shi21ForwardH(thetaIn, hh, shiErr, shi21maxFD);
         for (int i = 0; i < thetaIn.size(); i++) {
           hh[i] /= 2.0;
         }
       }
 
       void shi21fEndpoint5H(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
-                            double *hh) {
-        shi21ForwardH(thetaIn, hh);
+                            double *hh,  double shiErr, int shi21maxFD) {
+        if (hh[0] != 0) return; // keep calculated hh
+        shi21ForwardH(thetaIn, hh, shiErr, shi21maxFD);
         for (int i = 0; i < thetaIn.size(); i++) {
           hh[i] /= 4.0;
         }

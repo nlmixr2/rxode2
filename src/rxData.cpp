@@ -4913,6 +4913,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtGillStep = asDouble(rxControl[Rxc_linCmtGillStep], "linCmtGillStep");
     rx->linCmtGillRtol = asDouble(rxControl[Rxc_linCmtGillRtol], "linCmtGillRtol");
 
+    rx->linCmtShiErr = asDouble(rxControl[Rxc_linCmtShiErr], "linCmtShiErr");
+    rx->linCmtShiMax = asInt(rxControl[Rxc_linCmtShiMax], "linCmtShiMax");
+
     rx->needSort = as<int>(rxSolveDat->mv[RxMv_needSort]);
     rx->nMtime = as<int>(rxSolveDat->mv[RxMv_nMtime]);
     rx->add_cov = (int)(addCov);
@@ -4927,9 +4930,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     rxSolveDat->throttle = false;
     if (method != 2){
-      rx->linCores = op->cores = 1;//getRxThreads(1, false);
+      op->cores = 1;//getRxThreads(1, false);
     } else {
-      rx->linCores = op->cores = asInt(rxControl[Rxc_cores], "cores");
+      op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
       if (op->cores == 0) {
         switch (thread) {
@@ -4941,17 +4944,16 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case threadSafe:
-          rx->linCores = op->cores = getRxThreads(INT_MAX, false);
+          op->cores = getRxThreads(INT_MAX, false);
           rxSolveDat->throttle = true;
           break;
         case notThreadSafe:
           // Not thread safe.
           warning(_("not thread safe method, using 1 core"));
-          rx->linCores = op->cores = 1;
+          op->cores = 1;
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          rx->linCores = getRxThreads(INT_MAX, false);
           op->cores = 1;
           rxSolveDat->throttle = false;
           break;
@@ -4970,11 +4972,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         case notThreadSafe:
           // Not thread safe.
           warning(_("not thread safe method, using 1 core"));
-          rx->linCores = op->cores = 1;
+          op->cores = 1;
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          rx->linCores = getRxThreads(INT_MAX, false);
           op->cores = 1;
           rxSolveDat->throttle = false;
           break;
@@ -4982,11 +4983,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
     }
     if (op->cores == 0) {
-      rx->linCores = op->cores = 1;
+      op->cores = 1;
     }
     if (op->cores != 1 && op->naTimeInput == rxode2naTimeInputError) {
       warning(_("since throwing warning with NA time, change to single threaded"));
-      rx->linCores = op->cores = 1;
+      op->cores = 1;
     }
     seedEng((int)(op->cores));
     ensureLinCmtA((int)op->cores);

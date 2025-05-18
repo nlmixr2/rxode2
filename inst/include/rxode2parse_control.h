@@ -103,7 +103,9 @@
 #define Rxc_linCmtGillK 99
 #define Rxc_linCmtGillStep 100
 #define Rxc_linCmtGillRtol 101
-#define Rxc__zeros 102
+#define Rxc_linCmtShiErr 102
+#define Rxc_linCmtShiMax 103
+#define Rxc__zeros 104
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

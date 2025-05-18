@@ -138,9 +138,11 @@ rxSolve(
     "forwardH", "centralH", "forward3H", "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
   linCmtGillFtol = 0,
-  linCmtGillK = 10L,
+  linCmtGillK = 20L,
   linCmtGillStep = 4,
   linCmtGillRtol = sqrt(.Machine$double.eps),
+  linCmtShiErr = sqrt(.Machine$double.eps),
+  linCmtShiMax = 20L,
   envir = parent.frame()
 )
 

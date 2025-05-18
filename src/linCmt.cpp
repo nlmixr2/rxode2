@@ -120,11 +120,11 @@ RObject linCmtModelDouble(double dt,
     h.setZero();
     switch (sensType) {
     case 1: // forward
-      lc.shi21ForwardH(thetaSens, h.data());
+      lc.shi21ForwardH(thetaSens, h.data(), 7e-7, 20);
       lc.fForwardJac(thetaSens, h.data(), fx, Js);
       break;
     case 2:  // central
-      lc.shi21CentralH(thetaSens, h.data());
+      lc.shi21CentralH(thetaSens, h.data(), 7e-7, 20);
       lc.fCentralJac(thetaSens, h.data(), fx, Js);
       break;
     case 3:
@@ -590,25 +590,33 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
       case 1: // forward
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21ForwardH(thetaSens, rx->linH);
+        lc.shi21ForwardH(thetaSens, rx->linH,
+                         rx->linCmtShiErr,
+                         rx->linCmtShiMax);
         lc.fForwardJac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 2:  // central
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21CentralH(thetaSens, rx->linH);
+        lc.shi21CentralH(thetaSens, rx->linH,
+                         rx->linCmtShiErr,
+                         rx->linCmtShiMax);
         lc.fCentralJac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 4:  // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fF3H(thetaSens, rx->linH);
+        lc.shi21fF3H(thetaSens, rx->linH,
+                     rx->linCmtShiErr,
+                     rx->linCmtShiMax);
         lc.fF3Jac(thetaSens, rx->linH, fx, Js);
         break;
 
       case 5: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fEndpoint5H(thetaSens, rx->linH);
+        lc.shi21fEndpoint5H(thetaSens, rx->linH,
+                            rx->linCmtShiErr,
+                            rx->linCmtShiMax);
         lc.fEndpoint5Jac(thetaSens, rx->linH, fx, Js);
         break;
 

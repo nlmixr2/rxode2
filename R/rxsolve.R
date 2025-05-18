@@ -806,9 +806,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                      "endpointH5", "forwardG"),
                     linCmtSensH=0.0001,
                     linCmtGillFtol=0,
-                    linCmtGillK=10L,
+                    linCmtGillK=20L,
                     linCmtGillStep=4,
                     linCmtGillRtol=sqrt(.Machine$double.eps),
+                    linCmtShiErr=sqrt(.Machine$double.eps),
+                    linCmtShiMax=20L,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -953,6 +955,9 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
     checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
     checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(linCmtGillRtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+
+    checkmate::assertNumeric(linCmtShiErr, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(linCmtShiMax, lower=0, any.missing=FALSE, len=1)
 
     if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .prod <- as.integer(prodType)
@@ -1265,6 +1270,8 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtGillK=linCmtGillK,
       linCmtGillStep=linCmtGillStep,
       linCmtGillRtol=linCmtGillRtol,
+      linCmtShiErr=linCmtShiErr,
+      linCmtShiMax=linCmtShiMax,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
