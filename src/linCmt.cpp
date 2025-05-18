@@ -614,7 +614,10 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
       case 6: // forward difference with gill H est
         lc.linAcalcAlast(yp, g, theta);
-        lc.gillForwardH(thetaSens, rx->linH);
+        lc.gillForwardH(thetaSens, rx->linH,
+                        rx->linCmtGillRtol,
+                        rx->linCmtGillK, rx->linCmtGillStep,
+                        rx->linCmtGillFtol);
         lc.fForwardJac(thetaSens, rx->linH, fx, Js);
         break;
 

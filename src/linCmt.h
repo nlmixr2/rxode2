@@ -2478,17 +2478,16 @@ namespace stan {
       }
 
       void gillForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
-                         double *hh) {
+                        double *hh,
+                        double epsR, int K,
+                        double gillStep,
+                        double gillFtol) {
         if (hh[0] != 0) return; // keep calculated hh
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
         double hf=0, hphif=0, df=0, df2=0, ef=0;
         int ret=0;
-        double epsR = 1.490116e-08; //sqrt(.Machine$double.eps)
-        int K = 10;
-        double gillStep = 4;
-        double gillFtol = 0.0;
         for (int i = 0; i <thetaIn.size(); i++) {
           h = 0.0;
           gill83(&hf, &hphif, &df, &df2, &ef,

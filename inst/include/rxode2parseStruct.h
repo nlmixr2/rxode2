@@ -266,6 +266,12 @@ typedef struct {
   int linCores;
   int linB;
   double *linH;
+
+  double linCmtGillFtol;
+  int linCmtGillK;
+  double linCmtGillStep;
+  double linCmtGillRtol;
+
 } rx_solve;
 
 
