@@ -99,7 +99,11 @@
 #define Rxc_ssSolved 95
 #define Rxc_linCmtSensType 96
 #define Rxc_linCmtSensH 97
-#define Rxc__zeros 98
+#define Rxc_linCmtGillFtol 98
+#define Rxc_linCmtGillK 99
+#define Rxc_linCmtGillStep 100
+#define Rxc_linCmtGillRtol 101
+#define Rxc__zeros 102
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

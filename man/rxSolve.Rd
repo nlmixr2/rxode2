@@ -135,8 +135,12 @@ rxSolve(
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
   linCmtSensType = c("auto", "endpoint5", "forward3", "AD", "central", "forward",
-    "forwardH", "centralH", "forward3H", "endpointH5"),
+    "forwardH", "centralH", "forward3H", "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
+  linCmtGillFtol = 0,
+  linCmtGillK = 10L,
+  linCmtGillStep = 4,
+  linCmtGillRtol = sqrt(.Machine$double.eps),
   envir = parent.frame()
 )
 
@@ -842,10 +846,12 @@ and does not mix ODEs with the solution.  The default is \code{TRUE}.}
 sensitivity/gradients to use.  The current options are:
 \itemize{
 \item \code{auto} -- for one compartment models this will use the \code{AD}
-method, for 2 and 3 compartment model this will use \code{endpoint5}.
+method, for 2 and 3 compartment model this will use \code{forwardG}.
 \item \code{AD} -- automatic differentiation (using stan math)
 \item \code{forward} -- forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
+\item \code{forwardG} -- forward sensitivity where the step size is determined by the
+Gill 1983 optimization for forward differences (only once per problem).
 \item \code{central} -- central sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
 \item \code{forward3} -- three point central difference where step size is
@@ -856,12 +862,28 @@ determined by the shi 2021 optimization for central differences
 (only once per problem)
 \item \code{fowardH} -- forward sensitivity where the step size is fixed
 \item \code{centralH} -- central sensitivity where the step size is fixed
-\item \code{forwardH3} -- three point central difference where step size is fixed
-\item \code{endpointH5} -- five point endpoint difference where step size is fixed
+\item \code{forward3H} -- three point central difference where step size is fixed
+\item \code{endpoint5H} -- five point endpoint difference where step size is fixed
 }}
 
 \item{linCmtSensH}{The step size for the forward and central
-differences when using the option \code{centralH} or \code{forwardH}.}
+differences when using the option \code{centralH}, \code{forwardH},
+\code{foward3H} or \code{endpoint5H} options.
+#'}
+
+\item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
+is acceptable before issuing a warning/error about the gradient estimates.}
+
+\item{linCmtGillK}{The total number of possible steps to determine the
+optimal forward/central difference step size per parameter (by
+the Gill 1983 method).  If 0, no optimal step size is
+determined.  Otherwise this is the optimal step size
+determined.}
+
+\item{linCmtGillStep}{When looking for the optimal forward difference
+step size, this is This is the step size to increase the
+initial estimate by.  So each iteration the new step size =
+(prior step size)*gillStep}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}

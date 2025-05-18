@@ -635,12 +635,15 @@
 #'   sensitivity/gradients to use.  The current options are:
 #'
 #' - `auto` -- for one compartment models this will use the `AD`
-#'   method, for 2 and 3 compartment model this will use `forward3`.
+#'   method, for 2 and 3 compartment model this will use `forwardG`.
 #'
 #' - `AD` -- automatic differentiation (using stan math)
 #'
 #' - `forward` -- forward sensitivity where the step size is
 #'    determined by shi 2021 optimization (only once per problem)
+#'
+#' - `forwardG` -- forward sensitivity where the step size is determined by the
+#'    Gill 1983 optimization for forward differences (only once per problem).
 #'
 #' - `central` -- central sensitivity where the step size is
 #'    determined by shi 2021 optimization (only once per problem)
@@ -657,12 +660,27 @@
 #'
 #' - `centralH` -- central sensitivity where the step size is fixed
 #'
-#' - `forwardH3` -- three point central difference where step size is fixed
+#' - `forward3H` -- three point central difference where step size is fixed
 #'
-#' - `endpointH5` -- five point endpoint difference where step size is fixed
+#' - `endpoint5H` -- five point endpoint difference where step size is fixed
 #'
 #' @param linCmtSensH The step size for the forward and central
-#'   differences when using the option `centralH` or `forwardH`.
+#'   differences when using the option `centralH`, `forwardH`,
+#'   `foward3H` or `endpoint5H` options.
+#'#'
+#' @param linCmtGillK The total number of possible steps to determine the
+#'     optimal forward/central difference step size per parameter (by
+#'     the Gill 1983 method).  If 0, no optimal step size is
+#'     determined.  Otherwise this is the optimal step size
+#'     determined.
+#'
+#' @param linCmtGillStep When looking for the optimal forward difference
+#'     step size, this is This is the step size to increase the
+#'     initial estimate by.  So each iteration the new step size =
+#'     (prior step size)*gillStep
+#'
+#' @param linCmtGillFtol The gillFtol is the gradient error tolerance that
+#'     is acceptable before issuing a warning/error about the gradient estimates.
 #'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
@@ -787,6 +805,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                                      "forwardH", "centralH", "forward3H",
                                      "endpointH5", "forwardG"),
                     linCmtSensH=0.0001,
+                    linCmtGillFtol=0,
+                    linCmtGillK=10L,
+                    linCmtGillStep=4,
+                    linCmtGillRtol=sqrt(.Machine$double.eps),
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -925,6 +947,12 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                            "forwardH"=10L, "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]
     }
+
+    checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillStep, lower=0, finite=TRUE, any.missing=FALSE, len=1)
+    checkmate::assertNumeric(linCmtGillRtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
 
     if (checkmate::testIntegerish(prodType, len=1, lower=1, upper=3, any.missing=FALSE)) {
       .prod <- as.integer(prodType)
@@ -1233,6 +1261,10 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       ssSolved=ssSolved,
       linCmtSensType=.linCmtSensType,
       linCmtSensH=linCmtSensH,
+      linCmtGillFtol=linCmtGillFtol,
+      linCmtGillK=linCmtGillK,
+      linCmtGillStep=linCmtGillStep,
+      linCmtGillRtol=linCmtGillRtol,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"
