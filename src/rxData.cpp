@@ -1426,6 +1426,7 @@ NumericVector rxSetupScale(const RObject &obj,
 }
 
 struct rx_globals {
+  double *gLin;
   double *gLlikSave;
   double *gSolveLast2;
   double *gSolveLast;
@@ -4038,6 +4039,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       curIdx=0;
       int curCov=0;
       int curSimIni=0;
+      int curLin = 0;
       rx_solving_options_ind indS;
       int linCmt = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmt];
       int nIndSim = rx->nIndSim;
@@ -4100,6 +4102,8 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           }
           int eLen = op->neq*ind->n_all_times;
           ind->solve = &_globals.gsolve[curSolve];
+          ind->linH = &_globals.gLin[curLin];
+          curLin += 7;
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
           curSolve += (op->neq)*ind->n_all_times;
@@ -5249,7 +5253,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     int n8 = rx->maxAllTimes*op->cores;
     int n9 = (op->numLinSens+op->numLin)*op->cores;
     int n10 = (op->neq)*op->cores;
-    int nlin = (rx->linB)*7;
+    int nlin = (rx->linB)* 7* rx->nsub * rx->nsim;
     if (_globals.gsolve != NULL) free(_globals.gsolve);
     _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
                                       n9 + n10 +
@@ -5263,8 +5267,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveFree();
       stop(_("could not allocate enough memory for solving"));
     }
-    rx->linH = _globals.gsolve + n0; // [nlin]
-    _globals.gLlikSave = rx->linH + nlin; // [nllik_c]
+    _globals.gLin = _globals.gsolve + n0; // [nlin]
+    _globals.gLlikSave = _globals.gLin + nlin; // [nllik_c]
     _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
     _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
     _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]

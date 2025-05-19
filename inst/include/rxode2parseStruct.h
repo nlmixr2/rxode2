@@ -209,6 +209,7 @@ typedef struct {
   double linSStau;
   double linSSvar;
   double ssTime;
+  double* linH;
 } rx_solving_options_ind;
 
 typedef struct {
@@ -263,7 +264,6 @@ typedef struct {
   int ndiff;
   int sensType;
   double sensH;
-  double* linH;
   int linB;
 
   double linCmtGillFtol;
