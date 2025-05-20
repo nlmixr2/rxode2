@@ -80,6 +80,8 @@ namespace stan {
       int bolusCmt_ = 0;
       int type_ = 0;
       int numDiff_ = 0;
+      double ka_ = 0.0;
+      bool sensKa_ = false;
 
       bool isAD_ = false;
       bool scaleSetup_ = false;
@@ -258,10 +260,18 @@ namespace stan {
                 (initPar_(i, 0) - c1_)/c2_;
             } else {
               initPar_(i, 0) = theta(j, 0);
-              if (d == diffV1) {
-                scaleC_(i, 0) = 1.0 / theta(j, 0);
+              if (d == diffP1) {
+                scaleC_(i, 0) = 1/trueTheta_(1, 0);
+              } else if (d == diffV1) {
+                // > D(S("log(exp(-Cl/V)/V)"), "V")
+                //V*exp(Cl/V)*(-exp(-Cl/V)/V^2 + exp(-Cl/V)*Cl/V^3)
+#define V theta(j, 0)
+#define Cl trueTheta_(2, 0)
+                scaleC_(i, 0) = V*exp(Cl/V)*(-exp(-Cl/V)/(V*V) + exp(-Cl/V)*Cl/(V*V*V));
+#undef Cl
+#undef V
               } else if (d == diffP3) {
-                scaleC_(i, 0) = 1.0 / (theta(j, 0)*theta(j, 0));
+                scaleC_(i, 0) = 1.0/(theta(j, 0)*theta(j, 0));
               } else {
                 scaleC_(i, 0) = 1.0;
               }
@@ -308,7 +318,11 @@ namespace stan {
         case 1: {
           sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx);
           sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+          sensKa_ = false;
+          if (oral0_) {
+            sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+            sensKa_ = (diffKa & nd) != 0;
+          }
         }
           break;
         case 2: {
@@ -316,7 +330,11 @@ namespace stan {
           sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
           sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx);
           sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+          sensKa_ = false;
+          if (oral0_) {
+            sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+            sensKa_ = (diffKa & nd) != 0;
+          }
         }
           break;
         case 3: {
@@ -326,7 +344,11 @@ namespace stan {
           sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx);
           sensThetaElt(diffP4, theta, sensTheta, nd, i, j, mn, mx);
           sensThetaElt(diffP5, theta, sensTheta, nd, i, j, mn, mx);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+          sensKa_ = false;
+          if (oral0_) {
+            sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+            sensKa_ = (diffKa & nd) != 0;
+          }
           }
           break;
         }
@@ -2034,7 +2056,7 @@ namespace stan {
 
         double ka = 0.0;
         if (oral0_) {
-          ka = theta[ncmt_*2];
+          ka = ka_ = theta[ncmt_*2];
         }
         Eigen::Matrix<double, Eigen::Dynamic, 1> ret0(ncmt_ + oral0_, 1);
         if (type_ == linCmtNormal) {
@@ -2205,18 +2227,34 @@ namespace stan {
         cur =  fdoubles(thetaIn);
         double gm=0.0;
         int n=0;
-        for (int i = 0; i < oral0_ + ncmt_; ++i) {
+        for (int i = oral0_; i < oral0_ + ncmt_; ++i) {
           if (cur(i, 0) > 0) {
-            gm += log(cur(i, 0));
-            n++;
             if (i == oral0_) {
               gm += log(cur(oral0_, 0)/vc);
+              n++;
+            } else {
+              gm += log(cur(i, 0));
               n++;
             }
           }
         }
+        return gm/n;
 
-        return exp(gm/n);
+        // return exp(gm/n);
+
+        // double vc = getVc(theta);
+        // cur =  fdoubles(thetaIn);
+        // double am=0.0;
+        // int n=0;
+        // for (int i = 0; i < oral0_ + ncmt_; ++i) {
+        //     am += cur(i, 0);
+        //     n++;
+        //     if (i == oral0_) {
+        //       am += cur(oral0_, 0)/vc;
+        //       n++;
+        //     }
+        // }
+        // return am/n;
       }
 
 
@@ -2592,7 +2630,28 @@ namespace stan {
         }
         return h;
       }
-
+      void fixKaJac(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js,
+                    int size) {
+        // ka_ is already calculated
+        // > D(S("D(ka)*exp(-ka*dt)"), "ka")
+        // (Add)   exp(-ka*dt)*Derivative(D(ka), ka) - exp(-ka*dt)*dt*D(ka)
+        // This will fix the last column and first row of the Jacobian
+        //
+        if (sensKa_) {
+          double D = A_[0];
+          double dD = A_[ncmt_ + oral0_ + (2*ncmt_ + oral0_)*ncmt_];
+          for (int i = 0; i < size; ++i) {
+            Js(0, i) = 0.0;
+          }
+          Js(0, size-1) = exp(-ka_*dt_)*dD - exp(-ka_*dt_)*dt_*D;
+          if (fabs(rate_[0]) > DBL_EPSILON) {
+            // > D(S("R * (1.0 - exp(-ka*dt)) / ka"), "ka")
+            // (Add)   -R*(1.0 - exp(-ka*dt))/ka^2 + R*exp(-ka*dt)*dt/ka
+            Js(0, size-1) += rate_[0]*(exp(-ka_*dt_)*dt_/ka_ -
+                                       (1.0 - exp(-ka_*dt_))/(ka_*ka_));
+          }
+        }
+      }
       void fCentralJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                        double *h,
                        Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
@@ -2608,6 +2667,7 @@ namespace stan {
           fdown = fdoubles(thetaCur);
           Js.col(i) = (fup - fdown).array()/(2*h[i])*scaleC_(i);
         }
+        fixKaJac(Js, thetaIn.size());
         fx = fdoubles(thetaIn);
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           Asave_[i] = fx(i, 0);
@@ -2633,6 +2693,7 @@ namespace stan {
           f2h = fdoubles(thetaCur);
           Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*h[i])*scaleC_(i, 0);
         }
+        fixKaJac(Js, thetaIn.size());
       }
 
       void fEndpoint5Jac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
@@ -2662,6 +2723,7 @@ namespace stan {
                        36.0*f2h + 16.0*f3h -
                        3*f4h).array()/(12.0*h[i])*scaleC_(i, 0);
         }
+        fixKaJac(Js, thetaIn.size());
       }
 
 
@@ -2677,6 +2739,7 @@ namespace stan {
           fup = fdoubles(thetaCur);
           Js.col(i) = (fup - fx).array()/(h[i])*scaleC_(i, 0);
         }
+        fixKaJac(Js, thetaIn.size());
         fx = fdoubles(thetaIn); // This also restores g_
         for (int i = 0; i < ncmt_ + oral0_; i++) {
           Asave_[i] = fx(i, 0);
