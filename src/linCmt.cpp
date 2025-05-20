@@ -631,25 +631,25 @@ extern "C" double linCmtB(rx_solve *rx, int id,
 
       case 10:
         lc.linAcalcAlast(yp, g, theta);
-        std::fill_n(ind->linH, thetaSens.size(), rx->sensH);
+        lc.constH(thetaSens, ind->linH, rx->sensH);
         lc.fForwardJac(thetaSens, ind->linH, fx, Js);
         break;
 
       case 20:
         lc.linAcalcAlast(yp, g, theta);
-        std::fill_n(ind->linH, thetaSens.size(), rx->sensH);
+        lc.constH(thetaSens, ind->linH, rx->sensH);
         lc.fCentralJac(thetaSens, ind->linH, fx, Js);
         break;
 
       case 40: // 3-point forward difference
         lc.linAcalcAlast(yp, g, theta);
-        std::fill_n(ind->linH, thetaSens.size(), rx->sensH);
+        lc.constH(thetaSens, ind->linH, rx->sensH);
         lc.fF3Jac(thetaSens, ind->linH, fx, Js);
         break;
 
       case 50: // 5-point endpoint difference
         lc.linAcalcAlast(yp, g, theta);
-        std::fill_n(ind->linH, thetaSens.size(), rx->sensH);
+        lc.constH(thetaSens, ind->linH, rx->sensH);
         lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
         break;
 

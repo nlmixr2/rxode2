@@ -95,6 +95,9 @@ namespace stan {
       Eigen::Matrix<double, Eigen::Dynamic, 1> scaleC_;
       Eigen::Matrix<double, Eigen::Dynamic, 1> initPar_;
 
+      Eigen::Matrix<double, Eigen::Dynamic, 1> fx_;
+      bool fxIsZero_ = false;
+
       double c1_, c2_;
 
       //' The initialization of this class
@@ -2515,12 +2518,30 @@ namespace stan {
         return 5;
       }
 
+      void calcFx(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn) {
+        fx_ = fdoubles(thetaIn);
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = fx_(i, 0);
+        }
+        fxIsZero_ = fx_.isZero();
+      }
+
+      void constH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                  double *hh, double hv) {
+        calcFx(thetaIn);
+        if (hh[0] != 0) return; // keep calculated hh
+        if (fxIsZero_) return;
+        std::fill_n(hh, thetaIn.size(), hv);
+      }
+
       void gillForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                         double *hh,
                         double epsR, int K,
                         double gillStep,
                         double gillFtol) {
+        calcFx(thetaIn);
         if (hh[0] != 0) return; // keep calculated hh
+        if (fxIsZero_) return;
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
@@ -2659,6 +2680,11 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> fup;
         Eigen::Matrix<double, Eigen::Dynamic, 1> fdown;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
+        fx = fx_;
+        if (fxIsZero_) {
+          Js.setZero();
+          return;
+        }
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
           thetaCur(i, 0) += h[i];
@@ -2668,10 +2694,6 @@ namespace stan {
           Js.col(i) = (fup - fdown).array()/(2*h[i])*scaleC_(i);
         }
         fixKaJac(Js, thetaIn.size());
-        fx = fdoubles(thetaIn);
-        for (int i = 0; i < ncmt_ + oral0_; i++) {
-          Asave_[i] = fx(i, 0);
-        }
       }
 
       void fF3Jac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
@@ -2681,9 +2703,10 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> fh;
         Eigen::Matrix<double, Eigen::Dynamic, 1> f2h;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
-        fx = fdoubles(thetaIn);
-        for (int i = 0; i < ncmt_ + oral0_; i++) {
-          Asave_[i] = fx(i, 0);
+        fx = fx_;
+        if (fxIsZero_) {
+          Js.setZero();
+          return;
         }
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
@@ -2705,9 +2728,10 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> f3h;
         Eigen::Matrix<double, Eigen::Dynamic, 1> f4h;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
-        fx = fdoubles(thetaIn);
-        for (int i = 0; i < ncmt_ + oral0_; i++) {
-          Asave_[i] = fx(i, 0);
+        fx = fx_;
+        if (fxIsZero_) {
+          Js.setZero();
+          return;
         }
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
@@ -2733,6 +2757,11 @@ namespace stan {
                        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> fup;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
+        fx = fx_;
+        if (fxIsZero_) {
+          Js.setZero();
+          return;
+        }
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
           thetaCur(i, 0) += h[i];
@@ -2740,17 +2769,15 @@ namespace stan {
           Js.col(i) = (fup - fx).array()/(h[i])*scaleC_(i, 0);
         }
         fixKaJac(Js, thetaIn.size());
-        fx = fdoubles(thetaIn); // This also restores g_
-        for (int i = 0; i < ncmt_ + oral0_; i++) {
-          Asave_[i] = fx(i, 0);
-        }
       }
 
 
       void shi21ForwardH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                          double *hh,
                          double shiErr, int shi21maxFD) {
+        calcFx(thetaIn);
         if (hh[0] != 0) return; // keep calculated hh
+        if (fxIsZero_) return;
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
@@ -2890,7 +2917,9 @@ namespace stan {
 
       void shi21CentralH(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                          double *hh, double shiErr, int shi21maxFD) {
+        calcFx(thetaIn);
         if (hh[0] != 0) return; // keep calculated hh
+        if (fxIsZero_) return;
         Eigen::Matrix<double, Eigen::Dynamic, 2> gin = g_;
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
@@ -2908,7 +2937,9 @@ namespace stan {
 
       void shi21fF3H(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                      double *hh,  double shiErr, int shi21maxFD) {
+        calcFx(thetaIn);
         if (hh[0] != 0) return; // keep calculated hh
+        if (fxIsZero_) return;
         shi21ForwardH(thetaIn, hh, shiErr, shi21maxFD);
         for (int i = 0; i < thetaIn.size(); i++) {
           hh[i] /= 2.0;
@@ -2917,7 +2948,9 @@ namespace stan {
 
       void shi21fEndpoint5H(Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                             double *hh,  double shiErr, int shi21maxFD) {
+        calcFx(thetaIn);
         if (hh[0] != 0) return; // keep calculated hh
+        if (fxIsZero_) return;
         shi21ForwardH(thetaIn, hh, shiErr, shi21maxFD);
         for (int i = 0; i < thetaIn.size(); i++) {
           hh[i] /= 4.0;
