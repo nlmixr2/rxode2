@@ -838,6 +838,7 @@ namespace stan {
 #define k21   g(1, 1)
 #define k32   g(1, 1)
 
+
         if (oral0_  == 1) {
           T rDepot = rate_[0];
           T rCentral = rate_[1];
@@ -1128,12 +1129,11 @@ namespace stan {
 #define k12   g(1, 0)
 #define k21   g(1, 1)
 #define k10   g(0, 1)
-
-        if (abs(k12-k21) < DBL_EPSILON) {
-          linCmtStan1(g, yp, ka, ret);
-          ret(oral0_ + 1, 0) = yp(oral0_ + 1, 0);
-          return;
-        }
+        // if (abs(k12-k21) < DBL_EPSILON) {
+        //   linCmtStan1(g, yp, ka, ret);
+        //   ret(oral0_ + 1, 0) = yp(oral0_ + 1, 0);
+        //   return;
+        // }
 
         stan::math::solComp2struct<T> sol2 =
           stan::math::computeSolComp2(k10, k12, k21, ka);
@@ -1211,6 +1211,7 @@ namespace stan {
 
 #define k31   g(2, 1)
 #define k42   g(2, 1)
+
         if (oral0_  == 1) {
           T rDepot = rate_[0];
           T rCentral = rate_[1];
@@ -1720,6 +1721,33 @@ namespace stan {
 #define k13   g(2, 0)
 #define k31   g(2, 1)
 #define k10   g(0, 1)
+        // if (abs(k13 - k31) < DBL_EPSILON) {
+        //   linCmtStan2(g, yp, ka, ret);
+        //   ret(oral0_ + 2, 0) = yp(oral0_ + 2, 0);
+        //   return;
+        // }
+        // if (abs(k12 - k21) < DBL_EPSILON) {
+        //   //here we swap
+        //   T kk31 = k31;
+        //   T kk13 = k13;
+        //   // T kk21 = k21;
+        //   // T kk12 = k12;
+        //   T yp3 = yp(oral0_ + 2, 0);
+        //   T yp2 = yp(oral0_ + 1, 0);
+        //   yp(oral0_ + 1, 0) = yp3;
+        //   yp(oral0_ + 2, 0) = yp2;
+
+        //   g(1, 1) = k31; // was  k21
+        //   g(1, 0) = k13; // was k12
+        //   linCmtStan2(g, yp, ka, ret);
+        //   // now swap back
+        //   // periph cmt 3 was actually 2 cmt perip compartment
+        //   ret(oral0_ + 2, 0) = ret(oral0_ + 1, 0);
+        //   // periph cmt 2 remains the same
+        //   ret(oral0_ + 1, 0) = yp2;
+        //   return;
+        // }
+
         stan::math::solComp3struct<T> sol3 =
           stan::math::computeSolComp3(k10, k12, k21, k13, k31);
 
@@ -2523,7 +2551,7 @@ namespace stan {
           // ret = gill83(&hf, &hphif, &df, &df2, &ef,
           //              thetaIn, epsR, K, gillStep,
           //              gillFtol, f0);
-          hh[i] = hf;
+          hh[i] = hf/(std::abs(thetaIn[i])+1);
         }
         g_ = gin;
       }
@@ -2632,13 +2660,15 @@ namespace stan {
           Js.setZero();
           return;
         }
+        double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
-          thetaCur(i, 0) += h[i];
+          hhh = h[i]*thetaIn[i] + h[i];
+          thetaCur(i, 0) += hhh;
           fup = fdoubles(thetaCur);
-          thetaCur(i, 0) -= 2*h[i];
+          thetaCur(i, 0) -= 2*hhh;
           fdown = fdoubles(thetaCur);
-          Js.col(i) = (fup - fdown).array()/(2*h[i])*scaleC_(i);
+          Js.col(i) = (fup - fdown).array()/(2*hhh)*scaleC_(i);
         }
         fx = fdoubles(thetaIn);
         for (int i = 0; i < ncmt_ + oral0_; i++) {
@@ -2658,13 +2688,15 @@ namespace stan {
           Js.setZero();
           return;
         }
+        double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
-          thetaCur(i, 0) += h[i];
+          hhh = h[i]*thetaIn[i] + h[i];
+          thetaCur(i, 0) += hhh;
           fh = fdoubles(thetaCur);
-          thetaCur(i, 0) += h[i];
+          thetaCur(i, 0) += hhh;
           f2h = fdoubles(thetaCur);
-          Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*h[i])*scaleC_(i, 0);
+          Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*hhh)*scaleC_(i, 0);
         }
       }
 
@@ -2682,19 +2714,21 @@ namespace stan {
           Js.setZero();
           return;
         }
+        double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
-          thetaCur(i, 0) += h[i];
+          hhh = h[i]*thetaIn[i] + h[i];
+          thetaCur(i, 0) += hhh;
           fh = fdoubles(thetaCur);
-          thetaCur(i, 0) += h[i];
+          thetaCur(i, 0) += hhh;
           f2h = fdoubles(thetaCur);
-          thetaCur(i, 0) += h[i];
+          thetaCur(i, 0) += hhh;
           f3h = fdoubles(thetaCur);
-          thetaCur(i, 0) += h[i];
+          thetaCur(i, 0) += hhh;
           f4h = fdoubles(thetaCur);
           Js.col(i) = (-25.0*fx + 48.0*fh -
                        36.0*f2h + 16.0*f3h -
-                       3*f4h).array()/(12.0*h[i])*scaleC_(i, 0);
+                       3*f4h).array()/(12.0*hhh)*scaleC_(i, 0);
         }
       }
 
@@ -2710,11 +2744,13 @@ namespace stan {
           Js.setZero();
           return;
         }
+        double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
           thetaCur = thetaIn;
-          thetaCur(i, 0) += h[i];
+          hhh = h[i]*thetaIn[i] + h[i];
+          thetaCur(i, 0) += hhh;
           fup = fdoubles(thetaCur);
-          Js.col(i) = (fup - fx).array()/(h[i])*scaleC_(i, 0);
+          Js.col(i) = (fup - fx).array()/(hhh)*scaleC_(i, 0);
         }
         fx = fdoubles(thetaIn); // This also restores g_
         for (int i = 0; i < ncmt_ + oral0_; i++) {
@@ -2738,7 +2774,7 @@ namespace stan {
                                shiErr,
                                1.5,
                                6.0,
-                               shi21maxFD);
+                               shi21maxFD)/(std::abs(thetaIn[i])+1);
         }
         g_ = gin;
       }
@@ -2881,7 +2917,7 @@ namespace stan {
                                1.5,
                                4.5,
                                3.0,
-                               shi21maxFD);
+                               shi21maxFD)/(std::abs(thetaIn[i])+1);
         }
         g_ = gin;
       }

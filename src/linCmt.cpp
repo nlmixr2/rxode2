@@ -455,7 +455,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     if (ncmt == 1) {
       rx->sensType = 3;
     } else {
-      rx->sensType = 4;
+      rx->sensType = 1;
     }
   }
   rx_solving_options_ind *ind = &(rx->subjects[id]);
