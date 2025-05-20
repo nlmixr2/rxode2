@@ -1129,6 +1129,12 @@ namespace stan {
 #define k21   g(1, 1)
 #define k10   g(0, 1)
 
+        if (abs(k12-k21) < DBL_EPSILON) {
+          linCmtStan1(g, yp, ka, ret);
+          ret(oral0_ + 1, 0) = yp(oral0_ + 1, 0);
+          return;
+        }
+
         stan::math::solComp2struct<T> sol2 =
           stan::math::computeSolComp2(k10, k12, k21, ka);
 
