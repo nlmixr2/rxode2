@@ -2314,16 +2314,8 @@ namespace stan {
         // return exp((double)(sum)/((double)n));
         double vc = getVc(theta);
         cur =  fdoubles(thetaIn);
-        double gm=0.0;
-        int n=0;
-        for (int i = 0; i < oral0_ + ncmt_; ++i) {
-          if (cur(i, 0) > 0) {
-            gm += log(cur(i, 0));
-            n++;
-          }
-        }
-
-        return gm/n;
+        return cur(oral0_, 0);
+        // return gm/n;
       }
 
 
@@ -2614,6 +2606,10 @@ namespace stan {
         double hf=0, hphif=0, df=0, df2=0, ef=0;
         int ret=0;
         for (int i = 0; i <thetaIn.size(); i++) {
+          if (i == sensV1_ && !amtDepV1()) {
+            hh[i] = 0.0;
+            continue;
+          }
           h = 0.0;
           gill83(&hf, &hphif, &df, &df2, &ef,
                  thetaIn, i, epsR, K, gillStep,
@@ -2876,6 +2872,10 @@ namespace stan {
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
         for (int i = 0; i <thetaIn.size(); i++) {
+          if (i == sensV1_ && !amtDepV1()) {
+            hh[i] = 0.0;
+            continue;
+          }
           h = 0.0;
           hh[i] = shi21Forward(thetaIn, h, f0, i,
                                shiErr,
@@ -3018,6 +3018,10 @@ namespace stan {
         double h = 0.0;
         double f0 = fdoubleh(thetaIn);
         for (int i = 0; i < thetaIn.size(); i++) {
+          if (i == sensV1_ && !amtDepV1()) {
+            hh[i] = 0.0;
+            continue;
+          }
           h = 0.0;
           hh[i] = shi21Central(thetaIn, h, f0, i,
                                shiErr,
