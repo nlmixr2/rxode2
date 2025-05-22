@@ -273,7 +273,7 @@ typedef struct {
 
   double linCmtShiErr;
   int linCmtShiMax;
-
+  double *linCmtScale;
 } rx_solve;
 
 

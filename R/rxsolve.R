@@ -682,6 +682,9 @@
 #' @param linCmtGillFtol The gillFtol is the gradient error tolerance that
 #'     is acceptable before issuing a warning/error about the gradient estimates.
 #'
+#' @param linCmtScale The scale of the linear compartment model.  This is
+#'    applied to sensitivity approximation using numeric differences.
+#'
 #' @return An \dQuote{rxSolve} solve object that stores the solved
 #'   value in a special data.frame or other type as determined by
 #'   `returnType`. By default this has as many rows as there are
@@ -811,6 +814,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                     linCmtGillRtol=sqrt(.Machine$double.eps),
                     linCmtShiErr=sqrt(.Machine$double.eps),
                     linCmtShiMax=20L,
+                    linCmtScale=NULL,
                     envir=parent.frame()) {
   .udfEnvSet(list(envir, parent.frame(1)))
   if (is.null(object)) {
@@ -949,7 +953,11 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
                            "forwardH"=10L, "centralH"=20L,
                            "auto"=100L)[match.arg(linCmtSensType)]
     }
-
+    checkmate::assertNumeric(linCmtScale, lower=0, finite=TRUE, any.missing=FALSE, len=7,
+                             null.ok=TRUE)
+    if (is.null(linCmtScale)) {
+      linCmtScale <- c(1, 1, 1, 1, 1, 1, 1)
+    }
     checkmate::assertNumeric(linCmtSensH, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertNumeric(linCmtGillFtol, lower=0, finite=TRUE, any.missing=FALSE, len=1)
     checkmate::assertIntegerish(linCmtGillK, lower=0, any.missing=FALSE, len=1)

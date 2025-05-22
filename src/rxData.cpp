@@ -4919,6 +4919,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
 
     rx->linCmtShiErr = asDouble(rxControl[Rxc_linCmtShiErr], "linCmtShiErr");
     rx->linCmtShiMax = asInt(rxControl[Rxc_linCmtShiMax], "linCmtShiMax");
+    // since linCmtB is not parallel, no need to copy into
+    // a different solving memory space
+    rx->linCmtScale = REAL(rxControl[Rxc_linCmtScale]);
 
     rx->needSort = as<int>(rxSolveDat->mv[RxMv_needSort]);
     rx->nMtime = as<int>(rxSolveDat->mv[RxMv_nMtime]);

@@ -251,7 +251,7 @@ namespace stan {
                         const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
                         Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
                         int nd, int& i, int& j,
-                        double &mn, double &mx) {
+                        double &mn, double &mx, double *scale) {
         if ((nd & d) != 0) {
           // mn = min2(scale->initPar[k],mn);
           // mx = max2(scale->initPar[k],mx);
@@ -264,61 +264,29 @@ namespace stan {
                 (initPar_(i, 0) - c1_)/c2_;
             } else {
               initPar_(i, 0) = theta(j, 0);
-              scaleC_(i, 0) = trueTheta_(1, 0);
-//               switch (trans_) {
-//               case 1:
-// #define Cl  trueTheta_(0, 0)
-// #define V   trueTheta_(1, 0)
-// #define Q   trueTheta_(2, 0)
-// #define Vp  trueTheta_(3, 0)
-// #define Q2  trueTheta_(4, 0)
-// #define Vp2 trueTheta_(5, 0)
-//                 if (d == diffP1) { // Cl
-//                   // > D(S("log(exp(-Cl/V)/V)"), "Cl")
-//                   // (Mul) -1/V
-//                   // scaleC_(i, 0) *= 1/(V*V);
-//                   scaleC_(i, 0) /= Cl;
-//                 } else if (d == diffV1) { // V
-//                   // > D(S("log(exp(-Cl/V)/V)"), "V")
-//                   // (Mul) V*exp(Cl/V)*(-exp(-Cl/V)/V^2 + exp(-Cl/V)*Cl/V^3)
-//                   // scaleC_(i, 0) *= V*exp(Cl/V)*(-exp(-Cl/V)/(V*V) + exp(-Cl/V)*Cl/(V*V*V));
-//                   scaleC_(i, 0) /= V;
-//                   // scaleC_(i, 0) *= 1/V;
-//                 } else if (d == diffP2) { // Q
-//                   // > D(S("log(exp(-Q/Vp)/V)"), "Q")
-//                   // (Mul) -1/Vp
-//                   // scaleC_(i, 0) /= Vp;
-//                   scaleC_(i, 0) /= Q;
-//                 } else if (d == diffP3) { // Vp
-//                   //> D(S("log(exp(-Q/Vp)/V)"), "Vp")
-//                   //  (Mul)   Q/Vp^2
-//                   // scaleC_(i, 0) *= Q/(Vp*Vp);
-//                   scaleC_(i, 0) /= Vp;
-//                 } else if (d == diffP4) { // Q2
-//                   // D(S("log(exp(-Q2/Vp2)/V)"), "Q2")
-//                   // (Mul)-1/Vp2
-//                   // scaleC_(i, 0) *= 1/Vp2;
-//                   scaleC_(i, 0) /= Q2;
-//                 } else if (d == diffP5) { // Vp2
-//                   // > D(S("log(exp(-Q2/Vp2)/V)"), "Vp2")
-//                   // (Mul) Q2/Vp2^2
-//                   // scaleC_(i, 0) *= Q2/(Vp2*Vp2);
-//                   scaleC_(i, 0) /= Vp2;
-//                 }
-// #undef Cl
-// #undef V
-// #undef Q
-// #undef Vp
-// #undef Q2
-// #undef Vp2
-//                 break;
-//               default:
-                if (d == diffV1) {
-                  sensV1_ = i;
-                  scaleC_(i, 0) =1;
-                }
-              //   break;
-              // }
+              scaleC_(i, 0) = 1.0/theta(j, 0);
+              switch (d) {
+              case diffP1:
+                scaleC_(i, 0) *= scale[0];
+                break;
+              case diffV1:
+                scaleC_(i, 0) *= scale[1];
+                break;
+              case diffP2:
+                scaleC(i, 0) *= scale[2];
+              case diffP3:
+                scaleC(i, 0) *= scale[3];
+                break;
+              case diffP4:
+                scaleC(i, 0) *= scale[4];
+                break;
+              case diffP5:
+                scaleC(i, 0) *= scale[5];
+                break;
+              case diffKa:
+                scaleC(i, 0) *= scale[6];
+                break;
+              }
               mn = min2(theta(j, 0), mn);
               mx = max2(theta(j, 0), mx);
             }
@@ -343,7 +311,7 @@ namespace stan {
       //'
       void sensTheta(const Eigen::Matrix<double, Eigen::Dynamic, 1> theta,
                      Eigen::Matrix<double, Eigen::Dynamic, 1>& sensTheta,
-                     bool isAD) {
+                     bool isAD, double *scale) {
         trueTheta_ = theta;
         isAD_ = isAD;
         int nd = numDiff_;

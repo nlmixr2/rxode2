@@ -521,7 +521,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   case 13: theta << p1, v1, p2, p3, p4, p5, ka; break;
   }
 
-  lc.sensTheta(theta, thetaSens, rx->sensType == 3);
+  lc.sensTheta(theta, thetaSens, rx->sensType == 3, rx->linCmtScale);
 
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);

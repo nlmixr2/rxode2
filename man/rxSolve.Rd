@@ -143,6 +143,7 @@ rxSolve(
   linCmtGillRtol = sqrt(.Machine$double.eps),
   linCmtShiErr = sqrt(.Machine$double.eps),
   linCmtShiMax = 20L,
+  linCmtScale = NULL,
   envir = parent.frame()
 )
 
@@ -886,6 +887,9 @@ determined.}
 step size, this is This is the step size to increase the
 initial estimate by.  So each iteration the new step size =
 (prior step size)*gillStep}
+
+\item{linCmtScale}{The scale of the linear compartment model.  This is
+applied to sensitivity approximation using numeric differences.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
