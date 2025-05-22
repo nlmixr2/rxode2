@@ -57,7 +57,7 @@ namespace stan {
 #define k42   g(2, 1)
       switch (ncmt) {
       case 3: { // 3 compartment model
-        switch (trans){
+        switch (trans) {
         case 1: // cl v q vp
           k = p1/v1; // k = CL/V
           v = v1;
@@ -116,7 +116,7 @@ namespace stan {
           break;
         }
       } break;
-      case 2:{ // 2 compartment model
+      case 2: { // 2 compartment model
         switch (trans){
         case 1: // cl=(*p1) v=(*v1) q=(*p2) vp=(*p3)
           k = p1/v1; // k = CL/V

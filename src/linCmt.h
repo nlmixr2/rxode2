@@ -95,6 +95,7 @@ namespace stan {
 
       Eigen::Matrix<double, Eigen::Dynamic, 1> fx_;
       bool fxIsZero_ = false;
+      int sensV1_ = -1;
 
       double c1_, c2_;
 
@@ -141,6 +142,8 @@ namespace stan {
       void resetFlags() {
         isAD_ = false;
         scaleSetup_ = false;
+        fxIsZero_ = false;
+        sensV1_ = -1;
       }
 
 
@@ -261,13 +264,61 @@ namespace stan {
                 (initPar_(i, 0) - c1_)/c2_;
             } else {
               initPar_(i, 0) = theta(j, 0);
-              if (d == diffV1) {
-                scaleC_(i, 0) = 1.0 / theta(j, 0);
-              } else if (d == diffP3) {
-                scaleC_(i, 0) = 1.0 / (theta(j, 0)*theta(j, 0));
-              } else {
-                scaleC_(i, 0) = 1.0;
-              }
+              scaleC_(i, 0) = trueTheta_(1, 0);
+//               switch (trans_) {
+//               case 1:
+// #define Cl  trueTheta_(0, 0)
+// #define V   trueTheta_(1, 0)
+// #define Q   trueTheta_(2, 0)
+// #define Vp  trueTheta_(3, 0)
+// #define Q2  trueTheta_(4, 0)
+// #define Vp2 trueTheta_(5, 0)
+//                 if (d == diffP1) { // Cl
+//                   // > D(S("log(exp(-Cl/V)/V)"), "Cl")
+//                   // (Mul) -1/V
+//                   // scaleC_(i, 0) *= 1/(V*V);
+//                   scaleC_(i, 0) /= Cl;
+//                 } else if (d == diffV1) { // V
+//                   // > D(S("log(exp(-Cl/V)/V)"), "V")
+//                   // (Mul) V*exp(Cl/V)*(-exp(-Cl/V)/V^2 + exp(-Cl/V)*Cl/V^3)
+//                   // scaleC_(i, 0) *= V*exp(Cl/V)*(-exp(-Cl/V)/(V*V) + exp(-Cl/V)*Cl/(V*V*V));
+//                   scaleC_(i, 0) /= V;
+//                   // scaleC_(i, 0) *= 1/V;
+//                 } else if (d == diffP2) { // Q
+//                   // > D(S("log(exp(-Q/Vp)/V)"), "Q")
+//                   // (Mul) -1/Vp
+//                   // scaleC_(i, 0) /= Vp;
+//                   scaleC_(i, 0) /= Q;
+//                 } else if (d == diffP3) { // Vp
+//                   //> D(S("log(exp(-Q/Vp)/V)"), "Vp")
+//                   //  (Mul)   Q/Vp^2
+//                   // scaleC_(i, 0) *= Q/(Vp*Vp);
+//                   scaleC_(i, 0) /= Vp;
+//                 } else if (d == diffP4) { // Q2
+//                   // D(S("log(exp(-Q2/Vp2)/V)"), "Q2")
+//                   // (Mul)-1/Vp2
+//                   // scaleC_(i, 0) *= 1/Vp2;
+//                   scaleC_(i, 0) /= Q2;
+//                 } else if (d == diffP5) { // Vp2
+//                   // > D(S("log(exp(-Q2/Vp2)/V)"), "Vp2")
+//                   // (Mul) Q2/Vp2^2
+//                   // scaleC_(i, 0) *= Q2/(Vp2*Vp2);
+//                   scaleC_(i, 0) /= Vp2;
+//                 }
+// #undef Cl
+// #undef V
+// #undef Q
+// #undef Vp
+// #undef Q2
+// #undef Vp2
+//                 break;
+//               default:
+                if (d == diffV1) {
+                  sensV1_ = i;
+                  scaleC_(i, 0) =1;
+                }
+              //   break;
+              // }
               mn = min2(theta(j, 0), mn);
               mx = max2(theta(j, 0), mx);
             }
@@ -401,6 +452,29 @@ namespace stan {
           fullTheta(j, 0) = trueTheta_(j, 0);
         }
         j++;
+      }
+
+      //' This function checks if the model has amounts that depend on the volume parameter
+      bool amtDepV1() {
+        int sw = ncmt_ + 10*trans_;
+        switch (sw) {
+        case 11: // one compartment cl v
+        case 102: // A=(*v1), alpha=(*p1), beta=(*p2), B=(*p3)
+        case 112: // A1 V1, alpha=(*p1), beta=(*p2), k21
+        case 123: // v1, B, C, 3 compartment model
+        case 113: // A B and C, alpha, beta, gamma, 3 compartment model
+        case 13: // 3 compartment in terms of Cl, V
+        case 12: // 2 compartment in terms of Cl, V
+          return true;
+        case 111: // 1 compartment alpha v
+        case 21: // 1 compartment in terms of ks
+        case 42: // 2 compartment, alpha, beta k21
+        case 52: // 2 compartment, alpha, beta aob
+        case 22: // 2 compartment in terms of ks
+        case 23: // 3 compartment in terms of ks
+          return false;
+        }
+        return false;
       }
 
       //' This function changes the sensitivity theta to the full theta
@@ -2246,14 +2320,10 @@ namespace stan {
           if (cur(i, 0) > 0) {
             gm += log(cur(i, 0));
             n++;
-            if (i == oral0_) {
-              gm += log(cur(oral0_, 0)/vc);
-              n++;
-            }
           }
         }
 
-        return exp(gm/n);
+        return gm/n;
       }
 
 
@@ -2662,13 +2732,17 @@ namespace stan {
         }
         double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
-          thetaCur = thetaIn;
-          hhh = h[i]*thetaIn[i] + h[i];
-          thetaCur(i, 0) += hhh;
-          fup = fdoubles(thetaCur);
-          thetaCur(i, 0) -= 2*hhh;
-          fdown = fdoubles(thetaCur);
-          Js.col(i) = (fup - fdown).array()/(2*hhh)*scaleC_(i);
+          if (i == sensV1_ && !amtDepV1()) {
+            Js.col(i) = Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(Js.rows());
+          } else {
+            thetaCur = thetaIn;
+            hhh = h[i]*thetaIn[i] + h[i];
+            thetaCur(i, 0) += hhh;
+            fup = fdoubles(thetaCur);
+            thetaCur(i, 0) -= 2*hhh;
+            fdown = fdoubles(thetaCur);
+            Js.col(i) = (fup - fdown).array()/(2*hhh)*scaleC_(i);
+          }
         }
         fx = fdoubles(thetaIn);
         for (int i = 0; i < ncmt_ + oral0_; i++) {
@@ -2690,13 +2764,17 @@ namespace stan {
         }
         double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
-          thetaCur = thetaIn;
-          hhh = h[i]*thetaIn[i] + h[i];
-          thetaCur(i, 0) += hhh;
-          fh = fdoubles(thetaCur);
-          thetaCur(i, 0) += hhh;
-          f2h = fdoubles(thetaCur);
-          Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*hhh)*scaleC_(i, 0);
+          if (i == sensV1_ && !amtDepV1()) {
+            Js.col(i) = Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(Js.rows());
+          } else {
+            thetaCur = thetaIn;
+            hhh = h[i]*thetaIn[i] + h[i];
+            thetaCur(i, 0) += hhh;
+            fh = fdoubles(thetaCur);
+            thetaCur(i, 0) += hhh;
+            f2h = fdoubles(thetaCur);
+            Js.col(i) = (-3.0*fx + 4.0*fh - f2h).array()/(2*hhh)*scaleC_(i, 0);
+          }
         }
       }
 
@@ -2716,20 +2794,33 @@ namespace stan {
         }
         double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
-          thetaCur = thetaIn;
-          hhh = h[i]*thetaIn[i] + h[i];
-          thetaCur(i, 0) += hhh;
-          fh = fdoubles(thetaCur);
-          thetaCur(i, 0) += hhh;
-          f2h = fdoubles(thetaCur);
-          thetaCur(i, 0) += hhh;
-          f3h = fdoubles(thetaCur);
-          thetaCur(i, 0) += hhh;
-          f4h = fdoubles(thetaCur);
-          Js.col(i) = (-25.0*fx + 48.0*fh -
-                       36.0*f2h + 16.0*f3h -
-                       3*f4h).array()/(12.0*hhh)*scaleC_(i, 0);
+          if (i == sensV1_ && !amtDepV1()) {
+            Js.col(i) = Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(Js.rows());
+          } else {
+            thetaCur = thetaIn;
+            hhh = h[i]*thetaIn[i] + h[i];
+            thetaCur(i, 0) += hhh;
+            fh = fdoubles(thetaCur);
+            thetaCur(i, 0) += hhh;
+            f2h = fdoubles(thetaCur);
+            thetaCur(i, 0) += hhh;
+            f3h = fdoubles(thetaCur);
+            thetaCur(i, 0) += hhh;
+            f4h = fdoubles(thetaCur);
+            Js.col(i) = (-25.0*fx + 48.0*fh -
+                         36.0*f2h + 16.0*f3h -
+                         3*f4h).array()/(12.0*hhh)*scaleC_(i, 0);
+          }
         }
+      }
+
+      bool anyZero(Eigen::Matrix<double, Eigen::Dynamic, 1>& fx) {
+        for (int i = oral0_; i < fx.size(); i++) {
+          if (std::abs(fx(i, 0)) < 1e-4) {
+            return true;
+          }
+        }
+        return false;
       }
 
 
@@ -2738,6 +2829,8 @@ namespace stan {
                        Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
                        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> fup;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fnext;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fcur;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
         fx = fx_;
         if (fxIsZero_) {
@@ -2746,11 +2839,25 @@ namespace stan {
         }
         double hhh;
         for (int i = 0; i < thetaIn.size(); i++) {
-          thetaCur = thetaIn;
-          hhh = h[i]*thetaIn[i] + h[i];
-          thetaCur(i, 0) += hhh;
-          fup = fdoubles(thetaCur);
-          Js.col(i) = (fup - fx).array()/(hhh)*scaleC_(i, 0);
+          if (i == sensV1_ && !amtDepV1()) {
+            Js.col(i) = Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(Js.rows());
+          } else {
+            thetaCur = thetaIn;
+            hhh = (h[i]*thetaIn[i] + h[i]);
+            thetaCur(i, 0) += hhh;
+            fup = fdoubles(thetaCur);
+            fcur = (fup - fx).array()/(hhh)*scaleC_(i, 0);
+            if (anyZero(fcur)) {
+              thetaCur(i, 0) += hhh;
+              fnext           = fdoubles(thetaCur);
+              Js.col(i)       = (-3.0*fx + 4.0*fup - fnext).array()/(2*hhh)*scaleC_(i, 0);
+              // thetaCur(i, 0) -= 2*hhh;
+              // fnext          = fdoubles(thetaCur);
+              // Js.col(i) = (fup - fnext).array()/(2*hhh)*scaleC_(i);
+            } else {
+              Js.col(i)       = fcur;
+            }
+          }
         }
         fx = fdoubles(thetaIn); // This also restores g_
         for (int i = 0; i < ncmt_ + oral0_; i++) {
