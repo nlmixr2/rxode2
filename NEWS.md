@@ -19,9 +19,8 @@
   method closes a variety of linear compartment model bugs (#261,
   #272, #441, #504, #564, #717, #728, #827, and #855)
 
-
 - Add ability to pipe a list or named numeric as an eta with
-  `%>% ini(~pipeList)`
+  `%>% ini(~eta)`
 
 # rxode2 3.0.4
 
