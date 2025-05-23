@@ -185,8 +185,8 @@ RObject etUpdate(RObject obj,
 
 List etEmpty(CharacterVector units){
   CharacterVector cls = CharacterVector::create("rxEt","data.frame");
-  List e(34);
-  CharacterVector en(34);
+  List e(35);
+  CharacterVector en(35);
   List envir = R_BaseNamespace;
   e[0] = clone(units);
   en[0] = "units";
@@ -325,6 +325,9 @@ List etEmpty(CharacterVector units){
 
   en[33] = "canResize";
   e[33] = true;
+
+  en[34] = "randomType";
+  e[34] = IntegerVector::create(NA_INTEGER);
 
   // Return an empty data frame.
   List lst(12);
@@ -471,17 +474,22 @@ List etSort(List& curEt){
 List etSimulate(List curEt){
   CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
   List lst = clone(curEt);
+  List e = cls.attr(".rxode2.lst");
+
   NumericVector time = lst["time"];
   NumericVector low = lst["low"];
   NumericVector high = lst["high"];
   bool recalcTime=false;
-  for (int i = time.size(); i--;){
-    if (!ISNA(low[i]) && !ISNA(high[i])){
-      time[i] = Rf_runif(low[i], high[i]);
-      recalcTime=true;
+
+  if (INTEGER(e["randomType"])[0] == 2) {
+    for (int i = time.size(); i--;){
+      if (!ISNA(low[i]) && !ISNA(high[i])){
+        time[i] = Rf_runif(low[i], high[i]);
+        recalcTime=true;
+      }
     }
   }
-  if (!recalcTime){
+  if (!recalcTime) {
     Rf_warningcall(R_NilValue, "%s", _("event table was not updated (no dose/sampling windows)"));
     return curEt;
   } else {
@@ -558,17 +566,41 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
           cur = setUnits(cur, "");
         }
       }
-      if (cur.size() != 2)
-        stop(_("windows need to be a list of observation windows, each of 2 elements e.g. list(c(0,2), c(2,7))"));
-      if (cur[0]> cur[1])
-        stop(_("windows need to be ordered list(c(2,0)) is invalid"));
-      id.push_back(IDs[j]);
-      low.push_back(cur[0]);
-      high.push_back(cur[1]);
-      c = Rf_runif(cur[0], cur[1]);
-      time.push_back(c);
-      evid.push_back(0);
-      nobs++;
+      if (cur.size() == 3) {
+        if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
+          INTEGER(e["randomType"])[0] = 1; // fixed
+        }
+        if (INTEGER(e["randomType"])[0] != 1) {
+          stop(_("cannot mixed fixed and random windows"));
+        }
+        if (cur[0] > cur[1] || cur[1] > cur[2]) {
+          stop(_("windows need to be ordered list(c(2,0,1)) is invalid"));
+        }
+        id.push_back(IDs[j]);
+        low.push_back(cur[0]);
+        time.push_back(cur[1]);
+        high.push_back(cur[2]);
+        evid.push_back(0);
+        nobs++;
+      } else if (cur.size() == 2) {
+        if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
+          INTEGER(e["randomType"])[0] = 2; // random
+        }
+        if (INTEGER(e["randomType"])[0] != 2) {
+          stop(_("cannot mixed fixed and random windows"));
+        }
+        if (cur[0]> cur[1])
+          stop(_("windows need to be ordered list(c(2,0)) is invalid"));
+        id.push_back(IDs[j]);
+        low.push_back(cur[0]);
+        high.push_back(cur[1]);
+        c = Rf_runif(cur[0], cur[1]);
+        time.push_back(c);
+        evid.push_back(0);
+        nobs++;
+      } else {
+        stop(_("windows need to be a list of observation windows, each of 2 or 3 elements e.g. list(c(0,2), c(2,7))"));
+      }
     }
   }
   IntegerVector ivId=wrap(id);
@@ -1617,6 +1649,10 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
   std::vector<int> evid = as<std::vector<int>>(curEt["evid"]);
   std::vector<double> low = as<std::vector<double>>(curEt["low"]);
   std::vector<double> high = as<std::vector<double>>(curEt["high"]);
+  CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
+  List eOld = cls.attr(".rxode2.lst");
+  List e = clone(eOld);
+
   int oldSize = id.size();
   int i, j;
   double a, b, c;
@@ -1646,11 +1682,52 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
           nobs++;
         }
       }
-    } else if (curTime.size() == 2) {
-      if (curTime[0] < curTime[1]){
+    } else if (curTime.size() == 3) {
+      if (curTime[0] > curTime[1] || curTime[1] > curTime[2]) {
         if (doSampling){
           stop(_("'do.sampling' is not supported with dose windows"));
         }
+      } else {
+        stop(_("dosing window you need to specify window in order, e.g. 'et(time=list(c(0,2,6)),amt=3)'"));
+      }
+
+      if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
+        INTEGER(e["randomType"])[0] = 1; // fixed
+      }
+      if (INTEGER(e["randomType"])[0] != 2) {
+        stop(_("cannot mixed fixed (3 pt) and random windows (2 pt)"));
+      }
+
+      id.push_back(IDs[j]);
+      evid.push_back(curEvid);
+      low.push_back(curTime[0]);
+      high.push_back(curTime[2]);
+      time.push_back(curTime[3]);
+      ndose++;
+      for (i = addl; i--;){
+        id.push_back(IDs[j]);
+        evid.push_back(curEvid);
+        a = curTime[0] + (i+1)*ii;
+        b = curTime[1] + (i+1)*ii;
+        c = curTime[2] + (i+1)*ii;
+        low.push_back(a);
+        high.push_back(b);
+        time.push_back(c);
+        ndose++;
+        unroll=true;
+      }
+    } else if (curTime.size() == 2) {
+      if (curTime[0] < curTime[1]) {
+        if (doSampling){
+          stop(_("'do.sampling' is not supported with dose windows"));
+        }
+        if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
+          INTEGER(e["randomType"])[0] = 2; // random
+        }
+        if (INTEGER(e["randomType"])[0] != 2) {
+          stop(_("cannot mixed fixed (3 pt) and random windows (2 pt)"));
+        }
+
         id.push_back(IDs[j]);
         evid.push_back(curEvid);
         low.push_back(curTime[0]);
@@ -1674,7 +1751,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
         stop(_("dosing window you need to specify window in order, e.g. 'et(time=list(c(0,2)),amt=3)'"));
       }
     } else {
-      stop(_("dosing time or time windows must only be 1-2 elements"));
+      stop(_("dosing time or time windows must only be 1-3 elements"));
     }
   }
   std::vector<int> idx(time.size());
@@ -1809,9 +1886,6 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
       }
     }
   }
-  CharacterVector cls = clone(asCv(curEt.attr("class"), "class"));
-  List eOld = cls.attr(".rxode2.lst");
-  List e = clone(eOld);
   LogicalVector show = e["show"];
   if (turnOnShowCmt){
     show["cmt"] = true;
@@ -2169,10 +2243,12 @@ List etResizeId(List curEt, IntegerVector IDs){
       NumericVector tmpN1 = asNv(newEt["low"], "newEt[\"low\"]");
       tmpN2 = asNv(newEt["high"], "newEt[\"high\"]");
       // Update new observations with recalculated windows
-      for (i = newSize - oldSize; i--;){
-        if (!ISNA(tmpN1[oldSize+i]) && !ISNA(tmpN2[oldSize+i])){
-          tmpN[oldSize+i] = Rf_runif(tmpN1[oldSize+i], tmpN2[oldSize+i]);
-          recalcTime=true;
+      if (INTEGER(e["randomType"])[0] == 2) {
+        for (i = newSize - oldSize; i--;){
+          if (!ISNA(tmpN1[oldSize+i]) && !ISNA(tmpN2[oldSize+i])){
+            tmpN[oldSize+i] = Rf_runif(tmpN1[oldSize+i], tmpN2[oldSize+i]);
+            recalcTime=true;
+          }
         }
       }
       e["nobs"]   = (int)((double)(asInt(e["nobs"], "e[\"nobs\"]"))*c);

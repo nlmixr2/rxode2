@@ -447,7 +447,8 @@ rxTest({
 
     test_that("Window Errors", {
       expect_error(et(list(c(1, 0))))
-      expect_error(et(list(c(0, 1, 2))))
+      expect_error(et(list(c(0, 1, 2, 4))))
+      expect_error(et(list(c(2, 3, 1))))
     })
     test_that("until is inclusive", {
       expect_equal(et(amt = 1, time = 50, until = 57.5, ii = 1.5)$addl, 5)
