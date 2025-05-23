@@ -20,6 +20,9 @@
   #272, #441, #504, #564, #717, #728, #827, and #855)
 
 
+- Add ability to pipe a list or named numeric as an eta with
+  `%>% ini(~pipeList)`
+
 # rxode2 3.0.4
 
 - Add stable hashes for rxUi objects (#838, #689)

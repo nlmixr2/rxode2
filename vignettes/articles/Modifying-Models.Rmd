@@ -669,6 +669,17 @@ f4 <- f |> ini(eta.ka + eta.v ~ c(0.6,
 print(f4)
 ```
 
+Another option is to use a variable, but prefix it with `~` so that
+they are promoted to between subject variabilities:
+
+```{r covVa}
+eta <- c(eta.ka=0.6, eta.v=0.6)
+
+f5 <- f |> ini(~eta)
+
+print(f4)
+```
+
 #### Single parameter assignment
 
 The simplest way to change the initial parameter estimates is to
