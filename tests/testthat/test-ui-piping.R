@@ -1,4 +1,5 @@
 rxTest({
+
   testPipeQuote <- function(..., envir=parent.frame(), iniDf = NULL) {
     rxUnloadAll()
     gc()
@@ -257,6 +258,111 @@ rxTest({
            quote(eta.v ~ 0.2),
            quote(tcl <- 3),
            quote(tv <- 4))
+      )
+
+      .tmp <- list(tcl = 3, tv = 4)
+      .tmp2 <- c(fun1=3, fun2=4)
+      expect_equal(testPipeQuote(tka=0.5, {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.ka ~ 3, eta.ka ~ 3,
+      {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.v ~ 0.2, .tmp, ~.tmp2),
+      list(quote(tka <- 0.5),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.ka ~ 3),
+           quote(eta.ka ~ 3),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.v ~ 0.2),
+           quote(tcl <- 3),
+           quote(tv <- 4),
+           quote(fun1 ~ 3),
+           quote(fun2 ~ 4))
+      )
+
+      expect_equal(testPipeQuote(tka=0.5, {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.ka ~ 3, eta.ka ~ 3,
+      {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.v ~ 0.2, ~.tmp, .tmp2),
+      list(quote(tka <- 0.5),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.ka ~ 3),
+           quote(eta.ka ~ 3),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.v ~ 0.2),
+           quote(tcl ~ 3),
+           quote(tv ~ 4),
+           quote(fun1 <- 3),
+           quote(fun2 <- 4))
+      )
+
+
+      .tmp <- list(tcl = 3, tv = 4)
+      expect_equal(testPipeQuote(tka=0.5, {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.ka ~ 3, eta.ka ~ 3,
+      {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.v ~ 0.2, ~.tmp),
+      list(quote(tka <- 0.5),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.ka ~ 3),
+           quote(eta.ka ~ 3),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.v ~ 0.2),
+           quote(tcl ~ 3),
+           quote(tv ~ 4))
+      )
+
+
+      expect_equal(testPipeQuote(tka=0.5, {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.ka ~ 3, eta.ka ~ 3,
+      {
+        tv = 3
+        tcl = 10
+        eta.v+eta.cl~unfix(cor(sd(0.3,0.02,0.1)))
+      }, eta.v ~ 0.2, ~.tmp),
+      list(quote(tka <- 0.5),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.ka ~ 3),
+           quote(eta.ka ~ 3),
+           quote(tv <- 3),
+           quote(tcl <- 10),
+           quote(eta.v + eta.cl ~ unfix(cor(sd(0.3, 0.02, 0.1)))),
+           quote(eta.v ~ 0.2),
+           quote(tcl ~ 3),
+           quote(tv ~ 4))
       )
 
       .tmp <- c(tcl = 3, tv = 4)
