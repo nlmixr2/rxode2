@@ -1384,7 +1384,7 @@ subset here:</p>
 <span><span class="co">#&gt;         cp &lt;- center/v</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55fcb8f72b78&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x562bb168abc0&gt;</span></span></code></pre></div>
 <p>Note that these functions do not modify the <code>ini({})</code>
 block. You may have to modify the ini block first to make it a valid
 <code>rxode2</code>/<code>nlmixr2</code> model.</p>
@@ -2078,6 +2078,59 @@ estimates:</p>
 <span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
+<p>Another option is to use a variable, but prefix it with
+<code>~</code> so that they are promoted to between subject
+variabilities:</p>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>eta.ka<span class="op">=</span><span class="fl">0.6</span>, eta.v<span class="op">=</span><span class="fl">0.6</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">f5</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">~</span><span class="va">eta</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.ka` to `0.6`</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `eta.v` to `0.6`</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">f4</span><span class="op">)</span></span>
+<span><span class="co">#&gt;  <span style="color: #00BBBB;">──</span> <span style="font-weight: bold;">rxode2-based free-form 2-cmt ODE model</span> <span style="color: #00BBBB;">──────────────────────────────────────</span> </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Initalization:</span> ──  </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Fixed Effects</span> (<span style="color: #0000BB; font-weight: bold;">$theta</span>): </span></span>
+<span><span class="co">#&gt;    tka    tcl     tv add.sd </span></span>
+<span><span class="co">#&gt;   0.45   1.00   3.45   0.70 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">Omega</span> (<span style="color: #0000BB; font-weight: bold;">$omega</span>): </span></span>
+<span><span class="co">#&gt;        eta.ka eta.v</span></span>
+<span><span class="co">#&gt; eta.ka   0.60  0.01</span></span>
+<span><span class="co">#&gt; eta.v    0.01  0.20</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co"><span style="font-weight: bold;">#&gt; States</span> (<span style="color: #0000BB; font-weight: bold;">$state</span> or <span style="color: #0000BB; font-weight: bold;">$stateDf</span>): </span></span>
+<span><span class="co">#&gt;   Compartment Number Compartment Name</span></span>
+<span><span class="co">#&gt; 1                  1            depot</span></span>
+<span><span class="co">#&gt; 2                  2           center</span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">μ-referencing (</span><span style="color: #0000BB; font-weight: bold;">$muRefTable</span><span style="font-weight: bold;">):</span> ──  </span></span>
+<span><span class="co">#&gt;   theta    eta level</span></span>
+<span><span class="co">#&gt; 1   tka eta.ka    id</span></span>
+<span><span class="co">#&gt; 2    tv  eta.v    id</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;  ── <span style="font-weight: bold;">Model (Normalized Syntax):</span> ── </span></span>
+<span><span class="co">#&gt; function() {</span></span>
+<span><span class="co">#&gt;     ini({</span></span>
+<span><span class="co">#&gt;         tka &lt;- 0.45</span></span>
+<span><span class="co">#&gt;         tcl &lt;- 1</span></span>
+<span><span class="co">#&gt;         tv &lt;- 3.45</span></span>
+<span><span class="co">#&gt;         add.sd &lt;- c(0, 0.7)</span></span>
+<span><span class="co">#&gt;         eta.ka ~ 0.6</span></span>
+<span><span class="co">#&gt;         eta.v ~ c(0.01, 0.2)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt;     model({</span></span>
+<span><span class="co">#&gt;         ka &lt;- exp(tka + eta.ka)</span></span>
+<span><span class="co">#&gt;         cl &lt;- exp(tcl)</span></span>
+<span><span class="co">#&gt;         v &lt;- exp(tv + eta.v)</span></span>
+<span><span class="co">#&gt;         d/dt(depot) &lt;- -ka * depot</span></span>
+<span><span class="co">#&gt;         d/dt(center) &lt;- ka * depot - cl/v * center</span></span>
+<span><span class="co">#&gt;         cp &lt;- center/v</span></span>
+<span><span class="co">#&gt;         cp ~ add(add.sd)</span></span>
+<span><span class="co">#&gt;     })</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="single-parameter-assignment">Single parameter assignment<a class="anchor" aria-label="anchor" href="#single-parameter-assignment"></a>
@@ -2087,7 +2140,7 @@ simply use <code>ini(parameter=newValue)</code>. You can also use
 <code>&lt;-</code> or <code>~</code> to change the value:</p>
 <p>A fully worked example showing all three types of initial value
 modification is:</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.1</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2150,7 +2203,7 @@ modification is:</p>
 <p>You can change the bounds like you do in the model specification by
 using a numeric vector of <code>c(low, estimate)</code> or
 <code>c(low, estimate, hi)</code>. Here is a worked example:</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2249,7 +2302,7 @@ using a numeric vector of <code>c(low, estimate)</code> or
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>Note by changing the parameters to their default values they might
 not show up in the parameter printout:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f3</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="va">tka</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2353,7 +2406,7 @@ not show up in the parameter printout:</p>
 <code>~par</code> to toggle between population and individual
 parameters.</p>
 <p>Here is an example that does all 3:</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Switch population parameter to between subject variability parameter:</span></span>
 <span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span> <span class="op">~</span> <span class="va">tcl</span><span class="op">)</span></span>
@@ -2651,7 +2704,7 @@ parameters.</p>
 </h4>
 <p>If you want to change/add a parameter label you assign the parameter
 to <code>label("label to add")</code>. For example:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">label</span><span class="op">(</span><span class="st">"Typical Ka (1/hr)"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2700,7 +2753,7 @@ to <code>label("label to add")</code>. For example:</p>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>You can also change the order while performing operations:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f5</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">label</span><span class="op">(</span><span class="st">"Typical Ka (1/hr)"</span><span class="op">)</span>, append<span class="op">=</span><span class="va">tcl</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2750,7 +2803,7 @@ to <code>label("label to add")</code>. For example:</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>If you want to remove the labels you can remove them with
 <code>ini(par=label(NULL))</code>; For example:</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f6</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">label</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2806,7 +2859,7 @@ to <code>label("label to add")</code>. For example:</p>
 of the labels.</p>
 <p>Here you use <code>|&gt; ini(tka=backTransform(exp))</code> to add an
 exponential back-transformation for data:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f7</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">backTransform</span><span class="op">(</span><span class="va">exp</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2856,7 +2909,7 @@ exponential back-transformation for data:</p>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>If you wish to remove them you can also do that with
 <code>|&gt; ini(tka=backTransform(NULL))</code>:</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f8</span> <span class="op">&lt;-</span> <span class="va">f</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span>tka<span class="op">=</span><span class="fu">backTransform</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
@@ -2913,7 +2966,7 @@ variabilities: <code><a href="https://rdrr.io/r/base/diag.html" class="external-
 <p>The <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> removes either all covariance elements (with
 no arguments) or any covariance elements included in the argument
 list:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fd</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
@@ -3094,7 +3147,7 @@ list:</p>
 data frame that represents the <code><a href="../reference/ini.html">ini()</a></code> block. In this case I
 will simply change the initial estimate of the first parameter
 (<code>tka</code>):</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
