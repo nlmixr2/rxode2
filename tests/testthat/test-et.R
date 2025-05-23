@@ -847,3 +847,34 @@ test_that("as.character.rxEvid", {
     "0.5:Invalid"
   )
 })
+
+test_that("sampling windows versus PopED windows", {
+
+  e1 <- et(list(c(0.1, 1, 50),
+               c(0.5, 2, 50),
+               c(0.5, 3, 50),
+               c(0.5, 25, 50),
+               c(0.5, 25, 50),
+               c(0.5, 30, 50),
+               c(0.5, 50, 80),
+               c(0.5, 60, 90))) %>%
+    et(amt=100)
+  expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
+
+  expect_warning(simulate(e1))
+
+  e2 <- et(list(c(0.1, 50),
+                c(0.5,  50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 80),
+                c(0.5, 90))) %>%
+    et(amt=100)
+
+  expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
+
+  expect_warning(simulate(e2), NA)
+
+})
