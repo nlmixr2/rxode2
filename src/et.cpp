@@ -1741,8 +1741,8 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
       id.push_back(IDs[j]);
       evid.push_back(curEvid);
       low.push_back(curTime[0]);
-      high.push_back(curTime[2]);
-      time.push_back(curTime[3]);
+      high.push_back(curTime[1]);
+      time.push_back(curTime[2]);
       ndose++;
       for (i = addl; i--;){
         id.push_back(IDs[j]);
