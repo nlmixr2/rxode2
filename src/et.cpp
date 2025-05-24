@@ -571,7 +571,7 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
           INTEGER(e["randomType"])[0] = 1; // fixed
         }
         if (INTEGER(e["randomType"])[0] != 1) {
-          stop(_("cannot mixed fixed and random windows"));
+          stop(_("cannot mix fixed and random windows"));
         }
         if (cur[0] > cur[1] || cur[1] > cur[2]) {
           stop(_("windows need to be ordered list(c(2,0,1)) is invalid"));
@@ -587,7 +587,7 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
           INTEGER(e["randomType"])[0] = 2; // random
         }
         if (INTEGER(e["randomType"])[0] != 2) {
-          stop(_("cannot mixed fixed and random windows"));
+          stop(_("cannot mix fixed and random windows"));
         }
         if (cur[0]> cur[1])
           stop(_("windows need to be ordered list(c(2,0)) is invalid"));
@@ -1697,7 +1697,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
         INTEGER(e["randomType"])[0] = 1; // fixed
       }
       if (INTEGER(e["randomType"])[0] != 2) {
-        stop(_("cannot mixed fixed (3 pt) and random windows (2 pt)"));
+        stop(_("cannot mix fixed (3 pt) and random windows (2 pt)"));
       }
 
       id.push_back(IDs[j]);
@@ -1727,7 +1727,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
           INTEGER(e["randomType"])[0] = 2; // random
         }
         if (INTEGER(e["randomType"])[0] != 2) {
-          stop(_("cannot mixed fixed (3 pt) and random windows (2 pt)"));
+          stop(_("cannot mix fixed (3 pt) and random windows (2 pt)"));
         }
 
         id.push_back(IDs[j]);
