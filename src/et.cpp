@@ -1683,16 +1683,12 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
         }
       }
     } else if (curTime.size() == 3) {
-
       if (curTime[0] > curTime[1] || curTime[1] > curTime[2]) {
         stop(_("dosing window you need to specify window in order, e.g. 'et(time=list(c(0,2,6)),amt=3)'"));
       }
-
       if (doSampling){
         stop(_("'do.sampling' is not supported with dose windows"));
       }
-
-
       if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
         INTEGER(e["randomType"])[0] = 1; // fixed
       }
