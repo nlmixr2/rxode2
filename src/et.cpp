@@ -491,7 +491,7 @@ List etSimulate(List curEt){
   } else if (INTEGER(e["randomType"])[0] == 3) {
     for (int i = time.size(); i--;){
       if (!ISNA(low[i]) && !ISNA(high[i])){
-        time[i] = Rf_norm(low[i], high[i]);
+        time[i] = Rf_rnorm(low[i], high[i]);
         recalcTime=true;
       }
     }
@@ -564,7 +564,7 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
   CharacterVector units = e["units"];
   int nobs=0;
   for (int j = IDs.size(); j--;){
-    for (int i = windowLst.size(); i--;){
+    for (int i = 0; i < windowLst.size(); ++i) {
       NumericVector cur = asNv(windowLst[i], "windowLst[i]");
       if (Rf_inherits(cur, "units")){
         if (!CharacterVector::is_na(units["time"])){
@@ -574,9 +574,6 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
         }
       }
       if (cur.size() == 3) {
-        if (cur[0] > cur[1] || cur[1] > cur[2]) {
-          stop(_("windows need to be ordered list(c(2,0,1)) is invalid"));
-        }
         if (ISNA(cur[2])) {
           if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
             INTEGER(e["randomType"])[0] = 3; // normal
@@ -587,13 +584,16 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
           if (cur[1] <= 0)
             stop(_("need to have a positive standard deviation"));
           id.push_back(IDs[j]);
-          c = Rf_norm(cur[0], cur[1]);
+          c = Rf_rnorm(cur[0], cur[1]);
           low.push_back(cur[0]);
           time.push_back(c);
           high.push_back(cur[1]);
           evid.push_back(0);
           nobs++;
         } else {
+          if (cur[0] > cur[1] || cur[1] > cur[2]) {
+            stop(_("windows need to be ordered list(c(2,0,1)) is invalid"));
+          }
           if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
             INTEGER(e["randomType"])[0] = 1; // fixed
           }
@@ -633,7 +633,7 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
           id.push_back(IDs[j]);
           low.push_back(cur[0]);
           high.push_back(cur[1]);
-          c = Rf_norm(cur[0], cur[1]);
+          c = Rf_rnorm(cur[0], cur[1]);
           time.push_back(c);
           evid.push_back(0);
           nobs++;
@@ -1791,7 +1791,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
           evid.push_back(curEvid);
           low.push_back(curTime[0]);
           high.push_back(curTime[1]);
-          c = Rf_norm(curTime[0], curTime[1]);
+          c = Rf_rnorm(curTime[0], curTime[1]);
           time.push_back(c);
           ndose++;
           for (i = addl; i--;){
@@ -1801,7 +1801,7 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
             b = curTime[1]+ (i+1)*ii;
             low.push_back(a);
             high.push_back(b);
-            c = Rf_norm(a, b);
+            c = Rf_rnorm(a, b);
             time.push_back(c);
             ndose++;
             unroll=true;
@@ -2316,7 +2316,7 @@ List etResizeId(List curEt, IntegerVector IDs){
       } else if (INTEGER(e["randomType"])[0] == 3) {
         for (i = newSize - oldSize; i--;){
           if (!ISNA(tmpN1[oldSize+i]) && !ISNA(tmpN2[oldSize+i])){
-            tmpN[oldSize+i] = Rf_norm(tmpN1[oldSize+i], tmpN2[oldSize+i]);
+            tmpN[oldSize+i] = Rf_rnorm(tmpN1[oldSize+i], tmpN2[oldSize+i]);
             recalcTime=true;
           }
         }

@@ -877,4 +877,19 @@ test_that("sampling windows versus PopED windows", {
 
   expect_warning(simulate(e2), NA)
 
+  e3 <- et(list(c(1, .1, NA),
+                c(2, .1),
+                c(3, .1),
+                c(4, .1),
+                c(5, .1),
+                c(6, .1),
+                c(7, .1),
+                c(8, .1))) %>%
+    et(amt=100)
+
+  expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 3L)
+
+  expect_warning(simulate(e3), NA)
+
+
 })
