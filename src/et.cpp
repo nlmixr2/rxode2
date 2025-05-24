@@ -488,6 +488,13 @@ List etSimulate(List curEt){
         recalcTime=true;
       }
     }
+  } else if (INTEGER(e["randomType"])[0] == 3) {
+    for (int i = time.size(); i--;){
+      if (!ISNA(low[i]) && !ISNA(high[i])){
+        time[i] = Rf_norm(low[i], high[i]);
+        recalcTime=true;
+      }
+    }
   }
   if (!recalcTime) {
     Rf_warningcall(R_NilValue, "%s", _("event table was not updated (no dose/sampling windows)"));
@@ -567,37 +574,73 @@ List etAddWindow(List windowLst, IntegerVector IDs, RObject cmt, bool turnOnShow
         }
       }
       if (cur.size() == 3) {
-        if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
-          INTEGER(e["randomType"])[0] = 1; // fixed
-        }
-        if (INTEGER(e["randomType"])[0] != 1) {
-          stop(_("cannot mix fixed and random windows"));
-        }
         if (cur[0] > cur[1] || cur[1] > cur[2]) {
           stop(_("windows need to be ordered list(c(2,0,1)) is invalid"));
         }
-        id.push_back(IDs[j]);
-        low.push_back(cur[0]);
-        time.push_back(cur[1]);
-        high.push_back(cur[2]);
-        evid.push_back(0);
-        nobs++;
+        if (ISNA(cur[2])) {
+          if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
+            INTEGER(e["randomType"])[0] = 3; // normal
+          }
+          if (INTEGER(e["randomType"])[0] != 3) {
+            stop(_("cannot mix fixed and random windows"));
+          }
+          if (cur[1] <= 0)
+            stop(_("need to have a positive standard deviation"));
+          id.push_back(IDs[j]);
+          c = Rf_norm(cur[0], cur[1]);
+          low.push_back(cur[0]);
+          time.push_back(c);
+          high.push_back(cur[1]);
+          evid.push_back(0);
+          nobs++;
+        } else {
+          if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
+            INTEGER(e["randomType"])[0] = 1; // fixed
+          }
+          if (INTEGER(e["randomType"])[0] != 1) {
+            stop(_("cannot mix fixed and random windows"));
+          }
+          if (cur[0]> cur[1] || cur[1] > cur[2])
+            stop(_("windows need to be ordered list(c(2,0,3)) is invalid"));
+
+          id.push_back(IDs[j]);
+          low.push_back(cur[0]);
+          time.push_back(cur[1]);
+          high.push_back(cur[2]);
+          evid.push_back(0);
+          nobs++;
+
+        }
       } else if (cur.size() == 2) {
         if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
           INTEGER(e["randomType"])[0] = 2; // random
         }
-        if (INTEGER(e["randomType"])[0] != 2) {
+        switch (INTEGER(e["randomType"])[0]) {
+        case 2:
+          if (cur[0]> cur[1])
+            stop(_("windows need to be ordered list(c(2,0)) is invalid"));
+          id.push_back(IDs[j]);
+          low.push_back(cur[0]);
+          high.push_back(cur[1]);
+          c = Rf_runif(cur[0], cur[1]);
+          time.push_back(c);
+          evid.push_back(0);
+          nobs++;
+          break;
+        case 3:
+          if (cur[1] <= 0)
+            stop(_("need to have a positive standard deviation"));
+          id.push_back(IDs[j]);
+          low.push_back(cur[0]);
+          high.push_back(cur[1]);
+          c = Rf_norm(cur[0], cur[1]);
+          time.push_back(c);
+          evid.push_back(0);
+          nobs++;
+          break;
+        default:
           stop(_("cannot mix fixed and random windows"));
         }
-        if (cur[0]> cur[1])
-          stop(_("windows need to be ordered list(c(2,0)) is invalid"));
-        id.push_back(IDs[j]);
-        low.push_back(cur[0]);
-        high.push_back(cur[1]);
-        c = Rf_runif(cur[0], cur[1]);
-        time.push_back(c);
-        evid.push_back(0);
-        nobs++;
       } else {
         stop(_("windows need to be a list of observation windows, each of 2 or 3 elements e.g. list(c(0,2), c(2,7))"));
       }
@@ -1692,10 +1735,9 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
       if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
         INTEGER(e["randomType"])[0] = 1; // fixed
       }
-      if (INTEGER(e["randomType"])[0] != 2) {
+      if (INTEGER(e["randomType"])[0] != 1) {
         stop(_("cannot mix fixed (3 pt) and random windows (2 pt)"));
       }
-
       id.push_back(IDs[j]);
       evid.push_back(curEvid);
       low.push_back(curTime[0]);
@@ -1722,28 +1764,51 @@ List etAddDose(NumericVector curTime, RObject cmt,  double amt, double rate, dou
         if (INTEGER(e["randomType"])[0] == NA_INTEGER) {
           INTEGER(e["randomType"])[0] = 2; // random
         }
-        if (INTEGER(e["randomType"])[0] != 2) {
-          stop(_("cannot mix fixed (3 pt) and random windows (2 pt)"));
-        }
-
-        id.push_back(IDs[j]);
-        evid.push_back(curEvid);
-        low.push_back(curTime[0]);
-        high.push_back(curTime[1]);
-        c = Rf_runif(curTime[0], curTime[1]);
-        time.push_back(c);
-        ndose++;
-        for (i = addl; i--;){
+        switch (INTEGER(e["randomType"])[0]) {
+        case 2:
           id.push_back(IDs[j]);
           evid.push_back(curEvid);
-          a = curTime[0]+ (i+1)*ii;
-          b = curTime[1]+ (i+1)*ii;
-          low.push_back(a);
-          high.push_back(b);
-          c = Rf_runif(a, b);
+          low.push_back(curTime[0]);
+          high.push_back(curTime[1]);
+          c = Rf_runif(curTime[0], curTime[1]);
           time.push_back(c);
           ndose++;
-          unroll=true;
+          for (i = addl; i--;){
+            id.push_back(IDs[j]);
+            evid.push_back(curEvid);
+            a = curTime[0]+ (i+1)*ii;
+            b = curTime[1]+ (i+1)*ii;
+            low.push_back(a);
+            high.push_back(b);
+            c = Rf_runif(a, b);
+            time.push_back(c);
+            ndose++;
+            unroll=true;
+          }
+          break;
+        case 3:
+          id.push_back(IDs[j]);
+          evid.push_back(curEvid);
+          low.push_back(curTime[0]);
+          high.push_back(curTime[1]);
+          c = Rf_norm(curTime[0], curTime[1]);
+          time.push_back(c);
+          ndose++;
+          for (i = addl; i--;){
+            id.push_back(IDs[j]);
+            evid.push_back(curEvid);
+            a = curTime[0]+ (i+1)*ii;
+            b = curTime[1]+ (i+1)*ii;
+            low.push_back(a);
+            high.push_back(b);
+            c = Rf_norm(a, b);
+            time.push_back(c);
+            ndose++;
+            unroll=true;
+          }
+          break;
+        default:
+          stop(_("cannot mix fixed (3 pt) and random windows (2 pt)"));
         }
       } else {
         stop(_("dosing window you need to specify window in order, e.g. 'et(time=list(c(0,2)),amt=3)'"));
@@ -2245,6 +2310,13 @@ List etResizeId(List curEt, IntegerVector IDs){
         for (i = newSize - oldSize; i--;){
           if (!ISNA(tmpN1[oldSize+i]) && !ISNA(tmpN2[oldSize+i])){
             tmpN[oldSize+i] = Rf_runif(tmpN1[oldSize+i], tmpN2[oldSize+i]);
+            recalcTime=true;
+          }
+        }
+      } else if (INTEGER(e["randomType"])[0] == 3) {
+        for (i = newSize - oldSize; i--;){
+          if (!ISNA(tmpN1[oldSize+i]) && !ISNA(tmpN2[oldSize+i])){
+            tmpN[oldSize+i] = Rf_norm(tmpN1[oldSize+i], tmpN2[oldSize+i]);
             recalcTime=true;
           }
         }
