@@ -447,7 +447,8 @@ rxTest({
 
     test_that("Window Errors", {
       expect_error(et(list(c(1, 0))))
-      expect_error(et(list(c(0, 1, 2))))
+      expect_error(et(list(c(0, 1, 2, 4))))
+      expect_error(et(list(c(2, 3, 1))))
     })
     test_that("until is inclusive", {
       expect_equal(et(amt = 1, time = 50, until = 57.5, ii = 1.5)$addl, 5)
@@ -600,8 +601,9 @@ rxTest({
   })
 
   test_that("event table non-zero time", {
-    expect_warning(et(amt=1.153846, ii=24*7*6, until=24*7*6*2) %>%
-                     et(amt=1.153846, time=24*7*6*(2+8), ii=24*7*8, until=24*7), "until")
+    suppressWarnings(expect_warning(et(amt=1.153846, ii=24*7*6, until=24*7*6*2) %>%
+                                      et(amt=1.153846, time=24*7*6*(2+8),
+                                         ii=24*7*8, until=24*7), "until"))
   })
 
 
@@ -845,4 +847,50 @@ test_that("as.character.rxEvid", {
     as.character.rxEvid(0.5),
     "0.5:Invalid"
   )
+})
+
+test_that("sampling windows versus PopED windows", {
+
+  e1 <- et(list(c(0.1, 1, 50),
+               c(0.5, 2, 50),
+               c(0.5, 3, 50),
+               c(0.5, 25, 50),
+               c(0.5, 25, 50),
+               c(0.5, 30, 50),
+               c(0.5, 50, 80),
+               c(0.5, 60, 90))) %>%
+    et(amt=100)
+  expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
+
+  expect_warning(simulate(e1))
+
+  e2 <- et(list(c(0.1, 50),
+                c(0.5,  50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 50),
+                c(0.5, 80),
+                c(0.5, 90))) %>%
+    et(amt=100)
+
+  expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
+
+  expect_warning(simulate(e2), NA)
+
+  e3 <- et(list(c(1, .1, NA),
+                c(2, .1),
+                c(3, .1),
+                c(4, .1),
+                c(5, .1),
+                c(6, .1),
+                c(7, .1),
+                c(8, .1))) %>%
+    et(amt=100)
+
+  expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
+
+  expect_warning(simulate(e3), NA)
+
+
 })
