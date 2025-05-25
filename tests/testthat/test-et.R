@@ -887,7 +887,7 @@ test_that("sampling windows versus PopED windows", {
                 c(8, .1))) %>%
     et(amt=100)
 
-  expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 3L)
+  expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
 
   expect_warning(simulate(e3), NA)
 
