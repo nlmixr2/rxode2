@@ -650,7 +650,16 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #' s <- rxSolve(rx, et)
 #' }
 #' @export
-rxnbinom <- function(size, prob, n = 1L, ncores = 1L) {
+rxnbinom <- function(size, prob, mu, n = 1L, ncores = 1L) {
+
+  if (!missing(mu)) {
+    if (!missing(prob)) {
+      stop("only one of 'mu' or 'prob' can be specified",
+           call.=FALSE)
+    } else {
+      return(rxnbinomMu(size=size, mu=mu, n=n, ncores=ncores))
+    }
+  }
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
   checkmate::assertCount(size)
   checkmate::assertCount(n)
@@ -1289,5 +1298,55 @@ rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, i
 rxUdfUi.rxpois <- function(fun) {
   .fun <- fun
   .fun[[1]] <- str2lang(paste0(".", deparse1(fun[[1]])))
+  eval(.fun)
+}
+
+#'@export
+rxUdfUi.rxnbinom <- rxUdfUi.rxpois
+
+#'  This processes the ui named functions to produce the correct
+#'  underlying rxode2 code.
+#'
+#' In general this allows `rxnbinom()` and `ribinom()`to work more or less like
+#' `rnbinom()` from R.
+#'
+#'
+#' @inheritParams rbinom
+#'
+#' @param pre The prefix is to determine if this is a residual
+#'   simulation (rx) or an individual simualtion (ri)
+#'
+#' @return A string for replacement in the ui code.
+#'
+#' @noRd
+#' @author Matthew L. Fidler
+.rxnbinom <- function(size, prob, mu, pre="rx") {
+  .size <- as.character(substitute(size))
+  .dp <- deparse1(substitute(size))
+  .tmp <- suppressWarnings(try(force(size), silent = TRUE))
+  .size <- .uiArg(.size, .tmp, .dp)
+
+  if (!missing(mu)) {
+    if (!missing(prob))
+      stop("'prob' and 'mu' both specified")
+    .mu <- as.character(substitute(mu))
+    .dp <- deparse1(substitute(mu))
+    .tmp <- suppressWarnings(try(force(mu), silent = TRUE))
+    .mu <- .uiArg(.mu, .tmp, .dp)
+    return(list(replace=paste0(pre, "nbinomMu(", .size, ", ", .mu, ")")))
+  }
+  .prob <- as.character(substitute(prob))
+  .dp <- deparse1(substitute(prob))
+  .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
+  .prob <- .uiArg(.prob, .tmp, .dp)
+  list(replace = paste0(pre, "nbinom(", .size, ", ",  .prob, ")"))
+}
+
+#' @rdname rxUdfUi
+#' @export
+rxUdfUi.rinbinom <- function(fun) {
+  .fun <- fun
+  .fun[[1]] <- str2lang(".rxnbinom")
+  .fun <- c(.fun, str2lang("prefix='ri'"))
   eval(.fun)
 }

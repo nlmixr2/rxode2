@@ -1,3 +1,33 @@
+# rxode2 (development version)
+
+- Added new types of bounds for event tables:
+
+  - 3 point bounds `et(list(c(low, mid, high)))` when specified this way,
+    they will not change. Perfect for use with `babelmixr2`'s `PopED` (#862,
+    #863, #854)
+
+  - Intervals simulated by normal values instead of uniform.  In this
+    case the first seen interval will be 3 elements with NA at the end
+    `et(list(c(mean, sd, NA), c(mean, sd)))`, and the other elements
+    can simply be 2 declaring the `c(mean, sd)`
+
+  - Of course the uniform windows of `et(list(c(low, high)))` still work
+
+  - Currently these different types of windows cannot be mixed.
+
+- Add ability to pipe a list or named numeric as an eta with
+  `%>% ini(~pipeList)`
+
+# rxode2 3.0.4
+
+- Add stable hashes for rxUi objects (#838, #689)
+
+- Fix for iov simulation (#842)
+
+- Fix for `rxnbinom()` called directly from R (#847) and expand it to
+  match more close with R's `rnbinom()` including allowing named `mu=`
+  calls.  In rxode2 ui, these are also now allowed.
+
 # rxode2 3.0.3
 
 - Add `logit`/`expit` named expressions, that is `logit(x, high=20)`

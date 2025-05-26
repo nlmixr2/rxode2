@@ -5,7 +5,7 @@
 \alias{rxnbinomMu}
 \title{Simulate Binomial variable from threefry generator}
 \usage{
-rxnbinom(size, prob, n = 1L, ncores = 1L)
+rxnbinom(size, prob, mu, n = 1L, ncores = 1L)
 
 rxnbinomMu(size, mu, n = 1L, ncores = 1L)
 }
@@ -15,6 +15,8 @@ rxnbinomMu(size, mu, n = 1L, ncores = 1L)
     Must be strictly positive, need not be integer.}
 
 \item{prob}{probability of success in each trial. \code{0 < prob <= 1}.}
+
+\item{mu}{alternative parametrization via mean: see \sQuote{Details}.}
 
 \item{n}{number of observations.  If \code{length(n) > 1}, the length
     is taken to be the number required.}
@@ -26,8 +28,6 @@ rxnbinomMu(size, mu, n = 1L, ncores = 1L)
 \code{rxnormV} used to simulate with the vandercorput simulator, but
 since it didn't satisfy the normal properties it was changed to simple be
 an alias of \code{rxnorm}. It is no longer supported in \code{rxode2({})} blocks}
-
-\item{mu}{alternative parametrization via mean: see \sQuote{Details}.}
 }
 \value{
 negative binomial random deviates. Note that \code{rxbinom2}

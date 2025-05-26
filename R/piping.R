@@ -139,6 +139,7 @@
   for (.b in bracketsOrCs) {
     .bracketExpression <- lines[[.b]]
     .cur <- NULL
+    .curEta <- FALSE
     if (length(.bracketExpression) == 1) {
       # evaulate expression
       .cur <- try(eval(.bracketExpression, envir=envir), silent=TRUE)
@@ -152,6 +153,29 @@
           } else {
             .cur <- lapply(names(.cur), function(x) {
               str2lang(paste0(x, "<-", .cur[[x]]))
+            })
+          }
+          .cur <- as.call(c(list(quote(`{`)),.cur))
+          .bracketExpression <- .cur
+        } else if (identical(.cur[[1]], quote(`{`))) {
+          .bracketExpression <- .cur
+        }
+      }
+    } else if (length(.bracketExpression) == 2 &&
+                 identical(.bracketExpression[[1]], quote(`~`))) {
+      # evaulate expression
+      .cur <- try(eval(.bracketExpression[[2]], envir=envir), silent=TRUE)
+      .curEta <- TRUE
+      if (inherits(.cur, "try-error")) {
+      } else if (length(.cur) > 1) {
+        if (inherits(.cur, "character")) {
+          if (is.null(names(.cur))) {
+            .cur <- lapply(.cur, function(x) {
+              str2lang(x)
+            })
+          } else {
+            .cur <- lapply(names(.cur), function(x) {
+              str2lang(paste0(x, "~", .cur[[x]]))
             })
           }
           .cur <- as.call(c(list(quote(`{`)),.cur))
@@ -176,7 +200,7 @@
     }
     if (is.null(.unlistedBrackets)) {
       if (is.null(.cur)) {
-        ## evalute to vector and then put it in place
+        ## evaluate to vector and then put it in place
         .cur <- eval(.bracketExpression, envir=envir)
       }
       if (inherits(.cur, "<-") || inherits(.cur, "call")) {
@@ -186,7 +210,11 @@
           stop("cannot figure out what to do with the unnamed vector", call.=FALSE)
         }
         .unlistedBrackets <- lapply(names(.cur), function(.n) {
-          bquote(.(str2lang(.n)) <- .(setNames(.cur[.n], NULL)))
+          if (.curEta) {
+            bquote(.(str2lang(.n)) ~ .(setNames(.cur[.n], NULL)))
+          } else {
+            bquote(.(str2lang(.n)) <- .(setNames(.cur[.n], NULL)))
+          }
         })
       } else if (inherits(.cur, "list")) {
         if (is.null(names(.cur))) {
@@ -195,7 +223,11 @@
         .unlistedBrackets <- lapply(names(.cur), function(.n) {
           .v <- .cur[[.n]]
           if (inherits(.v, "numeric")) {
-            bquote(.(str2lang(.n)) <- .(setNames(.cur[[.n]], NULL)))
+            if (.curEta) {
+              bquote(.(str2lang(.n)) ~ .(setNames(.cur[[.n]], NULL)))
+            } else {
+              bquote(.(str2lang(.n)) <- .(setNames(.cur[[.n]], NULL)))
+            }
           } else {
             stop("one of the list items supplied to piping is non-numeric", call.=FALSE)
           }
@@ -385,7 +417,6 @@
                  identical(.quoted[[1]], quote(`diag`))) {
       .quoted <- as.call(c(list(quote(`~`)), .quoted))
     } else if (identical(.quoted[[1]], quote(`diag`))) {
-
     } else if (identical(.quoted[[1]], quote(`{`)) ||
           identical(.quoted[[1]], quote(`c`)) ||
           identical(.quoted[[1]], quote(`list`))) {
@@ -394,12 +425,20 @@
     } else if (identical(.quoted[[1]], quote(`as.formula`))) {
       .quoted <- .quoted[[2]]
     } else if (identical(.quoted[[1]], quote(`~`))) {
-      if (length(.quoted) == 3L && !is.null(.quoted[[3]])) {
-        .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
-        if (identical(.quoted[[3]], quote(`fix`)) ||
-              identical(.quoted[[3]], quote(`unfix`))) {
-          .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
+      if (length(.quoted) == 2 &&
+            exists(as.character(.quoted[[2]]), envir)) {
+        # this is a "bracketed" assignment of etas
+        .bracket[i] <- TRUE
+        assign(".bracket", .bracket, envir=.env)
+      } else {
+        if (length(.quoted) == 3L && !is.null(.quoted[[3]])) {
+          .quoted[[3]] <- .iniSimplifyFixUnfix(.quoted[[3]])
+          if (identical(.quoted[[3]], quote(`fix`)) ||
+                identical(.quoted[[3]], quote(`unfix`))) {
+            .quoted <- as.call(list(quote(`<-`), .quoted[[2]], .quoted[[3]]))
+          }
         }
+
       }
     } else if (identical(.quoted[[1]], quote(`$`))) {
       .tmp <- try(eval(.quoted), silent=TRUE)

@@ -711,7 +711,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxcauchy_", (DL_FUNC) &_rxode2_rxcauchy_, 4},
     {"_rxode2_rxbinom_", (DL_FUNC) &_rxode2_rxbinom_, 4},
     {"_rxode2_rxnbinomMu_", (DL_FUNC) &_rxode2_rxnbinomMu_, 4},
-    {"_rxode2_rxnbinom_", (DL_FUNC) &_rxode2_rxnbinomMu_, 4},
+    {"_rxode2_rxnbinom_", (DL_FUNC) &_rxode2_rxnbinom_, 4},
     {"_rxode2_rxSolveDollarNames", (DL_FUNC) _rxode2_rxSolveDollarNames, 1},
     {"_rxode2_rxExpandNesting", (DL_FUNC) _rxode2_rxExpandNesting, 3},
     {"_rxode2_rxRmvn0", (DL_FUNC) _rxode2_rxRmvn0, 11},

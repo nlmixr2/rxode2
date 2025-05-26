@@ -638,7 +638,4 @@ test_that("udf type 2 (that changes ui models upon parsing)", {
     rxUdfUiData(NULL)
   })
 
-
-
-
 })
