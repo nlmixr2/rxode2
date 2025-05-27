@@ -21,7 +21,7 @@ rxTest({
     expect_equal(
       .DollarNames(ev, ""),
       c(
-        "canResize", "IDs", "show", "ndose", "nobs", "expand", "getSampling",
+        "randomType", "canResize", "IDs", "show", "ndose", "nobs", "expand", "getSampling",
         "get.sampling", "getDosing", "get.dosing", "get.nobs", "get.obs.rec",
         "getEventTable", "get.EventTable", "copy", "importEventTable",
         "import.EventTable", "simulate", "clearDosing", "clear_dosing",

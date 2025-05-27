@@ -19,6 +19,23 @@
   method closes a variety of linear compartment model bugs (#261,
   #272, #441, #504, #564, #717, #728, #827, and #855)
 
+- Added new types of bounds for event tables:
+
+  - 3 point bounds `et(list(c(low, mid, high)))` when specified this way,
+    they will not change. Perfect for use with `babelmixr2`'s `PopED` (#862,
+    #863, #854)
+
+  - Intervals simulated by normal values instead of uniform.  In this
+    case the first seen interval will be 3 elements with NA at the end
+    `et(list(c(mean, sd, NA), c(mean, sd)))`, and the other elements
+    can simply be 2 declaring the `c(mean, sd)`
+
+  - Of course the uniform windows of `et(list(c(low, high)))` still work
+
+  - Currently these different types of windows cannot be mixed.
+
+- Add ability to pipe a list or named numeric as an eta with
+  `%>% ini(~eta)`
 
 # rxode2 3.0.4
 
