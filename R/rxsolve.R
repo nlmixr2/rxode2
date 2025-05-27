@@ -1280,6 +1280,7 @@ rxSolve <- function(object, params = NULL, events = NULL, inits = NULL,
       linCmtGillRtol=linCmtGillRtol,
       linCmtShiErr=linCmtShiErr,
       linCmtShiMax=linCmtShiMax,
+      linCmtScale=linCmtScale,
       .zeros=unique(.zeros)
     )
     class(.ret) <- "rxControl"

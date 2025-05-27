@@ -106,5 +106,6 @@
 #define Rxc_linCmtGillRtol 101
 #define Rxc_linCmtShiErr 102
 #define Rxc_linCmtShiMax 103
-#define Rxc__zeros 104
+#define Rxc_linCmtScale 104
+#define Rxc__zeros 105
 #endif // __rxode2_control_H__

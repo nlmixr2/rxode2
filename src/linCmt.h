@@ -264,27 +264,27 @@ namespace stan {
                 (initPar_(i, 0) - c1_)/c2_;
             } else {
               initPar_(i, 0) = theta(j, 0);
-              scaleC_(i, 0) = 1.0/theta(j, 0);
+              scaleC_(i, 0) = trueTheta_(1, 0)/theta(j, 0);
               switch (d) {
               case diffP1:
-                scaleC_(i, 0) *= scale[0];
+                if (scale[0] > 0) scaleC_(i, 0) *= scale[0];
                 break;
               case diffV1:
-                scaleC_(i, 0) *= scale[1];
+                if (scale[1] > 0) scaleC_(i, 0) *= scale[1];
                 break;
               case diffP2:
-                scaleC(i, 0) *= scale[2];
+                if (scale[2] > 0) scaleC_(i, 0) *= scale[2];
               case diffP3:
-                scaleC(i, 0) *= scale[3];
+                if (scale[3] > 0) scaleC_(i, 0) *= scale[3];
                 break;
               case diffP4:
-                scaleC(i, 0) *= scale[4];
+                if (scale[4] > 0) scaleC_(i, 0) *= scale[4];
                 break;
               case diffP5:
-                scaleC(i, 0) *= scale[5];
+                if (scale[5] > 0) scaleC_(i, 0) *= scale[5];
                 break;
               case diffKa:
-                scaleC(i, 0) *= scale[6];
+                if (scale[6] > 0) scaleC_(i, 0) *= scale[6];
                 break;
               }
               mn = min2(theta(j, 0), mn);
@@ -328,27 +328,27 @@ namespace stan {
 
         switch (ncmt_) {
         case 1: {
-          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale);
         }
           break;
         case 2: {
-          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx, scale);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale);
         }
           break;
         case 3: {
-          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffP4, theta, sensTheta, nd, i, j, mn, mx);
-          sensThetaElt(diffP5, theta, sensTheta, nd, i, j, mn, mx);
-          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx);
+          sensThetaElt(diffP1, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffV1, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP2, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP3, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP4, theta, sensTheta, nd, i, j, mn, mx, scale);
+          sensThetaElt(diffP5, theta, sensTheta, nd, i, j, mn, mx, scale);
+          if (oral0_) sensThetaElt(diffKa, theta, sensTheta, nd, i, j, mn, mx, scale);
           }
           break;
         }

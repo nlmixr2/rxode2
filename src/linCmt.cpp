@@ -92,7 +92,10 @@ RObject linCmtModelDouble(double dt,
   int numSens = lc.numSens();
   Eigen::Matrix<double, Eigen::Dynamic, 1> thetaSens(numSens);
 
-  lc.sensTheta(theta, thetaSens, sensType == 3);
+  Eigen::Matrix<double, 7, 1> scale;
+  scale.setZero();
+
+  lc.sensTheta(theta, thetaSens, sensType == 3, scale.data());
 
   double *a = new double[nAlast];
   double *asave = new double[nAlast];
