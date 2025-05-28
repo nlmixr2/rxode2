@@ -2778,15 +2778,15 @@ namespace stan {
         }
       }
 
-      bool anyZero(Eigen::Matrix<double, Eigen::Dynamic, 1>& fx) {
+      bool anySuspect(Eigen::Matrix<double, Eigen::Dynamic, 1>& fx) {
         for (int i = oral0_; i < fx.size(); i++) {
-          if (std::abs(fx(i, 0)) < 1e-4) {
+          double afx = std::abs(fx(i, 0));
+          if (afx < 1e-4) {
             return true;
           }
         }
         return false;
       }
-
 
       void fForwardJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                        double *h,
@@ -2794,6 +2794,7 @@ namespace stan {
                        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> fup;
         Eigen::Matrix<double, Eigen::Dynamic, 1> fnext;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> fnext2;
         Eigen::Matrix<double, Eigen::Dynamic, 1> fcur;
         Eigen::Matrix<double , Eigen::Dynamic, 1> thetaCur;
         fx = fx_;
@@ -2811,10 +2812,19 @@ namespace stan {
             thetaCur(i, 0) += hhh;
             fup = fdoubles(thetaCur);
             fcur = (fup - fx).array()/(hhh)*scaleC_(i, 0);
-            if (anyZero(fcur)) {
+            if (anySuspect(fcur)) {
               thetaCur(i, 0) += hhh;
               fnext           = fdoubles(thetaCur);
-              Js.col(i)       = (-3.0*fx + 4.0*fup - fnext).array()/(2*hhh)*scaleC_(i, 0);
+              fcur = (-3.0*fx + 4.0*fup - fnext).array()/(2.0*hhh)*scaleC_(i, 0);
+              if (anySuspect(fcur)) {
+                thetaCur(i, 0) += hhh;
+                fnext2          = fdoubles(thetaCur);
+                fcur = (-11.0*fx + 18*fup -
+                        9.0*fnext + 6.0*fnext2).array()/(6.0*hhh)*scaleC_(i, 0);
+                Js.col(i) = fcur;
+              } else {
+                Js.col(i)       =  fcur;
+              }
               // thetaCur(i, 0) -= 2*hhh;
               // fnext          = fdoubles(thetaCur);
               // Js.col(i) = (fup - fnext).array()/(2*hhh)*scaleC_(i);
