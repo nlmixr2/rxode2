@@ -46,30 +46,12 @@ namespace stan {
 
 
     template <typename T>
-    solComp2struct<T> computeSolComp2(T k10, T k12, T k21, T ka) {
+    solComp2struct<T> computeSolComp2(T k10, T k12, T k21) {
       solComp2struct<T> out;
       T sum = k10 + k12 + k21;
       T disc = sqrt(sum*sum - 4*k10*k21);
       T L0 = 0.5*(sum + disc); // this cannot be zero
       T L1 = 0.5*(sum - disc); // this can possibly be zero
-
-      // Protect from zero roots
-      if (ka != 0) {
-        // For oral dosing ka-L can't be zero
-        if (abs(L0 - ka) <= DBL_EPSILON) {
-          L0 += 2*DBL_EPSILON;
-        }
-        if (abs(L1 - ka) <= DBL_EPSILON) {
-          L1+= 2*DBL_EPSILON;
-        }
-      }
-      if (abs(L1 - L0) <= DBL_EPSILON) {
-        L0 += 2*DBL_EPSILON;
-      }
-      // In infusions, L0 and L1 can be zero, but currently not protected.
-      // if (abs(L1) <= DBL_EPSILON) {
-      //   L1 = 2*DBL_EPSILON;
-      // }
 
       T invD0 = 1.0/(L1 - L0);
       T invD1 = -invD0;

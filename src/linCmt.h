@@ -1178,7 +1178,7 @@ namespace stan {
         // }
 
         stan::math::solComp2struct<T> sol2 =
-          stan::math::computeSolComp2(k10, k12, k21, ka);
+          stan::math::computeSolComp2(k10, k12, k21);
 
         T rDepot = 0.0;
         T R      = rate_[oral0_];
