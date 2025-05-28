@@ -2585,7 +2585,7 @@ namespace stan {
           // ret = gill83(&hf, &hphif, &df, &df2, &ef,
           //              thetaIn, epsR, K, gillStep,
           //              gillFtol, f0);
-          hh[i] = hf/(std::abs(thetaIn[i])+1);
+          hh[i] = hf;
         }
         g_ = gin;
       }
@@ -2808,7 +2808,7 @@ namespace stan {
             Js.col(i) = Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(Js.rows());
           } else {
             thetaCur = thetaIn;
-            hhh = (h[i]*thetaIn[i] + h[i]);
+            hhh = h[i];
             thetaCur(i, 0) += hhh;
             fup = fdoubles(thetaCur);
             fcur = (fup - fx).array()/(hhh)*scaleC_(i, 0);
