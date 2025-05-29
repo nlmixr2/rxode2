@@ -3374,6 +3374,18 @@ namespace stan {
         return false;
       }
 
+      void fHCalcJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
+                     double *h,
+                     Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,
+                     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& Js) {
+        fx = fx_;
+        fx = fdoubles(thetaIn); // This also restores g_
+        for (int i = 0; i < ncmt_ + oral0_; i++) {
+          Asave_[i] = fx(i, 0);
+        }
+        Js.setZero();
+      }
+
       void fForwardJac(const Eigen::Matrix<double, Eigen::Dynamic, 1>& thetaIn,
                        double *h,
                        Eigen::Matrix<double, Eigen::Dynamic, 1>& fx,

@@ -533,7 +533,6 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   }
 
   lc.sensTheta(theta, thetaSens, rx->sensType == 3, rx->linCmtScale);
-
   if (ind->linSS == linCmtSsInf) {
     lc.setSsInf(ind->linSSvar, ind->linSStau);
   } else if (ind->linSS == linCmtSsBolus) {
@@ -598,80 +597,89 @@ extern "C" double linCmtB(rx_solve *rx, int id,
         dt =  _t - ind->tprior;
       }
       lc.setDt(dt);
-      switch (rx->sensType) {
-
-      case 1: // forward
+      if (ind->linCmtHparIndex >= -1) {
+        if (ind->linCmtHparIndex >= 0) {
+          thetaSens(ind->linCmtHparIndex, 0) += ind->linCmtH;
+        }
         lc.linAcalcAlast(yp, g, theta);
-        lc.shi21ForwardH(thetaSens, ind->linH,
-                         rx->linCmtShiErr,
-                         rx->linCmtShiMax);
-        lc.fForwardJac(thetaSens, ind->linH, fx, Js);
-        break;
+        lc.fHCalcJac(thetaSens,ind->linH, fx, Js);
+      } else {
+        switch (rx->sensType) {
 
-      case 2:  // central
-        lc.linAcalcAlast(yp, g, theta);
-        lc.shi21CentralH(thetaSens, ind->linH,
-                         rx->linCmtShiErr,
-                         rx->linCmtShiMax);
-        lc.fCentralJac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 1: // forward
+          lc.linAcalcAlast(yp, g, theta);
+          lc.shi21ForwardH(thetaSens, ind->linH,
+                           rx->linCmtShiErr,
+                           rx->linCmtShiMax);
+          lc.fForwardJac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 4:  // 3-point forward difference
-        lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fF3H(thetaSens, ind->linH,
-                     rx->linCmtShiErr,
-                     rx->linCmtShiMax);
-        lc.fF3Jac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 2:  // central
+          lc.linAcalcAlast(yp, g, theta);
+          lc.shi21CentralH(thetaSens, ind->linH,
+                           rx->linCmtShiErr,
+                           rx->linCmtShiMax);
+          lc.fCentralJac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 5: // 5-point endpoint difference
-        lc.linAcalcAlast(yp, g, theta);
-        lc.shi21fEndpoint5H(thetaSens, ind->linH,
-                            rx->linCmtShiErr,
-                            rx->linCmtShiMax);
-        lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 4:  // 3-point forward difference
+          lc.linAcalcAlast(yp, g, theta);
+          lc.shi21fF3H(thetaSens, ind->linH,
+                       rx->linCmtShiErr,
+                       rx->linCmtShiMax);
+          lc.fF3Jac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 6: // forward difference with gill H est
-        lc.linAcalcAlast(yp, g, theta);
-        lc.gillForwardH(thetaSens, ind->linH,
-                        rx->linCmtGillRtol,
-                        rx->linCmtGillK, rx->linCmtGillStep,
-                        rx->linCmtGillFtol);
-        lc.fForwardJac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 5: // 5-point endpoint difference
+          lc.linAcalcAlast(yp, g, theta);
+          lc.shi21fEndpoint5H(thetaSens, ind->linH,
+                              rx->linCmtShiErr,
+                              rx->linCmtShiMax);
+          lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 10:
-        lc.linAcalcAlast(yp, g, theta);
-        lc.constH(thetaSens, ind->linH, rx->sensH);
-        lc.fForwardJac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 6: // forward difference with gill H est
+          lc.linAcalcAlast(yp, g, theta);
+          lc.gillForwardH(thetaSens, ind->linH,
+                          rx->linCmtGillRtol,
+                          rx->linCmtGillK, rx->linCmtGillStep,
+                          rx->linCmtGillFtol);
+          lc.fForwardJac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 20:
-        lc.linAcalcAlast(yp, g, theta);
-        lc.constH(thetaSens, ind->linH, rx->sensH);
-        lc.fCentralJac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 10:
+          lc.linAcalcAlast(yp, g, theta);
+          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.fForwardJac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 40: // 3-point forward difference
-        lc.linAcalcAlast(yp, g, theta);
-        lc.constH(thetaSens, ind->linH, rx->sensH);
-        lc.fF3Jac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 20:
+          lc.linAcalcAlast(yp, g, theta);
+          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.fCentralJac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 50: // 5-point endpoint difference
-        lc.linAcalcAlast(yp, g, theta);
-        lc.constH(thetaSens, ind->linH, rx->sensH);
-        lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
-        break;
+        case 40: // 3-point forward difference
+          lc.linAcalcAlast(yp, g, theta);
+          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.fF3Jac(thetaSens, ind->linH, fx, Js);
+          break;
 
-      case 3:
-      default:
-        stan::math::jacobian(lc, thetaSens, fx, Js);
-        break;
+        case 50: // 5-point endpoint difference
+          lc.linAcalcAlast(yp, g, theta);
+          lc.constH(thetaSens, ind->linH, rx->sensH);
+          lc.fEndpoint5Jac(thetaSens, ind->linH, fx, Js);
+          break;
+
+        case 3:
+        default:
+          stan::math::jacobian(lc, thetaSens, fx, Js);
+          break;
+        }
+        lc.updateJfromJs(J, Js);
+        lc.saveJac(J);
       }
-      lc.updateJfromJs(J, Js);
-      lc.saveJac(J);
+
     }
   }
   lc.getJacCp(__linCmtBJ, fx, theta, Jg);
