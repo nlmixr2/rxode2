@@ -2215,7 +2215,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
   double xp = x[0];
   xoutp=xp;
   ind->solvedIdx = 0;
-  for(i=0; i<nx; i++) {
+  for (i=0; i<nx; i++) {
     ind->idx=i;
     ind->linSS=0;
     xout = getTime_(ind->ix[i], ind);
@@ -2247,6 +2247,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (rx->istateReset) idid = 1;
         xp = xout;
       }
+
       updateSolve(ind, op, neq, xout, i, nx);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
     }
@@ -3038,6 +3039,123 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
+}
+
+extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                               t_dydt c_dydt, t_update_inis u_inis) {
+  clock_t t0 = clock();
+  int i;
+  double xout;
+  double *yp;
+  int istate = 0;
+  rx_solving_options_ind *ind;
+  double *x;
+  int *BadDose;
+  double *InfusionRate;
+  double *inits;
+  int *rc;
+  void *ctx = NULL;
+  int idid=1;
+  const char **err_msg = NULL;
+  int nx;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = rx->ordId[solveid]-1;
+  ind = &(rx->subjects[neq[1]]);
+
+  double ret = 0.0;
+  double cur = 0.0;
+  double delta = 0.0;
+  int n =0, nzero = 0;
+
+  if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return NA_REAL;
+
+  nx = ind->n_all_times;
+  inits = op->inits;
+  BadDose = ind->BadDose;
+  InfusionRate = ind->InfusionRate;
+  x = ind->all_times;
+  rc= ind->rc;
+  double xp = x[0];
+  ind->solvedIdx = 0;
+  for(i=0; i<nx; i++) {
+    ind->idx=i;
+    ind->linSS=0;
+    yp = getSolve(i);
+    xout = getTime_(ind->ix[i], ind);
+    if (global_debug) {
+      RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
+    }
+    if (getEvid(ind, ind->ix[i]) != 3) {
+      if (ind->err) {
+        printErr(ind->err, ind->id);
+        *rc = idid;
+        // Bad Solve => NA
+        badSolveExit(i);
+      } else {
+        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+          int idx = ind->idx;
+          int ixds = ind->ixds;
+          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+          ind->idx = -1-trueIdx;
+          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          ind->idx = idx;
+          ind->ixds = ixds;
+          ind->idxExtra++;
+          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+        }
+        if (!isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          linSolve(neq, ind, yp, &xp, xout);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xout;
+        }
+      }
+    }
+    ind->_newind = 2;
+    if (!op->badSolve){
+      ind->idx = i;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+        if (ind->wh0 == EVID0_OFF){
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        xp = xout;
+      }
+      cur = yp[op->numLin]/ind->linCmtHV;
+      if (cur == 0) {
+        nzero++;
+      } else {
+        n++;
+        delta = 1.0/cur - ret;
+        ret += delta/n; // harmonic mean
+      }
+      updateSolve(ind, op, neq, xout, i, nx);
+
+      ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
+    }
+    ind->solvedIdx = i;
+  }
+  double correction = (double)(n-nzero)/((double)n);
+  if (correction <= 0) correction=1;
+  return (double)(n)/ret * correction;
 }
 extern "C" void ind_linCmt(rx_solve *rx, int solveid,
                            t_dydt dydt, t_update_inis u_inis){

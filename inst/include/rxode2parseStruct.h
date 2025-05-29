@@ -224,6 +224,9 @@ typedef struct {
   int linCmtHparIndex;
   // When optimizing the H value, this is the value of H that is being optimized.
   double linCmtH;
+  // When optimizing the H value, the function value of the linear
+  // compartment volume is stored in the `linCmtHV` variable:
+  double linCmtHV;
 } rx_solving_options_ind;
 
 typedef struct {
