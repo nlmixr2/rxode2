@@ -4,8 +4,15 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "rxomp.h"
-#include "linCmt.h"
 #include "../inst/include/rxode2.h"
+#include "timsort.h"
+#define SORT gfx::timsort
+#include "linCmt.h"
+
+
+extern rx_solving_options op_global;
+extern t_update_inis update_inis;
+
 
 #define getLinRate ind->InfusionRate + op->linOffset
 #define isSameTime(xout, xp) (fabs((xout)-(xp)) <= DBL_EPSILON*max2(fabs(xout),fabs(xp)))
@@ -458,7 +465,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
     if (ncmt == 1) {
       rx->sensType = 3;
     } else {
-      // gill83
+      // gill83 = 6
       rx->sensType = 6;
     }
   }
@@ -513,6 +520,7 @@ extern "C" double linCmtB(rx_solve *rx, int id,
   if (id == 0 && ind->linH[0] == 0) {
     lc.resetFlags();
   }
+  lc.setId(id);
 
   int sw = ncmt + 10*oral0;
   switch (sw) {

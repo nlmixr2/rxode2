@@ -4,6 +4,10 @@
 #include "macros2micros.h"
 #include "solComp.h"
 #include "linCmtDiffConstant.h"
+#include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h"
+#include "par_solve.h"
+
 
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
@@ -68,7 +72,7 @@ namespace stan {
     //
 
     struct linCmtStan {
-      int ncmt_, oral0_, trans_;
+      int ncmt_, oral0_, trans_, id_;
       double *rate_; // This comes from the ode system
       double *A_;    // This comes from the ode system
       double *Asave_; // This comes from the ode system
@@ -146,6 +150,10 @@ namespace stan {
         sensV1_ = -1;
       }
 
+      void setId(const int id) {
+        id_ = id;
+      }
+
 
       // set the steady-state help
 
@@ -216,6 +224,419 @@ namespace stan {
         return 0;
       }
 
+      double Rx_pow_di(double base, double exp) {
+        if (exp == 2) {
+          return base * base;
+        }
+        if (base == 0 && exp < 0) {
+          return 0.0;
+        }
+        return pow(base, exp);
+      }
+
+      double _div0(double x) {
+        if (x == 0.0) {
+          return 1e-10; // avoid division by zero
+        }
+        return x;
+      }
+
+#define p1 trueTheta_(0, 0)
+#define v1 trueTheta_(1, 0)
+#define p2 trueTheta_(2, 0)
+#define p3 trueTheta_(3, 0)
+#define ka trueTheta_(4, 0)
+
+      double scaleC_tran1_2_p1_ka() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double rx_expr_14;
+        double rx_expr_15;
+        double A0;
+
+        rx_expr_0 =4*p2;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =1/_div0((v1));
+        rx_expr_6 =exp(-ka);
+        rx_expr_7 =rx_expr_1+rx_expr_2;
+        rx_expr_8 =rx_expr_0/_div0((rx_expr_4));
+        rx_expr_9 =0.5*(rx_expr_5);
+        rx_expr_10 =rx_expr_7+rx_expr_3;
+        rx_expr_11 =2*(rx_expr_10);
+        rx_expr_12 =rx_expr_11/_div0(v1);
+        rx_expr_13 =Rx_pow_di((rx_expr_10),2);
+        rx_expr_14 =rx_expr_12-rx_expr_8;
+        rx_expr_15 =0.25*(rx_expr_14);
+        A0=((-rx_expr_6+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))*(-0.25*(rx_expr_14)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-rx_expr_9)/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))-(rx_expr_15/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-rx_expr_9)*(-rx_expr_6+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))+(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(rx_expr_15/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-rx_expr_9)*(-rx_expr_6+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))/_div0((Rx_pow_di((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))),2)*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))-(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(-rx_expr_6+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))*(-0.25*(rx_expr_14)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-rx_expr_9)/_div0((Rx_pow_di((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))),2)*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))+0.5*exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*((-0.5)*(rx_expr_14)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))+(rx_expr_5))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))-0.5*exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*((0.5)*(rx_expr_14)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))+(rx_expr_5))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))-0.5*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(rx_expr_14)*(-rx_expr_6+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))),2)))+0.5*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(rx_expr_14)*(-rx_expr_6+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))),2))))/_div0((-(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(-rx_expr_6+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))+(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(-rx_expr_6+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_13)))))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_v1_ka() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double rx_expr_14;
+        double rx_expr_15;
+        double rx_expr_16;
+        double rx_expr_17;
+        double A0;
+
+        rx_expr_0 =4*p2;
+        rx_expr_1 =p2/_div0(p3);
+        rx_expr_2 =p1/_div0(v1);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =0.5*p1;
+        rx_expr_6 =0.5*p2;
+        rx_expr_7 =rx_expr_0*p1;
+        rx_expr_8 =exp(-ka);
+        rx_expr_9 =rx_expr_2+rx_expr_1;
+        rx_expr_10 =Rx_pow_di(v1,2);
+        rx_expr_11 =rx_expr_9+rx_expr_3;
+        rx_expr_12 =p2/_div0(rx_expr_10);
+        rx_expr_13 =p3*rx_expr_10;
+        rx_expr_14 =rx_expr_5/_div0(rx_expr_10);
+        rx_expr_15 =rx_expr_6/_div0(rx_expr_10);
+        rx_expr_16 =rx_expr_7/_div0((rx_expr_13));
+        rx_expr_17 =Rx_pow_di((rx_expr_11),2);
+        A0=v1*(-ka*(-(rx_expr_1-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))/_div0(((ka-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))+(rx_expr_1-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))/_div0(((ka-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))))/_div0(rx_expr_10)+ka*(-(rx_expr_14+rx_expr_15+0.25*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))/_div0(((ka-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))+(-rx_expr_8+exp(-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))*(rx_expr_14+rx_expr_15-0.25*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))/_div0(((ka-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))+(rx_expr_1-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(rx_expr_14+rx_expr_15+0.25*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))/_div0((Rx_pow_di((ka-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))),2)*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))-(rx_expr_1-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))*(rx_expr_14+rx_expr_15-0.25*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))/_div0((Rx_pow_di((ka-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))),2)*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))+0.5*exp(-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(rx_expr_1-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-p1/_div0(rx_expr_10)-rx_expr_12+(-0.5)*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))/_div0(((ka-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))-0.5*exp(-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(rx_expr_1-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-p1/_div0(rx_expr_10)-rx_expr_12+(0.5)*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))/_div0(((ka-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))-0.5*(rx_expr_1-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(((ka-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)*Rx_pow_di((0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))),2)))+0.5*(rx_expr_1-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))*(2*(-p1/_div0(rx_expr_10)-rx_expr_12)*(rx_expr_11)+rx_expr_16)/_div0(((ka-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)*Rx_pow_di((0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))),2))))/_div0(v1))/_div0((ka*(-(rx_expr_1-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))/_div0(((ka-0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))))+(rx_expr_1-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(-rx_expr_8+exp(-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))/_div0(((ka-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17)))*(0.5*(rx_expr_11-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))-0.5*(rx_expr_11+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_17))))))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_p2_ka() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double rx_expr_14;
+        double rx_expr_15;
+        double rx_expr_16;
+        double rx_expr_17;
+        double rx_expr_18;
+        double rx_expr_19;
+        double A0;
+        rx_expr_0 =4*p1;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =1/_div0((p3));
+        rx_expr_6 =1/_div0((v1));
+        rx_expr_7 =exp(-ka);
+        rx_expr_8 =rx_expr_1+rx_expr_2;
+        rx_expr_9 =rx_expr_0/_div0((rx_expr_4));
+        rx_expr_10 =0.5*(rx_expr_5);
+        rx_expr_11 =0.5*(rx_expr_6);
+        rx_expr_12 =(rx_expr_5)+(rx_expr_6);
+        rx_expr_13 =rx_expr_8+rx_expr_3;
+        rx_expr_14 =2*(rx_expr_12);
+        rx_expr_15 =Rx_pow_di((rx_expr_13),2);
+        rx_expr_16 =rx_expr_14*(rx_expr_13);
+        rx_expr_17 =rx_expr_16-rx_expr_9;
+        rx_expr_18 =sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_15);
+        rx_expr_19 =0.25*(rx_expr_17);
+        A0=(-(rx_expr_19/_div0(rx_expr_18)+rx_expr_10-rx_expr_11)*(-rx_expr_7+exp(-0.5*(rx_expr_13-rx_expr_18)))/_div0(((ka-0.5*(rx_expr_13-rx_expr_18))*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))+(-rx_expr_7+exp(-0.5*(rx_expr_13+rx_expr_18)))*(-0.25*(rx_expr_17)/_div0(rx_expr_18)+rx_expr_10-rx_expr_11)/_div0(((ka-0.5*(rx_expr_13+rx_expr_18))*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))+(rx_expr_2-0.5*(rx_expr_13-rx_expr_18))*(-rx_expr_7+exp(-0.5*(rx_expr_13-rx_expr_18)))*(rx_expr_19/_div0(rx_expr_18)-rx_expr_10-rx_expr_11)/_div0((Rx_pow_di((ka-0.5*(rx_expr_13-rx_expr_18)),2)*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))-(rx_expr_2-0.5*(rx_expr_13+rx_expr_18))*(-0.25*(rx_expr_17)/_div0(rx_expr_18)-rx_expr_10-rx_expr_11)*(-rx_expr_7+exp(-0.5*(rx_expr_13+rx_expr_18)))/_div0((Rx_pow_di((ka-0.5*(rx_expr_13+rx_expr_18)),2)*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))+0.5*exp(-0.5*(rx_expr_13-rx_expr_18))*(rx_expr_2-0.5*(rx_expr_13-rx_expr_18))*((-0.5)*(rx_expr_17)/_div0(rx_expr_18)+(rx_expr_5)+(rx_expr_6))/_div0(((ka-0.5*(rx_expr_13-rx_expr_18))*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))-0.5*exp(-0.5*(rx_expr_13+rx_expr_18))*(rx_expr_2-0.5*(rx_expr_13+rx_expr_18))*((0.5)*(rx_expr_17)/_div0(rx_expr_18)+(rx_expr_5)+(rx_expr_6))/_div0(((ka-0.5*(rx_expr_13+rx_expr_18))*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))-0.5*(rx_expr_2-0.5*(rx_expr_13-rx_expr_18))*(-rx_expr_7+exp(-0.5*(rx_expr_13-rx_expr_18)))*(rx_expr_17)/_div0(((ka-0.5*(rx_expr_13-rx_expr_18))*rx_expr_18*Rx_pow_di((0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18)),2)))+0.5*(rx_expr_2-0.5*(rx_expr_13+rx_expr_18))*(-rx_expr_7+exp(-0.5*(rx_expr_13+rx_expr_18)))*(rx_expr_17)/_div0(((ka-0.5*(rx_expr_13+rx_expr_18))*rx_expr_18*Rx_pow_di((0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18)),2))))/_div0((-(rx_expr_2-0.5*(rx_expr_13-rx_expr_18))*(-rx_expr_7+exp(-0.5*(rx_expr_13-rx_expr_18)))/_div0(((ka-0.5*(rx_expr_13-rx_expr_18))*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))+(rx_expr_2-0.5*(rx_expr_13+rx_expr_18))*(-rx_expr_7+exp(-0.5*(rx_expr_13+rx_expr_18)))/_div0(((ka-0.5*(rx_expr_13+rx_expr_18))*(0.5*(rx_expr_13-rx_expr_18)-0.5*(rx_expr_13+rx_expr_18))))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_p3_ka() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double rx_expr_14;
+        double A0;
+
+
+        rx_expr_0 =4*p2;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =0.5*p2;
+        rx_expr_6 =rx_expr_0*p1;
+        rx_expr_7 =exp(-ka);
+        rx_expr_8 =rx_expr_1+rx_expr_2;
+        rx_expr_9 =Rx_pow_di(p3,2);
+        rx_expr_10 =rx_expr_8+rx_expr_3;
+        rx_expr_11 =rx_expr_9*v1;
+        rx_expr_12 =rx_expr_5/_div0(rx_expr_9);
+        rx_expr_13 =rx_expr_6/_div0((rx_expr_11));
+        rx_expr_14 =Rx_pow_di((rx_expr_10),2);
+        A0=(-(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(-0.5*p2/_div0(rx_expr_9)+0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(-0.5*p2/_div0(rx_expr_9)-0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(rx_expr_12+0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0((Rx_pow_di((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2)*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))-(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(rx_expr_12-0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0((Rx_pow_di((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2)*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+0.5*exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-p2/_div0(rx_expr_9)+(-0.5)*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))-0.5*exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-p2/_div0(rx_expr_9)+(0.5)*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))-0.5*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2)))+0.5*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2))))/_div0((-(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_ka() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double rx_expr_14;
+        double A0;
+
+
+        rx_expr_0 =4*p2;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =0.5*p2;
+        rx_expr_6 =rx_expr_0*p1;
+        rx_expr_7 =exp(-ka);
+        rx_expr_8 =rx_expr_1+rx_expr_2;
+        rx_expr_9 =Rx_pow_di(p3,2);
+        rx_expr_10 =rx_expr_8+rx_expr_3;
+        rx_expr_11 =rx_expr_9*v1;
+        rx_expr_12 =rx_expr_5/_div0(rx_expr_9);
+        rx_expr_13 =rx_expr_6/_div0((rx_expr_11));
+        rx_expr_14 =Rx_pow_di((rx_expr_10),2);
+        A0=(-(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(-0.5*p2/_div0(rx_expr_9)+0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(-0.5*p2/_div0(rx_expr_9)-0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(rx_expr_12+0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0((Rx_pow_di((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2)*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))-(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))*(rx_expr_12-0.25*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0((Rx_pow_di((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2)*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+0.5*exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-p2/_div0(rx_expr_9)+(-0.5)*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))-0.5*exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-p2/_div0(rx_expr_9)+(0.5)*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))-0.5*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2)))+0.5*(-2*p2*(rx_expr_10)/_div0(rx_expr_9)+rx_expr_13)*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))),2))))/_div0((-(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))+(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(-rx_expr_7+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))))/_div0(((ka-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))*(0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14)))))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_p1() {
+        // generated and modified
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double A0;
+
+        rx_expr_0 =4*p2;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =1/_div0((v1));
+        rx_expr_6 =rx_expr_1+rx_expr_2;
+        rx_expr_7 =rx_expr_0/_div0((rx_expr_4));
+        rx_expr_8 =0.5*(rx_expr_5);
+        rx_expr_9 =rx_expr_6+rx_expr_3;
+        rx_expr_10 =2*(rx_expr_9);
+        rx_expr_11 =rx_expr_10/_div0(v1);
+        rx_expr_12 =Rx_pow_di((rx_expr_9),2);
+        rx_expr_13 =rx_expr_11-rx_expr_7;
+        A0=(-exp(-0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(0.25*(rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-rx_expr_8)/_div0((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))))+exp(-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(-0.25*(rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-rx_expr_8)/_div0((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))))+0.5*exp(-0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_2-0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*((-0.5)*(rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))+(rx_expr_5))/_div0((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))))-0.5*exp(-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_2-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*((0.5)*(rx_expr_13)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))+(rx_expr_5))/_div0((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))))-0.5*exp(-0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_2-0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_13)/_div0((sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)*Rx_pow_di((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))),2)))+0.5*exp(-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_2-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_13)/_div0((sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)*Rx_pow_di((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))),2))))/_div0((-exp(-0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_2-0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))/_div0((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))))+exp(-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))*(rx_expr_2-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12)))/_div0((0.5*(rx_expr_9-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))-0.5*(rx_expr_9+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_12))))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_v1() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double rx_expr_14;
+        double rx_expr_15;
+        double rx_expr_16;
+        double A0;
+        rx_expr_0 =4*p2;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =0.5*p1;
+        rx_expr_6 =0.5*p2;
+        rx_expr_7 =rx_expr_0*p1;
+        rx_expr_8 =rx_expr_1+rx_expr_2;
+        rx_expr_9 =Rx_pow_di(v1,2);
+        rx_expr_10 =rx_expr_8+rx_expr_3;
+        rx_expr_11 =p2/_div0(rx_expr_9);
+        rx_expr_12 =p3*rx_expr_9;
+        rx_expr_13 =rx_expr_5/_div0(rx_expr_9);
+        rx_expr_14 =rx_expr_6/_div0(rx_expr_9);
+        rx_expr_15 =rx_expr_7/_div0((rx_expr_12));
+        rx_expr_16 =Rx_pow_di((rx_expr_10),2);
+        A0=v1*(-(-exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))))+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))))/_div0(rx_expr_9)+(-exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_13+rx_expr_14+0.25*(2*(-p1/_div0(rx_expr_9)-rx_expr_11)*(rx_expr_10)+rx_expr_15)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))))+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_13+rx_expr_14-0.25*(2*(-p1/_div0(rx_expr_9)-rx_expr_11)*(rx_expr_10)+rx_expr_15)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))))+0.5*exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(-p1/_div0(rx_expr_9)-rx_expr_11+(-0.5)*(2*(-p1/_div0(rx_expr_9)-rx_expr_11)*(rx_expr_10)+rx_expr_15)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))))-0.5*exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(-p1/_div0(rx_expr_9)-rx_expr_11+(0.5)*(2*(-p1/_div0(rx_expr_9)-rx_expr_11)*(rx_expr_10)+rx_expr_15)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))))-0.5*exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(2*(-p1/_div0(rx_expr_9)-rx_expr_11)*(rx_expr_10)+rx_expr_15)/_div0((sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))),2)))+0.5*exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(2*(-p1/_div0(rx_expr_9)-rx_expr_11)*(rx_expr_10)+rx_expr_15)/_div0((sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)*Rx_pow_di((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))),2))))/_div0(v1))/_div0((-exp(-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))))+exp(-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))*(rx_expr_2-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16)))/_div0((0.5*(rx_expr_10-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))-0.5*(rx_expr_10+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_16))))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_p2() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double rx_expr_12;
+        double rx_expr_13;
+        double rx_expr_14;
+        double rx_expr_15;
+        double rx_expr_16;
+        double rx_expr_17;
+        double A0;
+        rx_expr_0 =4*p1;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =1/_div0((p3));
+        rx_expr_6 =1/_div0((v1));
+        rx_expr_7 =rx_expr_1+rx_expr_2;
+        rx_expr_8 =rx_expr_0/_div0((rx_expr_4));
+        rx_expr_9 =0.5*(rx_expr_5);
+        rx_expr_10 =0.5*(rx_expr_6);
+        rx_expr_11 =rx_expr_7+rx_expr_3;
+        rx_expr_12 =(rx_expr_5)+(rx_expr_6);
+        rx_expr_13 =2*(rx_expr_12);
+        rx_expr_14 =Rx_pow_di((rx_expr_11),2);
+        rx_expr_15 =rx_expr_13*(rx_expr_11);
+        rx_expr_16 =rx_expr_15-rx_expr_8;
+        rx_expr_17 =sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_14);
+        A0=(-exp(-0.5*(rx_expr_11-rx_expr_17))*(0.25*(rx_expr_16)/_div0(rx_expr_17)+rx_expr_9-rx_expr_10)/_div0((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)))+exp(-0.5*(rx_expr_11+rx_expr_17))*(-0.25*(rx_expr_16)/_div0(rx_expr_17)+rx_expr_9-rx_expr_10)/_div0((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)))+0.5*exp(-0.5*(rx_expr_11-rx_expr_17))*(rx_expr_2-0.5*(rx_expr_11-rx_expr_17))*((-0.5)*(rx_expr_16)/_div0(rx_expr_17)+(rx_expr_5)+(rx_expr_6))/_div0((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)))-0.5*exp(-0.5*(rx_expr_11+rx_expr_17))*(rx_expr_2-0.5*(rx_expr_11+rx_expr_17))*((0.5)*(rx_expr_16)/_div0(rx_expr_17)+(rx_expr_5)+(rx_expr_6))/_div0((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)))-0.5*exp(-0.5*(rx_expr_11-rx_expr_17))*(rx_expr_2-0.5*(rx_expr_11-rx_expr_17))*(rx_expr_16)/_div0((rx_expr_17*Rx_pow_di((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)),2)))+0.5*exp(-0.5*(rx_expr_11+rx_expr_17))*(rx_expr_2-0.5*(rx_expr_11+rx_expr_17))*(rx_expr_16)/_div0((rx_expr_17*Rx_pow_di((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)),2))))/_div0((-exp(-0.5*(rx_expr_11-rx_expr_17))*(rx_expr_2-0.5*(rx_expr_11-rx_expr_17))/_div0((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)))+exp(-0.5*(rx_expr_11+rx_expr_17))*(rx_expr_2-0.5*(rx_expr_11+rx_expr_17))/_div0((0.5*(rx_expr_11-rx_expr_17)-0.5*(rx_expr_11+rx_expr_17)))));
+        return fabs(A0);
+      }
+
+      double scaleC_tran1_2_p3() {
+        double rx_expr_0;
+        double rx_expr_1;
+        double rx_expr_2;
+        double rx_expr_3;
+        double rx_expr_4;
+        double rx_expr_5;
+        double rx_expr_6;
+        double rx_expr_7;
+        double rx_expr_8;
+        double rx_expr_9;
+        double rx_expr_10;
+        double rx_expr_11;
+        double A0;
+
+        rx_expr_0 =4*p2;
+        rx_expr_1 =p1/_div0(v1);
+        rx_expr_2 =p2/_div0(p3);
+        rx_expr_3 =p2/_div0(v1);
+        rx_expr_4 =p3*v1;
+        rx_expr_5 =rx_expr_0*p1;
+        rx_expr_6 =rx_expr_1+rx_expr_2;
+        rx_expr_7 =Rx_pow_di(p3,2);
+        rx_expr_8 =rx_expr_6+rx_expr_3;
+        rx_expr_9 =rx_expr_7*v1;
+        rx_expr_10 =rx_expr_5/_div0((rx_expr_9));
+        rx_expr_11 =Rx_pow_di((rx_expr_8),2);
+        A0=(-exp(-0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(-0.5*p2/_div0(rx_expr_7)+0.25*(-2*p2*(rx_expr_8)/_div0(rx_expr_7)+rx_expr_10)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))))+exp(-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(-0.5*p2/_div0(rx_expr_7)-0.25*(-2*p2*(rx_expr_8)/_div0(rx_expr_7)+rx_expr_10)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))))+0.5*exp(-0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(rx_expr_2-0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(-p2/_div0(rx_expr_7)+(-0.5)*(-2*p2*(rx_expr_8)/_div0(rx_expr_7)+rx_expr_10)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))))-0.5*exp(-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(rx_expr_2-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(-p2/_div0(rx_expr_7)+(0.5)*(-2*p2*(rx_expr_8)/_div0(rx_expr_7)+rx_expr_10)/_div0(sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))))-0.5*exp(-0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(-2*p2*(rx_expr_8)/_div0(rx_expr_7)+rx_expr_10)*(rx_expr_2-0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)*Rx_pow_di((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))),2)))+0.5*exp(-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(-2*p2*(rx_expr_8)/_div0(rx_expr_7)+rx_expr_10)*(rx_expr_2-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)*Rx_pow_di((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))),2))))/_div0((-exp(-0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(rx_expr_2-0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))))+exp(-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))*(rx_expr_2-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11)))/_div0((0.5*(rx_expr_8-sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))-0.5*(rx_expr_8+sqrt(-4*p2*p1/_div0((rx_expr_4))+rx_expr_11))))));
+        return fabs(A0);
+      }
+
+#undef p1
+#undef v1
+#undef p2
+#undef p3
+#undef ka
+      double scaleC_tran1_2(int d) {
+        if (oral0_ == 0) {
+          switch (d) {
+          case diffP1:
+            return scaleC_tran1_2_p1();
+          case diffV1:
+            return scaleC_tran1_2_v1();
+          case diffP2:
+            return scaleC_tran1_2_p2();
+          case diffP3:
+            return scaleC_tran1_2_p3();
+          default:
+            return 1.0; // Default scaling if no match
+          }
+        } else {
+          switch (d) {
+          case diffP1:
+            return scaleC_tran1_2_p1_ka();
+          case diffV1:
+            return scaleC_tran1_2_v1_ka();
+          case diffP2:
+            return scaleC_tran1_2_p2_ka();
+          case diffP3:
+            return scaleC_tran1_2_p3_ka();
+          case diffKa:
+            return scaleC_tran1_2_ka();
+          default:
+            return 1.0; // Default scaling if no match
+          }
+        }
+        return 1.0;
+      }
 
       //' This sets up the sensitivity theta
       //'
@@ -264,7 +685,74 @@ namespace stan {
                 (initPar_(i, 0) - c1_)/c2_;
             } else {
               initPar_(i, 0) = theta(j, 0);
-              scaleC_(i, 0) = trueTheta_(1, 0)/theta(j, 0);
+              scaleC_(i, 0) = 1.0;
+              int sw = ncmt_ + 10*trans_;
+              switch (sw) {
+              case 11: // cl v
+                if (d == diffP1) {
+                  // exp(-cl/v)/v
+                  // > D(S("log(exp(-cl/v)/v)"), "cl")
+                  // (Mul) -1/v
+                  scaleC_(i, 0) = 1.0/trueTheta_(1, 0);
+                } else if (d == diffV1) {
+                  // > D(S("log(exp(-cl/v)/v)"), "v")
+                  //   (Mul)   v*exp(cl/v)*(-exp(-cl/v)/v^2 + exp(-cl/v)*cl/v^3)
+#define v trueTheta_(1, 0)
+#define cl trueTheta_(0, 0)
+                  scaleC_(i, 0) = fabs(v*exp(cl/v)*(-exp(-cl/v)/(v*v) + exp(-cl/v)*cl/(v*v*v)));
+#undef v
+#undef cl
+
+                }
+                break;
+              case 21: // Kel v
+                // if (d == diffP1) {
+                  // > D(S("log(exp(-kel)/v)"), "kel")
+                  // (Integer)  -1
+                  // already 1
+                // } else
+                if (d == diffV1) {
+                  // D(S("log(exp(-kel)/v)"), "v")
+                  // (Mul)-1/v
+                  scaleC_(i,0) = 1.0/trueTheta_(1, 0);
+                }
+                break;
+              case 101: // alpha a
+                // > D(S("log(exp(-alpha)*a)"), "a")
+                // (Pow)   a^(-1)
+                if (d == diffV1) {
+                  scaleC_(i,0) = 1.0/trueTheta_(1, 0);
+                }
+                break;
+
+              case 12: //cl v q vp
+                scaleC_(i, 0) = scaleC_tran1_2(d);
+                break;
+              case 22:// k=(*p1) v=(*v1) k12=(*p2) k21=(*p3)
+                break;
+              case 32: // cl=(*p1) v=(*v1) q=(*p2) vss=(*p3)
+                break;
+              case 42: // alpha=(*p1) beta=(*p2) k21=(*p3)
+                break;
+              case 52:// alpha=(*p1) beta=(*p2) aob=(*p3)
+                break;
+              case 112: // A2 V, alpha=(*p1), beta=(*p2), k21
+                break;
+              case 102: // A=(*v1), alpha=(*p1), beta=(*p2), B=(*p3)
+                break;
+
+                //
+              case 13: // cl v q vp q2 vp2
+                break;
+              case 23: // k=(*p1) v=(*v1) k12=(*p2) k21=(*p3) k13=(*p4) k31=(*p5)
+                break;
+              case 113: //A B and C, alpha, beta, gamma, 3 compartment model
+                break;
+              case 103: // vc B and C, alpha, beta, gamma, 3 compartment model
+                break;
+              }
+
+
               switch (d) {
               case diffP1:
                 if (scale[0] > 0) scaleC_(i, 0) *= scale[0];
@@ -2189,6 +2677,104 @@ namespace stan {
         Eigen::Matrix<double, Eigen::Dynamic, 1> cur;
         Eigen::Matrix<double, Eigen::Dynamic, 1> theta = trueTheta(thetaIn);
 
+        double vc = getVc(theta);
+
+        int i;
+        double xout;
+        double *yp;
+        int istate = 0;
+        double *x;
+        int *BadDose;
+        double *InfusionRate;
+        double *inits;
+        int *rc;
+        void *ctx = NULL;
+        int idid=1;
+        const char **err_msg = NULL;
+        int nx;
+        int neq[2];
+        rx_solve *rx = &rx_global;
+        rx_solving_options *op = &op_global;
+        neq[0] = op->neq;
+        neq[1] = id_;
+        rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
+
+        t_update_inis u_inis = NULL;
+
+        // linCmt() cannot have initial conditions (currenty)
+        //if (!) return;
+        iniSubject(neq[1], 0, ind, op, rx, NULL);
+
+        nx = ind->n_all_times;
+        inits = op->inits;
+        BadDose = ind->BadDose;
+        InfusionRate = ind->InfusionRate;
+        x = ind->all_times;
+        rc= ind->rc;
+        double xp = x[0];
+        // save old information
+        int oldIdx = ind->idx;
+        int oldLinSS = ind->linSS;
+        std::fill_n(ind->linCmtDummy, op->neq, 0.0);
+        // A_  needs to be updated and saved since it is used in the
+        // linear compartment solutions
+        for(i=0; i < nx; i++) {
+          ind->idx=i;
+          ind->linSS=0;
+          yp = ind->linCmtDummy;
+          xout = getTime_(ind->ix[i], ind);
+
+          if (getEvid(ind, ind->ix[i]) != 3) {
+            if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                                xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+              if (!isSameTime(ind->extraDoseNewXout, xp)) {
+                preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+                //
+                cur = fdoubles(thetaIn);
+                // linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
+                // postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+                xp = ind->extraDoseNewXout;
+              }
+              int idx = ind->idx;
+              int ixds = ind->ixds;
+              int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+              ind->idx = -1-trueIdx;
+              handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                          BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+              ind->idx = idx;
+              ind->ixds = ixds;
+              ind->idxExtra++;
+              if (!isSameTime(xout, ind->extraDoseNewXout)) {
+                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+                // linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
+                // postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+                xp = ind->extraDoseNewXout;
+              }
+            }
+            if (!isSameTime(xout, xp)) {
+              preSolve(op, ind, xp, xout, yp);
+              // linSolve(neq, ind, yp, &xp, xout);
+              // postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+              xp = xout;
+            }
+          }
+          ind->_newind = 2;
+          if (!op->badSolve){
+            ind->idx = i;
+            if (getEvid(ind, ind->ix[i]) == 3) {
+              // handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
+            } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+              // handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+              //          xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+              // if (ind->wh0 == EVID0_OFF){
+              //   yp[ind->cmt] = inits[ind->cmt];
+              // }
+              xp = xout;
+            }
+            // updateSolve(ind, op, neq, xout, i, nx);
+          }
+        }
+
         // double vc = getVc(theta);
 
         // int nt12 = 4;
@@ -2280,7 +2866,7 @@ namespace stan {
         // dt_ = saveDt;
         // g_ = stan::math::macros2micros(theta, ncmt_, trans_);
         // return exp((double)(sum)/((double)n));
-        double vc = getVc(theta);
+
         cur =  fdoubles(thetaIn);
         return cur(oral0_, 0);
         // return gm/n;

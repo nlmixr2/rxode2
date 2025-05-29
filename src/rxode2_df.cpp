@@ -34,6 +34,8 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
+#include "timsort.h"
+#define SORT gfx::timsort
 #include "par_solve.h"
 #include <Rcpp.h>
 #include "strncmp.h"

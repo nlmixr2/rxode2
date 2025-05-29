@@ -13,7 +13,9 @@
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
+
 #define SORT gfx::timsort
+
 #define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
 
 // dop853 is same time
@@ -479,16 +481,6 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
-static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
-                            double &xp, double &xout, double *yp) {
-  // First set the last values of time and compartment values
-  if (op->numLin > 0) {
-    ind->linCmtAlast = yp + op->linOffset;
-    ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
-    ind->tout   = xout + ind->curShift;
-  }
-}
-
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
@@ -523,7 +515,6 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
       }
     }
   }
-
   ind->slvr_counter[0]++;
 }
 
@@ -862,94 +853,6 @@ static inline void solveWith1Pt(int *neq,
   }
 }
 
-static inline int handleExtraDose(int *neq,
-                                  int *BadDose,
-                                  double *InfusionRate,
-                                  double *dose,
-                                  double *yp,
-                                  double xout, double xp, int id,
-                                  int *i, int nx,
-                                  int *istate,
-                                  rx_solving_options *op,
-                                  rx_solving_options_ind *ind,
-                                  t_update_inis u_inis,
-                                  void *ctx) {
-  if (ind->extraDoseN[0] > ind->idxExtra) {
-    if (ind->extraSorted == 0) {
-      // do sort
-      SORT(ind->extraDoseTimeIdx + ind->idxExtra, ind->extraDoseTimeIdx + ind->extraDoseN[0],
-           [ind](int a, int b){
-             double timea = ind->extraDoseTime[a],
-               timeb = ind->extraDoseTime[b];
-             if (timea == timeb) {
-               int evida = ind->extraDoseEvid[a],
-                 evidb = ind->extraDoseEvid[b];
-               if (evida == evidb){
-                 return a < b;
-               }
-               return evida < evidb;
-             }
-             return timea < timeb;
-           });
-      ind->extraSorted=1;
-      ind->idxExtra=0;
-    }
-    // Use "real" xout for handle_evid functions.
-    int idx = ind->idx;
-    int ixds = ind->ixds;
-    int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-    ind->idx = -1-trueIdx;
-    double time = getAllTimes(ind, ind->idx);
-    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
-      ind->idxExtra++;
-      trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-      ind->idx = -1-trueIdx;
-      time = getAllTimes(ind, ind->idx);
-    }
-    if ((isSameTimeOp(time, xp) || time > xp) &&
-        (isSameTimeOp(time, xout) || time <= xout)) {
-      bool ignore = true;
-      while (ignore && time <= xout) {
-        ignore=false;
-        for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
-          int curIdx = ind->ignoredDoses[i];
-          if (curIdx < 0 && -1-curIdx == trueIdx) {
-            ignore = true;
-            break;
-          }
-        }
-        if (ignore) {
-          ind->idxExtra++;
-          if (ind->idxExtra < ind->extraDoseN[0]) {
-            trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-            ind->idx = -1-trueIdx;
-            time = getAllTimes(ind, ind->idx);
-          } else {
-            ind->idxExtra--;
-            break;
-          }
-        } else {
-          break;
-        }
-      }
-      if (ignore) {
-        ind->idx = idx;
-        ind->ixds = ixds;
-        return 0;
-      } else {
-        ind->extraDoseNewXout = time;
-        ind->idx = idx;
-        ind->ixds = ixds;
-        // REprintf("time: %f; xp: %f; xout: %f; handleExtra\n", time, xp, xout);
-        return 1;
-      }
-    }
-    ind->idx = idx;
-    ind->ixds = ixds;
-    return 0;
-  }
-  return 0;
-}
 
 //' This function is used to check if the steady state can be handled
 //' by the pre-solved linear solutions

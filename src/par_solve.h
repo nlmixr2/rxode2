@@ -5,7 +5,10 @@
 #ifndef __PAR_SOLVE_H___
 #define __PAR_SOLVE_H___
 
+#define isSameTimeOp(xout, xp) (op->stiff == 0 ? isSameTimeDop(xout, xp) : isSameTime(xout, xp))
+
 #if defined(__cplusplus)
+
 extern "C" {
 #endif
 
@@ -58,11 +61,13 @@ extern "C" {
     }
 		if ((inLhs == 0 && op->neq > 0) ||
 				(inLhs == 1 && op->neq == 0 && (rx->nIndSim > 0 || (rx->simflg & 1) != 0 ))) {
-			ind->isIni = 1;
-			// Also can update individual random variables (if needed)
-			if (inLhs == 0) memcpy(ind->solve, op->inits, op->neq*sizeof(double));
-			u_inis(solveid, ind->solve); // Update initial conditions @ current time
-			ind->isIni = 0;
+      if (u_inis != NULL) {
+        ind->isIni = 1;
+        // Also can update individual random variables (if needed)
+        if (inLhs == 0) memcpy(ind->solve, op->inits, op->neq*sizeof(double));
+        u_inis(solveid, ind->solve); // Update initial conditions @ current time
+        ind->isIni = 0;
+      }
 		}
 		ind->_newind = 1;
 		ind->dosenum = 0;
@@ -98,8 +103,111 @@ extern "C" {
     ind->linCmtAlast = yp ;
     ind->ixds++;
   }
+
+
 #if defined(__cplusplus)
 }
+
+static inline int handleExtraDose(int *neq,
+                                  int *BadDose,
+                                  double *InfusionRate,
+                                  double *dose,
+                                  double *yp,
+                                  double xout, double xp, int id,
+                                  int *i, int nx,
+                                  int *istate,
+                                  rx_solving_options *op,
+                                  rx_solving_options_ind *ind,
+                                  t_update_inis u_inis,
+                                  void *ctx) {
+  if (ind->extraDoseN[0] > ind->idxExtra) {
+    if (ind->extraSorted == 0) {
+      // do sort
+      SORT(ind->extraDoseTimeIdx + ind->idxExtra, ind->extraDoseTimeIdx + ind->extraDoseN[0],
+           [ind](int a, int b){
+             double timea = ind->extraDoseTime[a],
+               timeb = ind->extraDoseTime[b];
+             if (timea == timeb) {
+               int evida = ind->extraDoseEvid[a],
+                 evidb = ind->extraDoseEvid[b];
+               if (evida == evidb){
+                 return a < b;
+               }
+               return evida < evidb;
+             }
+             return timea < timeb;
+           });
+      ind->extraSorted=1;
+      ind->idxExtra=0;
+    }
+    // Use "real" xout for handle_evid functions.
+    int idx = ind->idx;
+    int ixds = ind->ixds;
+    int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+    ind->idx = -1-trueIdx;
+    double time = getAllTimes(ind, ind->idx);
+    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+      ind->idxExtra++;
+      trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+      ind->idx = -1-trueIdx;
+      time = getAllTimes(ind, ind->idx);
+    }
+    if ((isSameTimeOp(time, xp) || time > xp) &&
+        (isSameTimeOp(time, xout) || time <= xout)) {
+      bool ignore = true;
+      while (ignore && time <= xout) {
+        ignore=false;
+        for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
+          int curIdx = ind->ignoredDoses[i];
+          if (curIdx < 0 && -1-curIdx == trueIdx) {
+            ignore = true;
+            break;
+          }
+        }
+        if (ignore) {
+          ind->idxExtra++;
+          if (ind->idxExtra < ind->extraDoseN[0]) {
+            trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            time = getAllTimes(ind, ind->idx);
+          } else {
+            ind->idxExtra--;
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      if (ignore) {
+        ind->idx = idx;
+        ind->ixds = ixds;
+        return 0;
+      } else {
+        ind->extraDoseNewXout = time;
+        ind->idx = idx;
+        ind->ixds = ixds;
+        // REprintf("time: %f; xp: %f; xout: %f; handleExtra\n", time, xp, xout);
+        return 1;
+      }
+    }
+    ind->idx = idx;
+    ind->ixds = ixds;
+    return 0;
+  }
+  return 0;
+}
+
+static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
+                            double &xp, double &xout, double *yp) {
+  // First set the last values of time and compartment values
+  if (op->numLin > 0) {
+    ind->linCmtAlast = yp + op->linOffset;
+    ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
+    ind->tout   = xout + ind->curShift;
+  }
+}
+
+
 #endif
 
 #endif
