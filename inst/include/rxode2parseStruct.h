@@ -210,6 +210,20 @@ typedef struct {
   double linSSvar;
   double ssTime;
   double* linH;
+  // This indicates what the linear compartment is being calculated when calculating
+  // the optimized H value.
+  //
+  // -1: Indicates this is the function value, not a parameter to optimize H for
+  // -2: Indicates there is no optimization of the H value
+  //
+  // Otherwise this represents the index of the sensitivity parameter
+  // that is being optimized for; This is related to the number of
+  // parameters that request derivatives.
+  //
+  //
+  int linCmtHparIndex;
+  // When optimizing the H value, this is the value of H that is being optimized.
+  double linCmtH;
 } rx_solving_options_ind;
 
 typedef struct {
@@ -274,21 +288,6 @@ typedef struct {
   double linCmtShiErr;
   int linCmtShiMax;
   double *linCmtScale;
-
-  // This indicates what the linear compartment is being calculated when calculating
-  // the optimized H value.
-  //
-  // -1: Indicates this is the function value, not a parameter to optimize H for
-  // -2: Indicates there is no optimization of the H value
-  //
-  // Otherwise this represents the index of the sensitivity parameter
-  // that is being optimized for; This is related to the number of
-  // parameters that request derivatives.
-  //
-  //
-  int linCmtHparIndex;
-  // When optimizing the H value, this is the value of H that is being optimized.
-  double linCmtH;
 } rx_solve;
 
 
