@@ -154,6 +154,20 @@ namespace stan {
         id_ = id;
       }
 
+      // This will get the initial parameter value
+      // when the linear compartment structure is setup.
+      Eigen::Matrix<double, Eigen::Dynamic, 1> initPar() {
+        return initPar_;
+      }
+
+      double initPar(int which) {
+        return (initPar_(which, 0) - c1_)/c2_;
+      }
+
+      int parDepV1(int i) {
+        return (i == sensV1_ && !amtDepV1());
+      }
+
 
       // set the steady-state help
 
@@ -3174,7 +3188,6 @@ namespace stan {
         }
         g_ = gin;
       }
-
 
       double shiRF(double &h,
                    double ef,

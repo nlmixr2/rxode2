@@ -2940,107 +2940,6 @@ extern "C" void par_lsoda(rx_solve *rx) {
   }
 }
 
-extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
-                            t_dydt c_dydt, t_update_inis u_inis) {
-  clock_t t0 = clock();
-  int i;
-  double xout;
-  double *yp;
-  int istate = 0;
-  rx_solving_options_ind *ind;
-  double *x;
-  int *BadDose;
-  double *InfusionRate;
-  double *inits;
-  int *rc;
-  void *ctx = NULL;
-  int idid=1;
-  const char **err_msg = NULL;
-  int nx;
-  int neq[2];
-  neq[0] = op->neq;
-  neq[1] = rx->ordId[solveid]-1;
-  ind = &(rx->subjects[neq[1]]);
-
-  if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
-
-  nx = ind->n_all_times;
-  inits = op->inits;
-  BadDose = ind->BadDose;
-  InfusionRate = ind->InfusionRate;
-  x = ind->all_times;
-  rc= ind->rc;
-  double xp = x[0];
-  ind->solvedIdx = 0;
-  for(i=0; i<nx; i++) {
-    ind->idx=i;
-    ind->linSS=0;
-    yp = getSolve(i);
-    xout = getTime_(ind->ix[i], ind);
-    if (global_debug) {
-      RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
-    }
-    if (getEvid(ind, ind->ix[i]) != 3) {
-      if (ind->err) {
-        printErr(ind->err, ind->id);
-        *rc = idid;
-        // Bad Solve => NA
-        badSolveExit(i);
-      } else {
-        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
-            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            xp = ind->extraDoseNewXout;
-          }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            xp = ind->extraDoseNewXout;
-          }
-        }
-        if (!isSameTime(xout, xp)) {
-          preSolve(op, ind, xp, xout, yp);
-          linSolve(neq, ind, yp, &xp, xout);
-          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-          xp = xout;
-        }
-      }
-    }
-    ind->_newind = 2;
-    if (!op->badSolve){
-      ind->idx = i;
-      if (getEvid(ind, ind->ix[i]) == 3) {
-        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
-      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
-        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
-        if (ind->wh0 == EVID0_OFF){
-          yp[ind->cmt] = inits[ind->cmt];
-        }
-        xp = xout;
-      }
-      updateSolve(ind, op, neq, xout, i, nx);
-      ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
-      /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
-    }
-    ind->solvedIdx = i;
-  }
-  ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
-}
-
 extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
                                t_dydt c_dydt, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -3157,6 +3056,110 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
   if (correction <= 0) correction=1;
   return (double)(n)/ret * correction;
 }
+
+extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                            t_dydt c_dydt, t_update_inis u_inis) {
+  clock_t t0 = clock();
+  int i;
+  double xout;
+  double *yp;
+  int istate = 0;
+  rx_solving_options_ind *ind;
+  double *x;
+  int *BadDose;
+  double *InfusionRate;
+  double *inits;
+  int *rc;
+  void *ctx = NULL;
+  int idid=1;
+  const char **err_msg = NULL;
+  int nx;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = rx->ordId[solveid]-1;
+  ind = &(rx->subjects[neq[1]]);
+
+  if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
+
+  nx = ind->n_all_times;
+  inits = op->inits;
+  BadDose = ind->BadDose;
+  InfusionRate = ind->InfusionRate;
+  x = ind->all_times;
+  rc= ind->rc;
+  double xp = x[0];
+  ind->solvedIdx = 0;
+  for(i=0; i<nx; i++) {
+    ind->idx=i;
+    ind->linSS=0;
+    yp = getSolve(i);
+    xout = getTime_(ind->ix[i], ind);
+    if (global_debug) {
+      RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
+    }
+    if (getEvid(ind, ind->ix[i]) != 3) {
+      if (ind->err) {
+        printErr(ind->err, ind->id);
+        *rc = idid;
+        // Bad Solve => NA
+        badSolveExit(i);
+      } else {
+        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+            preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+          int idx = ind->idx;
+          int ixds = ind->ixds;
+          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+          ind->idx = -1-trueIdx;
+          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+          ind->idx = idx;
+          ind->ixds = ixds;
+          ind->idxExtra++;
+          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
+            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            xp = ind->extraDoseNewXout;
+          }
+        }
+        if (!isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          linSolve(neq, ind, yp, &xp, xout);
+          postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          xp = xout;
+        }
+      }
+    }
+    ind->_newind = 2;
+    if (!op->badSolve){
+      ind->idx = i;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+        if (ind->wh0 == EVID0_OFF){
+          yp[ind->cmt] = inits[ind->cmt];
+        }
+        xp = xout;
+      }
+      updateSolve(ind, op, neq, xout, i, nx);
+      ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
+      /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
+    }
+    ind->solvedIdx = i;
+  }
+  ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
+}
+
+
+
 extern "C" void ind_linCmt(rx_solve *rx, int solveid,
                            t_dydt dydt, t_update_inis u_inis){
   rx_solving_options *op = &op_global;
@@ -3406,6 +3409,331 @@ void par_dop(rx_solve *rx){
   }
 }
 
+double ind_linCmtFH(double h, int i,
+                    rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                    t_dydt c_dydt, t_update_inis u_inis) {
+  rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
+  ind->linCmtH = h;
+  ind->linCmtHparIndex = i;
+  return ind_linCmt0H(rx, op, solveid, _neq, c_dydt, u_inis);
+}
+
+// Gill 1983 Chat
+static inline double Chat(double phi, double h, double epsA){
+  if (phi == 0) return 2*epsA/(h*h);
+  return 2*epsA/(h*fabs(phi));
+}
+
+static inline double ChatP(double phi, double h, double epsA){
+  if (phi == 0) return 4*epsA/(h*h*h);
+  return 4*epsA/(h*h*fabs(phi));
+}
+
+static inline double Phi(double fp, double f, double fn, double h){
+  return (fp-2*f+fn)/(h*h);
+}
+static inline double phiC(double fp, double fn, double h){
+  return (fp-fn)/(2*h);
+}
+static inline double phiF(double f, double fp, double h){
+  return (fp-f)/h;
+}
+static inline double phiB(double f, double fn, double h){
+  return (f-fn)/h;
+}
+
+extern "C" double linCmtScaleInitPar(int which);
+
+//' @param *hf is the forward difference final estimate
+//' @param *hphif is central difference final estimate (when switching from forward to central differences)
+//' @param *df is the derivative estimate
+//' @param *df2 is the 2nd derivative estimate, useful for pre-conditioning.
+//' @param *ef is the err of the final estimate.
+//' @param thetaSens is the sensitivity vector
+//' @param cpar (integer) is the parameter we are considering
+//'
+//' @param epsR (err) is the relative error for the problem
+//'
+//' @param K is the maximum number of iterations before giving up on searching for the best interval.
+
+//' @param fTol gradient error tolerance that
+//'     is acceptable before issuing a warning/error about the gradient estimates.
+//'
+//' @param gillStep When looking for the optimal forward difference
+//'     step size, this is This is the step size to increase the
+//'     initial estimate by.  So each iteration the new step size =
+//'     (prior step size)*gillStep
+//'
+//' @param gillF This is the f value at the current estimate
+//'
+//' Returns 1 -- Success
+//'         2 -- Large error; Derivative estimate error 50% or more of the derivative
+//'         3 -- Function constant or nearly constant for this parameter
+//'         4 -- Function odd or nearly linear, df = K, df2 ~ 0
+//'         5 -- df2 increases rapidly as h decreases
+int gill83linCmt(double *hf, double *hphif, double *df, double *df2, double *ef,
+                 int cpar, double epsR, int K, double gillStep,
+                 double fTol, double gillF,
+                 rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+                 t_dydt c_dydt, t_update_inis u_inis) {
+  double f , hbar, h0, fp, fn=NA_REAL,
+    phif, phib, phic, phicc = 0, phi, Chf, Chb,
+    Ch, hs, hphi, hk, tmp, ehat, lasth,
+    lastht=NA_REAL, lastfpt=NA_REAL, phict=NA_REAL;
+  f = gillF;
+  int k = 0;
+  double x = linCmtScaleInitPar(cpar);
+  // Relative error should be given by the tolerances, I believe.
+  double epsA=std::fabs(f)*epsR;
+  // FD1: // Initialization
+  hbar = 2*(1+std::fabs(x))*sqrt(epsA/(1+std::fabs(f)));
+  h0 = gillStep*hbar;
+  lasth=h0;
+  // theta(cpar, 0) = x + h0;
+  fp = ind_linCmtFH(h0, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // theta(cpar, 0) = x - h0;
+  fn = ind_linCmtFH(-h0, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  phif = phiF(f, fp, h0);
+  phib = phiB(f, fn, h0);
+  phic = phiC(fp, fn, h0);
+  phi = Phi(fp, f, fn, h0);
+
+  Chf = Chat(phif, h0, epsA);
+  Chb = Chat(phib, h0, epsA);
+  Ch  = ChatP(phi, h0, epsA);
+  hs  = -1;
+  hphi=hbar; // Not defined in Gill, but used for central difference switch if there are problems
+  // FD2:  // Decide if to accept the interval
+  hk = h0;
+  if (max2(Chf, Chb) <= 0.1){
+    hs=h0;
+  }
+  if (0.001 <= Ch && Ch <= 0.1){
+    phicc=phic;
+    hphi=h0;
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      phict=phic;
+      lastht  = lasth;
+    }
+    goto FD5;
+  }
+  if (fTol != 0 && fabs(phif) < fTol){
+    lastfpt = fp;
+    lastht  = lasth;
+    phict=phic;
+  }
+  if (Ch < 0.001){
+    goto FD4;
+  }
+ FD3: // Increase h
+  k++;
+  hk=hk*gillStep;
+  lasth=hk;
+  // Compute the associated finite difference estimates and their
+  // relative condition errors.
+  // theta(cpar, 0) = x + hk;
+  fp = ind_linCmtFH(hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // theta(cpar, 0) = x-hk;
+  fn = ind_linCmtFH(-hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  phif = phiF(f, fp, hk);
+  phib = phiB(f, fn, hk);
+  phic = phiC(fp, fn, hk);
+  phi = Phi(fp, f, fn, hk);
+  Chf = Chat(phif, hk, epsA);
+  Chb = Chat(phib, hk, epsA);
+  Ch = ChatP(phi, hk, epsA);
+  if (hs < 0 && max2(Chf, Chb) <= 0.1){
+    hs = hk;
+  }
+  if (Ch <= 0.1){
+    phicc=phic;
+    hphi = hk;
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      lastht  = lasth;
+      phict=phic;
+    }
+    goto FD5;
+  }
+  if (fTol != 0 && fabs(phif) < fTol){
+    lastfpt = fp;
+    lastht  = lasth;
+    phict=phic;
+  }
+  if (k == K) goto FD6;
+  goto FD3;
+ FD4: // Decrease h
+  k++;
+  hk=hk/gillStep;
+  lasth=hk;
+  // Compute the associated finite difference estimates and their
+  // relative condition errors.
+  // theta(cpar, 0) = x + hk;
+  fp = ind_linCmtFH(hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // theta(cpar, 0) = x-hk;
+  fn = ind_linCmtFH(-hk, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  phif = phiF(f, fp, hk);
+  phib = phiB(f, fn, hk);
+  tmp=phic;
+  phic = phiC(fp, fn, hk);
+  phi = Phi(fp, f, fn, hk);
+  Chf = Chat(phif, hk, epsA);
+  Chb = Chat(phib, hk, epsA);
+  Ch = ChatP(phi, hk, epsA);
+  if (Ch > .1){
+    phicc=tmp;
+    hphi=hk*gillStep; // hphi = h_k-1
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      lastht  = lasth;
+      phict=phic;
+    }
+    goto FD5;
+  }
+  if (max2(Chf, Chb) <= 0.1){
+    hs = hk;
+  }
+  if (0.001 <= Ch && Ch <= 1){
+    hphi = hk;
+    if (fTol != 0 && fabs(phif) < fTol){
+      lastfpt = fp;
+      lastht  = lasth;
+      phict=phic;
+    }
+    goto FD5;
+  }
+  if (fTol != 0 && fabs(phif) < fTol){
+    lastfpt = fp;
+    lastht  = lasth;
+    phict=phic;
+  }
+  if (k == K) goto FD6;
+  goto FD4;
+ FD5: // Compute the estimate of the optimal interval
+  *df2 = phi;
+  *hf = 2*sqrt(epsA/fabs(phi));
+  fp = ind_linCmtFH(*hf, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+  // Restore theta
+  // theta(cpar, 0) = x;
+  *df = phiF(f, fp, *hf);
+  *ef = (*hf)*fabs(phi)/2+2*epsA/(*hf);
+  *hphif=hphi;
+  ehat = fabs(*df-phicc);
+  if (max2(*ef, ehat) <= 0.5*(*df)){
+    return 1;
+  } else {
+    // warning("The finite difference derivative err more than 50%% of the slope; Consider a different starting point.");
+    if (!ISNA(lastht)){
+      // Could be used;  Stick with the last below Ftol
+      // *hf = lasth;
+      // fp = lastfp;
+      // *df = phiF(f, fp, *hf);
+      // *df2=0;
+      // // *df = 0.0; // Doesn't move.
+      // *hphif=2*(*hf);
+      // } else {
+      *hf = lastht;
+      fp = lastfpt;
+      *df = phiF(f, fp, *hf);
+      *df2=phic;
+      // *df = 0.0; // Doesn't move.
+      *hphif=phict;
+    }
+    return 2;
+  }
+  //
+ FD6: // Check unsatisfactory cases
+  if (hs < 0){
+    // F nearly constant.
+    // Use sqrt(h0) as a last ditch effort.
+    *hf = pow(DBL_EPSILON, 0.25);//hbar;
+    // *df=phic;
+    // theta(cpar, 0) = x + *hf;
+    fp = ind_linCmtFH(*hf, cpar, rx, op, solveid, _neq, c_dydt, u_inis);
+    *df = phiF(f, fp, *hf);
+    *df2=0;
+    // *df = 0.0; // Doesn't move.
+    *hphif= sqrt(h0);
+    // warning("The surface around the initial estimate is nearly constant in one parameter grad=0.  Consider a different starting point.");
+    return 3;
+  }
+  if (Ch > 0.1){ // Odd or nearly linear.
+    *hf = h0;
+    *df = phic;
+    *df2 = 0;
+    *ef = 2*epsA/(*hf);
+    *hphif=hphi;
+    // warning("The surface odd or nearly linear for one parameter; Check your function.");
+    return 4;
+  }
+  // f'' is increasing rapidly as h decreases
+  *hf = h0;
+  *df = phic;
+  *df2 = phi;
+  *hphif=hphi;
+  *ef = (*hf)*fabs(phi)/2+2*epsA/(*hf);
+  // warning("The surface around the initial estimate is highly irregular in at least one parameter.  Consider a different starting point.");
+  return 5;
+}
+
+extern "C" double linCmtScaleInitN();
+extern "C" int linCmtZeroJac(int i);
+
+void gillForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
+ t_dydt c_dydt, t_update_inis u_inis) {
+  double h = 0.0;
+  double f0 = ind_linCmtFH(0.0, -1, rx, op, solveid, _neq, c_dydt, u_inis);
+  double hf=0, hphif=0, df=0, df2=0, ef=0;
+  int ret=0;
+  int N = linCmtScaleInitN();
+  rx_solving_options_ind *ind = &(rx->subjects[_neq[1]]);
+  double *hh = ind->linH;
+
+  for (int i = 0; i < N; i++) {
+    if (linCmtZeroJac(i)) {
+      hh[i] = 0.0;
+      continue;
+    }
+    h = 0.0;
+    gill83linCmt(&hf, &hphif, &df, &df2, &ef,
+                 i, rx->linCmtGillRtol, rx->linCmtGillK, rx->linCmtGillStep,
+                 rx->linCmtGillFtol, f0, rx, op, solveid, _neq, c_dydt, u_inis);
+    hh[i] = hf;
+  }
+}
+
+
+
+void setupLinH(rx_solve *rx, int solveid,
+               t_dydt dydt, t_update_inis u_inis) {
+  rx_solving_options *op = &op_global;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = solveid;
+  rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
+  if (ind->linCmtHparIndex == -3) return; // already setup
+  switch (rx->sensType) {
+  case 1: // forward; shi difference
+    break;
+  case 2: // central; shi
+    break;
+  case 3: // 3pt forward; shi
+    break;
+  case 4: // 5-point endpoint difference; shi
+    break;
+  case 6: // forward difference with gill H est
+    gillForwardH(rx, op, solveid, neq, dydt, u_inis);
+    break;
+  default: // all the rest are constant
+    std::fill_n(ind->linH, 7, rx->sensH);
+    break;
+  }
+  ind->linCmtH = NA_REAL;
+  ind->linCmtHparIndex = -3;
+}
+
+// This is used by focei to optimize per individual
 extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
                           t_dydt_liblsoda dydt_lls,
                           t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
@@ -3421,7 +3749,11 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   rxt.cur = 0;
   assignFuns();
   rx_solving_options *op = &op_global;
-  if (op->neq !=  0){
+  if (op->neq !=  0) {
+    if (rx->linB == 1) {
+      // Setup H
+      setupLinH(rx, cid, c_dydt, u_inis);
+    }
     if (op->neq == op->numLinSens + op->numLin) {
       // This only is linear compartment solving
       ind_linCmt(rx, cid, c_dydt, u_inis);
@@ -3459,6 +3791,9 @@ extern "C" void par_solve(rx_solve *rx){
   assignFuns();
   rx_solving_options *op = &op_global;
   if (op->neq != 0) {
+    if (rx->linB == 1) {
+      // Setup H
+    }
     if (op->neq == op->numLinSens + op->numLin) {
       // This only is linear compartment solving
       par_linCmt(rx);

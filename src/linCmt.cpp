@@ -367,6 +367,20 @@ extern "C" double linCmtA(rx_solve *rx, int id,
 #undef yp
 }
 
+extern "C" double linCmtScaleInitPar(int which) {
+  return __linCmtB.initPar(which);
+}
+
+extern "C" double linCmtScaleInitN() {
+  Eigen::Matrix<double, Eigen::Dynamic, 1> theta = __linCmtB.initPar();
+  return theta.size();
+}
+
+extern "C" int linCmtZeroJac(int i) {
+  return __linCmtB.parDepV1(i);
+}
+
+
 /*
  *  linCmtB
  *
